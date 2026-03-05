@@ -1,0 +1,160 @@
+:host {
+  --brown: #36190D;
+  --coral: #EB602B;
+  --cream: #FDF6EC;
+  --soft: #F0E5D8;
+  --border: #E8D5C4;
+}
+
+.login-wrapper {
+  min-height: 100vh;
+  background-color: var(--brown);
+  background-image: radial-gradient(circle at top right, #5C2C16 0%, var(--brown) 60%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'DM Sans', sans-serif;
+  padding: 20px;
+}
+
+.login-card {
+  background: var(--cream);
+  width: 100%;
+  max-width: 480px;
+  border-radius: 24px;
+  padding: 40px 50px;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+}
+
+.brand-section {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.logo-circle {
+  width: 70px;
+  height: 70px;
+  background: var(--coral);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 36px;
+  margin: 0 auto 16px;
+  box-shadow: 0 8px 16px rgba(235, 96, 43, 0.3);
+}
+
+.brand-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 28px;
+  color: var(--brown);
+  margin: 0 0 6px 0;
+  font-weight: 900;
+}
+
+.brand-subtitle {
+  color: #9A7060;
+  font-size: 14px;
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-weight: 700;
+}
+
+/* --- SELECTOR DE ROL --- */
+.role-selector {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 30px;
+}
+
+.role-option {
+  background: #fff;
+  border: 2px solid var(--border);
+  border-radius: 16px;
+  padding: 20px 10px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.role-option:hover {
+  border-color: var(--coral);
+  background: var(--soft);
+}
+
+.role-icon {
+  font-size: 32px;
+  margin-bottom: 8px;
+  transition: 0.2s;
+}
+
+.role-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: #9A7060;
+}
+
+/* ESTADO ACTIVO DEL ROL */
+.role-option.active {
+  border-color: var(--coral);
+  background: rgba(235, 96, 43, 0.05);
+  box-shadow: 0 4px 12px rgba(235, 96, 43, 0.1);
+}
+.role-option.active .role-icon { transform: scale(1.15); }
+.role-option.active .role-name { color: var(--coral); }
+
+/* --- FORMULARIO --- */
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--brown);
+  margin-bottom: 8px;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 16px;
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 16px;
+  color: var(--brown);
+  outline: none;
+  transition: 0.2s;
+  box-sizing: border-box;
+}
+
+.form-group input:focus {
+  border-color: var(--coral);
+  box-shadow: 0 0 0 4px rgba(235, 96, 43, 0.1);
+}
+
+.btn-ingresar {
+  width: 100%;
+  background: var(--coral);
+  color: white;
+  border: none;
+  padding: 18px;
+  border-radius: 12px;
+  font-size: 18px;
+  font-weight: 700;
+  font-family: 'DM Sans', sans-serif;
+  cursor: pointer;
+  margin-top: 10px;
+  transition: 0.2s;
+  box-shadow: 0 6px 16px rgba(235, 96, 43, 0.3);
+}
+
+.btn-ingresar:hover {
+  background: #d95624;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(235, 96, 43, 0.4);
+}

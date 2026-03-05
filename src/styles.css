@@ -1,0 +1,143 @@
+/* Importar tipografías de Mega Dulces */
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
+
+:root {
+  --coral:    #E8613A;
+  --gold:     #F5A623;
+  --cream:    #FDF6EC;
+  --brown:    #3D1F0D;
+  --soft:     #FAE8D8;
+  --green:    #4CAF7D;
+  --red:      #E05252;
+  --card:     #FFFFFF;
+  --border:   #F0DCC8;
+  --shadow:   0 4px 24px rgba(61,31,13,0.10);
+  --shadow-lg:0 12px 48px rgba(61,31,13,0.16);
+  --radius:   16px;
+  --radius-sm:10px;
+}
+
+*, *::before, *::after { 
+  box-sizing: border-box; 
+  margin: 0; 
+  padding: 0; 
+}
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--cream);
+  color: var(--brown);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* =========================================
+   📱 MEJORAS RESPONSIVE (MÓVIL Y TABLET)
+   ========================================= */
+
+/* --- 1. AJUSTES PARA TABLETS (Ej. iPad) --- */
+@media screen and (max-width: 992px) {
+  .home-grid, .checklist-grid, .user-grid {
+    grid-template-columns: repeat(2, 1fr) !important; /* 2 columnas en Tablet para que no se apriete */
+  }
+}
+
+/* --- 2. AJUSTES PARA CELULARES --- */
+@media screen and (max-width: 768px) {
+  
+  /* Evitar que la pantalla baile hacia los lados */
+  body, html {
+    overflow-x: hidden !important;
+    max-width: 100vw !important;
+  }
+
+  /* --- A) LIMPIAR EL HEADER (CABECERA) --- */
+  .header {
+    padding: 10px 15px !important;
+    justify-content: space-between !important;
+  }
+  .header-brand {
+    font-size: 16px !important; /* Letra más chica */
+    line-height: 1.2 !important;
+    margin-left: 10px !important;
+  }
+  .header-brand small {
+    display: none !important; /* Ocultamos "Panel de gestión" para no amontonar */
+  }
+  .header-user {
+    display: none !important; /* Ocultamos el "Bienvenido..." porque ya sale en el menú izquierdo */
+  }
+  .header-logo-wrap {
+    width: 35px !important;
+    height: 35px !important;
+    font-size: 18px !important;
+  }
+
+  /* --- B) AJUSTAR EL CONTENIDO PRINCIPAL --- */
+  .content {
+    margin-left: 0 !important; 
+    width: 100vw !important;
+    max-width: 100% !important;
+    padding: 15px !important;
+    box-sizing: border-box !important;
+  }
+
+  /* --- C) APILAR TARJETAS (UNA DEBAJO DE LA OTRA) --- */
+  .home-grid, .checklist-grid, .user-grid {
+    grid-template-columns: 1fr !important; /* 1 sola columna en el celular */
+    gap: 15px !important;
+  }
+
+  /* --- D) APILAR CÁPSULAS DE ESTADÍSTICAS --- */
+  .home-stats {
+    flex-direction: column !important; /* Hacia abajo en vez de hacia los lados */
+    gap: 10px !important;
+  }
+  .stat-pill {
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  /* --- E) ACHICAR TEXTOS GIGANTES --- */
+  .home-welcome h1 {
+    font-size: 22px !important;
+  }
+  .section-title {
+    font-size: 20px !important;
+  }
+
+  /* --- F) ARREGLAR LOS MODALES (VENTANAS DE CREAR) --- */
+  .modal {
+    width: 95% !important;
+    margin: 15px auto !important;
+    max-height: 90vh !important;
+    overflow-y: auto !important;
+  }
+  .form-row {
+    flex-direction: column !important; /* Cajas de texto una debajo de la otra */
+    gap: 15px !important;
+  }
+
+  /* --- G) MENÚ LATERAL OCULTO POR DEFECTO --- */
+  .sidebar {
+    position: fixed !important;
+    left: -100% !important; 
+    z-index: 1000 !important;
+    transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    box-shadow: 4px 0 15px rgba(0,0,0,0.5);
+    height: 100vh !important;
+    width: 280px !important;
+  }
+  .sidebar.mobile-open {
+    left: 0 !important; 
+  }
+  .mobile-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 999;
+  }
+}

@@ -1,0 +1,81 @@
+<div class="app-layout">
+  <header class="header">
+    <div class="header-left">
+      <button class="btn-menu-mobile" (click)="toggleMenu()">☰</button>
+      
+      <div class="header-logo-wrap"><span>🍬</span></div>
+      <div class="header-brand">Mega Dulces de los Altos<small>Panel de Gestión</small></div>
+    </div>
+    <div class="header-right">
+      <div class="header-user">Bienvenido, <strong>{{ currentUser?.nombre || 'Administrador' }}</strong></div>
+    </div>
+  </header>
+
+  <div class="main-wrapper">
+    <div class="mobile-overlay" *ngIf="isMenuOpen" (click)="toggleMenu()"></div>
+    
+    <aside class="sidebar" [class.mobile-open]="isMenuOpen">
+      <div class="sidebar-header">
+        <div class="sidebar-avatar">{{ (currentUser?.nombre || 'A').charAt(0) | uppercase }}</div>
+        <div><div class="sidebar-name">{{ currentUser?.nombre || 'Administrador' }}</div><div class="sidebar-role">Gerente</div></div>
+      </div>
+      <nav class="sidebar-nav">
+        <a class="nav-item" routerLink="/home" routerLinkActive="active" (click)="toggleMenu()"><span class="nav-icon">🏠</span> Inicio</a>
+        
+        <a class="nav-item" routerLink="/checklist" routerLinkActive="active" (click)="toggleMenu()"><span class="nav-icon">✅</span> Checklist</a>
+        
+        <a class="nav-item" routerLink="/checkstore" routerLinkActive="active" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeVerCheckstore" (click)="toggleMenu()"><span class="nav-icon">🏪</span> Checkstore</a>
+        
+        <a class="nav-item" routerLink="/estadisticas" routerLinkActive="active" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeVerEstadisticas" (click)="toggleMenu()"><span class="nav-icon">📊</span> Estadísticas</a>
+        
+        <a class="nav-item" routerLink="/personal" routerLinkActive="active" *ngIf="currentUser?.rol === 'admin'" (click)="toggleMenu()"><span class="nav-icon">👥</span> Personal</a>
+        
+        <div class="nav-divider"></div>
+        <a class="nav-item" routerLink="/cambio-clave" routerLinkActive="active" (click)="toggleMenu()"><span class="nav-icon">🔑</span> Cambio de Clave</a>
+        <a class="nav-item nav-logout" routerLink="/login"><span class="nav-icon">🚪</span> Cerrar Sesión</a>
+      </nav>
+    </aside>
+
+    <div class="content">
+      <div class="section-header">
+        <div>
+          <div class="section-title">🏪 Checkstore</div>
+          <div class="section-sub">Estado en tiempo real de las sucursales</div>
+        </div>
+      </div>
+
+      <div class="store-grid">
+        <div class="store-card" *ngFor="let store of stores()" [style.--store-color]="store.color">
+          <div class="store-icon" [style.background]="store.color">{{ store.icon }}</div>
+          <div class="store-name">{{ store.name }}</div>
+          <div class="store-location">{{ store.location }}</div>
+          
+          <div class="store-progress">
+            <div class="progress-label">
+              <span>Progreso</span>
+              <span>{{ store.progress }}%</span>
+            </div>
+            <div class="progress-bar-wrap">
+              <div class="progress-bar-fill" [style.width.%]="store.progress" [style.background]="store.color"></div>
+            </div>
+          </div>
+          
+          <div class="store-stats">
+            <div class="store-stat-item">
+              <div class="store-stat-val">{{ store.totalChecklists }}</div>
+              <div class="store-stat-label">Checklists</div>
+            </div>
+            <div class="store-stat-item">
+              <div class="store-stat-val">{{ store.completedItems }}</div>
+              <div class="store-stat-label">Completados</div>
+            </div>
+            <div class="store-stat-item">
+              <div class="store-stat-val">{{ store.totalItems }}</div>
+              <div class="store-stat-label">Total ítems</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div> 

@@ -1,0 +1,108 @@
+<div class="app-layout">
+  <header class="header">
+    <div class="header-left">
+      <button class="btn-menu-mobile" (click)="toggleMenu()">☰</button>
+      
+      <div class="header-logo-wrap"><span>🍬</span></div>
+      <div class="header-brand">Mega Dulces de los Altos<small>Panel de Gestión</small></div>
+    </div>
+    <div class="header-right">
+      <div class="header-user">Bienvenido, <strong>{{ currentUser?.nombre || 'Administrador' }}</strong></div>
+    </div>
+  </header>
+
+  <div class="main-wrapper">
+    <div class="mobile-overlay" *ngIf="isMenuOpen" (click)="toggleMenu()"></div>
+    
+    <aside class="sidebar" [class.mobile-open]="isMenuOpen">
+      <div class="sidebar-header">
+        <div class="sidebar-avatar">{{ (currentUser?.nombre || 'A').charAt(0) | uppercase }}</div>
+        <div>
+          <div class="sidebar-name">{{ currentUser?.nombre || 'Administrador' }}</div>
+          <div class="sidebar-role">{{ currentUser?.rol === 'admin' ? 'Gerente' : 'Empleado' }}</div>
+        </div>
+      </div>
+  <nav class="sidebar-nav">
+        <a class="nav-item" routerLink="/home" routerLinkActive="active" (click)="toggleMenu()"><span class="nav-icon">🏠</span> Inicio</a>
+        
+        <a class="nav-item" routerLink="/checklist" routerLinkActive="active" (click)="toggleMenu()"><span class="nav-icon">✅</span> Checklist</a>
+        
+        <a class="nav-item" routerLink="/checkstore" routerLinkActive="active" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeVerCheckstore" (click)="toggleMenu()"><span class="nav-icon">🏪</span> Checkstore</a>
+        
+        <a class="nav-item" routerLink="/estadisticas" routerLinkActive="active" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeVerEstadisticas" (click)="toggleMenu()"><span class="nav-icon">📊</span> Estadísticas</a>
+        
+        <a class="nav-item" routerLink="/personal" routerLinkActive="active" *ngIf="currentUser?.rol === 'admin'" (click)="toggleMenu()"><span class="nav-icon">👥</span> Personal</a>
+        
+        <div class="nav-divider"></div>
+        <a class="nav-item" routerLink="/cambio-clave" routerLinkActive="active" (click)="toggleMenu()"><span class="nav-icon">🔑</span> Cambio de Clave</a>
+        <a class="nav-item nav-logout" routerLink="/login"><span class="nav-icon">🚪</span> Cerrar Sesión</a>
+      </nav>
+    </aside>
+
+    <div class="content">
+      <div class="home-welcome">
+        <h1>¡Hola, <span>{{ currentUser?.nombre || 'Administrador' }}!</span> 👋</h1>
+        <p *ngIf="currentUser?.rol === 'admin'">Aquí tienes el resumen del día en Mega Dulces de los Altos.</p>
+        <p *ngIf="currentUser?.rol === 'trabajador'">Aquí tienes el resumen de tus tareas pendientes.</p>
+      </div>
+
+      <div class="home-grid">
+        <div class="home-card" routerLink="/checklist">
+          <div class="home-card-icon">✅</div>
+          <div class="home-card-title">Checklist</div>
+          <div class="home-card-desc" *ngIf="currentUser?.rol === 'admin'">Gestión de tareas internas del equipo.</div>
+          <div class="home-card-desc" *ngIf="currentUser?.rol === 'trabajador'">Ver mis tareas asignadas para hoy.</div>
+          <div class="home-card-count">{{ totalChecklists() }} checklists</div>
+        </div>
+
+        <div class="home-card" routerLink="/checkstore" *ngIf="currentUser?.rol === 'admin'">
+          <div class="home-card-icon">🏪</div>
+          <div class="home-card-title">Checkstore</div>
+          <div class="home-card-desc">Estado en tiempo real de todas las sucursales.</div>
+          <div class="home-card-count">{{ sucursalesTotales() }} sucursales</div>
+        </div>
+
+        <div class="home-card" routerLink="/estadisticas" *ngIf="currentUser?.rol === 'admin'">
+          <div class="home-card-icon">📊</div>
+          <div class="home-card-title">Estadísticas</div>
+          <div class="home-card-desc">Métricas y avance de tareas completadas.</div>
+          <div class="home-card-count">Ver reporte</div>
+        </div>
+      </div>
+
+      <div class="home-stats">
+        <div class="stat-pill">
+          <div class="stat-pill-icon">🎯</div>
+          <div>
+            <div class="stat-pill-label">EN PROGRESO</div>
+            <div class="stat-pill-val">{{ enProgreso() }}</div>
+          </div>
+        </div>
+
+        <div class="stat-pill">
+          <div class="stat-pill-icon">⏳</div>
+          <div>
+            <div class="stat-pill-label">PENDIENTES</div>
+            <div class="stat-pill-val">{{ pendientes() }}</div>
+          </div>
+        </div>
+
+        <div class="stat-pill" *ngIf="currentUser?.rol === 'admin'">
+          <div class="stat-pill-icon">🏬</div>
+          <div>
+            <div class="stat-pill-label">SUCURSALES</div>
+            <div class="stat-pill-val">{{ sucursalesTotales() }}</div>
+          </div>
+        </div>
+
+        <div class="stat-pill" *ngIf="currentUser?.rol === 'admin'">
+          <div class="stat-pill-icon">📈</div>
+          <div>
+            <div class="stat-pill-label">PROGRESO GLOBAL</div>
+            <div class="stat-pill-val">{{ progresoGlobal() }}%</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

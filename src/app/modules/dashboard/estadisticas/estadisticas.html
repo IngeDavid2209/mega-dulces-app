@@ -89,6 +89,38 @@
             <div class="stat-bar-pct">{{ s.progress }}%</div>
           </div>
         </div>
+
+        <div class="stat-card" style="grid-column: 1 / -1; margin-top: 30px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
+            <div class="stat-card-title" style="margin-bottom: 0;">Rendimiento por Empleado</div>
+            
+            <select class="form-input select-input" 
+                    style="width: auto; min-width: 200px; cursor: pointer;" 
+                    [value]="sucursalSeleccionadaParaEmpleados()"
+                    (change)="alCambiarSucursalEmpleados($event)">
+              <option *ngFor="let suc of nombresSucursales" [value]="suc">{{ suc }}</option>
+            </select>
+          </div>
+
+          <div class="stat-bar-row" *ngFor="let emp of empleadosStats()">
+            <div class="stat-bar-label">
+              <strong>{{ emp.nombre }}</strong>
+              <div style="font-size: 11px; color: #666; margin-top: 3px;">
+                <span *ngIf="emp.total > 0">{{ emp.completados }} de {{ emp.total }} tareas validadas</span>
+                <span *ngIf="emp.total === 0" style="color: #999; font-style: italic;">Sin tareas asignadas hoy</span>
+              </div>
+            </div>
+            <div class="stat-bar-track" [style.background]="emp.total === 0 ? '#F5F5F5' : '#FFE5E5'">
+              <div class="stat-bar-fill" [style.width.%]="emp.progress" [style.background]="emp.color"></div>
+            </div>
+            <div class="stat-bar-pct" [style.color]="emp.total === 0 ? '#999' : 'inherit'">{{ emp.progress }}%</div>
+          </div>
+
+          <div class="empty-state-text" *ngIf="empleadosStats().length === 0" style="text-align: center; color: #888; padding: 20px 0;">
+            No hay empleados registrados en esta sucursal.
+          </div>
+        </div>
+
       </div>
     </div>
   </div>

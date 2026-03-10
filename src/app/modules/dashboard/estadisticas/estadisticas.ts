@@ -2,7 +2,7 @@ import { Component, signal, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router'; 
 import { FormsModule } from '@angular/forms';
-import { Firestore, collection, onSnapshot } from '@angular/fire/firestore'; // 🔥 IMPORTAMOS LA NUBE
+import { Firestore, collection, onSnapshot } from '@angular/fire/firestore';
 
 @Component({
   selector: 'app-estadisticas',
@@ -37,39 +37,48 @@ export class EstadisticasComponent implements OnInit {
   sucursalSeleccionadaParaEmpleados = signal('Canindo');
   empleadosStats = signal<any[]>([]);
   
-  // Variables para guardar la data de la nube
   todosLosChecklists: any[] = []; 
   todosLosUsuariosNube: any[] = []; 
 
-  private firestore = inject(Firestore); // 🔥 INYECTAMOS FIRESTORE
+  private firestore = inject(Firestore);
 
   ngOnInit() {
     const sesion = localStorage.getItem('md_sesion_actual');
     if (sesion) {
       this.currentUser = JSON.parse(sesion);
     }
-    this.conectarRadarNube(); // 🔥 INICIAMOS LA CONEXIÓN EN TIEMPO REAL
+    this.conectarRadarNube(); 
   }
 
   conectarRadarNube() {
-    // 1. ESCUCHAR USUARIOS DESDE FIREBASE
+    // 1. ESCUCHAR USUARIOS
     const usuariosRef = collection(this.firestore, 'usuarios');
     onSnapshot(usuariosRef, (snapshot) => {
       this.todosLosUsuariosNube = [];
       snapshot.forEach(docSnap => this.todosLosUsuariosNube.push(docSnap.data()));
-      this.calcularEstadisticasEmpleados(); // Recalculamos cuando lleguen los usuarios
+      this.calcularEstadisticasEmpleados(); 
     });
 
-    // 2. ESCUCHAR CHECKLISTS DESDE FIREBASE
+    // 2. ESCUCHAR CHECKLISTS (CON ESCUDO DE ZONA HORARIA 🔥)
     const checklistsRef = collection(this.firestore, 'checklists');
     onSnapshot(checklistsRef, (snapshot) => {
       const listasVigentes: any[] = [];
-      const limite24h = 24 * 60 * 60 * 1000; 
+      
+      // Magia para obtener la fecha exacta local sin que la hora de Londres nos afecte
+      const offset = new Date().getTimezoneOffset() * 60000;
+      const fechaHoyLocal = new Date(Date.now() - offset).toISOString().split('T')[0];
+      const limite24h = 24 * 60 * 60 * 1000;
       const ahora = Date.now();
 
       snapshot.forEach(docSnap => {
         const c: any = docSnap.data();
-        if ((ahora - c.id) <= limite24h) {
+        
+        // El checklist entra a la estadística si tiene fecha de HOY o si tiene menos de 24h de creado
+        const tiempoCreacion = typeof c.id === 'number' ? c.id : (c.timestampCreacion || ahora);
+        const esReciente = (ahora - tiempoCreacion) <= limite24h;
+        const esDeHoy = c.date === fechaHoyLocal;
+
+        if (esDeHoy || esReciente) {
           listasVigentes.push(c);
         }
       });
@@ -153,7 +162,6 @@ export class EstadisticasComponent implements OnInit {
   calcularEstadisticasEmpleados() {
     const sucursalElegida = this.sucursalSeleccionadaParaEmpleados();
     
-    // 🔥 USAMOS LA LISTA FRESCA DE LA NUBE 🔥
     const trabajadoresSucursal = this.todosLosUsuariosNube.filter((u: any) => {
       if (u.rol !== 'trabajador') return false;
       const susSucursales = u.sucursales || [u.sucursal || ''];

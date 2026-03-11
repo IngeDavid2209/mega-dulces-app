@@ -1,6 +1,7 @@
-import { Component, signal, OnInit } from '@angular/core';
+import { Component, signal, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router'; 
+import { Firestore, collection, onSnapshot } from '@angular/fire/firestore'; // 🔥 IMPORTAMOS LA NUBE
 
 @Component({
   selector: 'app-home',
@@ -11,9 +12,7 @@ import { RouterModule } from '@angular/router';
 })
 export class HomeComponent implements OnInit {
   isMenuOpen = false;
-  toggleMenu() {
-    this.isMenuOpen = !this.isMenuOpen;
-  }
+  toggleMenu() { this.isMenuOpen = !this.isMenuOpen; }
 
   currentUser: any = null; 
 
@@ -23,55 +22,66 @@ export class HomeComponent implements OnInit {
   pendientes = signal(0);
   progresoGlobal = signal(0);
 
+  private firestore = inject(Firestore); // 🔥 INYECTAMOS FIRESTORE
+
   ngOnInit() {
     const sesion = localStorage.getItem('md_sesion_actual');
     if (sesion) {
       this.currentUser = JSON.parse(sesion);
     }
 
-    this.calcularResumen();
+    this.conectarRadarNube(); // 🔥 ACTIVAMOS EL RADAR EN TIEMPO REAL
   }
 
-  calcularResumen() {
-    const guardados = localStorage.getItem('md_checklists');
-    let checklists: any[] = guardados ? JSON.parse(guardados) : [];
+  conectarRadarNube() {
+    const checklistsRef = collection(this.firestore, 'checklists');
 
-    // 🔥 AUTO-LIMPIEZA DE 24 HORAS 🔥
-    const limite24h = 24 * 60 * 60 * 1000; 
-    const ahora = Date.now();
-    const listasVigentes = checklists.filter((c: any) => (ahora - c.id) <= limite24h);
+    onSnapshot(checklistsRef, (snapshot) => {
+      const checklists: any[] = [];
+      
+      // ESCUDO DE ZONA HORARIA Y TIEMPO (Misma lógica que estadísticas)
+      const offset = new Date().getTimezoneOffset() * 60000;
+      const fechaHoyLocal = new Date(Date.now() - offset).toISOString().split('T')[0];
+      const limite24h = 24 * 60 * 60 * 1000;
+      const ahora = Date.now();
 
-    if (listasVigentes.length !== checklists.length) {
-      localStorage.setItem('md_checklists', JSON.stringify(listasVigentes));
-      checklists = listasVigentes;
-    }
-
-    const misListas = this.currentUser?.rol === 'trabajador' 
-      ? checklists.filter(c => c.assigned === this.currentUser.nombre)
-      : checklists;
-
-    this.totalChecklists.set(misListas.length);
-
-    const activos = misListas.filter(c => c.status === 'en-progreso').length;
-    const pend = misListas.filter(c => c.status === 'pendiente').length;
-    
-    this.enProgreso.set(activos);
-    this.pendientes.set(pend);
-
-    let totalItems = 0;
-    let itemsCompletados = 0;
-
-    misListas.forEach(c => {
-      c.items.forEach((item: any) => {
-        totalItems++;
-        const completo = item.checked && (!item.requiresPhoto || item.photo !== null);
-        if (completo) {
-          itemsCompletados++;
+      snapshot.forEach(docSnap => {
+        const c: any = docSnap.data();
+        const tiempoCreacion = typeof c.id === 'number' ? c.id : (c.timestampCreacion || ahora);
+        
+        // Solo tomamos en cuenta checklists de hoy o creados hace menos de 24 horas
+        if (c.date === fechaHoyLocal || (ahora - tiempoCreacion) <= limite24h) {
+          checklists.push(c);
         }
       });
-    });
 
-    const globalPct = totalItems > 0 ? Math.round((itemsCompletados / totalItems) * 100) : 0;
-    this.progresoGlobal.set(globalPct);
+      // FILTRAR POR USUARIO (Si es trabajador, solo ve lo suyo)
+      const misListas = (this.currentUser?.rol === 'trabajador') 
+        ? checklists.filter(c => c.assigned === this.currentUser.nombre)
+        : checklists;
+
+      // ACTUALIZAR CONTADORES DEL DASHBOARD
+      this.totalChecklists.set(misListas.length);
+
+      // Contamos "En progreso" y "Pendientes"
+      this.enProgreso.set(misListas.filter(c => c.status === 'en-progreso').length);
+      this.pendientes.set(misListas.filter(c => c.status === 'pendiente').length);
+
+      // CÁLCULO DE PROGRESO GLOBAL
+      let totalItems = 0;
+      let itemsCompletados = 0;
+
+      misListas.forEach(c => {
+        c.items.forEach((item: any) => {
+          totalItems++;
+          // Una tarea cuenta solo si está marcada Y (si requiere foto, la tiene)
+          const completo = item.checked === true && (!item.requiresPhoto || (item.photo !== null && item.photo !== ''));
+          if (completo) itemsCompletados++;
+        });
+      });
+
+      const globalPct = totalItems > 0 ? Math.round((itemsCompletados / totalItems) * 100) : 0;
+      this.progresoGlobal.set(globalPct);
+    });
   }
 }

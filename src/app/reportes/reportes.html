@@ -1,0 +1,126 @@
+<div class="app-layout">
+  <header class="header">
+    <div class="header-left">
+      <button class="btn-menu-mobile" (click)="toggleMenu()">☰</button>
+      <div class="header-logo-wrap"><span>🍬</span></div>
+      <div class="header-brand">Mega Dulces de los Altos<small>Panel de Gestión</small></div>
+    </div>
+    <div class="header-right">
+      <div class="header-user">Bienvenido, <strong>{{ currentUser?.nombre || 'Administrador' }}</strong></div>
+    </div>
+  </header>
+
+  <div class="main-wrapper">
+    <div class="mobile-overlay" *ngIf="isMenuOpen" (click)="toggleMenu()"></div>
+    
+    <aside class="sidebar" [class.mobile-open]="isMenuOpen">
+      <div class="sidebar-header">
+        <div class="sidebar-avatar">{{ (currentUser?.nombre || 'A').charAt(0) | uppercase }}</div>
+        <div>
+          <div class="sidebar-name">{{ currentUser?.nombre || 'Administrador' }}</div>
+          <div class="sidebar-role">{{ currentUser?.rol === 'admin' ? 'Gerente' : 'Empleado' }}</div>
+        </div>
+      </div>
+      <nav class="sidebar-nav">
+        <a class="nav-item" routerLink="/home" routerLinkActive="active" (click)="toggleMenu()"><span class="nav-icon">🏠</span> Inicio</a>
+        <a class="nav-item" routerLink="/checklist" routerLinkActive="active" (click)="toggleMenu()"><span class="nav-icon">✅</span> Checklist</a>
+        <a class="nav-item" routerLink="/checkstore" routerLinkActive="active" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeVerCheckstore" (click)="toggleMenu()"><span class="nav-icon">🏪</span> Checkstore</a>
+        <a class="nav-item" routerLink="/estadisticas" routerLinkActive="active" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeVerEstadisticas" (click)="toggleMenu()"><span class="nav-icon">📊</span> Estadísticas</a>
+        <a class="nav-item" routerLink="/reportes" routerLinkActive="active" *ngIf="currentUser?.rol === 'admin'" (click)="toggleMenu()"><span class="nav-icon">📑</span> Historial</a>
+        <a class="nav-item" routerLink="/personal" routerLinkActive="active" *ngIf="currentUser?.rol === 'admin'" (click)="toggleMenu()"><span class="nav-icon">👥</span> Personal</a>
+        <div class="nav-divider"></div>
+        <a class="nav-item" routerLink="/cambio-clave" routerLinkActive="active" (click)="toggleMenu()"><span class="nav-icon">🔑</span> Cambio de Clave</a>
+        <a class="nav-item nav-logout" routerLink="/login"><span class="nav-icon">🚪</span> Cerrar Sesión</a>
+      </nav>
+    </aside>
+
+    <div class="content">
+      <div class="section-header">
+        <div>
+          <div class="section-title">📑 Historial de Operaciones</div>
+          <div class="section-sub">Auditoría permanente de checklists pasados</div>
+        </div>
+      </div>
+
+      <div style="background: white; padding: 20px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 25px;">
+        <div style="display: flex; gap: 15px; flex-wrap: wrap; align-items: flex-end;">
+          <div style="flex: 1; min-width: 150px;">
+            <label style="font-size: 13px; font-weight: bold; color: var(--brown); margin-bottom: 5px; display: block;">Desde:</label>
+            <input type="date" class="form-input" [(ngModel)]="fechaInicio" style="width: 100%;">
+          </div>
+          
+          <div style="flex: 1; min-width: 150px;">
+            <label style="font-size: 13px; font-weight: bold; color: var(--brown); margin-bottom: 5px; display: block;">Hasta:</label>
+            <input type="date" class="form-input" [(ngModel)]="fechaFin" style="width: 100%;">
+          </div>
+
+          <div style="flex: 2; min-width: 200px;">
+            <label style="font-size: 13px; font-weight: bold; color: var(--brown); margin-bottom: 5px; display: block;">Empleado (Opcional):</label>
+            <select class="form-input select-input" [(ngModel)]="empleadoSeleccionado" style="width: 100%;">
+              <option value="">Todos los empleados</option>
+              <option *ngFor="let emp of empleados()" [value]="emp.nombre">{{ emp.nombre }}</option>
+            </select>
+          </div>
+
+          <button class="btn-add" style="height: 42px; padding: 0 25px;" (click)="buscarReportes()" [disabled]="buscando()">
+            {{ buscando() ? 'Buscando...' : '🔍 Consultar' }}
+          </button>
+
+          <button style="height: 42px; padding: 0 25px; background-color: #c0392b; color: white; border: none; font-weight: bold; cursor: pointer; border-radius: 8px; display: flex; align-items: center; gap: 6px; box-shadow: 0 4px 6px rgba(192, 57, 43, 0.3); transition: 0.2s;" 
+                  (click)="descargarReportePDF()" 
+                  *ngIf="busquedaRealizada() && resultados().length > 0"
+                  onmouseover="this.style.backgroundColor='#a93226'" 
+                  onmouseout="this.style.backgroundColor='#c0392b'">
+            📄 Reporte PDF
+          </button>
+        </div>
+      </div>
+
+      <div *ngIf="busquedaRealizada()">
+        <div style="margin-bottom: 15px; font-weight: bold; color: var(--brown);">
+          Resultados encontrados: {{ resultados().length }}
+        </div>
+
+        <div class="checklist-grid">
+          <div class="checklist-card" *ngFor="let checklist of resultados()">
+            <div class="checklist-card-header">
+              <div class="checklist-card-title">{{ checklist.name }}</div>
+              <div class="checklist-card-badge"
+                   [ngClass]="{
+                     'badge-pendiente': checklist.status === 'pendiente',
+                     'badge-en-progreso': checklist.status === 'en-progreso',
+                     'badge-completo': checklist.status === 'completo'
+                   }">
+                {{ checklist.status | titlecase }}
+              </div>
+            </div>
+            
+            <div class="checklist-card-info">
+              <span>👤 {{ checklist.assigned }}</span>
+              <span>🏪 {{ checklist.store }}</span>
+              <span>📅 {{ checklist.date }}</span>
+              <span *ngIf="checklist.enviado" style="color: var(--green); font-weight: 800; background: #E5F5EC; padding: 2px 8px; border-radius: 6px;">📤 ENVIADO</span>
+            </div>
+            
+            <div class="checklist-progress">
+              <div class="progress-label">
+                <span>{{ getCompletados(checklist) }} de {{ checklist.items.length }} tareas</span>
+                <span>{{ getProgreso(checklist) }}%</span>
+              </div>
+              <div class="progress-bar-wrap">
+                <div class="progress-bar-fill" [style.width.%]="getProgreso(checklist)"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="empty-state" *ngIf="resultados().length === 0 && !buscando()">
+            <div class="empty-state-icon">📭</div>
+            <h3>No hay registros</h3>
+            <p>No se encontraron checklists en este rango de fechas para el filtro seleccionado.</p>
+          </div>
+        </div>
+      </div>
+
+    </div> 
+  </div>
+</div>

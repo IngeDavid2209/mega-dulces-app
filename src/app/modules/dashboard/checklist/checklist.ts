@@ -19,16 +19,18 @@ export class ChecklistComponent implements OnInit {
   vistaActual = signal<'lista' | 'detalle'>('lista');
   checklistSeleccionado = signal<any>(null);
   
+  // Variables Modal Viejo (Tareas Únicas)
   isModalOpen = false;
   formName = '';
   formAssigned: string[] = []; 
   formStore = '';
-  formDate = '';
-  formTime = '';
+  formItems = [{ text: '', requiresPhoto: false, date: '', time: '' }]; 
   
-  formItems = [{ text: '', requiresPhoto: false }]; 
-  
-  // 🔥 AHORA LAS RUTINAS INICIAN CON FECHA DE FIN INTELIGENTE 🔥
+  // 🔥 NUEVAS VARIABLES: Modal Exclusivo de Rutinas 🔥
+  isModalRutinasOpen = false;
+  formNameRutina = '';
+  formAssignedRutina: string[] = []; 
+  formStoreRutina = '';
   formRutinas: any[] = []; 
   frecuencias = ['Diaria', 'Semanal', 'Catorcenal', 'Mensual', 'Trimestral'];
 
@@ -38,13 +40,23 @@ export class ChecklistComponent implements OnInit {
 
   private firestore = inject(Firestore);
 
+  // Filtro para Modal Viejo
   get empleadosFiltrados() {
     if (!this.formStore) return this.empleados();
-    
     return this.empleados().filter(emp => {
       if (emp.sucursales && emp.sucursales.includes('General (Acceso Total)')) return true;
       const susSucursales = emp.sucursales || [emp.sucursal || ''];
       return susSucursales.includes(this.formStore);
+    });
+  }
+
+  // Filtro para Modal Nuevo (Rutinas)
+  get empleadosFiltradosRutina() {
+    if (!this.formStoreRutina) return this.empleados();
+    return this.empleados().filter(emp => {
+      if (emp.sucursales && emp.sucursales.includes('General (Acceso Total)')) return true;
+      const susSucursales = emp.sucursales || [emp.sucursal || ''];
+      return susSucursales.includes(this.formStoreRutina);
     });
   }
 
@@ -62,7 +74,13 @@ export class ChecklistComponent implements OnInit {
       const todosLosUsuarios: any[] = [];
       snapshot.forEach(docSnap => todosLosUsuarios.push(docSnap.data()));
 
-      const todasLasSucursales = ['Canindo', 'La Piedad Abastos', '8 Esquinas', 'Padre Hidalgo', 'Morelia Madero', 'Morelia Abastos', 'Yurécuaro', 'Zamora Centro'];
+      // 🔥 AQUÍ SE AGREGARON LAS NUEVAS SUCURSALES / DEPARTAMENTOS 🔥
+      const todasLasSucursales = [
+        'Canindo', 'La Piedad Abastos', '8 Esquinas', 'Padre Hidalgo', 
+        'Morelia Madero', 'Morelia Abastos', 'Yurécuaro', 'Zamora Centro',
+        'OFICINAS CORPORATIVAS', 'CAJA GENERAL', 'COMPRAS', 'CONTABILIDAD', 
+        'FINANZAS', 'SISTEMAS', 'RH', 'MKT', 'MANTENIMIENTO'
+      ];
 
       if (this.currentUser?.rol === 'admin') {
         this.sucursalesDisponibles.set(todasLasSucursales);
@@ -121,30 +139,66 @@ export class ChecklistComponent implements OnInit {
     });
   }
 
-  // 🔥 MAGIA: Calcula cuándo termina en automático según la frecuencia 🔥
- // 🔥 MAGIA CORREGIDA: Calcula la fecha exacta según la palabra literal 🔥
-  calcularFechaFinDefault(frecuencia: string): string {
-    const fecha = new Date();
+  esDiaCerrado(sucursal: string, fecha: Date = new Date()): boolean {
+    const dia = fecha.getDate();
+    const mes = fecha.getMonth() + 1;
+    const anio = fecha.getFullYear();
+
+    if (sucursal === 'Padre Hidalgo' || sucursal === '8 Esquinas') {
+      const viernesSanto = this.calcularViernesSanto(anio);
+      if (dia === viernesSanto.getDate() && mes === (viernesSanto.getMonth() + 1)) {
+        return true; 
+      }
+      return false; 
+    } else {
+      if ((dia === 25 && mes === 12) || (dia === 1 && mes === 1)) {
+        return true; 
+      }
+      return false; 
+    }
+  }
+
+  calcularViernesSanto(anio: number): Date {
+    const a = anio % 19;
+    const b = Math.floor(anio / 100);
+    const c = anio % 100;
+    const d = Math.floor(b / 4);
+    const e = b % 4;
+    const f = Math.floor((b + 8) / 25);
+    const g = Math.floor((b - f + 1) / 3);
+    const h = (19 * a + b - d - g + 15) % 30;
+    const i = Math.floor(c / 4);
+    const k = c % 4;
+    const l = (32 + 2 * e + 2 * i - h - k) % 7;
+    const m = Math.floor((a + 11 * h + 22 * l) / 451);
+    const mesResurreccion = Math.floor((h + l - 7 * m + 114) / 31) - 1;
+    const diaResurreccion = ((h + l - 7 * m + 114) % 31) + 1;
     
-    if (frecuencia === 'Diaria') {
-      fecha.setDate(fecha.getDate() + 1); // Suma exactamente 1 día
-    } else if (frecuencia === 'Semanal') {
-      fecha.setDate(fecha.getDate() + 7); // Suma exactamente 7 días
+    const domingoResurreccion = new Date(anio, mesResurreccion, diaResurreccion);
+    const viernesSanto = new Date(domingoResurreccion);
+    viernesSanto.setDate(domingoResurreccion.getDate() - 2);
+    return viernesSanto;
+  }
+
+  calcularFechaFinDefault(frecuencia: string): string | null {
+    if (frecuencia === 'Diaria') return null; 
+
+    const fecha = new Date();
+    if (frecuencia === 'Semanal') {
+      fecha.setDate(fecha.getDate() + 7);
     } else if (frecuencia === 'Catorcenal') {
-      fecha.setDate(fecha.getDate() + 14); // Suma exactamente 14 días
+      fecha.setDate(fecha.getDate() + 14); 
     } else if (frecuencia === 'Mensual') {
-      fecha.setMonth(fecha.getMonth() + 1); // Suma exactamente 1 mes
+      fecha.setMonth(fecha.getMonth() + 1); 
     } else if (frecuencia === 'Trimestral') {
-      fecha.setMonth(fecha.getMonth() + 3); // Suma exactamente 3 meses
+      fecha.setMonth(fecha.getMonth() + 3); 
     }
     
-    // Ajuste de zona horaria para que no se desfase un día por el cambio de horario
     const offset = fecha.getTimezoneOffset() * 60000;
     const fechaLocal = new Date(fecha.getTime() - offset);
-    
     return fechaLocal.toISOString().split('T')[0];
   }
-  // Se ejecuta cuando el admin cambia el menú desplegable de frecuencia
+
   alCambiarFrecuencia(rutina: any) {
     rutina.fechaFin = this.calcularFechaFinDefault(rutina.frecuencia);
   }
@@ -173,13 +227,14 @@ export class ChecklistComponent implements OnInit {
     const fechaString = fechaActual.toISOString().split('T')[0];
 
     for (const molde of moldes) {
+      if (this.esDiaCerrado(molde.store, fechaActual)) {
+        continue; 
+      }
       
-      // 🔥 EL ROBOT REVISA SI LA RUTINA YA CADUCÓ 🔥
       const itemsVigentes = molde.items.filter((item: any) => {
         return !item.fechaFin || fechaString <= item.fechaFin;
       });
 
-      // Si todos los items del molde ya caducaron, nos saltamos este molde
       if (itemsVigentes.length === 0) continue;
 
       const llavePeriodo = this.obtenerLlavePeriodo(molde.frecuencia, fechaActual);
@@ -269,6 +324,7 @@ export class ChecklistComponent implements OnInit {
     this.volverALista();
   }
 
+  // Lógica para Modal Viejo
   toggleEmpleado(nombre: string) {
     const index = this.formAssigned.indexOf(nombre);
     if (index > -1) { this.formAssigned.splice(index, 1); } else { this.formAssigned.push(nombre); }
@@ -277,25 +333,15 @@ export class ChecklistComponent implements OnInit {
   abrirModal() {
     this.formName = ''; this.formAssigned = []; 
     this.formStore = this.sucursalesDisponibles().length > 0 ? this.sucursalesDisponibles()[0] : '';
-    this.formDate = ''; this.formTime = '';
-    this.formItems = [{ text: '', requiresPhoto: false }]; 
-    // 🔥 INICIAMOS CON FECHA INTELIGENTE 🔥
-    this.formRutinas = [{ text: '', requiresPhoto: false, frecuencia: 'Diaria', fechaFin: this.calcularFechaFinDefault('Diaria') }];
+    this.formItems = [{ text: '', requiresPhoto: false, date: '', time: '' }]; 
     this.isModalOpen = true; 
   }
-
   cerrarModal() { this.isModalOpen = false; }
-  agregarItem() { this.formItems.push({ text: '', requiresPhoto: false }); }
+  agregarItem() { this.formItems.push({ text: '', requiresPhoto: false, date: '', time: '' }); }
   eliminarItem(index: number) { this.formItems.splice(index, 1); }
-  
-  agregarRutina() { 
-    this.formRutinas.push({ text: '', requiresPhoto: false, frecuencia: 'Diaria', fechaFin: this.calcularFechaFinDefault('Diaria') }); 
-  }
-  
-  eliminarRutina(index: number) { this.formRutinas.splice(index, 1); }
   trackByIndex(index: number, obj: any): any { return index; }
 
-  guardarChecklist() {
+  guardarChecklistUnico() {
     if (!this.formName || this.formAssigned.length === 0) {
       alert('Por favor completa el nombre y selecciona al menos un trabajador.');
       return;
@@ -303,7 +349,75 @@ export class ChecklistComponent implements OnInit {
 
     const tareasValidas = this.formItems
       .filter(item => item.text.trim() !== '')
-      .map((item, i) => ({ id: Date.now() + i, text: item.text, requiresPhoto: item.requiresPhoto, checked: false, photo: null, tipo: 'tarea' }));
+      .map((item, i) => ({ 
+        id: Date.now() + i, 
+        text: item.text, 
+        requiresPhoto: item.requiresPhoto, 
+        date: item.date, 
+        time: item.time, 
+        checked: false, 
+        photo: null, 
+        tipo: 'tarea' 
+      }));
+
+    if (tareasValidas.length === 0) {
+      alert('Debes agregar al menos una Tarea válida.');
+      return;
+    }
+
+    this.formAssigned.forEach((empleadoNombre, index) => {
+      const uniqueId = Date.now() + index; 
+      const offset = new Date().getTimezoneOffset() * 60000;
+      const hoy = new Date(Date.now() - offset).toISOString().split('T')[0];
+      
+      const checklistTareas = {
+        id: uniqueId,
+        timestampCreacion: Date.now(),
+        name: this.formName, 
+        assigned: empleadoNombre,
+        store: this.formStore,
+        date: tareasValidas[0].date || hoy,
+        time: tareasValidas[0].time || '23:59',
+        status: 'pendiente',
+        enviado: false,
+        items: JSON.parse(JSON.stringify(tareasValidas))
+      };
+      this.guardarEnLaNube(checklistTareas);
+    });
+
+    alert('✅ ¡Checklist de Tareas Únicas enviado a los trabajadores!');
+    this.cerrarModal();
+  }
+
+  // 🔥 LÓGICA: Modal de Rutinas 🔥
+  toggleEmpleadoRutina(nombre: string) {
+    const index = this.formAssignedRutina.indexOf(nombre);
+    if (index > -1) { this.formAssignedRutina.splice(index, 1); } else { this.formAssignedRutina.push(nombre); }
+  }
+
+  abrirModalRutinas() {
+    this.formNameRutina = ''; 
+    this.formAssignedRutina = []; 
+    this.formStoreRutina = this.sucursalesDisponibles().length > 0 ? this.sucursalesDisponibles()[0] : '';
+    this.formRutinas = [{ text: '', requiresPhoto: false, frecuencia: 'Diaria', fechaFin: this.calcularFechaFinDefault('Diaria') }];
+    this.isModalRutinasOpen = true; 
+  }
+
+  cerrarModalRutinas() { 
+    this.isModalRutinasOpen = false; 
+  }
+
+  agregarRutina() { 
+    this.formRutinas.push({ text: '', requiresPhoto: false, frecuencia: 'Diaria', fechaFin: this.calcularFechaFinDefault('Diaria') }); 
+  }
+  
+  eliminarRutina(index: number) { this.formRutinas.splice(index, 1); }
+
+  guardarBloqueRutinas() {
+    if (!this.formNameRutina || this.formAssignedRutina.length === 0) {
+      alert('Por favor completa el nombre del bloque y asigna al menos un responsable.');
+      return;
+    }
 
     const rutinasValidas = this.formRutinas
       .filter(rutina => rutina.text.trim() !== '')
@@ -315,58 +429,37 @@ export class ChecklistComponent implements OnInit {
         photo: null, 
         tipo: 'rutina', 
         frecuencia: rutina.frecuencia,
-        fechaFin: rutina.fechaFin // 🔥 GUARDAMOS LA FECHA DE CADUCIDAD 🔥
+        fechaFin: rutina.fechaFin 
       }));
 
-    if (tareasValidas.length === 0 && rutinasValidas.length === 0) {
-      alert('Debes agregar al menos una Tarea o una Rutina válida.');
+    if (rutinasValidas.length === 0) {
+      alert('Debes agregar al menos una Rutina al bloque.');
       return;
     }
 
-    this.formAssigned.forEach((empleadoNombre, index) => {
-      // Guardar Tareas Únicas
-      if (tareasValidas.length > 0) {
-        const uniqueId = Date.now() + index; 
-        const checklistTareas = {
-          id: uniqueId,
-          timestampCreacion: Date.now(),
-          name: this.formName + ' (Tareas Únicas)',
+    this.formAssignedRutina.forEach((empleadoNombre, index) => {
+      const rutinasPorFrecuencia: { [key: string]: any[] } = {};
+      rutinasValidas.forEach(r => {
+        if (!rutinasPorFrecuencia[r.frecuencia]) rutinasPorFrecuencia[r.frecuencia] = [];
+        rutinasPorFrecuencia[r.frecuencia].push(r);
+      });
+
+      Object.keys(rutinasPorFrecuencia).forEach((frecuencia, fIndex) => {
+        const moldeId = `molde_${Date.now()}_${index}_${fIndex}`;
+        const nuevoMolde = {
+          id: moldeId,
+          name: this.formNameRutina,
           assigned: empleadoNombre,
-          store: this.formStore,
-          date: this.formDate,
-          time: this.formTime,
-          status: 'pendiente',
-          enviado: false,
-          items: JSON.parse(JSON.stringify(tareasValidas))
+          store: this.formStoreRutina,
+          frecuencia: frecuencia,
+          items: JSON.parse(JSON.stringify(rutinasPorFrecuencia[frecuencia]))
         };
-        this.guardarEnLaNube(checklistTareas);
-      }
-
-      // Guardar Moldes en la bóveda
-      if (rutinasValidas.length > 0) {
-        const rutinasPorFrecuencia: { [key: string]: any[] } = {};
-        rutinasValidas.forEach(r => {
-          if (!rutinasPorFrecuencia[r.frecuencia]) rutinasPorFrecuencia[r.frecuencia] = [];
-          rutinasPorFrecuencia[r.frecuencia].push(r);
-        });
-
-        Object.keys(rutinasPorFrecuencia).forEach((frecuencia, fIndex) => {
-          const moldeId = `molde_${Date.now()}_${index}_${fIndex}`;
-          const nuevoMolde = {
-            id: moldeId,
-            name: this.formName,
-            assigned: empleadoNombre,
-            store: this.formStore,
-            frecuencia: frecuencia,
-            items: JSON.parse(JSON.stringify(rutinasPorFrecuencia[frecuencia]))
-          };
-          
-          setDoc(doc(this.firestore, 'moldes_checklists', moldeId), nuevoMolde);
-        });
-      }
+        
+        setDoc(doc(this.firestore, 'moldes_checklists', moldeId), nuevoMolde);
+      });
     });
 
-    alert('✅ ¡Checklists creados y Rutinas guardadas en la bóveda automática!');
-    this.cerrarModal();
+    alert('🔄 ¡El Bloque de Rutinas se guardó en la Bóveda exitosamente!\nEl robot generará los checklists en el tiempo indicado.');
+    this.cerrarModalRutinas();
   }
 }

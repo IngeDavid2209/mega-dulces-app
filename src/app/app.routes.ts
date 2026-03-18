@@ -20,8 +20,13 @@ export const routes: Routes = [
     path: 'estadisticas', 
     loadComponent: () => import('./modules/dashboard/estadisticas/estadisticas').then(m => m.EstadisticasComponent) 
   },
+  
+  // 🔥 NUEVA RUTA: Historial de Reportes 🔥
+  { 
+    path: 'reportes', 
+    loadComponent: () => import('./reportes/reportes').then(m => m.ReportesComponent) 
+  },
 
-  // Agrégala debajo de tus otras rutas
   { 
     path: 'personal', 
     loadComponent: () => import('./modules/dashboard/personal/personal').then(m => m.PersonalComponent) 

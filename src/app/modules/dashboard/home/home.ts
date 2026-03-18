@@ -1,7 +1,7 @@
 import { Component, signal, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router'; 
-import { Firestore, collection, onSnapshot } from '@angular/fire/firestore'; // 🔥 IMPORTAMOS LA NUBE
+import { Firestore, collection, onSnapshot } from '@angular/fire/firestore'; 
 
 @Component({
   selector: 'app-home',
@@ -17,12 +17,15 @@ export class HomeComponent implements OnInit {
   currentUser: any = null; 
 
   totalChecklists = signal(0);
-  sucursalesTotales = signal(8); 
+  
+  // 🔥 AQUÍ ACTUALIZAMOS A 17 SUCURSALES/ÁREAS EN TOTAL 🔥
+  sucursalesTotales = signal(17);
+  
   enProgreso = signal(0);
   pendientes = signal(0);
   progresoGlobal = signal(0);
 
-  private firestore = inject(Firestore); // 🔥 INYECTAMOS FIRESTORE
+  private firestore = inject(Firestore); 
 
   ngOnInit() {
     const sesion = localStorage.getItem('md_sesion_actual');
@@ -30,7 +33,7 @@ export class HomeComponent implements OnInit {
       this.currentUser = JSON.parse(sesion);
     }
 
-    this.conectarRadarNube(); // 🔥 ACTIVAMOS EL RADAR EN TIEMPO REAL
+    this.conectarRadarNube(); 
   }
 
   conectarRadarNube() {
@@ -39,7 +42,7 @@ export class HomeComponent implements OnInit {
     onSnapshot(checklistsRef, (snapshot) => {
       const checklists: any[] = [];
       
-      // ESCUDO DE ZONA HORARIA Y TIEMPO (Misma lógica que estadísticas)
+      // ESCUDO DE ZONA HORARIA Y TIEMPO
       const offset = new Date().getTimezoneOffset() * 60000;
       const fechaHoyLocal = new Date(Date.now() - offset).toISOString().split('T')[0];
       const limite24h = 24 * 60 * 60 * 1000;

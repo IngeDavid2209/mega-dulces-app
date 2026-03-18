@@ -1,9 +1,8 @@
 import { Component, signal, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterModule } from '@angular/router';
+import { RouterModule, Router } from '@angular/router'; 
 import { Auth, createUserWithEmailAndPassword } from '@angular/fire/auth'; 
-// 🔥 IMPORTAMOS FIRESTORE (LA NUBE) 🔥
 import { Firestore, collection, doc, setDoc, deleteDoc, onSnapshot } from '@angular/fire/firestore';
 
 @Component({
@@ -21,6 +20,8 @@ export class PersonalComponent implements OnInit {
   usuarios = signal<any[]>([]);
   usuarioEnEdicion: any = null;
 
+  terminoBusqueda = '';
+
   isModalOpen = false;
   formNombre = '';
   formUsuario = ''; 
@@ -32,15 +33,19 @@ export class PersonalComponent implements OnInit {
   formPuedeCrearChecklists = false; 
   formPuedeVerCheckstore = false;
   formPuedeVerEstadisticas = false;
+  formPuedeVerHistorial = false; // 🔥 NUEVO PERMISO 🔥
 
   sucursalesDisponibles = [
     'Canindo', 'La Piedad Abastos', '8 Esquinas', 'Padre Hidalgo',
-    'Morelia Madero', 'Morelia Abastos', 'Yurécuaro', 'Zamora Centro'
+    'Morelia Madero', 'Morelia Abastos', 'Yurécuaro', 'Zamora Centro',
+    'OFICINAS CORPORATIVAS', 'CAJA GENERAL', 'COMPRAS', 'CONTABILIDAD', 'FINANZAS', 'SISTEMAS', 'RH', 'MKT', 'MANTENIMIENTO'
   ];
+  
   formSucursales: string[] = []; 
 
   private auth = inject(Auth);
-  private firestore = inject(Firestore); // 🔥 INYECTAMOS LA BASE DE DATOS 🔥
+  private firestore = inject(Firestore); 
+  private router = inject(Router); 
 
   ngOnInit() {
     const sesion = localStorage.getItem('md_sesion_actual');
@@ -49,22 +54,19 @@ export class PersonalComponent implements OnInit {
   }
 
   conectarConLaNube() {
-    // 1. MIGRACIÓN AUTOMÁTICA DE LOCAL A LA NUBE
     const guardadosLocales = localStorage.getItem('md_usuarios_viejos'); 
     const datosActuales = localStorage.getItem('md_usuarios');
     
     if (datosActuales) {
       const locales = JSON.parse(datosActuales);
       locales.forEach(async (u: any) => {
-        const docId = u.uid || u.usuario; // Usamos el ID único
+        const docId = u.uid || u.usuario; 
         await setDoc(doc(this.firestore, 'usuarios', docId), u, { merge: true });
       });
-      // Renombramos el local viejo para que no lo vuelva a subir mil veces
       localStorage.setItem('md_usuarios_viejos', datosActuales);
       localStorage.removeItem('md_usuarios');
     }
 
-    // 2. ESCUCHAR A LA NUBE EN TIEMPO REAL
     const usuariosRef = collection(this.firestore, 'usuarios');
     onSnapshot(usuariosRef, (snapshot) => {
       const usuariosNube: any[] = [];
@@ -72,14 +74,62 @@ export class PersonalComponent implements OnInit {
         usuariosNube.push(documento.data());
       });
       this.usuarios.set(usuariosNube);
-      
-      // Guardamos un respaldo fresco en la compu por seguridad
       localStorage.setItem('md_usuarios_respaldo', JSON.stringify(usuariosNube));
     });
   }
 
-  getAdmins() { return this.usuarios().filter(u => u.rol === 'admin'); }
-  getTrabajadores() { return this.usuarios().filter(u => u.rol === 'trabajador'); }
+  getAdmins() { 
+    let admins = this.usuarios().filter(u => u.rol === 'admin'); 
+    if (this.terminoBusqueda.trim()) {
+      const termino = this.terminoBusqueda.toLowerCase();
+      admins = admins.filter(u => 
+        u.nombre.toLowerCase().includes(termino) || 
+        (u.cargo && u.cargo.toLowerCase().includes(termino))
+      );
+    }
+    return admins;
+  }
+
+  getTrabajadores() { 
+    let trabajadores = this.usuarios().filter(u => u.rol === 'trabajador');
+    if (this.terminoBusqueda.trim()) {
+      const termino = this.terminoBusqueda.toLowerCase();
+      trabajadores = trabajadores.filter(u => 
+        u.nombre.toLowerCase().includes(termino) || 
+        (u.cargo && u.cargo.toLowerCase().includes(termino)) ||
+        (u.sucursales && u.sucursales.join(' ').toLowerCase().includes(termino)) ||
+        (u.sucursal && u.sucursal.toLowerCase().includes(termino))
+      );
+    }
+    return trabajadores;
+  }
+
+  getTrabajadoresAgrupados() {
+    const trabajadores = this.getTrabajadores();
+    const gruposMap = new Map<string, any[]>();
+
+    trabajadores.forEach(user => {
+      let nombreGrupo = 'Sin Sucursal Asignada';
+      if (user.sucursales && user.sucursales.length > 0) {
+        nombreGrupo = user.sucursales.join(' y ');
+      } else if (user.sucursal) {
+        nombreGrupo = user.sucursal;
+      }
+      if (!gruposMap.has(nombreGrupo)) { gruposMap.set(nombreGrupo, []); }
+      gruposMap.get(nombreGrupo)!.push(user);
+    });
+
+    const gruposArray = Array.from(gruposMap.keys()).map(key => {
+      return { nombre: key, usuarios: gruposMap.get(key)! };
+    });
+
+    gruposArray.sort((a, b) => a.nombre.localeCompare(b.nombre));
+    return gruposArray;
+  }
+
+  verHistorial(nombreEmpleado: string) {
+    this.router.navigate(['/reportes'], { queryParams: { empleado: nombreEmpleado } });
+  }
 
   abrirModal() {
     if (this.currentUser?.rol !== 'admin') { alert('⛔ Acceso denegado.'); return; }
@@ -87,6 +137,7 @@ export class PersonalComponent implements OnInit {
     this.formNombre = ''; this.formUsuario = ''; this.formCorreo = ''; this.formPassword = '';
     this.formRol = 'trabajador'; this.formCargo = 'Trabajador General'; 
     this.formPuedeCrearChecklists = false; this.formPuedeVerCheckstore = false; this.formPuedeVerEstadisticas = false;
+    this.formPuedeVerHistorial = false; // 🔥 NUEVO PERMISO 🔥
     this.formSucursales = []; 
     this.isModalOpen = true;
   }
@@ -106,6 +157,7 @@ export class PersonalComponent implements OnInit {
     this.formPuedeCrearChecklists = user.puedeCrearChecklists === true;
     this.formPuedeVerCheckstore = user.puedeVerCheckstore === true;
     this.formPuedeVerEstadisticas = user.puedeVerEstadisticas === true;
+    this.formPuedeVerHistorial = user.puedeVerHistorial === true; // 🔥 NUEVO PERMISO 🔥
     this.isModalOpen = true;
   }
 
@@ -126,7 +178,6 @@ export class PersonalComponent implements OnInit {
       alert('⚠️ Por favor selecciona al menos una sucursal.'); return;
     }
 
-    // 🟢 MODO EDICIÓN (GUARDA DIRECTO EN FIRESTORE)
     if (this.usuarioEnEdicion) {
       const docId = this.usuarioEnEdicion.uid || this.usuarioEnEdicion.usuario;
       const userRef = doc(this.firestore, 'usuarios', docId);
@@ -137,6 +188,7 @@ export class PersonalComponent implements OnInit {
         puedeCrearChecklists: this.formRol === 'admin' ? true : this.formPuedeCrearChecklists,
         puedeVerCheckstore: this.formRol === 'admin' ? true : this.formPuedeVerCheckstore,
         puedeVerEstadisticas: this.formRol === 'admin' ? true : this.formPuedeVerEstadisticas,
+        puedeVerHistorial: this.formRol === 'admin' ? true : this.formPuedeVerHistorial, // 🔥 NUEVO PERMISO 🔥
         sucursales: this.formRol === 'admin' ? ['General (Acceso Total)'] : this.formSucursales 
       }, { merge: true });
 
@@ -145,7 +197,6 @@ export class PersonalComponent implements OnInit {
       return; 
     }
 
-    // 🔵 MODO CREACIÓN (GUARDA DIRECTO EN FIRESTORE)
     if (this.formPassword.length < 6) {
       alert('⚠️ Firebase exige que la contraseña tenga mínimo 6 caracteres.'); return;
     }
@@ -160,6 +211,7 @@ export class PersonalComponent implements OnInit {
         puedeCrearChecklists: this.formRol === 'admin' ? true : this.formPuedeCrearChecklists,
         puedeVerCheckstore: this.formRol === 'admin' ? true : this.formPuedeVerCheckstore,
         puedeVerEstadisticas: this.formRol === 'admin' ? true : this.formPuedeVerEstadisticas,
+        puedeVerHistorial: this.formRol === 'admin' ? true : this.formPuedeVerHistorial, // 🔥 NUEVO PERMISO 🔥
         sucursales: this.formRol === 'admin' ? ['General (Acceso Total)'] : this.formSucursales 
       };
 

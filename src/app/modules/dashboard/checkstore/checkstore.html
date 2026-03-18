@@ -21,15 +21,13 @@
       </div>
       <nav class="sidebar-nav">
         <a class="nav-item" routerLink="/home" routerLinkActive="active" (click)="toggleMenu()"><span class="nav-icon">🏠</span> Inicio</a>
-        
         <a class="nav-item" routerLink="/checklist" routerLinkActive="active" (click)="toggleMenu()"><span class="nav-icon">✅</span> Checklist</a>
-        
         <a class="nav-item" routerLink="/checkstore" routerLinkActive="active" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeVerCheckstore" (click)="toggleMenu()"><span class="nav-icon">🏪</span> Checkstore</a>
-        
         <a class="nav-item" routerLink="/estadisticas" routerLinkActive="active" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeVerEstadisticas" (click)="toggleMenu()"><span class="nav-icon">📊</span> Estadísticas</a>
         
-        <a class="nav-item" routerLink="/personal" routerLinkActive="active" *ngIf="currentUser?.rol === 'admin'" (click)="toggleMenu()"><span class="nav-icon">👥</span> Personal</a>
+        <a class="nav-item" routerLink="/reportes" routerLinkActive="active" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeVerHistorial" (click)="toggleMenu()"><span class="nav-icon">📑</span> Historial</a>
         
+        <a class="nav-item" routerLink="/personal" routerLinkActive="active" *ngIf="currentUser?.rol === 'admin'" (click)="toggleMenu()"><span class="nav-icon">👥</span> Personal</a>
         <div class="nav-divider"></div>
         <a class="nav-item" routerLink="/cambio-clave" routerLinkActive="active" (click)="toggleMenu()"><span class="nav-icon">🔑</span> Cambio de Clave</a>
         <a class="nav-item nav-logout" routerLink="/login"><span class="nav-icon">🚪</span> Cerrar Sesión</a>
@@ -40,12 +38,19 @@
       <div class="section-header">
         <div>
           <div class="section-title">🏪 Checkstore</div>
-          <div class="section-sub">Estado en tiempo real de las sucursales</div>
+          <div class="section-sub">Estado en tiempo real de la empresa</div>
         </div>
       </div>
 
+      <div style="margin-top: 10px; margin-bottom: 20px;">
+        <h2 style="color: var(--brown); margin-bottom: 5px; font-size: 1.4rem; display: flex; align-items: center; gap: 8px;">
+          <span>🛍️</span> ZONA COMERCIAL
+        </h2>
+        <p style="color: #666; font-size: 0.9rem; margin-top: 0;">Operaciones en sucursales físicas</p>
+      </div>
+
       <div class="store-grid">
-        <div class="store-card" *ngFor="let store of stores()" [style.--store-color]="store.color">
+        <div class="store-card" *ngFor="let store of comerciales()" [style.--store-color]="store.color">
           <div class="store-icon" [style.background]="store.color">{{ store.icon }}</div>
           <div class="store-name">{{ store.name }}</div>
           <div class="store-location">{{ store.location }}</div>
@@ -76,6 +81,49 @@
           </div>
         </div>
       </div>
+
+      <hr style="border: 0; border-top: 2px dashed #e0e0e0; margin: 40px 0;">
+
+      <div style="margin-top: 10px; margin-bottom: 20px;">
+        <h2 style="color: var(--brown); margin-bottom: 5px; font-size: 1.4rem; display: flex; align-items: center; gap: 8px;">
+          <span>💼</span> ZONA ADMINISTRATIVA
+        </h2>
+        <p style="color: #666; font-size: 0.9rem; margin-top: 0;">Departamentos y corporativo</p>
+      </div>
+
+      <div class="store-grid" style="margin-bottom: 40px;">
+        <div class="store-card" *ngFor="let store of administrativas()" [style.--store-color]="store.color" style="background-color: #fafafa; border: 1px solid #eaeaea;">
+          <div class="store-icon" [style.background]="store.color">{{ store.icon }}</div>
+          <div class="store-name">{{ store.name }}</div>
+          <div class="store-location">{{ store.location }}</div>
+          
+          <div class="store-progress">
+            <div class="progress-label">
+              <span>Progreso</span>
+              <span>{{ store.progress }}%</span>
+            </div>
+            <div class="progress-bar-wrap">
+              <div class="progress-bar-fill" [style.width.%]="store.progress" [style.background]="store.color"></div>
+            </div>
+          </div>
+          
+          <div class="store-stats">
+            <div class="store-stat-item">
+              <div class="store-stat-val">{{ store.totalChecklists }}</div>
+              <div class="store-stat-label">Checklists</div>
+            </div>
+            <div class="store-stat-item">
+              <div class="store-stat-val">{{ store.completedItems }}</div>
+              <div class="store-stat-label">Completados</div>
+            </div>
+            <div class="store-stat-item">
+              <div class="store-stat-val">{{ store.totalItems }}</div>
+              <div class="store-stat-label">Total ítems</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
-</div> 
+</div>

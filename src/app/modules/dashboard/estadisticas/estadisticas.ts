@@ -29,9 +29,13 @@ export class EstadisticasComponent implements OnInit {
   });
 
   storeStats = signal<any[]>([]);
+  
+  // 🔥 AQUÍ AGREGAMOS LAS 3 NUEVAS ÁREAS PARA QUE SALGAN EN LAS GRÁFICAS 🔥
   nombresSucursales = [
     'Canindo', 'La Piedad Abastos', '8 Esquinas', 'Padre Hidalgo',
-    'Morelia Madero', 'Morelia Abastos', 'Yurécuaro', 'Zamora Centro'
+    'Morelia Madero', 'Morelia Abastos', 'Yurécuaro', 'Zamora Centro',
+    'OFICINAS CORPORATIVAS', 'CAJA GENERAL', 'COMPRAS', 'CONTABILIDAD', 
+    'FINANZAS', 'SISTEMAS', 'RH', 'MKT', 'MANTENIMIENTO'
   ];
 
   sucursalSeleccionadaParaEmpleados = signal('Morelia Abastos');

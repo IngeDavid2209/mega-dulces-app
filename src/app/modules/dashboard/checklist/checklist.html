@@ -2,6 +2,7 @@
   <header class="header">
     <div class="header-left">
       <button class="btn-menu-mobile" (click)="toggleMenu()">☰</button>
+      
       <div class="header-logo-wrap"><span>🍬</span></div>
       <div class="header-brand">Mega Dulces de los Altos<small>Panel de Gestión</small></div>
     </div>
@@ -26,6 +27,9 @@
         <a class="nav-item" routerLink="/checklist" routerLinkActive="active" (click)="toggleMenu()"><span class="nav-icon">✅</span> Checklist</a>
         <a class="nav-item" routerLink="/checkstore" routerLinkActive="active" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeVerCheckstore" (click)="toggleMenu()"><span class="nav-icon">🏪</span> Checkstore</a>
         <a class="nav-item" routerLink="/estadisticas" routerLinkActive="active" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeVerEstadisticas" (click)="toggleMenu()"><span class="nav-icon">📊</span> Estadísticas</a>
+        
+        <a class="nav-item" routerLink="/reportes" routerLinkActive="active" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeVerHistorial" (click)="toggleMenu()"><span class="nav-icon">📑</span> Historial</a>
+        
         <a class="nav-item" routerLink="/personal" routerLinkActive="active" *ngIf="currentUser?.rol === 'admin'" (click)="toggleMenu()"><span class="nav-icon">👥</span> Personal</a>
         <div class="nav-divider"></div>
         <a class="nav-item" routerLink="/cambio-clave" routerLinkActive="active" (click)="toggleMenu()"><span class="nav-icon">🔑</span> Cambio de Clave</a>
@@ -36,12 +40,20 @@
     <div class="content">
       
       <div *ngIf="vistaActual() === 'lista'">
-        <div class="section-header">
+        <div class="section-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
           <div>
             <div class="section-title">✅ Checklist</div>
             <div class="section-sub">Tareas operativas del equipo</div>
           </div>
-          <button class="btn-add" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeCrearChecklists" (click)="abrirModal()">+ Crear Checklist</button>
+          
+          <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <button class="btn-add" style="background-color: #f1c40f; color: #333; box-shadow: 0 4px 6px rgba(241, 196, 15, 0.3);" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeCrearChecklists" (click)="abrirModalRutinas()">
+              🔄 Crear y Editar Rutinas
+            </button>
+            <button class="btn-add" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeCrearChecklists" (click)="abrirModal()">
+              + Crear Tareas Únicas
+            </button>
+          </div>
         </div>
 
         <div class="checklist-grid">
@@ -94,8 +106,6 @@
           <div class="detail-meta">
             <span><strong>Asignado a:</strong> {{ checklistSeleccionado().assigned }}</span>
             <span><strong>Sucursal:</strong> 🏪 {{ checklistSeleccionado().store }}</span>
-            <span><strong>Fecha:</strong> 📅 {{ checklistSeleccionado().date }}</span>
-            <span><strong>Hora:</strong> 🕐 {{ checklistSeleccionado().time }}</span>
           </div>
           
           <div class="checklist-progress" style="margin-top:18px">
@@ -122,9 +132,13 @@
               
               <div class="item-text" [class.done]="item.checked" style="display: flex; align-items: center; flex-wrap: wrap; gap: 8px;">
                 {{ item.text }}
+                
                 <span *ngIf="item.tipo === 'rutina'" style="font-size: 10px; background: #FFF3D4; color: #C87F00; padding: 3px 8px; border-radius: 12px; font-weight: bold; border: 1px solid #C87F00; display: inline-flex; align-items: center; gap: 4px;">
                   🔄 {{ item.frecuencia }} 
-                  <span style="opacity: 0.7; font-weight: normal; margin-left: 2px;">(hasta {{ item.fechaFin | date:'dd/MM/yy' }})</span>
+                </span>
+
+                <span *ngIf="item.tipo === 'tarea' && (item.date || item.time)" style="font-size: 10px; background: #E8F0FE; color: #1A73E8; padding: 3px 8px; border-radius: 12px; font-weight: bold; border: 1px solid #1A73E8; display: inline-flex; align-items: center; gap: 4px; margin-left: 5px;">
+                  📅 {{ item.date || 'Sin fecha' }} 🕐 {{ item.time || 'Sin hora' }}
                 </span>
               </div>
             </div>
@@ -174,14 +188,14 @@
       <div class="modal-overlay" *ngIf="isModalOpen">
         <div class="modal">
           <div class="modal-header">
-            <div class="modal-title">Crear Nuevo Checklist</div>
+            <div class="modal-title">Crear Tareas Únicas</div>
             <button class="modal-close" (click)="cerrarModal()">×</button>
           </div>
 
           <div class="modal-body">
             <div class="form-group form-full">
               <label class="form-label">Nombre del checklist</label>
-              <input class="form-input" type="text" [(ngModel)]="formName" placeholder="Ej: Cierre de bodega">
+              <input class="form-input" type="text" [(ngModel)]="formName" placeholder="Ej: Acomodo especial del Día del Niño">
             </div>
             
             <div class="form-group form-full">
@@ -207,45 +221,89 @@
               </select>
             </div>
 
-            <div class="form-row">
-              <div class="form-group">
-                <label class="form-label">Fecha límite</label>
-                <input class="form-input" type="date" [(ngModel)]="formDate">
-              </div>
-              <div class="form-group">
-                <label class="form-label">Hora límite</label>
-                <input class="form-input" type="time" [(ngModel)]="formTime">
-              </div>
-            </div>
-
             <div class="form-group form-full">
-              <label class="form-label">Tareas Específicas (Actividades únicas)</label>
+              <label class="form-label">Tareas Específicas</label>
               <div class="checklist-items">
-                <div class="checklist-item-wrap" *ngFor="let item of formItems; let i = index; trackBy: trackByIndex" style="display: flex; gap: 8px; align-items: center; margin-bottom: 8px;">
-                  <input class="form-input item-input" type="text" [(ngModel)]="item.text" placeholder="Ej: Acomodar exhibición especial">
-                  <label class="photo-toggle" title="¿Obligar a tomar foto?">
-                    <input type="checkbox" [(ngModel)]="item.requiresPhoto"> 📷 Req. Foto
-                  </label>
-                  <button class="btn-remove" (click)="eliminarItem(i)" title="Eliminar tarea">🗑</button>
+                
+                <div class="checklist-item-wrap" *ngFor="let item of formItems; let i = index; trackBy: trackByIndex" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; padding: 12px; border: 1px solid var(--border); border-radius: 8px; background: #fafafa;">
+                  
+                  <div style="display: flex; gap: 8px; align-items: center; width: 100%;">
+                    <input class="form-input item-input" type="text" [(ngModel)]="item.text" placeholder="Ej: Acomodar exhibición especial" style="flex: 1;">
+                    <label class="photo-toggle" title="¿Obligar a tomar foto?">
+                      <input type="checkbox" [(ngModel)]="item.requiresPhoto"> 📷 Req. Foto
+                    </label>
+                    <button class="btn-remove" (click)="eliminarItem(i)" title="Eliminar tarea">🗑</button>
+                  </div>
+                  
+                  <div style="display: flex; gap: 15px; align-items: center; margin-top: 4px;">
+                    <div style="display: flex; align-items: center; gap: 5px;">
+                      <span style="font-size: 12px; color: #666; font-weight: bold;">📅 Fecha límite:</span>
+                      <input class="form-input" type="date" [(ngModel)]="item.date" style="padding: 4px 8px; font-size: 12px; border-radius: 6px;">
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 5px;">
+                      <span style="font-size: 12px; color: #666; font-weight: bold;">🕐 Hora límite:</span>
+                      <input class="form-input" type="time" [(ngModel)]="item.time" style="padding: 4px 8px; font-size: 12px; border-radius: 6px;">
+                    </div>
+                  </div>
+
                 </div>
               </div>
               <button class="btn-secondary" (click)="agregarItem()" style="margin-top:12px">+ Agregar tarea</button>
             </div>
 
-            <div class="form-group form-full" style="margin-top: 25px; border-top: 1px dashed var(--border); padding-top: 20px;">
-              <label class="form-label">Rutinas (Actividades recurrentes)</label>
+            <div class="btn-group" style="margin-top: 30px;">
+              <button class="btn-secondary" (click)="cerrarModal()">Cancelar</button>
+              <button class="btn-save" (click)="guardarChecklistUnico()">Crear Tareas</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-overlay" *ngIf="isModalRutinasOpen">
+        <div class="modal" style="max-width: 800px;">
+          <div class="modal-header">
+            <div class="modal-title" style="color: #c87f00;">🔄 Crear Bloque de Rutinas</div>
+            <button class="modal-close" (click)="cerrarModalRutinas()">×</button>
+          </div>
+
+          <div class="modal-body">
+            <div class="form-group form-full">
+              <label class="form-label">Nombre del Bloque de Rutinas</label>
+              <input class="form-input" type="text" [(ngModel)]="formNameRutina" placeholder="Ej: Protocolo de Cierre Nocturno">
+            </div>
+            
+            <div class="form-group form-full">
+              <label class="form-label">Asignar a (Responsables de esta rutina)</label>
+              <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px; margin-top: 5px;">
+                <label *ngFor="let emp of empleadosFiltradosRutina" 
+                       style="margin:0; padding: 10px; border: 1px solid var(--border); border-radius: 8px; background: #fff; cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 14px; transition: 0.2s;"
+                       [style.borderColor]="formAssignedRutina.includes(emp.nombre) ? '#f1c40f' : 'var(--border)'"
+                       [style.background]="formAssignedRutina.includes(emp.nombre) ? '#FFF9E6' : '#fff'">
+                  <input type="checkbox" 
+                         [checked]="formAssignedRutina.includes(emp.nombre)" 
+                         (change)="toggleEmpleadoRutina(emp.nombre)" 
+                         style="accent-color: #f1c40f; cursor: pointer; transform: scale(1.2);">
+                  {{ emp.nombre }}
+                </label>
+              </div>
+            </div>
+
+            <div class="form-group form-full">
+              <label class="form-label">Sucursal donde aplica</label>
+              <select class="form-input select-input" [(ngModel)]="formStoreRutina">
+                <option *ngFor="let suc of sucursalesDisponibles()" [value]="suc">{{ suc }}</option>
+              </select>
+            </div>
+
+            <div class="form-group form-full" style="margin-top: 15px; border-top: 1px dashed var(--border); padding-top: 20px;">
+              <label class="form-label">Actividades Recurrentes</label>
               <div class="checklist-items">
                 <div class="checklist-item-wrap" *ngFor="let rutina of formRutinas; let i = index; trackBy: trackByIndex" style="display: flex; gap: 8px; align-items: center; margin-bottom: 8px; flex-wrap: wrap;">
-                  <input class="form-input item-input" type="text" [(ngModel)]="rutina.text" placeholder="Ej: Limpieza profunda">
+                  <input class="form-input item-input" type="text" [(ngModel)]="rutina.text" placeholder="Ej: Limpieza profunda de anaqueles">
                   
                   <select class="form-input select-input" [(ngModel)]="rutina.frecuencia" (change)="alCambiarFrecuencia(rutina)" style="width: 130px; padding: 8px; cursor: pointer;">
                     <option *ngFor="let f of frecuencias" [value]="f">{{ f }}</option>
                   </select>
-
-                  <div style="display: flex; align-items: center; gap: 5px;" title="¿Hasta cuándo se repetirá esta rutina?">
-                    <span style="font-size: 12px; color: #666;">Termina:</span>
-                    <input type="date" class="form-input" [(ngModel)]="rutina.fechaFin" style="padding: 6px; font-size: 12px; width: 125px; border: 1px solid var(--border); border-radius: 8px;">
-                  </div>
 
                   <label class="photo-toggle" title="¿Obligar a tomar foto?">
                     <input type="checkbox" [(ngModel)]="rutina.requiresPhoto"> 📷 Req. Foto
@@ -253,12 +311,12 @@
                   <button class="btn-remove" (click)="eliminarRutina(i)" title="Eliminar rutina">🗑</button>
                 </div>
               </div>
-              <button class="btn-secondary" (click)="agregarRutina()" style="margin-top:12px">+ Agregar rutina</button>
+              <button class="btn-secondary" (click)="agregarRutina()" style="margin-top:12px">+ Agregar rutina al bloque</button>
             </div>
 
             <div class="btn-group" style="margin-top: 30px;">
-              <button class="btn-secondary" (click)="cerrarModal()">Cancelar</button>
-              <button class="btn-save" (click)="guardarChecklist()">Crear Checklist</button>
+              <button class="btn-secondary" (click)="cerrarModalRutinas()">Cancelar</button>
+              <button class="btn-save" style="background-color: #f1c40f; color: #333;" (click)="guardarBloqueRutinas()">Guardar en la Bóveda</button>
             </div>
           </div>
         </div>

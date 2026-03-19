@@ -1,4 +1,4 @@
-import { Component, signal, OnInit, inject } from '@angular/core';
+import { Component, signal, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router'; 
 import { Firestore, collection, onSnapshot } from '@angular/fire/firestore';
@@ -10,7 +10,7 @@ import { Firestore, collection, onSnapshot } from '@angular/fire/firestore';
   templateUrl: './checkstore.html', 
   styleUrls: ['./checkstore.css'] 
 })
-export class CheckstoreComponent implements OnInit {
+export class CheckstoreComponent implements OnInit, OnDestroy {
   isMenuOpen = false;
   toggleMenu() { this.isMenuOpen = !this.isMenuOpen; }
 
@@ -19,7 +19,6 @@ export class CheckstoreComponent implements OnInit {
   comerciales = signal<any[]>([]);
   administrativas = signal<any[]>([]);
 
-  // 🔥 ZONA COMERCIAL 🔥
   sucursalesComerciales = [
     { name: 'Canindo', location: 'Sucursal Canindo', icon: '🏪' },
     { name: 'La Piedad Abastos', location: 'Mercado de Abastos', icon: '🛍️' },
@@ -31,7 +30,6 @@ export class CheckstoreComponent implements OnInit {
     { name: 'Zamora Centro', location: 'Centro, Zamora', icon: '🏙️' }
   ];
 
-  // 🔥 ZONA ADMINISTRATIVA (AHORA SÍ, COMPLETA) 🔥
   sucursalesAdministrativas = [
     { name: 'OFICINAS CORPORATIVAS', location: 'Dirección General', icon: '💼' },
     { name: 'CAJA GENERAL', location: 'Finanzas y Valores', icon: '💰' },
@@ -45,6 +43,9 @@ export class CheckstoreComponent implements OnInit {
   ];
 
   private firestore = inject(Firestore);
+  
+  // 🧹 ARREGLO DE DESTRUCTORES DE RADARES
+  private destructoresRadares: (() => void)[] = [];
 
   ngOnInit() {
     const sesion = localStorage.getItem('md_sesion_actual');
@@ -54,10 +55,15 @@ export class CheckstoreComponent implements OnInit {
     this.conectarRadarNube(); 
   }
 
+  // 🧹 APAGAMOS LOS RADARES AL SALIR DE LA PANTALLA
+  ngOnDestroy() {
+    this.destructoresRadares.forEach(apagarRadar => apagarRadar());
+  }
+
   conectarRadarNube() {
     const checklistsRef = collection(this.firestore, 'checklists');
 
-    onSnapshot(checklistsRef, (snapshot) => {
+    const radarChecklists = onSnapshot(checklistsRef, (snapshot) => {
       const checklists: any[] = [];
       const ahora = Date.now();
       const limite24h = 24 * 60 * 60 * 1000;
@@ -109,5 +115,7 @@ export class CheckstoreComponent implements OnInit {
       this.comerciales.set(calcularDatos(this.sucursalesComerciales));
       this.administrativas.set(calcularDatos(this.sucursalesAdministrativas));
     });
+    
+    this.destructoresRadares.push(radarChecklists);
   }
 }

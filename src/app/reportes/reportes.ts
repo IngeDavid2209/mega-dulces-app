@@ -1,7 +1,7 @@
 import { Component, signal, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterModule, ActivatedRoute } from '@angular/router'; // 🔥 AGREGAMOS ActivatedRoute
+import { RouterModule, ActivatedRoute } from '@angular/router'; 
 import { Firestore, collection, getDocs } from '@angular/fire/firestore';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -29,7 +29,10 @@ export class ReportesComponent implements OnInit {
   busquedaRealizada = signal(false);
 
   private firestore = inject(Firestore);
-  private route = inject(ActivatedRoute); // 🔥 INYECTAMOS LA RUTA
+  private route = inject(ActivatedRoute); 
+
+  // Esta pantalla NO usa radares (onSnapshot), usa getDocs (petición única),
+  // por lo tanto no requiere ngOnDestroy ni pre-cálculos de memoria. 😎
 
   ngOnInit() {
     const sesion = localStorage.getItem('md_sesion_actual');
@@ -46,12 +49,11 @@ export class ReportesComponent implements OnInit {
     const primeroDeMes = new Date(hoyLocal.getFullYear(), hoyLocal.getMonth(), 1);
     this.fechaInicio = primeroDeMes.toISOString().split('T')[0];
 
-    // 🔥 MAGIA: Cargamos empleados y vemos si venimos de la pantalla "Personal"
     this.cargarEmpleados().then(() => {
       this.route.queryParams.subscribe(params => {
         if (params['empleado']) {
           this.empleadoSeleccionado = params['empleado'];
-          this.buscarReportes(); // Auto-busca las tareas al entrar
+          this.buscarReportes(); 
         }
       });
     });

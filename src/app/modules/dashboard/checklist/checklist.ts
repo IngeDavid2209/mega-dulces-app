@@ -1,4 +1,4 @@
-import { Component, signal, OnInit, inject } from '@angular/core';
+import { Component, signal, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
@@ -11,7 +11,7 @@ import { Firestore, collection, doc, setDoc, getDoc, onSnapshot } from '@angular
   templateUrl: './checklist.html',
   styleUrls: ['./checklist.css']
 })
-export class ChecklistComponent implements OnInit {
+export class ChecklistComponent implements OnInit, OnDestroy {
   isMenuOpen = false;
   toggleMenu() { this.isMenuOpen = !this.isMenuOpen; }
 
@@ -39,6 +39,9 @@ export class ChecklistComponent implements OnInit {
   sucursalesDisponibles = signal<string[]>([]);
 
   private firestore = inject(Firestore);
+  
+  // 🧹 AQUÍ GUARDAREMOS LOS RADARES PARA APAGARLOS DESPUÉS 🧹
+  private destructoresRadares: (() => void)[] = [];
 
   // Filtro para Modal Viejo
   get empleadosFiltrados() {
@@ -68,9 +71,14 @@ export class ChecklistComponent implements OnInit {
     this.conectarRadarNube();
   }
 
+  // 🧹 ESTO APAGA LOS RADARES CUANDO TE SALES DE LA PESTAÑA 🧹
+  ngOnDestroy() {
+    this.destructoresRadares.forEach(apagarRadar => apagarRadar());
+  }
+
   conectarRadarNube() {
     const usuariosRef = collection(this.firestore, 'usuarios');
-    onSnapshot(usuariosRef, (snapshot) => {
+    const radarUsuarios = onSnapshot(usuariosRef, (snapshot) => {
       const todosLosUsuarios: any[] = [];
       snapshot.forEach(docSnap => todosLosUsuarios.push(docSnap.data()));
 
@@ -100,16 +108,18 @@ export class ChecklistComponent implements OnInit {
         this.empleados.set(empleadosFiltrados);
       }
     });
+    this.destructoresRadares.push(radarUsuarios);
 
     const moldesRef = collection(this.firestore, 'moldes_checklists');
-    onSnapshot(moldesRef, (snapshot) => {
+    const radarMoldes = onSnapshot(moldesRef, (snapshot) => {
       const moldesActivos: any[] = [];
       snapshot.forEach(docSnap => moldesActivos.push(docSnap.data()));
       this.ejecutarRobotRutinas(moldesActivos); 
     });
+    this.destructoresRadares.push(radarMoldes);
 
     const checklistsRef = collection(this.firestore, 'checklists');
-    onSnapshot(checklistsRef, (snapshot) => {
+    const radarChecklists = onSnapshot(checklistsRef, (snapshot) => {
       const todasLasListas: any[] = [];
       const limite24h = 24 * 60 * 60 * 1000; 
       const ahora = Date.now();
@@ -117,23 +127,25 @@ export class ChecklistComponent implements OnInit {
       snapshot.forEach(docSnap => {
         const c: any = docSnap.data();
         if ((ahora - (typeof c.id === 'number' ? c.id : c.timestampCreacion || ahora)) <= limite24h) {
+          // ⚡ OPTIMIZACIÓN: Pre-calculamos todo aquí para que el HTML no sufra ⚡
+          const tareas100Porciento = c.items.filter((i:any) => i.checked && (!i.requiresPhoto || i.photo !== null)).length;
+          c.calcCompletados = tareas100Porciento;
+          c.calcProgreso = Math.round((tareas100Porciento / c.items.length) * 100) || 0;
+          
           todasLasListas.push(c);
         }
       });
 
       todasLasListas.sort((a, b) => b.timestampCreacion - a.timestampCreacion);
 
-      // 🔥 AQUÍ ESTÁ EL FIX: LIMPIEZA DE PANTALLA 🔥
       if (this.currentUser?.rol === 'admin') {
-        // Los Admin ven todos los checklists de la empresa
         this.checklists.set(todasLasListas);
       } else {
-        // Todos los demás (incluyendo a los que "pueden crear checklists") 
-        // SOLO ven los que están a su nombre.
         const misListas = todasLasListas.filter((c: any) => c.assigned === this.currentUser.nombre);
         this.checklists.set(misListas);
       }
     });
+    this.destructoresRadares.push(radarChecklists);
   }
 
   esDiaCerrado(sucursal: string, fecha: Date = new Date()): boolean {
@@ -292,19 +304,16 @@ export class ChecklistComponent implements OnInit {
     const checkboxesMarcados = actual.items.filter((i:any) => i.checked).length;
     const tareas100Porciento = actual.items.filter((i:any) => this.esItemCompleto(i)).length;
     
+    // ⚡ Actualizamos los cálculos pre-digeridos en tiempo real ⚡
+    actual.calcCompletados = tareas100Porciento;
+    actual.calcProgreso = Math.round((tareas100Porciento / actual.items.length) * 100) || 0;
+
     if (checkboxesMarcados === 0) actual.status = 'pendiente';
     else if (tareas100Porciento === actual.items.length) actual.status = 'completo';
     else actual.status = 'en-progreso';
     
     this.guardarEnLaNube(actual);
   }
-
-  getProgreso(checklist: any): number {
-    const tareas100Porciento = checklist.items.filter((i:any) => this.esItemCompleto(i)).length;
-    return Math.round((tareas100Porciento / checklist.items.length) * 100) || 0;
-  }
-
-  getCompletados(checklist: any): number { return checklist.items.filter((i:any) => this.esItemCompleto(i)).length; }
 
   enviarChecklist() {
     const actual = this.checklistSeleccionado();
@@ -396,7 +405,6 @@ export class ChecklistComponent implements OnInit {
     this.formNameRutina = ''; 
     this.formAssignedRutina = []; 
     this.formStoreRutina = this.sucursalesDisponibles().length > 0 ? this.sucursalesDisponibles()[0] : '';
-    // 👉 AQUÍ INYECTAMOS LA HORA LIMITE VACÍA PARA QUE NAZCA EN EL FORMULARIO
     this.formRutinas = [{ text: '', requiresPhoto: false, frecuencia: 'Diaria', fechaFin: this.calcularFechaFinDefault('Diaria'), horaLimite: '' }];
     this.isModalRutinasOpen = true; 
   }
@@ -406,7 +414,6 @@ export class ChecklistComponent implements OnInit {
   }
 
   agregarRutina() { 
-    // 👉 AQUÍ TAMBIÉN AGREGAMOS LA HORA LIMITE CUANDO LE DAN A "+"
     this.formRutinas.push({ text: '', requiresPhoto: false, frecuencia: 'Diaria', fechaFin: this.calcularFechaFinDefault('Diaria'), horaLimite: '' }); 
   }
   
@@ -429,7 +436,6 @@ export class ChecklistComponent implements OnInit {
         tipo: 'rutina', 
         frecuencia: rutina.frecuencia,
         fechaFin: rutina.fechaFin,
-        // 👉 AQUÍ ATRAPAMOS LA HORA Y LA MANDAMOS A LA BASE DE DATOS
         horaLimite: rutina.horaLimite 
       }));
 

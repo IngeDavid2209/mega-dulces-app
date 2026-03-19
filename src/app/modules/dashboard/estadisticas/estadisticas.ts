@@ -1,8 +1,8 @@
-import { Component, signal, OnInit, inject } from '@angular/core';
+import { Component, signal, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router'; 
 import { FormsModule } from '@angular/forms';
-import { Firestore, collection, onSnapshot, query, orderBy } from '@angular/fire/firestore';
+import { Firestore, collection, onSnapshot } from '@angular/fire/firestore';
 
 @Component({
   selector: 'app-estadisticas',
@@ -11,7 +11,7 @@ import { Firestore, collection, onSnapshot, query, orderBy } from '@angular/fire
   templateUrl: './estadisticas.html', 
   styleUrls: ['./estadisticas.css']
 })
-export class EstadisticasComponent implements OnInit {
+export class EstadisticasComponent implements OnInit, OnDestroy {
   isMenuOpen = false;
   toggleMenu() { this.isMenuOpen = !this.isMenuOpen; }
 
@@ -21,7 +21,6 @@ export class EstadisticasComponent implements OnInit {
   completedItems = signal(0);
   allItems = signal(0);
 
-  // Mantenemos sincronizados los nombres de los estatus con la base de datos
   checklistsByStatus = signal({
     completo: { count: 0, percent: 0, color: '#2ecc71' },
     enProgreso: { count: 0, percent: 0, color: '#f1c40f' },
@@ -30,7 +29,6 @@ export class EstadisticasComponent implements OnInit {
 
   storeStats = signal<any[]>([]);
   
-  // 🔥 AQUÍ AGREGAMOS LAS 3 NUEVAS ÁREAS PARA QUE SALGAN EN LAS GRÁFICAS 🔥
   nombresSucursales = [
     'Canindo', 'La Piedad Abastos', '8 Esquinas', 'Padre Hidalgo',
     'Morelia Madero', 'Morelia Abastos', 'Yurécuaro', 'Zamora Centro',
@@ -45,6 +43,9 @@ export class EstadisticasComponent implements OnInit {
   todosLosUsuariosNube: any[] = []; 
 
   private firestore = inject(Firestore);
+  
+  // 🧹 ARREGLO DE DESTRUCTORES DE RADARES
+  private destructoresRadares: (() => void)[] = [];
 
   ngOnInit() {
     const sesion = localStorage.getItem('md_sesion_actual');
@@ -52,31 +53,32 @@ export class EstadisticasComponent implements OnInit {
     this.conectarRadarNube(); 
   }
 
-  // Función auxiliar para validar si una tarea está realmente terminada
+  // 🧹 APAGAMOS LOS RADARES AL SALIR DE LA PANTALLA
+  ngOnDestroy() {
+    this.destructoresRadares.forEach(apagarRadar => apagarRadar());
+  }
+
   esItemValido(item: any): boolean {
-    // Una tarea cuenta como "validada" si está marcada Y (si pide foto, tiene la foto)
     return item.checked === true && (!item.requiresPhoto || (item.photo !== null && item.photo !== ''));
   }
 
   conectarRadarNube() {
-    // 1. ESCUCHAR USUARIOS
-    onSnapshot(collection(this.firestore, 'usuarios'), (snapshot) => {
+    const radarUsuarios = onSnapshot(collection(this.firestore, 'usuarios'), (snapshot) => {
       this.todosLosUsuariosNube = snapshot.docs.map(doc => doc.data());
       this.calcularEstadisticasEmpleados(); 
     });
+    this.destructoresRadares.push(radarUsuarios);
 
-    // 2. ESCUCHAR CHECKLISTS (Sin filtros de tiempo agresivos para las estadísticas)
     const checklistsRef = collection(this.firestore, 'checklists');
-    onSnapshot(checklistsRef, (snapshot) => {
+    const radarChecklists = onSnapshot(checklistsRef, (snapshot) => {
       const listas: any[] = [];
       const ahora = Date.now();
-      const sieteDias = 7 * 24 * 60 * 60 * 1000; // Ampliamos a 7 días para ver historial
+      const sieteDias = 7 * 24 * 60 * 60 * 1000; 
 
       snapshot.forEach(docSnap => {
         const c: any = docSnap.data();
         const timestamp = c.id || c.timestampCreacion || ahora;
         
-        // Solo ignoramos lo que sea más viejo de una semana
         if ((ahora - timestamp) <= sieteDias) {
           listas.push(c);
         }
@@ -86,6 +88,7 @@ export class EstadisticasComponent implements OnInit {
       this.calcularEstadisticasGenerales();
       this.calcularEstadisticasEmpleados();
     });
+    this.destructoresRadares.push(radarChecklists);
   }
 
   calcularEstadisticasGenerales() {
@@ -95,18 +98,15 @@ export class EstadisticasComponent implements OnInit {
     let totalGlobalItems = 0;
     let totalGlobalCompletados = 0;
 
-    // Contadores de estatus
     let c_completos = 0;
     let c_progreso = 0;
     let c_pendientes = 0;
 
     checklists.forEach(c => {
-      // 1. Contar estatus (Normalizamos para que coincida con los badges)
       if (c.status === 'completo' || c.enviado) c_completos++;
       else if (c.status === 'en-progreso') c_progreso++;
       else c_pendientes++;
 
-      // 2. Contar progreso de items individuales
       c.items.forEach((item: any) => {
         totalGlobalItems++;
         if (this.esItemValido(item)) totalGlobalCompletados++;
@@ -124,7 +124,6 @@ export class EstadisticasComponent implements OnInit {
       pendiente: { count: c_pendientes, percent: Math.round((c_pendientes / total) * 100), color: '#e74c3c' }
     });
 
-    // Estadísticas por sucursal
     this.storeStats.set(this.nombresSucursales.map(suc => {
       const filtradas = checklists.filter(c => c.store === suc);
       let sTotal = 0;

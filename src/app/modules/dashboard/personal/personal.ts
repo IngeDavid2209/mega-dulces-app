@@ -1,4 +1,4 @@
-import { Component, signal, OnInit, inject } from '@angular/core';
+import { Component, signal, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, Router } from '@angular/router'; 
@@ -12,7 +12,7 @@ import { Firestore, collection, doc, setDoc, deleteDoc, onSnapshot } from '@angu
   templateUrl: './personal.html',
   styleUrls: ['./personal.css']
 })
-export class PersonalComponent implements OnInit {
+export class PersonalComponent implements OnInit, OnDestroy {
   isMenuOpen = false;
   toggleMenu() { this.isMenuOpen = !this.isMenuOpen; }
 
@@ -33,7 +33,7 @@ export class PersonalComponent implements OnInit {
   formPuedeCrearChecklists = false; 
   formPuedeVerCheckstore = false;
   formPuedeVerEstadisticas = false;
-  formPuedeVerHistorial = false; // 🔥 NUEVO PERMISO 🔥
+  formPuedeVerHistorial = false; 
 
   sucursalesDisponibles = [
     'Canindo', 'La Piedad Abastos', '8 Esquinas', 'Padre Hidalgo',
@@ -46,11 +46,19 @@ export class PersonalComponent implements OnInit {
   private auth = inject(Auth);
   private firestore = inject(Firestore); 
   private router = inject(Router); 
+  
+  // 🧹 ARREGLO DE DESTRUCTORES DE RADARES
+  private destructoresRadares: (() => void)[] = [];
 
   ngOnInit() {
     const sesion = localStorage.getItem('md_sesion_actual');
     if (sesion) { this.currentUser = JSON.parse(sesion); }
     this.conectarConLaNube();
+  }
+
+  // 🧹 APAGAMOS LOS RADARES AL SALIR DE LA PANTALLA
+  ngOnDestroy() {
+    this.destructoresRadares.forEach(apagarRadar => apagarRadar());
   }
 
   conectarConLaNube() {
@@ -68,7 +76,7 @@ export class PersonalComponent implements OnInit {
     }
 
     const usuariosRef = collection(this.firestore, 'usuarios');
-    onSnapshot(usuariosRef, (snapshot) => {
+    const radarPersonal = onSnapshot(usuariosRef, (snapshot) => {
       const usuariosNube: any[] = [];
       snapshot.forEach((documento) => {
         usuariosNube.push(documento.data());
@@ -76,6 +84,8 @@ export class PersonalComponent implements OnInit {
       this.usuarios.set(usuariosNube);
       localStorage.setItem('md_usuarios_respaldo', JSON.stringify(usuariosNube));
     });
+    
+    this.destructoresRadares.push(radarPersonal);
   }
 
   getAdmins() { 
@@ -137,7 +147,7 @@ export class PersonalComponent implements OnInit {
     this.formNombre = ''; this.formUsuario = ''; this.formCorreo = ''; this.formPassword = '';
     this.formRol = 'trabajador'; this.formCargo = 'Trabajador General'; 
     this.formPuedeCrearChecklists = false; this.formPuedeVerCheckstore = false; this.formPuedeVerEstadisticas = false;
-    this.formPuedeVerHistorial = false; // 🔥 NUEVO PERMISO 🔥
+    this.formPuedeVerHistorial = false; 
     this.formSucursales = []; 
     this.isModalOpen = true;
   }
@@ -157,7 +167,7 @@ export class PersonalComponent implements OnInit {
     this.formPuedeCrearChecklists = user.puedeCrearChecklists === true;
     this.formPuedeVerCheckstore = user.puedeVerCheckstore === true;
     this.formPuedeVerEstadisticas = user.puedeVerEstadisticas === true;
-    this.formPuedeVerHistorial = user.puedeVerHistorial === true; // 🔥 NUEVO PERMISO 🔥
+    this.formPuedeVerHistorial = user.puedeVerHistorial === true; 
     this.isModalOpen = true;
   }
 
@@ -188,7 +198,7 @@ export class PersonalComponent implements OnInit {
         puedeCrearChecklists: this.formRol === 'admin' ? true : this.formPuedeCrearChecklists,
         puedeVerCheckstore: this.formRol === 'admin' ? true : this.formPuedeVerCheckstore,
         puedeVerEstadisticas: this.formRol === 'admin' ? true : this.formPuedeVerEstadisticas,
-        puedeVerHistorial: this.formRol === 'admin' ? true : this.formPuedeVerHistorial, // 🔥 NUEVO PERMISO 🔥
+        puedeVerHistorial: this.formRol === 'admin' ? true : this.formPuedeVerHistorial, 
         sucursales: this.formRol === 'admin' ? ['General (Acceso Total)'] : this.formSucursales 
       }, { merge: true });
 
@@ -211,7 +221,7 @@ export class PersonalComponent implements OnInit {
         puedeCrearChecklists: this.formRol === 'admin' ? true : this.formPuedeCrearChecklists,
         puedeVerCheckstore: this.formRol === 'admin' ? true : this.formPuedeVerCheckstore,
         puedeVerEstadisticas: this.formRol === 'admin' ? true : this.formPuedeVerEstadisticas,
-        puedeVerHistorial: this.formRol === 'admin' ? true : this.formPuedeVerHistorial, // 🔥 NUEVO PERMISO 🔥
+        puedeVerHistorial: this.formRol === 'admin' ? true : this.formPuedeVerHistorial, 
         sucursales: this.formRol === 'admin' ? ['General (Acceso Total)'] : this.formSucursales 
       };
 

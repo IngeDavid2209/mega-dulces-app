@@ -17,19 +17,22 @@
     <aside class="sidebar" [class.mobile-open]="isMenuOpen">
       <div class="sidebar-header">
         <div class="sidebar-avatar">{{ (currentUser?.nombre || 'A').charAt(0) | uppercase }}</div>
-        <div><div class="sidebar-name">{{ currentUser?.nombre || 'Administrador' }}</div><div class="sidebar-role">Gerente</div></div>
+        <div>
+          <div class="sidebar-name">{{ currentUser?.nombre || 'Administrador' }}</div>
+          <div class="sidebar-role">{{ currentUser?.rol === 'admin' ? 'Gerente' : 'Empleado' }}</div>
+        </div>
       </div>
       <nav class="sidebar-nav">
-        <a class="nav-item" routerLink="/home" routerLinkActive="active" (click)="toggleMenu()"><span class="nav-icon">🏠</span> Inicio</a>
-        <a class="nav-item" routerLink="/checklist" routerLinkActive="active" (click)="toggleMenu()"><span class="nav-icon">✅</span> Checklist</a>
-        <a class="nav-item" routerLink="/checkstore" routerLinkActive="active" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeVerCheckstore" (click)="toggleMenu()"><span class="nav-icon">🏪</span> Checkstore</a>
-        <a class="nav-item" routerLink="/estadisticas" routerLinkActive="active" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeVerEstadisticas" (click)="toggleMenu()"><span class="nav-icon">📊</span> Estadísticas</a>
+        <a class="nav-item" routerLink="/home" routerLinkActive="active" (click)="isMenuOpen = false"><span class="nav-icon">🏠</span> Inicio</a>
+        <a class="nav-item" routerLink="/checklist" routerLinkActive="active" (click)="isMenuOpen = false"><span class="nav-icon">✅</span> Checklist</a>
+        <a class="nav-item" routerLink="/checkstore" routerLinkActive="active" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeVerCheckstore" (click)="isMenuOpen = false"><span class="nav-icon">🏪</span> Checkstore</a>
+        <a class="nav-item" routerLink="/estadisticas" routerLinkActive="active" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeVerEstadisticas" (click)="isMenuOpen = false"><span class="nav-icon">📊</span> Estadísticas</a>
         
-        <a class="nav-item" routerLink="/reportes" routerLinkActive="active" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeVerHistorial" (click)="toggleMenu()"><span class="nav-icon">📑</span> Historial</a>
+        <a class="nav-item" routerLink="/reportes" routerLinkActive="active" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeVerHistorial" (click)="isMenuOpen = false"><span class="nav-icon">📑</span> Historial</a>
         
-        <a class="nav-item" routerLink="/personal" routerLinkActive="active" *ngIf="currentUser?.rol === 'admin'" (click)="toggleMenu()"><span class="nav-icon">👥</span> Personal</a>
+        <a class="nav-item" routerLink="/personal" routerLinkActive="active" *ngIf="currentUser?.rol === 'admin'" (click)="isMenuOpen = false"><span class="nav-icon">👥</span> Personal</a>
         <div class="nav-divider"></div>
-        <a class="nav-item" routerLink="/cambio-clave" routerLinkActive="active" (click)="toggleMenu()"><span class="nav-icon">🔑</span> Cambio de Clave</a>
+        <a class="nav-item" routerLink="/cambio-clave" routerLinkActive="active" (click)="isMenuOpen = false"><span class="nav-icon">🔑</span> Cambio de Clave</a>
         <a class="nav-item nav-logout" routerLink="/login"><span class="nav-icon">🚪</span> Cerrar Sesión</a>
       </nav>
     </aside>

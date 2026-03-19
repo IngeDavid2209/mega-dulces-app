@@ -22,7 +22,7 @@
           <div class="sidebar-role">{{ currentUser?.rol === 'admin' ? 'Gerente' : 'Empleado' }}</div>
         </div>
       </div>
-  <nav class="sidebar-nav">
+      <nav class="sidebar-nav">
         <a class="nav-item" routerLink="/home" routerLinkActive="active" (click)="isMenuOpen = false"><span class="nav-icon">🏠</span> Inicio</a>
         
         <a class="nav-item" routerLink="/checklist" routerLinkActive="active" (click)="isMenuOpen = false"><span class="nav-icon">✅</span> Checklist</a>
@@ -31,7 +31,7 @@
         
         <a class="nav-item" routerLink="/estadisticas" routerLinkActive="active" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeVerEstadisticas" (click)="isMenuOpen = false"><span class="nav-icon">📊</span> Estadísticas</a>
         
-        <a class="nav-item" routerLink="/reportes" routerLinkActive="active" *ngIf="currentUser?.rol === 'admin'" (click)="isMenuOpen = false"><span class="nav-icon">📑</span> Historial</a>
+        <a class="nav-item" routerLink="/reportes" routerLinkActive="active" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeVerHistorial" (click)="isMenuOpen = false"><span class="nav-icon">📑</span> Historial</a>
         
         <a class="nav-item" routerLink="/personal" routerLinkActive="active" *ngIf="currentUser?.rol === 'admin'" (click)="isMenuOpen = false"><span class="nav-icon">👥</span> Personal</a>
         

@@ -17,7 +17,10 @@
     <aside class="sidebar" [class.mobile-open]="isMenuOpen">
       <div class="sidebar-header">
         <div class="sidebar-avatar">{{ (currentUser?.nombre || 'A').charAt(0) | uppercase }}</div>
-        <div><div class="sidebar-name">{{ currentUser?.nombre || 'Administrador' }}</div><div class="sidebar-role">Gerente</div></div>
+        <div>
+          <div class="sidebar-name">{{ currentUser?.nombre || 'Administrador' }}</div>
+          <div class="sidebar-role">{{ currentUser?.rol === 'admin' ? 'Gerente' : 'Empleado' }}</div>
+        </div>
       </div>
       <nav class="sidebar-nav">
         <a class="nav-item" routerLink="/home" routerLinkActive="active" (click)="isMenuOpen = false"><span class="nav-icon">🏠</span> Inicio</a>

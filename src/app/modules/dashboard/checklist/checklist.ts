@@ -74,7 +74,6 @@ export class ChecklistComponent implements OnInit {
       const todosLosUsuarios: any[] = [];
       snapshot.forEach(docSnap => todosLosUsuarios.push(docSnap.data()));
 
-      // 🔥 AQUÍ SE AGREGARON LAS NUEVAS SUCURSALES / DEPARTAMENTOS 🔥
       const todasLasSucursales = [
         'Canindo', 'La Piedad Abastos', '8 Esquinas', 'Padre Hidalgo', 
         'Morelia Madero', 'Morelia Abastos', 'Yurécuaro', 'Zamora Centro',
@@ -124,15 +123,13 @@ export class ChecklistComponent implements OnInit {
 
       todasLasListas.sort((a, b) => b.timestampCreacion - a.timestampCreacion);
 
+      // 🔥 AQUÍ ESTÁ EL FIX: LIMPIEZA DE PANTALLA 🔥
       if (this.currentUser?.rol === 'admin') {
+        // Los Admin ven todos los checklists de la empresa
         this.checklists.set(todasLasListas);
-      } else if (this.currentUser?.puedeCrearChecklists) {
-        const misSucursales = this.currentUser.sucursales || [this.currentUser.sucursal || ''];
-        const filtradas = todasLasListas.filter((c: any) => 
-          c.assigned === this.currentUser.nombre || misSucursales.includes(c.store)
-        );
-        this.checklists.set(filtradas);
       } else {
+        // Todos los demás (incluyendo a los que "pueden crear checklists") 
+        // SOLO ven los que están a su nombre.
         const misListas = todasLasListas.filter((c: any) => c.assigned === this.currentUser.nombre);
         this.checklists.set(misListas);
       }
@@ -399,7 +396,8 @@ export class ChecklistComponent implements OnInit {
     this.formNameRutina = ''; 
     this.formAssignedRutina = []; 
     this.formStoreRutina = this.sucursalesDisponibles().length > 0 ? this.sucursalesDisponibles()[0] : '';
-    this.formRutinas = [{ text: '', requiresPhoto: false, frecuencia: 'Diaria', fechaFin: this.calcularFechaFinDefault('Diaria') }];
+    // 👉 AQUÍ INYECTAMOS LA HORA LIMITE VACÍA PARA QUE NAZCA EN EL FORMULARIO
+    this.formRutinas = [{ text: '', requiresPhoto: false, frecuencia: 'Diaria', fechaFin: this.calcularFechaFinDefault('Diaria'), horaLimite: '' }];
     this.isModalRutinasOpen = true; 
   }
 
@@ -408,7 +406,8 @@ export class ChecklistComponent implements OnInit {
   }
 
   agregarRutina() { 
-    this.formRutinas.push({ text: '', requiresPhoto: false, frecuencia: 'Diaria', fechaFin: this.calcularFechaFinDefault('Diaria') }); 
+    // 👉 AQUÍ TAMBIÉN AGREGAMOS LA HORA LIMITE CUANDO LE DAN A "+"
+    this.formRutinas.push({ text: '', requiresPhoto: false, frecuencia: 'Diaria', fechaFin: this.calcularFechaFinDefault('Diaria'), horaLimite: '' }); 
   }
   
   eliminarRutina(index: number) { this.formRutinas.splice(index, 1); }
@@ -429,7 +428,9 @@ export class ChecklistComponent implements OnInit {
         photo: null, 
         tipo: 'rutina', 
         frecuencia: rutina.frecuencia,
-        fechaFin: rutina.fechaFin 
+        fechaFin: rutina.fechaFin,
+        // 👉 AQUÍ ATRAPAMOS LA HORA Y LA MANDAMOS A LA BASE DE DATOS
+        horaLimite: rutina.horaLimite 
       }));
 
     if (rutinasValidas.length === 0) {

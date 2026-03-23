@@ -105,13 +105,17 @@
               </div>
               <div class="user-credentials">
                 <div><strong>Sucursales:</strong> 🏪 {{ user.sucursales ? user.sucursales.join(', ') : (user.sucursal || 'General') }}</div>
-                <div *ngIf="user.puedeCrearChecklists || user.puedeVerCheckstore || user.puedeVerEstadisticas || user.puedeVerHistorial || user.puedeAdministrarPersonal" style="margin-top:8px; padding-top:8px; border-top: 1px dashed var(--border); color: #666;">
+                
+                <div *ngIf="user.puedeCrearChecklists || user.puedeCrearRutinas || user.puedeCrearTareasUnicas || user.puedeVerCheckstore || user.puedeVerEstadisticas || user.puedeVerHistorial || user.puedeAdministrarPersonal" style="margin-top:8px; padding-top:8px; border-top: 1px dashed var(--border); color: #666;">
                   <span *ngIf="user.puedeCrearChecklists" style="display:block; font-size:12px; margin-bottom: 2px;">⭐ Asigna Checklists</span>
+                  <span *ngIf="user.puedeCrearRutinas" style="display:block; font-size:12px; margin-bottom: 2px; color: #1976d2;">🔁 Crea/Edita Rutinas</span>
+                  <span *ngIf="user.puedeCrearTareasUnicas" style="display:block; font-size:12px; margin-bottom: 2px; color: #e67e22;">➕ Crea Tareas Únicas</span>
                   <span *ngIf="user.puedeVerCheckstore" style="display:block; font-size:12px; margin-bottom: 2px;">🏪 Ve Checkstore</span>
                   <span *ngIf="user.puedeVerEstadisticas" style="display:block; font-size:12px; margin-bottom: 2px;">📊 Ve Estadísticas</span>
                   <span *ngIf="user.puedeVerHistorial" style="display:block; font-size:12px; margin-bottom: 2px;">📑 Ve Historial</span>
                   <span *ngIf="user.puedeAdministrarPersonal" style="display:block; font-size:12px; color: var(--brown); font-weight: bold;">👥 Administra Personal</span>
                 </div>
+                
                 <div style="margin-top: 8px;"><strong>Usuario:</strong> {{ user.usuario }}</div>
                 <div><strong>Contraseña:</strong> {{ user.password }}</div>
               </div>
@@ -150,7 +154,6 @@
                     <option value="Encargada de operaciones y almacén">Encargada de operaciones y almacén</option>
                     <option value="Auxiliar de cajas">Auxiliar de cajas</option>
                   </optgroup>
-                  
                   <optgroup label="💼 ZONA ADMINISTRATIVA">
                     <option value="Director General">Director General</option>
                     <option value="Administrador Megadulces">Administrador Megadulces</option>
@@ -184,11 +187,103 @@
               </div>
 
               <div class="form-group">
-                <label class="form-label">Permisos de Sistema</label>
+                <label class="form-label">Nivel de Acceso</label>
                 <select class="form-input select-input" [(ngModel)]="formRol" style="cursor: pointer;">
                   <option value="trabajador">Normal (Llena checklists)</option>
                   <option value="admin">Administrador (Acceso Total)</option>
                 </select>
+              </div>
+            </div>
+
+            <div class="form-group form-full" *ngIf="formRol === 'trabajador'">
+              <label class="form-label" style="margin-bottom: 12px;">Privilegios y Accesos Especiales</label>
+              
+              <div class="premium-permissions-list">
+                
+                <label class="premium-perm-item">
+                  <div class="perm-icon">📋</div>
+                  <div class="perm-text">
+                    <strong>Gestionar Checklists</strong>
+                    <span>Crear, editar y asignar tareas generales al equipo.</span>
+                  </div>
+                  <div class="perm-switch">
+                    <input type="checkbox" [(ngModel)]="formPuedeCrearChecklists">
+                    <span class="slider"></span>
+                  </div>
+                </label>
+
+                <label class="premium-perm-item">
+                  <div class="perm-icon">🔁</div>
+                  <div class="perm-text">
+                    <strong>Crear Rutinas</strong>
+                    <span>Configurar tareas que se repiten automáticamente.</span>
+                  </div>
+                  <div class="perm-switch">
+                    <input type="checkbox" [(ngModel)]="formPuedeCrearRutinas">
+                    <span class="slider"></span>
+                  </div>
+                </label>
+
+                <label class="premium-perm-item">
+                  <div class="perm-icon">📌</div>
+                  <div class="perm-text">
+                    <strong>Crear Tareas Únicas</strong>
+                    <span>Asignar actividades de un solo uso o de emergencia.</span>
+                  </div>
+                  <div class="perm-switch">
+                    <input type="checkbox" [(ngModel)]="formPuedeCrearTareasUnicas">
+                    <span class="slider"></span>
+                  </div>
+                </label>
+
+                <label class="premium-perm-item">
+                  <div class="perm-icon">🏪</div>
+                  <div class="perm-text">
+                    <strong>Ver Checkstore</strong>
+                    <span>Acceder a la biblioteca de plantillas globales.</span>
+                  </div>
+                  <div class="perm-switch">
+                    <input type="checkbox" [(ngModel)]="formPuedeVerCheckstore">
+                    <span class="slider"></span>
+                  </div>
+                </label>
+
+                <label class="premium-perm-item">
+                  <div class="perm-icon">📊</div>
+                  <div class="perm-text">
+                    <strong>Ver Estadísticas</strong>
+                    <span>Visualizar gráficas y progreso de sucursales.</span>
+                  </div>
+                  <div class="perm-switch">
+                    <input type="checkbox" [(ngModel)]="formPuedeVerEstadisticas">
+                    <span class="slider"></span>
+                  </div>
+                </label>
+
+                <label class="premium-perm-item">
+                  <div class="perm-icon">📑</div>
+                  <div class="perm-text">
+                    <strong>Ver Historial</strong>
+                    <span>Consultar el archivo de tareas de días anteriores.</span>
+                  </div>
+                  <div class="perm-switch">
+                    <input type="checkbox" [(ngModel)]="formPuedeVerHistorial">
+                    <span class="slider"></span>
+                  </div>
+                </label>
+
+                <label class="premium-perm-item admin-level">
+                  <div class="perm-icon">👥</div>
+                  <div class="perm-text">
+                    <strong>Administrar Personal</strong>
+                    <span>Dar de alta, baja y modificar permisos de usuarios.</span>
+                  </div>
+                  <div class="perm-switch">
+                    <input type="checkbox" [(ngModel)]="formPuedeAdministrarPersonal">
+                    <span class="slider admin-slider"></span>
+                  </div>
+                </label>
+
               </div>
             </div>
 
@@ -201,29 +296,6 @@
                        [style.background]="formSucursales.includes(suc) ? '#FFF3D4' : '#fff'">
                   <input type="checkbox" [checked]="formSucursales.includes(suc)" (change)="toggleSucursal(suc)" style="accent-color: var(--brown); cursor: pointer; transform: scale(1.2);">
                   {{ suc }}
-                </label>
-              </div>
-
-              <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 15px;">
-                <label style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: #FFF3D4; border-radius: 8px; border: 1px solid #C87F00; cursor: pointer;">
-                  <input type="checkbox" [(ngModel)]="formPuedeCrearChecklists" style="accent-color: #C87F00; transform: scale(1.3); cursor: pointer;"> 
-                  <span style="font-size: 14px; color: #555;"><strong>⭐ Dar permiso para crear Checklists</strong></span>
-                </label>
-                <label style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: #FFF3D4; border-radius: 8px; border: 1px solid #C87F00; cursor: pointer;">
-                  <input type="checkbox" [(ngModel)]="formPuedeVerCheckstore" style="accent-color: #C87F00; transform: scale(1.3); cursor: pointer;"> 
-                  <span style="font-size: 14px; color: #555;"><strong>🏪 Dar permiso para ver el Checkstore</strong></span>
-                </label>
-                <label style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: #FFF3D4; border-radius: 8px; border: 1px solid #C87F00; cursor: pointer;">
-                  <input type="checkbox" [(ngModel)]="formPuedeVerEstadisticas" style="accent-color: #C87F00; transform: scale(1.3); cursor: pointer;"> 
-                  <span style="font-size: 14px; color: #555;"><strong>📊 Dar permiso para ver Estadísticas</strong></span>
-                </label>
-                <label style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: #FFF3D4; border-radius: 8px; border: 1px solid #C87F00; cursor: pointer;">
-                  <input type="checkbox" [(ngModel)]="formPuedeVerHistorial" style="accent-color: #C87F00; transform: scale(1.3); cursor: pointer;"> 
-                  <span style="font-size: 14px; color: #555;"><strong>📑 Dar permiso para ver el Historial</strong></span>
-                </label>
-                <label style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: #E5F5EC; border-radius: 8px; border: 1px solid #2ecc71; cursor: pointer;">
-                  <input type="checkbox" [(ngModel)]="formPuedeAdministrarPersonal" style="accent-color: #27ae60; transform: scale(1.3); cursor: pointer;"> 
-                  <span style="font-size: 14px; color: #555;"><strong>👥 Dar permiso para administrar Personal (Crear/Editar)</strong></span>
                 </label>
               </div>
             </div>

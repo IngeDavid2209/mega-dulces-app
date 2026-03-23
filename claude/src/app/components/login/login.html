@@ -1,0 +1,43 @@
+<div class="login-wrapper">
+  <div class="login-card">
+    
+    <div class="brand-section">
+      <div class="logo-circle">🍬</div>
+      <h1 class="brand-title">Mega Dulces de los Altos</h1>
+      <p class="brand-subtitle">Panel de Gestión Operativa</p>
+    </div>
+
+    <div class="role-selector">
+      <div class="role-option" 
+           [class.active]="rolSeleccionado() === 'admin'"
+           (click)="seleccionarRol('admin')">
+        <div class="role-icon">👑</div>
+        <div class="role-name">Administrador</div>
+      </div>
+
+      <div class="role-option" 
+           [class.active]="rolSeleccionado() === 'trabajador'"
+           (click)="seleccionarRol('trabajador')">
+        <div class="role-icon">👷‍♂️</div>
+        <div class="role-name">Colaborador</div>
+      </div>
+    </div>
+
+    <div class="form-section">
+      <div class="form-group">
+        <label>Usuario / Correo</label>
+        <input type="text" [(ngModel)]="usuario" placeholder="Ej: admin o juan_perez">
+      </div>
+      
+      <div class="form-group">
+        <label>Contraseña</label>
+        <input type="password" [(ngModel)]="password" placeholder="••••••••" (keyup.enter)="ingresar()">
+      </div>
+
+      <button class="btn-ingresar" (click)="ingresar()">
+        Iniciar Sesión
+      </button>
+    </div>
+
+  </div>
+</div>

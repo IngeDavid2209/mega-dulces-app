@@ -1,0 +1,256 @@
+<div class="app-layout">
+  <header class="header">
+    <div class="header-left">
+      <button class="btn-menu-mobile" (click)="toggleMenu()">☰</button>
+      <div class="header-logo-wrap"><span>🍬</span></div>
+      <div class="header-brand">Mega Dulces de los Altos<small>Panel de Gestión</small></div>
+    </div>
+    <div class="header-right">
+      <div class="header-user">Bienvenido, <strong>{{ currentUser?.nombre || 'Administrador' }}</strong></div>
+    </div>
+  </header>
+
+  <div class="main-wrapper">
+    <div class="mobile-overlay" *ngIf="isMenuOpen" (click)="toggleMenu()"></div>
+    
+    <aside class="sidebar" [class.mobile-open]="isMenuOpen">
+      <div class="sidebar-header">
+        <div class="sidebar-avatar">{{ (currentUser?.nombre || 'A').charAt(0) | uppercase }}</div>
+        <div>
+          <div class="sidebar-name">{{ currentUser?.nombre || 'Administrador' }}</div>
+          <div class="sidebar-role">{{ currentUser?.rol === 'admin' ? 'Gerente' : 'Empleado' }}</div>
+        </div>
+      </div>
+      <nav class="sidebar-nav">
+        <a class="nav-item" routerLink="/home" routerLinkActive="active" (click)="isMenuOpen = false"><span class="nav-icon">🏠</span> Inicio</a>
+        
+        <a class="nav-item" routerLink="/checklist" routerLinkActive="active" (click)="isMenuOpen = false"><span class="nav-icon">✅</span> Checklist</a>
+        
+        <a class="nav-item" routerLink="/checkstore" routerLinkActive="active" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeVerCheckstore" (click)="isMenuOpen = false"><span class="nav-icon">🏪</span> Checkstore</a>
+        
+        <a class="nav-item" routerLink="/estadisticas" routerLinkActive="active" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeVerEstadisticas" (click)="isMenuOpen = false"><span class="nav-icon">📊</span> Estadísticas</a>
+        
+        <a class="nav-item" routerLink="/reportes" routerLinkActive="active" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeVerHistorial" (click)="isMenuOpen = false"><span class="nav-icon">📑</span> Historial</a>
+        
+        <a class="nav-item" routerLink="/personal" routerLinkActive="active" *ngIf="currentUser?.rol === 'admin'" (click)="isMenuOpen = false"><span class="nav-icon">👥</span> Personal</a>
+        
+        <div class="nav-divider"></div>
+        <a class="nav-item" routerLink="/cambio-clave" routerLinkActive="active" (click)="isMenuOpen = false"><span class="nav-icon">🔑</span> Cambio de Clave</a>
+        <a class="nav-item nav-logout" routerLink="/login"><span class="nav-icon">🚪</span> Cerrar Sesión</a>
+      </nav>
+    </aside>
+
+    <div class="content">
+      
+      <div class="section-header" style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 15px;">
+        <div>
+          <div class="section-title">👥 Personal</div>
+          <div class="section-sub">Gestión de usuarios y accesos del equipo</div>
+        </div>
+        
+        <div style="display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
+          <div style="position: relative;">
+            <span style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 16px; color: #888;">🔍</span>
+            <input type="text" class="form-input" [(ngModel)]="terminoBusqueda" placeholder="Buscar por nombre, cargo o sucursal..." style="padding-left: 35px; min-width: 280px; border-radius: 8px; margin: 0;">
+          </div>
+          <button class="btn-add" *ngIf="currentUser?.rol === 'admin'" (click)="abrirModal()">+ Agregar Usuario</button>
+        </div>
+      </div>
+
+      <h2 class="category-title" *ngIf="getAdmins().length > 0">👑 Administradores del Sistema</h2>
+      <div class="user-grid" *ngIf="getAdmins().length > 0">
+        <div class="user-card admin-card" *ngFor="let user of getAdmins()">
+          <div class="user-card-header">
+            <div class="user-avatar" style="color: #C87F00; border-color: #C87F00; background: #FFF3D4;">{{ user.nombre.charAt(0) | uppercase }}</div>
+            <div class="user-info">
+              <div class="user-name">{{ user.nombre }}</div>
+              <div class="user-badge badge-admin">👑 {{ user.cargo || 'Administrador' }}</div>
+            </div>
+            <div class="action-buttons">
+              <button class="btn-action" style="background: #e3f2fd; color: #1976d2; border: 1px solid #bbdefb;" (click)="verHistorial(user.nombre)" title="Ver Historial de Tareas">📋</button>
+              <button class="btn-action btn-edit" (click)="editarUsuario(user)" title="Modificar Datos">✏️</button>
+              <button class="btn-action btn-delete" *ngIf="user.usuario !== currentUser?.usuario" (click)="eliminarUsuario(user)" title="Eliminar Acceso">🗑</button>
+            </div>
+          </div>
+          <div class="user-credentials">
+            <div><strong>Nivel:</strong> 🌐 Acceso Total</div>
+            <div><strong>Usuario de acceso:</strong> {{ user.usuario }}</div>
+            <div><strong>Contraseña:</strong> {{ user.password }}</div>
+          </div>
+        </div>
+      </div>
+
+      <div *ngIf="getTrabajadores().length > 0">
+        <div *ngFor="let grupo of getTrabajadoresAgrupados()" style="margin-top: 40px;">
+          
+          <h2 class="category-title" style="display: flex; align-items: center; gap: 8px; font-size: 1.2rem; border-bottom: 2px solid var(--border); padding-bottom: 8px;">
+            <span>📍</span> {{ grupo.nombre }}
+            <span style="font-size: 12px; background: #FFF3D4; color: #C87F00; padding: 3px 10px; border-radius: 12px; margin-left: auto;">
+              {{ grupo.usuarios.length }} empleado(s)
+            </span>
+          </h2>
+          
+          <div class="user-grid" style="margin-top: 20px;">
+            <div class="user-card" *ngFor="let user of grupo.usuarios">
+              <div class="user-card-header">
+                <div class="user-avatar">{{ user.nombre.charAt(0) | uppercase }}</div>
+                <div class="user-info">
+                  <div class="user-name">{{ user.nombre }}</div>
+                  <div class="user-badge">👷‍♂️ {{ user.cargo || 'Trabajador General' }}</div>
+                </div>
+                <div class="action-buttons">
+                  <button class="btn-action" style="background: #e3f2fd; color: #1976d2; border: 1px solid #bbdefb;" (click)="verHistorial(user.nombre)" title="Ver Historial de Tareas">📋</button>
+                  <button class="btn-action btn-edit" (click)="editarUsuario(user)" title="Modificar Datos">✏️</button>
+                  <button class="btn-action btn-delete" (click)="eliminarUsuario(user)" title="Eliminar Acceso">🗑</button>
+                </div>
+              </div>
+              <div class="user-credentials">
+                <div><strong>Sucursales:</strong> 🏪 {{ user.sucursales ? user.sucursales.join(', ') : (user.sucursal || 'General') }}</div>
+                
+                <div *ngIf="user.puedeCrearChecklists || user.puedeVerCheckstore || user.puedeVerEstadisticas || user.puedeVerHistorial" style="margin-top:8px; padding-top:8px; border-top: 1px dashed var(--border); color: #666;">
+                  <span *ngIf="user.puedeCrearChecklists" style="display:block; font-size:12px; margin-bottom: 2px;">⭐ Asigna Checklists</span>
+                  <span *ngIf="user.puedeVerCheckstore" style="display:block; font-size:12px; margin-bottom: 2px;">🏪 Ve Checkstore</span>
+                  <span *ngIf="user.puedeVerEstadisticas" style="display:block; font-size:12px; margin-bottom: 2px;">📊 Ve Estadísticas</span>
+                  <span *ngIf="user.puedeVerHistorial" style="display:block; font-size:12px;">📑 Ve Historial</span>
+                </div>
+
+                <div style="margin-top: 8px;"><strong>Usuario de acceso:</strong> {{ user.usuario }}</div>
+                <div><strong>Contraseña:</strong> {{ user.password }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="empty-state-text" *ngIf="getTrabajadores().length === 0 && getAdmins().length === 0">
+        <span style="font-size: 30px; display: block; margin-bottom: 10px;">🔍</span>
+        No se encontraron usuarios que coincidan con la búsqueda.
+      </div>
+
+      <div class="modal-overlay" *ngIf="isModalOpen">
+        <div class="modal">
+          <div class="modal-header">
+            <div class="modal-title">{{ usuarioEnEdicion ? 'Modificar Usuario' : 'Registrar Nuevo Usuario' }}</div>
+            <button class="modal-close" (click)="cerrarModal()">×</button>
+          </div>
+          <div class="modal-body">
+            
+            <div class="form-group form-full">
+              <label class="form-label">Nombre Completo del Usuario</label>
+              <input class="form-input" type="text" [(ngModel)]="formNombre" placeholder="Ej: Ivette Cruz Oceguera">
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Puesto (Cargo)</label>
+                <select class="form-input select-input" [(ngModel)]="formCargo" style="cursor: pointer;">
+                  <optgroup label="🛍️ ZONA COMERCIAL">
+                    <option value="Trabajador General">Trabajador General</option>
+                    <option value="Jefe de zona">Jefe de zona</option>
+                    <option value="Encargado(a) de tienda">Encargado(a) de tienda</option>
+                    <option value="Auxiliar de encargado">Auxiliar de encargado</option>
+                    <option value="Encargada de operaciones y almacén">Encargada de operaciones y almacén</option>
+                    <option value="Auxiliar de cajas">Auxiliar de cajas</option>
+                  </optgroup>
+                  
+                  <optgroup label="💼 ZONA ADMINISTRATIVA">
+                    <option value="Director General">Director General</option>
+                    <option value="Administrador Megadulces">Administrador Megadulces</option>
+                    <option value="Jefe Regional">Jefe Regional</option>
+                    <option value="Auxiliar Administrativo">Auxiliar Administrativo</option>
+                    <option value="Caja General">Caja General</option>
+                    <option value="Auxiliar Caja General">Auxiliar Caja General</option>
+                    <option value="Jefatura Finanzas">Jefatura Finanzas</option>
+                    <option value="Auxiliar Finanzas">Auxiliar Finanzas</option>
+                    <option value="Coordinador Prevención">Coordinador Prevención</option>
+                    <option value="Auxiliar Prevención">Auxiliar Prevención</option>
+                    <option value="Jefatura Tesorería">Jefatura Tesorería</option>
+                    <option value="Encargado de Activos e Insumos">Encargado de Activos e Insumos</option>
+                    <option value="Jefatura RRHH">Jefatura RRHH</option>
+                    <option value="Auxiliar RRHH">Auxiliar RRHH</option>
+                    <option value="Sistemas">Sistemas</option>
+                    <option value="Jefatura Sistemas">Jefatura Sistemas</option>
+                    <option value="Coordinador MKT">Coordinador MKT</option>
+                    <option value="Jefatura MKT">Jefatura MKT</option>
+                    <option value="Auxiliar de mercadotecnia">Auxiliar de mercadotecnia</option>
+                    <option value="Diseñador">Diseñador</option>
+                    <option value="Jefatura Compras">Jefatura Compras</option>
+                    <option value="Auxiliar Compras">Auxiliar Compras</option>
+                    <option value="Jefe Mantenimiento">Jefe Mantenimiento</option>
+                    <option value="Intendencia">Intendencia</option>
+                    <option value="Coordinador Contabilidad">Coordinador Contabilidad</option>
+                    <option value="Auxiliar de Contabilidad">Auxiliar de Contabilidad</option>
+                    <option value="Practicante">Practicante</option>
+                  </optgroup>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Permisos de Sistema</label>
+                <select class="form-input select-input" [(ngModel)]="formRol" style="cursor: pointer;">
+                  <option value="trabajador">Normal (Llena checklists)</option>
+                  <option value="admin">Administrador (Acceso Total)</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-group form-full" *ngIf="formRol === 'trabajador'">
+              <label class="form-label">Sucursales Asignadas (Puedes elegir varias)</label>
+              
+              <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px; margin-top: 5px;">
+                <label *ngFor="let suc of sucursalesDisponibles" 
+                       style="margin:0; padding: 10px; border: 1px solid var(--border); border-radius: 8px; background: #fff; cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 14px; transition: 0.2s;"
+                       [style.borderColor]="formSucursales.includes(suc) ? 'var(--brown)' : 'var(--border)'"
+                       [style.background]="formSucursales.includes(suc) ? '#FFF3D4' : '#fff'">
+                  <input type="checkbox" [checked]="formSucursales.includes(suc)" (change)="toggleSucursal(suc)" style="accent-color: var(--brown); cursor: pointer; transform: scale(1.2);">
+                  {{ suc }}
+                </label>
+              </div>
+
+              <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 15px;">
+                <label style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: #FFF3D4; border-radius: 8px; border: 1px solid #C87F00; cursor: pointer;">
+                  <input type="checkbox" [(ngModel)]="formPuedeCrearChecklists" style="accent-color: #C87F00; transform: scale(1.3); cursor: pointer;"> 
+                  <span style="font-size: 14px; color: #555;"><strong>⭐ Dar permiso para crear Checklists</strong> y asignar tareas</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: #FFF3D4; border-radius: 8px; border: 1px solid #C87F00; cursor: pointer;">
+                  <input type="checkbox" [(ngModel)]="formPuedeVerCheckstore" style="accent-color: #C87F00; transform: scale(1.3); cursor: pointer;"> 
+                  <span style="font-size: 14px; color: #555;"><strong>🏪 Dar permiso para ver el Checkstore</strong> (Solo lectura)</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: #FFF3D4; border-radius: 8px; border: 1px solid #C87F00; cursor: pointer;">
+                  <input type="checkbox" [(ngModel)]="formPuedeVerEstadisticas" style="accent-color: #C87F00; transform: scale(1.3); cursor: pointer;"> 
+                  <span style="font-size: 14px; color: #555;"><strong>📊 Dar permiso para ver Estadísticas</strong> (Solo lectura)</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: #FFF3D4; border-radius: 8px; border: 1px solid #C87F00; cursor: pointer;">
+                  <input type="checkbox" [(ngModel)]="formPuedeVerHistorial" style="accent-color: #C87F00; transform: scale(1.3); cursor: pointer;"> 
+                  <span style="font-size: 14px; color: #555;"><strong>📑 Dar permiso para ver el Historial</strong> (Solo lectura)</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="form-group form-full">
+              <label class="form-label">Nombre de Usuario (Con este entrará a la aplicación)</label>
+              <input class="form-input" type="text" [(ngModel)]="formUsuario" placeholder="Ej: ivette.cruz">
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Correo Registrado</label>
+                <input class="form-input" type="email" [(ngModel)]="formCorreo" placeholder="Ej: ivette@megadulces.com" [disabled]="usuarioEnEdicion">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Contraseña (Mín. 6 caracteres)</label>
+                <input class="form-input" type="text" [(ngModel)]="formPassword" placeholder="Crea una contraseña">
+              </div>
+            </div>
+            
+            <div class="btn-group">
+              <button class="btn-secondary" (click)="cerrarModal()">Cancelar</button>
+              <button class="btn-save" (click)="guardarUsuario()">{{ usuarioEnEdicion ? 'Guardar Cambios' : 'Crear Usuario' }}</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>

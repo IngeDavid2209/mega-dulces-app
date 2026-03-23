@@ -43,11 +43,16 @@ export class CheckstoreComponent implements OnInit, OnDestroy {
   ];
 
   private firestore = inject(Firestore);
-  
-  // 🧹 ARREGLO DE DESTRUCTORES DE RADARES
   private destructoresRadares: (() => void)[] = [];
 
   ngOnInit() {
+    // 🔥 FIX: Pintamos las sucursales INMEDIATAMENTE en 0% para que nunca desaparezcan
+    const baseComerciales = this.sucursalesComerciales.map(s => ({...s, progress: 0, color: 'var(--red)', totalChecklists: 0, completedItems: 0, totalItems: 0}));
+    const baseAdmin = this.sucursalesAdministrativas.map(s => ({...s, progress: 0, color: 'var(--red)', totalChecklists: 0, completedItems: 0, totalItems: 0}));
+    
+    this.comerciales.set(baseComerciales);
+    this.administrativas.set(baseAdmin);
+
     const sesion = localStorage.getItem('md_sesion_actual');
     if (sesion) {
       this.currentUser = JSON.parse(sesion);
@@ -55,7 +60,6 @@ export class CheckstoreComponent implements OnInit, OnDestroy {
     this.conectarRadarNube(); 
   }
 
-  // 🧹 APAGAMOS LOS RADARES AL SALIR DE LA PANTALLA
   ngOnDestroy() {
     this.destructoresRadares.forEach(apagarRadar => apagarRadar());
   }
@@ -87,13 +91,16 @@ export class CheckstoreComponent implements OnInit, OnDestroy {
           let completedItems = 0;
 
           storeChecklists.forEach(c => {
-            c.items.forEach((item: any) => {
-              totalItems++;
-              const completo = item.checked && (!item.requiresPhoto || (item.photo !== null && item.photo !== ''));
-              if (completo) {
-                completedItems++;
-              }
-            });
+            // 🔥 FIX: Salvavidas matemático por si un checklist viene vacío de la base de datos
+            if (c.items && Array.isArray(c.items)) {
+              c.items.forEach((item: any) => {
+                totalItems++;
+                const completo = item.checked && (!item.requiresPhoto || (item.photo !== null && item.photo !== ''));
+                if (completo) {
+                  completedItems++;
+                }
+              });
+            }
           });
 
           const progress = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;

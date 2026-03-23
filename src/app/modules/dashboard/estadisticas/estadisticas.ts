@@ -27,8 +27,6 @@ export class EstadisticasComponent implements OnInit, OnDestroy {
     pendiente: { count: 0, percent: 0, color: '#e74c3c' }
   });
 
-  storeStats = signal<any[]>([]);
-  
   nombresSucursales = [
     'Canindo', 'La Piedad Abastos', '8 Esquinas', 'Padre Hidalgo',
     'Morelia Madero', 'Morelia Abastos', 'Yurécuaro', 'Zamora Centro',
@@ -36,6 +34,11 @@ export class EstadisticasComponent implements OnInit, OnDestroy {
     'FINANZAS', 'SISTEMAS', 'RH', 'MKT', 'MANTENIMIENTO'
   ];
 
+  // 🔥 FIX: Pre-cargamos las 17 sucursales en 0% desde el inicio para que no haya huecos
+  storeStats = signal<any[]>(
+    this.nombresSucursales.map(suc => ({ name: suc, progress: 0, color: 'var(--brown)' }))
+  );
+  
   sucursalSeleccionadaParaEmpleados = signal('Morelia Abastos');
   empleadosStats = signal<any[]>([]);
   
@@ -43,8 +46,6 @@ export class EstadisticasComponent implements OnInit, OnDestroy {
   todosLosUsuariosNube: any[] = []; 
 
   private firestore = inject(Firestore);
-  
-  // 🧹 ARREGLO DE DESTRUCTORES DE RADARES
   private destructoresRadares: (() => void)[] = [];
 
   ngOnInit() {
@@ -53,7 +54,6 @@ export class EstadisticasComponent implements OnInit, OnDestroy {
     this.conectarRadarNube(); 
   }
 
-  // 🧹 APAGAMOS LOS RADARES AL SALIR DE LA PANTALLA
   ngOnDestroy() {
     this.destructoresRadares.forEach(apagarRadar => apagarRadar());
   }
@@ -78,7 +78,6 @@ export class EstadisticasComponent implements OnInit, OnDestroy {
       snapshot.forEach(docSnap => {
         const c: any = docSnap.data();
         const timestamp = c.id || c.timestampCreacion || ahora;
-        
         if ((ahora - timestamp) <= sieteDias) {
           listas.push(c);
         }
@@ -93,8 +92,6 @@ export class EstadisticasComponent implements OnInit, OnDestroy {
 
   calcularEstadisticasGenerales() {
     const checklists = this.todosLosChecklists;
-    if (checklists.length === 0) return;
-
     let totalGlobalItems = 0;
     let totalGlobalCompletados = 0;
 
@@ -107,10 +104,12 @@ export class EstadisticasComponent implements OnInit, OnDestroy {
       else if (c.status === 'en-progreso') c_progreso++;
       else c_pendientes++;
 
-      c.items.forEach((item: any) => {
-        totalGlobalItems++;
-        if (this.esItemValido(item)) totalGlobalCompletados++;
-      });
+      if (c.items && Array.isArray(c.items)) {
+        c.items.forEach((item: any) => {
+          totalGlobalItems++;
+          if (this.esItemValido(item)) totalGlobalCompletados++;
+        });
+      }
     });
 
     this.allItems.set(totalGlobalItems);
@@ -119,19 +118,23 @@ export class EstadisticasComponent implements OnInit, OnDestroy {
 
     const total = checklists.length;
     this.checklistsByStatus.set({
-      completo: { count: c_completos, percent: Math.round((c_completos / total) * 100), color: '#2ecc71' },
-      enProgreso: { count: c_progreso, percent: Math.round((c_progreso / total) * 100), color: '#f1c40f' },
-      pendiente: { count: c_pendientes, percent: Math.round((c_pendientes / total) * 100), color: '#e74c3c' }
+      completo: { count: c_completos, percent: total > 0 ? Math.round((c_completos / total) * 100) : 0, color: '#2ecc71' },
+      enProgreso: { count: c_progreso, percent: total > 0 ? Math.round((c_progreso / total) * 100) : 0, color: '#f1c40f' },
+      pendiente: { count: c_pendientes, percent: total > 0 ? Math.round((c_pendientes / total) * 100) : 0, color: '#e74c3c' }
     });
 
     this.storeStats.set(this.nombresSucursales.map(suc => {
       const filtradas = checklists.filter(c => c.store === suc);
       let sTotal = 0;
       let sOk = 0;
-      filtradas.forEach(c => c.items.forEach((i: any) => { 
-        sTotal++; 
-        if (this.esItemValido(i)) sOk++; 
-      }));
+      filtradas.forEach(c => {
+        if (c.items && Array.isArray(c.items)) {
+          c.items.forEach((i: any) => { 
+            sTotal++; 
+            if (this.esItemValido(i)) sOk++; 
+          });
+        }
+      });
       return { name: suc, progress: sTotal > 0 ? Math.round((sOk / sTotal) * 100) : 0, color: 'var(--brown)' };
     }));
   }
@@ -148,10 +151,14 @@ export class EstadisticasComponent implements OnInit, OnDestroy {
       let eTotal = 0;
       let eOk = 0;
 
-      susListas.forEach(c => c.items.forEach((i: any) => {
-        eTotal++;
-        if (this.esItemValido(i)) eOk++;
-      }));
+      susListas.forEach(c => {
+        if (c.items && Array.isArray(c.items)) {
+          c.items.forEach((i: any) => {
+            eTotal++;
+            if (this.esItemValido(i)) eOk++;
+          });
+        }
+      });
 
       const pct = eTotal > 0 ? Math.round((eOk / eTotal) * 100) : 0;
       return {

@@ -1,0 +1,102 @@
+:host {
+  --brown: #36190D; /* Café mega oscuro exacto al de tu imagen */
+  --coral: #EB602B; /* Naranja institucional */
+  --gold: #F4A261;
+  --green: #2A9D8F;
+  --red: #E76F51;
+  --soft: #F0E5D8;
+  --card: #FFFFFF;
+  --border: #E8D5C4;
+  --cream: #FDF6EC;
+  --shadow: 0 8px 24px rgba(60, 28, 8, 0.08);
+  --shadow-lg: 0 12px 32px rgba(60, 28, 8, 0.12);
+}
+
+/* ======================================================= */
+/* DISEÑO DEL LAYOUT: HEADER Y MENÚ LATERAL (BLINDADO)     */
+/* ======================================================= */
+.app-layout { display: flex; flex-direction: column; height: 100vh; overflow: hidden; background-color: var(--cream); font-family: 'DM Sans', sans-serif; }
+
+/* HEADER */
+.header { background-color: #36190D !important; height: 70px; display: flex; align-items: center; justify-content: space-between; padding: 0 30px; box-shadow: 0 2px 10px rgba(0,0,0,0.3); z-index: 20; border: none !important; }
+.header-left { display: flex; align-items: center; gap: 16px; }
+.header-logo-wrap { width: 36px; height: 36px; background-color: #EB602B !important; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+.header-brand { font-family: 'Playfair Display', serif; font-size: 22px; font-weight: 700; color: #FFF !important; line-height: 1.1; margin-left: 10px; }
+.header-brand small { display: block; font-family: 'DM Sans', sans-serif; font-size: 11px; color: rgba(255, 255, 255, 0.6) !important; text-transform: uppercase; letter-spacing: 1px; }
+.header-right .header-user { font-size: 14px; color: rgba(255, 255, 255, 0.7); }
+.header-right .header-user strong { color: #FFF; font-weight: 700; }
+
+.main-wrapper { display: flex; flex: 1; overflow: hidden; }
+
+/* SIDEBAR (MENÚ LATERAL) */
+.sidebar { width: 270px; background-color: #36190D !important; display: flex; flex-direction: column; border-top: 1px solid rgba(255, 255, 255, 0.05); box-shadow: 2px 0 15px rgba(0,0,0,0.1); z-index: 10; border-right: none !important; }
+.sidebar-header { padding: 30px 20px 20px 30px; display: flex; align-items: center; gap: 16px; }
+.sidebar-avatar { width: 52px; height: 52px; background-color: #EB602B !important; color: #FFF !important; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 700; }
+.sidebar-name { font-family: 'Playfair Display', serif; font-size: 19px; font-weight: 700; color: #FFF !important; margin-bottom: 2px; }
+.sidebar-role { font-size: 13px; color: rgba(255, 255, 255, 0.6) !important; }
+.sidebar-nav { flex: 1; display: flex; flex-direction: column; padding: 10px 0; }
+
+/* BOTONES INACTIVOS */
+.nav-item { display: flex; align-items: center; gap: 16px; padding: 16px 30px; color: #D1B9A6 !important; text-decoration: none; font-size: 16px; font-weight: 600; border-left: 4px solid transparent !important; transition: all 0.2s ease; background: transparent !important; }
+.nav-item:hover { background-color: rgba(255, 255, 255, 0.03) !important; color: #FFF !important; }
+
+/* 🔥 EL BOTÓN ACTIVO (DISEÑO EXACTO A TU IMAGEN) 🔥 */
+.nav-item.active { 
+  background-color: #5C2C16 !important; /* El cuadro café rojizo */
+  color: #EB602B !important;            /* Las letras naranjas */
+  border-left: 4px solid #EB602B !important; /* La línea naranja a la izquierda */
+}
+
+.nav-icon { font-size: 22px; width: 28px; text-align: center; }
+.nav-divider { height: 1px; background-color: rgba(255, 255, 255, 0.05); margin: 15px 30px; }
+.nav-logout { color: #EB602B !important; }
+.nav-logout:hover { background-color: rgba(235, 96, 43, 0.1) !important; }
+
+.content { flex: 1; padding: 40px 50px; overflow-y: auto; background-color: var(--cream); }
+
+/* ======================================================= */
+/* TU CÓDIGO ORIGINAL DE CHECKSTORE                        */
+/* ======================================================= */
+.section-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:40px; flex-wrap:wrap; gap:16px; }
+.section-title { font-family:'Playfair Display',serif; font-size:46px; font-weight:900; color:var(--brown); }
+.section-sub { font-size:20px; color:#9A7060; margin-top:8px; }
+.store-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(450px,1fr)); gap:30px; }
+.store-card {
+  background:var(--card); border-radius:24px;
+  padding:40px; border:1.5px solid var(--border);
+  box-shadow:var(--shadow); transition:.2s;
+  position:relative; overflow:hidden;
+}
+.store-card::before {
+  content:''; position:absolute; top:0; left:0; right:0; height:8px;
+  background:var(--store-color, var(--coral));
+}
+.store-card:hover { box-shadow:var(--shadow-lg); transform:translateY(-6px); }
+.store-icon {
+  width:84px; height:84px; border-radius:50%;
+  background:var(--store-color, var(--coral)); color: white;
+  display:flex; align-items:center; justify-content:center;
+  font-size:40px; margin-bottom:24px; opacity:.9;
+}
+.store-name {
+  font-family:'Playfair Display',serif; font-size:32px;
+  font-weight:700; color:var(--brown); margin-bottom:10px;
+}
+.store-location { font-size:18px; color:#9A7060; margin-bottom:30px; }
+.store-progress { margin-top:30px; }
+.progress-label {
+  display:flex; justify-content:space-between; font-size:18px;
+  color:#9A7060; margin-bottom:12px; font-weight:700;
+}
+.progress-bar-wrap { background:var(--soft); border-radius:20px; height:16px; overflow:hidden; }
+.progress-bar-fill { height:100%; border-radius:20px; transition:width .5s ease; }
+.store-stats {
+  display:flex; justify-content:space-between; margin-top:30px;
+  padding-top:30px; border-top:2px solid var(--border);
+}
+.store-stat-item { text-align:center; }
+.store-stat-val {
+  font-family:'DM Mono',monospace; font-size:36px;
+  font-weight:700; color:var(--brown);
+}
+.store-stat-label { font-size:15px; color:#9A7060; margin-top:6px; font-weight:700; text-transform:uppercase; letter-spacing: .08em;}

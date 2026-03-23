@@ -35,3 +35,119 @@ body {
   background-color: var(--cream);
   min-height: 100vh;
 }
+
+/* =========================================
+   📱 MAGIA RESPONSIVE (CELULARES Y TABLETS)
+   ========================================= */
+
+/* Botón de menú (Hamburguesa) oculto en PC, visible en celular */
+.btn-menu-mobile {
+  display: none;
+  background: transparent;
+  border: none;
+  color: #FFF;
+  font-size: 26px;
+  cursor: pointer;
+  padding: 0;
+}
+
+/* --- AJUSTES PARA TABLETS --- */
+@media screen and (max-width: 992px) {
+  .user-grid, .checklist-grid, .home-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+/* --- AJUSTES PARA CELULARES --- */
+@media screen and (max-width: 768px) {
+  
+  /* 1. Activar el botón de menú */
+  .btn-menu-mobile {
+    display: block !important;
+  }
+
+  /* 2. Limpiar la cabecera para que no se apriete */
+  .header {
+    padding: 0 15px !important;
+  }
+  .header-brand {
+    font-size: 18px !important;
+    margin-left: 10px !important;
+  }
+  .header-brand small {
+    display: none !important; /* Oculta "Panel de gestión" */
+  }
+  .header-user {
+    display: none !important; /* Oculta "Bienvenido Administrador" (ya sale en el menú) */
+  }
+
+  /* 3. Comportamiento del Menú Lateral (Sidebar) */
+  .sidebar {
+    position: fixed !important;
+    top: 0;
+    left: -100% !important; /* Escondido a la izquierda por defecto */
+    height: 100vh !important;
+    width: 280px !important;
+    z-index: 2000 !important;
+    transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    box-shadow: 4px 0 24px rgba(0,0,0,0.5) !important;
+  }
+
+  /* 4. Cuando le das clic al botón, el menú se desliza */
+  .sidebar.mobile-open {
+    left: 0 !important; 
+  }
+
+  /* 5. Fondo oscuro detrás del menú abierto */
+  .mobile-overlay {
+    position: fixed;
+    top: 0; left: 0; width: 100vw; height: 100vh;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 1999;
+    backdrop-filter: blur(2px);
+    animation: fadeIn 0.2s ease;
+  }
+
+  /* 6. Ajustes del contenido principal para que use toda la pantalla */
+  .content {
+    padding: 20px 15px !important;
+  }
+
+  /* 7. Apilar los botones de búsqueda y agregar */
+  .section-header {
+    flex-direction: column;
+    align-items: stretch !important;
+    gap: 15px;
+  }
+  .section-header > div:last-child {
+    justify-content: space-between;
+    width: 100%;
+  }
+  .section-header input {
+    width: 100% !important;
+  }
+
+  /* 8. Las tarjetas se ponen en una sola fila hacia abajo */
+  .user-grid, .checklist-grid, .home-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* 9. Ventanas modales (Formularios) ajustadas al ancho del celular */
+  .modal {
+    width: 95% !important;
+    padding: 20px !important;
+    margin: 10px auto !important;
+  }
+  .form-row {
+    grid-template-columns: 1fr !important; /* Cajas de texto una debajo de otra */
+    gap: 15px !important;
+  }
+  
+  /* 10. Ajustar los permisos premium para que no se salgan de la pantalla */
+  .perm-text strong {
+    font-size: 13px !important;
+  }
+  .perm-text span {
+    font-size: 11px !important;
+  }
+}

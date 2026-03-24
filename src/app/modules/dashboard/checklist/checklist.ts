@@ -19,14 +19,12 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   vistaActual = signal<'lista' | 'detalle'>('lista');
   checklistSeleccionado = signal<any>(null);
   
-  // Variables Modal Viejo (Tareas Únicas)
   isModalOpen = false;
   formName = '';
   formAssigned: string[] = []; 
   formStore = '';
   formItems = [{ text: '', requiresPhoto: false, date: '', time: '' }]; 
   
-  // Variables Modal Nuevo (Rutinas)
   isModalRutinasOpen = false;
   formNameRutina = '';
   formAssignedRutina: string[] = []; 
@@ -34,7 +32,6 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   formRutinas: any[] = []; 
   frecuencias = ['Diaria', 'Semanal', 'Catorcenal', 'Mensual', 'Trimestral'];
 
-  // 🔥 NUEVAS VARIABLES: Modal de Contraseña Maestra 🔥
   isPasswordModalOpen = false;
   passwordInput = '';
   checklistToDelete: any = null;
@@ -126,6 +123,10 @@ export class ChecklistComponent implements OnInit, OnDestroy {
 
       snapshot.forEach(docSnap => {
         const c: any = docSnap.data();
+        
+        // 🔥 FIX ANTIZOMBIES: Si tiene la etiqueta de eliminado, lo ignoramos por completo
+        if (c.eliminado === true) return;
+
         if ((ahora - (typeof c.id === 'number' ? c.id : c.timestampCreacion || ahora)) <= limite24h) {
           const tareas100Porciento = c.items.filter((i:any) => i.checked && (!i.requiresPhoto || i.photo !== null)).length;
           c.calcCompletados = tareas100Porciento;
@@ -280,12 +281,11 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     }
   }
 
-  // 🔥 NUEVA LÓGICA: Modal de Contraseña 🔥
   eliminarChecklist(checklist: any, event: Event) {
-    event.stopPropagation(); // Evita abrir el detalle
+    event.stopPropagation(); 
     this.checklistToDelete = checklist;
     this.passwordInput = '';
-    this.isPasswordModalOpen = true; // Abre nuestro modal elegante
+    this.isPasswordModalOpen = true; 
   }
 
   cerrarPasswordModal() {
@@ -305,7 +305,8 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     if (confirmar) {
       try {
         const docId = this.checklistToDelete.id.toString();
-        await deleteDoc(doc(this.firestore, 'checklists', docId));
+        // 🔥 FIX ANTIZOMBIES: Le ponemos la etiqueta de eliminado en lugar de vaporizarlo
+        await setDoc(doc(this.firestore, 'checklists', docId), { eliminado: true }, { merge: true });
         alert('🗑️ Checklist eliminado para siempre.');
       } catch (error) {
         console.error("Error al eliminar: ", error);
@@ -313,7 +314,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       }
     }
     
-    this.cerrarPasswordModal(); // Cerramos el modal al terminar
+    this.cerrarPasswordModal(); 
   }
 
   verDetalle(checklist: any) { this.checklistSeleccionado.set(checklist); this.vistaActual.set('detalle'); }

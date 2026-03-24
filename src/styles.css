@@ -178,4 +178,34 @@ select.form-input, select.select-input {
     box-sizing: border-box !important;
     overflow: hidden !important; /* Si algo intenta salirse, lo recorta */
   }
+
+  /* 🔥 FIX ESPECÍFICO PARA EL CHECKSTORE EN CELULARES 🔥 */
+
+  /* Forzamos que la cuadrícula de tiendas se ponga en una sola columna */
+  .checkstore-grid {
+    grid-template-columns: 1fr !important;
+    gap: 15px !important;
+  }
+
+  /* Ajustamos las tarjetas de tienda para que no se desborden */
+  .checkstore-card {
+    padding: 20px !important; /* Reducimos el colchón interno */
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Si las estadísticas de la tienda (Checklists, Completados, etc.) se ven mal, 
+     forzamos que se apilen hacia abajo */
+  .store-stats {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 8px !important;
+    width: 100% !important;
+  }
+
+  .store-stat-item {
+    width: 100% !important;
+    justify-content: flex-start !important;
+  }
 }

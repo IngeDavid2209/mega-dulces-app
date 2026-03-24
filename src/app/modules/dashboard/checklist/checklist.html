@@ -345,6 +345,21 @@
         </div>
       </div>
 
+      <div class="modal-overlay" *ngIf="isPasswordModalOpen" style="z-index: 9999;">
+        <div class="modal" style="max-width: 400px; text-align: center; padding: 30px;">
+          <div style="font-size: 45px; margin-bottom: 10px;">🔒</div>
+          <h3 style="color: var(--brown); font-family: 'Playfair Display', serif; margin-bottom: 15px; font-size: 24px;">Seguridad Requerida</h3>
+          <p style="color: #666; font-size: 15px; margin-bottom: 25px;">Ingresa la <strong>CONTRASEÑA MAESTRA</strong> para confirmar la eliminación de este checklist.</p>
+          
+          <input type="password" [(ngModel)]="passwordInput" class="form-input" placeholder="••••••••" style="text-align: center; font-size: 24px; letter-spacing: 5px; margin-bottom: 25px;">
+          
+          <div style="display: flex; gap: 10px; justify-content: center;">
+            <button class="btn-secondary" (click)="cerrarPasswordModal()" style="flex: 1;">Cancelar</button>
+            <button class="btn-save" style="background-color: var(--red); box-shadow: 0 4px 16px rgba(224, 82, 82, 0.3); flex: 1;" (click)="confirmarEliminacion()">Eliminar</button>
+          </div>
+        </div>
+      </div>
+
     </div> 
   </div>
 </div>

@@ -26,7 +26,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   formStore = '';
   formItems = [{ text: '', requiresPhoto: false, date: '', time: '' }]; 
   
-  // 🔥 NUEVAS VARIABLES: Modal Exclusivo de Rutinas 🔥
+  // Variables Modal Nuevo (Rutinas)
   isModalRutinasOpen = false;
   formNameRutina = '';
   formAssignedRutina: string[] = []; 
@@ -34,16 +34,18 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   formRutinas: any[] = []; 
   frecuencias = ['Diaria', 'Semanal', 'Catorcenal', 'Mensual', 'Trimestral'];
 
+  // 🔥 NUEVAS VARIABLES: Modal de Contraseña Maestra 🔥
+  isPasswordModalOpen = false;
+  passwordInput = '';
+  checklistToDelete: any = null;
+
   checklists = signal<any[]>([]); 
   empleados = signal<any[]>([]);  
   sucursalesDisponibles = signal<string[]>([]);
 
   private firestore = inject(Firestore);
-  
-  // 🧹 AQUÍ GUARDAREMOS LOS RADARES PARA APAGARLOS DESPUÉS 🧹
   private destructoresRadares: (() => void)[] = [];
 
-  // Filtro para Modal Viejo
   get empleadosFiltrados() {
     if (!this.formStore) return this.empleados();
     return this.empleados().filter(emp => {
@@ -53,7 +55,6 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     });
   }
 
-  // Filtro para Modal Nuevo (Rutinas)
   get empleadosFiltradosRutina() {
     if (!this.formStoreRutina) return this.empleados();
     return this.empleados().filter(emp => {
@@ -71,7 +72,6 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     this.conectarRadarNube();
   }
 
-  // 🧹 ESTO APAGA LOS RADARES CUANDO TE SALES DE LA PESTAÑA 🧹
   ngOnDestroy() {
     this.destructoresRadares.forEach(apagarRadar => apagarRadar());
   }
@@ -262,7 +262,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
            time: '23:59',
            status: 'pendiente',
            enviado: false,
-           createdBy: 'Robot de Rutinas', // 🔥 Sello de creación
+           createdBy: 'Robot de Rutinas',
            items: itemsVigentes.map((i:any) => ({...i, checked: false, photo: null}))
         };
         await setDoc(docRef, nuevoChecklist);
@@ -280,25 +280,31 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     }
   }
 
-  // 🔥 AQUÍ ESTÁ EL CAMBIO A LA CONTRASEÑA MAESTRA "Mega2323" 🔥
-  async eliminarChecklist(checklist: any, event: Event) {
-    event.stopPropagation(); // Evita que se abra el detalle de la tarjeta
-    
-    const pass = prompt('🔒 SEGURIDAD:\nIngresa la CONTRASEÑA MAESTRA para confirmar la eliminación de este checklist:');
-    
-    if (pass === null) return; // Si le dio "Cancelar"
-    
-    // Validamos contra la nueva contraseña maestra
-    if (pass !== 'Mega2323') {
-      alert('❌ Contraseña maestra incorrecta. Operación cancelada.');
+  // 🔥 NUEVA LÓGICA: Modal de Contraseña 🔥
+  eliminarChecklist(checklist: any, event: Event) {
+    event.stopPropagation(); // Evita abrir el detalle
+    this.checklistToDelete = checklist;
+    this.passwordInput = '';
+    this.isPasswordModalOpen = true; // Abre nuestro modal elegante
+  }
+
+  cerrarPasswordModal() {
+    this.isPasswordModalOpen = false;
+    this.checklistToDelete = null;
+    this.passwordInput = '';
+  }
+
+  async confirmarEliminacion() {
+    if (this.passwordInput !== 'Mega2323') {
+      alert('❌ Contraseña maestra incorrecta. Inténtalo de nuevo.');
       return;
     }
 
-    const confirmar = confirm(`⚠️ ¿Estás completamente seguro de borrar "${checklist.name}"?\nEsta acción no se puede deshacer.`);
+    const confirmar = confirm(`⚠️ ¿Estás completamente seguro de borrar "${this.checklistToDelete.name}"?\nEsta acción no se puede deshacer.`);
     
     if (confirmar) {
       try {
-        const docId = checklist.id.toString();
+        const docId = this.checklistToDelete.id.toString();
         await deleteDoc(doc(this.firestore, 'checklists', docId));
         alert('🗑️ Checklist eliminado para siempre.');
       } catch (error) {
@@ -306,6 +312,8 @@ export class ChecklistComponent implements OnInit, OnDestroy {
         alert('❌ Hubo un error al intentar eliminar el checklist.');
       }
     }
+    
+    this.cerrarPasswordModal(); // Cerramos el modal al terminar
   }
 
   verDetalle(checklist: any) { this.checklistSeleccionado.set(checklist); this.vistaActual.set('detalle'); }
@@ -412,7 +420,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
         time: tareasValidas[0].time || '23:59',
         status: 'pendiente',
         enviado: false,
-        createdBy: this.currentUser?.nombre || 'Desconocido', // 🔥 Le pegamos la firma del creador
+        createdBy: this.currentUser?.nombre || 'Desconocido', 
         items: JSON.parse(JSON.stringify(tareasValidas))
       };
       this.guardarEnLaNube(checklistTareas);
@@ -485,7 +493,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
           assigned: empleadoNombre,
           store: this.formStoreRutina,
           frecuencia: frecuencia,
-          createdBy: this.currentUser?.nombre || 'Desconocido', // 🔥 Firma del creador
+          createdBy: this.currentUser?.nombre || 'Desconocido', 
           items: JSON.parse(JSON.stringify(rutinasPorFrecuencia[frecuencia]))
         };
         

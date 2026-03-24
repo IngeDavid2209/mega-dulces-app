@@ -16,6 +16,8 @@ export class EstadisticasComponent implements OnInit, OnDestroy {
   toggleMenu() { this.isMenuOpen = !this.isMenuOpen; }
 
   currentUser: any = null;
+  // 🔥 Nuevo: Guardaremos las sucursales permitidas para este usuario
+  sucursalesPermitidas: string[] = [];
 
   globalProgress = signal(0);
   completedItems = signal(0);
@@ -34,12 +36,9 @@ export class EstadisticasComponent implements OnInit, OnDestroy {
     'FINANZAS', 'SISTEMAS', 'RH', 'MKT', 'MANTENIMIENTO'
   ];
 
-  // 🔥 FIX: Pre-cargamos las 17 sucursales en 0% desde el inicio para que no haya huecos
-  storeStats = signal<any[]>(
-    this.nombresSucursales.map(suc => ({ name: suc, progress: 0, color: 'var(--brown)' }))
-  );
+  storeStats = signal<any[]>([]);
   
-  sucursalSeleccionadaParaEmpleados = signal('Morelia Abastos');
+  sucursalSeleccionadaParaEmpleados = signal('');
   empleadosStats = signal<any[]>([]);
   
   todosLosChecklists: any[] = []; 
@@ -50,12 +49,38 @@ export class EstadisticasComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     const sesion = localStorage.getItem('md_sesion_actual');
-    if (sesion) this.currentUser = JSON.parse(sesion);
+    if (sesion) {
+      this.currentUser = JSON.parse(sesion);
+      this.determinarSucursalesPermitidas();
+    }
     this.conectarRadarNube(); 
   }
 
   ngOnDestroy() {
     this.destructoresRadares.forEach(apagarRadar => apagarRadar());
+  }
+
+  // 🔥 LÓGICA DE PERMISOS: ¿Qué sucursales puede ver?
+  determinarSucursalesPermitidas() {
+    if (!this.currentUser) return;
+
+    if (this.currentUser.rol === 'admin' || (this.currentUser.sucursales && this.currentUser.sucursales.includes('Todas las sucursales'))) {
+      // Si es admin o tiene "Todas las sucursales", ve el imperio completo
+      this.sucursalesPermitidas = [...this.nombresSucursales];
+    } else {
+      // Si no, solo ve las sucursales de su perfil
+      this.sucursalesPermitidas = this.currentUser.sucursales || [this.currentUser.sucursal || ''];
+    }
+
+    // Inicializamos las barras de progreso solo para las sucursales permitidas
+    this.storeStats.set(
+      this.sucursalesPermitidas.map(suc => ({ name: suc, progress: 0, color: 'var(--brown)' }))
+    );
+
+    // Seleccionamos por defecto la primera sucursal permitida para el panel de empleados
+    if (this.sucursalesPermitidas.length > 0) {
+      this.sucursalSeleccionadaParaEmpleados.set(this.sucursalesPermitidas[0]);
+    }
   }
 
   esItemValido(item: any): boolean {
@@ -78,7 +103,9 @@ export class EstadisticasComponent implements OnInit, OnDestroy {
       snapshot.forEach(docSnap => {
         const c: any = docSnap.data();
         const timestamp = c.id || c.timestampCreacion || ahora;
-        if ((ahora - timestamp) <= sieteDias) {
+        
+        // 🔥 FILTRO: Solo descargar checklists de las sucursales permitidas
+        if ((ahora - timestamp) <= sieteDias && this.sucursalesPermitidas.includes(c.store)) {
           listas.push(c);
         }
       });
@@ -123,7 +150,8 @@ export class EstadisticasComponent implements OnInit, OnDestroy {
       pendiente: { count: c_pendientes, percent: total > 0 ? Math.round((c_pendientes / total) * 100) : 0, color: '#e74c3c' }
     });
 
-    this.storeStats.set(this.nombresSucursales.map(suc => {
+    // Calculamos el progreso SOLO para las sucursales permitidas
+    this.storeStats.set(this.sucursalesPermitidas.map(suc => {
       const filtradas = checklists.filter(c => c.store === suc);
       let sTotal = 0;
       let sOk = 0;
@@ -141,6 +169,12 @@ export class EstadisticasComponent implements OnInit, OnDestroy {
 
   calcularEstadisticasEmpleados() {
     const suc = this.sucursalSeleccionadaParaEmpleados();
+    // Si no tiene sucursales asignadas, no mostramos empleados
+    if (!suc || !this.sucursalesPermitidas.includes(suc)) {
+        this.empleadosStats.set([]);
+        return;
+    }
+
     const empleados = this.todosLosUsuariosNube.filter((u: any) => {
       const susSucursales = u.sucursales || [u.sucursal || ''];
       return u.rol === 'trabajador' && susSucursales.includes(suc);

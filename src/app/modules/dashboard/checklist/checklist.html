@@ -36,7 +36,6 @@
         <a class="nav-item" routerLink="/personal" routerLinkActive="active" *ngIf="currentUser?.rol === 'admin'" (click)="isMenuOpen = false"><span class="nav-icon">👥</span> Personal</a>
         
         <div class="nav-divider"></div>
-        <a class="nav-item" routerLink="/cambio-clave" routerLinkActive="active" (click)="isMenuOpen = false"><span class="nav-icon">🔑</span> Cambio de Clave</a>
         <a class="nav-item nav-logout" routerLink="/login"><span class="nav-icon">🚪</span> Cerrar Sesión</a>
       </nav>
     </aside>

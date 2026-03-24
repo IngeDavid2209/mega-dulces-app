@@ -43,17 +43,17 @@
           <div class="section-sub">Gestión de usuarios y accesos del equipo</div>
         </div>
         
-        <div style="display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
-          <div style="position: relative;">
+        <div style="display: flex; gap: 15px; align-items: center; flex-wrap: wrap; width: 100%;">
+          <div style="position: relative; flex: 1; min-width: 250px;">
             <span style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 16px; color: #888;">🔍</span>
-            <input type="text" class="form-input" [(ngModel)]="terminoBusqueda" placeholder="Buscar por nombre, cargo o sucursal..." style="padding-left: 35px; min-width: 280px; border-radius: 8px; margin: 0;">
+            <input type="text" class="form-input" [(ngModel)]="terminoBusqueda" placeholder="Buscar por nombre, cargo o sucursal..." style="padding-left: 35px; width: 100%; border-radius: 8px; margin: 0;">
           </div>
 
-          <button class="btn-add" style="background-color: #2ecc71; color: white; border-color: #27ae60;" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeAdministrarPersonal" (click)="descargarExcel()">
-            📊 Descargar Excel
+          <button class="btn-add" style="background-color: #2ecc71; color: white; border-color: #27ae60; justify-content: center;" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeAdministrarPersonal" (click)="descargarExcel()">
+            📊 Excel
           </button>
 
-          <button class="btn-add" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeAdministrarPersonal" (click)="abrirModal()">+ Agregar Usuario</button>
+          <button class="btn-add" style="justify-content: center;" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeAdministrarPersonal" (click)="abrirModal()">+ Nuevo</button>
         </div>
       </div>
 
@@ -198,7 +198,6 @@
               <label class="form-label" style="margin-bottom: 12px;">Privilegios y Accesos Especiales</label>
               
               <div class="premium-permissions-list">
-                
                 <label class="premium-perm-item">
                   <div class="perm-icon">📋</div>
                   <div class="perm-text">

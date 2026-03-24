@@ -102,7 +102,7 @@
                     style="width: auto; min-width: 200px; cursor: pointer;" 
                     [value]="sucursalSeleccionadaParaEmpleados()"
                     (change)="alCambiarSucursalEmpleados($event)">
-              <option *ngFor="let suc of nombresSucursales" [value]="suc">{{ suc }}</option>
+              <option *ngFor="let suc of sucursalesPermitidas" [value]="suc">{{ suc }}</option>
             </select>
           </div>
 

@@ -22,17 +22,23 @@
   padding: 0; 
 }
 
-body {
+/* 🔥 FIX: Cero desbordamientos, fondo global */
+html, body {
   font-family: 'DM Sans', sans-serif;
   background: var(--cream) !important;
   color: var(--brown);
   min-height: 100vh;
-  overflow-x: hidden;
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden !important; /* Prohíbe que la pantalla se mueva a los lados */
 }
 
 .app-layout {
   background-color: var(--cream);
   min-height: 100vh;
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden !important;
 }
 
 /* 🔥 FIX: Devolver la flechita a los select desplegables en todos lados */
@@ -42,11 +48,11 @@ select.form-input, select.select-input {
   -moz-appearance: auto !important;
   padding-right: 30px !important;
   cursor: pointer;
-  background-image: none !important; /* Quita flechas raras duplicadas */
+  background-image: none !important;
 }
 
 /* =========================================
-   📱 MAGIA RESPONSIVE (CELULARES Y TABLETS)
+   📱 MAGIA RESPONSIVE EXTREMA (CELULARES)
    ========================================= */
 
 .btn-menu-mobile {
@@ -67,12 +73,14 @@ select.form-input, select.select-input {
 
 @media screen and (max-width: 768px) {
   
+  /* 1. Activa el botón de menú y ajusta cabecera */
   .btn-menu-mobile { display: block !important; }
   .header { padding: 0 15px !important; }
-  .header-brand { font-size: 18px !important; margin-left: 10px !important; }
+  .header-brand { font-size: 16px !important; margin-left: 10px !important; white-space: normal; line-height: 1.2; }
   .header-brand small { display: none !important; }
   .header-user { display: none !important; }
 
+  /* 2. Menú Lateral Escondido */
   .sidebar {
     position: fixed !important;
     top: 0; left: -100% !important; 
@@ -81,7 +89,6 @@ select.form-input, select.select-input {
     transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
     box-shadow: 4px 0 24px rgba(0,0,0,0.5) !important;
   }
-
   .sidebar.mobile-open { left: 0 !important; }
 
   .mobile-overlay {
@@ -90,38 +97,83 @@ select.form-input, select.select-input {
     backdrop-filter: blur(2px); animation: fadeIn 0.2s ease;
   }
 
-  .content { padding: 20px 15px !important; }
-
-  .section-header {
-    flex-direction: column; align-items: stretch !important; gap: 15px;
+  /* 3. Contenedor principal sin salirse de los márgenes */
+  .content { 
+    padding: 20px 15px !important; 
+    width: 100% !important; 
+    max-width: 100vw !important;
+    box-sizing: border-box !important;
   }
-  .section-header > div:last-child { justify-content: space-between; width: 100%; }
-  .section-header input { width: 100% !important; }
 
+  /* 🔥 4. DESTRUIR MIN-WIDTHS QUE ROMPEN LA PANTALLA 🔥 */
+  input, select, textarea, button, div {
+    max-width: 100% !important;
+  }
+  
+  [style*="min-width"] {
+    min-width: 0 !important;
+  }
+
+  /* 🔥 5. OBLIGAR A QUE LAS BÚSQUEDAS Y FECHAS SE APILEN HACIA ABAJO 🔥 */
+  .section-header, 
+  div[style*="display: flex"][style*="gap: 15px"],
+  .search-filters-container {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+    width: 100% !important;
+  }
+
+  /* 6. Las cajas de Desde/Hasta ahora toman todo el ancho */
+  .section-header > div, 
+  div[style*="display: flex"] > div[style*="flex: 1"],
+  div[style*="display: flex"] > div[style*="flex: 2"] {
+    width: 100% !important;
+    margin-bottom: 5px;
+  }
+
+  /* 7. Botones al 100% de ancho */
+  .search-filters-container button, .section-header button {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+
+  /* 8. Tarjetas en 1 sola columna hacia abajo */
   .user-grid, .checklist-grid, .home-grid {
-    grid-template-columns: 1fr !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 15px !important;
+    width: 100% !important;
   }
 
+  /* 9. Agrandar los botones de acción (📋 Historial, Editar, Borrar) para que el dedo no falle */
+  .action-buttons {
+    display: flex !important;
+    gap: 10px !important;
+    justify-content: flex-end !important;
+    width: 100% !important;
+    margin-top: 15px !important;
+  }
+  
+  .btn-action {
+    padding: 12px 15px !important;
+    font-size: 22px !important;
+    background: #f4f6f8 !important;
+    border-radius: 8px !important;
+    opacity: 1 !important;
+    flex: 1 !important; /* Hacemos los botones anchos */
+    text-align: center !important;
+  }
+
+  /* 10. Formularios en Modal */
   .modal {
     width: 95% !important; padding: 20px !important; margin: 10px auto !important;
   }
   .form-row {
-    grid-template-columns: 1fr !important; gap: 15px !important;
+    display: flex !important; flex-direction: column !important; gap: 15px !important;
   }
   
   .perm-text strong { font-size: 13px !important; }
   .perm-text span { font-size: 11px !important; }
-
-  /* 🔥 FIX HISTORIAL: Obliga a que los campos de búsqueda se apilen en celular */
-  .search-filters-container {
-    flex-direction: column !important;
-    align-items: stretch !important;
-  }
-  .search-filters-container > div {
-    width: 100% !important;
-  }
-  .search-filters-container button {
-    width: 100% !important;
-    justify-content: center;
-  }
 }

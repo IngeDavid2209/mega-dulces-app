@@ -61,15 +61,27 @@
 
         <div class="checklist-grid">
           <div class="checklist-card" *ngFor="let checklist of checklists()" (click)="verDetalle(checklist)">
-            <div class="checklist-card-header">
-              <div class="checklist-card-title">{{ checklist.name }}</div>
-              <div class="checklist-card-badge"
-                   [ngClass]="{
-                     'badge-pendiente': checklist.status === 'pendiente',
-                     'badge-en-progreso': checklist.status === 'en-progreso',
-                     'badge-completo': checklist.status === 'completo'
-                   }">
-                {{ checklist.status === 'en-progreso' ? 'En Progreso' : (checklist.status | titlecase) }}
+            
+            <div class="checklist-card-header" style="display: flex; align-items: flex-start; justify-content: space-between; gap: 10px;">
+              <div class="checklist-card-title" style="flex: 1;">{{ checklist.name }}</div>
+              
+              <div style="display: flex; align-items: center; gap: 12px;">
+                <div class="checklist-card-badge"
+                     [ngClass]="{
+                       'badge-pendiente': checklist.status === 'pendiente',
+                       'badge-en-progreso': checklist.status === 'en-progreso',
+                       'badge-completo': checklist.status === 'completo'
+                     }">
+                  {{ checklist.status === 'en-progreso' ? 'En Progreso' : (checklist.status | titlecase) }}
+                </div>
+                
+                <button class="btn-delete-checklist" 
+                        *ngIf="currentUser?.rol === 'admin' || checklist.createdBy === currentUser?.nombre" 
+                        (click)="eliminarChecklist(checklist, $event)" 
+                        style="background: #FFE5E5; color: var(--red); border: 1px solid #FFCCCC; border-radius: 8px; font-size: 16px; cursor: pointer; padding: 6px 10px; transition: 0.2s; flex-shrink: 0;"
+                        title="Eliminar permanentemente">
+                  🗑️
+                </button>
               </div>
             </div>
             

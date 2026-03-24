@@ -2,7 +2,8 @@ import { Component, signal, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
-import { Firestore, collection, doc, setDoc, getDoc, onSnapshot } from '@angular/fire/firestore';
+// 🔥 FIX: Importamos deleteDoc para poder borrar cosas de la base de datos
+import { Firestore, collection, doc, setDoc, getDoc, deleteDoc, onSnapshot } from '@angular/fire/firestore';
 
 @Component({
   selector: 'app-checklist',
@@ -127,7 +128,6 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       snapshot.forEach(docSnap => {
         const c: any = docSnap.data();
         if ((ahora - (typeof c.id === 'number' ? c.id : c.timestampCreacion || ahora)) <= limite24h) {
-          // ⚡ OPTIMIZACIÓN: Pre-calculamos todo aquí para que el HTML no sufra ⚡
           const tareas100Porciento = c.items.filter((i:any) => i.checked && (!i.requiresPhoto || i.photo !== null)).length;
           c.calcCompletados = tareas100Porciento;
           c.calcProgreso = Math.round((tareas100Porciento / c.items.length) * 100) || 0;
@@ -263,6 +263,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
            time: '23:59',
            status: 'pendiente',
            enviado: false,
+           createdBy: 'Robot de Rutinas', // 🔥 Sello de creación
            items: itemsVigentes.map((i:any) => ({...i, checked: false, photo: null}))
         };
         await setDoc(docRef, nuevoChecklist);
@@ -277,6 +278,33 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       await setDoc(ref, checklist, { merge: true });
     } catch (error) {
       console.error("Error subiendo a la nube: ", error);
+    }
+  }
+
+  // 🔥 NUEVA FUNCIÓN: Eliminar Checklist con Contraseña 🔥
+  async eliminarChecklist(checklist: any, event: Event) {
+    event.stopPropagation(); // Evita que se abra el detalle de la tarjeta
+    
+    const pass = prompt('🔒 SEGURIDAD:\nIngresa TU CONTRASEÑA para confirmar la eliminación de este checklist:');
+    
+    if (pass === null) return; // Si le dio "Cancelar"
+    
+    if (pass !== this.currentUser.password) {
+      alert('❌ Contraseña incorrecta. Operación cancelada.');
+      return;
+    }
+
+    const confirmar = confirm(`⚠️ ¿Estás completamente seguro de borrar "${checklist.name}"?\nEsta acción no se puede deshacer.`);
+    
+    if (confirmar) {
+      try {
+        const docId = checklist.id.toString();
+        await deleteDoc(doc(this.firestore, 'checklists', docId));
+        alert('🗑️ Checklist eliminado para siempre.');
+      } catch (error) {
+        console.error("Error al eliminar: ", error);
+        alert('❌ Hubo un error al intentar eliminar el checklist.');
+      }
     }
   }
 
@@ -304,7 +332,6 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     const checkboxesMarcados = actual.items.filter((i:any) => i.checked).length;
     const tareas100Porciento = actual.items.filter((i:any) => this.esItemCompleto(i)).length;
     
-    // ⚡ Actualizamos los cálculos pre-digeridos en tiempo real ⚡
     actual.calcCompletados = tareas100Porciento;
     actual.calcProgreso = Math.round((tareas100Porciento / actual.items.length) * 100) || 0;
 
@@ -330,7 +357,6 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     this.volverALista();
   }
 
-  // Lógica para Modal Viejo
   toggleEmpleado(nombre: string) {
     const index = this.formAssigned.indexOf(nombre);
     if (index > -1) { this.formAssigned.splice(index, 1); } else { this.formAssigned.push(nombre); }
@@ -386,6 +412,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
         time: tareasValidas[0].time || '23:59',
         status: 'pendiente',
         enviado: false,
+        createdBy: this.currentUser?.nombre || 'Desconocido', // 🔥 Le pegamos la firma del creador
         items: JSON.parse(JSON.stringify(tareasValidas))
       };
       this.guardarEnLaNube(checklistTareas);
@@ -395,7 +422,6 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     this.cerrarModal();
   }
 
-  // 🔥 LÓGICA: Modal de Rutinas 🔥
   toggleEmpleadoRutina(nombre: string) {
     const index = this.formAssignedRutina.indexOf(nombre);
     if (index > -1) { this.formAssignedRutina.splice(index, 1); } else { this.formAssignedRutina.push(nombre); }
@@ -459,6 +485,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
           assigned: empleadoNombre,
           store: this.formStoreRutina,
           frecuencia: frecuencia,
+          createdBy: this.currentUser?.nombre || 'Desconocido', // 🔥 Firma del creador
           items: JSON.parse(JSON.stringify(rutinasPorFrecuencia[frecuencia]))
         };
         

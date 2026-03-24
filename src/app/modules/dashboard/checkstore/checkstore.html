@@ -48,15 +48,15 @@
         </div>
       </div>
 
-      <div style="margin-top: 10px; margin-bottom: 20px;">
+      <div style="margin-top: 10px; margin-bottom: 20px;" *ngIf="comerciales().length > 0">
         <h2 style="color: var(--brown); margin-bottom: 5px; font-size: 1.4rem; display: flex; align-items: center; gap: 8px;">
           <span>🛍️</span> ZONA COMERCIAL
         </h2>
         <p style="color: #666; font-size: 0.9rem; margin-top: 0;">Operaciones en sucursales físicas</p>
       </div>
 
-      <div class="store-grid">
-        <div class="store-card" *ngFor="let store of comerciales()" [style.--store-color]="store.color">
+      <div class="store-grid" *ngIf="comerciales().length > 0">
+        <div class="store-card checkstore-card" *ngFor="let store of comerciales()" [style.--store-color]="store.color">
           <div class="store-icon" [style.background]="store.color">{{ store.icon }}</div>
           <div class="store-name">{{ store.name }}</div>
           <div class="store-location">{{ store.location }}</div>
@@ -88,17 +88,17 @@
         </div>
       </div>
 
-      <hr style="border: 0; border-top: 2px dashed #e0e0e0; margin: 40px 0;">
+      <hr style="border: 0; border-top: 2px dashed #e0e0e0; margin: 40px 0;" *ngIf="comerciales().length > 0 && administrativas().length > 0">
 
-      <div style="margin-top: 10px; margin-bottom: 20px;">
+      <div style="margin-top: 10px; margin-bottom: 20px;" *ngIf="administrativas().length > 0">
         <h2 style="color: var(--brown); margin-bottom: 5px; font-size: 1.4rem; display: flex; align-items: center; gap: 8px;">
           <span>💼</span> ZONA ADMINISTRATIVA
         </h2>
         <p style="color: #666; font-size: 0.9rem; margin-top: 0;">Departamentos y corporativo</p>
       </div>
 
-      <div class="store-grid" style="margin-bottom: 40px;">
-        <div class="store-card" *ngFor="let store of administrativas()" [style.--store-color]="store.color" style="background-color: #fafafa; border: 1px solid #eaeaea;">
+      <div class="store-grid checkstore-grid" style="margin-bottom: 40px;" *ngIf="administrativas().length > 0">
+        <div class="store-card checkstore-card" *ngFor="let store of administrativas()" [style.--store-color]="store.color" style="background-color: #fafafa; border: 1px solid #eaeaea;">
           <div class="store-icon" [style.background]="store.color">{{ store.icon }}</div>
           <div class="store-name">{{ store.name }}</div>
           <div class="store-location">{{ store.location }}</div>

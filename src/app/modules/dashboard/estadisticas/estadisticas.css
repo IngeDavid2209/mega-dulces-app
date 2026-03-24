@@ -64,11 +64,40 @@
 @media screen and (max-width: 768px) {
   .section-title { font-size: 28px !important; }
   .section-sub { font-size: 16px !important; }
-  .stats-grid { display: flex !important; flex-direction: column !important; gap: 15px !important; width: 100% !important; }
-  .stat-card { padding: 25px 20px !important; }
+  .stats-grid { 
+    display: flex !important; 
+    flex-direction: column !important; 
+    gap: 15px !important; 
+    width: 100% !important; 
+    box-sizing: border-box !important;
+  }
+  
+  /* 🔥 FIX: Encerrar las tarjetas para que no se desborden */
+  .stat-card { 
+    padding: 20px 15px !important; 
+    width: 100% !important; 
+    max-width: 100% !important; 
+    box-sizing: border-box !important; 
+    overflow: hidden !important;
+  }
+
+  /* 🔥 FIX: Evitar que el selector de "Canindo" se salga */
+  select {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+  
+  /* 🔥 FIX: Limitar los contenedores de los empleados */
+  div[style*="margin-bottom: 20px"] {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
   .stat-card-val { font-size: 40px !important; }
   .stat-bar-row { flex-direction: column !important; align-items: flex-start !important; gap: 8px !important; margin-top: 25px !important;}
-  .stat-bar-label { width: 100% !important; font-size: 15px !important; }
-  .stat-bar-track { width: 100% !important; }
+  .stat-bar-label { width: 100% !important; font-size: 15px !important; white-space: normal !important; word-wrap: break-word !important;}
+  .stat-bar-track { width: 100% !important; max-width: 100% !important; box-sizing: border-box !important;}
   .stat-bar-pct { width: 100% !important; text-align: left !important; font-size: 14px !important; }
 }

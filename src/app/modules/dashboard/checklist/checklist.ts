@@ -2,7 +2,6 @@ import { Component, signal, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
-// 🔥 FIX: Importamos deleteDoc para poder borrar cosas de la base de datos
 import { Firestore, collection, doc, setDoc, getDoc, deleteDoc, onSnapshot } from '@angular/fire/firestore';
 
 @Component({
@@ -281,16 +280,17 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     }
   }
 
-  // 🔥 NUEVA FUNCIÓN: Eliminar Checklist con Contraseña 🔥
+  // 🔥 AQUÍ ESTÁ EL CAMBIO A LA CONTRASEÑA MAESTRA "Mega2323" 🔥
   async eliminarChecklist(checklist: any, event: Event) {
     event.stopPropagation(); // Evita que se abra el detalle de la tarjeta
     
-    const pass = prompt('🔒 SEGURIDAD:\nIngresa TU CONTRASEÑA para confirmar la eliminación de este checklist:');
+    const pass = prompt('🔒 SEGURIDAD:\nIngresa la CONTRASEÑA MAESTRA para confirmar la eliminación de este checklist:');
     
     if (pass === null) return; // Si le dio "Cancelar"
     
-    if (pass !== this.currentUser.password) {
-      alert('❌ Contraseña incorrecta. Operación cancelada.');
+    // Validamos contra la nueva contraseña maestra
+    if (pass !== 'Mega2323') {
+      alert('❌ Contraseña maestra incorrecta. Operación cancelada.');
       return;
     }
 

@@ -69,12 +69,17 @@
 .detail-meta strong { color:var(--brown); }
 
 .checklist-detail-items { display:flex; flex-direction:column; gap:16px; }
-.checklist-detail-item { background:var(--card); border-radius:16px; padding:20px 24px; border:1.5px solid var(--border); display:flex; align-items:center; gap:18px; transition:.2s; flex-direction: column; align-items: flex-start; }
+.checklist-detail-item { background:var(--card); border-radius:16px; padding:20px 24px; border:1.5px solid var(--border); display:flex; align-items:flex-start; gap:18px; transition:.2s; flex-direction: column; }
 .item-main-row { display: flex; align-items: center; gap: 18px; width: 100%; }
 .checklist-detail-item:hover { box-shadow:var(--shadow); transform:translateX(4px); }
 
 .item-check { width:36px; height:36px; border-radius:10px; border:2px solid var(--border); flex-shrink:0; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:.2s; background:#fff; }
 .item-check.checked { background:var(--green); border-color:var(--green); color:#fff; font-size:20px; }
+.item-check:hover:not(.disabled-check) { border-color:var(--coral); }
+
+/* 🔥 NUEVO: CLASE PARA CUANDO SE PASA DE LA HORA 🔥 */
+.item-check.disabled-check { opacity: 0.4; cursor: not-allowed; background: #f0f0f0; border-color: #ddd; }
+
 .item-text { flex:1; font-size:18px; font-weight:600; }
 .item-text.done { text-decoration:line-through; color:#9A7060; }
 
@@ -89,7 +94,7 @@
 .empty-state { text-align:center; padding:80px 20px; color:#9A7060; grid-column: 1 / -1;}
 .empty-state-icon { font-size:80px; margin-bottom:20px; }
 
-.modal-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.6); z-index: 300; display: flex; align-items: center; justify-content: center; padding: 20px; animation: fadeIn 0.25s ease; }
+.modal-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.6); z-index: 300; display: flex; align-items: center; justify-content: center; padding: 20px; animation: fadeIn 0.25s ease; backdrop-filter: blur(2px); }
 .modal { background: var(--cream); border-radius: 24px; width: 100%; max-width: 800px; max-height: 90vh; overflow-y: auto; box-shadow: var(--shadow-lg); animation: modalPop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1); }
 @keyframes modalPop { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
@@ -112,9 +117,12 @@
 .btn-group { display: flex; gap: 16px; justify-content: flex-end; margin-top: 40px; }
 .photo-toggle { display: flex; align-items: center; gap: 8px; background: var(--soft); color: var(--brown); padding: 10px 14px; border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; white-space: nowrap; transition: .2s; border: 1.5px solid transparent; }
 
-/* ======================================================= */
-/* 📱 MAGIA RESPONSIVE EXTREMA (CHECKLIST)                 */
-/* ======================================================= */
+.send-section { margin-top: 40px; text-align: center; }
+.btn-send { background: linear-gradient(135deg, var(--coral), var(--red)); color: white; border: none; padding: 20px 40px; border-radius: 16px; font-size: 20px; font-weight: 800; font-family: 'DM Sans', sans-serif; cursor: pointer; transition: .2s; box-shadow: 0 8px 24px rgba(235, 96, 43, 0.3); display: inline-flex; align-items: center; gap: 12px; }
+.btn-send:hover { transform: translateY(-4px); box-shadow: 0 12px 32px rgba(235, 96, 43, 0.4); }
+.send-section-success { margin-top: 40px; background: #E5F5EC; border: 2px solid var(--green); padding: 30px; border-radius: 16px; text-align: center; color: var(--green); }
+
+/* CELULARES */
 @media screen and (max-width: 768px) {
   .section-title { font-size: 28px !important; }
   .section-sub { font-size: 16px !important; }
@@ -131,7 +139,6 @@
   .item-photo-section { margin-left: 0 !important; width: 100% !important; display: flex; flex-direction: column; align-items: center;}
   .preview-wrap-mini { width: 100% !important; max-width: 250px !important; height: 180px !important; }
 
-  /* Modales a 1 columna */
   .form-row { display: flex !important; flex-direction: column !important; gap: 15px !important; }
   .checklist-item-wrap { flex-wrap: wrap !important; }
   .photo-toggle { width: 100% !important; justify-content: center !important; }

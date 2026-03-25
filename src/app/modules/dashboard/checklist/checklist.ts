@@ -124,7 +124,6 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       snapshot.forEach(docSnap => {
         const c: any = docSnap.data();
         
-        // 🔥 FIX ANTIZOMBIES: Si tiene la etiqueta de eliminado, lo ignoramos por completo
         if (c.eliminado === true) return;
 
         if ((ahora - (typeof c.id === 'number' ? c.id : c.timestampCreacion || ahora)) <= limite24h) {
@@ -146,6 +145,33 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       }
     });
     this.destructoresRadares.push(radarChecklists);
+  }
+
+  // 🔥 NUEVA FUNCIÓN MATEMÁTICA: RELOJ ESTRICTO 🔥
+  isTareaVencida(item: any, checklistDate: string): boolean {
+    if (!checklistDate) return false; // Si no hay fecha en el checklist, no sabemos cuándo vence
+
+    let hora = '23';
+    let minuto = '59';
+
+    // Verificamos si tiene una hora límite establecida (sea de rutina o de tarea única)
+    if (item.tipo === 'rutina' && item.horaLimite) {
+      const partes = item.horaLimite.split(':');
+      if (partes.length === 2) { hora = partes[0]; minuto = partes[1]; }
+    } else if (item.tipo === 'tarea' && item.time) {
+      const partes = item.time.split(':');
+      if (partes.length === 2) { hora = partes[0]; minuto = partes[1]; }
+    }
+
+    // Dividimos la fecha en texto ("2026-03-24") en números
+    const [year, month, day] = checklistDate.split('-');
+    
+    // Armamos un objeto "Fecha" de computadora para comparar (Ojo: los meses empiezan en 0, por eso month - 1)
+    const deadline = new Date(Number(year), Number(month) - 1, Number(day), Number(hora), Number(minuto), 59);
+    const ahora = new Date();
+
+    // Si la fecha actual ya superó la fecha límite que armamos arriba, regresamos true (Vencido)
+    return ahora > deadline;
   }
 
   esDiaCerrado(sucursal: string, fecha: Date = new Date()): boolean {
@@ -305,7 +331,6 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     if (confirmar) {
       try {
         const docId = this.checklistToDelete.id.toString();
-        // 🔥 FIX ANTIZOMBIES: Le ponemos la etiqueta de eliminado en lugar de vaporizarlo
         await setDoc(doc(this.firestore, 'checklists', docId), { eliminado: true }, { merge: true });
         alert('🗑️ Checklist eliminado para siempre.');
       } catch (error) {

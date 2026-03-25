@@ -127,9 +127,11 @@ export class ChecklistComponent implements OnInit, OnDestroy {
         if (c.eliminado === true) return;
 
         if ((ahora - (typeof c.id === 'number' ? c.id : c.timestampCreacion || ahora)) <= limite24h) {
-          const tareas100Porciento = c.items.filter((i:any) => i.checked && (!i.requiresPhoto || i.photo !== null)).length;
-          c.calcCompletados = tareas100Porciento;
-          c.calcProgreso = Math.round((tareas100Porciento / c.items.length) * 100) || 0;
+          
+          // 🔥 FIX UX: El progreso visual ahora sube con solo darle click a la casilla
+          const tareasMarcadas = c.items.filter((i:any) => i.checked).length;
+          c.calcCompletados = tareasMarcadas;
+          c.calcProgreso = Math.round((tareasMarcadas / c.items.length) * 100) || 0;
           
           todasLasListas.push(c);
         }
@@ -147,14 +149,12 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     this.destructoresRadares.push(radarChecklists);
   }
 
-  // 🔥 NUEVA FUNCIÓN MATEMÁTICA: RELOJ ESTRICTO 🔥
   isTareaVencida(item: any, checklistDate: string): boolean {
-    if (!checklistDate) return false; // Si no hay fecha en el checklist, no sabemos cuándo vence
+    if (!checklistDate) return false; 
 
     let hora = '23';
     let minuto = '59';
 
-    // Verificamos si tiene una hora límite establecida (sea de rutina o de tarea única)
     if (item.tipo === 'rutina' && item.horaLimite) {
       const partes = item.horaLimite.split(':');
       if (partes.length === 2) { hora = partes[0]; minuto = partes[1]; }
@@ -163,14 +163,10 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       if (partes.length === 2) { hora = partes[0]; minuto = partes[1]; }
     }
 
-    // Dividimos la fecha en texto ("2026-03-24") en números
     const [year, month, day] = checklistDate.split('-');
-    
-    // Armamos un objeto "Fecha" de computadora para comparar (Ojo: los meses empiezan en 0, por eso month - 1)
     const deadline = new Date(Number(year), Number(month) - 1, Number(day), Number(hora), Number(minuto), 59);
     const ahora = new Date();
 
-    // Si la fecha actual ya superó la fecha límite que armamos arriba, regresamos true (Vencido)
     return ahora > deadline;
   }
 
@@ -259,7 +255,9 @@ export class ChecklistComponent implements OnInit, OnDestroy {
 
   async ejecutarRobotRutinas(moldes: any[]) {
     const fechaActual = new Date();
-    const fechaString = fechaActual.toISOString().split('T')[0];
+    const offset = fechaActual.getTimezoneOffset() * 60000;
+    const fechaLocal = new Date(fechaActual.getTime() - offset);
+    const fechaString = fechaLocal.toISOString().split('T')[0]; 
 
     for (const molde of moldes) {
       if (this.esDiaCerrado(molde.store, fechaActual)) {
@@ -363,15 +361,18 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     const actual = this.checklistSeleccionado();
     if(!actual) return;
     
+    // 🔥 FIX UX: El progreso en pantalla reacciona a las tareas marcadas
     const checkboxesMarcados = actual.items.filter((i:any) => i.checked).length;
+    // ... Pero el auditor estricto sigue verificando si tienen la foto subida
     const tareas100Porciento = actual.items.filter((i:any) => this.esItemCompleto(i)).length;
     
-    actual.calcCompletados = tareas100Porciento;
-    actual.calcProgreso = Math.round((tareas100Porciento / actual.items.length) * 100) || 0;
+    actual.calcCompletados = checkboxesMarcados;
+    actual.calcProgreso = Math.round((checkboxesMarcados / actual.items.length) * 100) || 0;
 
+    // LÓGICA DE ESTADO ESTRICTA
     if (checkboxesMarcados === 0) actual.status = 'pendiente';
     else if (tareas100Porciento === actual.items.length) actual.status = 'completo';
-    else actual.status = 'en-progreso';
+    else actual.status = 'en-progreso'; // Se queda en progreso aunque esté al 100% de clics si le faltan fotos
     
     this.guardarEnLaNube(actual);
   }
@@ -381,10 +382,12 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     if(!actual) return;
 
     const tareas100Porciento = actual.items.filter((i:any) => this.esItemCompleto(i)).length;
+    
     if (tareas100Porciento < actual.items.length) {
-      const confirmar = confirm('⚠️ El checklist aún no está al 100%.\n¿Estás seguro de que deseas enviarlo incompleto al administrador?');
+      const confirmar = confirm('⚠️ ¡ATENCIÓN!\n\nHas marcado las tareas pero te faltan FOTOS obligatorias.\nSi lo envías así, contará como INCOMPLETO en las estadísticas administrativas.\n\n¿Estás completamente seguro de que deseas enviarlo así?');
       if (!confirmar) return;
     }
+    
     actual.enviado = true;
     this.guardarEnLaNube(actual); 
     alert('🚀 ¡Checklist enviado exitosamente!');

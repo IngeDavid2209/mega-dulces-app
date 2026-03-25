@@ -88,7 +88,7 @@
             
             <div class="checklist-progress">
               <div class="progress-label">
-                <span>{{ checklist.calcCompletados || 0 }} de {{ checklist.items.length }} tareas validadas</span>
+                <span>{{ checklist.calcCompletados || 0 }} de {{ checklist.items.length }} tareas marcadas</span>
                 <span>{{ checklist.calcProgreso || 0 }}%</span>
               </div>
               <div class="progress-bar-wrap">
@@ -120,7 +120,7 @@
           
           <div class="checklist-progress" style="margin-top:18px">
             <div class="progress-label">
-              <span>Progreso Real: {{ checklistSeleccionado().calcCompletados || 0 }} de {{ checklistSeleccionado().items.length }} tareas validadas</span>
+              <span>Progreso: {{ checklistSeleccionado().calcCompletados || 0 }} de {{ checklistSeleccionado().items.length }} tareas marcadas</span>
               <span>{{ checklistSeleccionado().calcProgreso || 0 }}%</span>
             </div>
             <div class="progress-bar-wrap">
@@ -175,7 +175,7 @@
               </div>
 
               <div class="photo-warning" *ngIf="item.checked && !item.photo && !checklistSeleccionado().enviado && currentUser?.nombre === checklistSeleccionado().assigned">
-                * Falta evidencia fotográfica para validar esta tarea.
+                * Falta evidencia fotográfica para auditar esta tarea.
               </div>
 
               <div *ngIf="!item.photo && checklistSeleccionado().enviado" 

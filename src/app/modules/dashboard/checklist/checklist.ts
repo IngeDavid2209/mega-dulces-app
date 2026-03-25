@@ -127,22 +127,37 @@ export class ChecklistComponent implements OnInit, OnDestroy {
         if (c.eliminado === true) return;
 
         if ((ahora - (typeof c.id === 'number' ? c.id : c.timestampCreacion || ahora)) <= limite24h) {
-          
-          // 🔥 FIX UX: El progreso visual ahora sube con solo darle click a la casilla
           const tareasMarcadas = c.items.filter((i:any) => i.checked).length;
           c.calcCompletados = tareasMarcadas;
           c.calcProgreso = Math.round((tareasMarcadas / c.items.length) * 100) || 0;
-          
           todasLasListas.push(c);
         }
       });
 
-      todasLasListas.sort((a, b) => b.timestampCreacion - a.timestampCreacion);
+      // 🔥 ESCUDO ANTI-CLONES EN PANTALLA 🔥
+      const listasSinClones = new Map();
+      todasLasListas.forEach(c => {
+        // Creamos una firma única combinando nombre, empleado, sucursal y fecha
+        const firma = `${c.name}_${c.assigned}_${c.store}_${c.date}`;
+        
+        if (!listasSinClones.has(firma)) {
+          listasSinClones.set(firma, c);
+        } else {
+          // Si hay un clon, nos quedamos con el que tenga más progreso guardado
+          const existente = listasSinClones.get(firma);
+          if (c.calcProgreso > existente.calcProgreso) {
+            listasSinClones.set(firma, c);
+          }
+        }
+      });
+
+      const listasFinales = Array.from(listasSinClones.values());
+      listasFinales.sort((a, b) => b.timestampCreacion - a.timestampCreacion);
 
       if (this.currentUser?.rol === 'admin') {
-        this.checklists.set(todasLasListas);
+        this.checklists.set(listasFinales);
       } else {
-        const misListas = todasLasListas.filter((c: any) => c.assigned === this.currentUser.nombre);
+        const misListas = listasFinales.filter((c: any) => c.assigned === this.currentUser.nombre);
         this.checklists.set(misListas);
       }
     });
@@ -361,18 +376,15 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     const actual = this.checklistSeleccionado();
     if(!actual) return;
     
-    // 🔥 FIX UX: El progreso en pantalla reacciona a las tareas marcadas
     const checkboxesMarcados = actual.items.filter((i:any) => i.checked).length;
-    // ... Pero el auditor estricto sigue verificando si tienen la foto subida
     const tareas100Porciento = actual.items.filter((i:any) => this.esItemCompleto(i)).length;
     
     actual.calcCompletados = checkboxesMarcados;
     actual.calcProgreso = Math.round((checkboxesMarcados / actual.items.length) * 100) || 0;
 
-    // LÓGICA DE ESTADO ESTRICTA
     if (checkboxesMarcados === 0) actual.status = 'pendiente';
     else if (tareas100Porciento === actual.items.length) actual.status = 'completo';
-    else actual.status = 'en-progreso'; // Se queda en progreso aunque esté al 100% de clics si le faltan fotos
+    else actual.status = 'en-progreso'; 
     
     this.guardarEnLaNube(actual);
   }
@@ -515,7 +527,11 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       });
 
       Object.keys(rutinasPorFrecuencia).forEach((frecuencia, fIndex) => {
-        const moldeId = `molde_${Date.now()}_${index}_${fIndex}`;
+        // 🔥 FIX ANTICLONES EN BD: Generamos un ID predecible para sobrescribir en vez de duplicar
+        const nombreMoldeLimpio = this.formNameRutina.replace(/\s+/g, '_').toLowerCase();
+        const empleadoLimpio = empleadoNombre.replace(/\s+/g, '_').toLowerCase();
+        const moldeId = `molde_${nombreMoldeLimpio}_${empleadoLimpio}_${frecuencia}`;
+        
         const nuevoMolde = {
           id: moldeId,
           name: this.formNameRutina,

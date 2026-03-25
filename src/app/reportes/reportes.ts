@@ -2,7 +2,8 @@ import { Component, signal, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, ActivatedRoute } from '@angular/router'; 
-import { Firestore, collection, getDocs } from '@angular/fire/firestore';
+// 🔥 FIX: Importamos doc y deleteDoc para poder borrar
+import { Firestore, collection, getDocs, doc, deleteDoc } from '@angular/fire/firestore';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -28,11 +29,12 @@ export class ReportesComponent implements OnInit {
   buscando = signal(false);
   busquedaRealizada = signal(false);
 
+  // 🔥 NUEVAS VARIABLES: Modal de Contraseña Maestra 🔥
+  isPasswordModalOpen = false;
+  passwordInput = '';
+
   private firestore = inject(Firestore);
   private route = inject(ActivatedRoute); 
-
-  // Esta pantalla NO usa radares (onSnapshot), usa getDocs (petición única),
-  // por lo tanto no requiere ngOnDestroy ni pre-cálculos de memoria. 😎
 
   ngOnInit() {
     const sesion = localStorage.getItem('md_sesion_actual');
@@ -73,7 +75,7 @@ export class ReportesComponent implements OnInit {
   async buscarReportes() {
     this.buscando.set(true);
     this.busquedaRealizada.set(true);
-    this.resultados.set([]);
+    this.resultados.set([]); 
 
     try {
       const checklistsRef = collection(this.firestore, 'checklists');
@@ -82,6 +84,9 @@ export class ReportesComponent implements OnInit {
 
       snapshot.forEach(doc => {
         const c = doc.data();
+        
+        if (c['eliminado'] === true) return;
+
         if (c['date'] >= this.fechaInicio && c['date'] <= this.fechaFin) {
           if (!this.empleadoSeleccionado || c['assigned'] === this.empleadoSeleccionado) {
             filtrados.push(c);
@@ -100,12 +105,59 @@ export class ReportesComponent implements OnInit {
     }
   }
 
+  // 🔥 LÓGICA DE DESTRUCCIÓN MASIVA 🔥
+  abrirModalEliminarTodo() {
+    if (this.resultados().length === 0) {
+      alert('No hay registros en pantalla para borrar.');
+      return;
+    }
+    this.passwordInput = '';
+    this.isPasswordModalOpen = true;
+  }
+
+  cerrarPasswordModal() {
+    this.isPasswordModalOpen = false;
+    this.passwordInput = '';
+  }
+
+  async confirmarEliminacionTodo() {
+    if (this.passwordInput !== 'Mega2323') {
+      alert('❌ Contraseña maestra incorrecta. Operación cancelada.');
+      return;
+    }
+
+    const confirmar = confirm(`⚠️ PELIGRO:\nEstás a punto de borrar permanentemente los ${this.resultados().length} registros que aparecen en pantalla.\n\n¿Estás completamente seguro? Esta acción NO se puede deshacer.`);
+    
+    if (confirmar) {
+      this.buscando.set(true); 
+      try {
+        // Borramos de Firebase cada uno de los registros que están en pantalla
+        for (const checklist of this.resultados()) {
+          const docId = checklist.id.toString();
+          await deleteDoc(doc(this.firestore, 'checklists', docId));
+        }
+        alert('🗑️ Historial eliminado de la base de datos con éxito.');
+        this.resultados.set([]); // Limpiamos la pantalla
+      } catch (error) {
+        console.error("Error al eliminar: ", error);
+        alert('❌ Hubo un error al intentar eliminar el historial.');
+      } finally {
+        this.buscando.set(false);
+        this.cerrarPasswordModal();
+      }
+    } else {
+      this.cerrarPasswordModal();
+    }
+  }
+
   getProgreso(checklist: any): number {
+    if (!checklist.items || checklist.items.length === 0) return 0;
     const completados = checklist.items.filter((i:any) => i.checked && (!i.requiresPhoto || (i.photo !== null && i.photo !== ''))).length;
     return Math.round((completados / checklist.items.length) * 100) || 0;
   }
 
   getCompletados(checklist: any): number { 
+    if (!checklist.items) return 0;
     return checklist.items.filter((i:any) => i.checked && (!i.requiresPhoto || (i.photo !== null && i.photo !== ''))).length; 
   }
 

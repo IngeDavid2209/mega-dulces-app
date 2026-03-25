@@ -1,9 +1,8 @@
-import { Component, signal, OnInit, inject } from '@angular/core';
+import { Component, signal, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, ActivatedRoute } from '@angular/router'; 
-// 🔥 FIX: Importamos doc y deleteDoc para poder borrar
-import { Firestore, collection, getDocs, doc, deleteDoc } from '@angular/fire/firestore';
+import { Firestore, collection, getDocs, doc, deleteDoc, onSnapshot } from '@angular/fire/firestore';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -14,7 +13,7 @@ import autoTable from 'jspdf-autotable';
   templateUrl: './reportes.html',
   styleUrls: ['./reportes.css'] 
 })
-export class ReportesComponent implements OnInit {
+export class ReportesComponent implements OnInit, OnDestroy {
   isMenuOpen = false;
   toggleMenu() { this.isMenuOpen = !this.isMenuOpen; }
 
@@ -29,12 +28,14 @@ export class ReportesComponent implements OnInit {
   buscando = signal(false);
   busquedaRealizada = signal(false);
 
-  // 🔥 NUEVAS VARIABLES: Modal de Contraseña Maestra 🔥
   isPasswordModalOpen = false;
   passwordInput = '';
 
   private firestore = inject(Firestore);
   private route = inject(ActivatedRoute); 
+  
+  // 🔥 NUEVO: Guardamos el radar para apagarlo si buscamos otra cosa o salimos
+  private busquedaSub: any = null;
 
   ngOnInit() {
     const sesion = localStorage.getItem('md_sesion_actual');
@@ -61,6 +62,13 @@ export class ReportesComponent implements OnInit {
     });
   }
 
+  // Apagamos el radar si nos salimos de la pantalla de reportes
+  ngOnDestroy() {
+    if (this.busquedaSub) {
+      this.busquedaSub();
+    }
+  }
+
   async cargarEmpleados() {
     const usuariosRef = collection(this.firestore, 'usuarios');
     const snapshot = await getDocs(usuariosRef);
@@ -72,18 +80,24 @@ export class ReportesComponent implements OnInit {
     this.empleados.set(lista);
   }
 
-  async buscarReportes() {
+  // 🔥 FIX: Búsqueda en TIEMPO REAL (Radar) 🔥
+  buscarReportes() {
     this.buscando.set(true);
     this.busquedaRealizada.set(true);
-    this.resultados.set([]); 
+    
+    // Si ya había un radar buscando antes, lo apagamos para no duplicar
+    if (this.busquedaSub) {
+      this.busquedaSub();
+    }
 
-    try {
-      const checklistsRef = collection(this.firestore, 'checklists');
-      const snapshot = await getDocs(checklistsRef); 
+    const checklistsRef = collection(this.firestore, 'checklists');
+    
+    // onSnapshot hace que se actualice solo cada que alguien marca una tarea
+    this.busquedaSub = onSnapshot(checklistsRef, (snapshot) => {
       const filtrados: any[] = [];
 
-      snapshot.forEach(doc => {
-        const c = doc.data();
+      snapshot.forEach(docSnap => {
+        const c = docSnap.data();
         
         if (c['eliminado'] === true) return;
 
@@ -96,16 +110,15 @@ export class ReportesComponent implements OnInit {
 
       filtrados.sort((a, b) => b.timestampCreacion - a.timestampCreacion);
       this.resultados.set(filtrados);
-
-    } catch (error) {
+      this.buscando.set(false);
+      
+    }, (error) => {
       console.error("Error buscando el historial:", error);
       alert("Hubo un error de conexión al buscar el historial.");
-    } finally {
       this.buscando.set(false);
-    }
+    });
   }
 
-  // 🔥 LÓGICA DE DESTRUCCIÓN MASIVA 🔥
   abrirModalEliminarTodo() {
     if (this.resultados().length === 0) {
       alert('No hay registros en pantalla para borrar.');
@@ -131,18 +144,15 @@ export class ReportesComponent implements OnInit {
     if (confirmar) {
       this.buscando.set(true); 
       try {
-        // Borramos de Firebase cada uno de los registros que están en pantalla
         for (const checklist of this.resultados()) {
           const docId = checklist.id.toString();
           await deleteDoc(doc(this.firestore, 'checklists', docId));
         }
         alert('🗑️ Historial eliminado de la base de datos con éxito.');
-        this.resultados.set([]); // Limpiamos la pantalla
       } catch (error) {
         console.error("Error al eliminar: ", error);
         alert('❌ Hubo un error al intentar eliminar el historial.');
       } finally {
-        this.buscando.set(false);
         this.cerrarPasswordModal();
       }
     } else {
@@ -150,15 +160,16 @@ export class ReportesComponent implements OnInit {
     }
   }
 
+  // 🔥 FIX UX: Barra de progreso basada SOLO en checks (igual que en pantalla principal)
   getProgreso(checklist: any): number {
     if (!checklist.items || checklist.items.length === 0) return 0;
-    const completados = checklist.items.filter((i:any) => i.checked && (!i.requiresPhoto || (i.photo !== null && i.photo !== ''))).length;
-    return Math.round((completados / checklist.items.length) * 100) || 0;
+    const marcados = checklist.items.filter((i:any) => i.checked).length;
+    return Math.round((marcados / checklist.items.length) * 100) || 0;
   }
 
   getCompletados(checklist: any): number { 
     if (!checklist.items) return 0;
-    return checklist.items.filter((i:any) => i.checked && (!i.requiresPhoto || (i.photo !== null && i.photo !== ''))).length; 
+    return checklist.items.filter((i:any) => i.checked).length; 
   }
 
   descargarReportePDF() {
@@ -191,6 +202,7 @@ export class ReportesComponent implements OnInit {
       const nombreChecklist = c.name || '-';
       const estado = (c.status || 'pendiente').toUpperCase();
       
+      // Ojo: Para el PDF (Auditoría Formal) seguimos siendo estrictos con las fotos
       const tareasCumplidas = c.items ? c.items.filter((i:any) => i.checked && (!i.requiresPhoto || (i.photo !== null && i.photo !== ''))) : [];
       const detalle = tareasCumplidas.map((t:any) => `• ${t.text}`).join('\n');
 

@@ -16,7 +16,6 @@ export class EstadisticasComponent implements OnInit, OnDestroy {
   toggleMenu() { this.isMenuOpen = !this.isMenuOpen; }
 
   currentUser: any = null;
-  // 🔥 Nuevo: Guardaremos las sucursales permitidas para este usuario
   sucursalesPermitidas: string[] = [];
 
   globalProgress = signal(0);
@@ -37,7 +36,6 @@ export class EstadisticasComponent implements OnInit, OnDestroy {
   ];
 
   storeStats = signal<any[]>([]);
-  
   sucursalSeleccionadaParaEmpleados = signal('');
   empleadosStats = signal<any[]>([]);
   
@@ -60,24 +58,19 @@ export class EstadisticasComponent implements OnInit, OnDestroy {
     this.destructoresRadares.forEach(apagarRadar => apagarRadar());
   }
 
-  // 🔥 LÓGICA DE PERMISOS: ¿Qué sucursales puede ver?
   determinarSucursalesPermitidas() {
     if (!this.currentUser) return;
 
     if (this.currentUser.rol === 'admin' || (this.currentUser.sucursales && this.currentUser.sucursales.includes('Todas las sucursales'))) {
-      // Si es admin o tiene "Todas las sucursales", ve el imperio completo
       this.sucursalesPermitidas = [...this.nombresSucursales];
     } else {
-      // Si no, solo ve las sucursales de su perfil
       this.sucursalesPermitidas = this.currentUser.sucursales || [this.currentUser.sucursal || ''];
     }
 
-    // Inicializamos las barras de progreso solo para las sucursales permitidas
     this.storeStats.set(
       this.sucursalesPermitidas.map(suc => ({ name: suc, progress: 0, color: 'var(--brown)' }))
     );
 
-    // Seleccionamos por defecto la primera sucursal permitida para el panel de empleados
     if (this.sucursalesPermitidas.length > 0) {
       this.sucursalSeleccionadaParaEmpleados.set(this.sucursalesPermitidas[0]);
     }
@@ -102,10 +95,14 @@ export class EstadisticasComponent implements OnInit, OnDestroy {
 
       snapshot.forEach(docSnap => {
         const c: any = docSnap.data();
-        const timestamp = c.id || c.timestampCreacion || ahora;
         
-        // 🔥 FILTRO: Solo descargar checklists de las sucursales permitidas
-        if ((ahora - timestamp) <= sieteDias && this.sucursalesPermitidas.includes(c.store)) {
+        // 🔥 ESCUDO 1: Ignorar los checklists zombies eliminados
+        if (c.eliminado === true) return;
+
+        // 🔥 ESCUDO 2: Corrección Matemática anti-NaN
+        const tiempoCreacion = typeof c.id === 'number' ? c.id : (c.timestampCreacion || ahora);
+        
+        if ((ahora - tiempoCreacion) <= sieteDias && this.sucursalesPermitidas.includes(c.store)) {
           listas.push(c);
         }
       });
@@ -150,7 +147,6 @@ export class EstadisticasComponent implements OnInit, OnDestroy {
       pendiente: { count: c_pendientes, percent: total > 0 ? Math.round((c_pendientes / total) * 100) : 0, color: '#e74c3c' }
     });
 
-    // Calculamos el progreso SOLO para las sucursales permitidas
     this.storeStats.set(this.sucursalesPermitidas.map(suc => {
       const filtradas = checklists.filter(c => c.store === suc);
       let sTotal = 0;
@@ -169,7 +165,6 @@ export class EstadisticasComponent implements OnInit, OnDestroy {
 
   calcularEstadisticasEmpleados() {
     const suc = this.sucursalSeleccionadaParaEmpleados();
-    // Si no tiene sucursales asignadas, no mostramos empleados
     if (!suc || !this.sucursalesPermitidas.includes(suc)) {
         this.empleadosStats.set([]);
         return;

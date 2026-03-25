@@ -15,7 +15,6 @@ export class CheckstoreComponent implements OnInit, OnDestroy {
   toggleMenu() { this.isMenuOpen = !this.isMenuOpen; }
 
   currentUser: any = null;
-  // 🔥 Nuevo: Arreglo para guardar las sucursales autorizadas
   sucursalesPermitidas: string[] = [];
   
   comerciales = signal<any[]>([]);
@@ -60,26 +59,21 @@ export class CheckstoreComponent implements OnInit, OnDestroy {
     this.destructoresRadares.forEach(apagarRadar => apagarRadar());
   }
 
-  // 🔥 LÓGICA DE PERMISOS: ¿Qué sucursales puede ver este usuario?
   determinarSucursalesPermitidas() {
     if (!this.currentUser) return;
 
     if (this.currentUser.rol === 'admin' || (this.currentUser.sucursales && this.currentUser.sucursales.includes('Todas las sucursales'))) {
-      // El administrador ve todo (combinamos los nombres de ambos arreglos)
       this.sucursalesPermitidas = [
         ...this.sucursalesComerciales.map(s => s.name),
         ...this.sucursalesAdministrativas.map(s => s.name)
       ];
     } else {
-      // Un trabajador normal solo ve las que tiene asignadas
       this.sucursalesPermitidas = this.currentUser.sucursales || [this.currentUser.sucursal || ''];
     }
 
-    // Filtramos los arreglos originales para que SOLO queden las sucursales permitidas
     const comercialesFiltradas = this.sucursalesComerciales.filter(s => this.sucursalesPermitidas.includes(s.name));
     const administrativasFiltradas = this.sucursalesAdministrativas.filter(s => this.sucursalesPermitidas.includes(s.name));
 
-    // Pintamos las tarjetas filtradas en 0% desde el inicio
     this.comerciales.set(comercialesFiltradas.map(s => ({...s, progress: 0, color: 'var(--red)', totalChecklists: 0, completedItems: 0, totalItems: 0})));
     this.administrativas.set(administrativasFiltradas.map(s => ({...s, progress: 0, color: 'var(--red)', totalChecklists: 0, completedItems: 0, totalItems: 0})));
   }
@@ -97,6 +91,11 @@ export class CheckstoreComponent implements OnInit, OnDestroy {
 
       snapshot.forEach(docSnap => {
         const c: any = docSnap.data();
+
+        // 🔥 ESCUDO 1: Ignorar los checklists zombies eliminados
+        if (c.eliminado === true) return;
+
+        // 🔥 ESCUDO 2: Corrección Matemática anti-NaN
         const tiempoCreacion = typeof c.id === 'number' ? c.id : (c.timestampCreacion || ahora);
         
         if (c.date === fechaHoyLocal || (ahora - tiempoCreacion) <= limite24h) {
@@ -105,7 +104,6 @@ export class CheckstoreComponent implements OnInit, OnDestroy {
       });
 
       const calcularDatos = (listaBase: any[]) => {
-        // Filtrar listaBase para que solo contenga las sucursales que el usuario puede ver
         const listaPermitida = listaBase.filter(sucursal => this.sucursalesPermitidas.includes(sucursal.name));
 
         return listaPermitida.map(sucursal => {

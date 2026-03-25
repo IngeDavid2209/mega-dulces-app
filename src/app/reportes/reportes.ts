@@ -34,7 +34,6 @@ export class ReportesComponent implements OnInit, OnDestroy {
   private firestore = inject(Firestore);
   private route = inject(ActivatedRoute); 
   
-  // 🔥 NUEVO: Guardamos el radar para apagarlo si buscamos otra cosa o salimos
   private busquedaSub: any = null;
 
   ngOnInit() {
@@ -62,7 +61,6 @@ export class ReportesComponent implements OnInit, OnDestroy {
     });
   }
 
-  // Apagamos el radar si nos salimos de la pantalla de reportes
   ngOnDestroy() {
     if (this.busquedaSub) {
       this.busquedaSub();
@@ -80,35 +78,49 @@ export class ReportesComponent implements OnInit, OnDestroy {
     this.empleados.set(lista);
   }
 
-  // 🔥 FIX: Búsqueda en TIEMPO REAL (Radar) 🔥
   buscarReportes() {
     this.buscando.set(true);
     this.busquedaRealizada.set(true);
     
-    // Si ya había un radar buscando antes, lo apagamos para no duplicar
     if (this.busquedaSub) {
       this.busquedaSub();
     }
 
     const checklistsRef = collection(this.firestore, 'checklists');
     
-    // onSnapshot hace que se actualice solo cada que alguien marca una tarea
     this.busquedaSub = onSnapshot(checklistsRef, (snapshot) => {
-      const filtrados: any[] = [];
+      const listasSinClones = new Map();
 
       snapshot.forEach(docSnap => {
-        const c = docSnap.data();
+        // 🔥 FIX TYPESCRIPT: Le decimos que "c" es "any" para que no llore
+        const c: any = docSnap.data();
         
-        if (c['eliminado'] === true) return;
+        if (c.eliminado === true) return;
 
-        if (c['date'] >= this.fechaInicio && c['date'] <= this.fechaFin) {
-          if (!this.empleadoSeleccionado || c['assigned'] === this.empleadoSeleccionado) {
-            filtrados.push(c);
+        if (c.date >= this.fechaInicio && c.date <= this.fechaFin) {
+          if (!this.empleadoSeleccionado || c.assigned === this.empleadoSeleccionado) {
+            
+            const marcados = c.items ? c.items.filter((i:any) => i.checked).length : 0;
+            c.calcProgreso = c.items && c.items.length > 0 ? Math.round((marcados / c.items.length) * 100) : 0;
+
+            const firma = `${c.name}_${c.assigned}_${c.store}_${c.date}`;
+
+            if (!listasSinClones.has(firma)) {
+              listasSinClones.set(firma, c);
+            } else {
+              const existente = listasSinClones.get(firma);
+              // 🔥 FIX TYPESCRIPT: Aseguramos que "existente" no esté vacío antes de comparar
+              if (existente && c.calcProgreso > existente.calcProgreso) {
+                listasSinClones.set(firma, c);
+              }
+            }
           }
         }
       });
 
+      const filtrados = Array.from(listasSinClones.values());
       filtrados.sort((a, b) => b.timestampCreacion - a.timestampCreacion);
+      
       this.resultados.set(filtrados);
       this.buscando.set(false);
       
@@ -160,8 +172,8 @@ export class ReportesComponent implements OnInit, OnDestroy {
     }
   }
 
-  // 🔥 FIX UX: Barra de progreso basada SOLO en checks (igual que en pantalla principal)
   getProgreso(checklist: any): number {
+    if (checklist.calcProgreso !== undefined) return checklist.calcProgreso;
     if (!checklist.items || checklist.items.length === 0) return 0;
     const marcados = checklist.items.filter((i:any) => i.checked).length;
     return Math.round((marcados / checklist.items.length) * 100) || 0;
@@ -202,7 +214,6 @@ export class ReportesComponent implements OnInit, OnDestroy {
       const nombreChecklist = c.name || '-';
       const estado = (c.status || 'pendiente').toUpperCase();
       
-      // Ojo: Para el PDF (Auditoría Formal) seguimos siendo estrictos con las fotos
       const tareasCumplidas = c.items ? c.items.filter((i:any) => i.checked && (!i.requiresPhoto || (i.photo !== null && i.photo !== ''))) : [];
       const detalle = tareasCumplidas.map((t:any) => `• ${t.text}`).join('\n');
 

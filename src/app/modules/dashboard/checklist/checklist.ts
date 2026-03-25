@@ -2,7 +2,7 @@ import { Component, signal, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
-import { Firestore, collection, doc, setDoc, getDoc, deleteDoc, onSnapshot } from '@angular/fire/firestore';
+import { Firestore, collection, doc, setDoc, getDoc, onSnapshot } from '@angular/fire/firestore';
 
 @Component({
   selector: 'app-checklist',
@@ -127,23 +127,22 @@ export class ChecklistComponent implements OnInit, OnDestroy {
         if (c.eliminado === true) return;
 
         if ((ahora - (typeof c.id === 'number' ? c.id : c.timestampCreacion || ahora)) <= limite24h) {
+          
+          // 🔥 FIX PROGRESO 0%: La barra visual cuenta TODOS los checks, tengan foto o no
           const tareasMarcadas = c.items.filter((i:any) => i.checked).length;
           c.calcCompletados = tareasMarcadas;
           c.calcProgreso = Math.round((tareasMarcadas / c.items.length) * 100) || 0;
+          
           todasLasListas.push(c);
         }
       });
 
-      // 🔥 ESCUDO ANTI-CLONES EN PANTALLA 🔥
       const listasSinClones = new Map();
       todasLasListas.forEach(c => {
-        // Creamos una firma única combinando nombre, empleado, sucursal y fecha
         const firma = `${c.name}_${c.assigned}_${c.store}_${c.date}`;
-        
         if (!listasSinClones.has(firma)) {
           listasSinClones.set(firma, c);
         } else {
-          // Si hay un clon, nos quedamos con el que tenga más progreso guardado
           const existente = listasSinClones.get(firma);
           if (c.calcProgreso > existente.calcProgreso) {
             listasSinClones.set(firma, c);
@@ -379,9 +378,11 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     const checkboxesMarcados = actual.items.filter((i:any) => i.checked).length;
     const tareas100Porciento = actual.items.filter((i:any) => this.esItemCompleto(i)).length;
     
+    // 🔥 FIX UX: Barra visual sincronizada con los clics
     actual.calcCompletados = checkboxesMarcados;
     actual.calcProgreso = Math.round((checkboxesMarcados / actual.items.length) * 100) || 0;
 
+    // 🔥 FIX AUDITORÍA: El estado "Completo" verde sigue pidiendo fotos
     if (checkboxesMarcados === 0) actual.status = 'pendiente';
     else if (tareas100Porciento === actual.items.length) actual.status = 'completo';
     else actual.status = 'en-progreso'; 
@@ -527,7 +528,6 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       });
 
       Object.keys(rutinasPorFrecuencia).forEach((frecuencia, fIndex) => {
-        // 🔥 FIX ANTICLONES EN BD: Generamos un ID predecible para sobrescribir en vez de duplicar
         const nombreMoldeLimpio = this.formNameRutina.replace(/\s+/g, '_').toLowerCase();
         const empleadoLimpio = empleadoNombre.replace(/\s+/g, '_').toLowerCase();
         const moldeId = `molde_${nombreMoldeLimpio}_${empleadoLimpio}_${frecuencia}`;

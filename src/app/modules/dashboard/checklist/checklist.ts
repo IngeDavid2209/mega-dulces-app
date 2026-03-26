@@ -2,7 +2,7 @@ import { Component, signal, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
-import { Firestore, collection, doc, setDoc, getDoc, onSnapshot } from '@angular/fire/firestore';
+import { Firestore, collection, doc, setDoc, getDoc, deleteDoc, onSnapshot, getDocs } from '@angular/fire/firestore';
 
 @Component({
   selector: 'app-checklist',
@@ -13,7 +13,9 @@ import { Firestore, collection, doc, setDoc, getDoc, onSnapshot } from '@angular
 })
 export class ChecklistComponent implements OnInit, OnDestroy {
   isMenuOpen = false;
-  toggleMenu() { this.isMenuOpen = !this.isMenuOpen; }
+  toggleMenu() { 
+    this.isMenuOpen = !this.isMenuOpen; 
+  }
 
   currentUser: any = null; 
   vistaActual = signal<'lista' | 'detalle'>('lista');
@@ -127,12 +129,9 @@ export class ChecklistComponent implements OnInit, OnDestroy {
         if (c.eliminado === true) return;
 
         if ((ahora - (typeof c.id === 'number' ? c.id : c.timestampCreacion || ahora)) <= limite24h) {
-          
-          // 🔥 FIX PROGRESO 0%: La barra visual cuenta TODOS los checks, tengan foto o no
           const tareasMarcadas = c.items.filter((i:any) => i.checked).length;
           c.calcCompletados = tareasMarcadas;
           c.calcProgreso = Math.round((tareasMarcadas / c.items.length) * 100) || 0;
-          
           todasLasListas.push(c);
         }
       });
@@ -171,10 +170,16 @@ export class ChecklistComponent implements OnInit, OnDestroy {
 
     if (item.tipo === 'rutina' && item.horaLimite) {
       const partes = item.horaLimite.split(':');
-      if (partes.length === 2) { hora = partes[0]; minuto = partes[1]; }
+      if (partes.length === 2) { 
+        hora = partes[0]; 
+        minuto = partes[1]; 
+      }
     } else if (item.tipo === 'tarea' && item.time) {
       const partes = item.time.split(':');
-      if (partes.length === 2) { hora = partes[0]; minuto = partes[1]; }
+      if (partes.length === 2) { 
+        hora = partes[0]; 
+        minuto = partes[1]; 
+      }
     }
 
     const [year, month, day] = checklistDate.split('-');
@@ -312,10 +317,9 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   async guardarEnLaNube(checklist: any) {
     try {
       const docId = checklist.id.toString();
-      const ref = doc(this.firestore, 'checklists', docId);
-      await setDoc(ref, checklist, { merge: true });
-    } catch (error) {
-      console.error("Error subiendo a la nube: ", error);
+      await setDoc(doc(this.firestore, 'checklists', docId), checklist, { merge: true });
+    } catch (error) { 
+      console.error("Error: ", error); 
     }
   }
 
@@ -332,19 +336,41 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     this.passwordInput = '';
   }
 
+  // 🔥 LÓGICA DE ANIQUILACIÓN DE CLONES 🔥
   async confirmarEliminacion() {
     if (this.passwordInput !== 'Mega2323') {
       alert('❌ Contraseña maestra incorrecta. Inténtalo de nuevo.');
       return;
     }
 
-    const confirmar = confirm(`⚠️ ¿Estás completamente seguro de borrar "${this.checklistToDelete.name}"?\nEsta acción no se puede deshacer.`);
+    const confirmar = confirm(`⚠️ ¿Estás completamente seguro de borrar "${this.checklistToDelete.name}"?\n\nSi es una rutina recurrente, se borrarán todos los duplicados y se cancelará para los próximos días.`);
     
     if (confirmar) {
       try {
-        const docId = this.checklistToDelete.id.toString();
-        await setDoc(doc(this.firestore, 'checklists', docId), { eliminado: true }, { merge: true });
-        alert('🗑️ Checklist eliminado para siempre.');
+        const targetName = this.checklistToDelete.name;
+        const targetAssigned = this.checklistToDelete.assigned;
+
+        // 1. Vaporizamos todos los clones generados (Checklists vivos)
+        const checklistsRef = collection(this.firestore, 'checklists');
+        const chkSnap = await getDocs(checklistsRef);
+        chkSnap.forEach(async (cDoc) => {
+          const cData = cDoc.data();
+          if (cData['name'] === targetName && cData['assigned'] === targetAssigned) {
+            await setDoc(doc(this.firestore, 'checklists', cDoc.id), { eliminado: true }, { merge: true });
+          }
+        });
+
+        // 2. Destruimos la raíz para que el Robot no lo vuelva a crear nunca (Moldes)
+        const moldesRef = collection(this.firestore, 'moldes_checklists');
+        const moldesSnap = await getDocs(moldesRef);
+        moldesSnap.forEach(async (mDoc) => {
+          const mData = mDoc.data();
+          if (targetName.includes(mData['name']) && mData['assigned'] === targetAssigned) {
+             await deleteDoc(doc(this.firestore, 'moldes_checklists', mDoc.id));
+          }
+        });
+
+        alert('🗑️ Checklist y sus duplicados eliminados de raíz para siempre.');
       } catch (error) {
         console.error("Error al eliminar: ", error);
         alert('❌ Hubo un error al intentar eliminar el checklist.');
@@ -354,22 +380,42 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     this.cerrarPasswordModal(); 
   }
 
-  verDetalle(checklist: any) { this.checklistSeleccionado.set(checklist); this.vistaActual.set('detalle'); }
-  volverALista() { this.checklistSeleccionado.set(null); this.vistaActual.set('lista'); }
-  toggleItem(item: any) { item.checked = !item.checked; this.actualizarEstado(); }
+  verDetalle(checklist: any) { 
+    this.checklistSeleccionado.set(checklist); 
+    this.vistaActual.set('detalle'); 
+  }
+
+  volverALista() { 
+    this.checklistSeleccionado.set(null); 
+    this.vistaActual.set('lista'); 
+  }
+
+  toggleItem(item: any) { 
+    item.checked = !item.checked; 
+    this.actualizarEstado(); 
+  }
 
   onFileSelected(event: any, item: any) {
     const file = event.target.files[0];
     if (file) {
       const reader = new FileReader();
-      reader.onload = (e: any) => { item.photo = e.target.result; this.actualizarEstado(); };
+      reader.onload = (e: any) => { 
+        item.photo = e.target.result; 
+        this.actualizarEstado(); 
+      };
       reader.readAsDataURL(file);
     }
     event.target.value = ''; 
   }
 
-  removeImage(item: any) { item.photo = null; this.actualizarEstado(); }
-  esItemCompleto(item: any): boolean { return item.checked && (!item.requiresPhoto || item.photo !== null); }
+  removeImage(item: any) { 
+    item.photo = null; 
+    this.actualizarEstado(); 
+  }
+
+  esItemCompleto(item: any): boolean { 
+    return item.checked && (!item.requiresPhoto || item.photo !== null); 
+  }
 
   actualizarEstado() {
     const actual = this.checklistSeleccionado();
@@ -378,14 +424,16 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     const checkboxesMarcados = actual.items.filter((i:any) => i.checked).length;
     const tareas100Porciento = actual.items.filter((i:any) => this.esItemCompleto(i)).length;
     
-    // 🔥 FIX UX: Barra visual sincronizada con los clics
     actual.calcCompletados = checkboxesMarcados;
     actual.calcProgreso = Math.round((checkboxesMarcados / actual.items.length) * 100) || 0;
 
-    // 🔥 FIX AUDITORÍA: El estado "Completo" verde sigue pidiendo fotos
-    if (checkboxesMarcados === 0) actual.status = 'pendiente';
-    else if (tareas100Porciento === actual.items.length) actual.status = 'completo';
-    else actual.status = 'en-progreso'; 
+    if (checkboxesMarcados === 0) {
+      actual.status = 'pendiente';
+    } else if (tareas100Porciento === actual.items.length) {
+      actual.status = 'completo';
+    } else {
+      actual.status = 'en-progreso'; 
+    }
     
     this.guardarEnLaNube(actual);
   }
@@ -409,19 +457,36 @@ export class ChecklistComponent implements OnInit, OnDestroy {
 
   toggleEmpleado(nombre: string) {
     const index = this.formAssigned.indexOf(nombre);
-    if (index > -1) { this.formAssigned.splice(index, 1); } else { this.formAssigned.push(nombre); }
+    if (index > -1) { 
+      this.formAssigned.splice(index, 1); 
+    } else { 
+      this.formAssigned.push(nombre); 
+    }
   }
 
   abrirModal() {
-    this.formName = ''; this.formAssigned = []; 
+    this.formName = ''; 
+    this.formAssigned = []; 
     this.formStore = this.sucursalesDisponibles().length > 0 ? this.sucursalesDisponibles()[0] : '';
     this.formItems = [{ text: '', requiresPhoto: false, date: '', time: '' }]; 
     this.isModalOpen = true; 
   }
-  cerrarModal() { this.isModalOpen = false; }
-  agregarItem() { this.formItems.push({ text: '', requiresPhoto: false, date: '', time: '' }); }
-  eliminarItem(index: number) { this.formItems.splice(index, 1); }
-  trackByIndex(index: number, obj: any): any { return index; }
+
+  cerrarModal() { 
+    this.isModalOpen = false; 
+  }
+
+  agregarItem() { 
+    this.formItems.push({ text: '', requiresPhoto: false, date: '', time: '' }); 
+  }
+
+  eliminarItem(index: number) { 
+    this.formItems.splice(index, 1); 
+  }
+
+  trackByIndex(index: number, obj: any): any { 
+    return index; 
+  }
 
   guardarChecklistUnico() {
     if (!this.formName || this.formAssigned.length === 0) {
@@ -474,7 +539,11 @@ export class ChecklistComponent implements OnInit, OnDestroy {
 
   toggleEmpleadoRutina(nombre: string) {
     const index = this.formAssignedRutina.indexOf(nombre);
-    if (index > -1) { this.formAssignedRutina.splice(index, 1); } else { this.formAssignedRutina.push(nombre); }
+    if (index > -1) { 
+      this.formAssignedRutina.splice(index, 1); 
+    } else { 
+      this.formAssignedRutina.push(nombre); 
+    }
   }
 
   abrirModalRutinas() {
@@ -492,8 +561,10 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   agregarRutina() { 
     this.formRutinas.push({ text: '', requiresPhoto: false, frecuencia: 'Diaria', fechaFin: this.calcularFechaFinDefault('Diaria'), horaLimite: '' }); 
   }
-  
-  eliminarRutina(index: number) { this.formRutinas.splice(index, 1); }
+
+  eliminarRutina(index: number) { 
+    this.formRutinas.splice(index, 1); 
+  }
 
   guardarBloqueRutinas() {
     if (!this.formNameRutina || this.formAssignedRutina.length === 0) {
@@ -523,7 +594,9 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     this.formAssignedRutina.forEach((empleadoNombre, index) => {
       const rutinasPorFrecuencia: { [key: string]: any[] } = {};
       rutinasValidas.forEach(r => {
-        if (!rutinasPorFrecuencia[r.frecuencia]) rutinasPorFrecuencia[r.frecuencia] = [];
+        if (!rutinasPorFrecuencia[r.frecuencia]) {
+          rutinasPorFrecuencia[r.frecuencia] = [];
+        }
         rutinasPorFrecuencia[r.frecuencia].push(r);
       });
 

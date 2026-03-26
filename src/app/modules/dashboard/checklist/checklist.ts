@@ -253,6 +253,24 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     rutina.fechaFin = this.calcularFechaFinDefault(rutina.frecuencia);
   }
 
+  getTextoPeriodo(rutina: any): string {
+    if (rutina.frecuencia === 'Diaria') return 'Activa siempre';
+    if (!rutina.fechaFin) return '';
+    
+    const hoy = new Date();
+    const offset = hoy.getTimezoneOffset() * 60000;
+    const fechaLocalStr = new Date(hoy.getTime() - offset).toISOString().split('T')[0];
+    
+    const p1 = fechaLocalStr.split('-');
+    const p2 = rutina.fechaFin.split('-');
+    
+    if (p1.length === 3 && p2.length === 3) {
+      return `Del ${p1[2]}/${p1[1]}/${p1[0]} al ${p2[2]}/${p2[1]}/${p2[0]}`;
+    }
+    
+    return `Hasta ${rutina.fechaFin}`;
+  }
+
   obtenerLlavePeriodo(frecuencia: string, fecha: Date): string {
     const y = fecha.getFullYear();
     const m = fecha.getMonth() + 1;
@@ -336,7 +354,6 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     this.passwordInput = '';
   }
 
-  // 🔥 LÓGICA DE ANIQUILACIÓN DE CLONES 🔥
   async confirmarEliminacion() {
     if (this.passwordInput !== 'Mega2323') {
       alert('❌ Contraseña maestra incorrecta. Inténtalo de nuevo.');
@@ -350,7 +367,6 @@ export class ChecklistComponent implements OnInit, OnDestroy {
         const targetName = this.checklistToDelete.name;
         const targetAssigned = this.checklistToDelete.assigned;
 
-        // 1. Vaporizamos todos los clones generados (Checklists vivos)
         const checklistsRef = collection(this.firestore, 'checklists');
         const chkSnap = await getDocs(checklistsRef);
         chkSnap.forEach(async (cDoc) => {
@@ -360,7 +376,6 @@ export class ChecklistComponent implements OnInit, OnDestroy {
           }
         });
 
-        // 2. Destruimos la raíz para que el Robot no lo vuelva a crear nunca (Moldes)
         const moldesRef = collection(this.firestore, 'moldes_checklists');
         const moldesSnap = await getDocs(moldesRef);
         moldesSnap.forEach(async (mDoc) => {
@@ -621,5 +636,22 @@ export class ChecklistComponent implements OnInit, OnDestroy {
 
     alert('🔄 ¡El Bloque de Rutinas se guardó en la Bóveda exitosamente!\nEl robot generará los checklists en el tiempo indicado.');
     this.cerrarModalRutinas();
+  }
+
+  // 🔥 NUEVA FUNCIÓN TRADUCTORA: Pasa de 24 hrs a AM/PM 🔥
+  formatearHora(hora24: string): string {
+    if (!hora24) return '';
+    const partes = hora24.split(':');
+    if (partes.length !== 2) return hora24;
+    
+    let horas = parseInt(partes[0], 10);
+    const minutos = partes[1];
+    const ampm = horas >= 12 ? 'PM' : 'AM';
+    
+    horas = horas % 12;
+    horas = horas ? horas : 12; // El 0 (medianoche) se convierte en 12
+    
+    const horasStr = horas < 10 ? '0' + horas : horas.toString();
+    return `${horasStr}:${minutos} ${ampm}`;
   }
 }

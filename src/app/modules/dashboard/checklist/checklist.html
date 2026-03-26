@@ -82,7 +82,7 @@
               <span>👤 {{ checklist.assigned }}</span>
               <span>🏪 {{ checklist.store }}</span>
               <span>📅 {{ checklist.date }}</span>
-              <span>🕐 {{ checklist.time }}</span>
+              <span>🕐 {{ formatearHora(checklist.time) }}</span>
               <span *ngIf="checklist.enviado" style="color: var(--green); font-weight: 800; background: #E5F5EC; padding: 2px 8px; border-radius: 6px;">📤 ENVIADO</span>
             </div>
             
@@ -145,11 +145,11 @@
                 
                 <span *ngIf="item.tipo === 'rutina'" style="font-size: 10px; background: #FFF3D4; color: #C87F00; padding: 3px 8px; border-radius: 12px; font-weight: bold; border: 1px solid #C87F00; display: inline-flex; align-items: center; gap: 4px;">
                   🔄 {{ item.frecuencia }} 
-                  <span *ngIf="item.horaLimite"> | 🕐 {{ item.horaLimite }}</span>
+                  <span *ngIf="item.horaLimite"> | 🕐 {{ formatearHora(item.horaLimite) }}</span>
                 </span>
 
                 <span *ngIf="item.tipo === 'tarea' && (item.date || item.time)" style="font-size: 10px; background: #E8F0FE; color: #1A73E8; padding: 3px 8px; border-radius: 12px; font-weight: bold; border: 1px solid #1A73E8; display: inline-flex; align-items: center; gap: 4px; margin-left: 5px;">
-                  📅 {{ item.date || 'Sin fecha' }} 🕐 {{ item.time || 'Sin hora' }}
+                  📅 {{ item.date || 'Sin fecha' }} 🕐 {{ item.time ? formatearHora(item.time) : 'Sin hora' }}
                 </span>
               </div>
             </div>
@@ -318,9 +318,12 @@
                 <div class="checklist-item-wrap" *ngFor="let rutina of formRutinas; let i = index; trackBy: trackByIndex" style="display: flex; gap: 8px; align-items: center; margin-bottom: 8px; flex-wrap: wrap;">
                   <input class="form-input item-input" type="text" [(ngModel)]="rutina.text" placeholder="Ej: Limpieza profunda de anaqueles" style="flex: 1; min-width: 200px;">
                   
-                  <select class="form-input select-input" [(ngModel)]="rutina.frecuencia" (change)="alCambiarFrecuencia(rutina)" style="width: 120px; padding: 8px; cursor: pointer;">
-                    <option *ngFor="let f of frecuencias" [value]="f">{{ f }}</option>
-                  </select>
+                  <div style="display: flex; flex-direction: column; gap: 4px; align-items: center;">
+                    <select class="form-input select-input" [(ngModel)]="rutina.frecuencia" (change)="alCambiarFrecuencia(rutina)" style="width: 130px; padding: 8px; cursor: pointer;">
+                      <option *ngFor="let f of frecuencias" [value]="f">{{ f }}</option>
+                    </select>
+                    <span style="font-size: 11px; color: var(--brown); font-weight: bold;">{{ getTextoPeriodo(rutina) }}</span>
+                  </div>
 
                   <div style="display: flex; align-items: center; gap: 4px; background: #fff; border: 1px solid var(--border); border-radius: 6px; padding: 0 4px;">
                     <span style="font-size: 14px;">🕐</span>

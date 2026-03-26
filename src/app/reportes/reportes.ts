@@ -92,8 +92,8 @@ export class ReportesComponent implements OnInit, OnDestroy {
       const listasSinClones = new Map();
 
       snapshot.forEach(docSnap => {
-        // 🔥 FIX TYPESCRIPT: Le decimos que "c" es "any" para que no llore
-        const c: any = docSnap.data();
+        // 🔥 FIX TYPESCRIPT: Le decimos explícitamente que es "any"
+        const c = docSnap.data() as any;
         
         if (c.eliminado === true) return;
 
@@ -108,8 +108,8 @@ export class ReportesComponent implements OnInit, OnDestroy {
             if (!listasSinClones.has(firma)) {
               listasSinClones.set(firma, c);
             } else {
-              const existente = listasSinClones.get(firma);
-              // 🔥 FIX TYPESCRIPT: Aseguramos que "existente" no esté vacío antes de comparar
+              // 🔥 FIX TYPESCRIPT: Casteamos a any para comparar sin errores
+              const existente = listasSinClones.get(firma) as any;
               if (existente && c.calcProgreso > existente.calcProgreso) {
                 listasSinClones.set(firma, c);
               }

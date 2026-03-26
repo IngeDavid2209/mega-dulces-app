@@ -76,8 +76,9 @@ export class EstadisticasComponent implements OnInit, OnDestroy {
     }
   }
 
-  esItemValido(item: any): boolean {
-    return item.checked === true && (!item.requiresPhoto || (item.photo !== null && item.photo !== ''));
+  // 🔥 FIX UX: Ahora la estadística cuenta solo la palomita marcada para el % de progreso
+  esItemMarcado(item: any): boolean {
+    return item.checked === true;
   }
 
   conectarRadarNube() {
@@ -96,10 +97,8 @@ export class EstadisticasComponent implements OnInit, OnDestroy {
       snapshot.forEach(docSnap => {
         const c: any = docSnap.data();
         
-        // 🔥 ESCUDO 1: Ignorar los checklists zombies eliminados
         if (c.eliminado === true) return;
 
-        // 🔥 ESCUDO 2: Corrección Matemática anti-NaN
         const tiempoCreacion = typeof c.id === 'number' ? c.id : (c.timestampCreacion || ahora);
         
         if ((ahora - tiempoCreacion) <= sieteDias && this.sucursalesPermitidas.includes(c.store)) {
@@ -131,7 +130,8 @@ export class EstadisticasComponent implements OnInit, OnDestroy {
       if (c.items && Array.isArray(c.items)) {
         c.items.forEach((item: any) => {
           totalGlobalItems++;
-          if (this.esItemValido(item)) totalGlobalCompletados++;
+          // 🔥 Usamos la nueva regla aquí
+          if (this.esItemMarcado(item)) totalGlobalCompletados++;
         });
       }
     });
@@ -155,7 +155,7 @@ export class EstadisticasComponent implements OnInit, OnDestroy {
         if (c.items && Array.isArray(c.items)) {
           c.items.forEach((i: any) => { 
             sTotal++; 
-            if (this.esItemValido(i)) sOk++; 
+            if (this.esItemMarcado(i)) sOk++; 
           });
         }
       });
@@ -184,7 +184,8 @@ export class EstadisticasComponent implements OnInit, OnDestroy {
         if (c.items && Array.isArray(c.items)) {
           c.items.forEach((i: any) => {
             eTotal++;
-            if (this.esItemValido(i)) eOk++;
+            // 🔥 Usamos la nueva regla aquí también
+            if (this.esItemMarcado(i)) eOk++;
           });
         }
       });

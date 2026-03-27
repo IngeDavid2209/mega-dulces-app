@@ -33,6 +33,9 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   formStoreRutina = '';
   formRutinas: any[] = []; 
   frecuencias = ['Diaria', 'Semanal', 'Catorcenal', 'Mensual', 'Trimestral'];
+  
+  // 🔥 NUEVO: Para el selector de días del mes
+  diasDelMes = Array.from({length: 31}, (_, i) => i + 1);
 
   isPasswordModalOpen = false;
   passwordInput = '';
@@ -214,17 +217,10 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   }
 
   calcularViernesSanto(anio: number): Date {
-    const a = anio % 19;
-    const b = Math.floor(anio / 100);
-    const c = anio % 100;
-    const d = Math.floor(b / 4);
-    const e = b % 4;
-    const f = Math.floor((b + 8) / 25);
-    const g = Math.floor((b - f + 1) / 3);
-    const h = (19 * a + b - d - g + 15) % 30;
-    const i = Math.floor(c / 4);
-    const k = c % 4;
-    const l = (32 + 2 * e + 2 * i - h - k) % 7;
+    const a = anio % 19; const b = Math.floor(anio / 100); const c = anio % 100;
+    const d = Math.floor(b / 4); const e = b % 4; const f = Math.floor((b + 8) / 25);
+    const g = Math.floor((b - f + 1) / 3); const h = (19 * a + b - d - g + 15) % 30;
+    const i = Math.floor(c / 4); const k = c % 4; const l = (32 + 2 * e + 2 * i - h - k) % 7;
     const m = Math.floor((a + 11 * h + 22 * l) / 451);
     const mesResurreccion = Math.floor((h + l - 7 * m + 114) / 31) - 1;
     const diaResurreccion = ((h + l - 7 * m + 114) % 31) + 1;
@@ -236,50 +232,29 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   }
 
   calcularFechaFinDefault(frecuencia: string): string | null {
-    if (frecuencia === 'Diaria') return null; 
-
-    const fecha = new Date();
-    if (frecuencia === 'Semanal') {
-      fecha.setDate(fecha.getDate() + 7);
-    } else if (frecuencia === 'Catorcenal') {
-      fecha.setDate(fecha.getDate() + 14); 
-    } else if (frecuencia === 'Mensual') {
-      fecha.setMonth(fecha.getMonth() + 1); 
-    } else if (frecuencia === 'Trimestral') {
-      fecha.setMonth(fecha.getMonth() + 3); 
-    }
-    
-    const offset = fecha.getTimezoneOffset() * 60000;
-    const fechaLocal = new Date(fecha.getTime() - offset);
-    return fechaLocal.toISOString().split('T')[0];
+    return null; // Las rutinas son perpetuas por defecto
   }
 
   alCambiarFrecuencia(rutina: any) {
     rutina.fechaFin = this.calcularFechaFinDefault(rutina.frecuencia);
   }
 
+  // 🔥 NUEVO TEXTO INTELIGENTE 🔥
   getTextoPeriodo(rutina: any): string {
     if (rutina.frecuencia === 'Diaria') return 'Activa siempre';
-    
-    // 🔥 Ahora lee la palabra textual Lunes, Martes...
-    if (rutina.frecuencia === 'Semanal') {
-      return `Todos los ${rutina.diaSemana || 'Lunes'}`;
-    }
+    if (rutina.frecuencia === 'Semanal') return `Todos los ${rutina.diaSemana || 'Lunes'}`;
+    if (rutina.frecuencia === 'Catorcenal') return `Cada 2 semanas, los ${rutina.diaSemana || 'Lunes'}`;
+    if (rutina.frecuencia === 'Mensual') return `Los días ${rutina.diaMes || 1} del mes`;
+    if (rutina.frecuencia === 'Trimestral') return `El día ${rutina.diaMes || 1} cada 3 meses`;
+    return '';
+  }
 
-    if (!rutina.fechaFin) return '';
-    
-    const hoy = new Date();
-    const offset = hoy.getTimezoneOffset() * 60000;
-    const fechaLocalStr = new Date(hoy.getTime() - offset).toISOString().split('T')[0];
-    
-    const p1 = fechaLocalStr.split('-');
-    const p2 = rutina.fechaFin.split('-');
-    
-    if (p1.length === 3 && p2.length === 3) {
-      return `Del ${p1[2]}/${p1[1]}/${p1[0]} al ${p2[2]}/${p2[1]}/${p2[0]}`;
-    }
-    
-    return `Hasta ${rutina.fechaFin}`;
+  // Utilidad para contar las semanas (necesario para la Catorcena)
+  getWeekNumber(d: Date): number {
+    const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+    date.setUTCDate(date.getUTCDate() + 4 - (date.getUTCDay()||7));
+    const yearStart = new Date(Date.UTC(date.getUTCFullYear(),0,1));
+    return Math.ceil(( ( (date.getTime() - yearStart.getTime()) / 86400000) + 1)/7);
   }
 
   obtenerLlavePeriodo(frecuencia: string, fecha: Date): string {
@@ -291,9 +266,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     if (frecuencia === 'Mensual') return `${y}-${m}`;
     if (frecuencia === 'Trimestral') return `${y}-Q${Math.ceil(m / 3)}`;
     
-    const firstDay = new Date(y, 0, 1);
-    const days = Math.floor((fecha.getTime() - firstDay.getTime()) / (24 * 60 * 60 * 1000));
-    const week = Math.ceil((days + firstDay.getDay() + 1) / 7);
+    const week = this.getWeekNumber(fecha);
     
     if (frecuencia === 'Semanal') return `${y}-W${week}`;
     if (frecuencia === 'Catorcenal') return `${y}-C${Math.ceil(week / 2)}`;
@@ -307,22 +280,53 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     const fechaLocal = new Date(fechaActual.getTime() - offset);
     const fechaString = fechaLocal.toISOString().split('T')[0]; 
     
-    // 🔥 Transformamos el número del día en su nombre textual para comparar
     const diasTexto = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
     const diaHoyTexto = diasTexto[fechaLocal.getDay()]; 
+    const diaMesActual = fechaLocal.getDate();
 
     for (const molde of moldes) {
-      if (this.esDiaCerrado(molde.store, fechaActual)) {
-        continue; 
-      }
+      if (this.esDiaCerrado(molde.store, fechaActual)) { continue; }
 
-      // 🔥 Comparamos directamente "Lunes" con "Lunes"
-      if (molde.frecuencia === 'Semanal' && molde.diaSemana) {
-        if (molde.diaSemana !== diaHoyTexto) {
-          continue; 
+      // 🔥 EL CEREBRO DEL ROBOT PARA LOS DÍAS ESPECÍFICOS 🔥
+      
+      // SEMANAL Y CATORCENAL: Depende del día de la semana
+      if (molde.frecuencia === 'Semanal' || molde.frecuencia === 'Catorcenal') {
+        if (molde.diaSemana && molde.diaSemana !== diaHoyTexto) {
+          continue; // No le toca hoy
+        }
+        
+        // Si es Catorcenal, revisamos que sea semana impar desde que se creó
+        if (molde.frecuencia === 'Catorcenal' && molde.timestampCreacion) {
+           const semanaActual = this.getWeekNumber(fechaLocal);
+           const semanaCreacion = this.getWeekNumber(new Date(molde.timestampCreacion));
+           if (Math.abs(semanaActual - semanaCreacion) % 2 !== 0) {
+             continue; // Si la diferencia no es par, no le toca esta semana
+           }
         }
       }
-      
+
+      // MENSUAL Y TRIMESTRAL: Depende del día del mes numérico
+      if (molde.frecuencia === 'Mensual' || molde.frecuencia === 'Trimestral') {
+        const diaObjetivo = parseInt(molde.diaMes || '1', 10);
+        
+        // Ajuste inteligente: si piden el día 31, y el mes trae 30, se ajusta al último día
+        const ultimoDiaDelMesActual = new Date(fechaLocal.getFullYear(), fechaLocal.getMonth() + 1, 0).getDate();
+        const diaRealAProcesar = diaObjetivo > ultimoDiaDelMesActual ? ultimoDiaDelMesActual : diaObjetivo;
+
+        if (diaMesActual !== diaRealAProcesar) {
+          continue; // No es el día del mes que le toca
+        }
+
+        // Si es Trimestral, revisamos que hayan pasado 3 meses
+        if (molde.frecuencia === 'Trimestral' && molde.timestampCreacion) {
+           const mesActual = fechaLocal.getMonth();
+           const mesCreacion = new Date(molde.timestampCreacion).getMonth();
+           if (Math.abs(mesActual - mesCreacion) % 3 !== 0) {
+             continue; // No le toca en este mes
+           }
+        }
+      }
+
       const itemsVigentes = molde.items.filter((item: any) => {
         return !item.fechaFin || fechaString <= item.fechaFin;
       });
@@ -587,8 +591,8 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     this.formNameRutina = ''; 
     this.formAssignedRutina = []; 
     this.formStoreRutina = this.sucursalesDisponibles().length > 0 ? this.sucursalesDisponibles()[0] : '';
-    // 🔥 Ahora el valor por defecto es la palabra directa
-    this.formRutinas = [{ text: '', requiresPhoto: false, frecuencia: 'Diaria', fechaFin: this.calcularFechaFinDefault('Diaria'), horaLimite: '', diaSemana: 'Lunes' }];
+    // 🔥 FIX: Añadimos diaMes por defecto
+    this.formRutinas = [{ text: '', requiresPhoto: false, frecuencia: 'Diaria', fechaFin: this.calcularFechaFinDefault('Diaria'), horaLimite: '', diaSemana: 'Lunes', diaMes: 1 }];
     this.isModalRutinasOpen = true; 
   }
 
@@ -597,7 +601,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   }
 
   agregarRutina() { 
-    this.formRutinas.push({ text: '', requiresPhoto: false, frecuencia: 'Diaria', fechaFin: this.calcularFechaFinDefault('Diaria'), horaLimite: '', diaSemana: 'Lunes' }); 
+    this.formRutinas.push({ text: '', requiresPhoto: false, frecuencia: 'Diaria', fechaFin: this.calcularFechaFinDefault('Diaria'), horaLimite: '', diaSemana: 'Lunes', diaMes: 1 }); 
   }
 
   eliminarRutina(index: number) { 
@@ -622,7 +626,8 @@ export class ChecklistComponent implements OnInit, OnDestroy {
         frecuencia: rutina.frecuencia,
         fechaFin: rutina.fechaFin,
         horaLimite: rutina.horaLimite,
-        diaSemana: rutina.diaSemana || 'Lunes' 
+        diaSemana: rutina.diaSemana || 'Lunes',
+        diaMes: rutina.diaMes || 1 // 🔥 Guardamos el día del mes también
       }));
 
     if (rutinasValidas.length === 0) {
@@ -634,7 +639,10 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       const rutinasPorFrecuencia: { [key: string]: any[] } = {};
       
       rutinasValidas.forEach(r => {
-        const llaveGrupo = r.frecuencia === 'Semanal' ? `${r.frecuencia}_${r.diaSemana}` : r.frecuencia;
+        // Agrupamos inteligentemente para que las del mismo día se junten en una sola tarjeta
+        const llaveGrupo = r.frecuencia === 'Diaria' ? 'Diaria' :
+                           (r.frecuencia === 'Semanal' || r.frecuencia === 'Catorcenal') ? `${r.frecuencia}_${r.diaSemana}` : 
+                           `${r.frecuencia}_${r.diaMes}`;
         
         if (!rutinasPorFrecuencia[llaveGrupo]) {
           rutinasPorFrecuencia[llaveGrupo] = [];
@@ -645,7 +653,16 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       Object.keys(rutinasPorFrecuencia).forEach((llaveGrupo, fIndex) => {
         const partesGrupo = llaveGrupo.split('_');
         const frecuenciaReal = partesGrupo[0];
-        const diaSemanaReal = partesGrupo.length > 1 ? partesGrupo[1] : null;
+        
+        // Asignamos la información correcta de cuándo se repite
+        let diaSemanaReal = null;
+        let diaMesReal = null;
+        
+        if (frecuenciaReal === 'Semanal' || frecuenciaReal === 'Catorcenal') {
+          diaSemanaReal = partesGrupo.length > 1 ? partesGrupo[1] : 'Lunes';
+        } else if (frecuenciaReal === 'Mensual' || frecuenciaReal === 'Trimestral') {
+          diaMesReal = partesGrupo.length > 1 ? parseInt(partesGrupo[1], 10) : 1;
+        }
 
         const nombreMoldeLimpio = this.formNameRutina.replace(/\s+/g, '_').toLowerCase();
         const empleadoLimpio = empleadoNombre.replace(/\s+/g, '_').toLowerCase();
@@ -658,6 +675,8 @@ export class ChecklistComponent implements OnInit, OnDestroy {
           store: this.formStoreRutina,
           frecuencia: frecuenciaReal,
           diaSemana: diaSemanaReal, 
+          diaMes: diaMesReal,
+          timestampCreacion: Date.now(), // 🔥 FIX: Guardamos cuándo nació para calcular las catorcenas/trimestres
           createdBy: this.currentUser?.nombre || 'Desconocido', 
           items: JSON.parse(JSON.stringify(rutinasPorFrecuencia[llaveGrupo]))
         };
@@ -666,7 +685,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       });
     });
 
-    alert('🔄 ¡El Bloque de Rutinas se guardó en la Bóveda exitosamente!\nEl robot generará los checklists solo en el día indicado.');
+    alert('🔄 ¡El Bloque de Rutinas se guardó en la Bóveda exitosamente!\nEl robot generará los checklists de acuerdo a las reglas y días seleccionados.');
     this.cerrarModalRutinas();
   }
 

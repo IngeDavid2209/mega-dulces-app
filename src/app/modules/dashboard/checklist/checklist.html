@@ -162,7 +162,7 @@
                 {{ item.text }}
                 
                 <span *ngIf="item.tipo === 'rutina'" style="font-size: 10px; background: #FFF3D4; color: #C87F00; padding: 3px 8px; border-radius: 12px; font-weight: bold; border: 1px solid #C87F00; display: inline-flex; align-items: center; gap: 4px;">
-                  🔄 {{ item.frecuencia }} <span *ngIf="item.frecuencia === 'Semanal'">- {{ item.diaSemana }}</span>
+                  🔄 {{ item.frecuencia }} 
                   <span *ngIf="item.horaLimite"> | 🕐 {{ formatearHora(item.horaLimite) }}</span>
                 </span>
 
@@ -341,7 +341,7 @@
                       <option *ngFor="let f of frecuencias" [value]="f">{{ f }}</option>
                     </select>
 
-                    <select *ngIf="rutina.frecuencia === 'Semanal'" class="form-input select-input" [(ngModel)]="rutina.diaSemana" style="width: 130px; padding: 6px; cursor: pointer; background: #FFF9E6; border: 1px solid #f1c40f; font-size: 13px;">
+                    <select *ngIf="rutina.frecuencia === 'Semanal' || rutina.frecuencia === 'Catorcenal'" class="form-input select-input" [(ngModel)]="rutina.diaSemana" style="width: 130px; padding: 6px; cursor: pointer; background: #FFF9E6; border: 1px solid #f1c40f; font-size: 13px;">
                       <option value="Lunes">Lunes</option>
                       <option value="Martes">Martes</option>
                       <option value="Miércoles">Miércoles</option>
@@ -351,7 +351,11 @@
                       <option value="Domingo">Domingo</option>
                     </select>
 
-                    <span style="font-size: 11px; color: var(--brown); font-weight: bold;">{{ getTextoPeriodo(rutina) }}</span>
+                    <select *ngIf="rutina.frecuencia === 'Mensual' || rutina.frecuencia === 'Trimestral'" class="form-input select-input" [(ngModel)]="rutina.diaMes" style="width: 130px; padding: 6px; cursor: pointer; background: #FFF9E6; border: 1px solid #f1c40f; font-size: 13px;">
+                      <option *ngFor="let d of diasDelMes" [value]="d">Día {{ d }}</option>
+                    </select>
+
+                    <span style="font-size: 11px; color: var(--brown); font-weight: bold; text-align: center; line-height: 1.2;">{{ getTextoPeriodo(rutina) }}</span>
                   </div>
 
                   <div style="display: flex; align-items: center; gap: 4px; background: #fff; border: 1px solid var(--border); border-radius: 6px; padding: 0 4px;">

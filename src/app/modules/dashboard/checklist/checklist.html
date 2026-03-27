@@ -162,7 +162,7 @@
                 {{ item.text }}
                 
                 <span *ngIf="item.tipo === 'rutina'" style="font-size: 10px; background: #FFF3D4; color: #C87F00; padding: 3px 8px; border-radius: 12px; font-weight: bold; border: 1px solid #C87F00; display: inline-flex; align-items: center; gap: 4px;">
-                  🔄 {{ item.frecuencia }} 
+                  🔄 {{ item.frecuencia }} <span *ngIf="item.frecuencia === 'Semanal'">- {{ getNombreDiaCorto(item.diaSemana) }}</span>
                   <span *ngIf="item.horaLimite"> | 🕐 {{ formatearHora(item.horaLimite) }}</span>
                 </span>
 
@@ -340,6 +340,17 @@
                     <select class="form-input select-input" [(ngModel)]="rutina.frecuencia" (change)="alCambiarFrecuencia(rutina)" style="width: 130px; padding: 8px; cursor: pointer;">
                       <option *ngFor="let f of frecuencias" [value]="f">{{ f }}</option>
                     </select>
+
+                    <select *ngIf="rutina.frecuencia === 'Semanal'" class="form-input select-input" [(ngModel)]="rutina.diaSemana" style="width: 130px; padding: 6px; cursor: pointer; background: #FFF9E6; border: 1px solid #f1c40f; font-size: 13px;">
+                      <option value="1">Lunes</option>
+                      <option value="2">Martes</option>
+                      <option value="3">Miércoles</option>
+                      <option value="4">Jueves</option>
+                      <option value="5">Viernes</option>
+                      <option value="6">Sábado</option>
+                      <option value="0">Domingo</option>
+                    </select>
+
                     <span style="font-size: 11px; color: var(--brown); font-weight: bold;">{{ getTextoPeriodo(rutina) }}</span>
                   </div>
 

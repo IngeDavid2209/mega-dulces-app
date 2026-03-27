@@ -124,7 +124,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       const ahora = Date.now();
 
       snapshot.forEach(docSnap => {
-        const c: any = docSnap.data();
+        const c = docSnap.data() as any;
         
         if (c.eliminado === true) return;
 
@@ -160,6 +160,11 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       }
     });
     this.destructoresRadares.push(radarChecklists);
+  }
+
+  getPrimerasTareas(checklist: any): any[] {
+    if (!checklist || !checklist.items) return [];
+    return checklist.items.slice(0, 4);
   }
 
   isTareaVencida(item: any, checklistDate: string): boolean {
@@ -253,8 +258,16 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     rutina.fechaFin = this.calcularFechaFinDefault(rutina.frecuencia);
   }
 
+  // 🔥 NUEVA LÓGICA: Traductor del texto del periodo 🔥
   getTextoPeriodo(rutina: any): string {
     if (rutina.frecuencia === 'Diaria') return 'Activa siempre';
+    
+    if (rutina.frecuencia === 'Semanal') {
+      const dias = ['Domingos', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábados'];
+      const diaNombre = dias[parseInt(rutina.diaSemana || '1')];
+      return `Todos los ${diaNombre}`;
+    }
+
     if (!rutina.fechaFin) return '';
     
     const hoy = new Date();
@@ -269,6 +282,11 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     }
     
     return `Hasta ${rutina.fechaFin}`;
+  }
+
+  getNombreDiaCorto(numeroDia: string): string {
+    const dias = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+    return dias[parseInt(numeroDia)] || '';
   }
 
   obtenerLlavePeriodo(frecuencia: string, fecha: Date): string {
@@ -295,10 +313,18 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     const offset = fechaActual.getTimezoneOffset() * 60000;
     const fechaLocal = new Date(fechaActual.getTime() - offset);
     const fechaString = fechaLocal.toISOString().split('T')[0]; 
+    const diaHoyNum = fechaLocal.getDay().toString(); // 0=Dom, 1=Lun...
 
     for (const molde of moldes) {
       if (this.esDiaCerrado(molde.store, fechaActual)) {
         continue; 
+      }
+
+      // 🔥 REGLA DEL JEFE: Si es semanal, SOLO se crea si el día de hoy coincide con el día elegido
+      if (molde.frecuencia === 'Semanal' && molde.diaSemana !== undefined) {
+        if (molde.diaSemana !== diaHoyNum) {
+          continue; // Saltamos este molde porque no le toca hoy
+        }
       }
       
       const itemsVigentes = molde.items.filter((item: any) => {
@@ -565,7 +591,8 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     this.formNameRutina = ''; 
     this.formAssignedRutina = []; 
     this.formStoreRutina = this.sucursalesDisponibles().length > 0 ? this.sucursalesDisponibles()[0] : '';
-    this.formRutinas = [{ text: '', requiresPhoto: false, frecuencia: 'Diaria', fechaFin: this.calcularFechaFinDefault('Diaria'), horaLimite: '' }];
+    // 🔥 FIX: Añadimos 'diaSemana' por defecto al crear una rutina nueva
+    this.formRutinas = [{ text: '', requiresPhoto: false, frecuencia: 'Diaria', fechaFin: this.calcularFechaFinDefault('Diaria'), horaLimite: '', diaSemana: '1' }];
     this.isModalRutinasOpen = true; 
   }
 
@@ -574,7 +601,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   }
 
   agregarRutina() { 
-    this.formRutinas.push({ text: '', requiresPhoto: false, frecuencia: 'Diaria', fechaFin: this.calcularFechaFinDefault('Diaria'), horaLimite: '' }); 
+    this.formRutinas.push({ text: '', requiresPhoto: false, frecuencia: 'Diaria', fechaFin: this.calcularFechaFinDefault('Diaria'), horaLimite: '', diaSemana: '1' }); 
   }
 
   eliminarRutina(index: number) { 
@@ -598,7 +625,8 @@ export class ChecklistComponent implements OnInit, OnDestroy {
         tipo: 'rutina', 
         frecuencia: rutina.frecuencia,
         fechaFin: rutina.fechaFin,
-        horaLimite: rutina.horaLimite 
+        horaLimite: rutina.horaLimite,
+        diaSemana: rutina.diaSemana || '1' // 🔥 Guardamos el día asignado
       }));
 
     if (rutinasValidas.length === 0) {
@@ -608,37 +636,45 @@ export class ChecklistComponent implements OnInit, OnDestroy {
 
     this.formAssignedRutina.forEach((empleadoNombre, index) => {
       const rutinasPorFrecuencia: { [key: string]: any[] } = {};
+      
       rutinasValidas.forEach(r => {
-        if (!rutinasPorFrecuencia[r.frecuencia]) {
-          rutinasPorFrecuencia[r.frecuencia] = [];
+        // 🔥 FIX: Agrupamos rutinas no solo por frecuencia, sino también por el día que tocan
+        const llaveGrupo = r.frecuencia === 'Semanal' ? `${r.frecuencia}_${r.diaSemana}` : r.frecuencia;
+        
+        if (!rutinasPorFrecuencia[llaveGrupo]) {
+          rutinasPorFrecuencia[llaveGrupo] = [];
         }
-        rutinasPorFrecuencia[r.frecuencia].push(r);
+        rutinasPorFrecuencia[llaveGrupo].push(r);
       });
 
-      Object.keys(rutinasPorFrecuencia).forEach((frecuencia, fIndex) => {
+      Object.keys(rutinasPorFrecuencia).forEach((llaveGrupo, fIndex) => {
+        const partesGrupo = llaveGrupo.split('_');
+        const frecuenciaReal = partesGrupo[0];
+        const diaSemanaReal = partesGrupo.length > 1 ? partesGrupo[1] : null;
+
         const nombreMoldeLimpio = this.formNameRutina.replace(/\s+/g, '_').toLowerCase();
         const empleadoLimpio = empleadoNombre.replace(/\s+/g, '_').toLowerCase();
-        const moldeId = `molde_${nombreMoldeLimpio}_${empleadoLimpio}_${frecuencia}`;
+        const moldeId = `molde_${nombreMoldeLimpio}_${empleadoLimpio}_${llaveGrupo}`;
         
         const nuevoMolde = {
           id: moldeId,
           name: this.formNameRutina,
           assigned: empleadoNombre,
           store: this.formStoreRutina,
-          frecuencia: frecuencia,
+          frecuencia: frecuenciaReal,
+          diaSemana: diaSemanaReal, // 🔥 Lo guardamos en la base de datos
           createdBy: this.currentUser?.nombre || 'Desconocido', 
-          items: JSON.parse(JSON.stringify(rutinasPorFrecuencia[frecuencia]))
+          items: JSON.parse(JSON.stringify(rutinasPorFrecuencia[llaveGrupo]))
         };
         
         setDoc(doc(this.firestore, 'moldes_checklists', moldeId), nuevoMolde);
       });
     });
 
-    alert('🔄 ¡El Bloque de Rutinas se guardó en la Bóveda exitosamente!\nEl robot generará los checklists en el tiempo indicado.');
+    alert('🔄 ¡El Bloque de Rutinas se guardó en la Bóveda exitosamente!\nEl robot generará los checklists solo en el día indicado.');
     this.cerrarModalRutinas();
   }
 
-  // 🔥 NUEVA FUNCIÓN TRADUCTORA: Pasa de 24 hrs a AM/PM 🔥
   formatearHora(hora24: string): string {
     if (!hora24) return '';
     const partes = hora24.split(':');
@@ -649,7 +685,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     const ampm = horas >= 12 ? 'PM' : 'AM';
     
     horas = horas % 12;
-    horas = horas ? horas : 12; // El 0 (medianoche) se convierte en 12
+    horas = horas ? horas : 12; 
     
     const horasStr = horas < 10 ? '0' + horas : horas.toString();
     return `${horasStr}:${minutos} ${ampm}`;

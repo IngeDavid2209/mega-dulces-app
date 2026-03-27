@@ -92,10 +92,8 @@ export class CheckstoreComponent implements OnInit, OnDestroy {
       snapshot.forEach(docSnap => {
         const c: any = docSnap.data();
 
-        // 🔥 ESCUDO 1: Ignorar los checklists zombies eliminados
         if (c.eliminado === true) return;
 
-        // 🔥 ESCUDO 2: Corrección Matemática anti-NaN
         const tiempoCreacion = typeof c.id === 'number' ? c.id : (c.timestampCreacion || ahora);
         
         if (c.date === fechaHoyLocal || (ahora - tiempoCreacion) <= limite24h) {
@@ -103,11 +101,29 @@ export class CheckstoreComponent implements OnInit, OnDestroy {
         }
       });
 
+      // 🔥 ESCUDO ANTI-CLONES PARA CHECKSTORE 🔥
+      const listasSinClones = new Map();
+      checklists.forEach(c => {
+        const marcados = c.items ? c.items.filter((i:any) => i.checked).length : 0;
+        c.calcProgreso = c.items && c.items.length > 0 ? Math.round((marcados / c.items.length) * 100) : 0;
+
+        const firma = `${c.name}_${c.assigned}_${c.store}_${c.date}`;
+        if (!listasSinClones.has(firma)) {
+          listasSinClones.set(firma, c);
+        } else {
+          const existente = listasSinClones.get(firma);
+          if (c.calcProgreso > existente.calcProgreso) {
+            listasSinClones.set(firma, c);
+          }
+        }
+      });
+      const listasFinales = Array.from(listasSinClones.values());
+
       const calcularDatos = (listaBase: any[]) => {
         const listaPermitida = listaBase.filter(sucursal => this.sucursalesPermitidas.includes(sucursal.name));
 
         return listaPermitida.map(sucursal => {
-          const storeChecklists = checklists.filter(c => c.store === sucursal.name);
+          const storeChecklists = listasFinales.filter(c => c.store === sucursal.name);
           let totalItems = 0;
           let completedItems = 0;
 
@@ -115,8 +131,8 @@ export class CheckstoreComponent implements OnInit, OnDestroy {
             if (c.items && Array.isArray(c.items)) {
               c.items.forEach((item: any) => {
                 totalItems++;
-                const completo = item.checked && (!item.requiresPhoto || (item.photo !== null && item.photo !== ''));
-                if (completo) {
+                // 🔥 FIX LÓGICA: Ahora solo importa que tenga la palomita (checked === true)
+                if (item.checked === true) {
                   completedItems++;
                 }
               });

@@ -76,7 +76,7 @@ export class EstadisticasComponent implements OnInit, OnDestroy {
     }
   }
 
-  // 🔥 FIX UX: Ahora la estadística cuenta solo la palomita marcada para el % de progreso
+  // 🔥 FIX UX: Cuenta como completado con el simple hecho de tener la palomita
   esItemMarcado(item: any): boolean {
     return item.checked === true;
   }
@@ -90,23 +90,41 @@ export class EstadisticasComponent implements OnInit, OnDestroy {
 
     const checklistsRef = collection(this.firestore, 'checklists');
     const radarChecklists = onSnapshot(checklistsRef, (snapshot) => {
-      const listas: any[] = [];
-      const ahora = Date.now();
-      const sieteDias = 7 * 24 * 60 * 60 * 1000; 
+      const listasCrudas: any[] = [];
+      
+      // 🔥 REGLA ESTRICTA DE HOY: Para que las estadísticas no arrastren fantasmas de ayer
+      const offset = new Date().getTimezoneOffset() * 60000;
+      const fechaHoyLocal = new Date(Date.now() - offset).toISOString().split('T')[0];
 
       snapshot.forEach(docSnap => {
         const c: any = docSnap.data();
         
         if (c.eliminado === true) return;
 
-        const tiempoCreacion = typeof c.id === 'number' ? c.id : (c.timestampCreacion || ahora);
-        
-        if ((ahora - tiempoCreacion) <= sieteDias && this.sucursalesPermitidas.includes(c.store)) {
-          listas.push(c);
+        // SOLO contamos las rutinas que estén etiquetadas con la fecha de HOY
+        if (c.date === fechaHoyLocal && this.sucursalesPermitidas.includes(c.store)) {
+          listasCrudas.push(c);
         }
       });
 
-      this.todosLosChecklists = listas;
+      // 🔥 ESCUDO ANTI-CLONES EN ESTADÍSTICAS 🔥
+      const listasSinClones = new Map();
+      listasCrudas.forEach(c => {
+        const marcados = c.items ? c.items.filter((i:any) => i.checked).length : 0;
+        c.calcProgreso = c.items && c.items.length > 0 ? Math.round((marcados / c.items.length) * 100) : 0;
+
+        const firma = `${c.name}_${c.assigned}_${c.store}_${c.date}`;
+        if (!listasSinClones.has(firma)) {
+          listasSinClones.set(firma, c);
+        } else {
+          const existente = listasSinClones.get(firma);
+          if (c.calcProgreso > existente.calcProgreso) {
+            listasSinClones.set(firma, c);
+          }
+        }
+      });
+
+      this.todosLosChecklists = Array.from(listasSinClones.values());
       this.calcularEstadisticasGenerales();
       this.calcularEstadisticasEmpleados();
     });
@@ -130,7 +148,7 @@ export class EstadisticasComponent implements OnInit, OnDestroy {
       if (c.items && Array.isArray(c.items)) {
         c.items.forEach((item: any) => {
           totalGlobalItems++;
-          // 🔥 Usamos la nueva regla aquí
+          // Sumamos progreso real
           if (this.esItemMarcado(item)) totalGlobalCompletados++;
         });
       }
@@ -184,7 +202,6 @@ export class EstadisticasComponent implements OnInit, OnDestroy {
         if (c.items && Array.isArray(c.items)) {
           c.items.forEach((i: any) => {
             eTotal++;
-            // 🔥 Usamos la nueva regla aquí también
             if (this.esItemMarcado(i)) eOk++;
           });
         }

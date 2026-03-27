@@ -28,6 +28,10 @@ export class ReportesComponent implements OnInit, OnDestroy {
   buscando = signal(false);
   busquedaRealizada = signal(false);
 
+  // 🔥 NUEVO: Variables para controlar la vista de las fotos
+  vistaActual = signal<'lista' | 'detalle'>('lista');
+  checklistSeleccionado = signal<any>(null);
+
   isPasswordModalOpen = false;
   passwordInput = '';
 
@@ -92,7 +96,6 @@ export class ReportesComponent implements OnInit, OnDestroy {
       const listasSinClones = new Map();
 
       snapshot.forEach(docSnap => {
-        // 🔥 FIX TYPESCRIPT: Le decimos explícitamente que es "any"
         const c = docSnap.data() as any;
         
         if (c.eliminado === true) return;
@@ -108,7 +111,6 @@ export class ReportesComponent implements OnInit, OnDestroy {
             if (!listasSinClones.has(firma)) {
               listasSinClones.set(firma, c);
             } else {
-              // 🔥 FIX TYPESCRIPT: Casteamos a any para comparar sin errores
               const existente = listasSinClones.get(firma) as any;
               if (existente && c.calcProgreso > existente.calcProgreso) {
                 listasSinClones.set(firma, c);
@@ -129,6 +131,29 @@ export class ReportesComponent implements OnInit, OnDestroy {
       alert("Hubo un error de conexión al buscar el historial.");
       this.buscando.set(false);
     });
+  }
+
+  // 🔥 NUEVO: Funciones para abrir y cerrar el detalle con fotos
+  verDetalle(checklist: any) {
+    this.checklistSeleccionado.set(checklist);
+    this.vistaActual.set('detalle');
+  }
+
+  volverALista() {
+    this.checklistSeleccionado.set(null);
+    this.vistaActual.set('lista');
+  }
+
+  formatearHora(hora24: string): string {
+    if (!hora24) return '';
+    const partes = hora24.split(':');
+    if (partes.length !== 2) return hora24;
+    let horas = parseInt(partes[0], 10);
+    const minutos = partes[1];
+    const ampm = horas >= 12 ? 'PM' : 'AM';
+    horas = horas % 12;
+    horas = horas ? horas : 12; 
+    return `${horas < 10 ? '0' + horas : horas}:${minutos} ${ampm}`;
   }
 
   abrirModalEliminarTodo() {

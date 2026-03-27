@@ -13,7 +13,7 @@
   <div class="main-wrapper">
     <div class="mobile-overlay" *ngIf="isMenuOpen" (click)="toggleMenu()"></div>
     
-    <aside class="sidebar" [class.mobile-open]="isMenuOpen">
+    <aside class="sidebar" [class.mobile-open]="isMenuOpen" translate="no">
       <div class="sidebar-header">
         <div class="sidebar-avatar" translate="no">{{ (currentUser?.nombre || 'A').charAt(0) | uppercase }}</div>
         <div>
@@ -34,93 +34,156 @@
     </aside>
 
     <div class="content">
-      <div class="section-header">
-        <div>
-          <div class="section-title">📑 Historial de Operaciones</div>
-          <div class="section-sub">Auditoría permanente de checklists pasados</div>
+      
+      <div *ngIf="vistaActual() === 'lista'">
+        <div class="section-header">
+          <div>
+            <div class="section-title">📑 Historial de Operaciones</div>
+            <div class="section-sub">Auditoría permanente de checklists pasados</div>
+          </div>
+        </div>
+
+        <div class="filter-box-wrap">
+          <div class="search-filters-container">
+            <div class="filter-item">
+              <label class="form-label">Desde:</label>
+              <input type="date" class="form-input" [(ngModel)]="fechaInicio">
+            </div>
+            <div class="filter-item">
+              <label class="form-label">Hasta:</label>
+              <input type="date" class="form-input" [(ngModel)]="fechaFin">
+            </div>
+            <div class="filter-item-large">
+              <label class="form-label">Empleado (Opcional):</label>
+              <select class="form-input select-input" [(ngModel)]="empleadoSeleccionado">
+                <option value="">Todos los empleados</option>
+                <option *ngFor="let emp of empleados()" [value]="emp.nombre">{{ emp.nombre }}</option>
+              </select>
+            </div>
+
+            <div class="filter-actions">
+              <button class="btn-search" (click)="buscarReportes()" [disabled]="buscando()">
+                <span style="font-size: 18px;">🔍</span> {{ buscando() ? 'Buscando...' : 'Consultar' }}
+              </button>
+              <button class="btn-pdf" (click)="descargarReportePDF()" *ngIf="busquedaRealizada() && resultados().length > 0">
+                <span style="font-size: 18px;">📄</span> Reporte PDF
+              </button>
+              <button class="btn-delete-history" (click)="abrirModalEliminarTodo()" *ngIf="busquedaRealizada() && resultados().length > 0 && currentUser?.rol === 'admin'">
+                <span style="font-size: 18px;">🗑️</span> Borrar Historial
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div *ngIf="busquedaRealizada()">
+          <div style="margin-bottom: 15px; font-weight: bold; color: var(--brown);">
+            Resultados encontrados: {{ resultados().length }}
+          </div>
+
+          <div class="checklist-grid">
+            <div class="checklist-card" *ngFor="let checklist of resultados()" (click)="verDetalle(checklist)" style="cursor: pointer;">
+              <div class="checklist-card-header">
+                <div class="checklist-card-title">{{ checklist.name }}</div>
+                <div class="checklist-card-badge"
+                     [ngClass]="{
+                       'badge-pendiente': checklist.status === 'pendiente',
+                       'badge-en-progreso': checklist.status === 'en-progreso',
+                       'badge-completo': checklist.status === 'completo'
+                     }">
+                  {{ checklist.status | titlecase }}
+                </div>
+              </div>
+              
+              <div class="checklist-card-info">
+                <span>👤 {{ checklist.assigned }}</span>
+                <span>🏪 {{ checklist.store }}</span>
+                <span>📅 {{ checklist.date }}</span>
+                <span *ngIf="checklist.enviado" style="color: var(--green); font-weight: 800; background: #E5F5EC; padding: 2px 8px; border-radius: 6px;">📤 ENVIADO</span>
+              </div>
+              
+              <div class="checklist-progress">
+                <div class="progress-label">
+                  <span>{{ getCompletados(checklist) }} de {{ checklist.items?.length || 0 }} tareas marcadas</span>
+                  <span>{{ getProgreso(checklist) }}%</span>
+                </div>
+                <div class="progress-bar-wrap">
+                  <div class="progress-bar-fill" [style.width.%]="getProgreso(checklist)"></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="empty-state" *ngIf="resultados().length === 0 && !buscando()">
+              <div class="empty-state-icon">📭</div>
+              <h3>No hay registros</h3>
+              <p>No se encontraron checklists en este rango de fechas para el filtro seleccionado.</p>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div class="filter-box-wrap">
-        <div class="search-filters-container">
+      <div *ngIf="vistaActual() === 'detalle' && checklistSeleccionado()">
+        <button class="btn-back" (click)="volverALista()" style="background: transparent; border: none; color: var(--coral); font-weight: bold; cursor: pointer; margin-bottom: 20px; font-size: 16px;">
+          ← Volver a resultados
+        </button>
+
+        <div style="background: white; border-radius: 12px; padding: 25px; border: 1px solid var(--border); box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
           
-          <div class="filter-item">
-            <label class="form-label">Desde:</label>
-            <input type="date" class="form-input" [(ngModel)]="fechaInicio">
-          </div>
-          
-          <div class="filter-item">
-            <label class="form-label">Hasta:</label>
-            <input type="date" class="form-input" [(ngModel)]="fechaFin">
-          </div>
-
-          <div class="filter-item-large">
-            <label class="form-label">Empleado (Opcional):</label>
-            <select class="form-input select-input" [(ngModel)]="empleadoSeleccionado">
-              <option value="">Todos los empleados</option>
-              <option *ngFor="let emp of empleados()" [value]="emp.nombre">{{ emp.nombre }}</option>
-            </select>
-          </div>
-
-          <div class="filter-actions">
-            <button class="btn-search" (click)="buscarReportes()" [disabled]="buscando()">
-              <span style="font-size: 18px;">🔍</span> {{ buscando() ? 'Buscando...' : 'Consultar' }}
-            </button>
-
-            <button class="btn-pdf" (click)="descargarReportePDF()" *ngIf="busquedaRealizada() && resultados().length > 0">
-              <span style="font-size: 18px;">📄</span> Reporte PDF
-            </button>
-
-            <button class="btn-delete-history" (click)="abrirModalEliminarTodo()" *ngIf="busquedaRealizada() && resultados().length > 0 && currentUser?.rol === 'admin'">
-              <span style="font-size: 18px;">🗑️</span> Borrar Historial
-            </button>
-          </div>
-
-        </div>
-      </div>
-
-      <div *ngIf="busquedaRealizada()">
-        <div style="margin-bottom: 15px; font-weight: bold; color: var(--brown);">
-          Resultados encontrados: {{ resultados().length }}
-        </div>
-
-        <div class="checklist-grid">
-          <div class="checklist-card" *ngFor="let checklist of resultados()">
-            <div class="checklist-card-header">
-              <div class="checklist-card-title">{{ checklist.name }}</div>
-              <div class="checklist-card-badge"
-                   [ngClass]="{
-                     'badge-pendiente': checklist.status === 'pendiente',
-                     'badge-en-progreso': checklist.status === 'en-progreso',
-                     'badge-completo': checklist.status === 'completo'
-                   }">
-                {{ checklist.status | titlecase }}
-              </div>
-            </div>
-            
-            <div class="checklist-card-info">
-              <span>👤 {{ checklist.assigned }}</span>
-              <span>🏪 {{ checklist.store }}</span>
-              <span>📅 {{ checklist.date }}</span>
-              <span *ngIf="checklist.enviado" style="color: var(--green); font-weight: 800; background: #E5F5EC; padding: 2px 8px; border-radius: 6px;">📤 ENVIADO</span>
-            </div>
-            
-            <div class="checklist-progress">
-              <div class="progress-label">
-                <span>{{ getCompletados(checklist) }} de {{ checklist.items?.length || 0 }} tareas marcadas</span>
-                <span>{{ getProgreso(checklist) }}%</span>
-              </div>
-              <div class="progress-bar-wrap">
-                <div class="progress-bar-fill" [style.width.%]="getProgreso(checklist)"></div>
-              </div>
+          <div style="border-bottom: 2px dashed var(--border); padding-bottom: 20px; margin-bottom: 20px;">
+            <h2 style="color: var(--brown); font-family: 'Playfair Display', serif; margin: 0 0 10px 0;">{{ checklistSeleccionado().name }}</h2>
+            <div style="display: flex; flex-wrap: wrap; gap: 15px; font-size: 15px; color: #555;">
+              <span><strong>Empleado:</strong> {{ checklistSeleccionado().assigned }}</span>
+              <span><strong>Sucursal:</strong> 🏪 {{ checklistSeleccionado().store }}</span>
+              <span><strong>Fecha:</strong> 📅 {{ checklistSeleccionado().date }}</span>
+              <span style="color: var(--green); font-weight: bold;">✅ Tareas completadas: {{ getCompletados(checklistSeleccionado()) }} de {{ checklistSeleccionado().items.length }}</span>
             </div>
           </div>
 
-          <div class="empty-state" *ngIf="resultados().length === 0 && !buscando()">
-            <div class="empty-state-icon">📭</div>
-            <h3>No hay registros</h3>
-            <p>No se encontraron checklists en este rango de fechas para el filtro seleccionado.</p>
+          <div style="display: flex; flex-direction: column; gap: 15px;">
+            <div *ngFor="let item of checklistSeleccionado().items" style="background: #fafafa; border: 1px solid var(--border); border-radius: 10px; padding: 15px;">
+              
+              <div style="display: flex; align-items: flex-start; gap: 15px;">
+                <div style="width: 24px; height: 24px; min-width: 24px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-weight: bold; color: white;"
+                     [style.background]="item.checked ? 'var(--green)' : '#ccc'"
+                     [style.border]="item.checked ? 'none' : '2px solid #aaa'">
+                  {{ item.checked ? '✓' : '' }}
+                </div>
+                
+                <div style="flex: 1;">
+                  <div style="font-size: 16px; color: var(--brown); font-weight: 500; margin-bottom: 5px;" [style.text-decoration]="item.checked ? 'line-through' : 'none'" [style.opacity]="item.checked ? '0.7' : '1'">
+                    {{ item.text }}
+                  </div>
+                  
+                  <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                    <span *ngIf="item.tipo === 'rutina'" style="font-size: 11px; background: #FFF3D4; color: #C87F00; padding: 3px 8px; border-radius: 12px; font-weight: bold; border: 1px solid #C87F00;">
+                      🔄 {{ item.frecuencia }} <span *ngIf="item.horaLimite"> | 🕐 Límite: {{ formatearHora(item.horaLimite) }}</span>
+                    </span>
+                    <span *ngIf="item.tipo === 'tarea' && (item.date || item.time)" style="font-size: 11px; background: #E8F0FE; color: #1A73E8; padding: 3px 8px; border-radius: 12px; font-weight: bold; border: 1px solid #1A73E8;">
+                      📅 {{ item.date || 'Sin fecha' }} | 🕐 Límite: {{ item.time ? formatearHora(item.time) : 'Sin hora' }}
+                    </span>
+                  </div>
+
+                  <div *ngIf="item.requiresPhoto" style="margin-top: 15px; padding-top: 15px; border-top: 1px dashed #ddd;">
+                    <div style="font-size: 13px; font-weight: bold; color: #666; margin-bottom: 10px;">📸 Evidencia Fotográfica Requerida:</div>
+                    
+                    <div *ngIf="item.photo" style="display: inline-block; border: 3px solid white; box-shadow: 0 4px 10px rgba(0,0,0,0.15); border-radius: 10px; overflow: hidden; background: #000;">
+                      <img [src]="item.photo" alt="Evidencia de tarea" style="display: block; max-width: 100%; max-height: 400px; object-fit: contain;">
+                    </div>
+                    
+                    <div *ngIf="!item.photo && item.checked" style="display: inline-flex; align-items: center; gap: 8px; background: #FFE5E5; color: var(--red); padding: 8px 12px; border-radius: 8px; font-size: 13px; font-weight: bold; border: 1px solid var(--red);">
+                      <span>❌</span> El empleado marcó la tarea pero NO adjuntó la foto.
+                    </div>
+
+                    <div *ngIf="!item.photo && !item.checked" style="font-size: 13px; color: #999; font-style: italic;">
+                      Tarea no realizada, sin evidencia adjunta.
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+
+            </div>
           </div>
+
         </div>
       </div>
 

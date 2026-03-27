@@ -32,7 +32,6 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   formAssignedRutina: string[] = []; 
   formStoreRutina = '';
   formRutinas: any[] = []; 
-  // 🔥 ELIMINAMOS LA RUTINA "MENSTRUAL" DEL AUTOCORRECTOR JAJAJA 🔥
   frecuencias = ['Diaria', 'Semanal', 'Catorcenal', 'Mensual', 'Trimestral'];
   
   diasDelMes = Array.from({length: 31}, (_, i) => i + 1);
@@ -130,6 +129,9 @@ export class ChecklistComponent implements OnInit, OnDestroy {
         const c = docSnap.data() as any;
         
         if (c.eliminado === true) return;
+        
+        // 🔥 EL TOQUE MÁGICO: Si la tarea ya se envió, la ocultamos de esta pantalla
+        if (c.enviado === true) return;
 
         if ((ahora - (typeof c.id === 'number' ? c.id : c.timestampCreacion || ahora)) <= limite24h) {
           const tareasMarcadas = c.items.filter((i:any) => i.checked).length;

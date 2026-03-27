@@ -258,14 +258,12 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     rutina.fechaFin = this.calcularFechaFinDefault(rutina.frecuencia);
   }
 
-  // 🔥 NUEVA LÓGICA: Traductor del texto del periodo 🔥
   getTextoPeriodo(rutina: any): string {
     if (rutina.frecuencia === 'Diaria') return 'Activa siempre';
     
+    // 🔥 Ahora lee la palabra textual Lunes, Martes...
     if (rutina.frecuencia === 'Semanal') {
-      const dias = ['Domingos', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábados'];
-      const diaNombre = dias[parseInt(rutina.diaSemana || '1')];
-      return `Todos los ${diaNombre}`;
+      return `Todos los ${rutina.diaSemana || 'Lunes'}`;
     }
 
     if (!rutina.fechaFin) return '';
@@ -282,11 +280,6 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     }
     
     return `Hasta ${rutina.fechaFin}`;
-  }
-
-  getNombreDiaCorto(numeroDia: string): string {
-    const dias = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
-    return dias[parseInt(numeroDia)] || '';
   }
 
   obtenerLlavePeriodo(frecuencia: string, fecha: Date): string {
@@ -313,17 +306,20 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     const offset = fechaActual.getTimezoneOffset() * 60000;
     const fechaLocal = new Date(fechaActual.getTime() - offset);
     const fechaString = fechaLocal.toISOString().split('T')[0]; 
-    const diaHoyNum = fechaLocal.getDay().toString(); // 0=Dom, 1=Lun...
+    
+    // 🔥 Transformamos el número del día en su nombre textual para comparar
+    const diasTexto = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+    const diaHoyTexto = diasTexto[fechaLocal.getDay()]; 
 
     for (const molde of moldes) {
       if (this.esDiaCerrado(molde.store, fechaActual)) {
         continue; 
       }
 
-      // 🔥 REGLA DEL JEFE: Si es semanal, SOLO se crea si el día de hoy coincide con el día elegido
-      if (molde.frecuencia === 'Semanal' && molde.diaSemana !== undefined) {
-        if (molde.diaSemana !== diaHoyNum) {
-          continue; // Saltamos este molde porque no le toca hoy
+      // 🔥 Comparamos directamente "Lunes" con "Lunes"
+      if (molde.frecuencia === 'Semanal' && molde.diaSemana) {
+        if (molde.diaSemana !== diaHoyTexto) {
+          continue; 
         }
       }
       
@@ -591,8 +587,8 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     this.formNameRutina = ''; 
     this.formAssignedRutina = []; 
     this.formStoreRutina = this.sucursalesDisponibles().length > 0 ? this.sucursalesDisponibles()[0] : '';
-    // 🔥 FIX: Añadimos 'diaSemana' por defecto al crear una rutina nueva
-    this.formRutinas = [{ text: '', requiresPhoto: false, frecuencia: 'Diaria', fechaFin: this.calcularFechaFinDefault('Diaria'), horaLimite: '', diaSemana: '1' }];
+    // 🔥 Ahora el valor por defecto es la palabra directa
+    this.formRutinas = [{ text: '', requiresPhoto: false, frecuencia: 'Diaria', fechaFin: this.calcularFechaFinDefault('Diaria'), horaLimite: '', diaSemana: 'Lunes' }];
     this.isModalRutinasOpen = true; 
   }
 
@@ -601,7 +597,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   }
 
   agregarRutina() { 
-    this.formRutinas.push({ text: '', requiresPhoto: false, frecuencia: 'Diaria', fechaFin: this.calcularFechaFinDefault('Diaria'), horaLimite: '', diaSemana: '1' }); 
+    this.formRutinas.push({ text: '', requiresPhoto: false, frecuencia: 'Diaria', fechaFin: this.calcularFechaFinDefault('Diaria'), horaLimite: '', diaSemana: 'Lunes' }); 
   }
 
   eliminarRutina(index: number) { 
@@ -626,7 +622,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
         frecuencia: rutina.frecuencia,
         fechaFin: rutina.fechaFin,
         horaLimite: rutina.horaLimite,
-        diaSemana: rutina.diaSemana || '1' // 🔥 Guardamos el día asignado
+        diaSemana: rutina.diaSemana || 'Lunes' 
       }));
 
     if (rutinasValidas.length === 0) {
@@ -638,7 +634,6 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       const rutinasPorFrecuencia: { [key: string]: any[] } = {};
       
       rutinasValidas.forEach(r => {
-        // 🔥 FIX: Agrupamos rutinas no solo por frecuencia, sino también por el día que tocan
         const llaveGrupo = r.frecuencia === 'Semanal' ? `${r.frecuencia}_${r.diaSemana}` : r.frecuencia;
         
         if (!rutinasPorFrecuencia[llaveGrupo]) {
@@ -662,7 +657,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
           assigned: empleadoNombre,
           store: this.formStoreRutina,
           frecuencia: frecuenciaReal,
-          diaSemana: diaSemanaReal, // 🔥 Lo guardamos en la base de datos
+          diaSemana: diaSemanaReal, 
           createdBy: this.currentUser?.nombre || 'Desconocido', 
           items: JSON.parse(JSON.stringify(rutinasPorFrecuencia[llaveGrupo]))
         };

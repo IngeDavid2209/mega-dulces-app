@@ -88,8 +88,8 @@
             <div style="margin: 15px 0; padding: 12px; background: #fafafa; border-radius: 10px; border: 1px solid var(--border);">
               <div style="font-size: 11px; font-weight: bold; color: var(--brown); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">⏰ Horarios Límite:</div>
               
-              <ng-container *ngFor="let item of checklist.items; let i = index">
-                <div *ngIf="i < 4" style="display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: #555; margin-bottom: 6px; gap: 10px;">
+              <ng-container *ngFor="let item of getPrimerasTareas(checklist)">
+                <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: #555; margin-bottom: 6px; gap: 10px;">
                   <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1;" [style.text-decoration]="item.checked ? 'line-through' : 'none'" [style.opacity]="item.checked ? '0.5' : '1'">
                     • {{ item.text }}
                   </span>
@@ -162,7 +162,7 @@
                 {{ item.text }}
                 
                 <span *ngIf="item.tipo === 'rutina'" style="font-size: 10px; background: #FFF3D4; color: #C87F00; padding: 3px 8px; border-radius: 12px; font-weight: bold; border: 1px solid #C87F00; display: inline-flex; align-items: center; gap: 4px;">
-                  🔄 {{ item.frecuencia }} <span *ngIf="item.frecuencia === 'Semanal'">- {{ getNombreDiaCorto(item.diaSemana) }}</span>
+                  🔄 {{ item.frecuencia }} <span *ngIf="item.frecuencia === 'Semanal'">- {{ item.diaSemana }}</span>
                   <span *ngIf="item.horaLimite"> | 🕐 {{ formatearHora(item.horaLimite) }}</span>
                 </span>
 
@@ -342,13 +342,13 @@
                     </select>
 
                     <select *ngIf="rutina.frecuencia === 'Semanal'" class="form-input select-input" [(ngModel)]="rutina.diaSemana" style="width: 130px; padding: 6px; cursor: pointer; background: #FFF9E6; border: 1px solid #f1c40f; font-size: 13px;">
-                      <option value="1">Lunes</option>
-                      <option value="2">Martes</option>
-                      <option value="3">Miércoles</option>
-                      <option value="4">Jueves</option>
-                      <option value="5">Viernes</option>
-                      <option value="6">Sábado</option>
-                      <option value="0">Domingo</option>
+                      <option value="Lunes">Lunes</option>
+                      <option value="Martes">Martes</option>
+                      <option value="Miércoles">Miércoles</option>
+                      <option value="Jueves">Jueves</option>
+                      <option value="Viernes">Viernes</option>
+                      <option value="Sábado">Sábado</option>
+                      <option value="Domingo">Domingo</option>
                     </select>
 
                     <span style="font-size: 11px; color: var(--brown); font-weight: bold;">{{ getTextoPeriodo(rutina) }}</span>

@@ -122,18 +122,19 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     const checklistsRef = collection(this.firestore, 'checklists');
     const radarChecklists = onSnapshot(checklistsRef, (snapshot) => {
       const todasLasListas: any[] = [];
-      const limite24h = 24 * 60 * 60 * 1000; 
-      const ahora = Date.now();
+      
+      // 🔥 FIX: Calculamos la fecha exacta de HOY en la zona horaria del usuario
+      const offset = new Date().getTimezoneOffset() * 60000;
+      const fechaHoyLocal = new Date(Date.now() - offset).toISOString().split('T')[0];
 
       snapshot.forEach(docSnap => {
         const c = docSnap.data() as any;
         
         if (c.eliminado === true) return;
-        
-        // 🔥 EL TOQUE MÁGICO: Si la tarea ya se envió, la ocultamos de esta pantalla
         if (c.enviado === true) return;
 
-        if ((ahora - (typeof c.id === 'number' ? c.id : c.timestampCreacion || ahora)) <= limite24h) {
+        // 🔥 EL FILTRO MAESTRO: Solo mostramos las tarjetas que tengan la fecha de HOY
+        if (c.date === fechaHoyLocal) {
           const tareasMarcadas = c.items.filter((i:any) => i.checked).length;
           c.calcCompletados = tareasMarcadas;
           c.calcProgreso = Math.round((tareasMarcadas / c.items.length) * 100) || 0;

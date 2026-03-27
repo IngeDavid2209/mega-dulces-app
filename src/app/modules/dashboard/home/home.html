@@ -14,7 +14,7 @@
   <div class="main-wrapper">
     <div class="mobile-overlay" *ngIf="isMenuOpen" (click)="toggleMenu()"></div>
     
-    <aside class="sidebar" [class.mobile-open]="isMenuOpen">
+    <aside class="sidebar" [class.mobile-open]="isMenuOpen" translate="no">
       <div class="sidebar-header">
         <div class="sidebar-avatar">{{ (currentUser?.nombre || 'A').charAt(0) | uppercase }}</div>
         <div>

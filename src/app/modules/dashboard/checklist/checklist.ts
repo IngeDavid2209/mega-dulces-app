@@ -123,7 +123,6 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     const radarChecklists = onSnapshot(checklistsRef, (snapshot) => {
       const todasLasListas: any[] = [];
       
-      // 🔥 FIX: Calculamos la fecha exacta de HOY en la zona horaria del usuario
       const offset = new Date().getTimezoneOffset() * 60000;
       const fechaHoyLocal = new Date(Date.now() - offset).toISOString().split('T')[0];
 
@@ -133,7 +132,6 @@ export class ChecklistComponent implements OnInit, OnDestroy {
         if (c.eliminado === true) return;
         if (c.enviado === true) return;
 
-        // 🔥 EL FILTRO MAESTRO: Solo mostramos las tarjetas que tengan la fecha de HOY
         if (c.date === fechaHoyLocal) {
           const tareasMarcadas = c.items.filter((i:any) => i.checked).length;
           c.calcCompletados = tareasMarcadas;
@@ -457,20 +455,20 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     return item.checked && (!item.requiresPhoto || item.photo !== null); 
   }
 
+  // 🔥 REGLA RELAJADA: Solo importan las palomitas para dar el estado "Completo"
   actualizarEstado() {
     const actual = this.checklistSeleccionado();
     if(!actual) return;
     
     const checkboxesMarcados = actual.items.filter((i:any) => i.checked).length;
-    const tareas100Porciento = actual.items.filter((i:any) => this.esItemCompleto(i)).length;
     
     actual.calcCompletados = checkboxesMarcados;
     actual.calcProgreso = Math.round((checkboxesMarcados / actual.items.length) * 100) || 0;
 
     if (checkboxesMarcados === 0) {
       actual.status = 'pendiente';
-    } else if (tareas100Porciento === actual.items.length) {
-      actual.status = 'completo';
+    } else if (checkboxesMarcados === actual.items.length) {
+      actual.status = 'completo'; // 🎉 Si tiene todas las palomitas, se marca completo.
     } else {
       actual.status = 'en-progreso'; 
     }
@@ -485,7 +483,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     const tareas100Porciento = actual.items.filter((i:any) => this.esItemCompleto(i)).length;
     
     if (tareas100Porciento < actual.items.length) {
-      const confirmar = confirm('⚠️ ¡ATENCIÓN!\n\nHas marcado las tareas pero te faltan FOTOS obligatorias.\nSi lo envías así, contará como INCOMPLETO en las estadísticas administrativas.\n\n¿Estás completamente seguro de que deseas enviarlo así?');
+      const confirmar = confirm('⚠️ ¡ATENCIÓN!\n\nHas marcado las tareas pero te faltan FOTOS obligatorias.\nSi lo envías así, se registrará en el PDF como marcado SIN FOTO.\n\n¿Estás completamente seguro de que deseas enviarlo así?');
       if (!confirmar) return;
     }
     

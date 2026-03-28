@@ -28,7 +28,7 @@ export class ReportesComponent implements OnInit, OnDestroy {
   buscando = signal(false);
   busquedaRealizada = signal(false);
 
-  // 🔥 NUEVO: Variables para controlar la vista de las fotos
+  // Variables para controlar la vista de las fotos
   vistaActual = signal<'lista' | 'detalle'>('lista');
   checklistSeleccionado = signal<any>(null);
 
@@ -133,7 +133,7 @@ export class ReportesComponent implements OnInit, OnDestroy {
     });
   }
 
-  // 🔥 NUEVO: Funciones para abrir y cerrar el detalle con fotos
+  // Funciones para abrir y cerrar el detalle con fotos
   verDetalle(checklist: any) {
     this.checklistSeleccionado.set(checklist);
     this.vistaActual.set('detalle');
@@ -239,8 +239,16 @@ export class ReportesComponent implements OnInit, OnDestroy {
       const nombreChecklist = c.name || '-';
       const estado = (c.status || 'pendiente').toUpperCase();
       
-      const tareasCumplidas = c.items ? c.items.filter((i:any) => i.checked && (!i.requiresPhoto || (i.photo !== null && i.photo !== ''))) : [];
-      const detalle = tareasCumplidas.map((t:any) => `• ${t.text}`).join('\n');
+      // 🔥 REGLA RELAJADA PDF: Mostramos todas las que tienen palomita, pero acusamos si falta foto.
+      const tareasCumplidas = c.items ? c.items.filter((i:any) => i.checked) : [];
+      
+      const detalle = tareasCumplidas.map((t:any) => {
+        let texto = `• ${t.text}`;
+        if (t.requiresPhoto && (!t.photo || t.photo === '')) {
+          texto += ' (⚠️ Marcada SIN FOTO)';
+        }
+        return texto;
+      }).join('\n');
 
       return [ fecha, empleado, puesto, sucursal, nombreChecklist, estado, detalle || 'Ninguna tarea validada' ];
     });

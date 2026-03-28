@@ -433,13 +433,45 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     this.actualizarEstado(); 
   }
 
+  // 🔥 EL COMPRESOR DE IMÁGENES AUTOMÁTICO 🔥
   onFileSelected(event: any, item: any) {
     const file = event.target.files[0];
     if (file) {
       const reader = new FileReader();
       reader.onload = (e: any) => { 
-        item.photo = e.target.result; 
-        this.actualizarEstado(); 
+        
+        const img = new Image();
+        img.src = e.target.result;
+        
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const MAX_WIDTH = 800; // Ancho máximo
+          const MAX_HEIGHT = 800; // Alto máximo
+          let width = img.width;
+          let height = img.height;
+
+          // Recalcular proporciones si la imagen es muy grande
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height *= MAX_WIDTH / width;
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width *= MAX_HEIGHT / height;
+              height = MAX_HEIGHT;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0, width, height);
+
+          // Convertir a JPEG y comprimir al 60% de calidad
+          item.photo = canvas.toDataURL('image/jpeg', 0.6); 
+          this.actualizarEstado(); // Guardar en Firebase
+        };
       };
       reader.readAsDataURL(file);
     }
@@ -455,7 +487,6 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     return item.checked && (!item.requiresPhoto || item.photo !== null); 
   }
 
-  // 🔥 REGLA RELAJADA: Solo importan las palomitas para dar el estado "Completo"
   actualizarEstado() {
     const actual = this.checklistSeleccionado();
     if(!actual) return;
@@ -468,7 +499,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     if (checkboxesMarcados === 0) {
       actual.status = 'pendiente';
     } else if (checkboxesMarcados === actual.items.length) {
-      actual.status = 'completo'; // 🎉 Si tiene todas las palomitas, se marca completo.
+      actual.status = 'completo'; 
     } else {
       actual.status = 'en-progreso'; 
     }

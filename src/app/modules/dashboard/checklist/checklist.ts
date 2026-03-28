@@ -433,49 +433,47 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     this.actualizarEstado(); 
   }
 
-  // 🔥 EL COMPRESOR DE IMÁGENES AUTOMÁTICO 🔥
-  onFileSelected(event: any, item: any) {
+  // 🚀 CONEXIÓN CORPORATIVA A CLOUDINARY 🚀
+  async onFileSelected(event: any, item: any) {
     const file = event.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e: any) => { 
-        
-        const img = new Image();
-        img.src = e.target.result;
-        
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          const MAX_WIDTH = 800; // Ancho máximo
-          const MAX_HEIGHT = 800; // Alto máximo
-          let width = img.width;
-          let height = img.height;
+    if (!file) return;
 
-          // Recalcular proporciones si la imagen es muy grande
-          if (width > height) {
-            if (width > MAX_WIDTH) {
-              height *= MAX_WIDTH / width;
-              width = MAX_WIDTH;
-            }
-          } else {
-            if (height > MAX_HEIGHT) {
-              width *= MAX_HEIGHT / height;
-              height = MAX_HEIGHT;
-            }
-          }
+    // 🔥 TUS DATOS DE CLOUDINARY 🔥
+    const cloudName = 'duhcrjgyg'; 
+    const uploadPreset = 'fotos_mega'; 
 
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          ctx?.drawImage(img, 0, 0, width, height);
+    // Avisamos a la interfaz que estamos subiendo
+    item.photo = 'subiendo...'; 
+    this.actualizarEstado(); 
 
-          // Convertir a JPEG y comprimir al 60% de calidad
-          item.photo = canvas.toDataURL('image/jpeg', 0.6); 
-          this.actualizarEstado(); // Guardar en Firebase
-        };
-      };
-      reader.readAsDataURL(file);
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', uploadPreset);
+
+    try {
+      const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
+        method: 'POST',
+        body: formData
+      });
+      
+      const data = await response.json();
+      
+      if (data.secure_url) {
+        // Cloudinary nos da la URL segura y ligerita
+        item.photo = data.secure_url; 
+      } else {
+        item.photo = null;
+        alert('❌ Error de Cloudinary: Revisa tu configuración.');
+      }
+    } catch (error) {
+      console.error("Error subiendo foto a Cloudinary:", error);
+      item.photo = null;
+      alert('❌ Ocurrió un error al subir la evidencia. Revisa tu conexión a internet.');
+    } finally {
+      // Impactamos los cambios en Firebase
+      this.actualizarEstado(); 
+      event.target.value = ''; 
     }
-    event.target.value = ''; 
   }
 
   removeImage(item: any) { 
@@ -483,8 +481,9 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     this.actualizarEstado(); 
   }
 
+  // 🔥 Modificado para que entienda que "subiendo..." es un estado válido temporalmente
   esItemCompleto(item: any): boolean { 
-    return item.checked && (!item.requiresPhoto || item.photo !== null); 
+    return item.checked && (!item.requiresPhoto || (item.photo !== null && item.photo !== 'subiendo...')); 
   }
 
   actualizarEstado() {
@@ -510,6 +509,13 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   enviarChecklist() {
     const actual = this.checklistSeleccionado();
     if(!actual) return;
+
+    // 🔥 Candado de seguridad: No dejar enviar si una foto sigue subiéndose
+    const fotosPendientes = actual.items.some((i:any) => i.photo === 'subiendo...');
+    if (fotosPendientes) {
+      alert('⚠️ Espera un momento, hay una fotografía que todavía se está subiendo a la nube.');
+      return;
+    }
 
     const tareas100Porciento = actual.items.filter((i:any) => this.esItemCompleto(i)).length;
     

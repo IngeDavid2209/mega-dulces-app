@@ -439,7 +439,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     if (!file) return;
 
     // 🔥 TUS DATOS DE CLOUDINARY 🔥
-    const cloudName = 'duhcrjgyg'; 
+    const cloudName = 'duherjgyg'; 
     const uploadPreset = 'fotos_mega'; 
 
     // Avisamos a la interfaz que estamos subiendo

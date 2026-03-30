@@ -442,9 +442,8 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     const cloudName = 'duherjgyg'; 
     const uploadPreset = 'fotos_mega'; 
 
-    // Avisamos a la interfaz que estamos subiendo
+    // Avisamos a la interfaz visual, pero NO lo guardamos en Firebase todavía
     item.photo = 'subiendo...'; 
-    this.actualizarEstado(); 
 
     const formData = new FormData();
     formData.append('file', file);
@@ -459,19 +458,20 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       const data = await response.json();
       
       if (data.secure_url) {
-        // Cloudinary nos da la URL segura y ligerita
+        // Cloudinary nos da la URL final. AHORA SÍ actualizamos y guardamos en Firebase
         item.photo = data.secure_url; 
+        this.actualizarEstado(); 
       } else {
         item.photo = null;
-        alert('❌ Error de Cloudinary: Revisa tu configuración.');
+        this.actualizarEstado();
+        alert('❌ Error de Cloudinary: La imagen no se pudo subir.');
       }
     } catch (error) {
       console.error("Error subiendo foto a Cloudinary:", error);
       item.photo = null;
+      this.actualizarEstado();
       alert('❌ Ocurrió un error al subir la evidencia. Revisa tu conexión a internet.');
     } finally {
-      // Impactamos los cambios en Firebase
-      this.actualizarEstado(); 
       event.target.value = ''; 
     }
   }

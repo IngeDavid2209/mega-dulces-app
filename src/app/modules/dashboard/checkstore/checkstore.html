@@ -2,39 +2,32 @@
   <header class="header">
     <div class="header-left">
       <button class="btn-menu-mobile" (click)="toggleMenu()">☰</button>
-      
-      <div class="header-logo-wrap"><span>🍬</span></div>
-      <div class="header-brand">Mega Dulces de los Altos<small>Panel de Gestión</small></div>
+      <div class="header-logo-wrap"><span translate="no">🍬</span></div>
+      <div class="header-brand">Mega Dulces<small>Panel Enterprise</small></div>
     </div>
     <div class="header-right">
-      <div class="header-user">Bienvenido, <strong>{{ currentUser?.nombre || 'Administrador' }}</strong></div>
+      <div class="header-user">Bienvenido, <strong translate="no">{{ currentUser?.nombre || 'Administrador' }}</strong></div>
     </div>
   </header>
 
   <div class="main-wrapper">
     <div class="mobile-overlay" *ngIf="isMenuOpen" (click)="toggleMenu()"></div>
     
-    <aside class="sidebar" [class.mobile-open]="isMenuOpen">
+    <aside class="sidebar" [class.mobile-open]="isMenuOpen" translate="no">
       <div class="sidebar-header">
-        <div class="sidebar-avatar">{{ (currentUser?.nombre || 'A').charAt(0) | uppercase }}</div>
+        <div class="sidebar-avatar" translate="no">{{ (currentUser?.nombre || 'A').charAt(0) | uppercase }}</div>
         <div>
-          <div class="sidebar-name">{{ currentUser?.nombre || 'Administrador' }}</div>
+          <div class="sidebar-name" translate="no">{{ currentUser?.nombre || 'Administrador' }}</div>
           <div class="sidebar-role">{{ currentUser?.rol === 'admin' ? 'Gerente' : 'Empleado' }}</div>
         </div>
       </div>
       <nav class="sidebar-nav">
-        <a class="nav-item" routerLink="/home" routerLinkActive="active" (click)="isMenuOpen = false"><span class="nav-icon">🏠</span> Inicio</a>
-        
-        <a class="nav-item" routerLink="/checklist" routerLinkActive="active" (click)="isMenuOpen = false"><span class="nav-icon">✅</span> Checklist</a>
-        
-        <a class="nav-item" routerLink="/checkstore" routerLinkActive="active" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeVerCheckstore" (click)="isMenuOpen = false"><span class="nav-icon">🏪</span> Checkstore</a>
-        
+        <a class="nav-item" routerLink="/home" routerLinkActive="active" (click)="isMenuOpen = false"><span class="nav-icon">🏠</span> Dashboard</a>
+        <a class="nav-item" routerLink="/checklist" routerLinkActive="active" (click)="isMenuOpen = false"><span class="nav-icon">☑️</span> Checklist</a>
+        <a class="nav-item" routerLink="/checkstore" routerLinkActive="active" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeVerCheckstore" (click)="isMenuOpen = false"><span class="nav-icon">🏪</span> Sucursales</a>
         <a class="nav-item" routerLink="/estadisticas" routerLinkActive="active" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeVerEstadisticas" (click)="isMenuOpen = false"><span class="nav-icon">📊</span> Estadísticas</a>
-        
-        <a class="nav-item" routerLink="/reportes" routerLinkActive="active" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeVerHistorial" (click)="isMenuOpen = false"><span class="nav-icon">📑</span> Historial</a>
-        
-        <a class="nav-item" routerLink="/personal" routerLinkActive="active" *ngIf="currentUser?.rol === 'admin'" (click)="isMenuOpen = false"><span class="nav-icon">👥</span> Personal</a>
-        
+        <a class="nav-item" routerLink="/reportes" routerLinkActive="active" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeVerHistorial" (click)="isMenuOpen = false"><span class="nav-icon">📑</span> Auditoría</a>
+        <a class="nav-item" routerLink="/personal" routerLinkActive="active" *ngIf="currentUser?.rol === 'admin'" (click)="isMenuOpen = false"><span class="nav-icon">👥</span> Usuarios</a>
         <div class="nav-divider"></div>
         <a class="nav-item nav-logout" routerLink="/login"><span class="nav-icon">🚪</span> Cerrar Sesión</a>
       </nav>
@@ -43,28 +36,36 @@
     <div class="content">
       <div class="section-header">
         <div>
-          <div class="section-title">🏪 Checkstore</div>
-          <div class="section-sub">Estado en tiempo real de la empresa</div>
+          <div class="section-title">Panel de Sucursales</div>
+          <div class="section-sub">Monitoreo operativo en tiempo real de todas las ubicaciones</div>
         </div>
       </div>
 
-      <div style="margin-top: 10px; margin-bottom: 20px;" *ngIf="comerciales().length > 0">
-        <h2 style="color: var(--brown); margin-bottom: 5px; font-size: 1.4rem; display: flex; align-items: center; gap: 8px;">
-          <span>🛍️</span> ZONA COMERCIAL
-        </h2>
-        <p style="color: #666; font-size: 0.9rem; margin-top: 0;">Operaciones en sucursales físicas</p>
+      <div class="zone-header" *ngIf="comerciales().length > 0">
+        <div class="zone-icon">🏬</div>
+        <div class="zone-text">
+          <h2>Zona Comercial</h2>
+          <p>Operaciones en sucursales físicas y puntos de venta</p>
+        </div>
       </div>
 
       <div class="store-grid" *ngIf="comerciales().length > 0">
-        <div class="store-card checkstore-card" *ngFor="let store of comerciales()" [style.--store-color]="store.color">
-          <div class="store-icon" [style.background]="store.color">{{ store.icon }}</div>
-          <div class="store-name">{{ store.name }}</div>
-          <div class="store-location">{{ store.location }}</div>
+        <div class="store-card" *ngFor="let store of comerciales()">
+          
+          <div class="store-card-header">
+            <div class="store-icon" [style.color]="store.color" [style.background-color]="store.color + '15'">
+              {{ store.icon }}
+            </div>
+            <div class="store-info">
+              <div class="store-name">{{ store.name }}</div>
+              <div class="store-location">{{ store.location }}</div>
+            </div>
+          </div>
           
           <div class="store-progress">
             <div class="progress-label">
-              <span>Progreso</span>
-              <span>{{ store.progress }}%</span>
+              <span>Avance operativo</span>
+              <span [style.color]="store.color">{{ store.progress }}%</span>
             </div>
             <div class="progress-bar-wrap">
               <div class="progress-bar-fill" [style.width.%]="store.progress" [style.background]="store.color"></div>
@@ -78,53 +79,59 @@
             </div>
             <div class="store-stat-item">
               <div class="store-stat-val">{{ store.completedItems }}</div>
-              <div class="store-stat-label">Completados</div>
+              <div class="store-stat-label">Tareas Done</div>
             </div>
             <div class="store-stat-item">
               <div class="store-stat-val">{{ store.totalItems }}</div>
-              <div class="store-stat-label">Total ítems</div>
+              <div class="store-stat-label">Total Tareas</div>
             </div>
           </div>
         </div>
       </div>
 
-      <hr style="border: 0; border-top: 2px dashed #e0e0e0; margin: 40px 0;" *ngIf="comerciales().length > 0 && administrativas().length > 0">
-
-      <div style="margin-top: 10px; margin-bottom: 20px;" *ngIf="administrativas().length > 0">
-        <h2 style="color: var(--brown); margin-bottom: 5px; font-size: 1.4rem; display: flex; align-items: center; gap: 8px;">
-          <span>💼</span> ZONA ADMINISTRATIVA
-        </h2>
-        <p style="color: #666; font-size: 0.9rem; margin-top: 0;">Departamentos y corporativo</p>
+      <div class="zone-header mt-40" *ngIf="administrativas().length > 0">
+        <div class="zone-icon" style="background: #F1F5F9; color: var(--primary-navy);">🏢</div>
+        <div class="zone-text">
+          <h2>Zona Administrativa</h2>
+          <p>Departamentos internos y oficinas corporativas</p>
+        </div>
       </div>
 
-      <div class="store-grid checkstore-grid" style="margin-bottom: 40px;" *ngIf="administrativas().length > 0">
-        <div class="store-card checkstore-card" *ngFor="let store of administrativas()" [style.--store-color]="store.color" style="background-color: #fafafa; border: 1px solid #eaeaea;">
-          <div class="store-icon" [style.background]="store.color">{{ store.icon }}</div>
-          <div class="store-name">{{ store.name }}</div>
-          <div class="store-location">{{ store.location }}</div>
+      <div class="store-grid" *ngIf="administrativas().length > 0">
+        <div class="store-card admin-card" *ngFor="let store of administrativas()">
+          
+          <div class="store-card-header">
+            <div class="store-icon" style="color: var(--primary-navy); background: #F1F5F9;">
+              {{ store.icon }}
+            </div>
+            <div class="store-info">
+              <div class="store-name">{{ store.name }}</div>
+              <div class="store-location">{{ store.location }}</div>
+            </div>
+          </div>
           
           <div class="store-progress">
             <div class="progress-label">
-              <span>Progreso</span>
-              <span>{{ store.progress }}%</span>
+              <span>Avance departamental</span>
+              <span style="color: var(--primary-navy);">{{ store.progress }}%</span>
             </div>
             <div class="progress-bar-wrap">
-              <div class="progress-bar-fill" [style.width.%]="store.progress" [style.background]="store.color"></div>
+              <div class="progress-bar-fill" [style.width.%]="store.progress" background="var(--primary-navy)"></div>
             </div>
           </div>
           
           <div class="store-stats">
             <div class="store-stat-item">
               <div class="store-stat-val">{{ store.totalChecklists }}</div>
-              <div class="store-stat-label">Checklists</div>
+              <div class="store-stat-label">Asignados</div>
             </div>
             <div class="store-stat-item">
               <div class="store-stat-val">{{ store.completedItems }}</div>
-              <div class="store-stat-label">Completados</div>
+              <div class="store-stat-label">Done</div>
             </div>
             <div class="store-stat-item">
               <div class="store-stat-val">{{ store.totalItems }}</div>
-              <div class="store-stat-label">Total ítems</div>
+              <div class="store-stat-label">Total</div>
             </div>
           </div>
         </div>

@@ -1,160 +1,239 @@
 :host {
-  --brown: #36190D;
-  --coral: #EB602B;
-  --cream: #FDF6EC;
-  --soft: #F0E5D8;
-  --border: #E8D5C4;
+  --primary-navy: #0F172A;
+  --primary-blue: #1E40AF;
+  --text-main: #1E293B;
+  --text-muted: #64748B;
+  --bg-app: #F8FAFC;
+  --border: #E2E8F0;
+  --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+}
+
+.login-layout {
+  min-height: 100vh;
+  width: 100vw;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--bg-app);
+  font-family: 'Inter', sans-serif;
+  overflow: hidden;
 }
 
 .login-wrapper {
-  min-height: 100vh;
-  background-color: var(--brown);
-  background-image: radial-gradient(circle at top right, #5C2C16 0%, var(--brown) 60%);
   display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: 'DM Sans', sans-serif;
-  padding: 20px;
-}
-
-.login-card {
-  background: var(--cream);
   width: 100%;
-  max-width: 480px;
-  border-radius: 24px;
-  padding: 40px 50px;
-  box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+  max-width: 1000px;
+  height: 90vh;
+  max-height: 700px;
+  background: #FFFFFF;
+  border-radius: 12px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  overflow: hidden;
+  border: 1px solid var(--border);
 }
 
-.brand-section {
-  text-align: center;
-  margin-bottom: 30px;
+/* =========================================
+   🔵 SECCIÓN IZQUIERDA: BRANDING
+   ========================================= */
+.login-brand-section {
+  flex: 1;
+  background-color: var(--primary-navy);
+  color: #FFFFFF;
+  padding: 60px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  position: relative;
 }
 
-.logo-circle {
-  width: 70px;
-  height: 70px;
-  background: var(--coral);
-  color: white;
-  border-radius: 50%;
+.login-brand-section::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(#1E293B 1px, transparent 1px), linear-gradient(90deg, #1E293B 1px, transparent 1px);
+  background-size: 40px 40px;
+  opacity: 0.1;
+}
+
+.brand-content { position: relative; z-index: 1; }
+
+.brand-logo-wrap {
+  width: 48px;
+  height: 48px;
+  background: #FFFFFF;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 36px;
-  margin: 0 auto 16px;
-  box-shadow: 0 8px 16px rgba(235, 96, 43, 0.3);
+  margin-bottom: 32px;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
 }
 
 .brand-title {
-  font-family: 'Playfair Display', serif;
-  font-size: 28px;
-  color: var(--brown);
-  margin: 0 0 6px 0;
-  font-weight: 900;
+  font-size: 36px;
+  font-weight: 800;
+  letter-spacing: -1px;
+  line-height: 1.1;
+  margin-bottom: 12px;
 }
 
 .brand-subtitle {
-  color: #9A7060;
-  font-size: 14px;
-  margin: 0;
-  text-transform: uppercase;
-  letter-spacing: 1px;
+  font-size: 15px;
+  color: #94A3B8;
+  font-weight: 400;
+  max-width: 300px;
+}
+
+.brand-footer {
+  font-size: 12px;
+  color: #64748B;
+  font-weight: 400;
+  position: relative;
+  z-index: 1;
+}
+
+/* =========================================
+   ⚪ SECCIÓN DERECHA: FORMULARIO
+   ========================================= */
+.login-form-section {
+  flex: 1.2;
+  background-color: #FFFFFF;
+  padding: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.form-content-wrapper { width: 100%; max-width: 380px; }
+
+.form-title {
+  font-size: 28px;
   font-weight: 700;
+  color: var(--primary-navy);
+  letter-spacing: -0.5px;
+  margin-bottom: 8px;
 }
 
-/* --- SELECTOR DE ROL --- */
+.form-instruction {
+  font-size: 14px;
+  color: var(--text-muted);
+  margin-bottom: 24px;
+  font-weight: 400;
+}
+
+/* 🎚️ SWITCH DE ROLES 🎚️ */
 .role-selector {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-  margin-bottom: 30px;
+  display: flex;
+  background: #F1F5F9;
+  border-radius: 8px;
+  padding: 4px;
+  margin-bottom: 24px;
+  border: 1px solid var(--border);
 }
 
-.role-option {
-  background: #fff;
-  border: 2px solid var(--border);
-  border-radius: 16px;
-  padding: 20px 10px;
-  text-align: center;
+.role-btn {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
-.role-option:hover {
-  border-color: var(--coral);
-  background: var(--soft);
+.role-btn:hover:not(.active) { color: var(--text-main); }
+
+.role-btn.active {
+  background: #FFFFFF;
+  color: var(--primary-navy);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 
-.role-icon {
-  font-size: 32px;
-  margin-bottom: 8px;
-  transition: 0.2s;
-}
+.form-group { margin-bottom: 20px; }
 
-.role-name {
-  font-size: 15px;
-  font-weight: 700;
-  color: #9A7060;
-}
-
-/* ESTADO ACTIVO DEL ROL */
-.role-option.active {
-  border-color: var(--coral);
-  background: rgba(235, 96, 43, 0.05);
-  box-shadow: 0 4px 12px rgba(235, 96, 43, 0.1);
-}
-.role-option.active .role-icon { transform: scale(1.15); }
-.role-option.active .role-name { color: var(--coral); }
-
-/* --- FORMULARIO --- */
-.form-group {
-  margin-bottom: 20px;
-}
-
-.form-group label {
+.form-label {
   display: block;
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--brown);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-main);
   margin-bottom: 8px;
 }
 
-.form-group input {
+.input-icon-wrapper { position: relative; }
+
+.input-icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #94A3B8;
+  opacity: 0.8;
+}
+
+.form-input {
   width: 100%;
-  padding: 16px;
-  border: 2px solid var(--border);
-  border-radius: 12px;
-  font-family: 'DM Sans', sans-serif;
-  font-size: 16px;
-  color: var(--brown);
+  padding: 12px 14px 12px 42px; 
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  background: #FFFFFF;
+  color: var(--text-main);
   outline: none;
-  transition: 0.2s;
+  transition: .2s;
   box-sizing: border-box;
 }
 
-.form-group input:focus {
-  border-color: var(--coral);
-  box-shadow: 0 0 0 4px rgba(235, 96, 43, 0.1);
+.form-input:focus {
+  border-color: var(--primary-blue);
+  box-shadow: 0 0 0 3px rgba(30, 64, 175, 0.1);
 }
 
-.btn-ingresar {
+.form-input::placeholder { color: #CBD5E1; }
+
+.btn-primary-login {
   width: 100%;
-  background: var(--coral);
-  color: white;
+  padding: 14px;
+  background-color: var(--primary-navy);
+  color: #FFFFFF;
   border: none;
-  padding: 18px;
-  border-radius: 12px;
-  font-size: 18px;
-  font-weight: 700;
-  font-family: 'DM Sans', sans-serif;
+  border-radius: 6px;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
   cursor: pointer;
-  margin-top: 10px;
-  transition: 0.2s;
-  box-shadow: 0 6px 16px rgba(235, 96, 43, 0.3);
+  transition: .2s;
+  margin-top: 12px;
+  box-shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.2);
 }
 
-.btn-ingresar:hover {
-  background: #d95624;
-  transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(235, 96, 43, 0.4);
+.btn-primary-login:hover { 
+  background-color: #1E293B; 
+  transform: translateY(-1px);
+}
+
+/* =========================================
+   📱 RESPONSIVE EXTREMO (CELULARES)
+   ========================================= */
+@media screen and (max-width: 992px) {
+  .login-wrapper { height: 100vh; max-height: 100vh; border-radius: 0; border: none; }
+  .login-brand-section { padding: 40px; }
+  .login-form-section { padding: 40px; flex: 1.5; }
+}
+
+@media screen and (max-width: 768px) {
+  .login-wrapper { flex-direction: column; overflow-y: auto; }
+  .login-brand-section { flex: none; height: 260px; padding: 30px; }
+  .brand-title { font-size: 28px; }
+  .brand-footer { display: none; } 
+  
+  .login-form-section { flex: none; padding: 40px 24px; align-items: flex-start; }
+  .form-content-wrapper { max-width: 100%; }
 }

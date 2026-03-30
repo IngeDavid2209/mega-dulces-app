@@ -1,19 +1,25 @@
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 :root {
-  --coral:    #E8613A;
-  --gold:     #F5A623;
-  --cream:    #FDF6EC;
-  --brown:    #3D1F0D;
-  --soft:     #FAE8D8;
-  --green:    #4CAF7D;
-  --red:      #E05252;
-  --card:     #FFFFFF;
-  --border:   #F0DCC8;
-  --shadow:   0 4px 24px rgba(61,31,13,0.10);
-  --shadow-lg:0 12px 48px rgba(61,31,13,0.16);
-  --radius:   16px;
-  --radius-sm:10px;
+  /* 🔵 NUEVA PALETA CORPORATIVA ENTERPRISE */
+  --primary-navy: #0F172A;     /* Azul oscuro casi negro (Menú activo, botones principales) */
+  --primary-blue: #1E40AF;     /* Azul vibrante para acentos */
+  --text-main: #1E293B;        /* Gris muy oscuro para textos principales */
+  --text-muted: #64748B;       /* Gris medio para subtítulos y menú inactivo */
+  --bg-app: #F8FAFC;           /* Fondo general gris ultraclaro */
+  --bg-sidebar: #FFFFFF;       /* Fondo del menú y header blanco puro */
+  --border: #E2E8F0;           /* Bordes grises muy sutiles */
+  
+  /* 🟢🔴 COLORES DE ESTADO */
+  --green: #10B981;
+  --red: #EF4444;
+  --card: #FFFFFF;
+  
+  /* 🌫️ SOMBRAS MODERNAS (Más sutiles y difuminadas) */
+  --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  --radius: 8px;
+  --radius-sm: 6px;
 }
 
 *, *::before, *::after { 
@@ -23,9 +29,9 @@
 }
 
 html, body {
-  font-family: 'DM Sans', sans-serif;
-  background: var(--cream) !important;
-  color: var(--brown);
+  font-family: 'Inter', sans-serif;
+  background: var(--bg-app) !important;
+  color: var(--text-main);
   min-height: 100vh;
   width: 100%;
   max-width: 100vw;
@@ -33,14 +39,14 @@ html, body {
 }
 
 .app-layout {
-  background-color: var(--cream);
+  background-color: var(--bg-app);
   min-height: 100vh;
   width: 100%;
   max-width: 100vw;
   overflow-x: hidden !important;
 }
 
-/* 🔥 FIX: Devolver la flechita a los select desplegables en todos lados */
+/* FIX: Devolver la flechita a los select desplegables */
 select.form-input, select.select-input {
   appearance: auto !important;
   -webkit-appearance: auto !important;
@@ -53,12 +59,11 @@ select.form-input, select.select-input {
 /* =========================================
    📱 MAGIA RESPONSIVE EXTREMA (CELULARES)
    ========================================= */
-
 .btn-menu-mobile {
   display: none;
   background: transparent;
   border: none;
-  color: #FFF;
+  color: var(--text-main);
   font-size: 26px;
   cursor: pointer;
   padding: 0;
@@ -71,7 +76,6 @@ select.form-input, select.select-input {
 }
 
 @media screen and (max-width: 768px) {
-  
   .btn-menu-mobile { display: block !important; }
   .header { padding: 0 15px !important; }
   .header-brand { font-size: 16px !important; margin-left: 10px !important; white-space: normal; line-height: 1.2; }
@@ -84,13 +88,13 @@ select.form-input, select.select-input {
     height: 100vh !important; width: 280px !important;
     z-index: 2000 !important;
     transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-    box-shadow: 4px 0 24px rgba(0,0,0,0.5) !important;
+    box-shadow: 4px 0 24px rgba(0,0,0,0.1) !important;
   }
   .sidebar.mobile-open { left: 0 !important; }
 
   .mobile-overlay {
     position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-    background: rgba(0, 0, 0, 0.6); z-index: 1999;
+    background: rgba(15, 23, 42, 0.6); z-index: 1999;
     backdrop-filter: blur(2px); animation: fadeIn 0.2s ease;
   }
 
@@ -101,111 +105,33 @@ select.form-input, select.select-input {
     box-sizing: border-box !important;
   }
 
-  input, select, textarea, button, div {
-    max-width: 100% !important;
-  }
-  
+  input, select, textarea, button, div { max-width: 100% !important; }
   [style*="min-width"] { min-width: 0 !important; }
 
-  .section-header, 
-  div[style*="display: flex"][style*="gap: 15px"] {
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: stretch !important;
-    gap: 12px !important;
-    width: 100% !important;
+  .section-header, div[style*="display: flex"][style*="gap: 15px"] {
+    display: flex !important; flex-direction: column !important; align-items: stretch !important; gap: 12px !important; width: 100% !important;
   }
 
-  .section-header > div, 
-  div[style*="display: flex"] > div[style*="flex: 1"],
-  div[style*="display: flex"] > div[style*="flex: 2"] {
-    width: 100% !important;
-    margin-bottom: 5px;
+  .section-header > div, div[style*="display: flex"] > div[style*="flex: 1"], div[style*="display: flex"] > div[style*="flex: 2"] {
+    width: 100% !important; margin-bottom: 5px;
   }
 
   .section-header button { width: 100% !important; justify-content: center !important; }
-
-  .user-grid, .checklist-grid, .home-grid {
-    display: flex !important; flex-direction: column !important; gap: 15px !important; width: 100% !important;
-  }
-
-  .action-buttons {
-    display: flex !important; gap: 10px !important; justify-content: flex-end !important;
-    width: 100% !important; margin-top: 15px !important;
-  }
-  
-  .btn-action {
-    padding: 12px 15px !important; font-size: 22px !important; background: #f4f6f8 !important;
-    border-radius: 8px !important; opacity: 1 !important; flex: 1 !important; text-align: center !important;
-  }
-
+  .user-grid, .checklist-grid, .home-grid { display: flex !important; flex-direction: column !important; gap: 15px !important; width: 100% !important; }
+  .action-buttons { display: flex !important; gap: 10px !important; justify-content: flex-end !important; width: 100% !important; margin-top: 15px !important; }
+  .btn-action { padding: 12px 15px !important; font-size: 22px !important; background: #f4f6f8 !important; border-radius: 8px !important; flex: 1 !important; text-align: center !important; }
   .modal { width: 95% !important; padding: 20px !important; margin: 10px auto !important; }
   .form-row { display: flex !important; flex-direction: column !important; gap: 15px !important; }
   
-  .perm-text strong { font-size: 13px !important; }
-  .perm-text span { font-size: 11px !important; }
+  .search-filters-container { flex-direction: column !important; align-items: stretch !important; width: 100% !important; box-sizing: border-box !important; }
+  .search-filters-container > div { width: 100% !important; max-width: 100% !important; }
+  .search-filters-container button { width: 100% !important; justify-content: center; }
 
-  /* 🔥 FIX HISTORIAL: Contenedor de filtros */
-  .search-filters-container {
-    flex-direction: column !important;
-    align-items: stretch !important;
-    width: 100% !important;
-    box-sizing: border-box !important;
-  }
-  .search-filters-container > div {
-    width: 100% !important;
-    max-width: 100% !important;
-  }
-  .search-filters-container button {
-    width: 100% !important;
-    justify-content: center;
-  }
-
-  /* 🔥 FIX CAJAS REBELDES: Evitar que Desde/Hasta se salgan de la tarjeta blanca */
   .form-input, .select-input, input[type="date"] {
-    width: 100% !important;
-    max-width: 100% !important;
-    box-sizing: border-box !important;
-    padding: 12px 10px !important; /* Le quitamos "lo gordito" al relleno para que no empuje hacia afuera */
-    font-size: 14px !important;
+    width: 100% !important; max-width: 100% !important; box-sizing: border-box !important; padding: 12px 10px !important; font-size: 14px !important;
   }
   
-  /* Ajustamos la caja blanca que los envuelve para que absorba bien el tamaño */
-  div[style*="background: white"][style*="padding: 20px"] {
-    padding: 15px !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    box-sizing: border-box !important;
-    overflow: hidden !important; /* Si algo intenta salirse, lo recorta */
-  }
-
-  /* 🔥 FIX ESPECÍFICO PARA EL CHECKSTORE EN CELULARES 🔥 */
-
-  /* Forzamos que la cuadrícula de tiendas se ponga en una sola columna */
-  .checkstore-grid {
-    grid-template-columns: 1fr !important;
-    gap: 15px !important;
-  }
-
-  /* Ajustamos las tarjetas de tienda para que no se desborden */
-  .checkstore-card {
-    padding: 20px !important; /* Reducimos el colchón interno */
-    width: 100% !important;
-    max-width: 100% !important;
-    box-sizing: border-box !important;
-  }
-
-  /* Si las estadísticas de la tienda (Checklists, Completados, etc.) se ven mal, 
-     forzamos que se apilen hacia abajo */
-  .store-stats {
-    flex-direction: column !important;
-    align-items: stretch !important;
-    gap: 8px !important;
-    width: 100% !important;
-  }
-
-  .store-stat-item {
-    width: 100% !important;
-    justify-content: flex-start !important;
+  div[style*="background: white"][style*="padding: 20px"], div[style*="background: white"][style*="padding: 25px"] {
+    padding: 15px !important; width: 100% !important; max-width: 100% !important; box-sizing: border-box !important; overflow: hidden !important;
   }
 }

@@ -1,150 +1,107 @@
 :host {
-  --brown: #36190D; /* Café mega oscuro exacto al de tu imagen */
-  --coral: #EB602B; /* Naranja institucional */
-  --gold: #F4A261;
-  --green: #2A9D8F;
-  --red: #E76F51;
-  --soft: #F0E5D8;
+  --primary-navy: #0F172A;
+  --text-main: #1E293B;
+  --text-muted: #64748B;
+  --bg-app: #F8FAFC;
+  --bg-sidebar: #FFFFFF;
+  --border: #E2E8F0;
   --card: #FFFFFF;
-  --border: #E8D5C4;
-  --cream: #FDF6EC;
-  --shadow: 0 8px 24px rgba(60, 28, 8, 0.08);
-  --shadow-lg: 0 12px 32px rgba(60, 28, 8, 0.12);
+  --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  --red: #EF4444;
 }
 
-/* ======================================================= */
-/* DISEÑO DEL LAYOUT: HEADER Y MENÚ LATERAL (BLINDADO)     */
-/* ======================================================= */
-.app-layout { display: flex; flex-direction: column; height: 100vh; overflow: hidden; background-color: var(--cream); font-family: 'DM Sans', sans-serif; }
+.app-layout { display: flex; flex-direction: column; height: 100vh; overflow: hidden; background-color: var(--bg-app); }
 
-/* HEADER */
-.header { background-color: #36190D !important; height: 70px; display: flex; align-items: center; justify-content: space-between; padding: 0 30px; box-shadow: 0 2px 10px rgba(0,0,0,0.3); z-index: 20; border: none !important; }
-.header-left { display: flex; align-items: center; gap: 16px; }
-.header-logo-wrap { width: 36px; height: 36px; background-color: #EB602B !important; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; }
-.header-brand { font-family: 'Playfair Display', serif; font-size: 22px; font-weight: 700; color: #FFF !important; line-height: 1.1; margin-left: 10px; }
-.header-brand small { display: block; font-family: 'DM Sans', sans-serif; font-size: 11px; color: rgba(255, 255, 255, 0.6) !important; text-transform: uppercase; letter-spacing: 1px; }
-.header-right .header-user { font-size: 14px; color: rgba(255, 255, 255, 0.7); }
-.header-right .header-user strong { color: #FFF; font-weight: 700; }
-
+/* --- HEADER & SIDEBAR BLINDADO --- */
+.header { background-color: var(--bg-sidebar) !important; height: 64px; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; border-bottom: 1px solid var(--border) !important; z-index: 20; }
+.header-left { display: flex; align-items: center; gap: 12px; }
+.header-logo-wrap { width: 32px; height: 32px; background-color: var(--primary-navy) !important; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+.header-brand { font-size: 18px; font-weight: 700; color: var(--text-main) !important; line-height: 1.2; margin-left: 8px; }
+.header-brand small { display: block; font-size: 11px; color: var(--text-muted) !important; font-weight: 500; }
+.header-right .header-user { font-size: 14px; color: var(--text-muted); }
+.header-right .header-user strong { color: var(--primary-navy); font-weight: 600; }
 .main-wrapper { display: flex; flex: 1; overflow: hidden; }
 
-/* SIDEBAR (MENÚ LATERAL) */
-.sidebar { width: 270px; background-color: #36190D !important; display: flex; flex-direction: column; border-top: 1px solid rgba(255, 255, 255, 0.05); box-shadow: 2px 0 15px rgba(0,0,0,0.1); z-index: 10; border-right: none !important; }
-.sidebar-header { padding: 30px 20px 20px 30px; display: flex; align-items: center; gap: 16px; }
-.sidebar-avatar { width: 52px; height: 52px; background-color: #EB602B !important; color: #FFF !important; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 700; }
-.sidebar-name { font-family: 'Playfair Display', serif; font-size: 19px; font-weight: 700; color: #FFF !important; margin-bottom: 2px; }
-.sidebar-role { font-size: 13px; color: rgba(255, 255, 255, 0.6) !important; }
-.sidebar-nav { flex: 1; display: flex; flex-direction: column; padding: 10px 0; }
+.sidebar { width: 260px; background-color: var(--bg-sidebar) !important; display: flex; flex-direction: column; border-right: 1px solid var(--border) !important; z-index: 10; }
+.sidebar-header { padding: 24px 20px 16px 24px; display: flex; align-items: center; gap: 12px; }
+.sidebar-avatar { width: 40px; height: 40px; background-color: #F1F5F9 !important; color: var(--primary-navy) !important; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 600; border: 1px solid var(--border); }
+.sidebar-name { font-size: 15px; font-weight: 600; color: var(--text-main) !important; margin-bottom: 2px; }
+.sidebar-role { font-size: 12px; color: var(--text-muted) !important; font-weight: 500; }
+.sidebar-nav { flex: 1; display: flex; flex-direction: column; padding: 12px 12px; }
+.nav-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; color: var(--text-muted) !important; text-decoration: none; font-size: 14px; font-weight: 500; border-radius: 6px; transition: all 0.2s ease; margin-bottom: 4px; }
+.nav-item:hover { background-color: #F8FAFC !important; color: var(--primary-navy) !important; }
+.nav-item.active { background-color: var(--primary-navy) !important; color: #FFFFFF !important; font-weight: 600; box-shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.1); }
+.nav-icon { font-size: 18px; width: 24px; text-align: center; }
+.nav-divider { height: 1px; background-color: var(--border); margin: 12px 16px; }
+.nav-logout { color: var(--red) !important; }
+.nav-logout:hover { background-color: #FEF2F2 !important; }
 
-/* BOTONES INACTIVOS */
-.nav-item { display: flex; align-items: center; gap: 16px; padding: 16px 30px; color: #D1B9A6 !important; text-decoration: none; font-size: 16px; font-weight: 600; border-left: 4px solid transparent !important; transition: all 0.2s ease; background: transparent !important; }
-.nav-item:hover { background-color: rgba(255, 255, 255, 0.03) !important; color: #FFF !important; }
+/* --- CONTENT --- */
+.content { flex: 1; padding: 32px 40px; overflow-y: auto; background-color: var(--bg-app); }
+.section-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:32px; flex-wrap:wrap; gap:16px; }
+.section-title { font-size: 28px; font-weight: 700; color: var(--text-main); letter-spacing: -0.5px; }
+.section-sub { font-size: 14px; color: var(--text-muted); margin-top: 4px; font-weight: 400; }
 
-/* 🔥 EL BOTÓN ACTIVO (DISEÑO EXACTO A TU IMAGEN) 🔥 */
-.nav-item.active { 
-  background-color: #5C2C16 !important; /* El cuadro café rojizo */
-  color: #EB602B !important;            /* Las letras naranjas */
-  border-left: 4px solid #EB602B !important; /* La línea naranja a la izquierda */
-}
+/* --- ENCABEZADOS DE ZONA --- */
+.zone-header { display: flex; align-items: center; gap: 16px; margin-bottom: 20px; }
+.mt-40 { margin-top: 48px; border-top: 1px solid var(--border); padding-top: 32px; }
+.zone-icon { width: 48px; height: 48px; background: #FFFBEB; color: #D97706; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px; }
+.zone-text h2 { font-size: 20px; font-weight: 600; color: var(--text-main); margin-bottom: 4px; letter-spacing: -0.3px; }
+.zone-text p { font-size: 13px; color: var(--text-muted); margin: 0; }
 
-.nav-icon { font-size: 22px; width: 28px; text-align: center; }
-.nav-divider { height: 1px; background-color: rgba(255, 255, 255, 0.05); margin: 15px 30px; }
-.nav-logout { color: #EB602B !important; }
-.nav-logout:hover { background-color: rgba(235, 96, 43, 0.1) !important; }
+/* --- GRID Y TARJETAS DE SUCURSAL --- */
+.store-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(340px, 1fr)); gap:24px; }
+.store-card { background:var(--card); border-radius:12px; padding:24px; border:1px solid var(--border); box-shadow:var(--shadow); transition:.2s; display: flex; flex-direction: column; }
+.store-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); border-color: #CBD5E1; }
 
-.content { flex: 1; padding: 40px 50px; overflow-y: auto; background-color: var(--cream); }
+.admin-card { background: #F8FAFC; border: 1px dashed #CBD5E1; }
+.admin-card:hover { border-color: var(--primary-navy); }
 
-/* ======================================================= */
-/* TU CÓDIGO ORIGINAL DE CHECKSTORE                        */
-/* ======================================================= */
-.section-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:40px; flex-wrap:wrap; gap:16px; }
-.section-title { font-family:'Playfair Display',serif; font-size:46px; font-weight:900; color:var(--brown); }
-.section-sub { font-size:20px; color:#9A7060; margin-top:8px; }
-.store-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(450px,1fr)); gap:30px; }
-.store-card {
-  background:var(--card); border-radius:24px;
-  padding:40px; border:1.5px solid var(--border);
-  box-shadow:var(--shadow); transition:.2s;
-  position:relative; overflow:hidden;
-}
-.store-card::before {
-  content:''; position:absolute; top:0; left:0; right:0; height:8px;
-  background:var(--store-color, var(--coral));
-}
-.store-card:hover { box-shadow:var(--shadow-lg); transform:translateY(-6px); }
-.store-icon {
-  width:84px; height:84px; border-radius:50%;
-  background:var(--store-color, var(--coral)); color: white;
-  display:flex; align-items:center; justify-content:center;
-  font-size:40px; margin-bottom:24px; opacity:.9;
-}
-.store-name {
-  font-family:'Playfair Display',serif; font-size:32px;
-  font-weight:700; color:var(--brown); margin-bottom:10px;
-}
-.store-location { font-size:18px; color:#9A7060; margin-bottom:30px; }
-.store-progress { margin-top:30px; }
-.progress-label {
-  display:flex; justify-content:space-between; font-size:18px;
-  color:#9A7060; margin-bottom:12px; font-weight:700;
-}
-.progress-bar-wrap { background:var(--soft); border-radius:20px; height:16px; overflow:hidden; }
-.progress-bar-fill { height:100%; border-radius:20px; transition:width .5s ease; }
-.store-stats {
-  display:flex; justify-content:space-between; margin-top:30px;
-  padding-top:30px; border-top:2px solid var(--border);
-}
-.store-stat-item { text-align:center; }
-.store-stat-val {
-  font-family:'DM Mono',monospace; font-size:36px;
-  font-weight:700; color:var(--brown);
-}
-.store-stat-label { font-size:15px; color:#9A7060; margin-top:6px; font-weight:700; text-transform:uppercase; letter-spacing: .08em;}
+.store-card-header { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; }
+.store-icon { width: 56px; height: 56px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 28px; }
+.store-info { flex: 1; }
+.store-name { font-size: 18px; font-weight: 600; color: var(--text-main); margin-bottom: 4px; letter-spacing: -0.3px; }
+.store-location { font-size: 13px; color: var(--text-muted); font-weight: 400; }
+
+/* --- BARRAS DE PROGRESO FINAS --- */
+.store-progress { margin-bottom: 24px; }
+.progress-label { display:flex; justify-content:space-between; font-size:13px; color:var(--text-muted); margin-bottom:8px; font-weight:500; }
+.progress-label span:last-child { font-weight: 700; }
+.progress-bar-wrap { background:#F1F5F9; border-radius:4px; height:6px; overflow:hidden; }
+.progress-bar-fill { height:100%; border-radius:4px; transition:width .5s ease; }
+
+/* --- ESTADÍSTICAS INFERIORES --- */
+.store-stats { display:flex; justify-content:space-between; padding-top:20px; border-top:1px solid var(--border); }
+.store-stat-item { text-align:center; flex: 1; }
+.store-stat-val { font-size:22px; font-weight:700; color:var(--text-main); line-height: 1.2; }
+.store-stat-label { font-size:11px; color:var(--text-muted); margin-top:4px; font-weight:600; text-transform:uppercase; letter-spacing: 0.5px; }
 
 /* ======================================================= */
-/* 📱 MAGIA RESPONSIVE EXTREMA PARA CHECKSTORE (CELULARES) */
+/* 📱 MAGIA RESPONSIVE EXTREMA (CELULARES)                 */
 /* ======================================================= */
+.btn-menu-mobile { display: none; background: transparent; border: none; color: var(--text-main); font-size: 26px; cursor: pointer; padding: 0; }
+
 @media screen and (max-width: 768px) {
-  /* Achicar textos gigantes */
-  .section-title { font-size: 28px !important; }
-  .section-sub { font-size: 16px !important; }
-  
-  /* Forzar una sola columna */
-  .store-grid { 
-    grid-template-columns: 1fr !important; 
-    gap: 20px !important; 
-  }
+  .btn-menu-mobile { display: block !important; }
+  .header { padding: 0 15px !important; }
+  .header-brand { font-size: 16px !important; margin-left: 10px !important; }
+  .header-brand small { display: none !important; }
+  .header-user { display: none !important; }
 
-  /* Reducir el padding gigante de las tarjetas */
-  .store-card { 
-    padding: 24px !important; 
-  }
+  .sidebar { position: fixed !important; top: 0; left: -100% !important; height: 100vh !important; width: 280px !important; z-index: 2000 !important; transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important; box-shadow: 4px 0 24px rgba(0,0,0,0.1) !important; }
+  .sidebar.mobile-open { left: 0 !important; }
+  .mobile-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15, 23, 42, 0.6); z-index: 1999; backdrop-filter: blur(2px); animation: fadeIn 0.2s ease; }
+  
+  .content { padding: 20px 15px !important; width: 100% !important; max-width: 100vw !important; box-sizing: border-box !important; }
 
-  /* Hacer iconos y textos más pequeños */
-  .store-icon {
-    width: 60px !important;
-    height: 60px !important;
-    font-size: 28px !important;
-    margin-bottom: 15px !important;
-  }
+  .section-title { font-size: 24px !important; }
+  .zone-header { margin-bottom: 16px !important; }
+  .zone-text h2 { font-size: 18px !important; }
   
-  .store-name { font-size: 24px !important; }
-  .store-location { font-size: 15px !important; margin-bottom: 20px !important; }
-  
-  .progress-label { font-size: 15px !important; }
-  
-  /* Ajustar los 3 números de abajo para que quepan bien */
-  .store-stats {
-    flex-wrap: wrap !important;
-    gap: 10px !important;
-    margin-top: 20px !important;
-    padding-top: 20px !important;
-  }
-  
-  .store-stat-item {
-    flex: 1 1 30% !important; /* Se dividen el espacio equitativamente */
-  }
-  
-  .store-stat-val { font-size: 24px !important; }
-  .store-stat-label { font-size: 11px !important; }
+  .store-grid { grid-template-columns: 1fr !important; gap: 16px !important; }
+  .store-card { padding: 20px !important; }
+  .store-icon { width: 48px !important; height: 48px !important; font-size: 24px !important; }
+  .store-name { font-size: 16px !important; }
+  .store-stat-val { font-size: 18px !important; }
 }

@@ -239,13 +239,13 @@ export class ReportesComponent implements OnInit, OnDestroy {
       const nombreChecklist = c.name || '-';
       const estado = (c.status || 'pendiente').toUpperCase();
       
-      // 🔥 REGLA RELAJADA PDF: Mostramos todas las que tienen palomita, pero acusamos si falta foto.
       const tareasCumplidas = c.items ? c.items.filter((i:any) => i.checked) : [];
       
       const detalle = tareasCumplidas.map((t:any) => {
         let texto = `• ${t.text}`;
+        // 🔥 Corrección para los jeroglíficos en el PDF: Se eliminó el emoji.
         if (t.requiresPhoto && (!t.photo || t.photo === '')) {
-          texto += ' (⚠️ Marcada SIN FOTO)';
+          texto += ' [SIN FOTO]';
         }
         return texto;
       }).join('\n');
@@ -261,7 +261,8 @@ export class ReportesComponent implements OnInit, OnDestroy {
       headStyles: { fillColor: [101, 67, 33], textColor: 255, fontStyle: 'bold', halign: 'center' }, 
       alternateRowStyles: { fillColor: [255, 243, 212] }, 
       styles: { fontSize: 8, cellPadding: 4, valign: 'middle' },
-      columnStyles: { 5: { halign: 'center', fontStyle: 'bold' }, 6: { cellWidth: 100 } }
+      // 🔥 Ajuste de ancho de la última columna para evitar que se desborde (80 o 90 suele ser ideal en landscape)
+      columnStyles: { 5: { halign: 'center', fontStyle: 'bold' }, 6: { cellWidth: 85 } }
     });
 
     doc.save(`Auditoria_MegaDulces_${this.fechaInicio}.pdf`);

@@ -135,3 +135,45 @@ select.form-input, select.select-input {
     padding: 15px !important; width: 100% !important; max-width: 100% !important; box-sizing: border-box !important; overflow: hidden !important;
   }
 }
+/* ======================================================= */
+/* 🍔 SIDEBAR COLAPSABLE EN ESCRITORIO (MODO ACCIÓN)       */
+/* ======================================================= */
+
+@media screen and (min-width: 769px) {
+  /* 1. Hacemos visible el botón de menú en Computadoras */
+  .btn-menu-mobile {
+    display: block !important;
+    background: transparent;
+    border: none;
+    color: var(--text-main);
+    cursor: pointer;
+    padding: 6px 10px;
+    border-radius: 6px;
+    transition: 0.2s ease;
+    margin-right: 12px;
+  }
+  
+  .btn-menu-mobile:hover {
+    background: #E2E8F0;
+  }
+
+  /* 2. Escondemos el menú por defecto (Ancho 0) */
+  .sidebar {
+    width: 0px !important;
+    overflow: hidden !important;
+    white-space: nowrap !important;
+    border-right: none !important;
+    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  }
+
+  /* 3. Lo abrimos suavemente cuando le das click al botón */
+  .sidebar.mobile-open {
+    width: 260px !important;
+    border-right: 1px solid var(--border) !important;
+  }
+
+  /* 4. Ocultamos la capa negra en PC para que no opaque la pantalla */
+  .mobile-overlay {
+    display: none !important;
+  }
+}

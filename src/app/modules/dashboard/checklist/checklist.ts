@@ -243,7 +243,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   getTextoPeriodo(rutina: any): string {
     if (rutina.frecuencia === 'Diaria') return 'Activa siempre';
     if (rutina.frecuencia === 'Semanal') return `Todos los ${rutina.diaSemana || 'Lunes'}`;
-    if (rutina.frecuencia === 'Catorcenal') return `Cada 2 semanas, los ${rutina.diaSemana || 'Lunes'}`;
+    if (rutina.frecuencia === 'Catorcenal') return `Cada 2 weeks, los ${rutina.diaSemana || 'Lunes'}`;
     if (rutina.frecuencia === 'Mensual') return `Los días ${rutina.diaMes || 1} del mes`;
     if (rutina.frecuencia === 'Trimestral') return `El día ${rutina.diaMes || 1} cada 3 meses`;
     return '';
@@ -481,7 +481,6 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     this.actualizarEstado(); 
   }
 
-  // 🔥 Modificado para que entienda que "subiendo..." es un estado válido temporalmente
   esItemCompleto(item: any): boolean { 
     return item.checked && (!item.requiresPhoto || (item.photo !== null && item.photo !== 'subiendo...')); 
   }
@@ -510,7 +509,6 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     const actual = this.checklistSeleccionado();
     if(!actual) return;
 
-    // 🔥 Candado de seguridad: No dejar enviar si una foto sigue subiéndose
     const fotosPendientes = actual.items.some((i:any) => i.photo === 'subiendo...');
     if (fotosPendientes) {
       alert('⚠️ Espera un momento, hay una fotografía que todavía se está subiendo a la nube.');

@@ -3,10 +3,8 @@
     
     <div class="login-brand-section">
       <div class="brand-content">
-        <div class="brand-logo-wrap">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--primary-navy)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"/><path d="M12 6a6 6 0 1 0 6 6 6 6 0 0 0-6-6zm0 10a4 4 0 1 1 4-4 4 4 0 0 1-4 4z"/>
-          </svg>
+        <div class="brand-logo-wrap" style="background: #FFFFFF; width: auto; height: auto; padding: 12px 24px; display: inline-flex; border-radius: 8px;">
+          <img src="https://static.wixstatic.com/media/fd397e_0fd82a1ecec84a118ceeb603b493f25a~mv2.png" alt="Mega Dulces" style="max-height: 50px; width: auto; object-fit: contain;">
         </div>
         <h1 class="brand-title">Mega Dulces</h1>
         <p class="brand-subtitle">Panel Enterprise de Gestión Operativa</p>
@@ -22,16 +20,11 @@
         <p class="form-instruction">Ingresa tus credenciales corporativas para acceder al panel.</p>
 
         <form (ngSubmit)="ingresar()">
-
           <div class="role-selector">
-            <button type="button" class="role-btn"
-                    [class.active]="rolSeleccionado() === 'admin'"
-                    (click)="seleccionarRol('admin')">
+            <button type="button" class="role-btn" [class.active]="rolSeleccionado() === 'admin'" (click)="seleccionarRol('admin')">
               Administrador
             </button>
-            <button type="button" class="role-btn"
-                    [class.active]="rolSeleccionado() === 'trabajador'"
-                    (click)="seleccionarRol('trabajador')">
+            <button type="button" class="role-btn" [class.active]="rolSeleccionado() === 'trabajador'" (click)="seleccionarRol('trabajador')">
               Colaborador
             </button>
           </div>
@@ -64,6 +57,5 @@
         </form>
       </div>
     </div>
-
   </div>
 </div>

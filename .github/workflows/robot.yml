@@ -1,0 +1,30 @@
+name: Robot de Corte Mensual Mega Dulces
+
+on:
+  schedule:
+    # Se ejecuta el día 1 de cada mes a las 3:00 AM
+    - cron: '0 3 1 * *'
+  workflow_dispatch: # Nos permite probarlo manualmente dándole a un botón
+
+jobs:
+  respaldo-y-limpieza:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar el código
+        uses: actions/checkout@v3
+
+      - name: Instalar Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
+      - name: Instalar dependencias del robot
+        run: npm install firebase-admin cloudinary exceljs nodemailer
+
+      - name: Despertar al Robot
+        env:
+          FIREBASE_JSON: ${{ secrets.FIREBASE_JSON }}
+          CLOUDINARY_URL: ${{ secrets.CLOUDINARY_URL }}
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_PASS: ${{ secrets.GMAIL_PASS }}
+        run: node scripts/corte.js

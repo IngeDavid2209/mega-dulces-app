@@ -1,14 +1,255 @@
+<style>
+:host {
+  --primary-navy: #0F172A;
+  --primary-blue: #1E40AF;
+  --text-main: #1E293B;
+  --text-muted: #64748B;
+  --bg-app: #F8FAFC;
+  --border: #E2E8F0;
+  --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+}
+
+.login-layout {
+  min-height: 100vh;
+  width: 100vw;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--bg-app);
+  font-family: 'Inter', sans-serif;
+  overflow: hidden;
+}
+
+.login-wrapper {
+  display: flex;
+  width: 100%;
+  max-width: 1000px;
+  height: 90vh;
+  max-height: 700px;
+  background: #FFFFFF;
+  border-radius: 12px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+/* =========================================
+   ⚪ SECCIÓN IZQUIERDA: BRANDING (INVERTIDA A BLANCO)
+   ========================================= */
+.login-brand-section {
+  flex: 1;
+  background-color: #FFFFFF; /* Fondo blanco */
+  color: var(--primary-navy); /* Texto oscuro */
+  padding: 60px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between; /* Mantiene footer abajo */
+  position: relative;
+}
+
+/* Patrón de fondo sutil */
+.login-brand-section::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(#E2E8F0 1px, transparent 1px), linear-gradient(90deg, #E2E8F0 1px, transparent 1px);
+  background-size: 40px 40px;
+  opacity: 0.4;
+}
+
+.brand-content { 
+  position: relative; 
+  z-index: 1;
+  display: flex; /* Nuevo flex */
+  flex: 1; /* Ocupa espacio disponible */
+  justify-content: center; /* Centrado horizontal */
+  align-items: center; /* Centrado vertical */
+}
+
+.brand-logo-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+/* 🔥 LOGO GIGANTE Y RESPONSIVO 🔥 */
+.brand-logo-img {
+  width: 100%;
+  max-width: 320px; /* Tamaño máximo gigante */
+  height: auto;
+  object-fit: contain;
+}
+
+/* Clases de texto eliminadas en HTML, CSS se queda por estructura si hace falta luego */
+.brand-title { display: none; }
+.brand-subtitle { display: none; }
+
+.brand-footer {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 400;
+  position: relative;
+  z-index: 1;
+  text-align: center; /* Footer centrado */
+}
+
+/* =========================================
+   🔵 SECCIÓN DERECHA: FORMULARIO (INVERTIDA A NAVY)
+   ========================================= */
+.login-form-section {
+  flex: 1.2;
+  background-color: var(--primary-navy); /* Fondo oscuro */
+  padding: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.form-content-wrapper { width: 100%; max-width: 380px; }
+
+.form-title {
+  font-size: 28px;
+  font-weight: 700;
+  color: #FFFFFF; /* Título blanco */
+  letter-spacing: -0.5px;
+  margin-bottom: 8px;
+}
+
+.form-instruction {
+  font-size: 14px;
+  color: #94A3B8; /* Gris claro */
+  margin-bottom: 24px;
+  font-weight: 400;
+}
+
+/* 🎚️ SWITCH DE ROLES (MODO OSCURO) 🎚️ */
+.role-selector {
+  display: flex;
+  background: rgba(255, 255, 255, 0.1); /* Semitransparente */
+  border-radius: 8px;
+  padding: 4px;
+  margin-bottom: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.role-btn {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  color: #94A3B8;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.role-btn:hover:not(.active) { color: #FFFFFF; }
+
+.role-btn.active {
+  background: #FFFFFF; /* Botón activo blanco */
+  color: var(--primary-navy); /* Letras oscuras */
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+.form-group { margin-bottom: 20px; }
+
+.form-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: #E2E8F0; /* Labels claros */
+  margin-bottom: 8px;
+}
+
+.input-icon-wrapper { position: relative; }
+
+.input-icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748B;
+  opacity: 0.8;
+}
+
+.form-input {
+  width: 100%;
+  padding: 12px 14px 12px 42px; 
+  border: none; /* Flat look en fondo oscuro */
+  border-radius: 6px;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  background: #FFFFFF; /* Inputs blancos para contraste */
+  color: var(--text-main);
+  outline: none;
+  transition: .2s;
+  box-sizing: border-box;
+}
+
+.form-input:focus {
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5); /* Foco azul brillante */
+}
+
+.form-input::placeholder { color: #94A3B8; }
+
+/* Botón invertido (Blanco) */
+.btn-primary-login {
+  width: 100%;
+  padding: 14px;
+  background-color: #FFFFFF; 
+  color: var(--primary-navy);
+  border: none;
+  border-radius: 6px;
+  font-family: 'Inter', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: .2s;
+  margin-top: 12px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+}
+
+.btn-primary-login:hover { 
+  background-color: #F8FAFC; 
+  transform: translateY(-1px);
+}
+
+/* =========================================
+   📱 RESPONSIVE EXTREMO (CELULARES)
+   ========================================= */
+@media screen and (max-width: 992px) {
+  .login-wrapper { height: 100vh; max-height: 100vh; border-radius: 0; border: none; }
+  .login-brand-section { padding: 40px; }
+  .login-form-section { padding: 40px; flex: 1.5; }
+}
+
+@media screen and (max-width: 768px) {
+  .login-wrapper { flex-direction: column; overflow-y: auto; }
+  .login-brand-section { flex: none; height: auto; min-height: 280px; padding: 40px 30px; }
+  .brand-logo-img { max-width: 220px; } /* Ajuste tamaño en móvil */
+  .brand-footer { display: none; } 
+  
+  .login-form-section { flex: none; padding: 40px 24px; align-items: flex-start; }
+  .form-content-wrapper { max-width: 100%; }
+}
+</style>
+
 <div class="login-layout">
   <div class="login-wrapper">
     
     <div class="login-brand-section">
       <div class="brand-content">
-        <div class="brand-logo-wrap" style="background: #FFFFFF; width: auto; height: auto; padding: 12px 24px; display: inline-flex; border-radius: 8px;">
-          <img src="https://static.wixstatic.com/media/fd397e_0fd82a1ecec84a118ceeb603b493f25a~mv2.png" alt="Mega Dulces" style="max-height: 50px; width: auto; object-fit: contain;">
+        <div class="brand-logo-wrap">
+          <img src="https://static.wixstatic.com/media/fd397e_0fd82a1ecec84a118ceeb603b493f25a~mv2.png" alt="Mega Dulces" class="brand-logo-img">
         </div>
-        <h1 class="brand-title">Mega Dulces</h1>
-        <p class="brand-subtitle">Panel Enterprise de Gestión Operativa</p>
-      </div>
+        </div>
       <div class="brand-footer">
         © 2024 Mega Dulces de los Altos. Todos los derechos reservados.
       </div>
@@ -20,11 +261,16 @@
         <p class="form-instruction">Ingresa tus credenciales corporativas para acceder al panel.</p>
 
         <form (ngSubmit)="ingresar()">
+
           <div class="role-selector">
-            <button type="button" class="role-btn" [class.active]="rolSeleccionado() === 'admin'" (click)="seleccionarRol('admin')">
+            <button type="button" class="role-btn" 
+                    [class.active]="rolSeleccionado() === 'admin'" 
+                    (click)="seleccionarRol('admin')">
               Administrador
             </button>
-            <button type="button" class="role-btn" [class.active]="rolSeleccionado() === 'trabajador'" (click)="seleccionarRol('trabajador')">
+            <button type="button" class="role-btn" 
+                    [class.active]="rolSeleccionado() === 'trabajador'" 
+                    (click)="seleccionarRol('trabajador')">
               Colaborador
             </button>
           </div>
@@ -57,5 +303,6 @@
         </form>
       </div>
     </div>
+
   </div>
 </div>

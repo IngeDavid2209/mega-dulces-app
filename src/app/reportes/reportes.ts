@@ -3,8 +3,12 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, ActivatedRoute } from '@angular/router'; 
 import { Firestore, collection, getDocs, doc, deleteDoc, onSnapshot } from '@angular/fire/firestore';
+
+// Librerías de exportación
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import * as XLSX from 'xlsx';
+import html2canvas from 'html2canvas';
 
 @Component({
   selector: 'app-reportes',
@@ -18,7 +22,6 @@ export class ReportesComponent implements OnInit, OnDestroy {
   toggleMenu() { this.isMenuOpen = !this.isMenuOpen; }
 
   currentUser: any = null;
-
   fechaInicio = '';
   fechaFin = '';
   empleadoSeleccionado = '';
@@ -27,8 +30,8 @@ export class ReportesComponent implements OnInit, OnDestroy {
   resultados = signal<any[]>([]);
   buscando = signal(false);
   busquedaRealizada = signal(false);
+  generandoReporte = signal(false); // Spinner para los PDFs/Excel pesados
 
-  // Variables para controlar la vista de las fotos
   vistaActual = signal<'lista' | 'detalle'>('lista');
   checklistSeleccionado = signal<any>(null);
 
@@ -37,21 +40,17 @@ export class ReportesComponent implements OnInit, OnDestroy {
 
   private firestore = inject(Firestore);
   private route = inject(ActivatedRoute); 
-  
   private busquedaSub: any = null;
 
   ngOnInit() {
     const sesion = localStorage.getItem('md_sesion_actual');
-    if (sesion) {
-      this.currentUser = JSON.parse(sesion);
-    }
+    if (sesion) { this.currentUser = JSON.parse(sesion); }
     
     const hoy = new Date();
     const offset = hoy.getTimezoneOffset() * 60000;
     const hoyLocal = new Date(hoy.getTime() - offset);
     
     this.fechaFin = hoyLocal.toISOString().split('T')[0];
-    
     const primeroDeMes = new Date(hoyLocal.getFullYear(), hoyLocal.getMonth(), 1);
     this.fechaInicio = primeroDeMes.toISOString().split('T')[0];
 
@@ -65,11 +64,7 @@ export class ReportesComponent implements OnInit, OnDestroy {
     });
   }
 
-  ngOnDestroy() {
-    if (this.busquedaSub) {
-      this.busquedaSub();
-    }
-  }
+  ngOnDestroy() { if (this.busquedaSub) { this.busquedaSub(); } }
 
   async cargarEmpleados() {
     const usuariosRef = collection(this.firestore, 'usuarios');
@@ -85,10 +80,7 @@ export class ReportesComponent implements OnInit, OnDestroy {
   buscarReportes() {
     this.buscando.set(true);
     this.busquedaRealizada.set(true);
-    
-    if (this.busquedaSub) {
-      this.busquedaSub();
-    }
+    if (this.busquedaSub) { this.busquedaSub(); }
 
     const checklistsRef = collection(this.firestore, 'checklists');
     
@@ -97,17 +89,15 @@ export class ReportesComponent implements OnInit, OnDestroy {
 
       snapshot.forEach(docSnap => {
         const c = docSnap.data() as any;
-        
         if (c.eliminado === true) return;
 
         if (c.date >= this.fechaInicio && c.date <= this.fechaFin) {
           if (!this.empleadoSeleccionado || c.assigned === this.empleadoSeleccionado) {
-            
             const marcados = c.items ? c.items.filter((i:any) => i.checked).length : 0;
             c.calcProgreso = c.items && c.items.length > 0 ? Math.round((marcados / c.items.length) * 100) : 0;
+            c.calcCompletados = marcados; // Lo guardamos para el Excel
 
             const firma = `${c.name}_${c.assigned}_${c.store}_${c.date}`;
-
             if (!listasSinClones.has(firma)) {
               listasSinClones.set(firma, c);
             } else {
@@ -125,7 +115,6 @@ export class ReportesComponent implements OnInit, OnDestroy {
       
       this.resultados.set(filtrados);
       this.buscando.set(false);
-      
     }, (error) => {
       console.error("Error buscando el historial:", error);
       alert("Hubo un error de conexión al buscar el historial.");
@@ -133,16 +122,8 @@ export class ReportesComponent implements OnInit, OnDestroy {
     });
   }
 
-  // Funciones para abrir y cerrar el detalle con fotos
-  verDetalle(checklist: any) {
-    this.checklistSeleccionado.set(checklist);
-    this.vistaActual.set('detalle');
-  }
-
-  volverALista() {
-    this.checklistSeleccionado.set(null);
-    this.vistaActual.set('lista');
-  }
+  verDetalle(checklist: any) { this.checklistSeleccionado.set(checklist); this.vistaActual.set('detalle'); }
+  volverALista() { this.checklistSeleccionado.set(null); this.vistaActual.set('lista'); }
 
   formatearHora(hora24: string): string {
     if (!hora24) return '';
@@ -151,33 +132,19 @@ export class ReportesComponent implements OnInit, OnDestroy {
     let horas = parseInt(partes[0], 10);
     const minutos = partes[1];
     const ampm = horas >= 12 ? 'PM' : 'AM';
-    horas = horas % 12;
-    horas = horas ? horas : 12; 
+    horas = horas % 12; horas = horas ? horas : 12; 
     return `${horas < 10 ? '0' + horas : horas}:${minutos} ${ampm}`;
   }
 
   abrirModalEliminarTodo() {
-    if (this.resultados().length === 0) {
-      alert('No hay registros en pantalla para borrar.');
-      return;
-    }
-    this.passwordInput = '';
-    this.isPasswordModalOpen = true;
+    if (this.resultados().length === 0) { alert('No hay registros en pantalla para borrar.'); return; }
+    this.passwordInput = ''; this.isPasswordModalOpen = true;
   }
-
-  cerrarPasswordModal() {
-    this.isPasswordModalOpen = false;
-    this.passwordInput = '';
-  }
+  cerrarPasswordModal() { this.isPasswordModalOpen = false; this.passwordInput = ''; }
 
   async confirmarEliminacionTodo() {
-    if (this.passwordInput !== 'Mega2323') {
-      alert('❌ Contraseña maestra incorrecta. Operación cancelada.');
-      return;
-    }
-
-    const confirmar = confirm(`⚠️ PELIGRO:\nEstás a punto de borrar permanentemente los ${this.resultados().length} registros que aparecen en pantalla.\n\n¿Estás completamente seguro? Esta acción NO se puede deshacer.`);
-    
+    if (this.passwordInput !== 'Mega2323') { alert('❌ Contraseña maestra incorrecta.'); return; }
+    const confirmar = confirm(`⚠️ PELIGRO:\n¿Borrar permanentemente los ${this.resultados().length} registros en pantalla?`);
     if (confirmar) {
       this.buscando.set(true); 
       try {
@@ -185,16 +152,10 @@ export class ReportesComponent implements OnInit, OnDestroy {
           const docId = checklist.id.toString();
           await deleteDoc(doc(this.firestore, 'checklists', docId));
         }
-        alert('🗑️ Historial eliminado de la base de datos con éxito.');
-      } catch (error) {
-        console.error("Error al eliminar: ", error);
-        alert('❌ Hubo un error al intentar eliminar el historial.');
-      } finally {
-        this.cerrarPasswordModal();
-      }
-    } else {
-      this.cerrarPasswordModal();
-    }
+        alert('🗑️ Historial eliminado con éxito.');
+      } catch (error) { alert('❌ Error al eliminar.'); } 
+      finally { this.cerrarPasswordModal(); }
+    } else { this.cerrarPasswordModal(); }
   }
 
   getProgreso(checklist: any): number {
@@ -209,62 +170,108 @@ export class ReportesComponent implements OnInit, OnDestroy {
     return checklist.items.filter((i:any) => i.checked).length; 
   }
 
+  // ==========================================
+  // 🔥 NUEVAS FUNCIONES DE CORTE Y EXPORTACIÓN 🔥
+  // ==========================================
+
+  // 1. Descargar Excel con los datos puros
+  descargarExcel() {
+    if (this.resultados().length === 0) return;
+
+    const datosPlanos = this.resultados().map(c => {
+      return {
+        'ID Checklist': c.id,
+        'Nombre Operación': c.name,
+        'Sucursal': c.store,
+        'Trabajador Asignado': c.assigned,
+        'Fecha Cierre': c.date,
+        'Estatus': c.status,
+        'Tareas Completadas': `${this.getCompletados(c)} de ${c.items?.length || 0}`,
+        'Progreso (%)': `${this.getProgreso(c)}%`
+      };
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(datosPlanos);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Reporte Auditoría');
+    XLSX.writeFile(workbook, `Reporte_Datos_MegaDulces_${this.fechaInicio}_al_${this.fechaFin}.xlsx`);
+  }
+
+  // 2. Descargar PDF Clásico (Solo texto y tablas, el que ya tenías)
   descargarReportePDF() {
-    if (this.resultados().length === 0) {
-      alert('No hay datos para generar el PDF.');
-      return;
-    }
+    if (this.resultados().length === 0) { alert('No hay datos para generar el PDF.'); return; }
 
     const doc = new jsPDF({ orientation: 'landscape' });
-
-    doc.setFontSize(22);
-    doc.setTextColor(101, 67, 33); 
-    doc.text('MEGA DULCES DE LOS ALTOS', 14, 20);
-
-    doc.setFontSize(14);
-    doc.setTextColor(200, 127, 0); 
-    doc.text('REPORTE DE AUDITORÍA OPERATIVA', 14, 28);
-
-    doc.setFontSize(10);
-    doc.setTextColor(100, 100, 100); 
-    doc.text(`Generado el: ${new Date().toLocaleDateString()} a las ${new Date().toLocaleTimeString()}`, 14, 38);
-    doc.text(`Periodo analizado: ${this.fechaInicio} al ${this.fechaFin}`, 14, 44);
-    doc.text(`Empleado filtrado: ${this.empleadoSeleccionado || 'Todos los empleados'}`, 14, 50);
+    doc.setFontSize(22); doc.setTextColor(101, 67, 33); doc.text('MEGA DULCES DE LOS ALTOS', 14, 20);
+    doc.setFontSize(14); doc.setTextColor(200, 127, 0); doc.text('REPORTE DE AUDITORÍA OPERATIVA', 14, 28);
+    doc.setFontSize(10); doc.setTextColor(100, 100, 100); 
+    doc.text(`Generado: ${new Date().toLocaleDateString()} a las ${new Date().toLocaleTimeString()}`, 14, 38);
+    doc.text(`Periodo: ${this.fechaInicio} al ${this.fechaFin}`, 14, 44);
 
     const bodyData = this.resultados().map(c => {
-      const fecha = c.date || '-';
-      const empleado = c.assigned || 'Sin asignar';
-      const puesto = 'Trabajador Operativo'; 
-      const sucursal = c.store || '-';
-      const nombreChecklist = c.name || '-';
-      const estado = (c.status || 'pendiente').toUpperCase();
-      
       const tareasCumplidas = c.items ? c.items.filter((i:any) => i.checked) : [];
-      
       const detalle = tareasCumplidas.map((t:any) => {
         let texto = `• ${t.text}`;
-        // 🔥 Corrección para los jeroglíficos en el PDF: Se eliminó el emoji.
-        if (t.requiresPhoto && (!t.photo || t.photo === '')) {
-          texto += ' [SIN FOTO]';
-        }
+        if (t.requiresPhoto && (!t.photo || t.photo === '')) { texto += ' [SIN FOTO]'; }
         return texto;
       }).join('\n');
 
-      return [ fecha, empleado, puesto, sucursal, nombreChecklist, estado, detalle || 'Ninguna tarea validada' ];
+      return [ c.date || '-', c.assigned || '-', c.store || '-', c.name || '-', (c.status || 'pendiente').toUpperCase(), detalle || 'Ninguna' ];
     });
 
     autoTable(doc, {
-      startY: 58,
-      head: [['Fecha', 'Empleado', 'Puesto', 'Sucursal', 'Checklist', 'Estado', 'Tareas Cumplidas (Evidencia Validada)']],
+      startY: 50,
+      head: [['Fecha', 'Empleado', 'Sucursal', 'Checklist', 'Estado', 'Tareas (Sin Evidencia Gráfica)']],
       body: bodyData,
       theme: 'grid',
-      headStyles: { fillColor: [101, 67, 33], textColor: 255, fontStyle: 'bold', halign: 'center' }, 
+      headStyles: { fillColor: [101, 67, 33], textColor: 255 }, 
       alternateRowStyles: { fillColor: [255, 243, 212] }, 
-      styles: { fontSize: 8, cellPadding: 4, valign: 'middle' },
-      // 🔥 Ajuste de ancho de la última columna para evitar que se desborde (80 o 90 suele ser ideal en landscape)
-      columnStyles: { 5: { halign: 'center', fontStyle: 'bold' }, 6: { cellWidth: 85 } }
+      styles: { fontSize: 8, cellPadding: 3, valign: 'middle' },
+      columnStyles: { 4: { halign: 'center', fontStyle: 'bold' }, 5: { cellWidth: 100 } }
     });
 
-    doc.save(`Auditoria_MegaDulces_${this.fechaInicio}.pdf`);
+    doc.save(`Auditoria_Textual_${this.fechaInicio}.pdf`);
+  }
+
+  // 3. Descargar PDF VISUAL GIGANTE (Con Fotos)
+  async descargarPDFVisual() {
+    if (this.resultados().length === 0) return;
+    
+    // Alerta de precaución si hay muchos reportes
+    if (this.resultados().length > 30) {
+      const continuar = confirm('⚠️ ATENCIÓN: Estás intentando generar un reporte visual con más de 30 checklists. Esto procesará cientos de fotos y podría tomar varios minutos o trabar el navegador.\n\n¿Deseas continuar de todos modos?');
+      if (!continuar) return;
+    }
+
+    this.generandoReporte.set(true);
+
+    // Damos un pequeño respiro a Angular para que dibuje el DOM oculto
+    setTimeout(async () => {
+      const elementoHTML = document.getElementById('reporte-imprimir-fotos');
+      if (!elementoHTML) { this.generandoReporte.set(false); return; }
+
+      try {
+        const canvas = await html2canvas(elementoHTML, { 
+          scale: 1.5, // Balance entre calidad y peso
+          useCORS: true, // Para leer fotos de Cloudinary
+          logging: false
+        });
+
+        const imgData = canvas.toDataURL('image/jpeg', 0.8); // JPEG comprime mejor que PNG
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
+        // Si el reporte es muy largo, jsPDF cortará la imagen, pero servirá como sábana gigante.
+        pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+        pdf.save(`Corte_Mensual_Visual_${this.fechaInicio}_al_${this.fechaFin}.pdf`);
+      } catch (error) {
+        console.error("Error generando PDF Visual:", error);
+        alert('Ocurrió un error al procesar las fotografías. Asegúrate de tener buena conexión.');
+      }
+      
+      this.generandoReporte.set(false);
+    }, 500);
   }
 }

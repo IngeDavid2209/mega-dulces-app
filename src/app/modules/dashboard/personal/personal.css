@@ -174,3 +174,71 @@
   .btn-group { flex-direction: column !important; gap: 10px !important; }
   .btn-secondary, .btn-primary { width: 100% !important; text-align: center !important; }
 }
+
+/* =====================================================================
+   📱 RESPONSIVE INSTANTÁNEO (APLICA AL CAMBIAR DE PESTAÑA SIN RECARGAR)
+   ===================================================================== */
+@media screen and (max-width: 768px) {
+  /* 1. Ajuste del esqueleto general de la pantalla */
+  .main-wrapper { flex-direction: column !important; }
+  .content { width: 100vw !important; padding: 15px !important; box-sizing: border-box !important; overflow-x: hidden !important; }
+  
+  /* 2. Header y Menú flotante */
+  .header { padding: 10px 15px !important; }
+  .btn-menu-mobile { display: block !important; margin-right: 10px !important; }
+  .header-brand small { display: none !important; }
+  .sidebar { position: fixed !important; top: 0 !important; left: -300px !important; width: 280px !important; height: 100vh !important; z-index: 1000 !important; transition: left 0.3s ease !important; }
+  .sidebar.mobile-open { left: 0 !important; box-shadow: 4px 0 25px rgba(0,0,0,0.3) !important; }
+  .mobile-overlay { position: fixed !important; inset: 0 !important; background: rgba(15,23,42,0.6) !important; z-index: 999 !important; display: block !important; backdrop-filter: blur(2px) !important; }
+
+  /* 3. Tarjetas de Usuarios: Arreglo Anti-Aplastamiento */
+  .user-card, .admin-card { width: 100% !important; box-sizing: border-box !important; }
+  
+  .user-card-header { 
+    flex-direction: column !important; 
+    align-items: flex-start !important; 
+    gap: 15px !important; 
+  }
+  
+  .user-info { width: 100% !important; }
+  
+  /* 4. Estiramiento de los botones de acción (Editar, Borrar) */
+  .action-buttons { 
+    width: 100% !important; 
+    justify-content: space-between !important; 
+    margin-top: 5px !important; 
+  }
+  
+  .action-buttons .btn-action { 
+    flex: 1 !important; 
+    justify-content: center !important; 
+    height: 42px !important; 
+  }
+
+  /* 5. Acomodo de las credenciales y zonas */
+  .user-credentials .cred-row { 
+    flex-direction: column !important; 
+    align-items: flex-start !important; 
+    gap: 4px !important; 
+    margin-bottom: 12px !important; 
+  }
+  
+  /* 6. Etiquetas de permisos (Las pastillitas de colores) */
+  .user-permissions-list { 
+    flex-direction: column !important; 
+    gap: 8px !important; 
+  }
+  
+  .perm-tag { 
+    width: 100% !important; 
+    box-sizing: border-box !important; 
+    text-align: center !important; 
+    padding: 8px !important;
+  }
+  
+  /* 7. Arreglo del Buscador superior */
+  .action-bar-container { flex-direction: column !important; gap: 12px !important; }
+  .search-wrapper, .search-input { width: 100% !important; }
+  .header-buttons { width: 100% !important; justify-content: space-between !important; }
+  .header-buttons button { flex: 1 !important; justify-content: center !important; }
+}

@@ -177,3 +177,55 @@ select.form-input, select.select-input {
     display: none !important;
   }
 }
+/* =====================================================================
+   📱 RESPONSIVE MAESTRO GLOBAL (APLICA PARA TODA LA APP)
+   ===================================================================== */
+@media screen and (max-width: 768px) {
+  /* 1. Estructura y Contenido */
+  .main-wrapper { flex-direction: column !important; }
+  
+  .content { 
+    width: 100vw !important; 
+    padding: 15px !important; 
+    box-sizing: border-box !important; 
+    overflow-x: hidden !important; 
+  }
+
+  /* 2. El Header */
+  .header { padding: 10px 15px !important; }
+  .btn-menu-mobile { display: block !important; margin-right: 10px !important; }
+  .header-brand small { display: none !important; }
+
+  /* 3. Menú Lateral Flotante (Off-canvas) */
+  .sidebar {
+    position: fixed !important;
+    top: 0 !important;
+    left: -300px !important;
+    width: 280px !important;
+    height: 100vh !important;
+    z-index: 1000 !important;
+    transition: left 0.3s ease !important;
+  }
+  
+  .sidebar.mobile-open { 
+    left: 0 !important; 
+    box-shadow: 4px 0 25px rgba(0,0,0,0.3) !important; 
+  }
+  
+  .mobile-overlay {
+    position: fixed !important; 
+    inset: 0 !important; 
+    background: rgba(15,23,42,0.6) !important; 
+    z-index: 999 !important;
+    backdrop-filter: blur(2px) !important;
+    display: block !important;
+  }
+
+  /* 4. Arreglo para que las tarjetas nunca se aplasten */
+  .card, .user-card, .checklist-card {
+    width: 100% !important;
+    box-sizing: border-box !important;
+    word-wrap: break-word !important;
+    white-space: normal !important;
+  }
+}

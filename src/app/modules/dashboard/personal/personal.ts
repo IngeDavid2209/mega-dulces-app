@@ -14,6 +14,7 @@ import { Firestore, collection, doc, setDoc, deleteDoc, onSnapshot } from '@angu
 })
 export class PersonalComponent implements OnInit, OnDestroy {
   isMenuOpen = false;
+  isDarkMode = false;
   toggleMenu() { this.isMenuOpen = !this.isMenuOpen; }
 
   currentUser: any = null; 
@@ -52,6 +53,23 @@ export class PersonalComponent implements OnInit, OnDestroy {
     const sesion = localStorage.getItem('md_sesion_actual');
     if (sesion) { this.currentUser = JSON.parse(sesion); }
     this.conectarConLaNube();
+    // Revisar si el usuario tenía el modo oscuro guardado
+    const theme = localStorage.getItem('mega_theme');
+    if (theme === 'dark') {
+      this.isDarkMode = true;
+      document.body.classList.add('dark-theme');
+    }
+  }
+
+toggleTheme() {
+    this.isDarkMode = !this.isDarkMode;
+    if (this.isDarkMode) {
+      document.body.classList.add('dark-theme');
+      localStorage.setItem('mega_theme', 'dark'); // Lo guarda en la memoria del celular
+    } else {
+      document.body.classList.remove('dark-theme');
+      localStorage.setItem('mega_theme', 'light');
+    }
   }
 
   ngOnDestroy() {

@@ -123,3 +123,211 @@
   .checklist-grid { display: flex !important; flex-direction: column !important; gap: 16px !important; width: 100% !important; box-sizing: border-box !important; }
   .checklist-card { padding: 20px !important; }
 }
+
+/* =====================================================================
+   📱 RESPONSIVE MAESTRO (TABLETS Y CELULARES PARA TODA LA PÁGINA)
+   ===================================================================== */
+
+/* ---------------------------------------------------
+   💻 TABLETS (Pantallas medianas: iPads, laptops chicas) 
+   --------------------------------------------------- */
+@media screen and (max-width: 1024px) {
+  /* Filtros en 2 columnas */
+  .search-filters-container {
+    flex-wrap: wrap; 
+  }
+  .filter-item {
+    flex: 1 1 calc(50% - 15px); 
+  }
+  .filter-item-large {
+    flex: 1 1 100%; /* El selector de empleado toma toda la línea */
+  }
+  .filter-actions {
+    width: 100%;
+    justify-content: flex-end;
+    margin-top: 15px;
+  }
+  
+  /* Grid de resultados a 2 columnas */
+  .checklist-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+/* ---------------------------------------------------
+   📱 CELULARES (Pantallas pequeñas: iPhone, Android) 
+   --------------------------------------------------- */
+@media screen and (max-width: 768px) {
+
+  /* --- 1. ESTRUCTURA PRINCIPAL Y SIDEBAR --- */
+  .main-wrapper {
+    flex-direction: column;
+  }
+  
+  .content {
+    padding: 15px !important;
+    width: 100vw;
+    box-sizing: border-box;
+    overflow-x: hidden;
+  }
+
+  /* El Menú Lateral se vuelve oculto y flotante */
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: -300px; /* Escondido a la izquierda */
+    width: 280px;
+    height: 100vh;
+    z-index: 1000;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: none;
+  }
+
+  /* Cuando haces clic en el menú hamburguesa */
+  .sidebar.mobile-open {
+    left: 0;
+    box-shadow: 4px 0 25px rgba(0,0,0,0.1);
+  }
+
+  /* La capa oscura detrás del menú */
+  .mobile-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.6);
+    z-index: 999;
+    backdrop-filter: blur(2px);
+    display: block !important;
+  }
+
+  /* --- 2. HEADER Y TÍTULOS --- */
+  .header {
+    padding: 10px 15px;
+  }
+  
+  .header-brand {
+    font-size: 16px;
+  }
+  
+  .header-brand small {
+    display: none; /* Ocultamos el subtítulo en celular para ahorrar espacio */
+  }
+
+  .btn-menu-mobile {
+    display: block !important; /* Mostramos el botón de menú */
+    margin-right: 10px;
+  }
+
+  .section-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+
+  /* --- 3. CAJA DE FILTROS --- */
+  .search-filters-container {
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  .filter-item, .filter-item-large {
+    width: 100% !important;
+    flex: none;
+  }
+
+  /* Los botones de los filtros estirados al 100% */
+  .filter-actions {
+    flex-direction: column;
+    width: 100%;
+    gap: 8px;
+  }
+  
+  .filter-actions button {
+    width: 100% !important;
+    height: 46px !important; /* Más altos para poder tocarlos bien con el dedo */
+  }
+
+  /* Botón gigante de Corte Mensual */
+  button[style*="linear-gradient"] {
+    font-size: 13px !important;
+    padding: 14px 10px !important;
+    text-align: center;
+    line-height: 1.4;
+    white-space: normal;
+  }
+
+  /* --- 4. TARJETAS DE RESULTADOS --- */
+  .checklist-grid {
+    grid-template-columns: 1fr !important; /* 1 sola columna */
+    gap: 15px;
+  }
+
+  .checklist-card {
+    padding: 16px;
+  }
+
+  .checklist-card-info {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .checklist-card-info span {
+    font-size: 13px;
+  }
+
+  /* --- 5. VISTA DE DETALLE (EL REPORTE ABIERTO) --- */
+  .checklist-detail-header {
+    padding: 15px !important;
+  }
+
+  /* Contenedor principal del detalle */
+  div[style*="padding: 30px"] {
+    padding: 15px !important;
+  }
+  
+  h2[style*="font-size: 24px"] {
+    font-size: 18px !important;
+  }
+
+  /* Información del empleado y fecha */
+  div[style*="gap: 20px"] {
+    flex-direction: column;
+    gap: 8px !important;
+  }
+
+  /* Tareas dentro del reporte */
+  div[style*="padding: 16px"] {
+    padding: 12px !important;
+  }
+
+  /* Acomodo de las fotos en celular */
+  img[alt="Evidencia"] {
+    max-height: 250px !important; /* Evita que las fotos verticales ocupen 3 pantallas */
+    width: 100%;
+    object-fit: cover;
+  }
+
+  /* --- 6. MODALES (VENTANAS EMERGENTES) --- */
+  .modal {
+    width: 90% !important;
+    max-width: 350px !important;
+    padding: 20px !important;
+    margin: 20px auto;
+  }
+
+  .modal input {
+    font-size: 16px !important;
+    letter-spacing: 2px !important;
+  }
+
+  /* Botones del modal apilados */
+  .modal div[style*="display: flex; gap: 10px; justify-content: center;"] {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .modal div[style*="display: flex; gap: 10px; justify-content: center;"] button {
+    width: 100%;
+    height: 44px;
+  }
+}

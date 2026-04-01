@@ -66,19 +66,26 @@
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 8px; vertical-align: bottom;"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path></svg> Administradores del Sistema
       </h2>
       <div class="user-grid" *ngIf="getAdmins().length > 0">
-        <div class="user-card admin-card" *ngFor="let user of getAdmins()">
-          <div class="user-card-header">
-            <div class="user-avatar admin-avatar">{{ user.nombre.charAt(0) | uppercase }}</div>
-            <div class="user-info">
-              <div class="user-name">{{ user.nombre }}</div>
-              <div class="user-badge badge-admin"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg> {{ user.cargo || 'Administrador' }}</div>
+        <div class="user-card admin-card" *ngFor="let user of getAdmins()" style="width: 100%; box-sizing: border-box;">
+          
+          <div class="user-card-header" style="display: flex; flex-wrap: wrap; gap: 15px; align-items: center; justify-content: space-between;">
+            
+            <div style="display: flex; align-items: center; gap: 12px; flex: 1 1 200px; min-width: 0;">
+              <div class="user-avatar admin-avatar" style="flex-shrink: 0;">{{ user.nombre.charAt(0) | uppercase }}</div>
+              <div class="user-info" style="flex: 1; min-width: 0;">
+                <div class="user-name" style="word-break: normal !important; white-space: normal !important; line-height: 1.3; font-size: 16px; font-weight: 600; color: var(--text-main); margin-bottom: 4px;">{{ user.nombre }}</div>
+                <div class="user-badge badge-admin" style="display: inline-flex;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg> {{ user.cargo || 'Administrador' }}</div>
+              </div>
             </div>
-            <div class="action-buttons" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeAdministrarPersonal">
+
+            <div class="action-buttons" style="display: flex; gap: 8px; flex-wrap: wrap;" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeAdministrarPersonal">
               <button class="btn-action" (click)="verHistorial(user.nombre)" title="Ver Historial"><svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg></button>
               <button class="btn-action" (click)="editarUsuario(user)" title="Editar"><svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg></button>
               <button class="btn-action btn-delete" *ngIf="user.usuario !== currentUser?.usuario" (click)="eliminarUsuario(user)" title="Eliminar"><svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button>
             </div>
+
           </div>
+
           <div class="user-credentials">
             <div class="cred-row"><span class="cred-label">Nivel:</span> <span class="cred-val text-primary">Acceso Total</span></div>
             <div class="cred-row"><span class="cred-label">Usuario:</span> <span class="cred-val">{{ user.usuario }}</span></div>
@@ -97,19 +104,26 @@
           </div>
           
           <div class="user-grid">
-            <div class="user-card" *ngFor="let user of grupo.usuarios">
-              <div class="user-card-header">
-                <div class="user-avatar">{{ user.nombre.charAt(0) | uppercase }}</div>
-                <div class="user-info">
-                  <div class="user-name">{{ user.nombre }}</div>
-                  <div class="user-badge"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg> {{ user.cargo || 'Colaborador' }}</div>
+            <div class="user-card" *ngFor="let user of grupo.usuarios" style="width: 100%; box-sizing: border-box;">
+              
+              <div class="user-card-header" style="display: flex; flex-wrap: wrap; gap: 15px; align-items: center; justify-content: space-between;">
+                
+                <div style="display: flex; align-items: center; gap: 12px; flex: 1 1 200px; min-width: 0;">
+                  <div class="user-avatar" style="flex-shrink: 0;">{{ user.nombre.charAt(0) | uppercase }}</div>
+                  <div class="user-info" style="flex: 1; min-width: 0;">
+                    <div class="user-name" style="word-break: normal !important; white-space: normal !important; line-height: 1.3; font-size: 16px; font-weight: 600; color: var(--text-main); margin-bottom: 4px;">{{ user.nombre }}</div>
+                    <div class="user-badge" style="display: inline-flex;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg> {{ user.cargo || 'Colaborador' }}</div>
+                  </div>
                 </div>
-                <div class="action-buttons">
+
+                <div class="action-buttons" style="display: flex; gap: 8px; flex-wrap: wrap;">
                   <button class="btn-action" (click)="verHistorial(user.nombre)" title="Ver Historial"><svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg></button>
                   <button class="btn-action" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeAdministrarPersonal" (click)="editarUsuario(user)" title="Editar"><svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg></button>
                   <button class="btn-action btn-delete" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeAdministrarPersonal" (click)="eliminarUsuario(user)" title="Eliminar"><svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button>
                 </div>
+
               </div>
+
               <div class="user-credentials">
                 <div class="cred-row"><span class="cred-label">Zonas:</span> <span class="cred-val">{{ user.sucursales ? user.sucursales.join(', ') : (user.sucursal || 'General') }}</span></div>
                 

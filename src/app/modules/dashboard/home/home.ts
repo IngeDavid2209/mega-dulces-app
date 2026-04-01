@@ -12,6 +12,8 @@ import { Firestore, collection, onSnapshot } from '@angular/fire/firestore';
 })
 export class HomeComponent implements OnInit, OnDestroy {
   isMenuOpen = false;
+  isDarkMode = false; // 🌙 Variable maestra del Modo Oscuro
+
   toggleMenu() { this.isMenuOpen = !this.isMenuOpen; }
 
   currentUser: any = null; 
@@ -30,7 +32,27 @@ export class HomeComponent implements OnInit, OnDestroy {
     if (sesion) {
       this.currentUser = JSON.parse(sesion);
     }
+
+    // 🌙 Revisar si el usuario tenía el modo oscuro prendido
+    const theme = localStorage.getItem('mega_theme');
+    if (theme === 'dark') {
+      this.isDarkMode = true;
+      document.body.classList.add('dark-theme');
+    }
+
     this.conectarRadarNube(); 
+  }
+
+  // 🌙 El botón que apaga y enciende la luz
+  toggleTheme() {
+    this.isDarkMode = !this.isDarkMode;
+    if (this.isDarkMode) {
+      document.body.classList.add('dark-theme');
+      localStorage.setItem('mega_theme', 'dark');
+    } else {
+      document.body.classList.remove('dark-theme');
+      localStorage.setItem('mega_theme', 'light');
+    }
   }
 
   ngOnDestroy() {
@@ -50,19 +72,14 @@ export class HomeComponent implements OnInit, OnDestroy {
 
       snapshot.forEach(docSnap => {
         const c: any = docSnap.data();
-        
-        // 🔥 1. Ignorar la basura eliminada
         if (c.eliminado === true) return;
         
         const tiempoCreacion = typeof c.id === 'number' ? c.id : (c.timestampCreacion || ahora);
-        
-        // 🔥 2. Solo agarrar listas de HOY o de las últimas 24 horas
         if (c.date === fechaHoyLocal || (ahora - tiempoCreacion) <= limite24h) {
           listasCrudas.push(c);
         }
       });
 
-      // 🔥 3. ESCUDO ANTI-CLONES 🔥
       const listasSinClones = new Map();
       listasCrudas.forEach(c => {
         const marcados = c.items ? c.items.filter((i:any) => i.checked).length : 0;
@@ -80,7 +97,6 @@ export class HomeComponent implements OnInit, OnDestroy {
       });
 
       const listasFinales = Array.from(listasSinClones.values());
-
       const misListas = (this.currentUser?.rol === 'trabajador') 
         ? listasFinales.filter(c => c.assigned === this.currentUser.nombre)
         : listasFinales;
@@ -89,7 +105,6 @@ export class HomeComponent implements OnInit, OnDestroy {
       this.enProgreso.set(misListas.filter(c => c.status === 'en-progreso').length);
       this.pendientes.set(misListas.filter(c => c.status === 'pendiente').length);
 
-      // 🔥 4. CALCULADORA MAESTRA DE PROGRESO 🔥
       let totalItems = 0;
       let itemsCompletados = 0;
 
@@ -97,7 +112,6 @@ export class HomeComponent implements OnInit, OnDestroy {
         if (c.items && Array.isArray(c.items)) {
           c.items.forEach((item: any) => {
             totalItems++;
-            // Solo necesitamos que tenga la palomita, ¡no importa la foto!
             if (item.checked) {
               itemsCompletados++;
             }

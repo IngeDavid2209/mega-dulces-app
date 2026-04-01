@@ -15,7 +15,7 @@
   --red: #EF4444;
   --card: #FFFFFF;
   
-  /* 🌫️ SOMBRAS MODERNAS (Más sutiles y difuminadas) */
+  /* 🌫️ SOMBRAS MODERNAS */
   --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
   --shadow-lg: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
   --radius: 8px;
@@ -36,10 +36,11 @@ html, body {
   width: 100%;
   max-width: 100vw;
   overflow-x: hidden !important;
+  transition: background-color 0.3s ease, color 0.3s ease; /* Suaviza la transición de color */
 }
 
 .app-layout {
-  background-color: var(--bg-app);
+  background-color: transparent;
   min-height: 100vh;
   width: 100%;
   max-width: 100vw;
@@ -56,9 +57,6 @@ select.form-input, select.select-input {
   background-image: none !important;
 }
 
-/* =========================================
-   📱 MAGIA RESPONSIVE EXTREMA (CELULARES)
-   ========================================= */
 .btn-menu-mobile {
   display: none;
   background: transparent;
@@ -69,6 +67,47 @@ select.form-input, select.select-input {
   padding: 0;
 }
 
+/* ======================================================= */
+/* 🍔 SIDEBAR COLAPSABLE EN ESCRITORIO (MODO ACCIÓN)       */
+/* ======================================================= */
+@media screen and (min-width: 769px) {
+  .btn-menu-mobile {
+    display: block !important;
+    background: transparent;
+    border: none;
+    color: var(--text-main);
+    cursor: pointer;
+    padding: 6px 10px;
+    border-radius: 6px;
+    transition: 0.2s ease;
+    margin-right: 12px;
+  }
+  
+  .btn-menu-mobile:hover {
+    background: #E2E8F0;
+  }
+
+  .sidebar {
+    width: 0px !important;
+    overflow: hidden !important;
+    white-space: nowrap !important;
+    border-right: none !important;
+    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  }
+
+  .sidebar.mobile-open {
+    width: 260px !important;
+    border-right: 1px solid var(--border) !important;
+  }
+
+  .mobile-overlay {
+    display: none !important;
+  }
+}
+
+/* =====================================================================
+   📱 RESPONSIVE MAESTRO GLOBAL (APLICA PARA TODA LA APP)
+   ===================================================================== */
 @media screen and (max-width: 992px) {
   .user-grid, .checklist-grid, .home-grid {
     grid-template-columns: repeat(2, 1fr) !important;
@@ -77,32 +116,43 @@ select.form-input, select.select-input {
 
 @media screen and (max-width: 768px) {
   .btn-menu-mobile { display: block !important; }
-  .header { padding: 0 15px !important; }
+  .header { padding: 10px 15px !important; }
   .header-brand { font-size: 16px !important; margin-left: 10px !important; white-space: normal; line-height: 1.2; }
   .header-brand small { display: none !important; }
   .header-user { display: none !important; }
 
+  .main-wrapper { flex-direction: column !important; }
+  
+  .content { 
+    width: 100vw !important; 
+    padding: 15px !important; 
+    box-sizing: border-box !important; 
+    overflow-x: hidden !important; 
+  }
+
   .sidebar {
     position: fixed !important;
-    top: 0; left: -100% !important; 
-    height: 100vh !important; width: 280px !important;
+    top: 0 !important;
+    left: -300px !important;
+    width: 280px !important;
+    height: 100vh !important;
     z-index: 2000 !important;
     transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-    box-shadow: 4px 0 24px rgba(0,0,0,0.1) !important;
+    box-shadow: none !important;
   }
-  .sidebar.mobile-open { left: 0 !important; }
-
+  
+  .sidebar.mobile-open { 
+    left: 0 !important; 
+    box-shadow: 4px 0 25px rgba(0,0,0,0.3) !important; 
+  }
+  
   .mobile-overlay {
-    position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-    background: rgba(15, 23, 42, 0.6); z-index: 1999;
-    backdrop-filter: blur(2px); animation: fadeIn 0.2s ease;
-  }
-
-  .content { 
-    padding: 20px 15px !important; 
-    width: 100% !important; 
-    max-width: 100vw !important;
-    box-sizing: border-box !important;
+    position: fixed !important; 
+    inset: 0 !important; 
+    background: rgba(15,23,42,0.6) !important; 
+    z-index: 1999 !important;
+    backdrop-filter: blur(2px) !important;
+    display: block !important;
   }
 
   input, select, textarea, button, div { max-width: 100% !important; }
@@ -134,185 +184,24 @@ select.form-input, select.select-input {
   div[style*="background: white"][style*="padding: 20px"], div[style*="background: white"][style*="padding: 25px"] {
     padding: 15px !important; width: 100% !important; max-width: 100% !important; box-sizing: border-box !important; overflow: hidden !important;
   }
-}
-/* ======================================================= */
-/* 🍔 SIDEBAR COLAPSABLE EN ESCRITORIO (MODO ACCIÓN)       */
-/* ======================================================= */
 
-@media screen and (min-width: 769px) {
-  /* 1. Hacemos visible el botón de menú en Computadoras */
-  .btn-menu-mobile {
-    display: block !important;
-    background: transparent;
-    border: none;
-    color: var(--text-main);
-    cursor: pointer;
-    padding: 6px 10px;
-    border-radius: 6px;
-    transition: 0.2s ease;
-    margin-right: 12px;
-  }
-  
-  .btn-menu-mobile:hover {
-    background: #E2E8F0;
-  }
-
-  /* 2. Escondemos el menú por defecto (Ancho 0) */
-  .sidebar {
-    width: 0px !important;
-    overflow: hidden !important;
-    white-space: nowrap !important;
-    border-right: none !important;
-    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-  }
-
-  /* 3. Lo abrimos suavemente cuando le das click al botón */
-  .sidebar.mobile-open {
-    width: 260px !important;
-    border-right: 1px solid var(--border) !important;
-  }
-
-  /* 4. Ocultamos la capa negra en PC para que no opaque la pantalla */
-  .mobile-overlay {
-    display: none !important;
-  }
-}
-/* =====================================================================
-   📱 RESPONSIVE MAESTRO GLOBAL (APLICA PARA TODA LA APP)
-   ===================================================================== */
-@media screen and (max-width: 768px) {
-  /* 1. Estructura y Contenido */
-  .main-wrapper { flex-direction: column !important; }
-  
-  .content { 
-    width: 100vw !important; 
-    padding: 15px !important; 
-    box-sizing: border-box !important; 
-    overflow-x: hidden !important; 
-  }
-
-  /* 2. El Header */
-  .header { padding: 10px 15px !important; }
-  .btn-menu-mobile { display: block !important; margin-right: 10px !important; }
-  .header-brand small { display: none !important; }
-
-  /* 3. Menú Lateral Flotante (Off-canvas) */
-  .sidebar {
-    position: fixed !important;
-    top: 0 !important;
-    left: -300px !important;
-    width: 280px !important;
-    height: 100vh !important;
-    z-index: 1000 !important;
-    transition: left 0.3s ease !important;
-  }
-  
-  .sidebar.mobile-open { 
-    left: 0 !important; 
-    box-shadow: 4px 0 25px rgba(0,0,0,0.3) !important; 
-  }
-  
-  .mobile-overlay {
-    position: fixed !important; 
-    inset: 0 !important; 
-    background: rgba(15,23,42,0.6) !important; 
-    z-index: 999 !important;
-    backdrop-filter: blur(2px) !important;
-    display: block !important;
-  }
-
-  /* 4. Arreglo para que las tarjetas nunca se aplasten */
-  .card, .user-card, .checklist-card {
+  /* Arreglo para que las tarjetas de usuario NUNCA se aplasten */
+  .card, .user-card, .checklist-card, .user-item-container {
     width: 100% !important;
     box-sizing: border-box !important;
-    word-wrap: break-word !important;
-    white-space: normal !important;
+    flex-direction: column !important; 
+    align-items: flex-start !important; 
+    gap: 15px !important; 
+    padding: 20px !important; 
   }
+  
+  .user-info-wrapper { width: 100% !important; }
+  .user-name { word-break: normal !important; white-space: normal !important; font-size: 16px !important; margin-bottom: 4px !important; }
+  .user-role { font-size: 13px !important; margin-bottom: 0 !important; }
+  .user-actions { width: 100% !important; justify-content: space-between !important; }
+  .user-actions button { height: 40px !important; padding: 0 15px !important; font-size: 14px !important; }
 }
-/* =====================================================================
-   📱 RESPONSIVE MAESTRO GLOBAL (APLICA PARA TODA LA APP)
-   ===================================================================== */
-@media screen and (max-width: 768px) {
-  /* 1. Estructura y Contenido */
-  .main-wrapper { flex-direction: column !important; }
-  
-  .content { 
-    width: 100vw !important; 
-    padding: 15px !important; 
-    box-sizing: border-box !important; 
-    overflow-x: hidden !important; 
-  }
 
-  /* 2. El Header */
-  .header { padding: 10px 15px !important; }
-  .btn-menu-mobile { display: block !important; margin-right: 10px !important; }
-  .header-brand small { display: none !important; }
-
-  /* 3. Menú Lateral Flotante (Off-canvas) */
-  .sidebar {
-    position: fixed !important;
-    top: 0 !important;
-    left: -300px !important;
-    width: 280px !important;
-    height: 100vh !important;
-    z-index: 1000 !important;
-    transition: left 0.3s ease !important;
-  }
-  
-  .sidebar.mobile-open { 
-    left: 0 !important; 
-    box-shadow: 4px 0 25px rgba(0,0,0,0.3) !important; 
-  }
-  
-  .mobile-overlay {
-    position: fixed !important; 
-    inset: 0 !important; 
-    background: rgba(15,23,42,0.6) !important; 
-    z-index: 999 !important;
-    backdrop-filter: blur(2px) !important;
-    display: block !important;
-  }
-
-  /* 4. Arreglo para que las tarjetas de usuario NUNCA se aplasten */
-  .user-card, .user-item-container {
-    flex-direction: column !important; /* Apila todo verticalmente */
-    align-items: flex-start !important; /* Alinea los textos a la izquierda */
-    gap: 15px !important; /* Espacio entre el texto y los botones */
-    padding: 20px !important; /* Más padding para comodidad visual */
-  }
-  
-  /* Asegura que el contenedor de texto ocupe todo el ancho */
-  .user-info-wrapper {
-    width: 100% !important;
-  }
-
-  /* Permite que el nombre fluya normalmente y no se parta letra por letra */
-  .user-name {
-    word-break: normal !important; /* ¡Esta es la clave! */
-    white-space: normal !important; /* Permite saltos de línea normales */
-    font-size: 16px !important;
-    margin-bottom: 4px !important;
-  }
-
-  /* Ajusta el rol del usuario */
-  .user-role {
-    font-size: 13px !important;
-    margin-bottom: 0 !important;
-  }
-
-  /* Hace que los botones de acción (Editar, Borrar) ocupen todo el ancho y se separen */
-  .user-actions {
-    width: 100% !important;
-    justify-content: space-between !important;
-  }
-
-  /* Ajusta los botones individuales dentro de la tarjeta */
-  .user-actions button {
-    height: 40px !important; /* Más altos para poder tocarlos bien */
-    padding: 0 15px !important;
-    font-size: 14px !important;
-  }
-}
 /* =====================================================================
    🌙 MODO OSCURO (DARK THEME)
    ===================================================================== */
@@ -330,6 +219,8 @@ body.dark-theme .content {
 /* Cambiar el fondo de las tarjetas, modales y el menú lateral */
 body.dark-theme .sidebar,
 body.dark-theme .header,
+body.dark-theme .home-card,
+body.dark-theme .stat-pill,
 body.dark-theme .user-card,
 body.dark-theme .admin-card,
 body.dark-theme .modal,
@@ -352,6 +243,8 @@ body.dark-theme div[style*="background: #F1F5F9"] {
 
 /* Textos secundarios (Muted) */
 body.dark-theme .section-sub,
+body.dark-theme .home-card-desc,
+body.dark-theme .stat-pill-label,
 body.dark-theme .user-role,
 body.dark-theme .cred-label,
 body.dark-theme span[style*="color: var(--text-muted)"] {
@@ -359,8 +252,15 @@ body.dark-theme span[style*="color: var(--text-muted)"] {
 }
 
 /* Títulos principales */
+body.dark-theme h1,
 body.dark-theme h2, 
 body.dark-theme .user-name,
+body.dark-theme .home-card-title,
+body.dark-theme .stat-pill-val,
 body.dark-theme .section-title {
   color: #FFFFFF !important;
+}
+
+body.dark-theme .btn-menu-mobile svg {
+  stroke: #FFFFFF !important;
 }

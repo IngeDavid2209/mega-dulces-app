@@ -1,4 +1,4 @@
-import { Component, signal, OnInit, OnDestroy, inject } from '@angular/core';
+import { Component, signal, OnInit, OnDestroy, inject, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, ActivatedRoute } from '@angular/router'; 
@@ -24,13 +24,17 @@ export class ReportesComponent implements OnInit, OnDestroy {
   currentUser: any = null;
   fechaInicio = '';
   fechaFin = '';
+  
+  // 🔥 VARIABLES PARA EL AUTOCOMPLETE DE EMPLEADOS 🔥
   empleadoSeleccionado = '';
+  textoBusquedaEmpleado = ''; // Lo que el usuario teclea
+  mostrarDropdownEmpleados = false; // Controla si se ve la lista flotante
   
   empleados = signal<any[]>([]);
   resultados = signal<any[]>([]);
   buscando = signal(false);
   busquedaRealizada = signal(false);
-  generandoReporte = signal(false); // Spinner para los PDFs/Excel pesados
+  generandoReporte = signal(false);
 
   vistaActual = signal<'lista' | 'detalle'>('lista');
   checklistSeleccionado = signal<any>(null);
@@ -41,6 +45,19 @@ export class ReportesComponent implements OnInit, OnDestroy {
   private firestore = inject(Firestore);
   private route = inject(ActivatedRoute); 
   private busquedaSub: any = null;
+
+  // Cierra el dropdown si el usuario hace clic afuera de él
+  @HostListener('document:click', ['$event'])
+  onClickOutside(event: Event) {
+    const target = event.target as HTMLElement;
+    if (!target.closest('.autocomplete-container')) {
+      this.mostrarDropdownEmpleados = false;
+      // Si salió sin seleccionar nada y escribió algo, volvemos al estado seleccionado o limpiamos
+      if (this.empleadoSeleccionado !== this.textoBusquedaEmpleado) {
+        this.textoBusquedaEmpleado = this.empleadoSeleccionado || 'Todos los empleados';
+      }
+    }
+  }
 
   ngOnInit() {
     const sesion = localStorage.getItem('md_sesion_actual');
@@ -53,11 +70,14 @@ export class ReportesComponent implements OnInit, OnDestroy {
     this.fechaFin = hoyLocal.toISOString().split('T')[0];
     const primeroDeMes = new Date(hoyLocal.getFullYear(), hoyLocal.getMonth(), 1);
     this.fechaInicio = primeroDeMes.toISOString().split('T')[0];
+    
+    this.textoBusquedaEmpleado = 'Todos los empleados';
 
     this.cargarEmpleados().then(() => {
       this.route.queryParams.subscribe(params => {
         if (params['empleado']) {
           this.empleadoSeleccionado = params['empleado'];
+          this.textoBusquedaEmpleado = this.empleadoSeleccionado;
           this.buscarReportes(); 
         }
       });
@@ -77,6 +97,34 @@ export class ReportesComponent implements OnInit, OnDestroy {
     this.empleados.set(lista);
   }
 
+  // 🔥 LÓGICA DEL BUSCADOR INTELIGENTE 🔥
+  get empleadosFiltrados() {
+    if (this.textoBusquedaEmpleado === 'Todos los empleados' || this.textoBusquedaEmpleado.trim() === '') {
+      return this.empleados();
+    }
+    const termino = this.textoBusquedaEmpleado.toLowerCase();
+    return this.empleados().filter(emp => emp.nombre.toLowerCase().includes(termino));
+  }
+
+  seleccionarEmpleado(nombreEmpleado: string) {
+    if (nombreEmpleado === '') {
+      this.empleadoSeleccionado = '';
+      this.textoBusquedaEmpleado = 'Todos los empleados';
+    } else {
+      this.empleadoSeleccionado = nombreEmpleado;
+      this.textoBusquedaEmpleado = nombreEmpleado;
+    }
+    this.mostrarDropdownEmpleados = false;
+  }
+
+  onInputBusqueda() {
+    this.mostrarDropdownEmpleados = true;
+    if (this.textoBusquedaEmpleado.trim() === '') {
+      this.empleadoSeleccionado = '';
+    }
+  }
+
+
   buscarReportes() {
     this.buscando.set(true);
     this.busquedaRealizada.set(true);
@@ -95,7 +143,7 @@ export class ReportesComponent implements OnInit, OnDestroy {
           if (!this.empleadoSeleccionado || c.assigned === this.empleadoSeleccionado) {
             const marcados = c.items ? c.items.filter((i:any) => i.checked).length : 0;
             c.calcProgreso = c.items && c.items.length > 0 ? Math.round((marcados / c.items.length) * 100) : 0;
-            c.calcCompletados = marcados; // Lo guardamos para el Excel
+            c.calcCompletados = marcados; 
 
             const firma = `${c.name}_${c.assigned}_${c.store}_${c.date}`;
             if (!listasSinClones.has(firma)) {
@@ -124,17 +172,6 @@ export class ReportesComponent implements OnInit, OnDestroy {
 
   verDetalle(checklist: any) { this.checklistSeleccionado.set(checklist); this.vistaActual.set('detalle'); }
   volverALista() { this.checklistSeleccionado.set(null); this.vistaActual.set('lista'); }
-
-  formatearHora(hora24: string): string {
-    if (!hora24) return '';
-    const partes = hora24.split(':');
-    if (partes.length !== 2) return hora24;
-    let horas = parseInt(partes[0], 10);
-    const minutos = partes[1];
-    const ampm = horas >= 12 ? 'PM' : 'AM';
-    horas = horas % 12; horas = horas ? horas : 12; 
-    return `${horas < 10 ? '0' + horas : horas}:${minutos} ${ampm}`;
-  }
 
   abrirModalEliminarTodo() {
     if (this.resultados().length === 0) { alert('No hay registros en pantalla para borrar.'); return; }
@@ -170,11 +207,6 @@ export class ReportesComponent implements OnInit, OnDestroy {
     return checklist.items.filter((i:any) => i.checked).length; 
   }
 
-  // ==========================================
-  // 🔥 NUEVAS FUNCIONES DE CORTE Y EXPORTACIÓN 🔥
-  // ==========================================
-
-  // 1. Descargar Excel con los datos puros
   descargarExcel() {
     if (this.resultados().length === 0) return;
 
@@ -197,7 +229,6 @@ export class ReportesComponent implements OnInit, OnDestroy {
     XLSX.writeFile(workbook, `Reporte_Datos_MegaDulces_${this.fechaInicio}_al_${this.fechaFin}.xlsx`);
   }
 
-  // 2. Descargar PDF Clásico (Solo texto y tablas, el que ya tenías)
   descargarReportePDF() {
     if (this.resultados().length === 0) { alert('No hay datos para generar el PDF.'); return; }
 
@@ -233,11 +264,9 @@ export class ReportesComponent implements OnInit, OnDestroy {
     doc.save(`Auditoria_Textual_${this.fechaInicio}.pdf`);
   }
 
-  // 3. Descargar PDF VISUAL GIGANTE (Con Fotos)
   async descargarPDFVisual() {
     if (this.resultados().length === 0) return;
     
-    // Alerta de precaución si hay muchos reportes
     if (this.resultados().length > 30) {
       const continuar = confirm('⚠️ ATENCIÓN: Estás intentando generar un reporte visual con más de 30 checklists. Esto procesará cientos de fotos y podría tomar varios minutos o trabar el navegador.\n\n¿Deseas continuar de todos modos?');
       if (!continuar) return;
@@ -245,25 +274,23 @@ export class ReportesComponent implements OnInit, OnDestroy {
 
     this.generandoReporte.set(true);
 
-    // Damos un pequeño respiro a Angular para que dibuje el DOM oculto
     setTimeout(async () => {
       const elementoHTML = document.getElementById('reporte-imprimir-fotos');
       if (!elementoHTML) { this.generandoReporte.set(false); return; }
 
       try {
         const canvas = await html2canvas(elementoHTML, { 
-          scale: 1.5, // Balance entre calidad y peso
-          useCORS: true, // Para leer fotos de Cloudinary
+          scale: 1.5, 
+          useCORS: true, 
           logging: false
         });
 
-        const imgData = canvas.toDataURL('image/jpeg', 0.8); // JPEG comprime mejor que PNG
+        const imgData = canvas.toDataURL('image/jpeg', 0.8); 
         const pdf = new jsPDF('p', 'mm', 'a4');
         
         const pdfWidth = pdf.internal.pageSize.getWidth();
         const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
 
-        // Si el reporte es muy largo, jsPDF cortará la imagen, pero servirá como sábana gigante.
         pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
         pdf.save(`Corte_Mensual_Visual_${this.fechaInicio}_al_${this.fechaFin}.pdf`);
       } catch (error) {

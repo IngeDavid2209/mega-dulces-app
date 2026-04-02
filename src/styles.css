@@ -36,7 +36,6 @@ html, body {
   width: 100%;
   max-width: 100vw;
   overflow-x: hidden !important;
-  transition: background-color 0.3s ease, color 0.3s ease; /* Suaviza la transición de color */
 }
 
 .app-layout {
@@ -200,67 +199,4 @@ select.form-input, select.select-input {
   .user-role { font-size: 13px !important; margin-bottom: 0 !important; }
   .user-actions { width: 100% !important; justify-content: space-between !important; }
   .user-actions button { height: 40px !important; padding: 0 15px !important; font-size: 14px !important; }
-}
-
-/* =====================================================================
-   🌙 MODO OSCURO (DARK THEME)
-   ===================================================================== */
-body.dark-theme {
-  background-color: #0F172A !important;
-  color: #F8FAFC !important;
-}
-
-body.dark-theme .app-layout,
-body.dark-theme .main-wrapper,
-body.dark-theme .content {
-  background-color: #0F172A !important;
-}
-
-/* Cambiar el fondo de las tarjetas, modales y el menú lateral */
-body.dark-theme .sidebar,
-body.dark-theme .header,
-body.dark-theme .home-card,
-body.dark-theme .stat-pill,
-body.dark-theme .user-card,
-body.dark-theme .admin-card,
-body.dark-theme .modal,
-body.dark-theme div[style*="background: white"],
-body.dark-theme div[style*="background: #FFFFFF"] {
-  background-color: #1E293B !important;
-  border-color: #334155 !important;
-  color: #F8FAFC !important;
-}
-
-/* Fondos grises claritos (filtros, inputs, permisos) pasan a gris oscuro */
-body.dark-theme .form-input,
-body.dark-theme select,
-body.dark-theme div[style*="background: #F8FAFC"],
-body.dark-theme div[style*="background: #F1F5F9"] {
-  background-color: #334155 !important;
-  border-color: #475569 !important;
-  color: #F8FAFC !important;
-}
-
-/* Textos secundarios (Muted) */
-body.dark-theme .section-sub,
-body.dark-theme .home-card-desc,
-body.dark-theme .stat-pill-label,
-body.dark-theme .user-role,
-body.dark-theme .cred-label,
-body.dark-theme span[style*="color: var(--text-muted)"] {
-  color: #94A3B8 !important;
-}
-
-/* Títulos principales */
-body.dark-theme h1,
-body.dark-theme h2, 
-body.dark-theme .user-name,
-body.dark-theme .home-card-title,
-body.dark-theme .stat-pill-val,
-body.dark-theme .section-title {
-  color: #FFFFFF !important;
-}
-
-body.dark-theme .btn-menu-mobile svg {
-  stroke: #FFFFFF !important;
 }

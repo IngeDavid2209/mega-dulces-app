@@ -12,8 +12,6 @@ import { Firestore, collection, onSnapshot } from '@angular/fire/firestore';
 })
 export class HomeComponent implements OnInit, OnDestroy {
   isMenuOpen = false;
-  isDarkMode = false; // 🌙 Variable maestra del Modo Oscuro
-
   toggleMenu() { this.isMenuOpen = !this.isMenuOpen; }
 
   currentUser: any = null; 
@@ -32,27 +30,7 @@ export class HomeComponent implements OnInit, OnDestroy {
     if (sesion) {
       this.currentUser = JSON.parse(sesion);
     }
-
-    // 🌙 Revisar si el usuario tenía el modo oscuro prendido
-    const theme = localStorage.getItem('mega_theme');
-    if (theme === 'dark') {
-      this.isDarkMode = true;
-      document.body.classList.add('dark-theme');
-    }
-
     this.conectarRadarNube(); 
-  }
-
-  // 🌙 El botón que apaga y enciende la luz
-  toggleTheme() {
-    this.isDarkMode = !this.isDarkMode;
-    if (this.isDarkMode) {
-      document.body.classList.add('dark-theme');
-      localStorage.setItem('mega_theme', 'dark');
-    } else {
-      document.body.classList.remove('dark-theme');
-      localStorage.setItem('mega_theme', 'light');
-    }
   }
 
   ngOnDestroy() {

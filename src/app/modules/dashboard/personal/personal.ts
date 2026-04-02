@@ -14,8 +14,6 @@ import { Firestore, collection, doc, setDoc, deleteDoc, onSnapshot } from '@angu
 })
 export class PersonalComponent implements OnInit, OnDestroy {
   isMenuOpen = false;
-  isDarkMode = false;
-  toggleTheme() { } // Función vacía para que el HTML no llame a la nada
   toggleMenu() { this.isMenuOpen = !this.isMenuOpen; }
 
   currentUser: any = null; 
@@ -30,8 +28,8 @@ export class PersonalComponent implements OnInit, OnDestroy {
   
   // 🔥 PERMISOS
   formPuedeCrearChecklists = false; 
-  formPuedeCrearRutinas = false;       // 🔥 NUEVO: Rutinas
-  formPuedeCrearTareasUnicas = false;  // 🔥 NUEVO: Tareas Únicas
+  formPuedeCrearRutinas = false;       
+  formPuedeCrearTareasUnicas = false;  
   formPuedeVerCheckstore = false;
   formPuedeVerEstadisticas = false; 
   formPuedeVerHistorial = false; 
@@ -67,7 +65,9 @@ export class PersonalComponent implements OnInit, OnDestroy {
 
       const usuariosNube: any[] = [];
       snapshot.forEach((documento) => {
-        usuariosNube.push(documento.data());
+        const data = documento.data();
+        // 🔥 FIX: Capturamos el ID real del documento de Firebase 🔥
+        usuariosNube.push({ ...data, idFirestore: documento.id });
       });
 
       if (JSON.stringify(this.usuarios()) !== JSON.stringify(usuariosNube)) {
@@ -116,8 +116,8 @@ export class PersonalComponent implements OnInit, OnDestroy {
     this.formNombre = ''; this.formUsuario = ''; this.formCorreo = ''; this.formPassword = '';
     this.formRol = 'trabajador'; this.formCargo = 'Trabajador General'; 
     this.formPuedeCrearChecklists = false; 
-    this.formPuedeCrearRutinas = false;      // 🔥 LIMPIAR
-    this.formPuedeCrearTareasUnicas = false; // 🔥 LIMPIAR
+    this.formPuedeCrearRutinas = false;      
+    this.formPuedeCrearTareasUnicas = false; 
     this.formPuedeVerCheckstore = false; 
     this.formPuedeVerEstadisticas = false; 
     this.formPuedeVerHistorial = false; 
@@ -156,7 +156,6 @@ export class PersonalComponent implements OnInit, OnDestroy {
   async guardarUsuario() {
     if (this.currentUser?.rol !== 'admin' && !this.currentUser?.puedeAdministrarPersonal) return; 
     
-    // 🔥 FIX DE VALIDACIÓN: Si es edición, perdona si no tiene correo. Si es nuevo, sí obliga a ponerlo.
     if (!this.formNombre || !this.formUsuario || !this.formPassword) {
       alert('⚠️ Por favor completa el Nombre, Usuario y Contraseña.'); return;
     }
@@ -182,7 +181,8 @@ export class PersonalComponent implements OnInit, OnDestroy {
 
     try {
       if (this.usuarioEnEdicion) {
-        const docId = this.usuarioEnEdicion.uid || this.usuarioEnEdicion.usuario;
+        // 🔥 FIX: Usamos idFirestore para apuntar exactamente al documento original 🔥
+        const docId = this.usuarioEnEdicion.idFirestore || this.usuarioEnEdicion.uid || this.usuarioEnEdicion.usuario;
         await setDoc(doc(this.firestore, 'usuarios', docId), payload, { merge: true });
       } else {
         const creds = await createUserWithEmailAndPassword(this.auth, this.formCorreo, this.formPassword);
@@ -199,7 +199,9 @@ export class PersonalComponent implements OnInit, OnDestroy {
     if (this.currentUser?.rol !== 'admin' && !this.currentUser?.puedeAdministrarPersonal) return;
     if (userToDelete.usuario === this.currentUser.usuario) return;
     if (confirm(`⚠️ ¿Eliminar a ${userToDelete.nombre}?`)) {
-      await deleteDoc(doc(this.firestore, 'usuarios', userToDelete.uid || userToDelete.usuario));
+      // 🔥 FIX: También usamos idFirestore aquí para evitar errores al borrar 🔥
+      const docId = userToDelete.idFirestore || userToDelete.uid || userToDelete.usuario;
+      await deleteDoc(doc(this.firestore, 'usuarios', docId));
     }
   }
 
@@ -207,7 +209,6 @@ export class PersonalComponent implements OnInit, OnDestroy {
     const list = this.usuarios();
     if (list.length === 0) return;
     
-    // 🔥 ACTUALIZAR EXCEL
     let csv = 'Nombre,Usuario,Correo,Rol,Cargo,Sucursales,Crea Check,Crea Rutinas,Crea Tareas,Ve Store,Ve Est,Ve Hist,Adm Pers\n';
     
     list.forEach(u => {

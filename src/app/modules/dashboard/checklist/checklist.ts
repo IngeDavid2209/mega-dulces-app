@@ -19,6 +19,9 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   vistaActual = signal<'lista' | 'detalle'>('lista');
   checklistSeleccionado = signal<any>(null);
   
+  // 🔥 VARIABLE PARA EL NUEVO BUSCADOR GERENCIAL 🔥
+  terminoBusquedaChecklist = '';
+
   isModalOpen = false;
   formName = '';
   formAssigned: string[] = []; 
@@ -26,7 +29,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   formItems = [{ text: '', requiresPhoto: false, date: '', time: '' }]; 
   
   isModalRutinasOpen = false;
-  isEditMode = false; // 🔥 NUEVA VARIABLE PARA SABER SI ESTAMOS CREANDO O EDITANDO
+  isEditMode = false;
   formNameRutina = '';
   formAssignedRutina: string[] = []; 
   formStoreRutina = '';
@@ -68,6 +71,17 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       const susSucursales = emp.sucursales || [emp.sucursal || ''];
       return susSucursales.includes(this.formStoreRutina);
     });
+  }
+
+  // 🔥 NUEVO GETTER QUE FILTRA LOS CHECKLISTS EN TIEMPO REAL 🔥
+  get checklistsFiltrados() {
+    if (!this.terminoBusquedaChecklist.trim()) return this.checklists();
+    const termino = this.terminoBusquedaChecklist.toLowerCase();
+    return this.checklists().filter(c => 
+      c.name?.toLowerCase().includes(termino) || 
+      c.assigned?.toLowerCase().includes(termino) || 
+      c.store?.toLowerCase().includes(termino)
+    );
   }
 
   ngOnInit() {
@@ -337,16 +351,13 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     this.cerrarPasswordModal(); 
   }
 
-  // 🔥 NUEVO MÉTODO PARA EDITAR EL BLOQUE DE RUTINAS 🔥
   async editarBloqueRutinas(checklist: any, event: Event) {
     event.stopPropagation(); 
     this.isEditMode = true;
     
-    // 1. Extraemos el nombre original (sin el "(Diaria)")
     const targetName = checklist.name.replace(/ \((Diaria|Semanal|Catorcenal|Mensual|Trimestral)\)$/, "");
     const targetAssigned = checklist.assigned;
     
-    // 2. Buscamos en la bóveda (moldes_checklists) todas las rutinas que le pertenezcan
     const moldesRef = collection(this.firestore, 'moldes_checklists');
     const moldesSnap = await getDocs(moldesRef);
     
@@ -368,7 +379,6 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // 3. Llenamos el formulario con los datos recuperados
     this.formNameRutina = targetName;
     this.formAssignedRutina = [targetAssigned];
     this.formStoreRutina = sucursalOriginal;
@@ -478,7 +488,6 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   agregarRutina() { this.formRutinas.push({ text: '', requiresPhoto: false, frecuencia: 'Diaria', fechaFin: null, horaLimite: '', diaSemana: 'Lunes', diaMes: 1 }); }
   eliminarRutina(index: number) { this.formRutinas.splice(index, 1); }
 
-  // 🔥 MÉTODO MEJORADO: SI EDITAS, BORRA LOS MOLDES VIEJOS ANTES DE GUARDAR LOS NUEVOS
   async guardarBloqueRutinas() {
     if (!this.formNameRutina || this.formAssignedRutina.length === 0) { alert('Faltan datos.'); return; }
     const rutinasValidas = this.formRutinas.filter(rutina => rutina.text.trim() !== '').map((rutina, i) => ({ 
@@ -488,7 +497,6 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       }));
     if (rutinasValidas.length === 0) { alert('Agrega rutinas.'); return; }
 
-    // Si estamos editando, primero borramos los moldes viejos asociados a ese nombre y empleado
     if (this.isEditMode) {
         const moldesRef = collection(this.firestore, 'moldes_checklists');
         const moldesSnap = await getDocs(moldesRef);

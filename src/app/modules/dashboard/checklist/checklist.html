@@ -38,23 +38,33 @@
 
     <div class="content">
       <div *ngIf="vistaActual() === 'lista'">
-        <div class="section-header">
-          <div>
+        
+        <div class="section-header" style="display: flex; flex-wrap: wrap; gap: 15px; align-items: center; justify-content: space-between;">
+          <div style="flex: 1; min-width: 200px;">
             <div class="section-title">Checklists Operativos</div>
             <div class="section-sub">Gestión de rutinas y tareas del equipo</div>
           </div>
-          <div class="action-buttons">
-            <button class="btn-secondary" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeCrearChecklists" (click)="abrirModalRutinas()">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg> Bloque de Rutinas
-            </button>
-            <button class="btn-primary" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeCrearChecklists" (click)="abrirModal()">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg> Tareas Únicas
-            </button>
+          
+          <div style="display: flex; gap: 15px; flex-wrap: wrap; align-items: center; flex: 2; justify-content: flex-end;">
+            
+            <div *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeCrearChecklists" style="position: relative; flex: 1; min-width: 220px; max-width: 350px;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; color: #64748B;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+              <input type="text" class="form-input" [(ngModel)]="terminoBusquedaChecklist" placeholder="Buscar tarea, empleado o zona..." style="padding-left: 38px; width: 100%; box-sizing: border-box;">
+            </div>
+
+            <div class="action-buttons" style="margin: 0;">
+              <button class="btn-secondary" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeCrearChecklists" (click)="abrirModalRutinas()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg> Bloque de Rutinas
+              </button>
+              <button class="btn-primary" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeCrearChecklists" (click)="abrirModal()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg> Tareas Únicas
+              </button>
+            </div>
           </div>
         </div>
 
         <div class="checklist-grid">
-          <div class="checklist-card" *ngFor="let checklist of checklists()" (click)="verDetalle(checklist)">
+          <div class="checklist-card" *ngFor="let checklist of checklistsFiltrados" (click)="verDetalle(checklist)">
             <div class="checklist-card-header">
               <div class="checklist-card-title">{{ checklist.name }}</div>
               <div style="display: flex; align-items: center; gap: 8px;">
@@ -99,11 +109,13 @@
             </div>
           </div>
 
-          <div class="empty-state" *ngIf="checklists().length === 0">
+          <div class="empty-state" *ngIf="checklistsFiltrados.length === 0">
             <div class="empty-state-icon"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg></div>
-            <h3>No hay tareas asignadas</h3>
-            <p *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeCrearChecklists">Crea el primer checklist para tu equipo.</p>
-            <p *ngIf="currentUser?.rol === 'trabajador' && !currentUser?.puedeCrearChecklists">Actualmente no tienes checklists pendientes.</p>
+            <h3 *ngIf="checklists().length === 0">No hay tareas asignadas</h3>
+            <h3 *ngIf="checklists().length > 0">No se encontraron resultados</h3>
+            <p *ngIf="checklists().length === 0 && (currentUser?.rol === 'admin' || currentUser?.puedeCrearChecklists)">Crea el primer checklist para tu equipo.</p>
+            <p *ngIf="checklists().length === 0 && currentUser?.rol === 'trabajador' && !currentUser?.puedeCrearChecklists">Actualmente no tienes checklists pendientes.</p>
+            <p *ngIf="checklists().length > 0">Intenta buscar con otro nombre, empleado o sucursal.</p>
           </div>
         </div>
       </div>

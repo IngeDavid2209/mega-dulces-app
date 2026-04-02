@@ -61,6 +61,11 @@
                 <div class="checklist-card-badge" [ngClass]="{'badge-pendiente': checklist.status === 'pendiente','badge-en-progreso': checklist.status === 'en-progreso','badge-completo': checklist.status === 'completo'}">
                   {{ checklist.status === 'en-progreso' ? 'En Progreso' : (checklist.status | titlecase) }}
                 </div>
+                
+                <button class="btn-delete-icon" *ngIf="currentUser?.rol === 'admin' || checklist.createdBy === currentUser?.nombre" (click)="editarBloqueRutinas(checklist, $event)" title="Editar Rutinas" style="color: #3B82F6; background: #EFF6FF;">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                </button>
+
                 <button class="btn-delete-icon" *ngIf="currentUser?.rol === 'admin' || checklist.createdBy === currentUser?.nombre" (click)="eliminarChecklist(checklist, $event)" title="Eliminar">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
                 </button>
@@ -238,26 +243,27 @@
       <div class="modal-overlay" *ngIf="isModalRutinasOpen">
         <div class="modal">
           <div class="modal-header">
-            <div class="modal-title">Nuevo Bloque de Rutinas</div>
+            <div class="modal-title">{{ isEditMode ? 'Editar Bloque de Rutinas' : 'Nuevo Bloque de Rutinas' }}</div>
             <button class="modal-close" (click)="cerrarModalRutinas()"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
           </div>
           <div class="modal-body">
             <div class="form-group form-full">
               <label class="form-label">Identificador del Bloque</label>
-              <input class="form-input" type="text" [(ngModel)]="formNameRutina" placeholder="Ej: Protocolo de Cierre Nocturno">
+              <input class="form-input" type="text" [(ngModel)]="formNameRutina" placeholder="Ej: Protocolo de Cierre Nocturno" [disabled]="isEditMode">
+              <small *ngIf="isEditMode" style="color: #64748B;">El nombre no se puede cambiar en modo edición.</small>
             </div>
             <div class="form-group form-full">
               <label class="form-label">Responsables de ejecución</label>
-              <div class="checkbox-grid">
-                <label class="checkbox-label" *ngFor="let emp of empleadosFiltradosRutina" [class.selected]="formAssignedRutina.includes(emp.nombre)">
-                  <input type="checkbox" [checked]="formAssignedRutina.includes(emp.nombre)" (change)="toggleEmpleadoRutina(emp.nombre)" class="custom-checkbox"> {{ emp.nombre }}
+              <div class="checkbox-grid" [style.opacity]="isEditMode ? '0.6' : '1'">
+                <label class="checkbox-label" *ngFor="let emp of empleadosFiltradosRutina" [class.selected]="formAssignedRutina.includes(emp.nombre)" [style.pointer-events]="isEditMode ? 'none' : 'auto'">
+                  <input type="checkbox" [checked]="formAssignedRutina.includes(emp.nombre)" (change)="toggleEmpleadoRutina(emp.nombre)" class="custom-checkbox" [disabled]="isEditMode"> {{ emp.nombre }}
                 </label>
               </div>
             </div>
             
             <div class="form-group form-full">
               <label class="form-label">Sucursal asignada</label>
-              <select class="form-input select-input" [(ngModel)]="formStoreRutina">
+              <select class="form-input select-input" [(ngModel)]="formStoreRutina" [disabled]="isEditMode">
                 <option *ngFor="let suc of sucursalesDisponibles()" [value]="suc">{{ suc }}</option>
               </select>
               <small *ngIf="esSucursalAdministrativa(formStoreRutina)" style="color: #64748B; display: block; margin-top: 6px;">
@@ -303,7 +309,7 @@
             </div>
             <div class="btn-group">
               <button class="btn-secondary" (click)="cerrarModalRutinas()">Cancelar</button>
-              <button class="btn-primary" (click)="guardarBloqueRutinas()">Guardar en Sistema</button>
+              <button class="btn-primary" (click)="guardarBloqueRutinas()">{{ isEditMode ? 'Guardar Cambios' : 'Guardar en Sistema' }}</button>
             </div>
           </div>
         </div>

@@ -34,15 +34,19 @@ export class LoginComponent {
     }
 
     // 🛡️ PARACAÍDAS DE SEGURIDAD PARA EL ADMIN PRINCIPAL 🛡️
-    // Esto garantiza que el dueño siempre pueda entrar, aunque la base de datos falle
-    if (this.usuario === 'admin' && this.password === '123' && this.rolSeleccionado() === 'admin') {
+    // 🔥 FIX: Actualizado a 123456 y con todos los permisos Enterprise 🔥
+    if (this.usuario === 'admin' && this.password === '123456' && this.rolSeleccionado() === 'admin') {
       const adminSeguridad = { 
-        nombre: 'Administrador', 
+        nombre: 'Administrador Supremo', 
         usuario: 'admin', 
         rol: 'admin',
         puedeCrearChecklists: true,
+        puedeCrearRutinas: true,
+        puedeCrearTareasUnicas: true,
         puedeVerCheckstore: true,
-        puedeVerEstadisticas: true
+        puedeVerEstadisticas: true,
+        puedeVerHistorial: true,
+        puedeAdministrarPersonal: true
       };
       localStorage.setItem('md_sesion_actual', JSON.stringify(adminSeguridad));
       this.router.navigate(['/home']);

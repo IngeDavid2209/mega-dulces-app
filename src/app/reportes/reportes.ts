@@ -124,6 +124,11 @@ export class ReportesComponent implements OnInit, OnDestroy {
     }
   }
 
+  // 🔥 NUEVA FUNCIÓN PARA VACIAR EL CAMPO AL HACER CLIC 🔥
+  onFocusBusqueda() {
+    this.mostrarDropdownEmpleados = true;
+    this.textoBusquedaEmpleado = ''; 
+  }
 
   buscarReportes() {
     this.buscando.set(true);

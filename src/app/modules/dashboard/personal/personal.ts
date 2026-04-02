@@ -14,6 +14,8 @@ import { Firestore, collection, doc, setDoc, deleteDoc, onSnapshot } from '@angu
 })
 export class PersonalComponent implements OnInit, OnDestroy {
   isMenuOpen = false;
+  isDarkMode = false;
+  toggleTheme() { } // Función vacía para que el HTML no llame a la nada
   toggleMenu() { this.isMenuOpen = !this.isMenuOpen; }
 
   currentUser: any = null; 

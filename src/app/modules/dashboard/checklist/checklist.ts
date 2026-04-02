@@ -22,6 +22,9 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   // 🔥 VARIABLE PARA EL NUEVO BUSCADOR GERENCIAL 🔥
   terminoBusquedaChecklist = '';
 
+  // 🔥 VARIABLE PARA EL AVISO FLOTANTE 🔥
+  toastMessage = '';
+
   isModalOpen = false;
   formName = '';
   formAssigned: string[] = []; 
@@ -73,7 +76,6 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     });
   }
 
-  // 🔥 NUEVO GETTER QUE FILTRA LOS CHECKLISTS EN TIEMPO REAL 🔥
   get checklistsFiltrados() {
     if (!this.terminoBusquedaChecklist.trim()) return this.checklists();
     const termino = this.terminoBusquedaChecklist.toLowerCase();
@@ -82,6 +84,12 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       c.assigned?.toLowerCase().includes(termino) || 
       c.store?.toLowerCase().includes(termino)
     );
+  }
+
+  // 🔥 FUNCIÓN PARA MOSTRAR EL AVISO FLOTANTE 🔥
+  mostrarToast(mensaje: string) {
+    this.toastMessage = mensaje;
+    setTimeout(() => { this.toastMessage = ''; }, 3500);
   }
 
   ngOnInit() {
@@ -421,6 +429,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     this.guardarEnLaNube(actual);
   }
 
+  // 🔥 MÉTODO ACTUALIZADO CON EL AVISO FLOTANTE 🔥
   enviarChecklist() {
     const actual = this.checklistSeleccionado(); if(!actual) return;
     const fotosPendientes = actual.items.some((i:any) => i.photo === 'subiendo...');
@@ -432,7 +441,9 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     }
     actual.enviado = true;
     this.guardarEnLaNube(actual); 
-    alert('🚀 ¡Checklist enviado!'); this.volverALista();
+    
+    this.mostrarToast('✅ ¡Checklist enviado correctamente!');
+    this.volverALista();
   }
 
   toggleEmpleado(nombre: string) {
@@ -469,7 +480,8 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       };
       this.guardarEnLaNube(checklistTareas);
     });
-    alert('✅ ¡Checklist enviado!'); this.cerrarModal();
+    this.mostrarToast('✅ ¡Tareas creadas con éxito!');
+    this.cerrarModal();
   }
 
   toggleEmpleadoRutina(nombre: string) {
@@ -535,7 +547,8 @@ export class ChecklistComponent implements OnInit, OnDestroy {
         setDoc(doc(this.firestore, 'moldes_checklists', moldeId), nuevoMolde);
       });
     });
-    alert(this.isEditMode ? '🔄 ¡Bloque actualizado con éxito!' : '🔄 ¡Bloque guardado en la Bóveda!');
+    
+    this.mostrarToast(this.isEditMode ? '🔄 ¡Bloque actualizado con éxito!' : '🔄 ¡Bloque guardado en la Bóveda!');
     this.cerrarModalRutinas();
   }
 

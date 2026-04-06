@@ -269,7 +269,7 @@ export class ReportesComponent implements OnInit, OnDestroy {
     doc.save(`Auditoria_Textual_${this.fechaInicio}.pdf`);
   }
 
-  async descargarPDFVisual() {
+async descargarPDFVisual() {
     if (this.resultados().length === 0) return;
     
     if (this.resultados().length > 30) {
@@ -293,10 +293,26 @@ export class ReportesComponent implements OnInit, OnDestroy {
         const imgData = canvas.toDataURL('image/jpeg', 0.8); 
         const pdf = new jsPDF('p', 'mm', 'a4');
         
-        const pdfWidth = pdf.internal.pageSize.getWidth();
-        const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+        // 📏 CÁLCULO MATEMÁTICO DE PÁGINAS 📏
+        const imgWidth = 210; // Ancho de una hoja A4 en mm
+        const pageHeight = 297; // Alto de una hoja A4 en mm
+        // Calculamos cuánto mide nuestra "foto gigante" en milímetros, respetando la proporción
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        let heightLeft = imgHeight; // Cuánta foto nos falta por pegar
+        let position = 0; // Coordenada vertical (eje Y) donde vamos a pegar
 
-        pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+        // 1. Pegamos la primera hoja (desde la coordenada Y = 0)
+        pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight; // Le restamos lo que ya cupo en la primera hoja
+
+        // 2. Mientras siga sobrando foto (heightLeft > 0), agregamos nuevas páginas
+        while (heightLeft > 0) {
+          position = heightLeft - imgHeight; // Recorremos la foto hacia "arriba" (coordenada negativa)
+          pdf.addPage(); // Creamos hoja nueva
+          pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight); // Pegamos el siguiente pedazo
+          heightLeft -= pageHeight;
+        }
+
         pdf.save(`Corte_Mensual_Visual_${this.fechaInicio}_al_${this.fechaFin}.pdf`);
       } catch (error) {
         console.error("Error generando PDF Visual:", error);
@@ -304,6 +320,6 @@ export class ReportesComponent implements OnInit, OnDestroy {
       }
       
       this.generandoReporte.set(false);
-    }, 500);
+    }, 500); // Pequeño retraso para dejar que Angular dibuje el DOM oculto antes de la foto
   }
 }

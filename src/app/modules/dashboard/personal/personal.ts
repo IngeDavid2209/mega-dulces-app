@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { RouterModule, Router } from '@angular/router'; 
 import { Auth, createUserWithEmailAndPassword } from '@angular/fire/auth'; 
 import { Firestore, collection, doc, setDoc, deleteDoc, onSnapshot } from '@angular/fire/firestore';
+import * as ExcelJS from 'exceljs';
 
 @Component({
   selector: 'app-personal',
@@ -205,21 +206,103 @@ export class PersonalComponent implements OnInit, OnDestroy {
     }
   }
 
-  descargarExcel() {
+async descargarExcel() {
     const list = this.usuarios();
-    if (list.length === 0) return;
-    
-    let csv = 'Nombre,Usuario,Correo,Rol,Cargo,Sucursales,Crea Check,Crea Rutinas,Crea Tareas,Ve Store,Ve Est,Ve Hist,Adm Pers\n';
-    
+    if (list.length === 0) {
+      alert('No hay personal para exportar.');
+      return;
+    }
+
+    // 1. Creamos el libro y la hoja
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Personal MegaDulces');
+
+    // 2. Definimos las columnas con anchos profesionales
+    worksheet.columns = [
+      { header: 'Nombre Completo', key: 'nombre', width: 35 },
+      { header: 'Usuario', key: 'usuario', width: 20 },
+      { header: 'Correo Electrónico', key: 'correo', width: 35 },
+      { header: 'Rol', key: 'rol', width: 15 },
+      { header: 'Cargo', key: 'cargo', width: 25 },
+      { header: 'Sucursales', key: 'sucursales', width: 30 },
+      { header: 'Crea Check', key: 'creaCheck', width: 12 },
+      { header: 'Crea Rutinas', key: 'creaRutinas', width: 12 },
+      { header: 'Crea Tareas', key: 'creaTareas', width: 12 },
+      { header: 'Ve Store', key: 'veStore', width: 12 },
+      { header: 'Ve Est.', key: 'veEst', width: 12 },
+      { header: 'Ve Hist.', key: 'veHist', width: 12 },
+      { header: 'Adm. Pers.', key: 'admPers', width: 12 }
+    ];
+
+    // 3. Diseño de Cabecera (Navy Enterprise + Texto Blanco)
+    const headerRow = worksheet.getRow(1);
+    headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
+    headerRow.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FF0F172A' } // El azul oscuro de tu Login
+    };
+    headerRow.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+    headerRow.height = 30;
+
+    // 4. Inyectamos los datos transformando los Booleanos a "Sí/No"
     list.forEach(u => {
-      const sucs = `"${u.sucursales ? u.sucursales.join(' - ') : ''}"`;
-      csv += `"${u.nombre}","${u.usuario}","${u.correo}","${u.rol}","${u.cargo}",${sucs},${u.puedeCrearChecklists?'Sí':'No'},${u.puedeCrearRutinas?'Sí':'No'},${u.puedeCrearTareasUnicas?'Sí':'No'},${u.puedeVerCheckstore?'Sí':'No'},${u.puedeVerEstadisticas?'Sí':'No'},${u.puedeVerHistorial?'Sí':'No'},${u.puedeAdministrarPersonal?'Sí':'No'}\n`;
+      worksheet.addRow({
+        nombre: u.nombre || '-',
+        usuario: u.usuario || '-',
+        correo: u.correo || '-',
+        rol: (u.rol || '').toUpperCase(),
+        cargo: u.cargo || '-',
+        // Unimos las sucursales con guiones para que se vea limpio
+        sucursales: u.sucursales ? u.sucursales.join(' - ') : 'General',
+        creaCheck: u.puedeCrearChecklists ? 'Sí' : 'No',
+        creaRutinas: u.puedeCrearRutinas ? 'Sí' : 'No',
+        creaTareas: u.puedeCrearTareasUnicas ? 'Sí' : 'No',
+        veStore: u.puedeVerCheckstore ? 'Sí' : 'No',
+        veEst: u.puedeVerEstadisticas ? 'Sí' : 'No',
+        veHist: u.puedeVerHistorial ? 'Sí' : 'No',
+        admPers: u.puedeAdministrarPersonal ? 'Sí' : 'No'
+      });
     });
-    
-    const blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = 'Personal_MegaDulces.csv';
-    link.click();
+
+    // 5. Aplicamos el formato visual a las celdas (Bordes y Centrado)
+    worksheet.eachRow((row, rowNumber) => {
+      row.eachCell((cell, colNumber) => {
+        // Bordes elegantes color pizarra
+        cell.border = {
+          top: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+          left: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+          bottom: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+          right: { style: 'thin', color: { argb: 'FFCBD5E1' } }
+        };
+        
+        if (rowNumber > 1) {
+          // Centramos los permisos y el rol para que no se vea amontonado
+          if (colNumber >= 7 || colNumber === 4) {
+            cell.alignment = { vertical: 'middle', horizontal: 'center' };
+          } else {
+            cell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
+          }
+        }
+      });
+    });
+
+    // 6. Generamos el archivo .xlsx real
+    try {
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Nomina_Personal_MegaDulces.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Error al exportar Personal:", error);
+      alert('Hubo un error al generar el Excel de personal.');
+    }
   }
 }

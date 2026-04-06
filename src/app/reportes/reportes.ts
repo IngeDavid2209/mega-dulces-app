@@ -222,9 +222,8 @@ async descargarExcel() {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Reporte Auditoría');
 
-    // 2. Definimos las columnas con sus anchos exactos para que no se corte el texto
+    // 2. 🔥 ELIMINAMOS LA COLUMNA DE ID 🔥
     worksheet.columns = [
-      { header: 'ID Checklist', key: 'id', width: 25 },
       { header: 'Nombre Operación', key: 'name', width: 40 },
       { header: 'Sucursal', key: 'store', width: 20 },
       { header: 'Trabajador Asignado', key: 'assigned', width: 35 },
@@ -234,21 +233,20 @@ async descargarExcel() {
       { header: 'Progreso', key: 'progreso', width: 15 }
     ];
 
-    // 3. Estilo Enterprise a la Cabecera (Fondo Navy, Letra Blanca, Negrita)
+    // 3. Estilo Enterprise a la Cabecera
     const headerRow = worksheet.getRow(1);
     headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
     headerRow.fill = {
       type: 'pattern',
       pattern: 'solid',
-      fgColor: { argb: 'FF0F172A' } // Color Azul Marino (Primary Navy)
+      fgColor: { argb: 'FF0F172A' } 
     };
     headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
-    headerRow.height = 25; // Hacemos la cabecera un poco más alta
+    headerRow.height = 25; 
 
-// 4. Inyectamos los datos fila por fila
+    // 4. Inyectamos los datos sin el ID
     this.resultados().forEach(c => {
       worksheet.addRow({
-        id: c.id.toString(), // 🔥 LA CURA: Convertirlo a texto para engañar a Excel 🔥
         name: c.name,
         store: c.store,
         assigned: c.assigned,
@@ -259,11 +257,9 @@ async descargarExcel() {
       });
     });
 
-    
-    // 5. Aplicamos bordes y centrado a todas las celdas con datos
+    // 5. Aplicamos bordes y centrado
     worksheet.eachRow((row, rowNumber) => {
       row.eachCell((cell, colNumber) => {
-        // Ponerle borde delgadito a todo
         cell.border = {
           top: { style: 'thin', color: { argb: 'FFCBD5E1' } },
           left: { style: 'thin', color: { argb: 'FFCBD5E1' } },
@@ -271,9 +267,9 @@ async descargarExcel() {
           right: { style: 'thin', color: { argb: 'FFCBD5E1' } }
         };
         
-        // Centrar las columnas de Fecha, Estatus, Tareas y Progreso
+        // Ajustamos los índices de columnas para centrar porque quitamos la primera
         if (rowNumber > 1) {
-          if (colNumber >= 5 && colNumber <= 8) {
+          if (colNumber >= 4 && colNumber <= 7) {
             cell.alignment = { vertical: 'middle', horizontal: 'center' };
           } else {
             cell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
@@ -282,7 +278,7 @@ async descargarExcel() {
       });
     });
 
-    // 6. Generamos el archivo y forzamos la descarga en el navegador
+    // 6. Generamos el archivo
     try {
       const buffer = await workbook.xlsx.writeBuffer();
       const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });

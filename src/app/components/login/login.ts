@@ -2,7 +2,6 @@ import { Component, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-// 🔥 IMPORTAMOS FIREBASE AUTH Y LA NUBE 🔥
 import { Auth, signInWithEmailAndPassword } from '@angular/fire/auth';
 import { Firestore, collection, getDocs } from '@angular/fire/firestore';
 
@@ -14,7 +13,6 @@ import { Firestore, collection, getDocs } from '@angular/fire/firestore';
   styleUrls: ['./login.css']   
 })
 export class LoginComponent {
-  // 🔥 AHORA SÍ, USAMOS LOS NOMBRES EXACTOS DE TU HTML 🔥
   usuario = '';
   password = '';
   rolSeleccionado = signal('admin');
@@ -34,7 +32,6 @@ export class LoginComponent {
     }
 
     // 🛡️ PARACAÍDAS DE SEGURIDAD PARA EL ADMIN PRINCIPAL 🛡️
-    // 🔥 FIX: Actualizado a 123456 y con todos los permisos Enterprise 🔥
     if (this.usuario === 'admin' && this.password === '123456' && this.rolSeleccionado() === 'admin') {
       const adminSeguridad = { 
         nombre: 'Administrador Supremo', 
@@ -54,30 +51,25 @@ export class LoginComponent {
     }
 
     try {
-      // 1. 🔥 BUSCAR EL USUARIO EN LA NUBE PARA OBTENER SU CORREO REAL 🔥
       const usuariosRef = collection(this.firestore, 'usuarios');
       const snapshot = await getDocs(usuariosRef);
       let usuarioEncontrado: any = null;
 
       snapshot.forEach(doc => {
         const data = doc.data();
-        // Revisamos si lo que escribió coincide con el "Usuario Corto" o con el "Correo"
         if ((data['usuario'] === this.usuario || data['correo'] === this.usuario) && data['rol'] === this.rolSeleccionado()) {
           usuarioEncontrado = data;
         }
       });
 
-      // Si no encontró a nadie en la base de datos con ese rol y usuario
       if (!usuarioEncontrado) {
         alert('❌ Datos incorrectos. Verifica tu usuario, contraseña o el rol seleccionado.');
         return;
       }
 
-      // 2. 🔥 INICIAR SESIÓN CON FIREBASE USANDO EL CORREO 🔥
       const correoParaFirebase = usuarioEncontrado.correo;
       await signInWithEmailAndPassword(this.auth, correoParaFirebase, this.password);
 
-      // 3. 🔥 GUARDAMOS LOS PERMISOS EN LA SESIÓN Y LO DEJAMOS ENTRAR 🔥
       localStorage.setItem('md_sesion_actual', JSON.stringify(usuarioEncontrado));
       this.router.navigate(['/home']);
 

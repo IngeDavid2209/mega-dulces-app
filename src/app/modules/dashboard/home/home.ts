@@ -2,8 +2,8 @@ import { Component, signal, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router'; 
 import { Firestore, collection, onSnapshot } from '@angular/fire/firestore'; 
-// 🔥 IMPORTAMOS EL SERVICIO DE NOTIFICACIONES 🔥
 import { NotificacionesService } from '../../../services/notificaciones';
+
 @Component({
   selector: 'app-home',
   standalone: true,
@@ -24,7 +24,6 @@ export class HomeComponent implements OnInit, OnDestroy {
   progresoGlobal = signal(0);
 
   private firestore = inject(Firestore); 
-  // 🔥 INYECTAMOS EL SERVICIO DE NOTIFICACIONES 🔥
   private notificacionesService = inject(NotificacionesService);
   private destructoresRadares: (() => void)[] = [];
 
@@ -32,9 +31,6 @@ export class HomeComponent implements OnInit, OnDestroy {
     const sesion = localStorage.getItem('md_sesion_actual');
     if (sesion) {
       this.currentUser = JSON.parse(sesion);
-      
-      // 🔥 SOLICITAMOS EL PERMISO DE NOTIFICACIONES AL ENTRAR AL DASHBOARD 🔥
-      // Le mandamos el nombre del usuario para guardar su Token asociado a él
       if (this.currentUser && this.currentUser.nombre) {
         this.notificacionesService.solicitarPermisos(this.currentUser.nombre);
       }
@@ -59,8 +55,14 @@ export class HomeComponent implements OnInit, OnDestroy {
 
       snapshot.forEach(docSnap => {
         const c: any = docSnap.data();
-        if (c.eliminado === true) return;
         
+        // 🛡️ REGLAS DE DESCUENTO: Ignorar eliminados y ya enviados
+        if (c.eliminado === true || c.enviado === true) return;
+        
+        // 🔥 SI QUIERES QUE SE DESCUENTE EN CUANTO TERMINES LA ÚLTIMA TAREA (Status Completo)
+        // Descomenta la siguiente línea si quieres que desaparezca del conteo antes de enviar:
+        // if (c.status === 'completo') return;
+
         const tiempoCreacion = typeof c.id === 'number' ? c.id : (c.timestampCreacion || ahora);
         if (c.date === fechaHoyLocal || (ahora - tiempoCreacion) <= limite24h) {
           listasCrudas.push(c);
@@ -88,6 +90,7 @@ export class HomeComponent implements OnInit, OnDestroy {
         ? listasFinales.filter(c => c.assigned === this.currentUser.nombre)
         : listasFinales;
 
+      // Actualizamos los números que ves en las tarjetas
       this.totalChecklists.set(misListas.length);
       this.enProgreso.set(misListas.filter(c => c.status === 'en-progreso').length);
       this.pendientes.set(misListas.filter(c => c.status === 'pendiente').length);

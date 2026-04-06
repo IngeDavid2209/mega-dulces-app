@@ -1,508 +1,244 @@
 :host {
-  --primary-navy: #0F172A;
-  --primary-blue: #1E40AF;
-  --text-main: #1E293B;
-  --text-muted: #64748B;
-  --bg-app: #F8FAFC;
-  --border: #E2E8F0;
-  --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+  --bg-color: #F4F4F5; /* Gris muy claro del diseño */
+  --watermark-color: #E4E4E7; /* Color de las letras gigantes */
+  --input-bg: #EEF2FF; /* Azul/Gris clarito de las cajas de texto */
+  --text-dark: #18181B;
+  --text-muted: #71717A;
 }
 
 .login-layout {
-  min-height: 100vh;
+  position: relative;
   width: 100vw;
+  min-height: 100dvh; /* Altura dinámica para celulares */
+  background-color: var(--bg-color);
+  font-family: 'Inter', sans-serif;
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: var(--bg-app);
-  font-family: 'Inter', sans-serif;
-  overflow: hidden;
-}
-
-.login-wrapper {
-  display: flex;
-  width: 100%;
-  max-width: 1000px;
-  height: 90vh;
-  max-height: 700px;
-  background: #FFFFFF;
-  border-radius: 12px;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-  overflow: hidden;
-  border: 1px solid var(--border);
+  overflow: hidden; /* Evita que el usuario scrollee por las letras gigantes */
 }
 
 /* =========================================
-   ⚪ SECCIÓN IZQUIERDA: BRANDING (INVERTIDA A BLANCO)
+   🔤 MARCAS DE AGUA GIGANTES
    ========================================= */
-.login-brand-section {
-  flex: 1;
-  background-color: #FFFFFF; /* Ahora es blanco */
-  color: var(--primary-navy); /* Texto oscuro */
-  padding: 60px;
+.watermark {
+  position: absolute;
+  font-weight: 900;
+  color: var(--watermark-color);
+  z-index: 0;
+  line-height: 0.8;
+  user-select: none;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.watermark-top {
+  top: 5%;
+  left: -5%;
+  font-size: clamp(8rem, 20vw, 25rem); /* Se adapta al tamaño de la pantalla */
+}
+
+.watermark-bottom {
+  bottom: 0;
+  right: -5%;
+  font-size: clamp(10rem, 25vw, 30rem);
+}
+
+/* =========================================
+   🌙 BOTÓN SUPERIOR DERECHO
+   ========================================= */
+.top-bar {
+  position: absolute;
+  top: 24px;
+  right: 24px;
+  z-index: 10;
+}
+
+.btn-theme-toggle {
+  background: transparent;
+  border: none;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.btn-theme-toggle:hover {
+  color: var(--text-dark);
+}
+
+/* =========================================
+   📦 CONTENEDOR CENTRAL
+   ========================================= */
+.login-container {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  max-width: 440px; /* Ancho de la tarjeta */
+  padding: 20px;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  position: relative;
-}
-
-/* Patrón de fondo más claro para que no ensucie el blanco */
-.login-brand-section::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background-image: linear-gradient(#E2E8F0 1px, transparent 1px), linear-gradient(90deg, #E2E8F0 1px, transparent 1px);
-  background-size: 40px 40px;
-  opacity: 0.4;
-}
-
-.brand-content { position: relative; z-index: 1; }
-
-.brand-logo-wrap {
-  margin-bottom: 32px;
-  display: flex;
   align-items: center;
 }
 
-/* 🔥 LOGO GIGANTE Y RESPONSIVO 🔥 */
-.brand-logo-img {
-  width: 100%;
-  max-width: 320px; /* Tamaño máximo para que se vea enorme pero cuidado */
-  height: auto;
-  object-fit: contain;
+.logo-container {
+  margin-bottom: 24px;
+  text-align: center;
 }
 
-.brand-title {
-  font-size: 36px;
+.main-logo {
+  width: 100%;
+  max-width: 260px;
+  object-fit: contain;
+  filter: drop-shadow(0 10px 15px rgba(0,0,0,0.1));
+}
+
+.portal-subtitle {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: var(--text-muted);
+  margin-bottom: 24px;
+  text-transform: uppercase;
+}
+
+/* =========================================
+   📄 TARJETA BLANCA
+   ========================================= */
+.login-card {
+  background: #FFFFFF;
+  width: 100%;
+  padding: 40px 32px;
+  border-radius: 12px;
+  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.08);
+  box-sizing: border-box;
+}
+
+/* SELECTOR DE ROL */
+.role-selector {
+  display: flex;
+  background: #F4F4F5;
+  border-radius: 6px;
+  padding: 4px;
+  margin-bottom: 24px;
+}
+
+.role-btn {
+  flex: 1;
+  background: transparent;
+  border: none;
+  padding: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.role-btn.active {
+  background: #FFFFFF;
+  color: var(--text-dark);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+/* INPUTS */
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-label {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.form-input {
+  width: 100%;
+  background: var(--input-bg);
+  border: 2px solid transparent;
+  padding: 14px;
+  border-radius: 6px;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-dark);
+  text-align: center; /* Texto centrado como en el diseño */
+  outline: none;
+  transition: all 0.2s;
+  box-sizing: border-box;
+}
+
+.form-input:focus {
+  background: #E0E7FF;
+  border-color: #A5B4FC;
+}
+
+.form-input::placeholder {
+  color: #94A3B8;
+  font-weight: 500;
+}
+
+/* BOTÓN DE SUBMIT */
+.btn-submit {
+  width: 100%;
+  background: transparent;
+  border: none;
+  padding: 16px;
+  margin-top: 12px;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
   font-weight: 800;
-  letter-spacing: -1px;
-  line-height: 1.1;
-  margin-bottom: 12px;
-  color: var(--primary-navy);
+  letter-spacing: 1px;
+  color: var(--text-dark);
+  cursor: pointer;
+  transition: transform 0.2s;
 }
 
-.brand-subtitle {
-  font-size: 15px;
-  color: var(--text-muted);
-  font-weight: 400;
-  max-width: 300px;
-}
-
-.brand-footer {
-  font-size: 12px;
-  color: var(--text-muted);
-  font-weight: 400;
-  position: relative;
-  z-index: 1;
+.btn-submit:hover {
+  transform: translateY(-2px);
 }
 
 /* =========================================
-   🔵 SECCIÓN DERECHA: FORMULARIO (INVERTIDA A NAVY)
+   🔗 FOOTER LINKS
    ========================================= */
-.login-form-section {
-  flex: 1.2;
-  background-color: var(--primary-navy); /* Fondo oscuro */
-  padding: 60px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.form-content-wrapper { width: 100%; max-width: 380px; }
-
-.form-title {
-  font-size: 28px;
-  font-weight: 700;
-  color: #FFFFFF; /* Título blanco */
-  letter-spacing: -0.5px;
-  margin-bottom: 8px;
-}
-
-.form-instruction {
-  font-size: 14px;
-  color: #94A3B8; /* Gris claro */
-  margin-bottom: 24px;
-  font-weight: 400;
-}
-
-/* 🎚️ SWITCH DE ROLES (MODO OSCURO) 🎚️ */
-.role-selector {
-  display: flex;
-  background: rgba(255, 255, 255, 0.1); /* Semitransparente sobre fondo oscuro */
-  border-radius: 8px;
-  padding: 4px;
-  margin-bottom: 24px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.role-btn {
-  flex: 1;
-  padding: 10px;
-  border: none;
-  background: transparent;
-  border-radius: 6px;
-  font-family: 'Inter', sans-serif;
-  font-size: 13px;
-  font-weight: 600;
-  color: #94A3B8;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.role-btn:hover:not(.active) { color: #FFFFFF; }
-
-.role-btn.active {
-  background: #FFFFFF; /* Botón activo blanco */
-  color: var(--primary-navy); /* Letras oscuras */
-  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-}
-
-.form-group { margin-bottom: 20px; }
-
-.form-label {
-  display: block;
-  font-size: 13px;
-  font-weight: 600;
-  color: #E2E8F0; /* Labels blancos/gris claro */
-  margin-bottom: 8px;
-}
-
-.input-icon-wrapper { position: relative; }
-
-.input-icon {
-  position: absolute;
-  left: 14px;
-  top: 50%;
-  transform: translateY(-50%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #64748B;
-  opacity: 0.8;
-}
-
-.form-input {
+.login-footer {
   width: 100%;
-  padding: 12px 14px 12px 42px; 
-  border: none; /* Quitamos el borde para un look más moderno en fondos oscuros */
-  border-radius: 6px;
-  font-family: 'Inter', sans-serif;
-  font-size: 14px;
-  background: #FFFFFF; /* Inputs blancos para máximo contraste */
-  color: var(--text-main);
-  outline: none;
-  transition: .2s;
+  display: flex;
+  justify-content: space-between;
+  margin-top: 24px;
+  padding: 0 10px;
   box-sizing: border-box;
 }
 
-.form-input:focus {
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5); /* Anillo azul brillante al enfocar */
-}
-
-.form-input::placeholder { color: #94A3B8; }
-
-/* Botón invertido (Blanco con letras Navy) */
-.btn-primary-login {
-  width: 100%;
-  padding: 14px;
-  background-color: #FFFFFF; 
-  color: var(--primary-navy);
-  border: none;
-  border-radius: 6px;
-  font-family: 'Inter', sans-serif;
-  font-size: 15px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: .2s;
-  margin-top: 12px;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
-}
-
-.btn-primary-login:hover { 
-  background-color: #F8FAFC; 
-  transform: translateY(-1px);
-}
-
-/* =========================================
-   📱 RESPONSIVE EXTREMO (CELULARES)
-   ========================================= */
-@media screen and (max-width: 992px) {
-  .login-wrapper { height: 100vh; max-height: 100vh; border-radius: 0; border: none; }
-  .login-brand-section { padding: 40px; }
-  .login-form-section { padding: 40px; flex: 1.5; }
-}
-
-@media screen and (max-width: 768px) {
-  .login-wrapper { flex-direction: column; overflow-y: auto; }
-  .login-brand-section { flex: none; height: auto; min-height: 280px; padding: 40px 30px; }
-  .brand-logo-img { max-width: 220px; } /* Un poco más pequeño en celular */
-  .brand-title { font-size: 28px; }
-  .brand-footer { display: none; } 
-  
-  .login-form-section { flex: none; padding: 40px 24px; align-items: flex-start; }
-  .form-content-wrapper { max-width: 100%; }
-}
-:host {
-  --primary-navy: #0F172A;
-  --primary-blue: #1E40AF;
-  --text-main: #1E293B;
-  --text-muted: #64748B;
-  --bg-app: #F8FAFC;
-  --border: #E2E8F0;
-  --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
-}
-
-.login-layout {
-  /* 🔥 FIX MÓVIL: Agregado min-height dinámico y quitado overflow hidden 🔥 */
-  min-height: 100vh;
-  min-height: 100dvh;
-  width: 100vw;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: var(--bg-app);
-  font-family: 'Inter', sans-serif;
-}
-
-.login-wrapper {
-  display: flex;
-  width: 100%;
-  max-width: 1000px;
-  height: 90vh;
-  max-height: 700px;
-  background: #FFFFFF;
-  border-radius: 12px;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-  overflow: hidden;
-  border: 1px solid var(--border);
-}
-
-/* =========================================
-   ⚪ SECCIÓN IZQUIERDA: BRANDING (INVERTIDA A BLANCO)
-   ========================================= */
-.login-brand-section {
-  flex: 1;
-  background-color: #FFFFFF; /* Fondo blanco */
-  color: var(--primary-navy); /* Texto oscuro */
-  padding: 60px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between; /* Mantiene footer abajo */
-  position: relative;
-}
-
-/* Patrón de fondo sutil */
-.login-brand-section::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background-image: linear-gradient(#E2E8F0 1px, transparent 1px), linear-gradient(90deg, #E2E8F0 1px, transparent 1px);
-  background-size: 40px 40px;
-  opacity: 0.4;
-}
-
-.brand-content { 
-  position: relative; 
-  z-index: 1;
-  display: flex; /* Nuevo flex */
-  flex: 1; /* Ocupa espacio disponible */
-  justify-content: center; /* Centrado horizontal */
-  align-items: center; /* Centrado vertical */
-}
-
-.brand-logo-wrap {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-}
-
-/* 🔥 LOGO GIGANTE Y RESPONSIVO 🔥 */
-.brand-logo-img {
-  width: 100%;
-  max-width: 320px; /* Tamaño máximo gigante */
-  height: auto;
-  object-fit: contain;
-}
-
-.brand-title { display: none; }
-.brand-subtitle { display: none; }
-
-.brand-footer {
+.footer-link {
   font-size: 12px;
+  font-weight: 500;
   color: var(--text-muted);
-  font-weight: 400;
-  position: relative;
-  z-index: 1;
-  text-align: center; /* Footer centrado */
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.footer-link:hover {
+  color: var(--text-dark);
 }
 
 /* =========================================
-   🔵 SECCIÓN DERECHA: FORMULARIO (INVERTIDA A NAVY)
+   📱 RESPONSIVE MÓVIL
    ========================================= */
-.login-form-section {
-  flex: 1.2;
-  background-color: var(--primary-navy); /* Fondo oscuro */
-  padding: 60px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.form-content-wrapper { width: 100%; max-width: 380px; }
-
-.form-title {
-  font-size: 28px;
-  font-weight: 700;
-  color: #FFFFFF; /* Título blanco */
-  letter-spacing: -0.5px;
-  margin-bottom: 8px;
-}
-
-.form-instruction {
-  font-size: 14px;
-  color: #94A3B8; /* Gris claro */
-  margin-bottom: 24px;
-  font-weight: 400;
-}
-
-/* 🎚️ SWITCH DE ROLES (MODO OSCURO) 🎚️ */
-.role-selector {
-  display: flex;
-  background: rgba(255, 255, 255, 0.1); /* Semitransparente */
-  border-radius: 8px;
-  padding: 4px;
-  margin-bottom: 24px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.role-btn {
-  flex: 1;
-  padding: 10px;
-  border: none;
-  background: transparent;
-  border-radius: 6px;
-  font-family: 'Inter', sans-serif;
-  font-size: 13px;
-  font-weight: 600;
-  color: #94A3B8;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.role-btn:hover:not(.active) { color: #FFFFFF; }
-
-.role-btn.active {
-  background: #FFFFFF; /* Botón activo blanco */
-  color: var(--primary-navy); /* Letras oscuras */
-  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-}
-
-.form-group { margin-bottom: 20px; }
-
-.form-label {
-  display: block;
-  font-size: 13px;
-  font-weight: 600;
-  color: #E2E8F0; /* Labels claros */
-  margin-bottom: 8px;
-}
-
-.input-icon-wrapper { position: relative; }
-
-.input-icon {
-  position: absolute;
-  left: 14px;
-  top: 50%;
-  transform: translateY(-50%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #64748B;
-  opacity: 0.8;
-}
-
-.form-input {
-  width: 100%;
-  padding: 12px 14px 12px 42px; 
-  border: none; /* Flat look en fondo oscuro */
-  border-radius: 6px;
-  font-family: 'Inter', sans-serif;
-  font-size: 14px;
-  background: #FFFFFF; /* Inputs blancos para contraste */
-  color: var(--text-main);
-  outline: none;
-  transition: .2s;
-  box-sizing: border-box;
-}
-
-.form-input:focus {
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5); /* Foco azul brillante */
-}
-
-.form-input::placeholder { color: #94A3B8; }
-
-/* Botón invertido (Blanco) */
-.btn-primary-login {
-  width: 100%;
-  padding: 14px;
-  background-color: #FFFFFF; 
-  color: var(--primary-navy);
-  border: none;
-  border-radius: 6px;
-  font-family: 'Inter', sans-serif;
-  font-size: 15px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: .2s;
-  margin-top: 12px;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
-}
-
-.btn-primary-login:hover { 
-  background-color: #F8FAFC; 
-  transform: translateY(-1px);
-}
-
-/* =========================================
-   📱 RESPONSIVE EXTREMO (CELULARES) - 🔥 FIX 🔥
-   ========================================= */
-@media screen and (max-width: 992px) {
-  .login-wrapper { height: 100vh; max-height: none; border-radius: 0; border: none; }
-  .login-brand-section { padding: 40px; }
-  .login-form-section { padding: 40px; flex: 1.5; }
-}
-
-@media screen and (max-width: 768px) {
-  .login-layout {
-    align-items: flex-start;
-    background-color: var(--primary-navy);
-  }
-
-  .login-wrapper { 
-    flex-direction: column; 
-    height: auto; 
-    min-height: 100dvh; 
-    overflow-y: visible; 
-  }
-
-  .login-brand-section { 
-    flex: none; 
-    height: auto; 
-    padding: 40px 20px 30px; 
-    align-items: center;
-    border-bottom-left-radius: 24px;
-    border-bottom-right-radius: 24px;
-  }
+@media screen and (max-width: 480px) {
+  .watermark-top { top: 2%; font-size: 6rem; }
+  .watermark-bottom { bottom: 5%; font-size: 8rem; }
   
-  .brand-logo-img { max-width: 200px; } 
-  .brand-footer { display: none; } 
-  
-  .login-form-section { 
-    flex: 1; 
-    padding: 30px 24px 60px; 
-    align-items: flex-start; 
-  }
-  
-  .form-content-wrapper { max-width: 100%; }
+  .login-card { padding: 32px 24px; }
+  .main-logo { max-width: 220px; }
 }

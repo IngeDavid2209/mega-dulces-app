@@ -280,37 +280,83 @@ async descargarPDFVisual() {
     this.generandoReporte.set(true);
 
     setTimeout(async () => {
-      const elementoHTML = document.getElementById('reporte-imprimir-fotos');
-      if (!elementoHTML) { this.generandoReporte.set(false); return; }
+      // 1. Buscamos el contenedor principal
+      const contenedor = document.getElementById('reporte-imprimir-fotos');
+      if (!contenedor) { this.generandoReporte.set(false); return; }
 
       try {
-        const canvas = await html2canvas(elementoHTML, { 
-          scale: 1.5, 
-          useCORS: true, 
-          logging: false
-        });
-
-        const imgData = canvas.toDataURL('image/jpeg', 0.8); 
         const pdf = new jsPDF('p', 'mm', 'a4');
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = pdf.internal.pageSize.getHeight();
         
-        // 📏 CÁLCULO MATEMÁTICO DE PÁGINAS 📏
-        const imgWidth = 210; // Ancho de una hoja A4 en mm
-        const pageHeight = 297; // Alto de una hoja A4 en mm
-        // Calculamos cuánto mide nuestra "foto gigante" en milímetros, respetando la proporción
-        const imgHeight = (canvas.height * imgWidth) / canvas.width;
-        let heightLeft = imgHeight; // Cuánta foto nos falta por pegar
-        let position = 0; // Coordenada vertical (eje Y) donde vamos a pegar
+        let currentY = 10; // Coordenada de altura inicial (Margen superior de 10mm)
+        const margin = 10; // Margen estándar
+        const usableHeight = pdfHeight - (margin * 2); // Altura que podemos usar sin salirnos de la hoja
 
-        // 1. Pegamos la primera hoja (desde la coordenada Y = 0)
-        pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight; // Le restamos lo que ya cupo en la primera hoja
+        // 2. Extraemos a los "hijos" (Cada tarjeta individual de checklist)
+        const tarjetas = Array.from(contenedor.children) as HTMLElement[];
 
-        // 2. Mientras siga sobrando foto (heightLeft > 0), agregamos nuevas páginas
-        while (heightLeft > 0) {
-          position = heightLeft - imgHeight; // Recorremos la foto hacia "arriba" (coordenada negativa)
-          pdf.addPage(); // Creamos hoja nueva
-          pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight); // Pegamos el siguiente pedazo
-          heightLeft -= pageHeight;
+        for (let i = 0; i < tarjetas.length; i++) {
+          const tarjetaHTML = tarjetas[i];
+
+          // 3. Le tomamos foto SOLO a esta tarjeta
+          const canvas = await html2canvas(tarjetaHTML, { 
+            scale: 1.5, 
+            useCORS: true, 
+            logging: false,
+            backgroundColor: '#ffffff'
+          });
+
+          const imgData = canvas.toDataURL('image/jpeg', 0.8); 
+          // Calculamos su altura en milímetros
+          const imgHeight = (canvas.height * pdfWidth) / canvas.width;
+
+          // 4. LÓGICA DE PAGINACIÓN INTELIGENTE
+          // PREGUNTA A: ¿La tarjeta NO cabe en el espacio que sobra de esta hoja?
+          if (currentY + imgHeight > pdfHeight - margin) {
+            
+            // PREGUNTA B: ¿La tarjeta es un "Monstruo" (Más alta que una hoja entera)?
+            if (imgHeight > usableHeight) {
+              // Es una tarjeta larguísima con muchas fotos. 
+              // Empezamos en una hoja nueva para minimizar cortes.
+              if (currentY > margin) {
+                pdf.addPage();
+                currentY = margin;
+              }
+
+              let heightLeft = imgHeight;
+              let positionShift = 0;
+
+              while (heightLeft > 0) {
+                // Pegamos la imagen desplazada hacia arriba (con coordenada negativa)
+                pdf.addImage(imgData, 'JPEG', 0, currentY + positionShift, pdfWidth, imgHeight);
+                heightLeft -= usableHeight;
+
+                if (heightLeft > 0) {
+                  pdf.addPage(); // Falta foto, agregamos otra hoja
+                  positionShift -= usableHeight; // Jalamos la foto más arriba
+                  currentY = margin;
+                } else {
+                  // Terminamos de pegar al monstruo, guardamos dónde quedó el cursor
+                  currentY = margin + (heightLeft + usableHeight);
+                }
+              }
+            } else {
+              // No es un monstruo, solo que ya no cabía en la hoja anterior.
+              // Creamos hoja nueva, reiniciamos el cursor y la pegamos entera y bonita.
+              pdf.addPage();
+              currentY = margin;
+              pdf.addImage(imgData, 'JPEG', 0, currentY, pdfWidth, imgHeight);
+              currentY += imgHeight;
+            }
+          } else {
+            // SÍ cabe perfectamente en la hoja actual sin cortarse.
+            pdf.addImage(imgData, 'JPEG', 0, currentY, pdfWidth, imgHeight);
+            currentY += imgHeight;
+          }
+
+          // Agregamos un pequeño espacio de 5 milímetros entre cada tarjeta
+          currentY += 5; 
         }
 
         pdf.save(`Corte_Mensual_Visual_${this.fechaInicio}_al_${this.fechaFin}.pdf`);
@@ -320,6 +366,6 @@ async descargarPDFVisual() {
       }
       
       this.generandoReporte.set(false);
-    }, 500); // Pequeño retraso para dejar que Angular dibuje el DOM oculto antes de la foto
+    }, 500);
   }
 }

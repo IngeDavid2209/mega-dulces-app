@@ -2,7 +2,8 @@ import { Component, signal, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router'; 
 import { Firestore, collection, onSnapshot } from '@angular/fire/firestore'; 
-
+// 🔥 IMPORTAMOS EL SERVICIO DE NOTIFICACIONES 🔥
+import { NotificacionesService } from '../../../services/notificaciones';
 @Component({
   selector: 'app-home',
   standalone: true,
@@ -23,12 +24,20 @@ export class HomeComponent implements OnInit, OnDestroy {
   progresoGlobal = signal(0);
 
   private firestore = inject(Firestore); 
+  // 🔥 INYECTAMOS EL SERVICIO DE NOTIFICACIONES 🔥
+  private notificacionesService = inject(NotificacionesService);
   private destructoresRadares: (() => void)[] = [];
 
   ngOnInit() {
     const sesion = localStorage.getItem('md_sesion_actual');
     if (sesion) {
       this.currentUser = JSON.parse(sesion);
+      
+      // 🔥 SOLICITAMOS EL PERMISO DE NOTIFICACIONES AL ENTRAR AL DASHBOARD 🔥
+      // Le mandamos el nombre del usuario para guardar su Token asociado a él
+      if (this.currentUser && this.currentUser.nombre) {
+        this.notificacionesService.solicitarPermisos(this.currentUser.nombre);
+      }
     }
     this.conectarRadarNube(); 
   }
@@ -64,7 +73,7 @@ export class HomeComponent implements OnInit, OnDestroy {
         c.calcProgreso = c.items && c.items.length > 0 ? Math.round((marcados / c.items.length) * 100) : 0;
 
         const firma = `${c.name}_${c.assigned}_${c.store}_${c.date}`;
-        if (!listasSinClones.has(firma)) {
+        if (!listasSinClones.has(firma)) { 
           listasSinClones.set(firma, c);
         } else {
           const existente = listasSinClones.get(firma);

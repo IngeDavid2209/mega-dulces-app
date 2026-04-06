@@ -5,6 +5,8 @@ import { initializeApp, provideFirebaseApp } from '@angular/fire/app';
 import { getAuth, provideAuth } from '@angular/fire/auth';
 import { getFirestore, provideFirestore } from '@angular/fire/firestore';
 import { getStorage, provideStorage } from '@angular/fire/storage';
+// 🔥 IMPORTAMOS EL MÓDULO DE MENSAJERÍA (NOTIFICACIONES) 🔥
+import { getMessaging, provideMessaging } from '@angular/fire/messaging';
 
 const firebaseConfig = {
   apiKey: "AIzaSyAoVz9oTcSQrgvUeqBTTDLYEilEkRFvsug",
@@ -21,6 +23,7 @@ export const appConfig: ApplicationConfig = {
     provideAuth(() => getAuth()),
     provideFirestore(() => getFirestore()),
     provideStorage(() => getStorage()),
+    provideMessaging(() => getMessaging()), // 🔥 ACTIVAMOS LAS NOTIFICACIONES AQUÍ 🔥
     provideZoneChangeDetection({ eventCoalescing: true }),
     provideRouter(routes),
   ]

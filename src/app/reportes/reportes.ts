@@ -245,10 +245,10 @@ async descargarExcel() {
     headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
     headerRow.height = 25; // Hacemos la cabecera un poco más alta
 
-    // 4. Inyectamos los datos fila por fila
+// 4. Inyectamos los datos fila por fila
     this.resultados().forEach(c => {
       worksheet.addRow({
-        id: c.id,
+        id: c.id.toString(), // 🔥 LA CURA: Convertirlo a texto para engañar a Excel 🔥
         name: c.name,
         store: c.store,
         assigned: c.assigned,
@@ -259,6 +259,7 @@ async descargarExcel() {
       });
     });
 
+    
     // 5. Aplicamos bordes y centrado a todas las celdas con datos
     worksheet.eachRow((row, rowNumber) => {
       row.eachCell((cell, colNumber) => {

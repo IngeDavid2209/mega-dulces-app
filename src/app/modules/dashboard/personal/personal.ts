@@ -213,11 +213,18 @@ async descargarExcel() {
       return;
     }
 
-    // 1. Creamos el libro y la hoja
+    // 1. 🔥 LA MAGIA: Pre-procesar y ORDENAR la lista por Zonas (Sucursales) 🔥
+    const listaOrdenada = list.map(u => {
+      // Normalizamos la zona para poder agruparla sin fallas
+      const zona = u.sucursales ? (Array.isArray(u.sucursales) ? u.sucursales.join(' - ') : u.sucursales) : 'General';
+      return { ...u, zonaCalculada: zona };
+    }).sort((a, b) => a.zonaCalculada.localeCompare(b.zonaCalculada));
+
+    // 2. Creamos el libro y la hoja
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Personal MegaDulces');
 
-    // 2. Definimos las columnas con anchos profesionales
+    // 3. Definimos las columnas
     worksheet.columns = [
       { header: 'Nombre Completo', key: 'nombre', width: 35 },
       { header: 'Usuario', key: 'usuario', width: 20 },
@@ -234,27 +241,45 @@ async descargarExcel() {
       { header: 'Adm. Pers.', key: 'admPers', width: 12 }
     ];
 
-    // 3. Diseño de Cabecera (Navy Enterprise + Texto Blanco)
+    // 4. Diseño de Cabecera Principal (Navy Enterprise)
     const headerRow = worksheet.getRow(1);
     headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
     headerRow.fill = {
       type: 'pattern',
       pattern: 'solid',
-      fgColor: { argb: 'FF0F172A' } // El azul oscuro de tu Login
+      fgColor: { argb: 'FF0F172A' } 
     };
     headerRow.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
     headerRow.height = 30;
 
-    // 4. Inyectamos los datos transformando los Booleanos a "Sí/No"
-    list.forEach(u => {
+    // 5. 🔥 INYECTAMOS LOS DATOS CON FILAS SEPARADORAS DE GRUPO 🔥
+    let zonaActual = '';
+
+    listaOrdenada.forEach(u => {
+      // Si el código detecta que cambiamos de zona, mete una fila de título
+      if (u.zonaCalculada !== zonaActual) {
+        const separador = worksheet.addRow({ nombre: `📍 ZONA / DEPARTAMENTO: ${u.zonaCalculada.toUpperCase()}` });
+        
+        // Fusionamos todas las celdas de esa fila (de la A a la M) para hacer un banner gigante
+        worksheet.mergeCells(`A${separador.number}:M${separador.number}`);
+        
+        // Le damos un color Gris Oxford para que contraste con el azul marino de arriba
+        separador.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
+        separador.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF475569' } };
+        separador.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
+        separador.height = 25;
+        
+        zonaActual = u.zonaCalculada; // Actualizamos la memoria
+      }
+
+      // Inyectamos al empleado normal debajo de su separador
       worksheet.addRow({
         nombre: u.nombre || '-',
         usuario: u.usuario || '-',
         correo: u.correo || '-',
         rol: (u.rol || '').toUpperCase(),
         cargo: u.cargo || '-',
-        // Unimos las sucursales con guiones para que se vea limpio
-        sucursales: u.sucursales ? u.sucursales.join(' - ') : 'General',
+        sucursales: u.zonaCalculada, // Usamos la que ya calculamos arriba
         creaCheck: u.puedeCrearChecklists ? 'Sí' : 'No',
         creaRutinas: u.puedeCrearRutinas ? 'Sí' : 'No',
         creaTareas: u.puedeCrearTareasUnicas ? 'Sí' : 'No',
@@ -265,10 +290,9 @@ async descargarExcel() {
       });
     });
 
-    // 5. Aplicamos el formato visual a las celdas (Bordes y Centrado)
+    // 6. Aplicamos el formato visual a las celdas (Bordes y Centrado)
     worksheet.eachRow((row, rowNumber) => {
       row.eachCell((cell, colNumber) => {
-        // Bordes elegantes color pizarra
         cell.border = {
           top: { style: 'thin', color: { argb: 'FFCBD5E1' } },
           left: { style: 'thin', color: { argb: 'FFCBD5E1' } },
@@ -277,17 +301,22 @@ async descargarExcel() {
         };
         
         if (rowNumber > 1) {
-          // Centramos los permisos y el rol para que no se vea amontonado
-          if (colNumber >= 7 || colNumber === 4) {
-            cell.alignment = { vertical: 'middle', horizontal: 'center' };
-          } else {
-            cell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
+          // Revisamos que la fila actual NO sea un banner separador de zona
+          const esSeparador = row.getCell(1).value?.toString().includes('📍 ZONA');
+          
+          if (!esSeparador) {
+            // Si es un empleado normal, aplicamos tu centrado
+            if (colNumber >= 7 || colNumber === 4) {
+              cell.alignment = { vertical: 'middle', horizontal: 'center' };
+            } else {
+              cell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
+            }
           }
         }
       });
     });
 
-    // 6. Generamos el archivo .xlsx real
+    // 7. Generamos el archivo .xlsx
     try {
       const buffer = await workbook.xlsx.writeBuffer();
       const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
@@ -295,7 +324,7 @@ async descargarExcel() {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `Nomina_Personal_MegaDulces.xlsx`;
+      a.download = `Nomina_Personal_Agrupado.xlsx`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);

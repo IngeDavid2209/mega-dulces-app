@@ -7,7 +7,7 @@ import { Firestore, collection, getDocs, doc, deleteDoc, onSnapshot } from '@ang
 // Librerías de exportación
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import * as XLSX from 'xlsx';
+import * as ExcelJS from 'exceljs';
 import html2canvas from 'html2canvas';
 
 @Component({
@@ -212,26 +212,92 @@ export class ReportesComponent implements OnInit, OnDestroy {
     return checklist.items.filter((i:any) => i.checked).length; 
   }
 
-  descargarExcel() {
-    if (this.resultados().length === 0) return;
+async descargarExcel() {
+    if (this.resultados().length === 0) {
+      alert('No hay datos para exportar.');
+      return;
+    }
 
-    const datosPlanos = this.resultados().map(c => {
-      return {
-        'ID Checklist': c.id,
-        'Nombre Operación': c.name,
-        'Sucursal': c.store,
-        'Trabajador Asignado': c.assigned,
-        'Fecha Cierre': c.date,
-        'Estatus': c.status,
-        'Tareas Completadas': `${this.getCompletados(c)} de ${c.items?.length || 0}`,
-        'Progreso (%)': `${this.getProgreso(c)}%`
-      };
+    // 1. Creamos el libro y la hoja de cálculo
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Reporte Auditoría');
+
+    // 2. Definimos las columnas con sus anchos exactos para que no se corte el texto
+    worksheet.columns = [
+      { header: 'ID Checklist', key: 'id', width: 25 },
+      { header: 'Nombre Operación', key: 'name', width: 40 },
+      { header: 'Sucursal', key: 'store', width: 20 },
+      { header: 'Trabajador Asignado', key: 'assigned', width: 35 },
+      { header: 'Fecha Cierre', key: 'date', width: 15 },
+      { header: 'Estatus', key: 'status', width: 15 },
+      { header: 'Tareas Comp.', key: 'tareas', width: 15 },
+      { header: 'Progreso', key: 'progreso', width: 15 }
+    ];
+
+    // 3. Estilo Enterprise a la Cabecera (Fondo Navy, Letra Blanca, Negrita)
+    const headerRow = worksheet.getRow(1);
+    headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
+    headerRow.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FF0F172A' } // Color Azul Marino (Primary Navy)
+    };
+    headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
+    headerRow.height = 25; // Hacemos la cabecera un poco más alta
+
+    // 4. Inyectamos los datos fila por fila
+    this.resultados().forEach(c => {
+      worksheet.addRow({
+        id: c.id,
+        name: c.name,
+        store: c.store,
+        assigned: c.assigned,
+        date: c.date,
+        status: (c.status || 'pendiente').toUpperCase(),
+        tareas: `${this.getCompletados(c)} de ${c.items?.length || 0}`,
+        progreso: `${this.getProgreso(c)}%`
+      });
     });
 
-    const worksheet = XLSX.utils.json_to_sheet(datosPlanos);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Reporte Auditoría');
-    XLSX.writeFile(workbook, `Reporte_Datos_MegaDulces_${this.fechaInicio}_al_${this.fechaFin}.xlsx`);
+    // 5. Aplicamos bordes y centrado a todas las celdas con datos
+    worksheet.eachRow((row, rowNumber) => {
+      row.eachCell((cell, colNumber) => {
+        // Ponerle borde delgadito a todo
+        cell.border = {
+          top: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+          left: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+          bottom: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+          right: { style: 'thin', color: { argb: 'FFCBD5E1' } }
+        };
+        
+        // Centrar las columnas de Fecha, Estatus, Tareas y Progreso
+        if (rowNumber > 1) {
+          if (colNumber >= 5 && colNumber <= 8) {
+            cell.alignment = { vertical: 'middle', horizontal: 'center' };
+          } else {
+            cell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
+          }
+        }
+      });
+    });
+
+    // 6. Generamos el archivo y forzamos la descarga en el navegador
+    try {
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Reporte_MegaDulces_${this.fechaInicio}_al_${this.fechaFin}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Error al exportar Excel:", error);
+      alert('Hubo un error al generar el archivo Excel.');
+    }
   }
 
   descargarReportePDF() {

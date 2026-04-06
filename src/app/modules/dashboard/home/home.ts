@@ -2,6 +2,7 @@ import { Component, signal, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router'; 
 import { Firestore, collection, onSnapshot } from '@angular/fire/firestore'; 
+// Asegúrate de que la ruta de tu servicio esté bien (si marcaba error sin el .service, pónselo)
 import { NotificacionesService } from '../../../services/notificaciones';
 
 @Component({
@@ -56,13 +57,10 @@ export class HomeComponent implements OnInit, OnDestroy {
       snapshot.forEach(docSnap => {
         const c: any = docSnap.data();
         
-        // 🛡️ REGLAS DE DESCUENTO: Ignorar eliminados y ya enviados
-        if (c.eliminado === true || c.enviado === true) return;
+        // 🔥 CORRECCIÓN: Solo ignoramos los eliminados. 
+        // Dejamos pasar los "enviados" para poder sumarlos al Progreso Global.
+        if (c.eliminado === true) return;
         
-        // 🔥 SI QUIERES QUE SE DESCUENTE EN CUANTO TERMINES LA ÚLTIMA TAREA (Status Completo)
-        // Descomenta la siguiente línea si quieres que desaparezca del conteo antes de enviar:
-        // if (c.status === 'completo') return;
-
         const tiempoCreacion = typeof c.id === 'number' ? c.id : (c.timestampCreacion || ahora);
         if (c.date === fechaHoyLocal || (ahora - tiempoCreacion) <= limite24h) {
           listasCrudas.push(c);
@@ -85,16 +83,14 @@ export class HomeComponent implements OnInit, OnDestroy {
         }
       });
 
-      const listasFinales = Array.from(listasSinClones.values());
+      // Filtramos las tareas del usuario actual
       const misListas = (this.currentUser?.rol === 'trabajador') 
-        ? listasFinales.filter(c => c.assigned === this.currentUser.nombre)
-        : listasFinales;
+        ? Array.from(listasSinClones.values()).filter(c => c.assigned === this.currentUser.nombre)
+        : Array.from(listasSinClones.values());
 
-      // Actualizamos los números que ves en las tarjetas
-      this.totalChecklists.set(misListas.length);
-      this.enProgreso.set(misListas.filter(c => c.status === 'en-progreso').length);
-      this.pendientes.set(misListas.filter(c => c.status === 'pendiente').length);
-
+      // =========================================================
+      // 🧠 CEREBRO 1: PROGRESO GLOBAL (Toma en cuenta TODO lo del día)
+      // =========================================================
       let totalItems = 0;
       let itemsCompletados = 0;
 
@@ -102,15 +98,31 @@ export class HomeComponent implements OnInit, OnDestroy {
         if (c.items && Array.isArray(c.items)) {
           c.items.forEach((item: any) => {
             totalItems++;
-            if (item.checked) {
-              itemsCompletados++;
-            }
+            if (item.checked) itemsCompletados++;
           });
         }
       });
 
       const globalPct = totalItems > 0 ? Math.round((itemsCompletados / totalItems) * 100) : 0;
-      this.progresoGlobal.set(globalPct);
+      this.progresoGlobal.set(globalPct); // Este ya NUNCA se va a caer a 0%
+
+      // =========================================================
+      // 🧠 CEREBRO 2: CONTADORES (Oculta las tarjetas enviadas)
+      // =========================================================
+      // Para los contadores de arriba, separamos las tareas que AÚN NO SE ENVÍAN
+      const listasActivas = misListas.filter(c => c.enviado !== true);
+      
+      this.totalChecklists.set(listasActivas.length);
+
+      // 🔥 CORRECCIÓN "EN PROGRESO": Sumamos las que están a medias O que ya terminaste pero no has enviado
+      const tareasEnProgreso = listasActivas.filter(c => {
+        const stat = (c.status || '').toLowerCase();
+        return stat === 'en-progreso' || stat === 'completo'; 
+      }).length;
+      
+      this.enProgreso.set(tareasEnProgreso);
+      this.pendientes.set(listasActivas.filter(c => (c.status || 'pendiente').toLowerCase() === 'pendiente').length);
+
     });
     
     this.destructoresRadares.push(radarChecklists);

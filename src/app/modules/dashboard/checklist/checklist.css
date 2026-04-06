@@ -54,6 +54,18 @@
 .btn-outline-primary { background: transparent; color: var(--primary-navy); border: 1px solid var(--border); padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; transition: 0.2s; }
 .btn-outline-primary:hover { background: #F1F5F9; border-color: var(--primary-navy); }
 
+/* 🔥 NUEVO BOTÓN DE ZUMBIDO 🔥 */
+.btn-bell { background: #FEF3C7; color: #D97706; border: 1px solid #FDE68A; padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; transition: 0.2s; display: inline-flex; align-items: center; gap: 4px; }
+.btn-bell:hover { background: #FDE68A; transform: scale(1.05); }
+
+/* 🔥 ANIMACIÓN DEL AVISO RECIBIDO 🔥 */
+@keyframes shakeAlert {
+  10%, 90% { transform: translate3d(-1px, 0, 0); }
+  20%, 80% { transform: translate3d(2px, 0, 0); }
+  30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+  40%, 60% { transform: translate3d(4px, 0, 0); }
+}
+
 /* --- GRID Y TARJETAS --- */
 .checklist-grid { display:grid; gap:20px; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); }
 .checklist-card { background:var(--card); border-radius:8px; padding:24px; border:1px solid var(--border); box-shadow:var(--shadow); transition:.2s; cursor:pointer; }

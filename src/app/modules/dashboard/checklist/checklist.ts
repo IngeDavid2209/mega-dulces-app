@@ -19,11 +19,14 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   vistaActual = signal<'lista' | 'detalle'>('lista');
   checklistSeleccionado = signal<any>(null);
   
-  // 🔥 VARIABLE PARA EL NUEVO BUSCADOR GERENCIAL 🔥
   terminoBusquedaChecklist = '';
-
-  // 🔥 VARIABLE PARA EL AVISO FLOTANTE 🔥
   toastMessage = '';
+
+  // 🔥 VARIABLES PARA EL SISTEMA DE ZUMBIDOS (NOTIFICACIONES) 🔥
+  notificacionesPendientes = signal<any[]>([]);
+  isModalNotificacionOpen = false;
+  empleadoParaNotificar = '';
+  mensajeNotificacion = '';
 
   isModalOpen = false;
   formName = '';
@@ -86,7 +89,6 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     );
   }
 
-  // 🔥 FUNCIÓN PARA MOSTRAR EL AVISO FLOTANTE 🔥
   mostrarToast(mensaje: string) {
     this.toastMessage = mensaje;
     setTimeout(() => { this.toastMessage = ''; }, 3500);
@@ -101,6 +103,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   ngOnDestroy() { this.destructoresRadares.forEach(apagarRadar => apagarRadar()); }
 
   conectarRadarNube() {
+    // 1. Radar de Usuarios
     const usuariosRef = collection(this.firestore, 'usuarios');
     const radarUsuarios = onSnapshot(usuariosRef, (snapshot) => {
       const todosLosUsuarios: any[] = [];
@@ -134,6 +137,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     });
     this.destructoresRadares.push(radarUsuarios);
 
+    // 2. Radar de Moldes (Bóveda)
     const moldesRef = collection(this.firestore, 'moldes_checklists');
     const radarMoldes = onSnapshot(moldesRef, (snapshot) => {
       const moldesActivos: any[] = [];
@@ -142,6 +146,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     });
     this.destructoresRadares.push(radarMoldes);
 
+    // 3. Radar de Checklists del día
     const checklistsRef = collection(this.firestore, 'checklists');
     const radarChecklists = onSnapshot(checklistsRef, (snapshot) => {
       const todasLasListas: any[] = [];
@@ -183,7 +188,72 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       }
     });
     this.destructoresRadares.push(radarChecklists);
+
+    // 4. 🔥 RADAR DE NOTIFICACIONES EN TIEMPO REAL 🔥
+    const notiRef = collection(this.firestore, 'notificaciones');
+    const radarNotificaciones = onSnapshot(notiRef, (snapshot) => {
+      // Si el empleado no es el destinado o si es admin (y no queremos molestarlo), filtramos
+      const misNotis: any[] = [];
+      snapshot.forEach(docSnap => {
+        const data = docSnap.data();
+        // Solo cargamos las notificaciones que son PARA este usuario y que NO se han leído
+        if (data['empleado'] === this.currentUser?.nombre && data['leido'] === false) {
+          misNotis.push({ id: docSnap.id, ...data });
+        }
+      });
+      // Las ordenamos para mostrar la más vieja primero (FIFO)
+      misNotis.sort((a, b) => a.timestamp - b.timestamp);
+      this.notificacionesPendientes.set(misNotis);
+    });
+    this.destructoresRadares.push(radarNotificaciones);
   }
+
+  // ==========================================
+  // 🔥 LÓGICA DE ZUMBIDOS (NOTIFICACIONES) 🔥
+  // ==========================================
+  
+  abrirModalNotificacion(empleadoNombre: string) {
+    this.empleadoParaNotificar = empleadoNombre;
+    this.mensajeNotificacion = '';
+    this.isModalNotificacionOpen = true;
+  }
+
+  cerrarModalNotificacion() {
+    this.isModalNotificacionOpen = false;
+    this.empleadoParaNotificar = '';
+  }
+
+  async enviarNotificacion() {
+    if (!this.mensajeNotificacion.trim()) {
+      alert('Por favor escribe un mensaje.'); return;
+    }
+    
+    const notiId = 'noti_' + Date.now();
+    const payload = {
+      empleado: this.empleadoParaNotificar,
+      mensaje: this.mensajeNotificacion,
+      de: this.currentUser?.nombre || 'Gerencia',
+      leido: false,
+      timestamp: Date.now()
+    };
+
+    try {
+      await setDoc(doc(this.firestore, 'notificaciones', notiId), payload);
+      this.mostrarToast(`🔔 ¡Zumbido enviado a ${this.empleadoParaNotificar}!`);
+      this.cerrarModalNotificacion();
+    } catch (error) {
+      alert('Error al enviar la alerta.');
+    }
+  }
+
+  async marcarNotificacionComoLeida(noti: any) {
+    try {
+      await setDoc(doc(this.firestore, 'notificaciones', noti.id), { leido: true }, { merge: true });
+    } catch (error) {
+      console.error("Error cerrando notificación", error);
+    }
+  }
+  // ==========================================
 
   getPrimerasTareas(checklist: any): any[] {
     if (!checklist || !checklist.items) return [];
@@ -429,7 +499,6 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     this.guardarEnLaNube(actual);
   }
 
-  // 🔥 MÉTODO ACTUALIZADO CON EL AVISO FLOTANTE 🔥
   enviarChecklist() {
     const actual = this.checklistSeleccionado(); if(!actual) return;
     const fotosPendientes = actual.items.some((i:any) => i.photo === 'subiendo...');

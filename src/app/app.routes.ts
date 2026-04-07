@@ -1,13 +1,22 @@
 import { Routes } from '@angular/router';
-import { LoginComponent } from './components/login/login';
-import { HomeComponent } from './modules/dashboard/home/home';
+
+// 🔥 ELIMINAMOS LAS IMPORTACIONES ESTÁTICAS DE ARRIBA 🔥
+// (Ya no hacemos import { LoginComponent } ni import { HomeComponent })
 
 export const routes: Routes = [
   { path: '', redirectTo: 'login', pathMatch: 'full' },
-  { path: 'login', component: LoginComponent },
-  { path: 'home', component: HomeComponent },
   
-  // 🔥 Las sacamos del "children" para que sean rutas directas y funcionen tus botones
+  // 🔥 AHORA SÍ, LOGIN Y HOME CON CARGA PEREZOSA (LAZY LOADING) 🔥
+  { 
+    path: 'login', 
+    loadComponent: () => import('./components/login/login').then(m => m.LoginComponent) 
+  },
+  { 
+    path: 'home', 
+    loadComponent: () => import('./modules/dashboard/home/home').then(m => m.HomeComponent) 
+  },
+  
+  // 🔥 Las demás ya las tenías perfectas (¡Excelente visión!) 🔥
   { 
     path: 'checklist', 
     loadComponent: () => import('./modules/dashboard/checklist/checklist').then(m => m.ChecklistComponent) 
@@ -20,13 +29,10 @@ export const routes: Routes = [
     path: 'estadisticas', 
     loadComponent: () => import('./modules/dashboard/estadisticas/estadisticas').then(m => m.EstadisticasComponent) 
   },
-  
-  // 🔥 NUEVA RUTA: Historial de Reportes 🔥
   { 
     path: 'reportes', 
     loadComponent: () => import('./reportes/reportes').then(m => m.ReportesComponent) 
   },
-
   { 
     path: 'personal', 
     loadComponent: () => import('./modules/dashboard/personal/personal').then(m => m.PersonalComponent) 

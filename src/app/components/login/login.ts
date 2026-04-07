@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Auth, signInWithEmailAndPassword } from '@angular/fire/auth';
 import { Firestore, collection, getDocs } from '@angular/fire/firestore';
+import Swal from 'sweetalert2';
 
 @Component({
   selector: 'app-login',
@@ -25,25 +26,23 @@ export class LoginComponent {
     this.rolSeleccionado.set(rol);
   }
 
-  async ingresar() {
+ async ingresar() {
     if (!this.usuario || !this.password) {
-      alert('⚠️ Por favor, ingresa tu usuario y contraseña.');
+      Swal.fire({
+        icon: 'warning',
+        title: 'Campos Vacíos',
+        text: 'Por favor, ingresa tu usuario y contraseña.',
+        confirmButtonColor: '#0F172A'
+      });
       return;
     }
 
     // 🛡️ PARACAÍDAS DE SEGURIDAD PARA EL ADMIN PRINCIPAL 🛡️
     if (this.usuario === 'admin' && this.password === '123456' && this.rolSeleccionado() === 'admin') {
       const adminSeguridad = { 
-        nombre: 'Administrador Supremo', 
-        usuario: 'admin', 
-        rol: 'admin',
-        puedeCrearChecklists: true,
-        puedeCrearRutinas: true,
-        puedeCrearTareasUnicas: true,
-        puedeVerCheckstore: true,
-        puedeVerEstadisticas: true,
-        puedeVerHistorial: true,
-        puedeAdministrarPersonal: true
+        nombre: 'Administrador Supremo', usuario: 'admin', rol: 'admin',
+        puedeCrearChecklists: true, puedeCrearRutinas: true, puedeCrearTareasUnicas: true,
+        puedeVerCheckstore: true, puedeVerEstadisticas: true, puedeVerHistorial: true, puedeAdministrarPersonal: true
       };
       localStorage.setItem('md_sesion_actual', JSON.stringify(adminSeguridad));
       this.router.navigate(['/home']);
@@ -63,7 +62,12 @@ export class LoginComponent {
       });
 
       if (!usuarioEncontrado) {
-        alert('❌ Datos incorrectos. Verifica tu usuario, contraseña o el rol seleccionado.');
+        Swal.fire({
+          icon: 'error',
+          title: 'Acceso Denegado',
+          text: 'Datos incorrectos. Verifica tu usuario, contraseña o el rol seleccionado.',
+          confirmButtonColor: '#0F172A'
+        });
         return;
       }
 
@@ -75,7 +79,12 @@ export class LoginComponent {
 
     } catch (error: any) {
       console.error("Error de Firebase:", error);
-      alert('❌ Contraseña incorrecta. Intenta de nuevo.');
+      Swal.fire({
+        icon: 'error',
+        title: 'Contraseña Incorrecta',
+        text: 'Intenta de nuevo.',
+        confirmButtonColor: '#0F172A'
+      });
     }
   }
 }

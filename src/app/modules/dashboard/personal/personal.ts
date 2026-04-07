@@ -5,6 +5,7 @@ import { RouterModule, Router } from '@angular/router';
 import { Auth, createUserWithEmailAndPassword } from '@angular/fire/auth'; 
 import { Firestore, collection, doc, setDoc, deleteDoc, onSnapshot } from '@angular/fire/firestore';
 import * as ExcelJS from 'exceljs';
+import Swal from 'sweetalert2';
 
 @Component({
   selector: 'app-personal',
@@ -67,7 +68,6 @@ export class PersonalComponent implements OnInit, OnDestroy {
       const usuariosNube: any[] = [];
       snapshot.forEach((documento) => {
         const data = documento.data();
-        // 🔥 FIX: Capturamos el ID real del documento de Firebase 🔥
         usuariosNube.push({ ...data, idFirestore: documento.id });
       });
 
@@ -158,11 +158,13 @@ export class PersonalComponent implements OnInit, OnDestroy {
     if (this.currentUser?.rol !== 'admin' && !this.currentUser?.puedeAdministrarPersonal) return; 
     
     if (!this.formNombre || !this.formUsuario || !this.formPassword) {
-      alert('⚠️ Por favor completa el Nombre, Usuario y Contraseña.'); return;
+      Swal.fire({ icon: 'warning', title: 'Datos Incompletos', text: 'Por favor completa el Nombre, Usuario y Contraseña.', confirmButtonColor: '#0F172A' });
+      return;
     }
     
     if (!this.usuarioEnEdicion && !this.formCorreo) {
-      alert('⚠️ Para crear un usuario nuevo el Correo Electrónico es obligatorio.'); return;
+      Swal.fire({ icon: 'warning', title: 'Falta el Correo', text: 'Para crear un usuario nuevo el Correo Electrónico es obligatorio.', confirmButtonColor: '#0F172A' });
+      return;
     }
 
     const payload = {
@@ -182,7 +184,6 @@ export class PersonalComponent implements OnInit, OnDestroy {
 
     try {
       if (this.usuarioEnEdicion) {
-        // 🔥 FIX: Usamos idFirestore para apuntar exactamente al documento original 🔥
         const docId = this.usuarioEnEdicion.idFirestore || this.usuarioEnEdicion.uid || this.usuarioEnEdicion.usuario;
         await setDoc(doc(this.firestore, 'usuarios', docId), payload, { merge: true });
       } else {
@@ -190,32 +191,43 @@ export class PersonalComponent implements OnInit, OnDestroy {
         await setDoc(doc(this.firestore, 'usuarios', creds.user.uid), { ...payload, uid: creds.user.uid });
       }
       this.cerrarModal();
-      alert('✅ ¡Usuario guardado en la Nube!');
+      Swal.fire({ icon: 'success', title: '¡Guardado!', text: 'El usuario se ha guardado en la nube correctamente.', confirmButtonColor: '#0F172A' });
     } catch (error: any) {
-      alert('❌ Error: ' + error.message);
+      Swal.fire({ icon: 'error', title: 'Error', text: error.message, confirmButtonColor: '#0F172A' });
     }
   }
 
   async eliminarUsuario(userToDelete: any) {
     if (this.currentUser?.rol !== 'admin' && !this.currentUser?.puedeAdministrarPersonal) return;
     if (userToDelete.usuario === this.currentUser.usuario) return;
-    if (confirm(`⚠️ ¿Eliminar a ${userToDelete.nombre}?`)) {
-      // 🔥 FIX: También usamos idFirestore aquí para evitar errores al borrar 🔥
+
+    const result = await Swal.fire({
+      title: `¿Eliminar a ${userToDelete.nombre}?`,
+      text: "Esta acción no se puede deshacer.",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#EF4444',
+      cancelButtonColor: '#0F172A',
+      confirmButtonText: 'Sí, eliminar',
+      cancelButtonText: 'Cancelar'
+    });
+
+    if (result.isConfirmed) {
       const docId = userToDelete.idFirestore || userToDelete.uid || userToDelete.usuario;
       await deleteDoc(doc(this.firestore, 'usuarios', docId));
+      Swal.fire({ icon: 'success', title: 'Eliminado', text: 'El usuario fue borrado del sistema.', confirmButtonColor: '#0F172A' });
     }
   }
 
-async descargarExcel() {
+  async descargarExcel() {
     const list = this.usuarios();
     if (list.length === 0) {
-      alert('No hay personal para exportar.');
+      Swal.fire({ icon: 'info', title: 'Lista Vacía', text: 'No hay personal para exportar.', confirmButtonColor: '#0F172A' });
       return;
     }
 
     // 1. 🔥 LA MAGIA: Pre-procesar y ORDENAR la lista por Zonas (Sucursales) 🔥
     const listaOrdenada = list.map(u => {
-      // Normalizamos la zona para poder agruparla sin fallas
       const zona = u.sucursales ? (Array.isArray(u.sucursales) ? u.sucursales.join(' - ') : u.sucursales) : 'General';
       return { ...u, zonaCalculada: zona };
     }).sort((a, b) => a.zonaCalculada.localeCompare(b.zonaCalculada));
@@ -256,30 +268,26 @@ async descargarExcel() {
     let zonaActual = '';
 
     listaOrdenada.forEach(u => {
-      // Si el código detecta que cambiamos de zona, mete una fila de título
       if (u.zonaCalculada !== zonaActual) {
         const separador = worksheet.addRow({ nombre: `📍 ZONA / DEPARTAMENTO: ${u.zonaCalculada.toUpperCase()}` });
         
-        // Fusionamos todas las celdas de esa fila (de la A a la M) para hacer un banner gigante
         worksheet.mergeCells(`A${separador.number}:M${separador.number}`);
         
-        // Le damos un color Gris Oxford para que contraste con el azul marino de arriba
         separador.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
         separador.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF475569' } };
         separador.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
         separador.height = 25;
         
-        zonaActual = u.zonaCalculada; // Actualizamos la memoria
+        zonaActual = u.zonaCalculada; 
       }
 
-      // Inyectamos al empleado normal debajo de su separador
       worksheet.addRow({
         nombre: u.nombre || '-',
         usuario: u.usuario || '-',
         correo: u.correo || '-',
         rol: (u.rol || '').toUpperCase(),
         cargo: u.cargo || '-',
-        sucursales: u.zonaCalculada, // Usamos la que ya calculamos arriba
+        sucursales: u.zonaCalculada,
         creaCheck: u.puedeCrearChecklists ? 'Sí' : 'No',
         creaRutinas: u.puedeCrearRutinas ? 'Sí' : 'No',
         creaTareas: u.puedeCrearTareasUnicas ? 'Sí' : 'No',
@@ -301,11 +309,9 @@ async descargarExcel() {
         };
         
         if (rowNumber > 1) {
-          // Revisamos que la fila actual NO sea un banner separador de zona
           const esSeparador = row.getCell(1).value?.toString().includes('📍 ZONA');
           
           if (!esSeparador) {
-            // Si es un empleado normal, aplicamos tu centrado
             if (colNumber >= 7 || colNumber === 4) {
               cell.alignment = { vertical: 'middle', horizontal: 'center' };
             } else {
@@ -331,7 +337,7 @@ async descargarExcel() {
       window.URL.revokeObjectURL(url);
     } catch (error) {
       console.error("Error al exportar Personal:", error);
-      alert('Hubo un error al generar el Excel de personal.');
+      Swal.fire({ icon: 'error', title: 'Error de Exportación', text: 'Hubo un error al generar el Excel de personal.', confirmButtonColor: '#0F172A' });
     }
   }
 }

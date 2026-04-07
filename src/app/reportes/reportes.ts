@@ -9,6 +9,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as ExcelJS from 'exceljs';
 import html2canvas from 'html2canvas';
+import Swal from 'sweetalert2';
 
 @Component({
   selector: 'app-reportes',
@@ -170,7 +171,7 @@ export class ReportesComponent implements OnInit, OnDestroy {
       this.buscando.set(false);
     }, (error) => {
       console.error("Error buscando el historial:", error);
-      alert("Hubo un error de conexión al buscar el historial.");
+      Swal.fire({ icon: 'error', title: 'Error de Red', text: 'Hubo un error de conexión al buscar el historial.', confirmButtonColor: '#0F172A' });
       this.buscando.set(false);
     });
   }
@@ -179,25 +180,48 @@ export class ReportesComponent implements OnInit, OnDestroy {
   volverALista() { this.checklistSeleccionado.set(null); this.vistaActual.set('lista'); }
 
   abrirModalEliminarTodo() {
-    if (this.resultados().length === 0) { alert('No hay registros en pantalla para borrar.'); return; }
+    if (this.resultados().length === 0) { 
+      Swal.fire({ icon: 'info', title: 'Nada que borrar', text: 'No hay registros en pantalla.', confirmButtonColor: '#0F172A' });
+      return; 
+    }
     this.passwordInput = ''; this.isPasswordModalOpen = true;
   }
+  
   cerrarPasswordModal() { this.isPasswordModalOpen = false; this.passwordInput = ''; }
 
   async confirmarEliminacionTodo() {
-    if (this.passwordInput !== 'Mega2323') { alert('❌ Contraseña maestra incorrecta.'); return; }
-    const confirmar = confirm(`⚠️ PELIGRO:\n¿Borrar permanentemente los ${this.resultados().length} registros en pantalla?`);
-    if (confirmar) {
+    if (this.passwordInput !== 'Mega2323') { 
+      Swal.fire({ icon: 'error', title: 'Clave Incorrecta', text: 'La contraseña maestra no es válida.', confirmButtonColor: '#0F172A' });
+      return; 
+    }
+    
+    this.cerrarPasswordModal();
+
+    const result = await Swal.fire({
+      title: '⚠️ PELIGRO EXTREMO',
+      text: `¿Borrar permanentemente los ${this.resultados().length} registros filtrados en pantalla?`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#EF4444',
+      cancelButtonColor: '#0F172A',
+      confirmButtonText: 'Sí, borrar todo',
+      cancelButtonText: 'Cancelar'
+    });
+
+    if (result.isConfirmed) {
       this.buscando.set(true); 
       try {
         for (const checklist of this.resultados()) {
           const docId = checklist.id.toString();
           await deleteDoc(doc(this.firestore, 'checklists', docId));
         }
-        alert('🗑️ Historial eliminado con éxito.');
-      } catch (error) { alert('❌ Error al eliminar.'); } 
-      finally { this.cerrarPasswordModal(); }
-    } else { this.cerrarPasswordModal(); }
+        Swal.fire({ icon: 'success', title: 'Limpieza Total', text: 'Historial eliminado con éxito.', confirmButtonColor: '#0F172A' });
+      } catch (error) { 
+        Swal.fire({ icon: 'error', title: 'Fallo al borrar', text: 'Ocurrió un error en la base de datos.', confirmButtonColor: '#0F172A' });
+      } finally { 
+        this.buscando.set(false); 
+      }
+    }
   }
 
   getProgreso(checklist: any): number {
@@ -212,9 +236,9 @@ export class ReportesComponent implements OnInit, OnDestroy {
     return checklist.items.filter((i:any) => i.checked).length; 
   }
 
-async descargarExcel() {
+  async descargarExcel() {
     if (this.resultados().length === 0) {
-      alert('No hay datos para exportar.');
+      Swal.fire({ icon: 'info', title: 'Sin Datos', text: 'No hay datos para exportar.', confirmButtonColor: '#0F172A' });
       return;
     }
 
@@ -293,12 +317,15 @@ async descargarExcel() {
       window.URL.revokeObjectURL(url);
     } catch (error) {
       console.error("Error al exportar Excel:", error);
-      alert('Hubo un error al generar el archivo Excel.');
+      Swal.fire({ icon: 'error', title: 'Error de Exportación', text: 'Hubo un error al generar el archivo Excel.', confirmButtonColor: '#0F172A' });
     }
   }
 
   descargarReportePDF() {
-    if (this.resultados().length === 0) { alert('No hay datos para generar el PDF.'); return; }
+    if (this.resultados().length === 0) { 
+      Swal.fire({ icon: 'info', title: 'Sin Datos', text: 'No hay datos para generar el PDF.', confirmButtonColor: '#0F172A' });
+      return; 
+    }
 
     const doc = new jsPDF({ orientation: 'landscape' });
     doc.setFontSize(22); doc.setTextColor(101, 67, 33); doc.text('MEGA DULCES DE LOS ALTOS', 14, 20);
@@ -332,12 +359,21 @@ async descargarExcel() {
     doc.save(`Auditoria_Textual_${this.fechaInicio}.pdf`);
   }
 
-async descargarPDFVisual() {
+  async descargarPDFVisual() {
     if (this.resultados().length === 0) return;
     
     if (this.resultados().length > 30) {
-      const continuar = confirm('⚠️ ATENCIÓN: Estás intentando generar un reporte visual con más de 30 checklists. Esto procesará cientos de fotos y podría tomar varios minutos o trabar el navegador.\n\n¿Deseas continuar de todos modos?');
-      if (!continuar) return;
+      const result = await Swal.fire({
+        title: 'Reporte Pesado',
+        text: 'Estás intentando generar un reporte visual con más de 30 checklists. Esto procesará cientos de fotos y podría tomar varios minutos. ¿Deseas continuar?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#0F172A',
+        cancelButtonColor: '#64748B',
+        confirmButtonText: 'Sí, generar PDF',
+        cancelButtonText: 'Cancelar'
+      });
+      if (!result.isConfirmed) return;
     }
 
     this.generandoReporte.set(true);
@@ -375,13 +411,9 @@ async descargarPDFVisual() {
           const imgHeight = (canvas.height * pdfWidth) / canvas.width;
 
           // 4. LÓGICA DE PAGINACIÓN INTELIGENTE
-          // PREGUNTA A: ¿La tarjeta NO cabe en el espacio que sobra de esta hoja?
           if (currentY + imgHeight > pdfHeight - margin) {
             
-            // PREGUNTA B: ¿La tarjeta es un "Monstruo" (Más alta que una hoja entera)?
             if (imgHeight > usableHeight) {
-              // Es una tarjeta larguísima con muchas fotos. 
-              // Empezamos en una hoja nueva para minimizar cortes.
               if (currentY > margin) {
                 pdf.addPage();
                 currentY = margin;
@@ -391,29 +423,24 @@ async descargarPDFVisual() {
               let positionShift = 0;
 
               while (heightLeft > 0) {
-                // Pegamos la imagen desplazada hacia arriba (con coordenada negativa)
                 pdf.addImage(imgData, 'JPEG', 0, currentY + positionShift, pdfWidth, imgHeight);
                 heightLeft -= usableHeight;
 
                 if (heightLeft > 0) {
-                  pdf.addPage(); // Falta foto, agregamos otra hoja
-                  positionShift -= usableHeight; // Jalamos la foto más arriba
+                  pdf.addPage(); 
+                  positionShift -= usableHeight; 
                   currentY = margin;
                 } else {
-                  // Terminamos de pegar al monstruo, guardamos dónde quedó el cursor
                   currentY = margin + (heightLeft + usableHeight);
                 }
               }
             } else {
-              // No es un monstruo, solo que ya no cabía en la hoja anterior.
-              // Creamos hoja nueva, reiniciamos el cursor y la pegamos entera y bonita.
               pdf.addPage();
               currentY = margin;
               pdf.addImage(imgData, 'JPEG', 0, currentY, pdfWidth, imgHeight);
               currentY += imgHeight;
             }
           } else {
-            // SÍ cabe perfectamente en la hoja actual sin cortarse.
             pdf.addImage(imgData, 'JPEG', 0, currentY, pdfWidth, imgHeight);
             currentY += imgHeight;
           }
@@ -425,7 +452,7 @@ async descargarPDFVisual() {
         pdf.save(`Corte_Mensual_Visual_${this.fechaInicio}_al_${this.fechaFin}.pdf`);
       } catch (error) {
         console.error("Error generando PDF Visual:", error);
-        alert('Ocurrió un error al procesar las fotografías. Asegúrate de tener buena conexión.');
+        Swal.fire({ icon: 'error', title: 'Error de Procesamiento', text: 'Ocurrió un error al procesar las fotografías. Asegúrate de tener buena conexión.', confirmButtonColor: '#0F172A' });
       }
       
       this.generandoReporte.set(false);

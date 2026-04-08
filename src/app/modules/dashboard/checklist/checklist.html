@@ -47,10 +47,11 @@
           
           <div style="display: flex; gap: 15px; flex-wrap: wrap; align-items: center; flex: 2; justify-content: flex-end;">
             
-            <div *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeCrearChecklists" style="position: relative; flex: 1; min-width: 220px; max-width: 350px;">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; color: #64748B;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-              <input type="text" class="form-input" [(ngModel)]="terminoBusquedaChecklist" placeholder="Buscar tarea, empleado o zona..." style="padding-left: 38px; width: 100%; box-sizing: border-box;">
-            </div>
+           <div *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeCrearChecklists" style="position: relative; flex: 1; min-width: 220px; max-width: 350px;">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; color: #64748B;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+  
+  <input type="text" class="form-input" [(ngModel)]="terminoBusquedaChecklist" placeholder="Buscar tarea, empleado o zona..." style="padding-left: 38px !important; width: 100%; box-sizing: border-box;">
+</div>
 
             <div class="action-buttons" style="margin: 0;">
               <button class="btn-secondary" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeCrearChecklists" (click)="abrirModalRutinas()">

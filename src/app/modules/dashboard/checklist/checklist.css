@@ -198,12 +198,22 @@
 
 @media screen and (max-width: 768px) {
   .btn-menu-mobile { display: block !important; }
-  .header { padding: 0 15px !important; }
+  
+  /* 🔥 FIX DEL NOTCH: Agregamos el espacio de la zona segura al header 🔥 */
+  .header { 
+    padding: calc(10px + env(safe-area-inset-top)) 15px 10px !important; 
+    height: auto !important;
+  }
+  
   .header-brand { font-size: 16px !important; margin-left: 10px !important; }
   .header-brand small { display: none !important; }
   .header-user { display: none !important; }
 
-  .sidebar { position: fixed !important; top: 0; left: -100% !important; height: 100vh !important; width: 280px !important; z-index: 2000 !important; transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important; box-shadow: 4px 0 24px rgba(0,0,0,0.1) !important; }
+  /* 🔥 FIX DEL NOTCH PARA EL MENÚ LATERAL 🔥 */
+  .sidebar { 
+    position: fixed !important; top: 0; left: -100% !important; height: 100vh !important; width: 280px !important; z-index: 2000 !important; transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important; box-shadow: 4px 0 24px rgba(0,0,0,0.1) !important; 
+    padding-top: env(safe-area-inset-top) !important;
+  }
   .sidebar.mobile-open { left: 0 !important; }
   .mobile-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15, 23, 42, 0.6); z-index: 1999; backdrop-filter: blur(2px); animation: fadeIn 0.2s ease; }
   

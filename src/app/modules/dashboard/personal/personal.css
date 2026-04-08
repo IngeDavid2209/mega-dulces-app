@@ -144,101 +144,78 @@
 .perm-switch input:checked + .slider:before { transform: translateX(20px); }
 
 /* ======================================================= */
-/* 📱 MAGIA RESPONSIVE EXTREMA                             */
+/* 📱 MAGIA RESPONSIVE EXTREMA Y BLINDADA                  */
 /* ======================================================= */
 .btn-menu-mobile { display: none; background: transparent; border: none; color: var(--text-main); font-size: 26px; cursor: pointer; padding: 0; }
 
 @media screen and (max-width: 768px) {
-  .btn-menu-mobile { display: block !important; }
-  .header { padding: 0 15px !important; }
-  .header-brand { font-size: 16px !important; margin-left: 10px !important; }
+  .main-wrapper { flex-direction: column !important; }
+  
+  .content { 
+    width: 100vw !important; 
+    padding: 15px !important; 
+    box-sizing: border-box !important; 
+    overflow-x: hidden !important; 
+  }
+  
+  /* 🔥 FIX BLINDADO DEL NOTCH PARA EL HEADER 🔥 */
+  .header { 
+    padding-top: max(48px, env(safe-area-inset-top)) !important; 
+    padding-bottom: 12px !important;
+    padding-left: 15px !important;
+    padding-right: 15px !important;
+    height: auto !important;
+  }
+  
+  .btn-menu-mobile { display: block !important; margin-right: 10px !important; }
+  .header-brand { font-size: 16px !important; }
   .header-brand small { display: none !important; }
   .header-user { display: none !important; }
 
-  .sidebar { position: fixed !important; top: 0; left: -100% !important; height: 100vh !important; width: 280px !important; z-index: 2000 !important; transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important; box-shadow: 4px 0 24px rgba(0,0,0,0.1) !important; }
+  /* 🔥 FIX BLINDADO DEL NOTCH PARA EL SIDEBAR 🔥 */
+  .sidebar { 
+    position: fixed !important; 
+    top: 0 !important; 
+    left: -100% !important; 
+    width: 280px !important; 
+    height: 100vh !important; 
+    z-index: 2000 !important; 
+    transition: left 0.3s ease !important; 
+    box-shadow: 4px 0 24px rgba(0,0,0,0.1) !important;
+    padding-top: max(48px, env(safe-area-inset-top)) !important;
+  }
   .sidebar.mobile-open { left: 0 !important; }
-  .mobile-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15, 23, 42, 0.6); z-index: 1999; backdrop-filter: blur(2px); animation: fadeIn 0.2s ease; }
   
-  .content { padding: 20px 15px !important; width: 100% !important; max-width: 100vw !important; box-sizing: border-box !important; }
+  .mobile-overlay { 
+    position: fixed !important; 
+    inset: 0 !important; 
+    background: rgba(15,23,42,0.6) !important; 
+    z-index: 1999 !important; 
+    display: block !important; 
+    backdrop-filter: blur(2px) !important; 
+  }
 
   .section-title { font-size: 24px !important; }
-  .action-bar-container { flex-direction: column; align-items: stretch; }
-  .search-wrapper { max-width: 100%; }
-  .header-buttons { width: 100%; display: flex; }
-  .btn-primary, .btn-secondary { flex: 1; }
+  .action-bar-container { flex-direction: column !important; align-items: stretch !important; gap: 12px !important; }
+  .search-wrapper, .search-input { width: 100% !important; max-width: 100% !important; }
+  .header-buttons { width: 100% !important; display: flex !important; justify-content: space-between !important; }
+  .btn-primary, .btn-secondary { flex: 1 !important; justify-content: center !important; }
 
   .user-grid { display: flex !important; flex-direction: column !important; gap: 16px !important; width: 100% !important; }
-  .user-card { padding: 20px !important; }
+  .user-card, .admin-card { width: 100% !important; box-sizing: border-box !important; padding: 20px !important; }
+  
+  .user-card-header { flex-direction: column !important; align-items: flex-start !important; gap: 15px !important; }
+  .user-info { width: 100% !important; }
+  
+  .action-buttons { width: 100% !important; justify-content: space-between !important; margin-top: 5px !important; }
+  .action-buttons .btn-action { flex: 1 !important; justify-content: center !important; height: 42px !important; }
+
+  .user-credentials .cred-row { flex-direction: column !important; align-items: flex-start !important; gap: 4px !important; margin-bottom: 12px !important; }
+  
+  .user-permissions-list { flex-direction: column !important; gap: 8px !important; }
+  .perm-tag { width: 100% !important; box-sizing: border-box !important; text-align: center !important; padding: 8px !important; }
   
   .form-row { display: flex !important; flex-direction: column !important; gap: 20px !important; }
   .btn-group { flex-direction: column !important; gap: 10px !important; }
   .btn-secondary, .btn-primary { width: 100% !important; text-align: center !important; }
-}
-
-/* =====================================================================
-   📱 RESPONSIVE INSTANTÁNEO (APLICA AL CAMBIAR DE PESTAÑA SIN RECARGAR)
-   ===================================================================== */
-@media screen and (max-width: 768px) {
-  /* 1. Ajuste del esqueleto general de la pantalla */
-  .main-wrapper { flex-direction: column !important; }
-  .content { width: 100vw !important; padding: 15px !important; box-sizing: border-box !important; overflow-x: hidden !important; }
-  
-  /* 2. Header y Menú flotante */
-  .header { padding: 10px 15px !important; }
-  .btn-menu-mobile { display: block !important; margin-right: 10px !important; }
-  .header-brand small { display: none !important; }
-  .sidebar { position: fixed !important; top: 0 !important; left: -300px !important; width: 280px !important; height: 100vh !important; z-index: 1000 !important; transition: left 0.3s ease !important; }
-  .sidebar.mobile-open { left: 0 !important; box-shadow: 4px 0 25px rgba(0,0,0,0.3) !important; }
-  .mobile-overlay { position: fixed !important; inset: 0 !important; background: rgba(15,23,42,0.6) !important; z-index: 999 !important; display: block !important; backdrop-filter: blur(2px) !important; }
-
-  /* 3. Tarjetas de Usuarios: Arreglo Anti-Aplastamiento */
-  .user-card, .admin-card { width: 100% !important; box-sizing: border-box !important; }
-  
-  .user-card-header { 
-    flex-direction: column !important; 
-    align-items: flex-start !important; 
-    gap: 15px !important; 
-  }
-  
-  .user-info { width: 100% !important; }
-  
-  /* 4. Estiramiento de los botones de acción (Editar, Borrar) */
-  .action-buttons { 
-    width: 100% !important; 
-    justify-content: space-between !important; 
-    margin-top: 5px !important; 
-  }
-  
-  .action-buttons .btn-action { 
-    flex: 1 !important; 
-    justify-content: center !important; 
-    height: 42px !important; 
-  }
-
-  /* 5. Acomodo de las credenciales y zonas */
-  .user-credentials .cred-row { 
-    flex-direction: column !important; 
-    align-items: flex-start !important; 
-    gap: 4px !important; 
-    margin-bottom: 12px !important; 
-  }
-  
-  /* 6. Etiquetas de permisos (Las pastillitas de colores) */
-  .user-permissions-list { 
-    flex-direction: column !important; 
-    gap: 8px !important; 
-  }
-  
-  .perm-tag { 
-    width: 100% !important; 
-    box-sizing: border-box !important; 
-    text-align: center !important; 
-    padding: 8px !important;
-  }
-  
-  /* 7. Arreglo del Buscador superior */
-  .action-bar-container { flex-direction: column !important; gap: 12px !important; }
-  .search-wrapper, .search-input { width: 100% !important; }
-  .header-buttons { width: 100% !important; justify-content: space-between !important; }
-  .header-buttons button { flex: 1 !important; justify-content: center !important; }
 }

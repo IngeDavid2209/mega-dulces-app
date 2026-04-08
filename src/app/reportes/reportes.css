@@ -105,229 +105,94 @@
 .btn-save { padding: 12px 24px; background: var(--primary-navy); color: #fff; border: none; border-radius: 6px; font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 500; cursor: pointer; transition: .2s; }
 .btn-save:hover:not(:disabled) { background: #1E293B; }
 
-/* ======================================================= */
-/* 📱 MAGIA RESPONSIVE EXTREMA (REPORTES / HISTORIAL)      */
-/* ======================================================= */
+/* =====================================================================
+   📱 RESPONSIVE MAESTRO Y BLINDADO
+   ===================================================================== */
+
+@media screen and (max-width: 1024px) {
+  .search-filters-container { flex-wrap: wrap; }
+  .filter-item { flex: 1 1 calc(50% - 15px); }
+  .filter-item-large { flex: 1 1 100%; }
+  .filter-actions { width: 100%; justify-content: flex-end; margin-top: 15px; }
+  .checklist-grid { grid-template-columns: repeat(2, 1fr) !important; }
+}
+
+.btn-menu-mobile { display: none; background: transparent; border: none; color: var(--text-main); font-size: 26px; cursor: pointer; padding: 0; }
+
 @media screen and (max-width: 768px) {
+  .main-wrapper { flex-direction: column !important; }
+  
+  .content { 
+    padding: 15px !important; 
+    width: 100vw !important; 
+    box-sizing: border-box !important; 
+    overflow-x: hidden !important; 
+  }
+
+  /* 🔥 FIX BLINDADO DEL NOTCH PARA EL HEADER 🔥 */
+  .header { 
+    padding-top: max(48px, env(safe-area-inset-top)) !important; 
+    padding-bottom: 12px !important;
+    padding-left: 15px !important;
+    padding-right: 15px !important;
+    height: auto !important;
+  }
+  
+  .header-brand { font-size: 16px !important; }
+  .header-brand small { display: none !important; }
+  .btn-menu-mobile { display: block !important; margin-right: 10px !important; }
+
+  /* 🔥 FIX BLINDADO DEL NOTCH PARA EL SIDEBAR 🔥 */
+  .sidebar { 
+    position: fixed !important; 
+    top: 0 !important; 
+    left: -100% !important; 
+    width: 280px !important; 
+    height: 100vh !important; 
+    z-index: 2000 !important; 
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important; 
+    box-shadow: none !important; 
+    padding-top: max(48px, env(safe-area-inset-top)) !important;
+  }
+  .sidebar.mobile-open { left: 0 !important; box-shadow: 4px 0 25px rgba(0,0,0,0.1) !important; }
+  
+  .mobile-overlay { 
+    position: fixed !important; 
+    inset: 0 !important; 
+    background: rgba(15, 23, 42, 0.6) !important; 
+    z-index: 1999 !important; 
+    backdrop-filter: blur(2px) !important; 
+    display: block !important; 
+  }
+
+  .section-header { flex-direction: column !important; align-items: flex-start !important; gap: 10px !important; margin-bottom: 20px !important; }
   .section-title { font-size: 24px !important; }
   .section-sub { font-size: 13px !important; }
-  
+
   .filter-box-wrap { padding: 16px !important; }
-  
   .search-filters-container { flex-direction: column !important; align-items: stretch !important; gap: 12px !important; }
   .filter-item, .filter-item-large { width: 100% !important; max-width: 100% !important; flex: none !important; }
   
-  .filter-actions { flex-direction: column !important; width: 100% !important; }
-  .btn-search, .btn-pdf, .btn-delete-history { width: 100% !important; justify-content: center !important; }
+  .filter-actions { flex-direction: column !important; width: 100% !important; gap: 8px !important; }
+  .filter-actions button, .btn-search, .btn-pdf, .btn-delete-history { width: 100% !important; justify-content: center !important; height: 46px !important; }
 
-  .checklist-grid { display: flex !important; flex-direction: column !important; gap: 16px !important; width: 100% !important; box-sizing: border-box !important; }
-  .checklist-card { padding: 20px !important; }
-}
+  button[style*="linear-gradient"] { font-size: 13px !important; padding: 14px 10px !important; text-align: center !important; line-height: 1.4 !important; white-space: normal !important; }
 
-/* =====================================================================
-   📱 RESPONSIVE MAESTRO (TABLETS Y CELULARES PARA TODA LA PÁGINA)
-   ===================================================================== */
+  .checklist-grid { display: flex !important; flex-direction: column !important; gap: 15px !important; width: 100% !important; box-sizing: border-box !important; }
+  .checklist-card { padding: 16px !important; }
+  .checklist-card-info { flex-direction: column !important; gap: 8px !important; }
+  .checklist-card-info span { font-size: 13px !important; }
 
-/* ---------------------------------------------------
-   💻 TABLETS (Pantallas medianas: iPads, laptops chicas) 
-   --------------------------------------------------- */
-@media screen and (max-width: 1024px) {
-  /* Filtros en 2 columnas */
-  .search-filters-container {
-    flex-wrap: wrap; 
-  }
-  .filter-item {
-    flex: 1 1 calc(50% - 15px); 
-  }
-  .filter-item-large {
-    flex: 1 1 100%; /* El selector de empleado toma toda la línea */
-  }
-  .filter-actions {
-    width: 100%;
-    justify-content: flex-end;
-    margin-top: 15px;
-  }
-  
-  /* Grid de resultados a 2 columnas */
-  .checklist-grid {
-    grid-template-columns: repeat(2, 1fr) !important;
-  }
-}
+  .checklist-detail-header { padding: 15px !important; }
+  div[style*="padding: 30px"] { padding: 15px !important; }
+  h2[style*="font-size: 24px"] { font-size: 18px !important; }
+  div[style*="gap: 20px"] { flex-direction: column !important; gap: 8px !important; }
+  div[style*="padding: 16px"] { padding: 12px !important; }
 
-/* ---------------------------------------------------
-   📱 CELULARES (Pantallas pequeñas: iPhone, Android) 
-   --------------------------------------------------- */
-@media screen and (max-width: 768px) {
+  img[alt="Evidencia"] { max-height: 250px !important; width: 100% !important; object-fit: cover !important; }
 
-  /* --- 1. ESTRUCTURA PRINCIPAL Y SIDEBAR --- */
-  .main-wrapper {
-    flex-direction: column;
-  }
-  
-  .content {
-    padding: 15px !important;
-    width: 100vw;
-    box-sizing: border-box;
-    overflow-x: hidden;
-  }
-
-  /* El Menú Lateral se vuelve oculto y flotante */
-  .sidebar {
-    position: fixed;
-    top: 0;
-    left: -300px; /* Escondido a la izquierda */
-    width: 280px;
-    height: 100vh;
-    z-index: 1000;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: none;
-  }
-
-  /* Cuando haces clic en el menú hamburguesa */
-  .sidebar.mobile-open {
-    left: 0;
-    box-shadow: 4px 0 25px rgba(0,0,0,0.1);
-  }
-
-  /* La capa oscura detrás del menú */
-  .mobile-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(15, 23, 42, 0.6);
-    z-index: 999;
-    backdrop-filter: blur(2px);
-    display: block !important;
-  }
-
-  /* --- 2. HEADER Y TÍTULOS --- */
-  .header {
-    padding: 10px 15px;
-  }
-  
-  .header-brand {
-    font-size: 16px;
-  }
-  
-  .header-brand small {
-    display: none; /* Ocultamos el subtítulo en celular para ahorrar espacio */
-  }
-
-  .btn-menu-mobile {
-    display: block !important; /* Mostramos el botón de menú */
-    margin-right: 10px;
-  }
-
-  .section-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 10px;
-    margin-bottom: 20px;
-  }
-
-  /* --- 3. CAJA DE FILTROS --- */
-  .search-filters-container {
-    flex-direction: column;
-    gap: 12px;
-  }
-  
-  .filter-item, .filter-item-large {
-    width: 100% !important;
-    flex: none;
-  }
-
-  /* Los botones de los filtros estirados al 100% */
-  .filter-actions {
-    flex-direction: column;
-    width: 100%;
-    gap: 8px;
-  }
-  
-  .filter-actions button {
-    width: 100% !important;
-    height: 46px !important; /* Más altos para poder tocarlos bien con el dedo */
-  }
-
-  /* Botón gigante de Corte Mensual */
-  button[style*="linear-gradient"] {
-    font-size: 13px !important;
-    padding: 14px 10px !important;
-    text-align: center;
-    line-height: 1.4;
-    white-space: normal;
-  }
-
-  /* --- 4. TARJETAS DE RESULTADOS --- */
-  .checklist-grid {
-    grid-template-columns: 1fr !important; /* 1 sola columna */
-    gap: 15px;
-  }
-
-  .checklist-card {
-    padding: 16px;
-  }
-
-  .checklist-card-info {
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .checklist-card-info span {
-    font-size: 13px;
-  }
-
-  /* --- 5. VISTA DE DETALLE (EL REPORTE ABIERTO) --- */
-  .checklist-detail-header {
-    padding: 15px !important;
-  }
-
-  /* Contenedor principal del detalle */
-  div[style*="padding: 30px"] {
-    padding: 15px !important;
-  }
-  
-  h2[style*="font-size: 24px"] {
-    font-size: 18px !important;
-  }
-
-  /* Información del empleado y fecha */
-  div[style*="gap: 20px"] {
-    flex-direction: column;
-    gap: 8px !important;
-  }
-
-  /* Tareas dentro del reporte */
-  div[style*="padding: 16px"] {
-    padding: 12px !important;
-  }
-
-  /* Acomodo de las fotos en celular */
-  img[alt="Evidencia"] {
-    max-height: 250px !important; /* Evita que las fotos verticales ocupen 3 pantallas */
-    width: 100%;
-    object-fit: cover;
-  }
-
-  /* --- 6. MODALES (VENTANAS EMERGENTES) --- */
-  .modal {
-    width: 90% !important;
-    max-width: 350px !important;
-    padding: 20px !important;
-    margin: 20px auto;
-  }
-
-  .modal input {
-    font-size: 16px !important;
-    letter-spacing: 2px !important;
-  }
-
-  /* Botones del modal apilados */
-  .modal div[style*="display: flex; gap: 10px; justify-content: center;"] {
-    flex-direction: column;
-    gap: 10px;
-  }
-  
-  .modal div[style*="display: flex; gap: 10px; justify-content: center;"] button {
-    width: 100%;
-    height: 44px;
-  }
+  .modal { width: 90% !important; max-width: 350px !important; padding: 20px !important; margin: 20px auto !important; }
+  .modal input { font-size: 16px !important; letter-spacing: 2px !important; }
+  .modal div[style*="display: flex; gap: 10px; justify-content: center;"] { flex-direction: column !important; gap: 10px !important; }
+  .modal div[style*="display: flex; gap: 10px; justify-content: center;"] button { width: 100% !important; height: 44px !important; }
 }

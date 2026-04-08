@@ -1,244 +1,184 @@
-:host {
-  --bg-color: #F4F4F5; /* Gris muy claro del diseño */
-  --watermark-color: #E4E4E7; /* Color de las letras gigantes */
-  --input-bg: #EEF2FF; /* Azul/Gris clarito de las cajas de texto */
-  --text-dark: #18181B;
-  --text-muted: #71717A;
-}
-
+/* Contenedor principal anclado a la pantalla completa */
 .login-layout {
-  position: relative;
-  width: 100vw;
-  min-height: 100dvh; /* Altura dinámica para celulares */
-  background-color: var(--bg-color);
-  font-family: 'Inter', sans-serif;
+  min-height: 100dvh; /* 🔥 El secreto anti-aplastamiento */
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  overflow: hidden; /* Evita que el usuario scrollee por las letras gigantes */
+  position: relative;
+  padding: 20px;
+  overflow: hidden;
 }
 
-/* =========================================
-   🔤 MARCAS DE AGUA GIGANTES
-   ========================================= */
+/* Marca de agua de fondo (Opcional si la estás usando) */
 .watermark {
   position: absolute;
-  font-weight: 900;
-  color: var(--watermark-color);
+  font-size: 15vw;
+  font-weight: 800;
+  color: rgba(0, 0, 0, 0.02);
   z-index: 0;
-  line-height: 0.8;
   user-select: none;
   pointer-events: none;
-  white-space: nowrap;
 }
+.watermark-top { top: 5%; left: -5%; }
+.watermark-bottom { bottom: 5%; right: -5%; }
 
-.watermark-top {
-  top: 5%;
-  left: -5%;
-  font-size: clamp(8rem, 20vw, 25rem); /* Se adapta al tamaño de la pantalla */
-}
-
-.watermark-bottom {
-  bottom: 0;
-  right: -5%;
-  font-size: clamp(10rem, 25vw, 30rem);
-}
-
-/* =========================================
-   🌙 BOTÓN SUPERIOR DERECHO
-   ========================================= */
+/* Botón superior derecho */
 .top-bar {
   position: absolute;
-  top: 24px;
-  right: 24px;
+  top: 20px;
+  right: 20px;
   z-index: 10;
 }
 
 .btn-theme-toggle {
-  background: transparent;
-  border: none;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 1px;
-  color: var(--text-muted);
   display: flex;
   align-items: center;
   gap: 8px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
   cursor: pointer;
-  transition: color 0.2s;
 }
 
-.btn-theme-toggle:hover {
-  color: var(--text-dark);
-}
-
-/* =========================================
-   📦 CONTENEDOR CENTRAL
-   ========================================= */
+/* Contenedor central flotante */
 .login-container {
-  position: relative;
-  z-index: 10;
   width: 100%;
-  max-width: 440px; /* Ancho de la tarjeta */
-  padding: 20px;
+  max-width: 380px;
+  z-index: 10;
   display: flex;
   flex-direction: column;
-  align-items: center;
 }
 
+/* 🔥 LA SOLUCIÓN AL BRINCO DEL LOGO */
 .logo-container {
-  margin-bottom: 24px;
-  text-align: center;
+  min-height: 160px; /* Reserva el espacio antes de que cargue la imagen */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 10px;
 }
 
 .main-logo {
-  width: 100%;
-  max-width: 260px;
+  width: 160px; /* Forzamos el ancho exacto */
+  height: 160px; /* Forzamos el alto exacto */
   object-fit: contain;
-  filter: drop-shadow(0 10px 15px rgba(0,0,0,0.1));
 }
 
 .portal-subtitle {
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 2px;
-  color: var(--text-muted);
-  margin-bottom: 24px;
+  text-align: center;
   text-transform: uppercase;
+  letter-spacing: 2px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  margin-bottom: 25px;
 }
 
-/* =========================================
-   📄 TARJETA BLANCA
-   ========================================= */
+/* Tarjeta Blanca de Formulario */
 .login-card {
-  background: #FFFFFF;
-  width: 100%;
-  padding: 40px 32px;
-  border-radius: 12px;
-  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.08);
-  box-sizing: border-box;
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 30px;
+  box-shadow: var(--shadow-lg);
 }
 
-/* SELECTOR DE ROL */
+/* Selector de Roles */
 .role-selector {
   display: flex;
-  background: #F4F4F5;
-  border-radius: 6px;
+  background: var(--bg-app);
+  border-radius: var(--radius-sm);
   padding: 4px;
-  margin-bottom: 24px;
+  margin-bottom: 25px;
 }
 
 .role-btn {
   flex: 1;
-  background: transparent;
-  border: none;
   padding: 10px;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-  color: var(--text-muted);
-  border-radius: 4px;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-sm);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.3s ease;
+  color: var(--text-muted);
+  font-weight: 600;
+  font-size: 12px;
 }
 
 .role-btn.active {
-  background: #FFFFFF;
-  color: var(--text-dark);
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  background: var(--card);
+  color: var(--primary-navy);
+  box-shadow: var(--shadow);
 }
 
-/* INPUTS */
+/* Inputs y Botón */
 .form-group {
-  margin-bottom: 20px;
+  margin-bottom: 18px;
 }
 
 .form-label {
   display: block;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 1px;
   color: var(--text-muted);
-  margin-bottom: 8px;
+  margin-bottom: 6px;
+  text-transform: uppercase;
 }
 
 .form-input {
   width: 100%;
-  background: var(--input-bg);
-  border: 2px solid transparent;
-  padding: 14px;
-  border-radius: 6px;
-  font-family: 'Inter', sans-serif;
+  padding: 12px 15px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-family: inherit;
   font-size: 14px;
-  font-weight: 600;
-  color: var(--text-dark);
-  text-align: center; /* Texto centrado como en el diseño */
-  outline: none;
-  transition: all 0.2s;
-  box-sizing: border-box;
+  background: var(--bg-app);
+  color: var(--text-main);
+  transition: border-color 0.3s ease;
 }
 
 .form-input:focus {
-  background: #E0E7FF;
-  border-color: #A5B4FC;
+  outline: none;
+  border-color: var(--primary-blue);
+  background: #ffffff;
 }
 
-.form-input::placeholder {
-  color: #94A3B8;
-  font-weight: 500;
-}
-
-/* BOTÓN DE SUBMIT */
 .btn-submit {
   width: 100%;
-  background: transparent;
+  padding: 14px;
+  background: var(--primary-navy);
+  color: #ffffff;
   border: none;
-  padding: 16px;
-  margin-top: 12px;
-  font-family: 'Inter', sans-serif;
-  font-size: 13px;
-  font-weight: 800;
-  letter-spacing: 1px;
-  color: var(--text-dark);
+  border-radius: var(--radius-sm);
+  font-weight: 700;
+  font-size: 14px;
   cursor: pointer;
-  transition: transform 0.2s;
+  margin-top: 10px;
+  transition: background 0.3s ease;
 }
 
-.btn-submit:hover {
-  transform: translateY(-2px);
+.btn-submit:active {
+  transform: scale(0.98);
 }
 
-/* =========================================
-   🔗 FOOTER LINKS
-   ========================================= */
+/* Links del pie de página */
 .login-footer {
-  width: 100%;
   display: flex;
   justify-content: space-between;
-  margin-top: 24px;
-  padding: 0 10px;
-  box-sizing: border-box;
+  margin-top: 25px;
+  font-size: 12px;
 }
 
 .footer-link {
-  font-size: 12px;
-  font-weight: 500;
   color: var(--text-muted);
   text-decoration: none;
-  transition: color 0.2s;
+  display: flex;
+  align-items: center;
+  transition: color 0.3s ease;
 }
 
 .footer-link:hover {
-  color: var(--text-dark);
-}
-
-/* =========================================
-   📱 RESPONSIVE MÓVIL
-   ========================================= */
-@media screen and (max-width: 480px) {
-  .watermark-top { top: 2%; font-size: 6rem; }
-  .watermark-bottom { bottom: 5%; font-size: 8rem; }
-  
-  .login-card { padding: 32px 24px; }
-  .main-logo { max-width: 220px; }
+  color: var(--primary-navy);
 }

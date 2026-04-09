@@ -379,6 +379,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
            id: checklistId, timestampCreacion: Date.now(), name: `${molde.name} (${molde.frecuencia})`,
            assigned: molde.assigned, store: molde.store, date: fechaString, time: '23:59',
            status: 'pendiente', enviado: false, createdBy: 'Robot de Rutinas',
+           notaEmpleado: '', // 🔥 INICIALIZAMOS LA VARIABLE DE NOTA
            items: itemsVigentes.map((i:any) => ({...i, checked: false, photo: null}))
         };
         await setDoc(docRef, nuevoChecklist);
@@ -545,6 +546,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
         id: uniqueId, timestampCreacion: Date.now(), name: this.formName, assigned: empleadoNombre,
         store: this.formStore, date: tareasValidas[0].date || hoy, time: tareasValidas[0].time || '23:59',
         status: 'pendiente', enviado: false, createdBy: this.currentUser?.nombre || 'Desconocido', 
+        notaEmpleado: '', // 🔥 INICIALIZAMOS LA VARIABLE DE NOTA
         items: JSON.parse(JSON.stringify(tareasValidas))
       };
       this.guardarEnLaNube(checklistTareas);

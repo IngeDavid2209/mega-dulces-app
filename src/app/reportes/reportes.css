@@ -1,220 +1,200 @@
-:host {
+/* ==================================================
+   MEGA DULCES - ESTRUCTURA ENTERPRISE (FIXED HEADER)
+   ================================================== */
+
+:root {
   --primary-navy: #0F172A;
+  --primary-blue: #2563EB;
   --text-main: #1E293B;
   --text-muted: #64748B;
   --bg-app: #F8FAFC;
-  --bg-sidebar: #FFFFFF;
   --border: #E2E8F0;
-  --card: #FFFFFF;
-  --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+  --white: #ffffff;
+  --red: #EF4444;
 }
 
-.app-layout { display: flex; flex-direction: column; height: 100vh; overflow: hidden; background-color: var(--bg-app); }
-
-/* --- HEADER BLANCO ENTERPRISE --- */
-.header { background-color: var(--bg-sidebar) !important; height: 64px; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; border-bottom: 1px solid var(--border) !important; z-index: 20; }
-.header-left { display: flex; align-items: center; gap: 12px; }
-.header-logo-wrap { width: 32px; height: 32px; background-color: var(--primary-navy) !important; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
-.header-brand { font-size: 18px; font-weight: 700; color: var(--text-main) !important; line-height: 1.2; margin-left: 8px; }
-.header-brand small { display: block; font-size: 11px; color: var(--text-muted) !important; font-weight: 500; }
-.header-right .header-user { font-size: 14px; color: var(--text-muted); }
-.header-right .header-user strong { color: var(--primary-navy); font-weight: 600; }
-
-.main-wrapper { display: flex; flex: 1; overflow: hidden; }
-
-/* --- SIDEBAR BLANCO ENTERPRISE --- */
-.sidebar { width: 260px; background-color: var(--bg-sidebar) !important; display: flex; flex-direction: column; border-right: 1px solid var(--border) !important; z-index: 10; }
-.sidebar-header { padding: 24px 20px 16px 24px; display: flex; align-items: center; gap: 12px; }
-.sidebar-avatar { width: 40px; height: 40px; background-color: #F1F5F9 !important; color: var(--primary-navy) !important; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 600; border: 1px solid var(--border); }
-.sidebar-name { font-size: 15px; font-weight: 600; color: var(--text-main) !important; margin-bottom: 2px; }
-.sidebar-role { font-size: 12px; color: var(--text-muted) !important; font-weight: 500; }
-.sidebar-nav { flex: 1; display: flex; flex-direction: column; padding: 12px 12px; }
-
-/* Botones del Menú */
-.nav-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; color: var(--text-muted) !important; text-decoration: none; font-size: 14px; font-weight: 500; border-radius: 6px; transition: all 0.2s ease; margin-bottom: 4px; }
-.nav-item:hover { background-color: #F8FAFC !important; color: var(--primary-navy) !important; }
-.nav-item.active { background-color: var(--primary-navy) !important; color: #FFFFFF !important; font-weight: 600; box-shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.1); }
-.nav-icon { font-size: 18px; width: 24px; text-align: center; }
-.nav-divider { height: 1px; background-color: var(--border); margin: 12px 16px; }
-.nav-logout { color: var(--red) !important; }
-.nav-logout:hover { background-color: #FEF2F2 !important; }
-
-/* --- CONTENT Y TITULOS --- */
-.content { flex: 1; padding: 32px 40px; overflow-y: auto; background-color: var(--bg-app); }
-.section-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:24px; flex-wrap:wrap; gap:16px; }
-.section-title { font-size: 28px; font-weight: 700; color: var(--text-main); letter-spacing: -0.5px; }
-.section-sub { font-size: 14px; color: var(--text-muted); margin-top: 4px; font-weight: 400; }
-
-/* --- CAJA DE FILTROS --- */
-.filter-box-wrap { background: var(--card); padding: 20px 24px; border-radius: 8px; border: 1px solid var(--border); box-shadow: var(--shadow); margin-bottom: 24px; }
-.search-filters-container { display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap; }
-.filter-item { flex: 1; min-width: 160px; }
-.filter-item-large { flex: 2; min-width: 260px; }
-.filter-actions { display: flex; gap: 12px; flex-wrap: wrap; }
-
-.form-label { display: block; font-size: 13px; font-weight: 500; color: var(--text-muted); margin-bottom: 6px; }
-.form-input { width: 100%; padding: 10px 14px; border: 1px solid var(--border); border-radius: 6px; font-family: 'Inter', sans-serif; font-size: 14px; background: #fff; color: var(--text-main); outline: none; transition: .2s; box-sizing: border-box; }
-.form-input:focus { border-color: var(--primary-navy); box-shadow: 0 0 0 2px rgba(15, 23, 42, 0.1); }
-
-/* --- BOTONES MODERNOS --- */
-.btn-search { display: flex; align-items: center; justify-content: center; height: 40px; padding: 0 20px; background: var(--primary-navy); color: #fff; border: none; border-radius: 6px; font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 500; cursor: pointer; transition: .2s; }
-.btn-search:hover { background: #1E293B; }
-.btn-search:disabled { opacity: 0.7; cursor: not-allowed; }
-
-.btn-pdf { display: flex; align-items: center; justify-content: center; height: 40px; padding: 0 16px; background: #FFFFFF; color: var(--text-main); border: 1px solid var(--border); border-radius: 6px; font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 500; cursor: pointer; transition: .2s; box-shadow: var(--shadow); }
-.btn-pdf:hover { background: #F8FAFC; border-color: #CBD5E1; }
-
-.btn-delete-history { display: flex; align-items: center; justify-content: center; height: 40px; padding: 0 16px; background: #FFFFFF; color: var(--red); border: 1px solid var(--border); border-radius: 6px; font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 500; cursor: pointer; transition: .2s; }
-.btn-delete-history:hover { background: #FEF2F2; border-color: #FECACA; }
-
-.btn-back { background: transparent; border: none; color: var(--text-muted); font-weight: 500; cursor: pointer; margin-bottom: 20px; font-size: 14px; display: flex; align-items: center; gap: 6px; transition: color 0.2s; font-family: 'Inter', sans-serif; }
-.btn-back:hover { color: var(--primary-navy); }
-
-/* --- TARJETAS DEL HISTORIAL --- */
-.checklist-grid { display:grid; gap:20px; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); }
-.checklist-card { background:var(--card); border-radius:8px; padding:24px; border:1px solid var(--border); box-shadow:var(--shadow); transition:.2s; }
-.checklist-card:hover { border-color:#CBD5E1; box-shadow:var(--shadow-lg); }
-.checklist-card-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:16px; }
-.checklist-card-title { font-size: 16px; font-weight: 600; color: var(--text-main); flex: 1; }
-
-/* BADGES MODERNOS (Tono pastel con texto oscuro) */
-.checklist-card-badge { padding:4px 12px; border-radius:4px; font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; border: 1px solid transparent; }
-.badge-pendiente { background:#F1F5F9; color:#475569; border-color: #E2E8F0; }
-.badge-en-progreso { background:#EFF6FF; color:#1D4ED8; border-color: #BFDBFE; }
-.badge-completo { background:#F0FDF4; color:#15803D; border-color: #BBF7D0; }
-
-.checklist-card-info { display:flex; flex-wrap:wrap; gap:12px 20px; font-size:13px; color:var(--text-muted); margin-bottom:20px; font-weight: 500; }
-
-.checklist-progress { margin-top:16px; }
-.progress-label { display:flex; justify-content:space-between; font-size:13px; color:var(--text-muted); margin-bottom:8px; font-weight:500; }
-.progress-bar-wrap { background:#F1F5F9; border-radius:4px; height:8px; overflow:hidden; }
-.progress-bar-fill { height:100%; border-radius:4px; background:var(--primary-navy); transition:width .5s ease; }
-
-.empty-state { text-align:center; padding:60px 20px; color:var(--text-muted); grid-column: 1 / -1;}
-.empty-state-icon { font-size:48px; margin-bottom:16px; opacity: 0.5; }
-.empty-state h3 { font-size:18px; font-weight: 600; color:var(--text-main); margin-bottom:8px; }
-.empty-state p { font-size: 14px; }
-
-/* MODAL STYLES */
-.modal-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6); z-index: 300; display: flex; align-items: center; justify-content: center; padding: 20px; animation: fadeIn 0.25s ease; backdrop-filter: blur(2px); }
-.modal { background: var(--card); border-radius: 12px; width: 100%; max-height: 90vh; overflow-y: auto; box-shadow: var(--shadow-lg); animation: modalPop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1); }
-@keyframes modalPop { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-.btn-secondary { padding: 12px 20px; background: #F1F5F9; color: var(--text-main); border: 1px solid var(--border); border-radius: 6px; font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 500; cursor: pointer; transition: .2s; }
-.btn-secondary:hover { background: #E2E8F0; }
-.btn-save { padding: 12px 24px; background: var(--primary-navy); color: #fff; border: none; border-radius: 6px; font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 500; cursor: pointer; transition: .2s; }
-.btn-save:hover:not(:disabled) { background: #1E293B; }
-
-/* =====================================================================
-   📱 RESPONSIVE MAESTRO Y BLINDADO
-   ===================================================================== */
-
-@media screen and (max-width: 1024px) {
-  .search-filters-container { flex-wrap: wrap; }
-  .filter-item { flex: 1 1 calc(50% - 15px); }
-  .filter-item-large { flex: 1 1 100%; }
-  .filter-actions { width: 100%; justify-content: flex-end; margin-top: 15px; }
-  .checklist-grid { grid-template-columns: repeat(2, 1fr) !important; }
-}
-
-.btn-menu-mobile { display: none; background: transparent; border: none; color: var(--text-main); font-size: 26px; cursor: pointer; padding: 0; }
-
-@media screen and (max-width: 768px) {
-  .main-wrapper { flex-direction: column !important; }
-  
-  .content { 
-    padding: 15px !important; 
-    width: 100vw !important; 
-    box-sizing: border-box !important; 
-    overflow-x: hidden !important; 
-  }
-
-  /* 🔥 FIX BLINDADO DEL NOTCH PARA EL HEADER 🔥 */
-  .header { 
-    padding-top: max(48px, env(safe-area-inset-top)) !important; 
-    padding-bottom: 12px !important;
-    padding-left: 15px !important;
-    padding-right: 15px !important;
-    height: auto !important;
-  }
-  
-  .header-brand { font-size: 16px !important; }
-  .header-brand small { display: none !important; }
-  .btn-menu-mobile { display: block !important; margin-right: 10px !important; }
-
-  /* 🔥 FIX BLINDADO DEL NOTCH PARA EL SIDEBAR 🔥 */
-  .sidebar { 
-    position: fixed !important; 
-    top: 0 !important; 
-    left: -100% !important; 
-    width: 280px !important; 
-    height: 100vh !important; 
-    z-index: 2000 !important; 
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important; 
-    box-shadow: none !important; 
-    padding-top: max(48px, env(safe-area-inset-top)) !important;
-  }
-  .sidebar.mobile-open { left: 0 !important; box-shadow: 4px 0 25px rgba(0,0,0,0.1) !important; }
-  
-  .mobile-overlay { 
-    position: fixed !important; 
-    inset: 0 !important; 
-    background: rgba(15, 23, 42, 0.6) !important; 
-    z-index: 1999 !important; 
-    backdrop-filter: blur(2px) !important; 
-    display: block !important; 
-  }
-
-  .section-header { flex-direction: column !important; align-items: flex-start !important; gap: 10px !important; margin-bottom: 20px !important; }
-  .section-title { font-size: 24px !important; }
-  .section-sub { font-size: 13px !important; }
-
-  .filter-box-wrap { padding: 16px !important; }
-  .search-filters-container { flex-direction: column !important; align-items: stretch !important; gap: 12px !important; }
-  .filter-item, .filter-item-large { width: 100% !important; max-width: 100% !important; flex: none !important; }
-  
-  .filter-actions { flex-direction: column !important; width: 100% !important; gap: 8px !important; }
-  .filter-actions button, .btn-search, .btn-pdf, .btn-delete-history { width: 100% !important; justify-content: center !important; height: 46px !important; }
-
-  button[style*="linear-gradient"] { font-size: 13px !important; padding: 14px 10px !important; text-align: center !important; line-height: 1.4 !important; white-space: normal !important; }
-
-  .checklist-grid { display: flex !important; flex-direction: column !important; gap: 15px !important; width: 100% !important; box-sizing: border-box !important; }
-  .checklist-card { padding: 16px !important; }
-  .checklist-card-info { flex-direction: column !important; gap: 8px !important; }
-  .checklist-card-info span { font-size: 13px !important; }
-
-  .checklist-detail-header { padding: 15px !important; }
-  div[style*="padding: 30px"] { padding: 15px !important; }
-  h2[style*="font-size: 24px"] { font-size: 18px !important; }
-  div[style*="gap: 20px"] { flex-direction: column !important; gap: 8px !important; }
-  div[style*="padding: 16px"] { padding: 12px !important; }
-
-  img[alt="Evidencia"] { max-height: 250px !important; width: 100% !important; object-fit: cover !important; }
-
-  .modal { width: 90% !important; max-width: 350px !important; padding: 20px !important; margin: 20px auto !important; }
-  .modal input { font-size: 16px !important; letter-spacing: 2px !important; }
-  .modal div[style*="display: flex; gap: 10px; justify-content: center;"] { flex-direction: column !important; gap: 10px !important; }
-  .modal div[style*="display: flex; gap: 10px; justify-content: center;"] button { width: 100% !important; height: 44px !important; }
-}
-/* 1. CONGELAR EL ENCABEZADO PRINCIPAL (LOGO Y MENÚ) */
+/* 1. HEADER FIJO Y PROTECCIÓN DE NOTCH */
 .header {
-  position: sticky !important;
+  position: fixed !important;
   top: 0 !important;
-  z-index: 999 !important;
-  background-color: #ffffff !important; /* Fondo blanco para que las letras no se encimen al pasar por debajo */
-  /* Si le habíamos puesto un padding-top para el iPhone, asegúrate de que siga aquí */
-  padding-top: env(safe-area-inset-top, 48px) !important; 
+  left: 0 !important;
+  right: 0 !important;
+  width: 100% !important;
+  height: auto !important;
+  min-height: 60px;
+  background-color: var(--white) !important;
+  z-index: 9999 !important;
+  display: flex !important;
+  align-items: center;
+  justify-content: space-between;
+  padding-left: 16px;
+  padding-right: 16px;
+  /* El secreto para el iPhone */
+  padding-top: env(safe-area-inset-top, 45px) !important;
+  padding-bottom: 12px !important;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08) !important;
+  border-bottom: 1px solid var(--border);
 }
 
-/* 2. CONGELAR EL BOTÓN DE VOLVER A LA LISTA */
+/* 2. AJUSTE DEL CUERPO (Para que no se esconda bajo el Header) */
+.main-wrapper {
+  background-color: var(--bg-app);
+  min-height: 100vh;
+  /* Empujamos todo hacia abajo: 70px de header + el notch */
+  padding-top: calc(75px + env(safe-area-inset-top, 45px)) !important;
+  padding-bottom: 40px;
+}
+
+/* 3. BOTÓN VOLVER (Limpio y sin encimarse) */
 .btn-back {
-  position: sticky !important;
-  /* El "top" debe ser el tamaño de tu header. Si tu header mide unos 70px, le ponemos 70px para que se quede justo debajo */
-  top: 80px !important; 
-  z-index: 998 !important;
-  background-color: #F8FAFC !important; /* El color de fondo de tu app para que tape lo de atrás */
+  display: flex !important;
+  align-items: center !important;
+  background: transparent !important;
+  border: none !important;
+  color: var(--primary-blue) !important;
+  font-weight: 600 !important;
+  font-size: 14px !important;
+  padding: 10px 16px !important;
+  margin-bottom: 15px !important;
+  cursor: pointer;
+  width: fit-content !important;
+}
+
+/* 4. TARJETAS DE DETALLE Y CONTENEDORES */
+.checklist-detail-header, 
+.section-header {
+  background: var(--white);
+  padding: 20px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  margin-bottom: 20px;
+  margin-left: 16px;
+  margin-right: 16px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.detail-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--primary-navy);
+  margin-bottom: 12px;
+}
+
+.detail-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+/* 5. DISEÑO DE LAS TAREAS (CHECKLIST) */
+.checklist-detail-items {
+  padding: 0 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.checklist-detail-item {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.item-main-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.item-check {
+  width: 24px;
+  height: 24px;
+  border: 2px solid #CBD5E1;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.2s;
+}
+
+.item-check.checked {
+  background-color: var(--primary-navy);
+  border-color: var(--primary-navy);
+  color: white;
+}
+
+.item-text {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-main);
+  line-height: 1.4;
+}
+
+.item-text.done {
+  color: var(--text-muted);
+  text-decoration: line-through;
+}
+
+/* 6. FOTOS Y ADJUNTOS */
+.item-photo-section {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--border);
+}
+
+.btn-upload-mini {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #F1F5F9;
+  color: var(--text-main);
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid var(--border);
+}
+
+.preview-image-box img {
   width: 100%;
-  margin-top: -10px; /* Ajuste visual */
-  padding: 15px 0 !important; /* Un poco de respiro */
-  border-bottom: 1px solid var(--border); /* Una rayita coqueta para separar */
+  max-height: 300px;
+  object-fit: contain;
+  border-radius: 8px;
+  margin-top: 10px;
+}
+
+/* 7. BOTÓN DE ENVÍO FINAL */
+.send-section {
+  padding: 30px 16px;
+}
+
+.btn-send {
+  width: 100%;
+  background: var(--primary-navy);
+  color: white;
+  border: none;
+  padding: 16px;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.3);
+}
+
+/* RESPONSIVE PARA EL BUSCADOR */
+@media screen and (max-width: 768px) {
+  .header-brand {
+    font-size: 16px !important;
+  }
+  
+  .form-input {
+    font-size: 16px !important; /* Evita que iOS haga zoom al tocar */
+  }
 }

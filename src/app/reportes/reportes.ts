@@ -236,6 +236,12 @@ export class ReportesComponent implements OnInit, OnDestroy {
     return checklist.items.filter((i:any) => i.checked).length; 
   }
 
+  // Verifica si un checklist tiene al menos una foto real adjunta
+  tieneFotos(checklist: any): boolean {
+    if (!checklist.items) return false;
+    return checklist.items.some((item: any) => item.photo && item.photo.includes('http'));
+  }
+
   async descargarExcel() {
     if (this.resultados().length === 0) {
       Swal.fire({ icon: 'info', title: 'Sin Datos', text: 'No hay datos para exportar.', confirmButtonColor: '#0F172A' });
@@ -321,7 +327,7 @@ export class ReportesComponent implements OnInit, OnDestroy {
     }
   }
 
-descargarReportePDF() {
+  descargarReportePDF() {
     if (this.resultados().length === 0) { 
       Swal.fire({ icon: 'info', title: 'Sin Datos', text: 'No hay datos para generar el PDF.', confirmButtonColor: '#0F172A' });
       return; 

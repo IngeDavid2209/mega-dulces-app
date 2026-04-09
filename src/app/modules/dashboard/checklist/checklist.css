@@ -284,3 +284,25 @@
     justify-content: center;
   }
 }
+/* 1. CONGELAR EL ENCABEZADO PRINCIPAL (LOGO Y MENÚ) */
+.header {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 999 !important;
+  background-color: #ffffff !important; /* Fondo blanco para que las letras no se encimen al pasar por debajo */
+  /* Si le habíamos puesto un padding-top para el iPhone, asegúrate de que siga aquí */
+  padding-top: env(safe-area-inset-top, 48px) !important; 
+}
+
+/* 2. CONGELAR EL BOTÓN DE VOLVER A LA LISTA */
+.btn-back {
+  position: sticky !important;
+  /* El "top" debe ser el tamaño de tu header. Si tu header mide unos 70px, le ponemos 70px para que se quede justo debajo */
+  top: 80px !important; 
+  z-index: 998 !important;
+  background-color: #F8FAFC !important; /* El color de fondo de tu app para que tape lo de atrás */
+  width: 100%;
+  margin-top: -10px; /* Ajuste visual */
+  padding: 15px 0 !important; /* Un poco de respiro */
+  border-bottom: 1px solid var(--border); /* Una rayita coqueta para separar */
+}

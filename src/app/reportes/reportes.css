@@ -119,6 +119,9 @@
 
 .btn-menu-mobile { display: none; background: transparent; border: none; color: var(--text-main); font-size: 26px; cursor: pointer; padding: 0; }
 
+/* =========================================
+   FIX: NOTCH IPHONE Y BOTÓN (SOLO CELULARES)
+   ========================================= */
 @media screen and (max-width: 768px) {
   .main-wrapper { flex-direction: column !important; }
   
@@ -129,20 +132,32 @@
     overflow-x: hidden !important; 
   }
 
-  /* 🔥 FIX BLINDADO DEL NOTCH PARA EL HEADER 🔥 */
+  /* 1. Le damos espacio a la hora del iPhone sin congelar todo a lo loco */
   .header { 
     padding-top: max(48px, env(safe-area-inset-top)) !important; 
     padding-bottom: 12px !important;
     padding-left: 15px !important;
     padding-right: 15px !important;
-    height: auto !important;
+    min-height: calc(60px + max(48px, env(safe-area-inset-top))) !important;
   }
   
   .header-brand { font-size: 16px !important; }
   .header-brand small { display: none !important; }
   .btn-menu-mobile { display: block !important; margin-right: 10px !important; }
 
-  /* 🔥 FIX BLINDADO DEL NOTCH PARA EL SIDEBAR 🔥 */
+  /* 2. Empujamos el botón de volver para que NO aplaste los datos del usuario */
+  .btn-back {
+    position: relative !important;
+    margin-top: 15px !important;
+    margin-bottom: 25px !important;
+    z-index: 10 !important;
+  }
+
+  /* 3. Aseguramos que la tarjeta principal tenga un respiro arriba */
+  .checklist-detail-header {
+    margin-top: 15px !important;
+  }
+
   .sidebar { 
     position: fixed !important; 
     top: 0 !important; 
@@ -195,26 +210,4 @@
   .modal input { font-size: 16px !important; letter-spacing: 2px !important; }
   .modal div[style*="display: flex; gap: 10px; justify-content: center;"] { flex-direction: column !important; gap: 10px !important; }
   .modal div[style*="display: flex; gap: 10px; justify-content: center;"] button { width: 100% !important; height: 44px !important; }
-}
-/* 1. CONGELAR EL ENCABEZADO PRINCIPAL (LOGO Y MENÚ) */
-.header {
-  position: sticky !important;
-  top: 0 !important;
-  z-index: 999 !important;
-  background-color: #ffffff !important; /* Fondo blanco para que las letras no se encimen al pasar por debajo */
-  /* Si le habíamos puesto un padding-top para el iPhone, asegúrate de que siga aquí */
-  padding-top: env(safe-area-inset-top, 48px) !important; 
-}
-
-/* 2. CONGELAR EL BOTÓN DE VOLVER A LA LISTA */
-.btn-back {
-  position: sticky !important;
-  /* El "top" debe ser el tamaño de tu header. Si tu header mide unos 70px, le ponemos 70px para que se quede justo debajo */
-  top: 80px !important; 
-  z-index: 998 !important;
-  background-color: #F8FAFC !important; /* El color de fondo de tu app para que tape lo de atrás */
-  width: 100%;
-  margin-top: -10px; /* Ajuste visual */
-  padding: 15px 0 !important; /* Un poco de respiro */
-  border-bottom: 1px solid var(--border); /* Una rayita coqueta para separar */
 }

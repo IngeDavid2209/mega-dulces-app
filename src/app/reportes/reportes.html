@@ -208,68 +208,71 @@
       </div>
 
       <div style="position: absolute; left: -9999px; top: 0;" *ngIf="resultados().length > 0">
-        <div id="reporte-imprimir-fotos" style="width: 1000px; padding: 60px; background: #F8FAFC; color: #1E293B; font-family: 'Inter', sans-serif;">
+        <div id="reporte-imprimir-fotos" style="width: 1000px; padding: 40px; background: #F1F5F9; font-family: 'Inter', sans-serif;">
           
-          <div style="display: flex; align-items: center; justify-content: space-between; background: #0F172A; color: white; padding: 30px 40px; border-radius: 12px; margin-bottom: 40px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+          <div style="background: #0F172A; border-radius: 12px; padding: 40px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: center; color: white; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);">
             <div>
-              <h1 style="margin: 0 0 8px 0; font-size: 32px; font-weight: 800; letter-spacing: -0.5px;">MEGA DULCES</h1>
-              <h3 style="margin: 0; font-size: 16px; color: #94A3B8; font-weight: 500; text-transform: uppercase;">AUDITORÍA OPERATIVA VISUAL</h3>
+              <h1 style="margin: 0 0 5px 0; font-size: 32px; font-weight: 800; letter-spacing: -0.5px;">MEGA DULCES</h1>
+              <p style="margin: 0; color: #94A3B8; font-size: 13px; letter-spacing: 3px; text-transform: uppercase; font-weight: 600;">Reporte de Auditoría Visual</p>
             </div>
-            <div style="text-align: right;">
-              <p style="margin: 0 0 8px 0; font-size: 15px; font-weight: 600;">Periodo: {{ fechaInicio }} al {{ fechaFin }}</p>
-              <p style="margin: 0; font-size: 13px; color: #94A3B8;">Total de operaciones: {{ resultados().length }}</p>
+            <div style="text-align: right; background: rgba(255,255,255,0.05); padding: 15px 25px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);">
+              <p style="margin: 0 0 5px 0; font-size: 15px; font-weight: 600;">{{ fechaInicio }}  ➔  {{ fechaFin }}</p>
+              <p style="margin: 0; font-size: 13px; color: #CBD5E1;">Total de registros validados: {{ resultados().length }}</p>
             </div>
           </div>
 
-          <div *ngFor="let check of resultados()" style="background: white; border: 1px solid #E2E8F0; border-radius: 16px; padding: 40px; margin-bottom: 30px; box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.05); page-break-inside: avoid;">
+          <div *ngFor="let check of resultados()" style="background: white; border-radius: 12px; border-left: 8px solid #2563EB; padding: 30px 40px; margin-bottom: 25px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); page-break-inside: avoid;">
             
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #F1F5F9; padding-bottom: 24px; margin-bottom: 30px;">
-              <div>
-                <h2 style="margin: 0 0 16px 0; font-size: 26px; color: #1E40AF; font-weight: 800; letter-spacing: -0.5px; text-transform: uppercase;">{{ check.name }}</h2>
-                <div style="display: flex; gap: 24px; color: #475569; font-size: 15px;">
-                  <span style="display: flex; align-items: center; gap: 6px;">
-                    <strong style="color: #0F172A;">Resp:</strong> {{ check.assigned }}
-                  </span>
-                  <span style="display: flex; align-items: center; gap: 6px;">
-                    <strong style="color: #0F172A;">Zona:</strong> {{ check.store }}
-                  </span>
-                  <span style="display: flex; align-items: center; gap: 6px;">
-                    <strong style="color: #0F172A;">Fecha:</strong> {{ check.date }}
-                  </span>
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 25px;">
+              <div style="flex: 1;">
+                <h2 style="margin: 0 0 16px 0; font-size: 24px; color: #0F172A; font-weight: 800; letter-spacing: -0.5px;">{{ check.name }}</h2>
+                
+                <div style="display: flex; gap: 40px; flex-wrap: wrap;">
+                  <div>
+                    <p style="margin: 0; font-size: 11px; color: #64748B; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px;">Responsable</p>
+                    <p style="margin: 4px 0 0 0; font-size: 15px; color: #0F172A; font-weight: 600;">{{ check.assigned }}</p>
+                  </div>
+                  <div>
+                    <p style="margin: 0; font-size: 11px; color: #64748B; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px;">Zona / Sucursal</p>
+                    <p style="margin: 4px 0 0 0; font-size: 15px; color: #0F172A; font-weight: 600;">{{ check.store }}</p>
+                  </div>
+                  <div>
+                    <p style="margin: 0; font-size: 11px; color: #64748B; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px;">Fecha de Ejecución</p>
+                    <p style="margin: 4px 0 0 0; font-size: 15px; color: #0F172A; font-weight: 600;">{{ check.date }}</p>
+                  </div>
                 </div>
               </div>
               
-              <div style="background: #F8FAFC; border: 1px solid #E2E8F0; padding: 12px 24px; border-radius: 8px; text-align: center;">
-                <span style="display: block; font-size: 12px; color: #64748B; font-weight: 600; text-transform: uppercase; margin-bottom: 4px;">Avance</span>
-                <span style="display: block; font-size: 24px; color: #1E40AF; font-weight: 800;">{{ getProgreso(check) }}%</span>
+              <div style="background: #EFF6FF; color: #1D4ED8; padding: 10px 20px; border-radius: 999px; font-weight: 800; font-size: 16px; display: flex; align-items: center; gap: 8px;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                {{ getProgreso(check) }}%
               </div>
             </div>
             
+            <hr style="border: none; border-top: 2px dashed #F1F5F9; margin: 25px 0;">
+
             <div>
-              <h4 style="margin: 0 0 24px 0; color: #0F172A; font-size: 18px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Evidencias Fotográficas:</h4>
+              <p style="margin: 0 0 20px 0; font-size: 13px; color: #94A3B8; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px;">Evidencias Visuales Adjuntas</p>
               
-              <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 24px;">
+              <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;">
                 <ng-container *ngFor="let item of check.items">
-                  
-                  <div *ngIf="item.photo && item.photo.includes('http')" style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column;">
+                  <div *ngIf="item.photo && item.photo.includes('http')" style="border: 1px solid #E2E8F0; border-radius: 8px; overflow: hidden; background: white;">
                     
-                    <div style="height: 200px; width: 100%; background: #E2E8F0;">
+                    <div style="height: 200px; width: 100%; background: #F8FAFC;">
                       <img [src]="item.photo" crossorigin="anonymous" style="width: 100%; height: 100%; object-fit: cover;">
                     </div>
                     
-                    <div style="padding: 16px; flex: 1; display: flex; align-items: center; background: white; border-top: 1px solid #E2E8F0;">
-                      <p style="font-size: 13px; margin: 0; line-height: 1.4; color: #1E293B; font-weight: 500; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;">{{ item.text }}</p>
+                    <div style="padding: 14px; background: white;">
+                      <p style="margin: 0; font-size: 12px; color: #334155; line-height: 1.5; font-weight: 600; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">{{ item.text }}</p>
                     </div>
-                    
+
                   </div>
-                  
                 </ng-container>
               </div>
 
-              <div *ngIf="getProgreso(check) > 0 && !tieneFotos(check)" style="background: #FEF2F2; color: #DC2626; padding: 16px 20px; border-radius: 8px; border: 1px solid #FECACA; font-size: 15px; font-weight: 500; margin-top: 20px;">
-                ⚠️ Tareas marcadas como completadas, pero no se adjuntaron evidencias visuales para este registro.
+              <div *ngIf="getProgreso(check) > 0 && !tieneFotos(check)" style="background: #F8FAFC; color: #64748B; padding: 20px; border-radius: 8px; font-size: 14px; font-weight: 600; text-align: center; border: 2px dashed #E2E8F0;">
+                📌 Registro completado sin captura de evidencias fotográficas.
               </div>
-
             </div>
           </div>
           

@@ -197,13 +197,45 @@ export class PersonalComponent implements OnInit, OnDestroy {
     }
   }
 
-  async eliminarUsuario(userToDelete: any) {
+async eliminarUsuario(userToDelete: any) {
+    // Verificamos permisos básicos
     if (this.currentUser?.rol !== 'admin' && !this.currentUser?.puedeAdministrarPersonal) return;
-    if (userToDelete.usuario === this.currentUser.usuario) return;
+    
+    // Evitar que el usuario se borre a sí mismo
+    if (userToDelete.usuario === this.currentUser.usuario) {
+      Swal.fire({ icon: 'error', title: 'Acción no permitida', text: 'No puedes eliminar tu propio usuario.', confirmButtonColor: '#0F172A' });
+      return;
+    }
 
+    // 🔥 1. CANDADO DE SEGURIDAD (Solo para Colaboradores) 🔥
+    if (this.currentUser?.rol !== 'admin') {
+      const { value: password } = await Swal.fire({
+        title: 'Autenticación Requerida',
+        text: 'Ingresa la contraseña maestra para autorizar la eliminación de este usuario:',
+        input: 'password',
+        inputPlaceholder: '••••••••',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#EF4444',
+        cancelButtonColor: '#0F172A',
+        confirmButtonText: 'Verificar',
+        cancelButtonText: 'Cancelar'
+      });
+
+      // Si cerró el modal o le dio cancelar
+      if (password === undefined) return; 
+
+      // Verificamos la contraseña maestra
+      if (password !== 'Mega2323') {
+        Swal.fire({ icon: 'error', title: 'Clave Incorrecta', text: 'No tienes autorización para eliminar.', confirmButtonColor: '#0F172A' });
+        return;
+      }
+    }
+
+    // 2. Confirmación Final (Para todos, ya sea Admin o Colaborador autenticado)
     const result = await Swal.fire({
       title: `¿Eliminar a ${userToDelete.nombre}?`,
-      text: "Esta acción no se puede deshacer.",
+      text: "Esta acción borrará todos sus accesos al sistema y no se puede deshacer.",
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#EF4444',
@@ -213,9 +245,13 @@ export class PersonalComponent implements OnInit, OnDestroy {
     });
 
     if (result.isConfirmed) {
-      const docId = userToDelete.idFirestore || userToDelete.uid || userToDelete.usuario;
-      await deleteDoc(doc(this.firestore, 'usuarios', docId));
-      Swal.fire({ icon: 'success', title: 'Eliminado', text: 'El usuario fue borrado del sistema.', confirmButtonColor: '#0F172A' });
+      try {
+        const docId = userToDelete.idFirestore || userToDelete.uid || userToDelete.usuario;
+        await deleteDoc(doc(this.firestore, 'usuarios', docId));
+        Swal.fire({ icon: 'success', title: 'Eliminado', text: 'El usuario fue borrado del sistema exitosamente.', confirmButtonColor: '#0F172A' });
+      } catch (error) {
+        Swal.fire({ icon: 'error', title: 'Error', text: 'Hubo un problema al intentar eliminar en la nube.', confirmButtonColor: '#0F172A' });
+      }
     }
   }
 

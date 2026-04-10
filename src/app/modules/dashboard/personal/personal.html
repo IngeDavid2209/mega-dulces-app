@@ -89,7 +89,10 @@
           <div class="user-credentials">
             <div class="cred-row"><span class="cred-label">Nivel:</span> <span class="cred-val text-primary">Acceso Total</span></div>
             <div class="cred-row"><span class="cred-label">Usuario:</span> <span class="cred-val">{{ user.usuario }}</span></div>
-            <div class="cred-row"><span class="cred-label">Password:</span> <span class="cred-val">{{ user.password }}</span></div>
+            <div class="cred-row">
+              <span class="cred-label">Password:</span> 
+              <span class="cred-val">{{ currentUser?.rol === 'admin' ? user.password : '••••••••' }}</span>
+            </div>
           </div>
         </div>
       </div>
@@ -138,7 +141,10 @@
                 </div>
                 
                 <div class="cred-row mt-8"><span class="cred-label">Usuario:</span> <span class="cred-val">{{ user.usuario }}</span></div>
-                <div class="cred-row"><span class="cred-label">Password:</span> <span class="cred-val">{{ user.password }}</span></div>
+                <div class="cred-row">
+                  <span class="cred-label">Password:</span> 
+                  <span class="cred-val">{{ currentUser?.rol === 'admin' ? user.password : '••••••••' }}</span>
+                </div>
               </div>
             </div>
           </div>

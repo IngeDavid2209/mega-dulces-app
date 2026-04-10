@@ -42,9 +42,17 @@
 /* --- CONTENT --- */
 .content { flex: 1; padding: 32px 40px; overflow-y: auto; background-color: var(--bg-app); }
 
-/* 🔥 FIX DE ESCRITORIO: CENTRAR CONTENIDO 🔥 */
+/* 🔥 FIX DE ESCRITORIO: PANTALLA COMPLETA ELEGANTE 🔥 */
 @media screen and (min-width: 769px) {
-  .content > div { max-width: 1000px !important; margin: 0 auto !important; }
+  .content {
+    padding: 40px 50px !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
+  }
+  .content > div { 
+    max-width: none !important; /* Le quitamos la camisa de fuerza */
+    width: 100% !important; /* Que use toda la pantalla disponible */
+  }
 }
 
 .section-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:24px; flex-wrap:wrap; gap:16px; }

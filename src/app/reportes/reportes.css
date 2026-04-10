@@ -1,5 +1,6 @@
 :host {
   --primary-navy: #0F172A;
+  --primary-blue: #1E40AF;
   --text-main: #1E293B;
   --text-muted: #64748B;
   --bg-app: #F8FAFC;
@@ -7,11 +8,14 @@
   --border: #E2E8F0;
   --card: #FFFFFF;
   --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  --green: #10B981;
+  --red: #EF4444;
 }
 
 .app-layout { display: flex; flex-direction: column; height: 100vh; overflow: hidden; background-color: var(--bg-app); }
 
-/* --- HEADER BLANCO ENTERPRISE --- */
+/* --- HEADER & SIDEBAR --- */
 .header { background-color: var(--bg-sidebar) !important; height: 64px; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; border-bottom: 1px solid var(--border) !important; z-index: 20; }
 .header-left { display: flex; align-items: center; gap: 12px; }
 .header-logo-wrap { width: 32px; height: 32px; background-color: var(--primary-navy) !important; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
@@ -19,18 +23,14 @@
 .header-brand small { display: block; font-size: 11px; color: var(--text-muted) !important; font-weight: 500; }
 .header-right .header-user { font-size: 14px; color: var(--text-muted); }
 .header-right .header-user strong { color: var(--primary-navy); font-weight: 600; }
-
 .main-wrapper { display: flex; flex: 1; overflow: hidden; }
 
-/* --- SIDEBAR BLANCO ENTERPRISE --- */
 .sidebar { width: 260px; background-color: var(--bg-sidebar) !important; display: flex; flex-direction: column; border-right: 1px solid var(--border) !important; z-index: 10; }
 .sidebar-header { padding: 24px 20px 16px 24px; display: flex; align-items: center; gap: 12px; }
 .sidebar-avatar { width: 40px; height: 40px; background-color: #F1F5F9 !important; color: var(--primary-navy) !important; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 600; border: 1px solid var(--border); }
 .sidebar-name { font-size: 15px; font-weight: 600; color: var(--text-main) !important; margin-bottom: 2px; }
 .sidebar-role { font-size: 12px; color: var(--text-muted) !important; font-weight: 500; }
 .sidebar-nav { flex: 1; display: flex; flex-direction: column; padding: 12px 12px; }
-
-/* Botones del Menú */
 .nav-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; color: var(--text-muted) !important; text-decoration: none; font-size: 14px; font-weight: 500; border-radius: 6px; transition: all 0.2s ease; margin-bottom: 4px; }
 .nav-item:hover { background-color: #F8FAFC !important; color: var(--primary-navy) !important; }
 .nav-item.active { background-color: var(--primary-navy) !important; color: #FFFFFF !important; font-weight: 600; box-shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.1); }
@@ -39,8 +39,14 @@
 .nav-logout { color: var(--red) !important; }
 .nav-logout:hover { background-color: #FEF2F2 !important; }
 
-/* --- CONTENT Y TITULOS --- */
+/* --- CONTENT --- */
 .content { flex: 1; padding: 32px 40px; overflow-y: auto; background-color: var(--bg-app); }
+
+/* 🔥 FIX DE ESCRITORIO: CENTRAR CONTENIDO 🔥 */
+@media screen and (min-width: 769px) {
+  .content > div { max-width: 1000px !important; margin: 0 auto !important; }
+}
+
 .section-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:24px; flex-wrap:wrap; gap:16px; }
 .section-title { font-size: 28px; font-weight: 700; color: var(--text-main); letter-spacing: -0.5px; }
 .section-sub { font-size: 14px; color: var(--text-muted); margin-top: 4px; font-weight: 400; }
@@ -72,8 +78,8 @@
 
 /* --- TARJETAS DEL HISTORIAL --- */
 .checklist-grid { display:grid; gap:20px; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); }
-.checklist-card { background:var(--card); border-radius:8px; padding:24px; border:1px solid var(--border); box-shadow:var(--shadow); transition:.2s; }
-.checklist-card:hover { border-color:#CBD5E1; box-shadow:var(--shadow-lg); }
+.checklist-card { background:var(--card); border-radius:8px; padding:24px; border:1px solid var(--border); box-shadow:var(--shadow); transition:.2s; cursor: pointer; }
+.checklist-card:hover { border-color:#CBD5E1; box-shadow:var(--shadow-lg); transform: translateY(-2px); }
 .checklist-card-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:16px; }
 .checklist-card-title { font-size: 16px; font-weight: 600; color: var(--text-main); flex: 1; }
 
@@ -105,84 +111,77 @@
 .btn-save { padding: 12px 24px; background: var(--primary-navy); color: #fff; border: none; border-radius: 6px; font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 500; cursor: pointer; transition: .2s; }
 .btn-save:hover:not(:disabled) { background: #1E293B; }
 
-/* =====================================================================
-   📱 RESPONSIVE MAESTRO Y BLINDADO
-   ===================================================================== */
-
-@media screen and (max-width: 1024px) {
-  .search-filters-container { flex-wrap: wrap; }
-  .filter-item { flex: 1 1 calc(50% - 15px); }
-  .filter-item-large { flex: 1 1 100%; }
-  .filter-actions { width: 100%; justify-content: flex-end; margin-top: 15px; }
-  .checklist-grid { grid-template-columns: repeat(2, 1fr) !important; }
-}
-
 .btn-menu-mobile { display: none; background: transparent; border: none; color: var(--text-main); font-size: 26px; cursor: pointer; padding: 0; }
 
-/* =========================================
-   FIX: NOTCH IPHONE Y BOTÓN (SOLO CELULARES)
-   ========================================= */
+/* ==================================================
+   🔥 FIX DEFINITIVO V3: CELULAR (APP NATIVA)
+   ================================================== */
 @media screen and (max-width: 768px) {
-  .main-wrapper { flex-direction: column !important; }
   
-  .content { 
-    padding: 15px !important; 
-    width: 100vw !important; 
-    box-sizing: border-box !important; 
-    overflow-x: hidden !important; 
+  .app-layout {
+    position: relative !important;
+    height: 100dvh !important; 
+    width: 100vw !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
   }
 
-  /* 1. Le damos espacio a la hora del iPhone sin congelar todo a lo loco */
-  .header { 
-    padding-top: max(48px, env(safe-area-inset-top)) !important; 
+  .header {
+    position: relative !important;
+    flex: 0 0 auto !important; 
+    width: 100% !important;
+    height: auto !important;
+    box-sizing: border-box !important;
+    padding-top: max(15px, env(safe-area-inset-top)) !important;
     padding-bottom: 12px !important;
     padding-left: 15px !important;
     padding-right: 15px !important;
-    min-height: calc(60px + max(48px, env(safe-area-inset-top))) !important;
+    z-index: 100 !important;
   }
-  
-  .header-brand { font-size: 16px !important; }
-  .header-brand small { display: none !important; }
+
+  .main-wrapper {
+    flex: 1 1 auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important; 
+    padding-top: 0 !important; 
+  }
+
+  .content {
+    flex: 1 1 auto !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    padding: 15px !important;
+    padding-bottom: max(40px, env(safe-area-inset-bottom, 30px)) !important; 
+  }
+
   .btn-menu-mobile { display: block !important; margin-right: 10px !important; }
-
-  /* 2. Empujamos el botón de volver para que NO aplaste los datos del usuario */
-  .btn-back {
-    position: relative !important;
-    margin-top: 15px !important;
-    margin-bottom: 25px !important;
-    z-index: 10 !important;
-  }
-
-  /* 3. Aseguramos que la tarjeta principal tenga un respiro arriba */
-  .checklist-detail-header {
-    margin-top: 15px !important;
-  }
-
+  .header-brand { font-size: 16px !important; margin-left: 5px !important; }
+  .header-brand small { display: none !important; }
+  .header-user { display: none !important; }
+  
   .sidebar { 
     position: fixed !important; 
     top: 0 !important; 
+    bottom: 0 !important;
     left: -100% !important; 
+    height: 100dvh !important; 
     width: 280px !important; 
-    height: 100vh !important; 
     z-index: 2000 !important; 
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important; 
-    box-shadow: none !important; 
+    transition: left 0.3s ease !important; 
     padding-top: max(48px, env(safe-area-inset-top)) !important;
   }
-  .sidebar.mobile-open { left: 0 !important; box-shadow: 4px 0 25px rgba(0,0,0,0.1) !important; }
+  .sidebar.mobile-open { left: 0 !important; box-shadow: 4px 0 25px rgba(0,0,0,0.1) !important;}
   
-  .mobile-overlay { 
-    position: fixed !important; 
-    inset: 0 !important; 
-    background: rgba(15, 23, 42, 0.6) !important; 
-    z-index: 1999 !important; 
-    backdrop-filter: blur(2px) !important; 
-    display: block !important; 
-  }
+  .mobile-overlay { position: fixed !important; inset: 0 !important; background: rgba(15,23,42,0.6) !important; z-index: 1999 !important; backdrop-filter: blur(2px) !important; }
+  
+  .btn-back { position: relative !important; margin-top: 5px !important; margin-bottom: 20px !important; z-index: 10 !important; }
 
   .section-header { flex-direction: column !important; align-items: flex-start !important; gap: 10px !important; margin-bottom: 20px !important; }
   .section-title { font-size: 24px !important; }
-  .section-sub { font-size: 13px !important; }
 
   .filter-box-wrap { padding: 16px !important; }
   .search-filters-container { flex-direction: column !important; align-items: stretch !important; gap: 12px !important; }
@@ -191,79 +190,15 @@
   .filter-actions { flex-direction: column !important; width: 100% !important; gap: 8px !important; }
   .filter-actions button, .btn-search, .btn-pdf, .btn-delete-history { width: 100% !important; justify-content: center !important; height: 46px !important; }
 
-  button[style*="linear-gradient"] { font-size: 13px !important; padding: 14px 10px !important; text-align: center !important; line-height: 1.4 !important; white-space: normal !important; }
-
-  .checklist-grid { display: flex !important; flex-direction: column !important; gap: 15px !important; width: 100% !important; box-sizing: border-box !important; }
+  .checklist-grid { display: flex !important; flex-direction: column !important; gap: 15px !important; width: 100% !important; box-sizing: border-box !important;}
   .checklist-card { padding: 16px !important; }
   .checklist-card-info { flex-direction: column !important; gap: 8px !important; }
-  .checklist-card-info span { font-size: 13px !important; }
-
-  .checklist-detail-header { padding: 15px !important; }
+  
   div[style*="padding: 30px"] { padding: 15px !important; }
   h2[style*="font-size: 24px"] { font-size: 18px !important; }
   div[style*="gap: 20px"] { flex-direction: column !important; gap: 8px !important; }
   div[style*="padding: 16px"] { padding: 12px !important; }
-
   img[alt="Evidencia"] { max-height: 250px !important; width: 100% !important; object-fit: cover !important; }
 
   .modal { width: 90% !important; max-width: 350px !important; padding: 20px !important; margin: 20px auto !important; }
-  .modal input { font-size: 16px !important; letter-spacing: 2px !important; }
-  .modal div[style*="display: flex; gap: 10px; justify-content: center;"] { flex-direction: column !important; gap: 10px !important; }
-  .modal div[style*="display: flex; gap: 10px; justify-content: center;"] button { width: 100% !important; height: 44px !important; }
-}
-/* ==================================================
-   🔥 ESTRUCTURA INTERNA DE APP NATIVA (SOLO CELULAR)
-   ================================================== */
-@media screen and (max-width: 768px) {
-  
-  /* 1. La app ocupa exactamente la pantalla, ni un pixel más */
-  .app-layout {
-    position: absolute !important;
-    top: 0 !important;
-    left: 0 !important;
-    right: 0 !important;
-    bottom: 0 !important;
-    height: 100% !important;
-    display: flex !important;
-    flex-direction: column !important;
-    overflow: hidden !important; /* Nada se desborda de aquí */
-  }
-
-  /* 2. El encabezado no crece, no se encoge, y protege el Notch */
-  .header {
-    flex: 0 0 auto !important; /* Se queda fijo en su tamaño */
-    position: relative !important;
-    width: 100% !important;
-    z-index: 9999 !important;
-    padding-top: max(48px, env(safe-area-inset-top)) !important;
-    padding-bottom: 12px !important;
-  }
-
-  /* 3. El contenedor principal toma el resto del espacio disponible */
-  .main-wrapper {
-    flex: 1 1 auto !important;
-    display: flex !important;
-    flex-direction: column !important;
-    overflow: hidden !important; /* Bloquea el scroll aquí también */
-    padding-top: 0 !important;
-  }
-
-  /* 4. ¡LA ZONA MÁGICA! Esta es la ÚNICA parte que puede hacer scroll */
-  .content {
-    flex: 1 1 auto !important;
-    height: 100% !important;
-    overflow-y: auto !important; /* Habilita el scroll vertical */
-    overflow-x: hidden !important;
-    -webkit-overflow-scrolling: touch !important; /* Scroll suavecito en iPhone */
-    padding: 15px !important;
-    padding-bottom: 80px !important; /* Espacio extra al final para que no pegue abajo */
-  }
-
-  /* Ajuste para el botón de volver */
-  .btn-back {
-    position: relative !important;
-    margin-top: 5px !important;
-    margin-bottom: 15px !important;
-    z-index: 10 !important;
-  }
 }

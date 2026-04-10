@@ -208,57 +208,57 @@
       </div>
 
       <div style="position: absolute; left: -9999px; top: 0;" *ngIf="resultados().length > 0">
-        <div id="reporte-imprimir-fotos" style="width: 900px; padding: 40px; background: #F8FAFC; color: #1E293B; font-family: 'Inter', sans-serif;">
+        <div id="reporte-imprimir-fotos" style="width: 1000px; padding: 60px; background: #F8FAFC; color: #1E293B; font-family: 'Inter', sans-serif;">
           
-          <div style="display: flex; align-items: center; justify-content: space-between; background: #0F172A; color: white; padding: 24px 32px; border-radius: 12px; margin-bottom: 30px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+          <div style="display: flex; align-items: center; justify-content: space-between; background: #0F172A; color: white; padding: 30px 40px; border-radius: 12px; margin-bottom: 40px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
             <div>
-              <h1 style="margin: 0 0 4px 0; font-size: 28px; font-weight: 800; letter-spacing: -0.5px;">MEGA DULCES</h1>
-              <h3 style="margin: 0; font-size: 14px; color: #94A3B8; font-weight: 500;">AUDITORÍA OPERATIVA VISUAL</h3>
+              <h1 style="margin: 0 0 8px 0; font-size: 32px; font-weight: 800; letter-spacing: -0.5px;">MEGA DULCES</h1>
+              <h3 style="margin: 0; font-size: 16px; color: #94A3B8; font-weight: 500; text-transform: uppercase;">AUDITORÍA OPERATIVA VISUAL</h3>
             </div>
             <div style="text-align: right;">
-              <p style="margin: 0 0 4px 0; font-size: 13px; font-weight: 600;">Periodo: {{ fechaInicio }} al {{ fechaFin }}</p>
-              <p style="margin: 0; font-size: 12px; color: #94A3B8;">Total de operaciones: {{ resultados().length }}</p>
+              <p style="margin: 0 0 8px 0; font-size: 15px; font-weight: 600;">Periodo: {{ fechaInicio }} al {{ fechaFin }}</p>
+              <p style="margin: 0; font-size: 13px; color: #94A3B8;">Total de operaciones: {{ resultados().length }}</p>
             </div>
           </div>
 
-          <div *ngFor="let check of resultados()" style="background: white; border: 1px solid #E2E8F0; border-radius: 12px; padding: 24px; margin-bottom: 24px; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1); page-break-inside: avoid;">
+          <div *ngFor="let check of resultados()" style="background: white; border: 1px solid #E2E8F0; border-radius: 16px; padding: 40px; margin-bottom: 30px; box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.05); page-break-inside: avoid;">
             
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid #F1F5F9; padding-bottom: 16px; margin-bottom: 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #F1F5F9; padding-bottom: 24px; margin-bottom: 30px;">
               <div>
-                <h2 style="margin: 0 0 8px 0; font-size: 20px; color: #1E40AF; font-weight: 700; letter-spacing: -0.3px; text-transform: uppercase;">{{ check.name }}</h2>
-                <div style="display: flex; gap: 16px; color: #475569; font-size: 13px;">
-                  <span style="display: flex; align-items: center; gap: 4px;">
+                <h2 style="margin: 0 0 16px 0; font-size: 26px; color: #1E40AF; font-weight: 800; letter-spacing: -0.5px; text-transform: uppercase;">{{ check.name }}</h2>
+                <div style="display: flex; gap: 24px; color: #475569; font-size: 15px;">
+                  <span style="display: flex; align-items: center; gap: 6px;">
                     <strong style="color: #0F172A;">Resp:</strong> {{ check.assigned }}
                   </span>
-                  <span style="display: flex; align-items: center; gap: 4px;">
+                  <span style="display: flex; align-items: center; gap: 6px;">
                     <strong style="color: #0F172A;">Zona:</strong> {{ check.store }}
                   </span>
-                  <span style="display: flex; align-items: center; gap: 4px;">
+                  <span style="display: flex; align-items: center; gap: 6px;">
                     <strong style="color: #0F172A;">Fecha:</strong> {{ check.date }}
                   </span>
                 </div>
               </div>
               
-              <div style="background: #F8FAFC; border: 1px solid #E2E8F0; padding: 8px 16px; border-radius: 8px; text-align: center;">
-                <span style="display: block; font-size: 10px; color: #64748B; font-weight: 600; text-transform: uppercase; margin-bottom: 2px;">Avance</span>
-                <span style="display: block; font-size: 18px; color: #1E40AF; font-weight: 800;">{{ getProgreso(check) }}%</span>
+              <div style="background: #F8FAFC; border: 1px solid #E2E8F0; padding: 12px 24px; border-radius: 8px; text-align: center;">
+                <span style="display: block; font-size: 12px; color: #64748B; font-weight: 600; text-transform: uppercase; margin-bottom: 4px;">Avance</span>
+                <span style="display: block; font-size: 24px; color: #1E40AF; font-weight: 800;">{{ getProgreso(check) }}%</span>
               </div>
             </div>
             
             <div>
-              <h4 style="margin: 0 0 16px 0; color: #0F172A; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Evidencias Fotográficas:</h4>
+              <h4 style="margin: 0 0 24px 0; color: #0F172A; font-size: 18px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Evidencias Fotográficas:</h4>
               
-              <div style="display: flex; flex-wrap: wrap; gap: 16px;">
+              <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 24px;">
                 <ng-container *ngFor="let item of check.items">
                   
-                  <div *ngIf="item.photo && item.photo.includes('http')" style="width: 160px; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; overflow: hidden; display: flex; flex-direction: column;">
+                  <div *ngIf="item.photo && item.photo.includes('http')" style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column;">
                     
-                    <div style="height: 160px; width: 100%; background: #E2E8F0;">
+                    <div style="height: 200px; width: 100%; background: #E2E8F0;">
                       <img [src]="item.photo" crossorigin="anonymous" style="width: 100%; height: 100%; object-fit: cover;">
                     </div>
                     
-                    <div style="padding: 10px; flex: 1; display: flex; align-items: center;">
-                      <p style="font-size: 10px; margin: 0; line-height: 1.3; color: #334155; font-weight: 500; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;">{{ item.text }}</p>
+                    <div style="padding: 16px; flex: 1; display: flex; align-items: center; background: white; border-top: 1px solid #E2E8F0;">
+                      <p style="font-size: 13px; margin: 0; line-height: 1.4; color: #1E293B; font-weight: 500; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;">{{ item.text }}</p>
                     </div>
                     
                   </div>
@@ -266,8 +266,8 @@
                 </ng-container>
               </div>
 
-              <div *ngIf="getProgreso(check) > 0 && !tieneFotos(check)" style="background: #FEF2F2; color: #DC2626; padding: 12px 16px; border-radius: 6px; border: 1px solid #FECACA; font-size: 13px; font-weight: 500;">
-                Tareas marcadas como completadas, pero no se adjuntaron evidencias visuales para este registro.
+              <div *ngIf="getProgreso(check) > 0 && !tieneFotos(check)" style="background: #FEF2F2; color: #DC2626; padding: 16px 20px; border-radius: 8px; border: 1px solid #FECACA; font-size: 15px; font-weight: 500; margin-top: 20px;">
+                ⚠️ Tareas marcadas como completadas, pero no se adjuntaron evidencias visuales para este registro.
               </div>
 
             </div>

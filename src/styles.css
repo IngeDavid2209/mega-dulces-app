@@ -117,26 +117,20 @@ select.form-input, select.select-input {
    🔥 PARCHE FINAL: ESTÉTICA Y CORRECCIONES 🔥
    ================================================== */
 
-/* 1. FIX ESCRITORIO: Regresar los márgenes y centrar contenido */
+/* 1. FIX ESCRITORIO: Regresar los márgenes para que respire, pero a pantalla completa */
 @media screen and (min-width: 769px) {
   .content {
-    padding: 40px 50px !important;
+    padding: 35px 40px !important;
     box-sizing: border-box !important;
-  }
-  
-  /* Centramos el contenido para que no parezca sábana en monitores anchos */
-  .content > div {
-    max-width: 1200px !important;
-    margin-left: auto !important;
-    margin-right: auto !important;
+    width: 100% !important; /* Vuelve a tomar toda la pantalla */
   }
 }
 
-/* 2. FIX CELULAR: Que el menú no se corte de abajo */
+/* 2. FIX CELULAR: Que el menú no se corte de abajo y se respete la barra */
 @media screen and (max-width: 768px) {
   .sidebar {
     /* El box-sizing obliga a que el padding se incluya dentro del 100dvh */
     box-sizing: border-box !important; 
-    padding-bottom: env(safe-area-inset-bottom, 30px) !important;
+    padding-bottom: max(30px, env(safe-area-inset-bottom)) !important;
   }
 }

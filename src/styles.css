@@ -126,11 +126,22 @@ select.form-input, select.select-input {
   }
 }
 
-/* 2. FIX CELULAR: Que el menú no se corte de abajo y se respete la barra */
+/* ==================================================
+   🔥 FIX CELULAR: MENÚ LATERAL (ANTI-BARRA NAVEGADOR) 🔥
+   ================================================== */
 @media screen and (max-width: 768px) {
   .sidebar {
-    /* El box-sizing obliga a que el padding se incluya dentro del 100dvh */
-    box-sizing: border-box !important; 
-    padding-bottom: max(30px, env(safe-area-inset-bottom)) !important;
+    height: 100dvh !important;
+    /* Le metemos un buen colchón abajo para esquivar la barra de Chrome/Safari */
+    padding-bottom: max(100px, env(safe-area-inset-bottom, 80px)) !important; 
+    box-sizing: border-box !important;
+  }
+  
+  /* Hacemos que el interior del menú pueda hacer scroll si la pantalla es pequeña */
+  .sidebar > div {
+    height: 100% !important;
+    overflow-y: auto !important; /* Permite deslizar el menú */
+    overflow-x: hidden !important;
+    -webkit-overflow-scrolling: touch !important; /* Scroll suave en iPhone */
   }
 }

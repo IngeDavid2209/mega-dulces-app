@@ -127,21 +127,53 @@ select.form-input, select.select-input {
 }
 
 /* ==================================================
-   🔥 FIX CELULAR: MENÚ LATERAL (ANTI-BARRA NAVEGADOR) 🔥
+   🔥 FIX DEFINITIVO: SIDEBAR APP NATIVA (SCROLL INTERNO) 🔥
    ================================================== */
 @media screen and (max-width: 768px) {
   .sidebar {
-    height: 100dvh !important;
-    /* Le metemos un buen colchón abajo para esquivar la barra de Chrome/Safari */
-    padding-bottom: max(100px, env(safe-area-inset-bottom, 80px)) !important; 
-    box-sizing: border-box !important;
+    position: fixed !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    left: -100% !important;
+    width: 280px !important;
+    height: 100dvh !important; /* Altura dinámica exacta */
+    z-index: 2000 !important;
+    display: flex !important;
+    flex-direction: column !important; /* Lo convertimos en columna rígida */
+    box-sizing: border-box !important; /* El padding ya no estira la caja */
+    overflow: hidden !important; /* PROHIBIDO que el contenedor se mueva */
+    background-color: var(--bg-sidebar) !important;
+    padding-top: env(safe-area-inset-top) !important;
+    padding-bottom: env(safe-area-inset-bottom) !important;
+    transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
   }
-  
-  /* Hacemos que el interior del menú pueda hacer scroll si la pantalla es pequeña */
+
+  .sidebar.mobile-open {
+    left: 0 !important;
+  }
+
+  /* 🔥 EL CONTENEDOR INTERNO TAMBIÉN SE CONGELA 🔥 */
   .sidebar > div {
+    display: flex !important;
+    flex-direction: column !important;
     height: 100% !important;
-    overflow-y: auto !important; /* Permite deslizar el menú */
-    overflow-x: hidden !important;
-    -webkit-overflow-scrolling: touch !important; /* Scroll suave en iPhone */
+    overflow: hidden !important;
+  }
+
+  /* 🔥 ESTA ES LA CLAVE: Solo el nav (las opciones) tiene permiso de scroll */
+  .sidebar-nav {
+    flex: 1 !important; /* Toma todo el espacio del medio */
+    overflow-y: auto !important; /* Habilita el scroll solo aquí */
+    padding: 16px 12px !important;
+    -webkit-overflow-scrolling: touch !important; /* Scroll suavecito en iOS */
+  }
+
+  /* La parte de abajo (Cerrar sesión y Usuario) se queda fija */
+  .bottom-nav {
+    flex-shrink: 0 !important; /* Evita que se aplaste */
+    padding: 0 12px 20px 12px !important;
+    background-color: var(--bg-sidebar) !important;
+    border-top: 1px solid var(--border) !important;
+    margin-bottom: max(20px, env(safe-area-inset-bottom)) !important;
   }
 }

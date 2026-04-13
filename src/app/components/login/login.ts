@@ -10,8 +10,8 @@ import Swal from 'sweetalert2';
   selector: 'app-login',
   standalone: true,
   imports: [CommonModule, FormsModule],
-  templateUrl: './login.html', 
-  styleUrls: ['./login.css']   
+  templateUrl: './login.html',
+  styleUrls: ['./login.css']
 })
 export class LoginComponent {
   usuario = '';
@@ -38,7 +38,7 @@ export class LoginComponent {
     // 🛡️ PARACAÍDAS DE SEGURIDAD PARA EL ADMIN PRINCIPAL 🛡️
     // Este es un bypass manual solo para emergencias si Firebase falla.
     if (this.usuario === 'admin' && this.password === '123456') {
-      const adminSeguridad = { 
+      const adminSeguridad = {
         nombre: 'Administrador Supremo', usuario: 'admin', rol: 'admin',
         puedeCrearChecklists: true, puedeCrearRutinas: true, puedeCrearTareasUnicas: true,
         puedeVerCheckstore: true, puedeVerEstadisticas: true, puedeVerHistorial: true, puedeAdministrarPersonal: true
@@ -77,14 +77,14 @@ export class LoginComponent {
 
       // 2. Si lo encontramos, extraemos su correo real y procedemos a loguear con Firebase Auth
       const correoParaFirebase = usuarioEncontrado.correo;
-      
+
       // Intentamos iniciar sesión con la contraseña que puso
       await signInWithEmailAndPassword(this.auth, correoParaFirebase, this.password);
 
       // 3. Si la contraseña fue correcta, Firebase nos deja pasar. 
       // Guardamos la sesión (el rol se guarda aquí automáticamente)
       localStorage.setItem('md_sesion_actual', JSON.stringify(usuarioEncontrado));
-      
+
       // Limpiamos los campos y redirigimos
       this.usuario = '';
       this.password = '';

@@ -50,8 +50,8 @@
     width: 100% !important;
   }
   .content > div { 
-    max-width: none !important; /* Le quitamos la camisa de fuerza */
-    width: 100% !important; /* Que use toda la pantalla disponible */
+    max-width: none !important; 
+    width: 100% !important; 
   }
 }
 
@@ -96,6 +96,8 @@
 .badge-pendiente { background:#F1F5F9; color:#475569; border-color: #E2E8F0; }
 .badge-en-progreso { background:#EFF6FF; color:#1D4ED8; border-color: #BFDBFE; }
 .badge-completo { background:#F0FDF4; color:#15803D; border-color: #BBF7D0; }
+/* 🔥 NUEVO COLOR PARA LOS VENCIDOS 🔥 */
+.badge-vencido { background:#FEF2F2; color:#DC2626; border-color: #FECACA; }
 
 .checklist-card-info { display:flex; flex-wrap:wrap; gap:12px 20px; font-size:13px; color:var(--text-muted); margin-bottom:20px; font-weight: 500; }
 

@@ -28,8 +28,8 @@ export class ReportesComponent implements OnInit, OnDestroy {
   
   // 🔥 VARIABLES PARA EL AUTOCOMPLETE DE EMPLEADOS 🔥
   empleadoSeleccionado = '';
-  textoBusquedaEmpleado = ''; // Lo que el usuario teclea
-  mostrarDropdownEmpleados = false; // Controla si se ve la lista flotante
+  textoBusquedaEmpleado = ''; 
+  mostrarDropdownEmpleados = false; 
   
   empleados = signal<any[]>([]);
   resultados = signal<any[]>([]);
@@ -47,13 +47,11 @@ export class ReportesComponent implements OnInit, OnDestroy {
   private route = inject(ActivatedRoute); 
   private busquedaSub: any = null;
 
-  // Cierra el dropdown si el usuario hace clic afuera de él
   @HostListener('document:click', ['$event'])
   onClickOutside(event: Event) {
     const target = event.target as HTMLElement;
     if (!target.closest('.autocomplete-container')) {
       this.mostrarDropdownEmpleados = false;
-      // Si salió sin seleccionar nada y escribió algo, volvemos al estado seleccionado o limpiamos
       if (this.empleadoSeleccionado !== this.textoBusquedaEmpleado) {
         this.textoBusquedaEmpleado = this.empleadoSeleccionado || 'Todos los empleados';
       }
@@ -98,7 +96,6 @@ export class ReportesComponent implements OnInit, OnDestroy {
     this.empleados.set(lista);
   }
 
-  // 🔥 LÓGICA DEL BUSCADOR INTELIGENTE 🔥
   get empleadosFiltrados() {
     if (this.textoBusquedaEmpleado === 'Todos los empleados' || this.textoBusquedaEmpleado.trim() === '') {
       return this.empleados();
@@ -125,7 +122,6 @@ export class ReportesComponent implements OnInit, OnDestroy {
     }
   }
 
-  // 🔥 NUEVA FUNCIÓN PARA VACIAR EL CAMPO AL HACER CLIC 🔥
   onFocusBusqueda() {
     this.mostrarDropdownEmpleados = true;
     this.textoBusquedaEmpleado = ''; 
@@ -224,6 +220,26 @@ export class ReportesComponent implements OnInit, OnDestroy {
     }
   }
 
+  // 🔥 NUEVA FUNCIÓN PARA DETECTAR VENCIDOS 🔥
+  getDisplayStatus(checklist: any): string {
+    const statusReal = (checklist.status || 'pendiente').toLowerCase();
+    
+    // Si ya está completo, no importa la fecha, ya cumplió.
+    if (statusReal === 'completo') return 'completo';
+
+    // Sacamos la fecha exacta de hoy
+    const hoy = new Date();
+    const offset = hoy.getTimezoneOffset() * 60000;
+    const hoyStr = new Date(hoy.getTime() - offset).toISOString().split('T')[0];
+
+    // Si la fecha del checklist es MENOR a hoy, y no está completo = Vencido
+    if (checklist.date && checklist.date < hoyStr) {
+      return 'vencido';
+    }
+
+    return statusReal;
+  }
+
   getProgreso(checklist: any): number {
     if (checklist.calcProgreso !== undefined) return checklist.calcProgreso;
     if (!checklist.items || checklist.items.length === 0) return 0;
@@ -236,7 +252,6 @@ export class ReportesComponent implements OnInit, OnDestroy {
     return checklist.items.filter((i:any) => i.checked).length; 
   }
 
-  // Verifica si un checklist tiene al menos una foto real adjunta
   tieneFotos(checklist: any): boolean {
     if (!checklist.items) return false;
     return checklist.items.some((item: any) => item.photo && item.photo.includes('http'));
@@ -248,11 +263,9 @@ export class ReportesComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // 1. Creamos el libro y la hoja de cálculo
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Reporte Auditoría');
 
-    // 2. 🔥 ELIMINAMOS LA COLUMNA DE ID 🔥
     worksheet.columns = [
       { header: 'Nombre Operación', key: 'name', width: 40 },
       { header: 'Sucursal', key: 'store', width: 20 },
@@ -263,7 +276,6 @@ export class ReportesComponent implements OnInit, OnDestroy {
       { header: 'Progreso', key: 'progreso', width: 15 }
     ];
 
-    // 3. Estilo Enterprise a la Cabecera
     const headerRow = worksheet.getRow(1);
     headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
     headerRow.fill = {
@@ -274,20 +286,18 @@ export class ReportesComponent implements OnInit, OnDestroy {
     headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
     headerRow.height = 25; 
 
-    // 4. Inyectamos los datos sin el ID
     this.resultados().forEach(c => {
       worksheet.addRow({
         name: c.name,
         store: c.store,
         assigned: c.assigned,
         date: c.date,
-        status: (c.status || 'pendiente').toUpperCase(),
+        status: this.getDisplayStatus(c).toUpperCase(), // 🔥 AHORA EXPORTA "VENCIDO"
         tareas: `${this.getCompletados(c)} de ${c.items?.length || 0}`,
         progreso: `${this.getProgreso(c)}%`
       });
     });
 
-    // 5. Aplicamos bordes y centrado
     worksheet.eachRow((row, rowNumber) => {
       row.eachCell((cell, colNumber) => {
         cell.border = {
@@ -297,7 +307,6 @@ export class ReportesComponent implements OnInit, OnDestroy {
           right: { style: 'thin', color: { argb: 'FFCBD5E1' } }
         };
         
-        // Ajustamos los índices de columnas para centrar porque quitamos la primera
         if (rowNumber > 1) {
           if (colNumber >= 4 && colNumber <= 7) {
             cell.alignment = { vertical: 'middle', horizontal: 'center' };
@@ -308,7 +317,6 @@ export class ReportesComponent implements OnInit, OnDestroy {
       });
     });
 
-    // 6. Generamos el archivo
     try {
       const buffer = await workbook.xlsx.writeBuffer();
       const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
@@ -335,45 +343,37 @@ export class ReportesComponent implements OnInit, OnDestroy {
 
     const doc = new jsPDF({ orientation: 'landscape', format: 'a4' });
     
-    // --- 1. CABECERA CORPORATIVA ---
-    // Barra superior azul marino
-    doc.setFillColor(15, 23, 42); // var(--primary-navy)
+    doc.setFillColor(15, 23, 42); 
     doc.rect(0, 0, doc.internal.pageSize.getWidth(), 25, 'F');
     
-    // Título Principal
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(22); 
     doc.setTextColor(255, 255, 255); 
     doc.text('MEGA DULCES', 14, 16);
 
-    // Subtítulo en la cabecera
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(10);
     doc.setTextColor(200, 200, 200);
     doc.text('Panel Enterprise • Reporte de Auditoría Operativa', 75, 16);
 
-    // --- 2. METADATOS DEL REPORTE ---
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(12);
-    doc.setTextColor(30, 41, 59); // var(--text-main)
+    doc.setTextColor(30, 41, 59); 
     doc.text('Detalles de la Consulta', 14, 36);
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(9);
-    doc.setTextColor(100, 116, 139); // var(--text-muted)
+    doc.setTextColor(100, 116, 139); 
     doc.text(`Periodo analizado: ${this.fechaInicio} al ${this.fechaFin}`, 14, 42);
     doc.text(`Filtro de usuario: ${this.empleadoSeleccionado || 'Todos los colaboradores'}`, 14, 47);
     doc.text(`Fecha de emisión: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}`, 14, 52);
     doc.text(`Total de registros: ${this.resultados().length}`, 14, 57);
 
-    // Línea separadora sutil
-    doc.setDrawColor(226, 232, 240); // var(--border)
+    doc.setDrawColor(226, 232, 240); 
     doc.setLineWidth(0.5);
     doc.line(14, 62, doc.internal.pageSize.getWidth() - 14, 62);
 
-    // --- 3. CONSTRUCCIÓN DE LOS DATOS ---
     const bodyData = this.resultados().map(c => {
-      // Formateo de las tareas para que se vean más limpias
       const tareasCumplidas = c.items ? c.items.filter((i:any) => i.checked) : [];
       let detalle = '';
       
@@ -389,7 +389,6 @@ export class ReportesComponent implements OnInit, OnDestroy {
         }).join('\n');
       }
 
-      // Calculamos el porcentaje
       const marcados = c.items ? c.items.filter((i:any) => i.checked).length : 0;
       const total = c.items ? c.items.length : 0;
       const progreso = total > 0 ? Math.round((marcados / total) * 100) : 0;
@@ -400,66 +399,66 @@ export class ReportesComponent implements OnInit, OnDestroy {
         c.store || '-', 
         c.assigned || '-', 
         `${progreso}%`,
-        (c.status || 'Pendiente').toUpperCase(), 
+        this.getDisplayStatus(c).toUpperCase(), // 🔥 AHORA EXPORTA "VENCIDO" AL PDF
         detalle 
       ];
     });
 
-    // --- 4. TABLA CON DISEÑO LIMPIO (Sin azules genéricos) ---
     autoTable(doc, {
       startY: 68,
       head: [['Fecha', 'Operación', 'Sucursal', 'Responsable', 'Avance', 'Estado', 'Resumen de Tareas Verificadas']],
       body: bodyData,
-      theme: 'plain', // Quitamos el tema "grid" feo
+      theme: 'plain', 
       headStyles: { 
-        fillColor: [248, 250, 252], // var(--bg-app) gris súper claro
-        textColor: [15, 23, 42], // Letra oscura
+        fillColor: [248, 250, 252], 
+        textColor: [15, 23, 42], 
         fontStyle: 'bold',
         fontSize: 9,
         cellPadding: 5,
-        lineColor: [226, 232, 240], // Borde inferior sutil
+        lineColor: [226, 232, 240], 
         lineWidth: { bottom: 1 }
       },
       bodyStyles: {
-        textColor: [51, 65, 85], // Gris oscuro elegante
+        textColor: [51, 65, 85], 
         fontSize: 8,
         cellPadding: 4,
-        lineColor: [226, 232, 240], // Borde inferior en cada fila
+        lineColor: [226, 232, 240], 
         lineWidth: { bottom: 0.5 }
       },
       alternateRowStyles: { 
-        fillColor: [255, 255, 255] // Fila blanca
+        fillColor: [255, 255, 255] 
       }, 
       columnStyles: { 
-        0: { cellWidth: 22 }, // Fecha
-        1: { cellWidth: 40, fontStyle: 'bold', textColor: [15, 23, 42] }, // Checklist
-        2: { cellWidth: 25 }, // Sucursal
-        3: { cellWidth: 35 }, // Encargado
-        4: { cellWidth: 18, halign: 'center', fontStyle: 'bold' }, // Avance
-        5: { cellWidth: 25 }, // Estado
-        6: { cellWidth: 100 } // Tareas (Mucha más área para el texto)
+        0: { cellWidth: 22 }, 
+        1: { cellWidth: 40, fontStyle: 'bold', textColor: [15, 23, 42] }, 
+        2: { cellWidth: 25 }, 
+        3: { cellWidth: 35 }, 
+        4: { cellWidth: 18, halign: 'center', fontStyle: 'bold' }, 
+        5: { cellWidth: 25 }, 
+        6: { cellWidth: 100 } 
       },
-      // Pintamos el estado de un color sutil según si dice EN-PROGRESO, COMPLETO, etc.
       didParseCell: function(data) {
         if (data.section === 'body' && data.column.index === 5) {
           const estado = data.cell.raw as string;
           if (estado.includes('COMPLETO')) {
-            data.cell.styles.textColor = [21, 128, 61]; // Verde oscuro
+            data.cell.styles.textColor = [21, 128, 61]; 
             data.cell.styles.fontStyle = 'bold';
           } else if (estado.includes('PROGRESO')) {
-            data.cell.styles.textColor = [29, 78, 216]; // Azul oscuro
+            data.cell.styles.textColor = [29, 78, 216]; 
+          } else if (estado.includes('VENCIDO')) { // 🔥 PINTAMOS DE ROJO EL VENCIDO EN EL PDF
+            data.cell.styles.textColor = [220, 38, 38]; 
+            data.cell.styles.fontStyle = 'bold';
           }
         }
       }
     });
 
-    // --- 5. PIE DE PÁGINA (Paginación) ---
     const pageCount = doc.getNumberOfPages();
     for (let i = 1; i <= pageCount; i++) {
       doc.setPage(i);
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(8);
-      doc.setTextColor(148, 163, 184); // Gris muy claro
+      doc.setTextColor(148, 163, 184); 
       doc.text(
         `Mega Dulces App - Documento Confidencial | Página ${i} de ${pageCount}`, 
         doc.internal.pageSize.getWidth() / 2, 
@@ -468,7 +467,6 @@ export class ReportesComponent implements OnInit, OnDestroy {
       );
     }
 
-    // --- 6. DESCARGAR ---
     doc.save(`Reporte_MegaDulces_${this.fechaInicio}_al_${this.fechaFin}.pdf`);
   }
 
@@ -492,7 +490,6 @@ export class ReportesComponent implements OnInit, OnDestroy {
     this.generandoReporte.set(true);
 
     setTimeout(async () => {
-      // 1. Buscamos el contenedor principal
       const contenedor = document.getElementById('reporte-imprimir-fotos');
       if (!contenedor) { this.generandoReporte.set(false); return; }
 
@@ -501,17 +498,15 @@ export class ReportesComponent implements OnInit, OnDestroy {
         const pdfWidth = pdf.internal.pageSize.getWidth();
         const pdfHeight = pdf.internal.pageSize.getHeight();
         
-        let currentY = 10; // Coordenada de altura inicial (Margen superior de 10mm)
-        const margin = 10; // Margen estándar
-        const usableHeight = pdfHeight - (margin * 2); // Altura que podemos usar sin salirnos de la hoja
+        let currentY = 10; 
+        const margin = 10; 
+        const usableHeight = pdfHeight - (margin * 2); 
 
-        // 2. Extraemos a los "hijos" (Cada tarjeta individual de checklist)
         const tarjetas = Array.from(contenedor.children) as HTMLElement[];
 
         for (let i = 0; i < tarjetas.length; i++) {
           const tarjetaHTML = tarjetas[i];
 
-          // 3. Le tomamos foto SOLO a esta tarjeta
           const canvas = await html2canvas(tarjetaHTML, { 
             scale: 1.5, 
             useCORS: true, 
@@ -520,12 +515,9 @@ export class ReportesComponent implements OnInit, OnDestroy {
           });
 
           const imgData = canvas.toDataURL('image/jpeg', 0.8); 
-          // Calculamos su altura en milímetros
           const imgHeight = (canvas.height * pdfWidth) / canvas.width;
 
-          // 4. LÓGICA DE PAGINACIÓN INTELIGENTE
           if (currentY + imgHeight > pdfHeight - margin) {
-            
             if (imgHeight > usableHeight) {
               if (currentY > margin) {
                 pdf.addPage();
@@ -557,8 +549,6 @@ export class ReportesComponent implements OnInit, OnDestroy {
             pdf.addImage(imgData, 'JPEG', 0, currentY, pdfWidth, imgHeight);
             currentY += imgHeight;
           }
-
-          // Agregamos un pequeño espacio de 5 milímetros entre cada tarjeta
           currentY += 5; 
         }
 

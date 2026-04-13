@@ -44,7 +44,11 @@ export class AuthService {
   }
 
   async logout() {
+    // 1. Cerramos sesión en la nube
     await signOut(this.auth);
+    // 🔥 2. DESTRUIMOS LA SESIÓN LOCAL (Súper importante para la seguridad) 🔥
+    localStorage.removeItem('md_sesion_actual');
+    // 3. Lo mandamos al login
     this.router.navigate(['/login']);
   }
 }

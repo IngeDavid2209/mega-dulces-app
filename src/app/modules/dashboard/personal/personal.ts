@@ -23,6 +23,8 @@ export class PersonalComponent implements OnInit, OnDestroy {
   usuarioEnEdicion: any = null;
   terminoBusqueda = '';
   isModalOpen = false;
+  mostrarPassword = false;
+
 
   // Formulario
   formNombre = ''; formUsuario = ''; formCorreo = ''; formPassword = '';
@@ -376,4 +378,9 @@ async eliminarUsuario(userToDelete: any) {
       Swal.fire({ icon: 'error', title: 'Error de Exportación', text: 'Hubo un error al generar el Excel de personal.', confirmButtonColor: '#0F172A' });
     }
   }
+
+  togglePassword() {
+    this.mostrarPassword = !this.mostrarPassword;
+  }
+
 }

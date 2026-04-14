@@ -160,11 +160,7 @@ select.form-input, select.select-input {
     overflow: hidden !important;
     box-sizing: border-box !important;
 
-    /* 🔥 SUPER PADDING SUPERIOR DIRECTO AL MOLDE FLEX 🔥 */
-    /* Empujamos todo el contenido (nav y brand) hacia abajo agresivamente */
-    /* Mínimo 80px para garantizar que la barra de Chrome/Safari no tape nada */
-    padding-top: max(80px, env(safe-area-inset-top)) !important; 
-  }
+padding-top: max(24px, env(safe-area-inset-top)) !important;  }
 
   /* 🔥 ESTA ES LA CLAVE: Solo el nav (las opciones) tiene permiso de scroll 🔥 */
   .sidebar-nav {

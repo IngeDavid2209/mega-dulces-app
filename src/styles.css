@@ -1,49 +1,38 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 :root {
-  /* 🔵 NUEVA PALETA CORPORATIVA ENTERPRISE */
-  --primary-navy: #0F172A;     /* Azul oscuro casi negro (Menú activo, botones principales) */
-  --primary-blue: #1E40AF;     /* Azul vibrante para acentos */
-  --text-main: #1E293B;        /* Gris muy oscuro para textos principales */
-  --text-muted: #64748B;       /* Gris medio para subtítulos y menú inactivo */
-  --bg-app: #F8FAFC;           /* Fondo general gris ultraclaro */
-  --bg-sidebar: #FFFFFF;       /* Fondo del menú y header blanco puro */
-  --border: #E2E8F0;           /* Bordes grises muy sutiles */
-  
-  /* 🟢🔴 COLORES DE ESTADO */
+  --primary-navy: #0F172A;
+  --primary-blue: #1E40AF;
+  --text-main: #1E293B;
+  --text-muted: #64748B;
+  --bg-app: #F8FAFC;
+  --bg-sidebar: #FFFFFF;
+  --border: #E2E8F0;
   --green: #10B981;
   --red: #EF4444;
   --card: #FFFFFF;
-  
-  /* 🌫️ SOMBRAS MODERNAS */
   --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
   --shadow-lg: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
   --radius: 8px;
   --radius-sm: 6px;
 }
 
-*, *::before, *::after { 
-  box-sizing: border-box; 
-  margin: 0; 
-  padding: 0; 
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
-/* ==================================================
-   🔥 BLOQUEO GLOBAL DE SCROLL (APP NATIVA MOBILE) 🔥
-   ================================================== */
 html, body {
   font-family: 'Inter', sans-serif;
   color: var(--text-main);
-  
   margin: 0 !important;
   padding: 0 !important;
   width: 100% !important;
   height: 100% !important;
-  overflow: hidden !important; /* Mata el scroll nativo de la página */
+  overflow: hidden !important;
   background-color: var(--bg-app) !important;
-  overscroll-behavior-y: none !important; /* Evita el rebote de liga en iOS */
-
-  /* Fixes para Desktop */
+  overscroll-behavior-y: none !important;
   max-width: 100vw;
   overflow-x: hidden !important;
 }
@@ -56,7 +45,6 @@ html, body {
   overflow-x: hidden !important;
 }
 
-/* FIX: Devolver la flechita a los select desplegables */
 select.form-input, select.select-input {
   appearance: auto !important;
   -webkit-appearance: auto !important;
@@ -76,9 +64,175 @@ select.form-input, select.select-input {
   padding: 0;
 }
 
-/* ======================================================= */
-/* 🍔 SIDEBAR COLAPSABLE EN ESCRITORIO (MODO ACCIÓN)       */
-/* ======================================================= */
+/* ============================================
+   SIDEBAR - ESTRUCTURA BASE
+   ============================================ */
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background-color: var(--bg-sidebar);
+  overflow: hidden;
+}
+
+/* Encabezado del sidebar */
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 14px 14px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.sidebar-brand {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+/* Zona scrollable de navegación */
+.sidebar-nav {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Cada ítem del menú */
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+  white-space: nowrap;
+  text-decoration: none;
+}
+
+.nav-item svg,
+.nav-item i {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  opacity: 0.65;
+}
+
+.nav-item:hover {
+  background: #F1F5F9;
+  color: var(--text-main);
+}
+
+.nav-item:hover svg,
+.nav-item:hover i {
+  opacity: 1;
+}
+
+.nav-item.active {
+  background: var(--primary-navy);
+  color: #FFFFFF;
+  font-weight: 500;
+}
+
+.nav-item.active svg,
+.nav-item.active i {
+  opacity: 1;
+}
+
+/* ============================================
+   BLOQUE INFERIOR FIJO
+   ============================================ */
+.bottom-nav {
+  flex-shrink: 0;
+  border-top: 1px solid var(--border);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background-color: var(--bg-sidebar);
+  padding-bottom: max(16px, env(safe-area-inset-bottom));
+}
+
+.logout-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  color: var(--red);
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  width: 100%;
+  transition: background 0.15s ease;
+}
+
+.logout-btn:hover {
+  background: #FEF2F2;
+}
+
+.logout-btn svg,
+.logout-btn i {
+  width: 17px;
+  height: 17px;
+  flex-shrink: 0;
+}
+
+.user-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  background: #F8FAFC;
+}
+
+.user-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #DBEAFE;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--primary-blue);
+  flex-shrink: 0;
+}
+
+.user-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.user-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.user-role {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* ============================================
+   SIDEBAR COLAPSABLE EN ESCRITORIO
+   ============================================ */
 @media screen and (min-width: 769px) {
   .btn-menu-mobile {
     display: block !important;
@@ -91,7 +245,7 @@ select.form-input, select.select-input {
     transition: 0.2s ease;
     margin-right: 12px;
   }
-  
+
   .btn-menu-mobile:hover {
     background: #E2E8F0;
   }
@@ -112,23 +266,17 @@ select.form-input, select.select-input {
   .mobile-overlay {
     display: none !important;
   }
-}
-/* ==================================================
-   🔥 PARCHE FINAL: ESTÉTICA Y CORRECCIONES 🔥
-   ================================================== */
 
-/* 1. FIX ESCRITORIO: Regresar los márgenes para que respire, pero a pantalla completa */
-@media screen and (min-width: 769px) {
   .content {
     padding: 35px 40px !important;
     box-sizing: border-box !important;
-    width: 100% !important; /* Vuelve a tomar toda la pantalla */
+    width: 100% !important;
   }
 }
 
-/* ==================================================
-   🔥 FIX DEFINITIVO: SIDEBAR APP NATIVA (SCROLL INTERNO) 🔥
-   ================================================== */
+/* ============================================
+   SIDEBAR MÓVIL (DRAWER)
+   ============================================ */
 @media screen and (max-width: 768px) {
   .sidebar {
     position: fixed !important;
@@ -137,48 +285,38 @@ select.form-input, select.select-input {
     left: -100% !important;
     width: 280px !important;
     z-index: 2000 !important;
-    display: flex !important;
-    flex-direction: column !important; /* Lo convertimos en columna rígida */
     box-sizing: border-box !important;
-    overflow: hidden !important; /* PROHIBIDO que el contenedor se mueva */
     background-color: var(--bg-sidebar) !important;
     transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-
-    /* 🔥 QUITAMOS TODO EL PADDING DE AQUÍ DEL PADRE (Causaba el brinco) 🔥 */
-    padding: 0 !important; 
+    padding: 0 !important;
   }
 
   .sidebar.mobile-open {
     left: 0 !important;
   }
 
-  /* 🔥 EL CONTENEDOR INTERNO TAMBIÉN SE CONGELA 🔥 */
   .sidebar > div {
     display: flex !important;
     flex-direction: column !important;
     height: 100% !important;
     overflow: hidden !important;
     box-sizing: border-box !important;
-
-padding-top: max(24px, env(safe-area-inset-top)) !important;  }
-
-  /* 🔥 ESTA ES LA CLAVE: Solo el nav (las opciones) tiene permiso de scroll 🔥 */
-  .sidebar-nav {
-    flex: 1 !important; /* Toma todo el espacio del medio */
-    overflow-y: auto !important; /* Habilita el scroll solo aquí */
-    padding: 16px 12px !important;
-    -webkit-overflow-scrolling: touch !important; /* Scroll suavecito en iOS */
+    padding-top: max(24px, env(safe-area-inset-top)) !important;
   }
 
-  /* La parte de abajo (Cerrar sesión y Usuario) se queda fija */
+  .sidebar-nav {
+    flex: 1 !important;
+    overflow-y: auto !important;
+    padding: 10px !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
   .bottom-nav {
-    flex-shrink: 0 !important; /* Evita que se aplaste */
-    padding: 0 12px 20px 12px !important;
+    flex-shrink: 0 !important;
+    padding: 10px !important;
+    padding-bottom: max(20px, env(safe-area-inset-bottom)) !important;
     background-color: var(--bg-sidebar) !important;
     border-top: 1px solid var(--border) !important;
-    
-    /* 🔥 Asegurar colchón inferior 🔥 */
-    padding-bottom: max(20px, env(safe-area-inset-bottom)) !important;
     margin-bottom: 0 !important;
   }
 }

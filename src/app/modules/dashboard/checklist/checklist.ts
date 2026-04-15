@@ -31,7 +31,8 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   formName = '';
   formAssigned: string[] = []; 
   formStore = '';
-  // 🔥 AGREGAMOS EL CAMPO requiresAntesDespues 🔥
+  
+  // 🔥 AGREGAMOS EL CAMPO requiresAntesDespues AL MODELO 🔥
   formItems = [{ text: '', requiresPhoto: false, requiresAntesDespues: false, date: '', time: '' }]; 
   
   isModalRutinasOpen = false;
@@ -454,7 +455,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   volverALista() { this.checklistSeleccionado.set(null); this.vistaActual.set('lista'); }
   toggleItem(item: any) { item.checked = !item.checked; this.actualizarEstado(); }
 
-  // 🔥 ACTUALIZADA PARA ACEPTAR TIPO DE FOTO (ANTES O DESPUÉS) 🔥
+  // 🔥 LÓGICA DE SUBIDA ADAPTADA PARA FOTO, FOTO_ANTES O FOTO_DESPUÉS 🔥
   async onFileSelected(event: any, item: any, tipoFoto: string = 'photo') {
     const file = event.target.files[0];
     if (!file) return;
@@ -476,20 +477,17 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     finally { event.target.value = ''; }
   }
 
-  // 🔥 REMOVER FOTO ESPECÍFICA 🔥
   removeImage(item: any, tipoFoto: string = 'photo') { item[tipoFoto] = null; this.actualizarEstado(); }
 
-  // 🔥 LÓGICA REVISADA: AHORA VALIDA SI EXIGE ANTES Y DESPUÉS 🔥
+  // 🔥 VALIDA QUE SE HAYAN SUBIDO LAS 2 FOTOS SI SE EXIGEN 🔥
   esItemCompleto(item: any): boolean { 
     if (!item.checked) return false;
     
-    // Si exige antes y después, DEBE tener ambas fotos (y que no estén cargando)
     if (item.requiresAntesDespues) {
       return (item.photoAntes !== null && item.photoAntes !== undefined && item.photoAntes !== 'subiendo...') && 
              (item.photoDespues !== null && item.photoDespues !== undefined && item.photoDespues !== 'subiendo...');
     }
     
-    // Si solo exige una foto normal
     if (item.requiresPhoto) {
       return (item.photo !== null && item.photo !== undefined && item.photo !== 'subiendo...');
     }
@@ -513,7 +511,6 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   enviarChecklist() {
     const actual = this.checklistSeleccionado(); if(!actual) return;
     
-    // 🔥 BUSCAR SI ALGUNA DE LAS FOTOS ESTÁ SUBIENDO 🔥
     const fotosPendientes = actual.items.some((i:any) => i.photo === 'subiendo...' || i.photoAntes === 'subiendo...' || i.photoDespues === 'subiendo...');
     if (fotosPendientes) { alert('⚠️ Espera, una foto se está subiendo.'); return; }
     
@@ -537,6 +534,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   abrirModal() {
     this.formName = ''; this.formAssigned = [];
     this.formStore = this.sucursalesDisponibles().length > 0 ? this.sucursalesDisponibles()[0] : '';
+    // 🔥 RESETEAMOS EL FORMULARIO CON LA OPCIÓN ANTES/DESPUÉS 🔥
     this.formItems = [{ text: '', requiresPhoto: false, requiresAntesDespues: false, date: '', time: '' }];
     this.isModalOpen = true;
   }
@@ -556,13 +554,13 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       id: Date.now() + i, 
       text: item.text, 
       requiresPhoto: item.requiresPhoto, 
-      requiresAntesDespues: item.requiresAntesDespues, // 🔥 GUARDAMOS EL VALOR
+      requiresAntesDespues: item.requiresAntesDespues, // 🔥 GUARDAMOS SI PIDE LAS 2 FOTOS
       date: item.date,
       time: item.time, 
       checked: false, 
       photo: null, 
-      photoAntes: null, // 🔥 PREPARAMOS LOS CAMPOS NUEVOS
-      photoDespues: null, // 🔥 PREPARAMOS LOS CAMPOS NUEVOS
+      photoAntes: null, // 🔥 PREPARAMOS EL CAMPO
+      photoDespues: null, // 🔥 PREPARAMOS EL CAMPO
       tipo: 'tarea'
     }));
     

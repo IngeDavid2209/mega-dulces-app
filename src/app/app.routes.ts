@@ -45,6 +45,13 @@ export const routes: Routes = [
     loadComponent: () => import('./modules/dashboard/personal/personal').then(m => m.PersonalComponent) 
   },
   
+  // 🔥 NUEVA RUTA: PANEL DE ÁREAS OPERATIVAS 🔥
+  { 
+    path: 'areas', 
+    canActivate: [authGuard],
+    loadComponent: () => import('./modules/dashboard/areas/areas').then(m => m.AreasComponent) 
+  },
+  
   // Cualquier ruta que no exista o intente saltarse el sistema, al login
   { path: '**', redirectTo: 'login' }
 ];

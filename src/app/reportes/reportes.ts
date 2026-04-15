@@ -4,7 +4,6 @@ import { FormsModule } from '@angular/forms';
 import { RouterModule, ActivatedRoute } from '@angular/router'; 
 import { Firestore, collection, getDocs, doc, deleteDoc, onSnapshot } from '@angular/fire/firestore';
 
-// Librerías de exportación
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as ExcelJS from 'exceljs';
@@ -241,7 +240,6 @@ export class ReportesComponent implements OnInit, OnDestroy {
     return checklist.items.filter((i:any) => i.checked).length; 
   }
 
-  // 🔥 ACTUALIZADO PARA DETECTAR FOTOS DE ANTES Y DESPUÉS 🔥
   tieneFotos(checklist: any): boolean {
     if (!checklist.items) return false;
     return checklist.items.some((item: any) => 
@@ -260,6 +258,7 @@ export class ReportesComponent implements OnInit, OnDestroy {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Reporte Auditoría');
 
+    // 🔥 AHORA EXPORTAMOS LOS COMENTARIOS AL EXCEL 🔥
     worksheet.columns = [
       { header: 'Nombre Operación', key: 'name', width: 40 },
       { header: 'Sucursal', key: 'store', width: 20 },
@@ -267,7 +266,8 @@ export class ReportesComponent implements OnInit, OnDestroy {
       { header: 'Fecha Cierre', key: 'date', width: 15 },
       { header: 'Estatus', key: 'status', width: 15 },
       { header: 'Tareas Comp.', key: 'tareas', width: 15 },
-      { header: 'Progreso', key: 'progreso', width: 15 }
+      { header: 'Progreso', key: 'progreso', width: 15 },
+      { header: 'Comentarios del Empleado', key: 'notas', width: 60 } 
     ];
 
     const headerRow = worksheet.getRow(1);
@@ -281,7 +281,8 @@ export class ReportesComponent implements OnInit, OnDestroy {
         name: c.name, store: c.store, assigned: c.assigned, date: c.date,
         status: this.getDisplayStatus(c).toUpperCase(),
         tareas: `${this.getCompletados(c)} de ${c.items?.length || 0}`,
-        progreso: `${this.getProgreso(c)}%`
+        progreso: `${this.getProgreso(c)}%`,
+        notas: c.notaEmpleado || 'Sin comentarios' // 🔥 SE AGREGAN LAS NOTAS AL EXCEL
       });
     });
 
@@ -293,7 +294,7 @@ export class ReportesComponent implements OnInit, OnDestroy {
         };
         if (rowNumber > 1) {
           if (colNumber >= 4 && colNumber <= 7) { cell.alignment = { vertical: 'middle', horizontal: 'center' }; } 
-          else { cell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 }; }
+          else { cell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1, wrapText: true }; }
         }
       });
     });
@@ -347,10 +348,14 @@ export class ReportesComponent implements OnInit, OnDestroy {
         detalle = tareasCumplidas.map((t:any) => {
           let texto = `• ${t.text}`;
           if (t.requiresPhoto && (!t.photo || t.photo === '')) { texto += ' (Falta Evidencia)'; }
-          // 🔥 ADVERTIMOS SI FALTAN LAS FOTOS DE ANTES Y DESPUÉS 🔥
           if (t.requiresAntesDespues && (!t.photoAntes || !t.photoDespues)) { texto += ' (Falta Evid. Antes/Después)'; }
           return texto;
         }).join('\n');
+      }
+
+      // 🔥 AGREGAMOS LA NOTA AL PDF SIMPLE 🔥
+      if (c.notaEmpleado) {
+        detalle += `\n\n📌 NOTA DEL COLABORADOR:\n${c.notaEmpleado}`;
       }
 
       const marcados = c.items ? c.items.filter((i:any) => i.checked).length : 0;
@@ -365,7 +370,7 @@ export class ReportesComponent implements OnInit, OnDestroy {
 
     autoTable(doc, {
       startY: 68,
-      head: [['Fecha', 'Operación', 'Sucursal', 'Responsable', 'Avance', 'Estado', 'Resumen de Tareas Verificadas']],
+      head: [['Fecha', 'Operación', 'Sucursal', 'Responsable', 'Avance', 'Estado', 'Resumen de Tareas y Notas']],
       body: bodyData, theme: 'plain', 
       headStyles: { fillColor: [248, 250, 252], textColor: [15, 23, 42], fontStyle: 'bold', fontSize: 9, cellPadding: 5, lineColor: [226, 232, 240], lineWidth: { bottom: 1 } },
       bodyStyles: { textColor: [51, 65, 85], fontSize: 8, cellPadding: 4, lineColor: [226, 232, 240], lineWidth: { bottom: 0.5 } },

@@ -25,7 +25,6 @@ export class PersonalComponent implements OnInit, OnDestroy {
   isModalOpen = false;
   mostrarPassword = false;
 
-
   // Formulario
   formNombre = ''; formUsuario = ''; formCorreo = ''; formPassword = '';
   formRol = 'trabajador'; formCargo = 'Trabajador General'; 
@@ -40,11 +39,18 @@ export class PersonalComponent implements OnInit, OnDestroy {
   formPuedeAdministrarPersonal = false;
   
   formSucursales: string[] = []; 
+  // 🔥 NUEVO: ARREGLO PARA GUARDAR LAS ÁREAS DEL USUARIO 🔥
+  formAreas: string[] = [];
 
   sucursalesDisponibles = [
     'Canindo', 'La Piedad Abastos', '8 Esquinas', 'Padre Hidalgo',
     'Morelia Madero', 'Morelia Abastos', 'Yurécuaro', 'Zamora Centro',
     'OFICINAS CORPORATIVAS', 'CAJA GENERAL', 'COMPRAS', 'CONTABILIDAD', 'FINANZAS', 'SISTEMAS', 'RH', 'MKT', 'MANTENIMIENTO'
+  ];
+
+  // 🔥 NUEVO: LISTA DE ÁREAS OPERATIVAS DISPONIBLES 🔥
+  areasDisponibles = [
+    'Cajas', 'Pasillos', 'Precios', 'Caducidades', 'Bodega', 'Mostrador', 'Limpieza General'
   ];
 
   private auth = inject(Auth);
@@ -126,6 +132,7 @@ export class PersonalComponent implements OnInit, OnDestroy {
     this.formPuedeVerHistorial = false; 
     this.formPuedeAdministrarPersonal = false; 
     this.formSucursales = [];
+    this.formAreas = []; // 🔥 LIMPIAR ÁREAS
   }
 
   editarUsuario(user: any) {
@@ -136,7 +143,10 @@ export class PersonalComponent implements OnInit, OnDestroy {
     this.formRol = user.rol; this.formCargo = user.cargo || 'Trabajador General';
     this.formSucursales = user.sucursales ? [...user.sucursales] : [];
     
-    // 🔥 CARGAR PERMISOS
+    // 🔥 CARGAMOS LAS ÁREAS QUE YA TENÍA GUARDADAS 🔥
+    this.formAreas = user.areas ? [...user.areas] : [];
+    
+    // CARGAR PERMISOS
     this.formPuedeCrearChecklists = !!user.puedeCrearChecklists;
     this.formPuedeCrearRutinas = !!user.puedeCrearRutinas;
     this.formPuedeCrearTareasUnicas = !!user.puedeCrearTareasUnicas;
@@ -156,6 +166,13 @@ export class PersonalComponent implements OnInit, OnDestroy {
     else this.formSucursales.push(sucursal);
   }
 
+  // 🔥 NUEVO METODO PARA SELECCIONAR ÁREAS 🔥
+  toggleArea(area: string) {
+    const index = this.formAreas.indexOf(area);
+    if (index > -1) this.formAreas.splice(index, 1);
+    else this.formAreas.push(area);
+  }
+
   async guardarUsuario() {
     if (this.currentUser?.rol !== 'admin' && !this.currentUser?.puedeAdministrarPersonal) return; 
     
@@ -173,7 +190,7 @@ export class PersonalComponent implements OnInit, OnDestroy {
       nombre: this.formNombre, usuario: this.formUsuario, correo: this.formCorreo, password: this.formPassword,
       rol: this.formRol, cargo: this.formCargo,
       
-      // 🔥 GUARDAR PERMISOS
+      // GUARDAR PERMISOS
       puedeCrearChecklists: this.formRol === 'admin' ? true : this.formPuedeCrearChecklists,
       puedeCrearRutinas: this.formRol === 'admin' ? true : this.formPuedeCrearRutinas,
       puedeCrearTareasUnicas: this.formRol === 'admin' ? true : this.formPuedeCrearTareasUnicas,
@@ -181,7 +198,9 @@ export class PersonalComponent implements OnInit, OnDestroy {
       puedeVerEstadisticas: this.formRol === 'admin' ? true : this.formPuedeVerEstadisticas,
       puedeVerHistorial: this.formRol === 'admin' ? true : this.formPuedeVerHistorial,
       puedeAdministrarPersonal: this.formRol === 'admin' ? true : this.formPuedeAdministrarPersonal,
-      sucursales: this.formRol === 'admin' ? ['General (Acceso Total)'] : this.formSucursales 
+      sucursales: this.formRol === 'admin' ? ['General (Acceso Total)'] : this.formSucursales,
+      // 🔥 GUARDAMOS LAS ÁREAS AUTORIZADAS 🔥
+      areas: this.formRol === 'admin' ? ['Todas las áreas'] : this.formAreas 
     };
 
     try {
@@ -200,16 +219,13 @@ export class PersonalComponent implements OnInit, OnDestroy {
   }
 
 async eliminarUsuario(userToDelete: any) {
-    // Verificamos permisos básicos
     if (this.currentUser?.rol !== 'admin' && !this.currentUser?.puedeAdministrarPersonal) return;
     
-    // Evitar que el usuario se borre a sí mismo
     if (userToDelete.usuario === this.currentUser.usuario) {
       Swal.fire({ icon: 'error', title: 'Acción no permitida', text: 'No puedes eliminar tu propio usuario.', confirmButtonColor: '#0F172A' });
       return;
     }
 
-    // 🔥 1. CANDADO DE SEGURIDAD (Solo para Colaboradores) 🔥
     if (this.currentUser?.rol !== 'admin') {
       const { value: password } = await Swal.fire({
         title: 'Autenticación Requerida',
@@ -224,17 +240,14 @@ async eliminarUsuario(userToDelete: any) {
         cancelButtonText: 'Cancelar'
       });
 
-      // Si cerró el modal o le dio cancelar
       if (password === undefined) return; 
 
-      // Verificamos la contraseña maestra
       if (password !== 'Mega2323') {
         Swal.fire({ icon: 'error', title: 'Clave Incorrecta', text: 'No tienes autorización para eliminar.', confirmButtonColor: '#0F172A' });
         return;
       }
     }
 
-    // 2. Confirmación Final (Para todos, ya sea Admin o Colaborador autenticado)
     const result = await Swal.fire({
       title: `¿Eliminar a ${userToDelete.nombre}?`,
       text: "Esta acción borrará todos sus accesos al sistema y no se puede deshacer.",
@@ -264,17 +277,14 @@ async eliminarUsuario(userToDelete: any) {
       return;
     }
 
-    // 1. 🔥 LA MAGIA: Pre-procesar y ORDENAR la lista por Zonas (Sucursales) 🔥
     const listaOrdenada = list.map(u => {
       const zona = u.sucursales ? (Array.isArray(u.sucursales) ? u.sucursales.join(' - ') : u.sucursales) : 'General';
       return { ...u, zonaCalculada: zona };
     }).sort((a, b) => a.zonaCalculada.localeCompare(b.zonaCalculada));
 
-    // 2. Creamos el libro y la hoja
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Personal MegaDulces');
 
-    // 3. Definimos las columnas
     worksheet.columns = [
       { header: 'Nombre Completo', key: 'nombre', width: 35 },
       { header: 'Usuario', key: 'usuario', width: 20 },
@@ -282,6 +292,7 @@ async eliminarUsuario(userToDelete: any) {
       { header: 'Rol', key: 'rol', width: 15 },
       { header: 'Cargo', key: 'cargo', width: 25 },
       { header: 'Sucursales', key: 'sucursales', width: 30 },
+      { header: 'Áreas', key: 'areas', width: 30 }, // 🔥 COLUMNA NUEVA PARA EXCEL 🔥
       { header: 'Crea Check', key: 'creaCheck', width: 12 },
       { header: 'Crea Rutinas', key: 'creaRutinas', width: 12 },
       { header: 'Crea Tareas', key: 'creaTareas', width: 12 },
@@ -291,7 +302,6 @@ async eliminarUsuario(userToDelete: any) {
       { header: 'Adm. Pers.', key: 'admPers', width: 12 }
     ];
 
-    // 4. Diseño de Cabecera Principal (Navy Enterprise)
     const headerRow = worksheet.getRow(1);
     headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
     headerRow.fill = {
@@ -302,14 +312,12 @@ async eliminarUsuario(userToDelete: any) {
     headerRow.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
     headerRow.height = 30;
 
-    // 5. 🔥 INYECTAMOS LOS DATOS CON FILAS SEPARADORAS DE GRUPO 🔥
     let zonaActual = '';
 
     listaOrdenada.forEach(u => {
       if (u.zonaCalculada !== zonaActual) {
         const separador = worksheet.addRow({ nombre: `📍 ZONA / DEPARTAMENTO: ${u.zonaCalculada.toUpperCase()}` });
-        
-        worksheet.mergeCells(`A${separador.number}:M${separador.number}`);
+        worksheet.mergeCells(`A${separador.number}:N${separador.number}`); // 🔥 AHORA HASTA LA 'N' PORQUE AÑADIMOS UNA COLUMNA
         
         separador.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
         separador.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF475569' } };
@@ -326,6 +334,7 @@ async eliminarUsuario(userToDelete: any) {
         rol: (u.rol || '').toUpperCase(),
         cargo: u.cargo || '-',
         sucursales: u.zonaCalculada,
+        areas: u.areas ? (Array.isArray(u.areas) ? u.areas.join(', ') : u.areas) : 'General', // 🔥 INYECTAR LAS ÁREAS
         creaCheck: u.puedeCrearChecklists ? 'Sí' : 'No',
         creaRutinas: u.puedeCrearRutinas ? 'Sí' : 'No',
         creaTareas: u.puedeCrearTareasUnicas ? 'Sí' : 'No',
@@ -336,7 +345,6 @@ async eliminarUsuario(userToDelete: any) {
       });
     });
 
-    // 6. Aplicamos el formato visual a las celdas (Bordes y Centrado)
     worksheet.eachRow((row, rowNumber) => {
       row.eachCell((cell, colNumber) => {
         cell.border = {
@@ -350,7 +358,8 @@ async eliminarUsuario(userToDelete: any) {
           const esSeparador = row.getCell(1).value?.toString().includes('📍 ZONA');
           
           if (!esSeparador) {
-            if (colNumber >= 7 || colNumber === 4) {
+            // 🔥 COLUMNAS 8 EN ADELANTE CENTRADAS (POR LA NUEVA COLUMNA DE ÁREAS EN LA POSICIÓN 7)
+            if (colNumber >= 8 || colNumber === 4) {
               cell.alignment = { vertical: 'middle', horizontal: 'center' };
             } else {
               cell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
@@ -360,7 +369,6 @@ async eliminarUsuario(userToDelete: any) {
       });
     });
 
-    // 7. Generamos el archivo .xlsx
     try {
       const buffer = await workbook.xlsx.writeBuffer();
       const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });

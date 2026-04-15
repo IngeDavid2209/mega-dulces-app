@@ -138,6 +138,10 @@
                 <span style="display: flex; align-items: center;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg> {{ checklist.assigned }}</span>
                 <span style="display: flex; align-items: center;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px;"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg> {{ checklist.store }}</span>
                 <span style="display: flex; align-items: center;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg> {{ checklist.date }}</span>
+                
+                <span *ngIf="checklist.notaEmpleado" style="display: flex; align-items: center; color: #D97706; font-weight: 600; background: #FEF3C7; padding: 2px 8px; border-radius: 4px; border: 1px solid #FDE68A; font-size: 11px; margin-top: 4px;">
+                  <svg width="12" height="12" style="margin-right: 4px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg> TIENE NOTAS
+                </span>
               </div>
               
               <div class="checklist-progress">
@@ -211,6 +215,12 @@
               </div>
             </div>
           </div>
+          
+          <div *ngIf="checklistSeleccionado().notaEmpleado" style="margin-top: 20px; background: #FFFBEB; border-left: 4px solid #F59E0B; padding: 15px; border-radius: 8px;">
+            <strong style="color: #D97706; font-size: 13px; display: block; margin-bottom: 4px;">Comentarios del Colaborador:</strong>
+            <p style="margin: 0; font-size: 14px; color: #1E293B; white-space: pre-wrap;">{{ checklistSeleccionado().notaEmpleado }}</p>
+          </div>
+          
         </div>
       </div>
 
@@ -305,6 +315,12 @@
               <div *ngIf="getProgreso(check) > 0 && !tieneFotos(check)" style="background: #F8FAFC; color: #64748B; padding: 20px; border-radius: 8px; font-size: 14px; font-weight: 600; text-align: center; border: 2px dashed #E2E8F0;">
                 📌 Registro completado sin captura de evidencias fotográficas.
               </div>
+
+              <div *ngIf="check.notaEmpleado" style="margin-top: 20px; background: #FFFBEB; border-left: 4px solid #F59E0B; padding: 15px; border-radius: 4px;">
+                <p style="margin: 0; font-size: 11px; color: #D97706; text-transform: uppercase; font-weight: 800; letter-spacing: 0.5px;">Comentarios del Colaborador</p>
+                <p style="margin: 5px 0 0 0; font-size: 13px; color: #1E293B; font-weight: 500; white-space: pre-wrap;">{{ check.notaEmpleado }}</p>
+              </div>
+
             </div>
           </div>
         </div>

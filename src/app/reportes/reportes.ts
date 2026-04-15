@@ -26,7 +26,6 @@ export class ReportesComponent implements OnInit, OnDestroy {
   fechaInicio = '';
   fechaFin = '';
   
-  // 🔥 VARIABLES PARA EL AUTOCOMPLETE DE EMPLEADOS 🔥
   empleadoSeleccionado = '';
   textoBusquedaEmpleado = ''; 
   mostrarDropdownEmpleados = false; 
@@ -220,23 +219,13 @@ export class ReportesComponent implements OnInit, OnDestroy {
     }
   }
 
-  // 🔥 NUEVA FUNCIÓN PARA DETECTAR VENCIDOS 🔥
   getDisplayStatus(checklist: any): string {
     const statusReal = (checklist.status || 'pendiente').toLowerCase();
-    
-    // Si ya está completo, no importa la fecha, ya cumplió.
     if (statusReal === 'completo') return 'completo';
-
-    // Sacamos la fecha exacta de hoy
     const hoy = new Date();
     const offset = hoy.getTimezoneOffset() * 60000;
     const hoyStr = new Date(hoy.getTime() - offset).toISOString().split('T')[0];
-
-    // Si la fecha del checklist es MENOR a hoy, y no está completo = Vencido
-    if (checklist.date && checklist.date < hoyStr) {
-      return 'vencido';
-    }
-
+    if (checklist.date && checklist.date < hoyStr) { return 'vencido'; }
     return statusReal;
   }
 
@@ -252,9 +241,14 @@ export class ReportesComponent implements OnInit, OnDestroy {
     return checklist.items.filter((i:any) => i.checked).length; 
   }
 
+  // 🔥 ACTUALIZADO PARA DETECTAR FOTOS DE ANTES Y DESPUÉS 🔥
   tieneFotos(checklist: any): boolean {
     if (!checklist.items) return false;
-    return checklist.items.some((item: any) => item.photo && item.photo.includes('http'));
+    return checklist.items.some((item: any) => 
+      (item.photo && item.photo.includes('http')) || 
+      (item.photoAntes && item.photoAntes.includes('http')) || 
+      (item.photoDespues && item.photoDespues.includes('http'))
+    );
   }
 
   async descargarExcel() {
@@ -278,21 +272,14 @@ export class ReportesComponent implements OnInit, OnDestroy {
 
     const headerRow = worksheet.getRow(1);
     headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
-    headerRow.fill = {
-      type: 'pattern',
-      pattern: 'solid',
-      fgColor: { argb: 'FF0F172A' } 
-    };
+    headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0F172A' } };
     headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
     headerRow.height = 25; 
 
     this.resultados().forEach(c => {
       worksheet.addRow({
-        name: c.name,
-        store: c.store,
-        assigned: c.assigned,
-        date: c.date,
-        status: this.getDisplayStatus(c).toUpperCase(), // 🔥 AHORA EXPORTA "VENCIDO"
+        name: c.name, store: c.store, assigned: c.assigned, date: c.date,
+        status: this.getDisplayStatus(c).toUpperCase(),
         tareas: `${this.getCompletados(c)} de ${c.items?.length || 0}`,
         progreso: `${this.getProgreso(c)}%`
       });
@@ -301,18 +288,12 @@ export class ReportesComponent implements OnInit, OnDestroy {
     worksheet.eachRow((row, rowNumber) => {
       row.eachCell((cell, colNumber) => {
         cell.border = {
-          top: { style: 'thin', color: { argb: 'FFCBD5E1' } },
-          left: { style: 'thin', color: { argb: 'FFCBD5E1' } },
-          bottom: { style: 'thin', color: { argb: 'FFCBD5E1' } },
-          right: { style: 'thin', color: { argb: 'FFCBD5E1' } }
+          top: { style: 'thin', color: { argb: 'FFCBD5E1' } }, left: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+          bottom: { style: 'thin', color: { argb: 'FFCBD5E1' } }, right: { style: 'thin', color: { argb: 'FFCBD5E1' } }
         };
-        
         if (rowNumber > 1) {
-          if (colNumber >= 4 && colNumber <= 7) {
-            cell.alignment = { vertical: 'middle', horizontal: 'center' };
-          } else {
-            cell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
-          }
+          if (colNumber >= 4 && colNumber <= 7) { cell.alignment = { vertical: 'middle', horizontal: 'center' }; } 
+          else { cell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 }; }
         }
       });
     });
@@ -320,17 +301,12 @@ export class ReportesComponent implements OnInit, OnDestroy {
     try {
       const buffer = await workbook.xlsx.writeBuffer();
       const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-      
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
       a.download = `Reporte_MegaDulces_${this.fechaInicio}_al_${this.fechaFin}.xlsx`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
+      document.body.appendChild(a); a.click(); document.body.removeChild(a); window.URL.revokeObjectURL(url);
     } catch (error) {
-      console.error("Error al exportar Excel:", error);
       Swal.fire({ icon: 'error', title: 'Error de Exportación', text: 'Hubo un error al generar el archivo Excel.', confirmButtonColor: '#0F172A' });
     }
   }
@@ -345,46 +321,34 @@ export class ReportesComponent implements OnInit, OnDestroy {
     
     doc.setFillColor(15, 23, 42); 
     doc.rect(0, 0, doc.internal.pageSize.getWidth(), 25, 'F');
-    
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(22); 
-    doc.setTextColor(255, 255, 255); 
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(22); doc.setTextColor(255, 255, 255); 
     doc.text('MEGA DULCES', 14, 16);
 
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
-    doc.setTextColor(200, 200, 200);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(200, 200, 200);
     doc.text('Panel Enterprise • Reporte de Auditoría Operativa', 75, 16);
 
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(12);
-    doc.setTextColor(30, 41, 59); 
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(30, 41, 59); 
     doc.text('Detalles de la Consulta', 14, 36);
 
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9);
-    doc.setTextColor(100, 116, 139); 
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(100, 116, 139); 
     doc.text(`Periodo analizado: ${this.fechaInicio} al ${this.fechaFin}`, 14, 42);
     doc.text(`Filtro de usuario: ${this.empleadoSeleccionado || 'Todos los colaboradores'}`, 14, 47);
     doc.text(`Fecha de emisión: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}`, 14, 52);
     doc.text(`Total de registros: ${this.resultados().length}`, 14, 57);
 
-    doc.setDrawColor(226, 232, 240); 
-    doc.setLineWidth(0.5);
-    doc.line(14, 62, doc.internal.pageSize.getWidth() - 14, 62);
+    doc.setDrawColor(226, 232, 240); doc.setLineWidth(0.5); doc.line(14, 62, doc.internal.pageSize.getWidth() - 14, 62);
 
     const bodyData = this.resultados().map(c => {
       const tareasCumplidas = c.items ? c.items.filter((i:any) => i.checked) : [];
       let detalle = '';
       
-      if (tareasCumplidas.length === 0) {
-        detalle = 'Sin tareas completadas.';
-      } else {
+      if (tareasCumplidas.length === 0) { detalle = 'Sin tareas completadas.'; } 
+      else {
         detalle = tareasCumplidas.map((t:any) => {
           let texto = `• ${t.text}`;
-          if (t.requiresPhoto && (!t.photo || t.photo === '')) { 
-            texto += ' (Falta Evidencia)'; 
-          }
+          if (t.requiresPhoto && (!t.photo || t.photo === '')) { texto += ' (Falta Evidencia)'; }
+          // 🔥 ADVERTIMOS SI FALTAN LAS FOTOS DE ANTES Y DESPUÉS 🔥
+          if (t.requiresAntesDespues && (!t.photoAntes || !t.photoDespues)) { texto += ' (Falta Evid. Antes/Después)'; }
           return texto;
         }).join('\n');
       }
@@ -394,95 +358,45 @@ export class ReportesComponent implements OnInit, OnDestroy {
       const progreso = total > 0 ? Math.round((marcados / total) * 100) : 0;
 
       return [ 
-        c.date || '-', 
-        (c.name || '-').toUpperCase(),
-        c.store || '-', 
-        c.assigned || '-', 
-        `${progreso}%`,
-        this.getDisplayStatus(c).toUpperCase(), // 🔥 AHORA EXPORTA "VENCIDO" AL PDF
-        detalle 
+        c.date || '-', (c.name || '-').toUpperCase(), c.store || '-', c.assigned || '-', 
+        `${progreso}%`, this.getDisplayStatus(c).toUpperCase(), detalle 
       ];
     });
 
     autoTable(doc, {
       startY: 68,
       head: [['Fecha', 'Operación', 'Sucursal', 'Responsable', 'Avance', 'Estado', 'Resumen de Tareas Verificadas']],
-      body: bodyData,
-      theme: 'plain', 
-      headStyles: { 
-        fillColor: [248, 250, 252], 
-        textColor: [15, 23, 42], 
-        fontStyle: 'bold',
-        fontSize: 9,
-        cellPadding: 5,
-        lineColor: [226, 232, 240], 
-        lineWidth: { bottom: 1 }
-      },
-      bodyStyles: {
-        textColor: [51, 65, 85], 
-        fontSize: 8,
-        cellPadding: 4,
-        lineColor: [226, 232, 240], 
-        lineWidth: { bottom: 0.5 }
-      },
-      alternateRowStyles: { 
-        fillColor: [255, 255, 255] 
-      }, 
+      body: bodyData, theme: 'plain', 
+      headStyles: { fillColor: [248, 250, 252], textColor: [15, 23, 42], fontStyle: 'bold', fontSize: 9, cellPadding: 5, lineColor: [226, 232, 240], lineWidth: { bottom: 1 } },
+      bodyStyles: { textColor: [51, 65, 85], fontSize: 8, cellPadding: 4, lineColor: [226, 232, 240], lineWidth: { bottom: 0.5 } },
+      alternateRowStyles: { fillColor: [255, 255, 255] }, 
       columnStyles: { 
-        0: { cellWidth: 22 }, 
-        1: { cellWidth: 40, fontStyle: 'bold', textColor: [15, 23, 42] }, 
-        2: { cellWidth: 25 }, 
-        3: { cellWidth: 35 }, 
-        4: { cellWidth: 18, halign: 'center', fontStyle: 'bold' }, 
-        5: { cellWidth: 25 }, 
-        6: { cellWidth: 100 } 
+        0: { cellWidth: 22 }, 1: { cellWidth: 40, fontStyle: 'bold', textColor: [15, 23, 42] }, 2: { cellWidth: 25 }, 3: { cellWidth: 35 }, 4: { cellWidth: 18, halign: 'center', fontStyle: 'bold' }, 5: { cellWidth: 25 }, 6: { cellWidth: 100 } 
       },
       didParseCell: function(data) {
         if (data.section === 'body' && data.column.index === 5) {
           const estado = data.cell.raw as string;
-          if (estado.includes('COMPLETO')) {
-            data.cell.styles.textColor = [21, 128, 61]; 
-            data.cell.styles.fontStyle = 'bold';
-          } else if (estado.includes('PROGRESO')) {
-            data.cell.styles.textColor = [29, 78, 216]; 
-          } else if (estado.includes('VENCIDO')) { // 🔥 PINTAMOS DE ROJO EL VENCIDO EN EL PDF
-            data.cell.styles.textColor = [220, 38, 38]; 
-            data.cell.styles.fontStyle = 'bold';
-          }
+          if (estado.includes('COMPLETO')) { data.cell.styles.textColor = [21, 128, 61]; data.cell.styles.fontStyle = 'bold'; } 
+          else if (estado.includes('PROGRESO')) { data.cell.styles.textColor = [29, 78, 216]; } 
+          else if (estado.includes('VENCIDO')) { data.cell.styles.textColor = [220, 38, 38]; data.cell.styles.fontStyle = 'bold'; }
         }
       }
     });
 
     const pageCount = doc.getNumberOfPages();
     for (let i = 1; i <= pageCount; i++) {
-      doc.setPage(i);
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(8);
-      doc.setTextColor(148, 163, 184); 
-      doc.text(
-        `Mega Dulces App - Documento Confidencial | Página ${i} de ${pageCount}`, 
-        doc.internal.pageSize.getWidth() / 2, 
-        doc.internal.pageSize.getHeight() - 10, 
-        { align: 'center' }
-      );
+      doc.setPage(i); doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(148, 163, 184); 
+      doc.text(`Mega Dulces App - Documento Confidencial | Página ${i} de ${pageCount}`, doc.internal.pageSize.getWidth() / 2, doc.internal.pageSize.getHeight() - 10, { align: 'center' });
     }
-
     doc.save(`Reporte_MegaDulces_${this.fechaInicio}_al_${this.fechaFin}.pdf`);
   }
 
   async descargarPDFVisual() {
     if (this.resultados().length === 0) return;
-    
     if (this.resultados().length > 30) {
       const result = await Swal.fire({
-        title: 'Reporte Pesado',
-        text: 'Estás intentando generar un reporte visual con más de 30 checklists. Esto procesará cientos de fotos y podría tomar varios minutos. ¿Deseas continuar?',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#0F172A',
-        cancelButtonColor: '#64748B',
-        confirmButtonText: 'Sí, generar PDF',
-        cancelButtonText: 'Cancelar'
+        title: 'Reporte Pesado', text: 'Estás intentando generar un reporte visual con más de 30 checklists. Esto procesará cientos de fotos y podría tomar varios minutos. ¿Deseas continuar?', icon: 'warning',
+        showCancelButton: true, confirmButtonColor: '#0F172A', cancelButtonColor: '#64748B', confirmButtonText: 'Sí, generar PDF', cancelButtonText: 'Cancelar'
       });
       if (!result.isConfirmed) return;
     }
@@ -497,67 +411,33 @@ export class ReportesComponent implements OnInit, OnDestroy {
         const pdf = new jsPDF('p', 'mm', 'a4');
         const pdfWidth = pdf.internal.pageSize.getWidth();
         const pdfHeight = pdf.internal.pageSize.getHeight();
-        
-        let currentY = 10; 
-        const margin = 10; 
-        const usableHeight = pdfHeight - (margin * 2); 
-
+        let currentY = 10; const margin = 10; const usableHeight = pdfHeight - (margin * 2); 
         const tarjetas = Array.from(contenedor.children) as HTMLElement[];
 
         for (let i = 0; i < tarjetas.length; i++) {
           const tarjetaHTML = tarjetas[i];
-
-          const canvas = await html2canvas(tarjetaHTML, { 
-            scale: 1.5, 
-            useCORS: true, 
-            logging: false,
-            backgroundColor: '#ffffff'
-          });
-
+          const canvas = await html2canvas(tarjetaHTML, { scale: 1.5, useCORS: true, logging: false, backgroundColor: '#ffffff' });
           const imgData = canvas.toDataURL('image/jpeg', 0.8); 
           const imgHeight = (canvas.height * pdfWidth) / canvas.width;
 
           if (currentY + imgHeight > pdfHeight - margin) {
             if (imgHeight > usableHeight) {
-              if (currentY > margin) {
-                pdf.addPage();
-                currentY = margin;
-              }
-
-              let heightLeft = imgHeight;
-              let positionShift = 0;
-
+              if (currentY > margin) { pdf.addPage(); currentY = margin; }
+              let heightLeft = imgHeight; let positionShift = 0;
               while (heightLeft > 0) {
                 pdf.addImage(imgData, 'JPEG', 0, currentY + positionShift, pdfWidth, imgHeight);
                 heightLeft -= usableHeight;
-
-                if (heightLeft > 0) {
-                  pdf.addPage(); 
-                  positionShift -= usableHeight; 
-                  currentY = margin;
-                } else {
-                  currentY = margin + (heightLeft + usableHeight);
-                }
+                if (heightLeft > 0) { pdf.addPage(); positionShift -= usableHeight; currentY = margin; } 
+                else { currentY = margin + (heightLeft + usableHeight); }
               }
-            } else {
-              pdf.addPage();
-              currentY = margin;
-              pdf.addImage(imgData, 'JPEG', 0, currentY, pdfWidth, imgHeight);
-              currentY += imgHeight;
-            }
-          } else {
-            pdf.addImage(imgData, 'JPEG', 0, currentY, pdfWidth, imgHeight);
-            currentY += imgHeight;
-          }
+            } else { pdf.addPage(); currentY = margin; pdf.addImage(imgData, 'JPEG', 0, currentY, pdfWidth, imgHeight); currentY += imgHeight; }
+          } else { pdf.addImage(imgData, 'JPEG', 0, currentY, pdfWidth, imgHeight); currentY += imgHeight; }
           currentY += 5; 
         }
-
         pdf.save(`Corte_Mensual_Visual_${this.fechaInicio}_al_${this.fechaFin}.pdf`);
       } catch (error) {
-        console.error("Error generando PDF Visual:", error);
         Swal.fire({ icon: 'error', title: 'Error de Procesamiento', text: 'Ocurrió un error al procesar las fotografías. Asegúrate de tener buena conexión.', confirmButtonColor: '#0F172A' });
       }
-      
       this.generandoReporte.set(false);
     }, 500);
   }

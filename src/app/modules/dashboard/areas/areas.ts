@@ -23,11 +23,11 @@ export class AreasComponent implements OnInit, OnDestroy {
   terminoBusqueda = '';
   isModalOpen = false;
   
-  // Formulario de Nueva Área
+  // Formulario
   formNombreArea = '';
   formDescripcionArea = '';
 
-  // Modal de Asignación Rápida
+  // Modal Asignación
   isModalAsignacionOpen = false;
   areaSeleccionada: any = null;
   empleadosFiltradosAsignacion = signal<any[]>([]);
@@ -39,150 +39,83 @@ export class AreasComponent implements OnInit, OnDestroy {
   ngOnInit() {
     const sesion = localStorage.getItem('md_sesion_actual');
     if (sesion) { this.currentUser = JSON.parse(sesion); }
-    
-    if (this.currentUser?.rol !== 'admin' && !this.currentUser?.puedeAdministrarPersonal) {
-      window.location.href = '/home';
-      return;
-    }
-
     this.conectarConLaNube();
   }
 
-  ngOnDestroy() {
-    this.destructoresRadares.forEach(apagarRadar => apagarRadar());
-  }
+  ngOnDestroy() { this.destructoresRadares.forEach(apagarRadar => apagarRadar()); }
 
   conectarConLaNube() {
-    // RADAR DE ÁREAS
     const areasRef = collection(this.firestore, 'areas_operativas');
     const radarAreas = onSnapshot(areasRef, (snapshot) => {
       const areasNube: any[] = [];
-      snapshot.forEach((documento) => {
-        areasNube.push({ ...documento.data(), id: documento.id });
-      });
-      areasNube.sort((a, b) => a.nombre.localeCompare(b.nombre));
-      this.areas.set(areasNube);
+      snapshot.forEach((doc) => areasNube.push({ ...doc.data(), id: doc.id }));
+      this.areas.set(areasNube.sort((a, b) => a.nombre.localeCompare(b.nombre)));
     });
     this.destructoresRadares.push(radarAreas);
 
-    // RADAR DE USUARIOS
     const usuariosRef = collection(this.firestore, 'usuarios');
     const radarUsuarios = onSnapshot(usuariosRef, (snapshot) => {
       const usuariosNube: any[] = [];
-      snapshot.forEach((documento) => {
-        usuariosNube.push({ ...documento.data(), idFirestore: documento.id });
-      });
+      snapshot.forEach((doc) => usuariosNube.push({ ...doc.data(), idFirestore: doc.id }));
       this.usuarios.set(usuariosNube);
     });
     this.destructoresRadares.push(radarUsuarios);
   }
 
   getAreasFiltradas() {
-    if (!this.terminoBusqueda.trim()) return this.areas();
-    const termino = this.terminoBusqueda.toLowerCase();
-    return this.areas().filter(a => a.nombre.toLowerCase().includes(termino) || (a.descripcion && a.descripcion.toLowerCase().includes(termino)));
+    const term = this.terminoBusqueda.toLowerCase();
+    return this.areas().filter(a => a.nombre.toLowerCase().includes(term));
   }
 
   contarEmpleadosEnArea(nombreArea: string): number {
-    return this.usuarios().filter(u => u.rol === 'trabajador' && u.areas && u.areas.includes(nombreArea)).length;
+    return this.usuarios().filter(u => u.areas && u.areas.includes(nombreArea)).length;
   }
 
-  abrirModalNuevaArea() {
-    this.formNombreArea = ''; this.formDescripcionArea = ''; this.isModalOpen = true;
-  }
-
+  abrirModalNuevaArea() { this.formNombreArea = ''; this.formDescripcionArea = ''; this.isModalOpen = true; }
   cerrarModal() { this.isModalOpen = false; }
 
   async guardarArea() {
-    if (!this.formNombreArea.trim()) {
-      Swal.fire({ icon: 'warning', title: 'Falta el nombre', text: 'Debes asignarle un nombre al área operativa.', confirmButtonColor: '#0F172A' });
-      return;
-    }
-
-    const nombreFormateado = this.formNombreArea.trim();
-    const existe = this.areas().some(a => a.nombre.toLowerCase() === nombreFormateado.toLowerCase());
-    
-    if (existe) {
-      Swal.fire({ icon: 'error', title: 'Área Duplicada', text: 'Ya existe un área con ese nombre.', confirmButtonColor: '#0F172A' });
-      return;
-    }
-
+    if (!this.formNombreArea.trim()) return;
     const areaId = 'area_' + Date.now();
-    const payload = {
-      nombre: nombreFormateado, descripcion: this.formDescripcionArea.trim(),
-      fechaCreacion: new Date().toISOString(), creadoPor: this.currentUser?.nombre || 'Administrador'
-    };
-
-    try {
-      await setDoc(doc(this.firestore, 'areas_operativas', areaId), payload);
-      this.cerrarModal();
-      this.mostrarToast('✅ Área creada exitosamente');
-    } catch (error) {
-      Swal.fire({ icon: 'error', title: 'Error', text: 'Hubo un problema al crear el área.', confirmButtonColor: '#0F172A' });
-    }
+    await setDoc(doc(this.firestore, 'areas_operativas', areaId), {
+      nombre: this.formNombreArea.trim(),
+      descripcion: this.formDescripcionArea.trim(),
+      fechaCreacion: new Date().toISOString()
+    });
+    this.isModalOpen = false;
+    Swal.fire('¡Éxito!', 'Área creada', 'success');
   }
 
   async eliminarArea(area: any) {
-    const totalEmpleados = this.contarEmpleadosEnArea(area.nombre);
-    if (totalEmpleados > 0) {
-      Swal.fire({ icon: 'warning', title: 'Área en uso', text: `No puedes eliminar esta área porque hay ${totalEmpleados} empleado(s) asignados a ella.`, confirmButtonColor: '#0F172A' });
+    if (this.contarEmpleadosEnArea(area.nombre) > 0) {
+      Swal.fire('Atención', 'Hay personal en esta área. Quítalos primero.', 'warning');
       return;
     }
-
-    const result = await Swal.fire({
-      title: `¿Eliminar área "${area.nombre}"?`, text: "Esta acción no se puede deshacer.", icon: 'warning',
-      showCancelButton: true, confirmButtonColor: '#EF4444', cancelButtonColor: '#0F172A',
-      confirmButtonText: 'Sí, eliminar', cancelButtonText: 'Cancelar'
-    });
-
-    if (result.isConfirmed) {
-      try {
-        await deleteDoc(doc(this.firestore, 'areas_operativas', area.id));
-        this.mostrarToast('🗑️ Área eliminada');
-      } catch (error) {
-        Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo eliminar el área.', confirmButtonColor: '#0F172A' });
-      }
-    }
+    const res = await Swal.fire({ title: '¿Borrar?', text: area.nombre, icon: 'warning', showCancelButton: true });
+    if (res.isConfirmed) await deleteDoc(doc(this.firestore, 'areas_operativas', area.id));
   }
-  
+
   abrirAsignacion(area: any) {
     this.areaSeleccionada = area;
-    this.terminoBusquedaAsignacion = '';
     this.actualizarListaAsignacion();
     this.isModalAsignacionOpen = true;
   }
 
-  cerrarAsignacion() { this.isModalAsignacionOpen = false; this.areaSeleccionada = null; }
-
   actualizarListaAsignacion() {
-    let trabajadores = this.usuarios().filter(u => u.rol === 'trabajador');
-    if (this.terminoBusquedaAsignacion.trim()) {
-      const term = this.terminoBusquedaAsignacion.toLowerCase();
-      trabajadores = trabajadores.filter(t => t.nombre.toLowerCase().includes(term) || (t.cargo && t.cargo.toLowerCase().includes(term)));
+    let filtrados = this.usuarios().filter(u => u.rol === 'trabajador');
+    if (this.terminoBusquedaAsignacion) {
+      const t = this.terminoBusquedaAsignacion.toLowerCase();
+      filtrados = filtrados.filter(u => u.nombre.toLowerCase().includes(t));
     }
-    this.empleadosFiltradosAsignacion.set(trabajadores);
+    this.empleadosFiltradosAsignacion.set(filtrados);
   }
 
-  tieneElArea(usuario: any): boolean {
-    return usuario.areas && usuario.areas.includes(this.areaSeleccionada.nombre);
-  }
+  tieneElArea(u: any) { return u.areas && u.areas.includes(this.areaSeleccionada.nombre); }
 
-  async toggleAreaUsuario(usuario: any) {
-    const tieneArea = this.tieneElArea(usuario);
-    let nuevasAreas = usuario.areas ? [...usuario.areas] : [];
-
-    if (tieneArea) { nuevasAreas = nuevasAreas.filter(a => a !== this.areaSeleccionada.nombre); } 
-    else { nuevasAreas.push(this.areaSeleccionada.nombre); }
-
-    try {
-      const docId = usuario.idFirestore || usuario.uid || usuario.usuario;
-      await setDoc(doc(this.firestore, 'usuarios', docId), { areas: nuevasAreas }, { merge: true });
-    } catch (error) {
-      Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo actualizar el permiso del usuario.', confirmButtonColor: '#0F172A' });
-    }
-  }
-
-  mostrarToast(mensaje: string) {
-    Swal.fire({ toast: true, position: 'top-end', showConfirmButton: false, timer: 3000, timerProgressBar: true, icon: 'success', title: mensaje });
+  async toggleAreaUsuario(u: any) {
+    let nuevasAreas = u.areas ? [...u.areas] : [];
+    if (this.tieneElArea(u)) nuevasAreas = nuevasAreas.filter(a => a !== this.areaSeleccionada.nombre);
+    else nuevasAreas.push(this.areaSeleccionada.nombre);
+    await setDoc(doc(this.firestore, 'usuarios', u.idFirestore), { areas: nuevasAreas }, { merge: true });
   }
 }

@@ -72,7 +72,7 @@
             </svg> Usuarios
           </a>
 
-          <a class="nav-item" routerLink="/areas" routerLinkActive="active" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeAdministrarPersonal" (click)="isMenuOpen = false">
+        <a class="nav-item" routerLink="/areas" routerLinkActive="active" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeAdministrarPersonal" (click)="isMenuOpen = false">
             <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg> Áreas de Trabajo
           </a>
         </nav>

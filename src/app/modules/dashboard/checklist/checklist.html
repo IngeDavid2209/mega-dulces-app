@@ -16,100 +16,95 @@
     </div>
     <div class="header-right"></div>
   </header>
-
   <div class="main-wrapper">
     <div class="mobile-overlay" *ngIf="isMenuOpen" (click)="toggleMenu()"></div>
+    
     <aside class="sidebar" [class.mobile-open]="isMenuOpen" translate="no">
       <div style="display: flex; flex-direction: column; height: 100%;">
+        
+        <div class="sidebar-header">
+          <img src="https://static.wixstatic.com/media/fd397e_0fd82a1ecec84a118ceeb603b493f25a~mv2.png" alt="Logo" style="width:32px; height:32px; border-radius:6px; object-fit:contain;">
+          <span class="sidebar-brand">Mega Dulces</span>
+        </div>
+
         <nav class="sidebar-nav" style="flex: 1; padding: 16px 12px;">
-          <a class="nav-item" routerLink="/home" routerLinkActive="active" (click)="isMenuOpen = false"><span
-              class="nav-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                stroke-width="2">
-                <rect x="3" y="3" width="7" height="7"></rect>
-                <rect x="14" y="3" width="7" height="7"></rect>
-                <rect x="14" y="14" width="7" height="7"></rect>
-                <rect x="3" y="14" width="7" height="7"></rect>
-              </svg></span> Dashboard</a>
-          <a class="nav-item" routerLink="/checklist" routerLinkActive="active" (click)="isMenuOpen = false"><span
-              class="nav-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                stroke-width="2">
-                <polyline points="9 11 12 14 22 4"></polyline>
-                <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
-              </svg></span> Checklist</a>
-          <a class="nav-item" routerLink="/checkstore" routerLinkActive="active"
-            *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeVerCheckstore" (click)="isMenuOpen = false"><span
-              class="nav-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                stroke-width="2">
-                <path d="M3 3h18v4H3z"></path>
-                <path d="M3 7v14h18V7"></path>
-                <path d="M8 21v-5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v5"></path>
-              </svg></span> Sucursales</a>
-          <a class="nav-item" routerLink="/estadisticas" routerLinkActive="active"
-            *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeVerEstadisticas" (click)="isMenuOpen = false"><span
-              class="nav-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                stroke-width="2">
-                <line x1="18" y1="20" x2="18" y2="10"></line>
-                <line x1="12" y1="20" x2="12" y2="4"></line>
-                <line x1="6" y1="20" x2="6" y2="14"></line>
-              </svg></span> Estadísticas</a>
-          <a class="nav-item" routerLink="/reportes" routerLinkActive="active"
-            *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeVerHistorial" (click)="isMenuOpen = false"><span
-              class="nav-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                stroke-width="2">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                <polyline points="14 2 14 8 20 8"></polyline>
-                <line x1="16" y1="13" x2="8" y2="13"></line>
-                <line x1="16" y1="17" x2="8" y2="17"></line>
-                <polyline points="10 9 9 9 8 9"></polyline>
-              </svg></span> Auditoría</a>
-          <a class="nav-item" routerLink="/personal" routerLinkActive="active"
-            *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeAdministrarPersonal"
-            (click)="isMenuOpen = false"><span class="nav-icon"><svg width="20" height="20" viewBox="0 0 24 24"
-                fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                <circle cx="9" cy="7" r="4"></circle>
-                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-              </svg></span> Usuarios</a>
+          <a class="nav-item" routerLink="/home" routerLinkActive="active" (click)="isMenuOpen = false">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+              <rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
+            </svg> Dashboard
+          </a>
+
+          <a class="nav-item" routerLink="/checklist" routerLinkActive="active" (click)="isMenuOpen = false">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="9 11 12 14 22 4"/>
+              <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
+            </svg> Checklist
+          </a>
+
+          <a class="nav-item" routerLink="/checkstore" routerLinkActive="active" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeVerCheckstore" (click)="isMenuOpen = false">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+              <polyline points="9 22 9 12 15 12 15 22"/>
+            </svg> Sucursales
+          </a>
+
+          <a class="nav-item" routerLink="/estadisticas" routerLinkActive="active" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeVerEstadisticas" (click)="isMenuOpen = false">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="20" x2="18" y2="10"/>
+              <line x1="12" y1="20" x2="12" y2="4"/>
+              <line x1="6" y1="20" x2="6" y2="14"/>
+            </svg> Estadísticas
+          </a>
+
+          <a class="nav-item" routerLink="/reportes" routerLinkActive="active" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeVerHistorial" (click)="isMenuOpen = false">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <line x1="16" y1="13" x2="8" y2="13"/>
+              <line x1="16" y1="17" x2="8" y2="17"/>
+            </svg> Auditoría
+          </a>
+
+          <a class="nav-item" routerLink="/personal" routerLinkActive="active" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeAdministrarPersonal" (click)="isMenuOpen = false">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
+              <circle cx="9" cy="7" r="4"/>
+              <path d="M23 21v-2a4 4 0 00-3-3.87"/>
+              <path d="M16 3.13a4 4 0 010 7.75"/>
+            </svg> Usuarios
+          </a>
         </nav>
+
         <div class="bottom-nav" style="margin-top: auto; padding: 0 12px 20px 12px;">
-          <div class="nav-divider" style="margin: 0 4px 12px 4px;"></div>
-          <a class="nav-item nav-logout" routerLink="/login" style="margin-bottom: 16px;"><span class="nav-icon"><svg
-                width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-                <polyline points="16 17 21 12 16 7"></polyline>
-                <line x1="21" y1="12" x2="9" y2="12"></line>
-              </svg></span> Cerrar Sesión</a>
-          <div
-            style="background: #F8FAFC; border-radius: 8px; border: 1px solid var(--border); padding: 12px; display: flex; align-items: center; gap: 12px;">
-            <div
-              style="width: 36px; height: 36px; border-radius: 8px; background: #FFFFFF; border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-weight: 600; color: var(--primary-navy); font-size: 15px;">
-              {{ (currentUser?.nombre || 'A').charAt(0) | uppercase }}</div>
-            <div style="overflow: hidden; flex: 1;">
-              <div
-                style="font-size: 13px; font-weight: 600; color: var(--text-main); white-space: nowrap; text-overflow: ellipsis; overflow: hidden; margin-bottom: 2px;">
-                {{ currentUser?.nombre || 'Administrador' }}</div>
-              <div style="font-size: 11px; color: var(--text-muted); font-weight: 500;">{{ currentUser?.rol === 'admin'
-                ? 'Gerente' : 'Colaborador' }}</div>
+          <button class="logout-btn" routerLink="/login">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
+              <polyline points="16 17 21 12 16 7"/>
+              <line x1="21" y1="12" x2="9" y2="12"/>
+            </svg> Cerrar Sesión
+          </button>
+
+          <div class="user-row">
+            <div class="user-avatar">{{ (currentUser?.nombre || 'A').charAt(0) | uppercase }}</div>
+            <div class="user-info">
+              <span class="user-name">{{ currentUser?.nombre || 'Administrador' }}</span>
+              <span class="user-role">{{ currentUser?.rol === 'admin' ? 'Gerente' : 'Colaborador' }}</span>
             </div>
           </div>
         </div>
       </div>
     </aside>
-
     <div class="content">
       <div *ngIf="vistaActual() === 'lista'">
-
         <div class="section-header"
           style="display: flex; flex-wrap: wrap; gap: 15px; align-items: center; justify-content: space-between;">
           <div style="flex: 1; min-width: 200px;">
             <div class="section-title">Checklists Operativos</div>
             <div class="section-sub">Gestión de rutinas y tareas del equipo</div>
           </div>
-
           <div
             style="display: flex; gap: 15px; flex-wrap: wrap; align-items: center; flex: 2; justify-content: flex-end;">
-
             <div *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeCrearChecklists"
               style="position: relative; flex: 1; min-width: 220px; max-width: 350px;">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -117,12 +112,10 @@
                 <circle cx="11" cy="11" r="8"></circle>
                 <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
               </svg>
-
               <input type="text" class="form-input" [(ngModel)]="terminoBusquedaChecklist"
                 placeholder="Buscar tarea, empleado o zona..."
                 style="padding-left: 38px !important; width: 100%; box-sizing: border-box;">
             </div>
-
             <div class="action-buttons" style="margin: 0;">
               <button class="btn-secondary" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeCrearChecklists"
                 (click)="abrirModalRutinas()">
@@ -144,7 +137,6 @@
             </div>
           </div>
         </div>
-
         <div class="checklist-grid">
           <div class="checklist-card" *ngFor="let checklist of checklistsFiltrados" (click)="verDetalle(checklist)">
             <div class="checklist-card-header">
@@ -154,7 +146,6 @@
                   [ngClass]="{'badge-pendiente': checklist.status === 'pendiente','badge-en-progreso': checklist.status === 'en-progreso','badge-completo': checklist.status === 'completo'}">
                   {{ checklist.status === 'en-progreso' ? 'En Progreso' : (checklist.status | titlecase) }}
                 </div>
-
                 <button class="btn-delete-icon"
                   *ngIf="currentUser?.rol === 'admin' || checklist.createdBy === currentUser?.nombre"
                   (click)="editarBloqueRutinas(checklist, $event)" title="Editar Rutinas"
@@ -164,7 +155,6 @@
                     <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
                   </svg>
                 </button>
-
                 <button class="btn-delete-icon"
                   *ngIf="currentUser?.rol === 'admin' || checklist.createdBy === currentUser?.nombre"
                   (click)="eliminarChecklist(checklist, $event)" title="Eliminar">
@@ -175,7 +165,6 @@
                 </button>
               </div>
             </div>
-
             <div class="checklist-card-info">
               <span style="display: flex; align-items: center; gap: 8px;">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -211,7 +200,6 @@
                   <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
                 </svg> ENVIADO</span>
             </div>
-
             <div class="checklist-preview-box">
               <div class="preview-box-title" style="display: flex; align-items: center;"><svg width="12" height="12"
                   style="margin-right: 4px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -229,7 +217,6 @@
               <div *ngIf="(checklist.items?.length || 0) > 4" class="preview-more">+ {{ (checklist.items?.length || 0) -
                 4 }} tareas adicionales...</div>
             </div>
-
             <div class="checklist-progress">
               <div class="progress-label">
                 <span>{{ checklist.calcCompletados || 0 }} de {{ checklist.items.length }} tareas</span>
@@ -240,7 +227,6 @@
               </div>
             </div>
           </div>
-
           <div class="empty-state" *ngIf="checklistsFiltrados.length === 0">
             <div class="empty-state-icon"><svg width="48" height="48" viewBox="0 0 24 24" fill="none"
                 stroke="currentColor" stroke-width="2">
@@ -258,7 +244,6 @@
           </div>
         </div>
       </div>
-
       <div *ngIf="vistaActual() === 'detalle' && checklistSeleccionado()">
         <button class="btn-back" (click)="volverALista()">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -267,7 +252,6 @@
             <polyline points="12 19 5 12 12 5"></polyline>
           </svg> Volver a la lista
         </button>
-
         <div class="checklist-detail-header">
           <div class="detail-title">{{ checklistSeleccionado().name }}</div>
           <div class="detail-meta">
@@ -295,7 +279,6 @@
             </div>
           </div>
         </div>
-
         <div class="checklist-detail-items">
           <div class="checklist-detail-item" *ngFor="let item of checklistSeleccionado().items">
             <div class="item-main-row">
@@ -307,7 +290,6 @@
                   <polyline points="20 6 9 17 4 12"></polyline>
                 </svg>
               </div>
-
               <div class="item-text" [class.done]="item.checked">
                 {{ item.text }}
                 <span class="item-tag tag-routine" *ngIf="item.tipo === 'rutina'">
@@ -337,7 +319,6 @@
                 </span>
               </div>
             </div>
-
             <div class="alert-box alert-danger"
               *ngIf="isTareaVencida(item, checklistSeleccionado().date) && !item.checked">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -347,7 +328,6 @@
                 <line x1="12" y1="17" x2="12.01" y2="17"></line>
               </svg> Tiempo límite agotado. Tarea bloqueada.
             </div>
-
             <div class="item-photo-section" *ngIf="item.requiresPhoto">
               <label class="btn-upload-mini"
                 *ngIf="!item.photo && !checklistSeleccionado().enviado && currentUser?.nombre === checklistSeleccionado().assigned && !isTareaVencida(item, checklistSeleccionado().date)">
@@ -358,7 +338,6 @@
                 <input type="file" accept="image/*" capture="environment" (change)="onFileSelected($event, item)"
                   style="display: none;">
               </label>
-
               <div class="preview-wrap-mini" *ngIf="item.photo">
                 <span class="preview-title" style="display: flex; align-items: center;"><svg width="12" height="12"
                     viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px;">
@@ -377,7 +356,6 @@
                     </svg></button>
                 </div>
               </div>
-
               <div class="alert-box alert-warning"
                 *ngIf="item.checked && !item.photo && !checklistSeleccionado().enviado && currentUser?.nombre === checklistSeleccionado().assigned">
                 * Se requiere evidencia fotográfica para auditar.
@@ -392,7 +370,6 @@
               </div>
             </div>
           </div>
-
           <div style="margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border);">
             <label
               style="display: block; font-size: 14px; font-weight: 600; color: var(--text-main); margin-bottom: 8px;">
@@ -410,9 +387,7 @@
               placeholder="Escribe aquí si hubo algún problema, material faltante, etc."
               [disabled]="checklistSeleccionado().enviado || currentUser?.nombre !== checklistSeleccionado().assigned"></textarea>
           </div>
-
         </div>
-
         <div class="send-section"
           *ngIf="!checklistSeleccionado().enviado && currentUser?.nombre === checklistSeleccionado().assigned">
           <button class="btn-send" (click)="enviarChecklist()">
@@ -423,7 +398,6 @@
             </svg> Confirmar y Enviar
           </button>
         </div>
-
         <div class="send-section-success" *ngIf="checklistSeleccionado().enviado">
           <span class="success-icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor"
               stroke-width="2">
@@ -436,16 +410,13 @@
             auditado.</strong><br>
           <span class="success-text">Los datos y evidencias han sido sellados en el sistema.</span>
         </div>
-
         <div *ngIf="checklistSeleccionado().enviado && checklistSeleccionado().notaEmpleado"
           style="margin-top: 20px; background: #F8FAFC; padding: 15px; border-radius: 8px; border: 1px solid var(--border);">
           <strong style="color: var(--primary-navy); font-size: 13px;">Comentario adjunto:</strong>
           <p style="margin: 5px 0 0 0; font-size: 14px; color: var(--text-main); white-space: pre-wrap;">{{
             checklistSeleccionado().notaEmpleado }}</p>
         </div>
-
       </div>
-
       <div class="modal-overlay" *ngIf="isModalOpen">
         <div class="modal">
           <div class="modal-header">
@@ -527,7 +498,6 @@
           </div>
         </div>
       </div>
-
       <div class="modal-overlay" *ngIf="isModalRutinasOpen">
         <div class="modal">
           <div class="modal-header">
@@ -557,7 +527,6 @@
                 </label>
               </div>
             </div>
-
             <div class="form-group form-full">
               <label class="form-label">Sucursal asignada</label>
               <select class="form-input select-input" [(ngModel)]="formStoreRutina" [disabled]="isEditMode">
@@ -568,7 +537,6 @@
                 ℹ️ Las rutinas diarias para esta zona se omiten automáticamente los domingos.
               </small>
             </div>
-
             <div class="form-group form-full"
               style="margin-top: 15px; border-top: 1px dashed var(--border); padding-top: 20px;">
               <label class="form-label">Configuración de Frecuencias</label>
@@ -637,7 +605,6 @@
           </div>
         </div>
       </div>
-
       <div class="modal-overlay" *ngIf="isPasswordModalOpen" style="z-index: 9999;">
         <div class="modal" style="max-width: 400px; text-align: center; padding: 30px;">
           <div style="margin-bottom: 15px; color: var(--primary-navy);"><svg width="48" height="48" viewBox="0 0 24 24"
@@ -658,7 +625,6 @@
           </div>
         </div>
       </div>
-
       <div class="modal-overlay" *ngIf="isModalNotificacionOpen" style="z-index: 9999;">
         <div class="modal" style="max-width: 400px; padding: 30px;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
@@ -693,11 +659,9 @@
           </div>
         </div>
       </div>
-
     </div>
   </div>
 </div>
-
 <div class="modal-overlay" *ngIf="notificacionesPendientes().length > 0"
   style="z-index: 10000; background: rgba(0,0,0,0.85);">
   <div class="modal"
@@ -709,7 +673,7 @@
         <line x1="12" y1="17" x2="12.01" y2="17"></line>
       </svg>
     </div>
-    <h2 style="color: #991B1B; font-size: 24px; font-weight: 800; margin-bottom: 10px; text-transform: uppercase;">⚠️
+    <h2 style="color: #991B1B; font-size: 24px; font-weight: 800; margin-bottom: 10px; text-transform: uppercase;"> ⚠️
       Nuevo Aviso de {{ notificacionesPendientes()[0].de }}</h2>
     <div
       style="background: white; padding: 24px; border-radius: 8px; font-size: 18px; color: #1E293B; font-weight: 600; margin-bottom: 30px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border-left: 4px solid #F59E0B;">
@@ -722,7 +686,6 @@
     </button>
   </div>
 </div>
-
 <div class="toast-notification" *ngIf="toastMessage">
   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
     stroke-linecap="round" stroke-linejoin="round">

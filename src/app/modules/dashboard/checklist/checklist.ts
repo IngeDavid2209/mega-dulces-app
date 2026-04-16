@@ -38,7 +38,6 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   formAssignedRutina: string[] = [];
   formStoreRutina = '';
   
-  // 🔥 AHORA LAS RUTINAS TAMBIÉN SOPORTAN "ANTES Y DESPUÉS" 🔥
   formRutinas: any[] = [];
   frecuencias = ['Diaria', 'Semanal', 'Catorcenal', 'Mensual', 'Trimestral'];
   diasDelMes = Array.from({length: 31}, (_, i) => i + 1);
@@ -341,7 +340,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
           id: checklistId, timestampCreacion: Date.now(), name: `${molde.name} (${molde.frecuencia})`,
           assigned: molde.assigned, store: molde.store, date: fechaString, time: '23:59',
           status: 'pendiente', enviado: false, createdBy: 'Robot de Rutinas', notaEmpleado: '',
-          items: itemsVigentes.map((i:any) => ({...i, checked: false, photo: null}))
+          items: itemsVigentes.map((i:any) => ({...i, checked: false, photo: null, photoTime: null, photoAntesTime: null, photoDespuesTime: null}))
         };
         await setDoc(docRef, nuevoChecklist);
       }
@@ -428,6 +427,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   volverALista() { this.checklistSeleccionado.set(null); this.vistaActual.set('lista'); }
   toggleItem(item: any) { item.checked = !item.checked; this.actualizarEstado(); }
 
+  // 🔥 AQUÍ SE CAPTURA LA HORA EXACTA DE LA FOTO 🔥
   async onFileSelected(event: any, item: any, tipoFoto: string = 'photo') {
     const file = event.target.files[0];
     if (!file) return;
@@ -443,13 +443,26 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     try {
       const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, { method: 'POST', body: formData });
       const data = await response.json();
-      if (data.secure_url) { item[tipoFoto] = data.secure_url; this.actualizarEstado(); }
+      if (data.secure_url) { 
+        item[tipoFoto] = data.secure_url; 
+        
+        // 🔥 GUARDAR LA HORA EXACTA 🔥
+        const ahora = new Date();
+        item[tipoFoto + 'Time'] = ahora.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+        
+        this.actualizarEstado(); 
+      }
       else { item[tipoFoto] = null; this.actualizarEstado(); alert(' ❌  Error de Cloudinary.'); }
     } catch (error) { item[tipoFoto] = null; this.actualizarEstado(); alert(' ❌  Error de conexión.'); }
     finally { event.target.value = ''; }
   }
 
-  removeImage(item: any, tipoFoto: string = 'photo') { item[tipoFoto] = null; this.actualizarEstado(); }
+  // 🔥 AL BORRAR LA FOTO TAMBIÉN BORRAMOS LA HORA 🔥
+  removeImage(item: any, tipoFoto: string = 'photo') { 
+    item[tipoFoto] = null; 
+    item[tipoFoto + 'Time'] = null;
+    this.actualizarEstado(); 
+  }
 
   esItemCompleto(item: any): boolean {
     if (!item.checked) return false;
@@ -522,8 +535,11 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       time: item.time,
       checked: false,
       photo: null,
+      photoTime: null, // 🔥 PREPARAMOS LOS CAMPOS 🔥
       photoAntes: null, 
+      photoAntesTime: null,
       photoDespues: null, 
+      photoDespuesTime: null,
       tipo: 'tarea'
     }));
 
@@ -554,7 +570,6 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     this.isEditMode = false;
     this.formNameRutina = ''; this.formAssignedRutina = [];
     this.formStoreRutina = this.sucursalesDisponibles().length > 0 ? this.sucursalesDisponibles()[0] : '';
-    // 🔥 AHORA LAS RUTINAS INICIAN CON LA PROPIEDAD requiresAntesDespues 🔥
     this.formRutinas = [{ text: '', requiresPhoto: false, requiresAntesDespues: false, frecuencia: 'Diaria', fechaFin: null, horaLimite: '', diaSemana: 'Lunes', diaMes: 1 }];
     this.isModalRutinasOpen = true;
   }
@@ -562,7 +577,6 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   cerrarModalRutinas() { this.isModalRutinasOpen = false; }
   
   agregarRutina() { 
-    // 🔥 AL AGREGAR, TAMBIÉN TRAE LA PROPIEDAD 🔥
     this.formRutinas.push({ text: '', requiresPhoto: false, requiresAntesDespues: false, frecuencia: 'Diaria', fechaFin: null, horaLimite: '', diaSemana: 'Lunes', diaMes: 1 }); 
   }
   
@@ -575,11 +589,14 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       id: Date.now() + 1000 + i, 
       text: rutina.text, 
       requiresPhoto: rutina.requiresPhoto, 
-      requiresAntesDespues: rutina.requiresAntesDespues || false, // 🔥 GUARDAMOS LA ORDEN DE 2 FOTOS 🔥
+      requiresAntesDespues: rutina.requiresAntesDespues || false, 
       checked: false,
       photo: null, 
+      photoTime: null, // 🔥 PREPARAMOS LOS CAMPOS 🔥
       photoAntes: null, 
+      photoAntesTime: null,
       photoDespues: null,
+      photoDespuesTime: null,
       tipo: 'rutina', 
       frecuencia: rutina.frecuencia, 
       fechaFin: rutina.fechaFin,

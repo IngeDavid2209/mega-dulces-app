@@ -79,8 +79,8 @@
                </div>
              </div>
              <div style="display:flex; gap:10px;">
-               <button class="btn-primary" style="flex:1; justify-content:center; font-size:12px; padding:8px;" (click)="irACrearTarea(emp.nombre)">+ Tarea Única</button>
-               <button class="btn-secondary" style="flex:1; justify-content:center; font-size:12px; padding:8px;" (click)="irACrearRutina(emp.nombre)">+ Rutina</button>
+               <button class="btn-primary" style="flex:1; justify-content:center; font-size:12px; padding:8px;" (click)="abrirModalTarea(emp.nombre)">+ Tarea Única</button>
+               <button class="btn-secondary" style="flex:1; justify-content:center; font-size:12px; padding:8px;" (click)="abrirModalRutina(emp.nombre)">+ Rutina</button>
              </div>
            </div>
 
@@ -97,14 +97,8 @@
             <button class="modal-close" (click)="cerrarModal()">X</button>
           </div>
           <div class="modal-body">
-            <div class="form-group form-full">
-              <label class="form-label">Nombre del Área</label>
-              <input class="form-input" [(ngModel)]="formNombreArea" placeholder="Ej: Cajas">
-            </div>
-            <div class="form-group form-full" style="margin-top: 10px;">
-              <label class="form-label">Descripción</label>
-              <textarea class="form-input" [(ngModel)]="formDescripcionArea" rows="2" placeholder="Ej: Encargados de cobrar..."></textarea>
-            </div>
+            <div class="form-group form-full"><label class="form-label">Nombre del Área</label><input class="form-input" [(ngModel)]="formNombreArea" placeholder="Ej: Cajas"></div>
+            <div class="form-group form-full" style="margin-top: 10px;"><label class="form-label">Descripción</label><textarea class="form-input" [(ngModel)]="formDescripcionArea" rows="2" placeholder="Ej: Encargados de cobrar..."></textarea></div>
 
             <div class="form-group form-full" style="margin-top: 15px; border-top: 1px solid #E2E8F0; padding-top: 15px;">
               <label class="form-label">Asignar Personal Inicial (Opcional)</label>
@@ -123,15 +117,10 @@
                 </div>
                 <div *ngIf="empleadosParaCreacion.length === 0" style="text-align: center; padding: 15px; color: #64748B; font-size: 12px;">No se encontraron empleados.</div>
               </div>
-              <div style="font-size: 11px; color: #64748B; margin-top: 6px; font-weight: bold;">
-                Seleccionados: {{ formAssignedUsers.length }}
-              </div>
+              <div style="font-size: 11px; color: #64748B; margin-top: 6px; font-weight: bold;">Seleccionados: {{ formAssignedUsers.length }}</div>
             </div>
 
-            <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
-              <button class="btn-secondary" (click)="cerrarModal()">Cancelar</button>
-              <button class="btn-primary" (click)="guardarArea()">Crear Área</button>
-            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;"><button class="btn-secondary" (click)="cerrarModal()">Cancelar</button><button class="btn-primary" (click)="guardarArea()">Crear Área</button></div>
           </div>
         </div>
       </div>
@@ -146,6 +135,126 @@
                 <span>{{ u.nombre }}</span>
                 <input type="checkbox" [checked]="tieneElArea(u)" (change)="toggleAreaUsuario(u)">
               </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-overlay" *ngIf="isModalTareaOpen">
+        <div class="modal" style="max-width: 550px;">
+          <div class="modal-header">
+            <div class="modal-title">Nueva Tarea Única</div>
+            <button class="modal-close" (click)="cerrarModalTarea()"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+          </div>
+          <div class="modal-body">
+            <div class="form-group form-full"><label class="form-label">Nombre de la operación</label><input class="form-input" type="text" [(ngModel)]="formName" placeholder="Ej: Acomodo especial"></div>
+            
+            <div class="form-group form-full">
+              <label class="form-label">Usuarios Asignados (Personal del Área)</label>
+              <div class="checkbox-grid">
+                <label class="checkbox-label" *ngFor="let emp of getEmpleadosDelArea()" [class.selected]="formAssigned.includes(emp.nombre)">
+                  <input type="checkbox" [checked]="formAssigned.includes(emp.nombre)" (change)="toggleEmpleadoTarea(emp.nombre)" class="custom-checkbox"> {{ emp.nombre }}
+                </label>
+              </div>
+            </div>
+
+            <div class="form-group form-full"><label class="form-label">Departamento / Sucursal</label><select class="form-input select-input" [(ngModel)]="formStore"><option *ngFor="let suc of sucursalesDisponibles" [value]="suc">{{ suc }}</option></select></div>
+            
+            <div class="form-group form-full">
+              <label class="form-label">Actividades</label>
+              <div class="checklist-items">
+                <div class="checklist-item-wrap" *ngFor="let item of formItems; let i = index; trackBy: trackByIndex" style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 15px; margin-bottom: 10px;">
+                  <div class="item-wrap-top">
+                    <input class="form-input item-input" type="text" [(ngModel)]="item.text" placeholder="Descripción de la tarea">
+                    <label class="photo-toggle" style="display: flex; align-items: center; cursor: pointer; background: white; padding: 6px 10px; border-radius: 6px; border: 1px solid #E2E8F0; font-size: 13px; font-weight: 600;">
+                      <input type="checkbox" [(ngModel)]="item.requiresPhoto" [disabled]="item.requiresAntesDespues" (change)="item.requiresPhoto ? item.requiresAntesDespues = false : null" style="margin-right: 6px;"> 
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px;"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg> 1 Foto
+                    </label>
+                    <label class="photo-toggle" style="display: flex; align-items: center; cursor: pointer; background: #FFFBEB; color: #D97706; padding: 6px 10px; border-radius: 6px; border: 1px solid #FDE68A; font-size: 13px; font-weight: 600; margin-left: 8px;">
+                      <input type="checkbox" [(ngModel)]="item.requiresAntesDespues" (change)="item.requiresAntesDespues ? item.requiresPhoto = false : null" style="margin-right: 6px;"> 
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg> Antes y Desp.
+                    </label>
+                    <button class="btn-remove" (click)="eliminarItem(i)" title="Eliminar" style="margin-left: 8px; background: transparent; border: none; color: #EF4444; cursor: pointer;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button>
+                  </div>
+                  <div class="item-wrap-bottom" style="display: flex; gap: 15px; margin-top: 10px;">
+                    <div class="time-input-group" style="display: flex; align-items: center; font-size: 13px; color: #64748B;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg> Fecha: <input class="form-input time-input" type="date" [(ngModel)]="item.date" style="padding: 4px 8px; margin-left: 6px;"></div>
+                    <div class="time-input-group" style="display: flex; align-items: center; font-size: 13px; color: #64748B;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> Límite: <input class="form-input time-input" type="time" [(ngModel)]="item.time" style="padding: 4px 8px; margin-left: 6px;"></div>
+                  </div>
+                </div>
+              </div>
+              <button class="btn-secondary" (click)="agregarItem()" style="margin-top:12px; width: 100%; border: 1px dashed #CBD5E1; color: #475569;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px; vertical-align:middle;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg> Añadir actividad</button>
+            </div>
+            <div class="btn-group" style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; padding-top: 20px; border-top: 1px solid #E2E8F0;">
+              <button class="btn-secondary" (click)="cerrarModalTarea()">Cancelar</button>
+              <button class="btn-primary" (click)="guardarChecklistUnico()">Generar Tareas</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-overlay" *ngIf="isModalRutinaOpen">
+        <div class="modal" style="max-width: 650px;">
+          <div class="modal-header">
+            <div class="modal-title">Nuevo Bloque de Rutinas</div>
+            <button class="modal-close" (click)="cerrarModalRutina()"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+          </div>
+          <div class="modal-body">
+            <div class="form-group form-full"><label class="form-label">Identificador del Bloque</label><input class="form-input" type="text" [(ngModel)]="formNameRutina" placeholder="Ej: Protocolo de Cierre Nocturno"></div>
+            
+            <div class="form-group form-full">
+              <label class="form-label">Responsables de ejecución (Personal del Área)</label>
+              <div class="checkbox-grid">
+                <label class="checkbox-label" *ngFor="let emp of getEmpleadosDelArea()" [class.selected]="formAssignedRutina.includes(emp.nombre)">
+                  <input type="checkbox" [checked]="formAssignedRutina.includes(emp.nombre)" (change)="toggleEmpleadoRutina(emp.nombre)" class="custom-checkbox"> {{ emp.nombre }}
+                </label>
+              </div>
+            </div>
+
+            <div class="form-group form-full">
+              <label class="form-label">Sucursal asignada</label>
+              <select class="form-input select-input" [(ngModel)]="formStoreRutina"><option *ngFor="let suc of sucursalesDisponibles" [value]="suc">{{ suc }}</option></select>
+              <small *ngIf="esSucursalAdministrativa(formStoreRutina)" style="color: #64748B; display: block; margin-top: 6px;">ℹ️ Las rutinas diarias para esta zona se omiten automáticamente los domingos.</small>
+            </div>
+
+            <div class="form-group form-full" style="margin-top: 15px; border-top: 1px dashed var(--border); padding-top: 20px;">
+              <label class="form-label">Configuración de Frecuencias</label>
+              <div class="checklist-items">
+                <div class="checklist-item-wrap" *ngFor="let rutina of formRutinas; let i = index; trackBy: trackByIndex" style="display:flex; flex-direction:column; gap:10px; background: #F8FAFC; border: 1px solid #E2E8F0; padding: 15px; border-radius: 8px; margin-bottom: 10px;">
+                  <input class="form-input item-input" type="text" [(ngModel)]="rutina.text" placeholder="Ej: Limpieza profunda" style="flex: 1;">
+                  <div style="display:flex; flex-wrap:wrap; gap:10px;">
+                    <div class="routine-settings" style="flex:1; display:flex; gap:10px;">
+                      <select class="form-input select-input" [(ngModel)]="rutina.frecuencia" (change)="alCambiarFrecuencia(rutina)">
+                        <option *ngFor="let f of frecuencias" [value]="f">{{ f }}</option>
+                      </select>
+                      <select *ngIf="rutina.frecuencia === 'Semanal' || rutina.frecuencia === 'Catorcenal'" class="form-input select-input" [(ngModel)]="rutina.diaSemana">
+                        <option value="Lunes">Lunes</option><option value="Martes">Martes</option><option value="Miércoles">Miércoles</option><option value="Jueves">Jueves</option><option value="Viernes">Viernes</option><option value="Sábado">Sábado</option><option value="Domingo">Domingo</option>
+                      </select>
+                      <select *ngIf="rutina.frecuencia === 'Mensual' || rutina.frecuencia === 'Trimestral'" class="form-input select-input" [(ngModel)]="rutina.diaMes">
+                        <option *ngFor="let d of diasDelMes" [value]="d">Día {{ d }}</option>
+                      </select>
+                      <div class="time-picker-wrap" style="display: flex; align-items: center; background: white; border: 1px solid #E2E8F0; border-radius: 6px; padding: 0 10px;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: #64748B;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                        <input type="time" [(ngModel)]="rutina.horaLimite" style="border: none; outline: none; padding: 10px 5px;">
+                      </div>
+                    </div>
+                  </div>
+                  <div style="display: flex; gap: 8px; align-items: center; width: 100%; margin-top: 8px;">
+                    <span class="routine-period-text" style="flex: 1; font-size:12px; color: #64748B; font-weight: 600;">{{ getTextoPeriodo(rutina) }}</span>
+                    <label class="photo-toggle" style="display:flex; align-items:center; cursor:pointer; background:white; padding:4px 8px; border-radius:6px; border:1px solid #E2E8F0; font-size:12px; font-weight:600;">
+                      <input type="checkbox" [(ngModel)]="rutina.requiresPhoto" [disabled]="rutina.requiresAntesDespues" (change)="rutina.requiresPhoto ? rutina.requiresAntesDespues = false : null"> 1 Foto
+                    </label>
+                    <label class="photo-toggle" style="display:flex; align-items:center; cursor:pointer; background:#FFFBEB; color:#D97706; padding:4px 8px; border-radius:6px; border:1px solid #FDE68A; font-size:12px; font-weight:600;">
+                      <input type="checkbox" [(ngModel)]="rutina.requiresAntesDespues" (change)="rutina.requiresAntesDespues ? rutina.requiresPhoto = false : null"> Antes/Desp.
+                    </label>
+                    <button class="btn-remove" (click)="eliminarRutina(i)" title="Eliminar rutina" style="background:transparent; border:none; color:#EF4444; cursor:pointer;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button>
+                  </div>
+                </div>
+              </div>
+              <button class="btn-outline-primary" (click)="agregarRutina()" style="margin-top:12px; width: 100%; border: 1px dashed #CBD5E1; color: #475569; padding:10px; border-radius:8px; background:white; cursor:pointer; font-weight: 600;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px; vertical-align:middle;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg> Añadir regla recurrente</button>
+            </div>
+            <div class="btn-group" style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; padding-top: 20px; border-top: 1px solid #E2E8F0;">
+              <button class="btn-secondary" (click)="cerrarModalRutina()">Cancelar</button>
+              <button class="btn-primary" (click)="guardarBloqueRutinas()">Guardar en Bóveda</button>
             </div>
           </div>
         </div>

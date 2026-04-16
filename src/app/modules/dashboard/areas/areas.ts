@@ -1,9 +1,8 @@
 import { Component, signal, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterModule, Router } from '@angular/router'; 
+import { RouterModule } from '@angular/router'; 
 import { Firestore, collection, onSnapshot, doc, setDoc, deleteDoc } from '@angular/fire/firestore';
-
 import Swal from 'sweetalert2';
 
 @Component({
@@ -21,7 +20,6 @@ export class AreasComponent implements OnInit, OnDestroy {
   areas = signal<any[]>([]);
   usuarios = signal<any[]>([]);
   
-  // 🔥 SISTEMA DE VISTAS 🔥
   vistaActual = signal<'lista' | 'detalle'>('lista');
   areaDetalle = signal<any>(null);
 
@@ -38,17 +36,36 @@ export class AreasComponent implements OnInit, OnDestroy {
   empleadosFiltradosAsignacion = signal<any[]>([]);
   terminoBusquedaAsignacion = '';
 
+  // 🔥 VARIABLES PARA TAREAS Y RUTINAS DIRECTAS 🔥
+  isModalTareaOpen = false;
+  isModalRutinaOpen = false;
+
+  formName = '';
+  formAssigned: string[] = [];
+  formStore = '';
+  formItems = [{ text: '', requiresPhoto: false, requiresAntesDespues: false, date: '', time: '' }];
+
+  formNameRutina = '';
+  formAssignedRutina: string[] = [];
+  formStoreRutina = '';
+  formRutinas: any[] = [];
+  frecuencias = ['Diaria', 'Semanal', 'Catorcenal', 'Mensual', 'Trimestral'];
+  diasDelMes = Array.from({length: 31}, (_, i) => i + 1);
+
+  sucursalesDisponibles = [
+    'Canindo', 'La Piedad Abastos', '8 Esquinas', 'Padre Hidalgo',
+    'Morelia Madero', 'Morelia Abastos', 'Yurécuaro', 'Zamora Centro',
+    'OFICINAS CORPORATIVAS', 'CAJA GENERAL', 'COMPRAS', 'CONTABILIDAD', 'FINANZAS', 'SISTEMAS', 'RH', 'MKT', 'MANTENIMIENTO'
+  ];
+
   private firestore = inject(Firestore); 
-  private router = inject(Router); // 🔥 INYECTAMOS EL ENRUTADOR
   private destructoresRadares: (() => void)[] = [];
 
   ngOnInit() {
     const sesion = localStorage.getItem('md_sesion_actual');
     if (sesion) { this.currentUser = JSON.parse(sesion); }
-    
     if (this.currentUser?.rol !== 'admin' && !this.currentUser?.puedeAdministrarPersonal) {
-      window.location.href = '/home';
-      return;
+      window.location.href = '/home'; return;
     }
     this.conectarConLaNube();
   }
@@ -73,31 +90,14 @@ export class AreasComponent implements OnInit, OnDestroy {
     this.destructoresRadares.push(radarUsuarios);
   }
 
-  // 🔥 FUNCIONES DE LA VISTA DE DETALLES 🔥
-  verDetalleArea(area: any) {
-    this.areaDetalle.set(area);
-    this.vistaActual.set('detalle');
-  }
-
-  volverALista() {
-    this.areaDetalle.set(null);
-    this.vistaActual.set('lista');
-  }
+  verDetalleArea(area: any) { this.areaDetalle.set(area); this.vistaActual.set('detalle'); }
+  volverALista() { this.areaDetalle.set(null); this.vistaActual.set('lista'); }
 
   getEmpleadosDelArea() {
     const area = this.areaDetalle();
     if (!area) return [];
     return this.usuarios().filter(u => u.rol === 'trabajador' && u.areas && u.areas.includes(area.nombre));
   }
-
-  irACrearTarea(empleadoNombre: string) {
-    this.router.navigate(['/checklist'], { queryParams: { assign: empleadoNombre, modal: 'tarea' } });
-  }
-
-  irACrearRutina(empleadoNombre: string) {
-    this.router.navigate(['/checklist'], { queryParams: { assign: empleadoNombre, modal: 'rutina' } });
-  }
-  // =====================================
 
   getAreasFiltradas() {
     const term = this.terminoBusqueda.toLowerCase();
@@ -136,37 +136,29 @@ export class AreasComponent implements OnInit, OnDestroy {
     if (!this.formNombreArea.trim()) { Swal.fire('Falta el nombre', 'Debes asignarle un nombre al área.', 'warning'); return; }
     const nombreFormateado = this.formNombreArea.trim();
     const existe = this.areas().some(a => a.nombre.toLowerCase() === nombreFormateado.toLowerCase());
-    
     if (existe) { Swal.fire('Área Duplicada', 'Ya existe un área con ese nombre.', 'error'); return; }
 
     const areaId = 'area_' + Date.now();
     try {
-      await setDoc(doc(this.firestore, 'areas_operativas', areaId), {
-        nombre: nombreFormateado, descripcion: this.formDescripcionArea.trim(), fechaCreacion: new Date().toISOString()
-      });
+      await setDoc(doc(this.firestore, 'areas_operativas', areaId), { nombre: nombreFormateado, descripcion: this.formDescripcionArea.trim(), fechaCreacion: new Date().toISOString() });
       for (const u of this.formAssignedUsers) {
         let nuevasAreas = u.areas ? [...u.areas] : [];
-        if (!nuevasAreas.includes(nombreFormateado)) {
-          nuevasAreas.push(nombreFormateado);
-          await setDoc(doc(this.firestore, 'usuarios', u.idFirestore), { areas: nuevasAreas }, { merge: true });
-        }
+        if (!nuevasAreas.includes(nombreFormateado)) { nuevasAreas.push(nombreFormateado); await setDoc(doc(this.firestore, 'usuarios', u.idFirestore), { areas: nuevasAreas }, { merge: true }); }
       }
       this.cerrarModal();
-      Swal.fire({ toast: true, position: 'top-end', showConfirmButton: false, timer: 3000, icon: 'success', title: 'Área creada y personal asignado' });
+      Swal.fire({ toast: true, position: 'top-end', showConfirmButton: false, timer: 3000, icon: 'success', title: 'Área creada' });
     } catch (error) { Swal.fire('Error', 'Hubo un problema al crear el área.', 'error'); }
   }
 
   async eliminarArea(area: any, event: Event) {
-    event.stopPropagation(); // 🔥 EVITA QUE SE ABRA LA TARJETA AL BORRAR
-    if (this.contarEmpleadosEnArea(area.nombre) > 0) {
-      Swal.fire('Atención', 'Hay personal en esta área. Quítalos primero.', 'warning'); return;
-    }
+    event.stopPropagation(); 
+    if (this.contarEmpleadosEnArea(area.nombre) > 0) { Swal.fire('Atención', 'Hay personal en esta área. Quítalos primero.', 'warning'); return; }
     const res = await Swal.fire({ title: '¿Borrar?', text: area.nombre, icon: 'warning', showCancelButton: true });
     if (res.isConfirmed) await deleteDoc(doc(this.firestore, 'areas_operativas', area.id));
   }
 
   abrirAsignacion(area: any, event: Event) {
-    event.stopPropagation(); // 🔥 EVITA QUE SE ABRA LA TARJETA AL ASIGNAR
+    event.stopPropagation(); 
     this.areaSeleccionada = area;
     this.actualizarListaAsignacion();
     this.isModalAsignacionOpen = true;
@@ -189,5 +181,132 @@ export class AreasComponent implements OnInit, OnDestroy {
     if (this.tieneElArea(u)) nuevasAreas = nuevasAreas.filter(a => a !== this.areaSeleccionada.nombre);
     else nuevasAreas.push(this.areaSeleccionada.nombre);
     await setDoc(doc(this.firestore, 'usuarios', u.idFirestore), { areas: nuevasAreas }, { merge: true });
+  }
+
+  // =========================================================
+  // 🔥 LÓGICA PARA CREAR TAREAS Y RUTINAS DESDE ÁREAS 🔥
+  // =========================================================
+
+  trackByIndex(index: number, obj: any): any { return index; }
+  mostrarToast(mensaje: string) { Swal.fire({ toast: true, position: 'top-end', showConfirmButton: false, timer: 3000, icon: 'success', title: mensaje }); }
+
+  // --- TAREAS ÚNICAS ---
+  abrirModalTarea(empleadoNombre: string) {
+    this.formName = ''; 
+    this.formAssigned = [empleadoNombre]; // Pre-seleccionar
+    this.formStore = this.sucursalesDisponibles.length > 0 ? this.sucursalesDisponibles[0] : '';
+    this.formItems = [{ text: '', requiresPhoto: false, requiresAntesDespues: false, date: '', time: '' }];
+    this.isModalTareaOpen = true;
+  }
+  cerrarModalTarea() { this.isModalTareaOpen = false; }
+  agregarItem() { this.formItems.push({ text: '', requiresPhoto: false, requiresAntesDespues: false, date: '', time: '' }); }
+  eliminarItem(index: number) { this.formItems.splice(index, 1); }
+  
+  toggleEmpleadoTarea(nombre: string) {
+    const index = this.formAssigned.indexOf(nombre);
+    if (index > -1) { this.formAssigned.splice(index, 1); } else { this.formAssigned.push(nombre); }
+  }
+
+  async guardarChecklistUnico() {
+    if (!this.formName || this.formAssigned.length === 0) { Swal.fire('Faltan datos', 'Completa los campos.', 'warning'); return; }
+
+    const tareasValidas = this.formItems.filter(item => item.text.trim() !== '').map((item, i) => ({
+      id: Date.now() + i, text: item.text, requiresPhoto: item.requiresPhoto, requiresAntesDespues: item.requiresAntesDespues, 
+      date: item.date, time: item.time, checked: false,
+      photo: null, photoTime: null, photoAntes: null, photoAntesTime: null, photoDespues: null, photoDespuesTime: null, tipo: 'tarea'
+    }));
+
+    if (tareasValidas.length === 0) { Swal.fire('Error', 'Agrega al menos una actividad.', 'warning'); return; }
+
+    for (const empleadoNombre of this.formAssigned) {
+      const uniqueId = Date.now() + Math.floor(Math.random() * 1000); 
+      const offset = new Date().getTimezoneOffset() * 60000;
+      const hoy = new Date(Date.now() - offset).toISOString().split('T')[0];
+      
+      const checklistTareas = {
+        id: uniqueId, timestampCreacion: Date.now(), name: this.formName, assigned: empleadoNombre,
+        store: this.formStore, date: tareasValidas[0].date || hoy, time: tareasValidas[0].time || '23:59',
+        status: 'pendiente', enviado: false, createdBy: this.currentUser?.nombre || 'Desconocido', notaEmpleado: '',
+        items: JSON.parse(JSON.stringify(tareasValidas))
+      };
+      await setDoc(doc(this.firestore, 'checklists', uniqueId.toString()), checklistTareas);
+    }
+    this.mostrarToast('✅ ¡Tareas creadas con éxito!');
+    this.cerrarModalTarea();
+  }
+
+  // --- RUTINAS ---
+  abrirModalRutina(empleadoNombre: string) {
+    this.formNameRutina = ''; 
+    this.formAssignedRutina = [empleadoNombre]; // Pre-seleccionar
+    this.formStoreRutina = this.sucursalesDisponibles.length > 0 ? this.sucursalesDisponibles[0] : '';
+    this.formRutinas = [{ text: '', requiresPhoto: false, requiresAntesDespues: false, frecuencia: 'Diaria', fechaFin: null, horaLimite: '', diaSemana: 'Lunes', diaMes: 1 }];
+    this.isModalRutinaOpen = true;
+  }
+  cerrarModalRutina() { this.isModalRutinaOpen = false; }
+  
+  toggleEmpleadoRutina(nombre: string) {
+    const index = this.formAssignedRutina.indexOf(nombre);
+    if (index > -1) { this.formAssignedRutina.splice(index, 1); } else { this.formAssignedRutina.push(nombre); }
+  }
+  agregarRutina() { this.formRutinas.push({ text: '', requiresPhoto: false, requiresAntesDespues: false, frecuencia: 'Diaria', fechaFin: null, horaLimite: '', diaSemana: 'Lunes', diaMes: 1 }); }
+  eliminarRutina(index: number) { this.formRutinas.splice(index, 1); }
+  alCambiarFrecuencia(rutina: any) { rutina.fechaFin = null; }
+  
+  getTextoPeriodo(rutina: any): string {
+    if (rutina.frecuencia === 'Diaria') return 'Activa siempre';
+    if (rutina.frecuencia === 'Semanal') return `Todos los ${rutina.diaSemana || 'Lunes'}`;
+    if (rutina.frecuencia === 'Catorcenal') return `Cada 2 weeks, los ${rutina.diaSemana || 'Lunes'}`;
+    if (rutina.frecuencia === 'Mensual') return `Los días ${rutina.diaMes || 1} del mes`;
+    if (rutina.frecuencia === 'Trimestral') return `El día ${rutina.diaMes || 1} cada 3 meses`;
+    return '';
+  }
+
+  esSucursalAdministrativa(sucursal: string): boolean {
+    const admins = ['OFICINAS CORPORATIVAS', 'CAJA GENERAL', 'COMPRAS', 'CONTABILIDAD', 'FINANZAS', 'SISTEMAS', 'RH', 'MKT', 'MANTENIMIENTO'];
+    return admins.includes(sucursal);
+  }
+
+  async guardarBloqueRutinas() {
+    if (!this.formNameRutina || this.formAssignedRutina.length === 0) { Swal.fire('Faltan datos', 'Completa los campos.', 'warning'); return; }
+
+    const rutinasValidas = this.formRutinas.filter(rutina => rutina.text.trim() !== '').map((rutina, i) => ({
+      id: Date.now() + 1000 + i, text: rutina.text, requiresPhoto: rutina.requiresPhoto, requiresAntesDespues: rutina.requiresAntesDespues || false, 
+      checked: false, photo: null, photoTime: null, photoAntes: null, photoAntesTime: null, photoDespues: null, photoDespuesTime: null,
+      tipo: 'rutina', frecuencia: rutina.frecuencia, fechaFin: rutina.fechaFin, horaLimite: rutina.horaLimite, diaSemana: rutina.diaSemana || 'Lunes', diaMes: rutina.diaMes || 1
+    }));
+
+    if (rutinasValidas.length === 0) { Swal.fire('Error', 'Agrega rutinas.', 'warning'); return; }
+
+    for (const empleadoNombre of this.formAssignedRutina) {
+      const rutinasPorFrecuencia: { [key: string]: any[] } = {};
+      rutinasValidas.forEach(r => {
+        const llaveGrupo = r.frecuencia === 'Diaria' ? 'Diaria' : (r.frecuencia === 'Semanal' || r.frecuencia === 'Catorcenal') ? `${r.frecuencia}_${r.diaSemana}` : `${r.frecuencia}_${r.diaMes}`;
+        if (!rutinasPorFrecuencia[llaveGrupo]) rutinasPorFrecuencia[llaveGrupo] = [];
+        rutinasPorFrecuencia[llaveGrupo].push(r);
+      });
+
+      for (const llaveGrupo of Object.keys(rutinasPorFrecuencia)) {
+        const partesGrupo = llaveGrupo.split('_');
+        const frecuenciaReal = partesGrupo[0];
+        let diaSemanaReal = null; let diaMesReal = null;
+
+        if (frecuenciaReal === 'Semanal' || frecuenciaReal === 'Catorcenal') { diaSemanaReal = partesGrupo.length > 1 ? partesGrupo[1] : 'Lunes'; }
+        else if (frecuenciaReal === 'Mensual' || frecuenciaReal === 'Trimestral') { diaMesReal = partesGrupo.length > 1 ? parseInt(partesGrupo[1], 10) : 1; }
+
+        const nombreMoldeLimpio = this.formNameRutina.replace(/\s+/g, '_').toLowerCase();
+        const empleadoLimpio = empleadoNombre.replace(/\s+/g, '_').toLowerCase();
+        const moldeId = `molde_${nombreMoldeLimpio}_${empleadoLimpio}_${llaveGrupo}`;
+        
+        const nuevoMolde = {
+          id: moldeId, name: this.formNameRutina, assigned: empleadoNombre, store: this.formStoreRutina,
+          frecuencia: frecuenciaReal, diaSemana: diaSemanaReal, diaMes: diaMesReal, timestampCreacion: Date.now(),
+          createdBy: this.currentUser?.nombre || 'Desconocido', items: JSON.parse(JSON.stringify(rutinasPorFrecuencia[llaveGrupo]))
+        };
+        await setDoc(doc(this.firestore, 'moldes_checklists', moldeId), nuevoMolde);
+      }
+    }
+    this.mostrarToast('🔄 ¡Bloque guardado en la Bóveda!');
+    this.cerrarModalRutina();
   }
 }

@@ -1,7 +1,7 @@
 import { Component, signal, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterModule } from '@angular/router';
+import { RouterModule, ActivatedRoute } from '@angular/router'; // 🔥 AQUÍ ESTÁ EL ENRUTADOR
 import { Firestore, collection, doc, setDoc, getDoc, deleteDoc, onSnapshot, getDocs } from '@angular/fire/firestore';
 
 @Component({
@@ -47,7 +47,9 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   checklists = signal<any[]>([]);
   empleados = signal<any[]>([]);
   sucursalesDisponibles = signal<string[]>([]);
+  
   private firestore = inject(Firestore);
+  private route = inject(ActivatedRoute); // 🔥 INYECTAMOS EL ENRUTADOR
   private destructoresRadares: (() => void)[] = [];
   private sucursalesAdministrativas = [
     'OFICINAS CORPORATIVAS', 'CAJA GENERAL', 'COMPRAS', 'CONTABILIDAD',
@@ -93,6 +95,21 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     const sesion = localStorage.getItem('md_sesion_actual');
     if (sesion) { this.currentUser = JSON.parse(sesion); }
     this.conectarRadarNube();
+
+    // 🔥 MAGIA: ATRAPA LA REDIRECCIÓN DESDE LA PANTALLA DE ÁREAS 🔥
+    this.route.queryParams.subscribe(params => {
+      if (params['assign'] && params['modal']) {
+        setTimeout(() => { // Pequeño retraso para que los datos carguen bien en pantalla
+          if (params['modal'] === 'tarea') {
+            this.abrirModal();
+            this.formAssigned = [params['assign']];
+          } else if (params['modal'] === 'rutina') {
+            this.abrirModalRutinas();
+            this.formAssignedRutina = [params['assign']];
+          }
+        }, 500);
+      }
+    });
   }
 
   ngOnDestroy() { this.destructoresRadares.forEach(apagarRadar => apagarRadar()); }
@@ -535,7 +552,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       time: item.time,
       checked: false,
       photo: null,
-      photoTime: null, // 🔥 PREPARAMOS LOS CAMPOS 🔥
+      photoTime: null,
       photoAntes: null, 
       photoAntesTime: null,
       photoDespues: null, 
@@ -592,7 +609,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       requiresAntesDespues: rutina.requiresAntesDespues || false, 
       checked: false,
       photo: null, 
-      photoTime: null, // 🔥 PREPARAMOS LOS CAMPOS 🔥
+      photoTime: null,
       photoAntes: null, 
       photoAntesTime: null,
       photoDespues: null,

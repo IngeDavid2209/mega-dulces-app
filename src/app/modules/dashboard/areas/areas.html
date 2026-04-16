@@ -27,27 +27,66 @@
     </aside>
 
     <div class="content">
-      <div class="section-header">
-        <div>
-          <div class="section-title">Áreas Operativas</div>
-          <div class="section-sub">Configura departamentos internos y asigna personal</div>
+      
+      <div *ngIf="vistaActual() === 'lista'">
+        <div class="section-header">
+          <div>
+            <div class="section-title">Áreas Operativas</div>
+            <div class="section-sub">Configura departamentos internos y asigna personal</div>
+          </div>
+          <button class="btn-primary" (click)="abrirModalNuevaArea()">+ Nueva Área</button>
         </div>
-        <button class="btn-primary" (click)="abrirModalNuevaArea()">+ Nueva Área</button>
+
+        <div class="user-grid">
+          <div class="user-card" *ngFor="let area of getAreasFiltradas()" (click)="verDetalleArea(area)" style="cursor: pointer; transition: transform 0.2s;">
+            <div class="user-card-header">
+              <div class="user-info">
+                <div class="user-name">{{ area.nombre }}</div>
+                <div class="user-role">{{ area.descripcion || 'Sin descripción' }}</div>
+              </div>
+              <button class="btn-action btn-delete" (click)="eliminarArea(area, $event)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button>
+            </div>
+            <div class="user-credentials" style="display:flex; justify-content:space-between; align-items:center; background:#F8FAFC; padding:12px; border-radius:8px;">
+              <span><strong>{{ contarEmpleadosEnArea(area.nombre) }}</strong> Empleados</span>
+              <button class="btn-primary" style="background:white; color:#0F172A; border:1px solid #E2E8F0; padding:6px 12px; font-size:12px;" (click)="abrirAsignacion(area, $event)">Asignar Personal</button>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div class="user-grid">
-        <div class="user-card" *ngFor="let area of getAreasFiltradas()">
-          <div class="user-card-header">
-            <div class="user-info">
-              <div class="user-name">{{ area.nombre }}</div>
-              <div class="user-role">{{ area.descripcion || 'Sin descripción' }}</div>
-            </div>
-            <button class="btn-action btn-delete" (click)="eliminarArea(area)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button>
-          </div>
-          <div class="user-credentials" style="display:flex; justify-content:space-between; align-items:center; background:#F8FAFC; padding:12px; border-radius:8px;">
-            <span><strong>{{ contarEmpleadosEnArea(area.nombre) }}</strong> Empleados</span>
-            <button class="btn-primary" style="background:white; color:#0F172A; border:1px solid #E2E8F0; padding:6px 12px; font-size:12px;" (click)="abrirAsignacion(area)">Asignar Personal</button>
-          </div>
+      <div *ngIf="vistaActual() === 'detalle' && areaDetalle()">
+        <button class="btn-back" (click)="volverALista()" style="background:transparent; border:none; color:#64748B; cursor:pointer; display:flex; align-items:center; gap:5px; font-weight:600; margin-bottom:20px; font-size: 14px;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg> Volver a Áreas
+        </button>
+
+        <div style="background: white; border-radius: 12px; padding: 25px; border: 1px solid var(--border); margin-bottom: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+          <h2 style="margin: 0 0 5px 0; font-size: 24px; color: #0F172A;">{{ areaDetalle().nombre }}</h2>
+          <p style="margin: 0; color: #64748B;">{{ areaDetalle().descripcion || 'Sin descripción asignada a este departamento.' }}</p>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 15px;">
+          <h3 style="font-size: 18px; color: #0F172A; margin: 0;">Personal Asignado ({{ getEmpleadosDelArea().length }})</h3>
+          <button class="btn-secondary" (click)="abrirAsignacion(areaDetalle(), $event)" style="font-size:13px; padding:6px 12px;">+ Gestionar Personal</button>
+        </div>
+
+        <div class="user-grid">
+           <div class="user-card" *ngFor="let emp of getEmpleadosDelArea()" style="display:flex; flex-direction:column; justify-content:space-between;">
+             <div style="display:flex; align-items:center; gap:12px; border-bottom:1px solid #E2E8F0; padding-bottom:15px; margin-bottom:15px;">
+               <div class="user-avatar" style="background:#0F172A; color:white;">{{ emp.nombre.charAt(0) | uppercase }}</div>
+               <div>
+                 <div style="font-weight:700; color:#0F172A;">{{ emp.nombre }}</div>
+                 <div style="font-size:12px; color:#64748B;">{{ emp.cargo || 'Colaborador' }}</div>
+               </div>
+             </div>
+             <div style="display:flex; gap:10px;">
+               <button class="btn-primary" style="flex:1; justify-content:center; font-size:12px; padding:8px;" (click)="irACrearTarea(emp.nombre)">+ Tarea Única</button>
+               <button class="btn-secondary" style="flex:1; justify-content:center; font-size:12px; padding:8px;" (click)="irACrearRutina(emp.nombre)">+ Rutina</button>
+             </div>
+           </div>
+
+           <div *ngIf="getEmpleadosDelArea().length === 0" style="grid-column: 1/-1; text-align:center; padding:30px; background:white; border-radius:12px; border:1px dashed #CBD5E1; color:#64748B;">
+             Esta área aún no tiene personal asignado.
+           </div>
         </div>
       </div>
 
@@ -72,7 +111,6 @@
               <input class="form-input" [(ngModel)]="terminoBusquedaCreacion" placeholder="Buscar empleado..." style="margin-bottom: 10px;">
               
               <div style="max-height: 180px; overflow-y: auto; border: 1px solid #E2E8F0; border-radius: 8px; padding: 5px;">
-                
                 <div *ngFor="let u of empleadosParaCreacion" style="display:flex; justify-content:space-between; align-items:center; padding:8px 10px; border-bottom:1px solid #F1F5F9; cursor: pointer; transition: 0.2s;" [style.background]="estaSeleccionadoParaCreacion(u) ? '#EFF6FF' : 'transparent'" (click)="toggleUsuarioParaCreacion(u)">
                   <div style="display: flex; align-items: center; gap: 10px;">
                     <div class="user-avatar" style="width: 28px; height: 28px; font-size: 11px;">{{ u.nombre.charAt(0) | uppercase }}</div>
@@ -83,10 +121,8 @@
                   </div>
                   <input type="checkbox" [checked]="estaSeleccionadoParaCreacion(u)" style="pointer-events: none;">
                 </div>
-                
                 <div *ngIf="empleadosParaCreacion.length === 0" style="text-align: center; padding: 15px; color: #64748B; font-size: 12px;">No se encontraron empleados.</div>
               </div>
-              
               <div style="font-size: 11px; color: #64748B; margin-top: 6px; font-weight: bold;">
                 Seleccionados: {{ formAssignedUsers.length }}
               </div>

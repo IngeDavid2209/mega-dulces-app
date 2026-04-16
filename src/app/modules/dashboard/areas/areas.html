@@ -52,21 +52,57 @@
       </div>
 
       <div class="modal-overlay" *ngIf="isModalOpen">
-        <div class="modal" style="max-width:400px;">
-          <div class="modal-header"><div class="modal-title">Nueva Área</div><button (click)="cerrarModal()">X</button></div>
+        <div class="modal" style="max-width: 500px;">
+          <div class="modal-header">
+            <div class="modal-title">Crear Nueva Área</div>
+            <button class="modal-close" (click)="cerrarModal()">X</button>
+          </div>
           <div class="modal-body">
-            <label class="form-label">Nombre del Área</label>
-            <input class="form-input" [(ngModel)]="formNombreArea" placeholder="Ej: Cajas">
-            <label class="form-label" style="margin-top:10px;">Descripción</label>
-            <textarea class="form-input" [(ngModel)]="formDescripcionArea"></textarea>
-            <button class="btn-primary" style="width:100%; margin-top:20px;" (click)="guardarArea()">Crear</button>
+            <div class="form-group form-full">
+              <label class="form-label">Nombre del Área</label>
+              <input class="form-input" [(ngModel)]="formNombreArea" placeholder="Ej: Cajas">
+            </div>
+            <div class="form-group form-full" style="margin-top: 10px;">
+              <label class="form-label">Descripción</label>
+              <textarea class="form-input" [(ngModel)]="formDescripcionArea" rows="2" placeholder="Ej: Encargados de cobrar..."></textarea>
+            </div>
+
+            <div class="form-group form-full" style="margin-top: 15px; border-top: 1px solid #E2E8F0; padding-top: 15px;">
+              <label class="form-label">Asignar Personal Inicial (Opcional)</label>
+              <input class="form-input" [(ngModel)]="terminoBusquedaCreacion" placeholder="Buscar empleado..." style="margin-bottom: 10px;">
+              
+              <div style="max-height: 180px; overflow-y: auto; border: 1px solid #E2E8F0; border-radius: 8px; padding: 5px;">
+                
+                <div *ngFor="let u of empleadosParaCreacion" style="display:flex; justify-content:space-between; align-items:center; padding:8px 10px; border-bottom:1px solid #F1F5F9; cursor: pointer; transition: 0.2s;" [style.background]="estaSeleccionadoParaCreacion(u) ? '#EFF6FF' : 'transparent'" (click)="toggleUsuarioParaCreacion(u)">
+                  <div style="display: flex; align-items: center; gap: 10px;">
+                    <div class="user-avatar" style="width: 28px; height: 28px; font-size: 11px;">{{ u.nombre.charAt(0) | uppercase }}</div>
+                    <div>
+                      <div style="font-size: 13px; font-weight: 600; color: #0F172A;">{{ u.nombre }}</div>
+                      <div style="font-size: 11px; color: #64748B;">{{ u.cargo || 'Colaborador' }}</div>
+                    </div>
+                  </div>
+                  <input type="checkbox" [checked]="estaSeleccionadoParaCreacion(u)" style="pointer-events: none;">
+                </div>
+                
+                <div *ngIf="empleadosParaCreacion.length === 0" style="text-align: center; padding: 15px; color: #64748B; font-size: 12px;">No se encontraron empleados.</div>
+              </div>
+              
+              <div style="font-size: 11px; color: #64748B; margin-top: 6px; font-weight: bold;">
+                Seleccionados: {{ formAssignedUsers.length }}
+              </div>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+              <button class="btn-secondary" (click)="cerrarModal()">Cancelar</button>
+              <button class="btn-primary" (click)="guardarArea()">Crear Área</button>
+            </div>
           </div>
         </div>
       </div>
 
       <div class="modal-overlay" *ngIf="isModalAsignacionOpen">
         <div class="modal" style="max-width:500px;">
-          <div class="modal-header"><div class="modal-title">Asignar a: {{ areaSeleccionada?.nombre }}</div><button (click)="isModalAsignacionOpen=false">X</button></div>
+          <div class="modal-header"><div class="modal-title">Asignar a: {{ areaSeleccionada?.nombre }}</div><button class="modal-close" (click)="isModalAsignacionOpen=false">X</button></div>
           <div class="modal-body">
             <input class="form-input" [(ngModel)]="terminoBusquedaAsignacion" (input)="actualizarListaAsignacion()" placeholder="Buscar empleado...">
             <div style="max-height:300px; overflow-y:auto; margin-top:15px;">
@@ -78,6 +114,7 @@
           </div>
         </div>
       </div>
+
     </div>
   </div>
 </div>

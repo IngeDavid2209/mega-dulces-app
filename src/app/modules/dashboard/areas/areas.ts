@@ -23,11 +23,13 @@ export class AreasComponent implements OnInit, OnDestroy {
   terminoBusqueda = '';
   isModalOpen = false;
   
-  // Formulario
+  // 🔥 FORMULARIO NUEVA ÁREA (ACTUALIZADO) 🔥
   formNombreArea = '';
   formDescripcionArea = '';
+  formAssignedUsers: any[] = [];
+  terminoBusquedaCreacion = '';
 
-  // Modal Asignación
+  // Modal Asignación Rápida
   isModalAsignacionOpen = false;
   areaSeleccionada: any = null;
   empleadosFiltradosAsignacion = signal<any[]>([]);
@@ -39,6 +41,11 @@ export class AreasComponent implements OnInit, OnDestroy {
   ngOnInit() {
     const sesion = localStorage.getItem('md_sesion_actual');
     if (sesion) { this.currentUser = JSON.parse(sesion); }
+    
+    if (this.currentUser?.rol !== 'admin' && !this.currentUser?.puedeAdministrarPersonal) {
+      window.location.href = '/home';
+      return;
+    }
     this.conectarConLaNube();
   }
 
@@ -71,20 +78,81 @@ export class AreasComponent implements OnInit, OnDestroy {
     return this.usuarios().filter(u => u.areas && u.areas.includes(nombreArea)).length;
   }
 
-  abrirModalNuevaArea() { this.formNombreArea = ''; this.formDescripcionArea = ''; this.isModalOpen = true; }
+  // 🔥 NUEVAS FUNCIONES PARA EL MODAL DE CREACIÓN 🔥
+  abrirModalNuevaArea() { 
+    this.formNombreArea = ''; 
+    this.formDescripcionArea = ''; 
+    this.formAssignedUsers = [];
+    this.terminoBusquedaCreacion = '';
+    this.isModalOpen = true; 
+  }
+  
   cerrarModal() { this.isModalOpen = false; }
 
-  async guardarArea() {
-    if (!this.formNombreArea.trim()) return;
-    const areaId = 'area_' + Date.now();
-    await setDoc(doc(this.firestore, 'areas_operativas', areaId), {
-      nombre: this.formNombreArea.trim(),
-      descripcion: this.formDescripcionArea.trim(),
-      fechaCreacion: new Date().toISOString()
-    });
-    this.isModalOpen = false;
-    Swal.fire('¡Éxito!', 'Área creada', 'success');
+  get empleadosParaCreacion() {
+    let filtrados = this.usuarios().filter(u => u.rol === 'trabajador');
+    if (this.terminoBusquedaCreacion) {
+      const t = this.terminoBusquedaCreacion.toLowerCase();
+      filtrados = filtrados.filter(u => u.nombre.toLowerCase().includes(t));
+    }
+    return filtrados;
   }
+
+  toggleUsuarioParaCreacion(usuario: any) {
+    const index = this.formAssignedUsers.findIndex(u => u.idFirestore === usuario.idFirestore);
+    if (index > -1) {
+      this.formAssignedUsers.splice(index, 1);
+    } else {
+      this.formAssignedUsers.push(usuario);
+    }
+  }
+
+  estaSeleccionadoParaCreacion(usuario: any): boolean {
+    return this.formAssignedUsers.some(u => u.idFirestore === usuario.idFirestore);
+  }
+
+  async guardarArea() {
+    if (!this.formNombreArea.trim()) {
+      Swal.fire('Falta el nombre', 'Debes asignarle un nombre al área.', 'warning');
+      return;
+    }
+    const nombreFormateado = this.formNombreArea.trim();
+    const existe = this.areas().some(a => a.nombre.toLowerCase() === nombreFormateado.toLowerCase());
+    
+    if (existe) {
+      Swal.fire('Área Duplicada', 'Ya existe un área con ese nombre.', 'error');
+      return;
+    }
+
+    const areaId = 'area_' + Date.now();
+    try {
+      // 1. Guardar el área nueva
+      await setDoc(doc(this.firestore, 'areas_operativas', areaId), {
+        nombre: nombreFormateado,
+        descripcion: this.formDescripcionArea.trim(),
+        fechaCreacion: new Date().toISOString()
+      });
+
+      // 2. Guardarle el área a todos los usuarios seleccionados
+      for (const u of this.formAssignedUsers) {
+        let nuevasAreas = u.areas ? [...u.areas] : [];
+        if (!nuevasAreas.includes(nombreFormateado)) {
+          nuevasAreas.push(nombreFormateado);
+          await setDoc(doc(this.firestore, 'usuarios', u.idFirestore), { areas: nuevasAreas }, { merge: true });
+        }
+      }
+
+      this.cerrarModal();
+      Swal.fire({
+        toast: true, position: 'top-end', showConfirmButton: false, timer: 3000, 
+        icon: 'success', title: 'Área creada y personal asignado'
+      });
+    } catch (error) {
+      Swal.fire('Error', 'Hubo un problema al crear el área.', 'error');
+    }
+  }
+
+  // ==========================================
 
   async eliminarArea(area: any) {
     if (this.contarEmpleadosEnArea(area.nombre) > 0) {

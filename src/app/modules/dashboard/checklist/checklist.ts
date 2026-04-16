@@ -14,49 +14,44 @@ import { Firestore, collection, doc, setDoc, getDoc, deleteDoc, onSnapshot, getD
 export class ChecklistComponent implements OnInit, OnDestroy {
   isMenuOpen = false;
   toggleMenu() { this.isMenuOpen = !this.isMenuOpen; }
-  currentUser: any = null; 
+  currentUser: any = null;
   vistaActual = signal<'lista' | 'detalle'>('lista');
   checklistSeleccionado = signal<any>(null);
-  
+
   terminoBusquedaChecklist = '';
   toastMessage = '';
-  
-  // 🔥 VARIABLES PARA EL SISTEMA DE ZUMBIDOS 🔥
+
   notificacionesPendientes = signal<any[]>([]);
   isModalNotificacionOpen = false;
   empleadoParaNotificar = '';
   mensajeNotificacion = '';
-
   isModalOpen = false;
   formName = '';
-  formAssigned: string[] = []; 
+  formAssigned: string[] = [];
   formStore = '';
-  
-  // 🔥 AGREGAMOS EL CAMPO requiresAntesDespues AL MODELO 🔥
-  formItems = [{ text: '', requiresPhoto: false, requiresAntesDespues: false, date: '', time: '' }]; 
-  
+
+  formItems = [{ text: '', requiresPhoto: false, requiresAntesDespues: false, date: '', time: '' }];
+
   isModalRutinasOpen = false;
   isEditMode = false;
   formNameRutina = '';
   formAssignedRutina: string[] = [];
   formStoreRutina = '';
+  
+  // 🔥 AHORA LAS RUTINAS TAMBIÉN SOPORTAN "ANTES Y DESPUÉS" 🔥
   formRutinas: any[] = [];
   frecuencias = ['Diaria', 'Semanal', 'Catorcenal', 'Mensual', 'Trimestral'];
   diasDelMes = Array.from({length: 31}, (_, i) => i + 1);
-
   isPasswordModalOpen = false;
   passwordInput = '';
   checklistToDelete: any = null;
-
   checklists = signal<any[]>([]);
   empleados = signal<any[]>([]);
   sucursalesDisponibles = signal<string[]>([]);
-
   private firestore = inject(Firestore);
   private destructoresRadares: (() => void)[] = [];
-
   private sucursalesAdministrativas = [
-    'OFICINAS CORPORATIVAS', 'CAJA GENERAL', 'COMPRAS', 'CONTABILIDAD', 
+    'OFICINAS CORPORATIVAS', 'CAJA GENERAL', 'COMPRAS', 'CONTABILIDAD',
     'FINANZAS', 'SISTEMAS', 'RH', 'MKT', 'MANTENIMIENTO'
   ];
 
@@ -83,9 +78,9 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   get checklistsFiltrados() {
     if (!this.terminoBusquedaChecklist.trim()) return this.checklists();
     const termino = this.terminoBusquedaChecklist.toLowerCase();
-    return this.checklists().filter(c => 
-      c.name?.toLowerCase().includes(termino) || 
-      c.assigned?.toLowerCase().includes(termino) || 
+    return this.checklists().filter(c =>
+      c.name?.toLowerCase().includes(termino) ||
+      c.assigned?.toLowerCase().includes(termino) ||
       c.store?.toLowerCase().includes(termino)
     );
   }
@@ -104,26 +99,22 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   ngOnDestroy() { this.destructoresRadares.forEach(apagarRadar => apagarRadar()); }
 
   conectarRadarNube() {
-    // 1. Radar de Usuarios
     const usuariosRef = collection(this.firestore, 'usuarios');
     const radarUsuarios = onSnapshot(usuariosRef, (snapshot) => {
       const todosLosUsuarios: any[] = [];
       snapshot.forEach(docSnap => todosLosUsuarios.push(docSnap.data()));
-
       const todasLasSucursales = [
-        'Canindo', 'La Piedad Abastos', '8 Esquinas', 'Padre Hidalgo', 
+        'Canindo', 'La Piedad Abastos', '8 Esquinas', 'Padre Hidalgo',
         'Morelia Madero', 'Morelia Abastos', 'Yurécuaro', 'Zamora Centro',
-        'OFICINAS CORPORATIVAS', 'CAJA GENERAL', 'COMPRAS', 'CONTABILIDAD', 
+        'OFICINAS CORPORATIVAS', 'CAJA GENERAL', 'COMPRAS', 'CONTABILIDAD',
         'FINANZAS', 'SISTEMAS', 'RH', 'MKT', 'MANTENIMIENTO'
       ];
-
       if (this.currentUser?.rol === 'admin') {
         this.sucursalesDisponibles.set(todasLasSucursales);
       } else if (this.currentUser?.puedeCrearChecklists) {
         const misSucursales = this.currentUser.sucursales || [this.currentUser.sucursal || ''];
         this.sucursalesDisponibles.set(misSucursales);
       }
-
       const trabajadores = todosLosUsuarios.filter((u: any) => u.rol === 'trabajador');
       if (this.currentUser?.rol === 'admin') {
         this.empleados.set(trabajadores);
@@ -138,7 +129,6 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     });
     this.destructoresRadares.push(radarUsuarios);
 
-    // 2. Radar de Moldes
     const moldesRef = collection(this.firestore, 'moldes_checklists');
     const radarMoldes = onSnapshot(moldesRef, (snapshot) => {
       const moldesActivos: any[] = [];
@@ -147,18 +137,15 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     });
     this.destructoresRadares.push(radarMoldes);
 
-    // 3. Radar de Checklists del día
     const checklistsRef = collection(this.firestore, 'checklists');
     const radarChecklists = onSnapshot(checklistsRef, (snapshot) => {
       const todasLasListas: any[] = [];
       const offset = new Date().getTimezoneOffset() * 60000;
       const fechaHoyLocal = new Date(Date.now() - offset).toISOString().split('T')[0];
-
       snapshot.forEach(docSnap => {
         const c = docSnap.data() as any;
         if (c.eliminado === true) return;
         if (c.enviado === true) return;
-
         if (c.date === fechaHoyLocal) {
           const tareasMarcadas = c.items.filter((i:any) => i.checked).length;
           c.calcCompletados = tareasMarcadas;
@@ -166,7 +153,6 @@ export class ChecklistComponent implements OnInit, OnDestroy {
           todasLasListas.push(c);
         }
       });
-
       const listasSinClones = new Map();
       todasLasListas.forEach(c => {
         const firma = `${c.name}_${c.assigned}_${c.store}_${c.date}`;
@@ -177,10 +163,8 @@ export class ChecklistComponent implements OnInit, OnDestroy {
           if (c.calcProgreso > existente.calcProgreso) { listasSinClones.set(firma, c); }
         }
       });
-
       const listasFinales = Array.from(listasSinClones.values());
       listasFinales.sort((a, b) => b.timestampCreacion - a.timestampCreacion);
-
       if (this.currentUser?.rol === 'admin') {
         this.checklists.set(listasFinales);
       } else {
@@ -190,7 +174,6 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     });
     this.destructoresRadares.push(radarChecklists);
 
-    // 4. RADAR DE NOTIFICACIONES
     const notiRef = collection(this.firestore, 'notificaciones');
     const radarNotificaciones = onSnapshot(notiRef, (snapshot) => {
       const misNotis: any[] = [];
@@ -206,7 +189,6 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     this.destructoresRadares.push(radarNotificaciones);
   }
 
-  // LÓGICA DE ZUMBIDOS
   abrirModalNotificacion(empleadoNombre: string) {
     this.empleadoParaNotificar = empleadoNombre;
     this.mensajeNotificacion = '';
@@ -220,20 +202,17 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     if (!this.mensajeNotificacion.trim()) { alert('Por favor escribe un mensaje.'); return; }
     const notiId = 'noti_' + Date.now();
     const payload = {
-      empleado: this.empleadoParaNotificar,
-      mensaje: this.mensajeNotificacion,
-      de: this.currentUser?.nombre || 'Gerencia',
-      leido: false,
-      timestamp: Date.now()
+      empleado: this.empleadoParaNotificar, mensaje: this.mensajeNotificacion,
+      de: this.currentUser?.nombre || 'Gerencia', leido: false, timestamp: Date.now()
     };
     try {
       await setDoc(doc(this.firestore, 'notificaciones', notiId), payload);
-      this.mostrarToast(`🔔 ¡Zumbido enviado a ${this.empleadoParaNotificar}!`);
+      this.mostrarToast(` 🔔  ¡Zumbido enviado a ${this.empleadoParaNotificar}!`);
       this.cerrarModalNotificacion();
     } catch (error) { alert('Error al enviar la alerta.'); }
   }
   async marcarNotificacionComoLeida(noti: any) {
-    try { await setDoc(doc(this.firestore, 'notificaciones', noti.id), { leido: true }, { merge: true }); } 
+    try { await setDoc(doc(this.firestore, 'notificaciones', noti.id), { leido: true }, { merge: true }); }
     catch (error) { console.error("Error cerrando notificación", error); }
   }
 
@@ -319,7 +298,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     const offset = fechaActual.getTimezoneOffset() * 60000;
     const fechaLocal = new Date(fechaActual.getTime() - offset);
     const fechaString = fechaLocal.toISOString().split('T')[0];
-    
+
     const diasTexto = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
     const diaHoyTexto = diasTexto[fechaLocal.getDay()];
     const diaMesActual = fechaLocal.getDate();
@@ -328,7 +307,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     for (const molde of moldes) {
       if (this.esDiaCerrado(molde.store, fechaActual)) { continue; }
       if (esDomingo && this.esSucursalAdministrativa(molde.store) && molde.frecuencia === 'Diaria') { continue; }
-      
+
       if (molde.frecuencia === 'Semanal' || molde.frecuencia === 'Catorcenal') {
         if (molde.diaSemana && molde.diaSemana !== diaHoyTexto) { continue; }
         if (molde.frecuencia === 'Catorcenal' && molde.timestampCreacion) {
@@ -337,12 +316,11 @@ export class ChecklistComponent implements OnInit, OnDestroy {
           if (Math.abs(semanaActual - semanaCreacion) % 2 !== 0) { continue; }
         }
       }
-
       if (molde.frecuencia === 'Mensual' || molde.frecuencia === 'Trimestral') {
         const diaObjetivo = parseInt(molde.diaMes || '1', 10);
         const ultimoDiaDelMesActual = new Date(fechaLocal.getFullYear(), fechaLocal.getMonth() + 1, 0).getDate();
         const diaRealAProcesar = diaObjetivo > ultimoDiaDelMesActual ? ultimoDiaDelMesActual : diaObjetivo;
-        
+
         if (diaMesActual !== diaRealAProcesar) { continue; }
         if (molde.frecuencia === 'Trimestral' && molde.timestampCreacion) {
           const mesActual = fechaLocal.getMonth();
@@ -350,7 +328,6 @@ export class ChecklistComponent implements OnInit, OnDestroy {
           if (Math.abs(mesActual - mesCreacion) % 3 !== 0) { continue; }
         }
       }
-
       const itemsVigentes = molde.items.filter((item: any) => { return !item.fechaFin || fechaString <= item.fechaFin; });
       if (itemsVigentes.length === 0) continue;
 
@@ -363,7 +340,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
         const nuevoChecklist = {
           id: checklistId, timestampCreacion: Date.now(), name: `${molde.name} (${molde.frecuencia})`,
           assigned: molde.assigned, store: molde.store, date: fechaString, time: '23:59',
-          status: 'pendiente', enviado: false, createdBy: 'Robot de Rutinas', notaEmpleado: '', 
+          status: 'pendiente', enviado: false, createdBy: 'Robot de Rutinas', notaEmpleado: '',
           items: itemsVigentes.map((i:any) => ({...i, checked: false, photo: null}))
         };
         await setDoc(docRef, nuevoChecklist);
@@ -372,7 +349,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   }
 
   async guardarEnLaNube(checklist: any) {
-    try { await setDoc(doc(this.firestore, 'checklists', checklist.id.toString()), checklist, { merge: true }); } 
+    try { await setDoc(doc(this.firestore, 'checklists', checklist.id.toString()), checklist, { merge: true }); }
     catch (error) { console.error("Error: ", error); }
   }
 
@@ -382,26 +359,25 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     this.passwordInput = '';
     this.isPasswordModalOpen = true;
   }
-  
+
   cerrarPasswordModal() { this.isPasswordModalOpen = false; this.checklistToDelete = null; this.passwordInput = ''; }
-  
+
   async confirmarEliminacion() {
-    if (this.passwordInput !== 'Mega2323') { alert('❌ Contraseña maestra incorrecta.'); return; }
-    const confirmar = confirm(`⚠️ ¿Borrar "${this.checklistToDelete.name}" y sus duplicados?`);
+    if (this.passwordInput !== 'Mega2323') { alert(' ❌  Contraseña maestra incorrecta.'); return; }
+    const confirmar = confirm(` ⚠️  ¿Borrar "${this.checklistToDelete.name}" y sus duplicados?`);
     if (confirmar) {
       try {
         const targetName = this.checklistToDelete.name.replace(/ \((Diaria|Semanal|Catorcenal|Mensual|Trimestral)\)$/, "");
         const targetAssigned = this.checklistToDelete.assigned;
         const checklistsRef = collection(this.firestore, 'checklists');
         const chkSnap = await getDocs(checklistsRef);
-        
+
         chkSnap.forEach(async (cDoc) => {
           const cData = cDoc.data();
           if (cData['name'].startsWith(targetName) && cData['assigned'] === targetAssigned) {
             await setDoc(doc(this.firestore, 'checklists', cDoc.id), { eliminado: true }, { merge: true });
           }
         });
-
         const moldesRef = collection(this.firestore, 'moldes_checklists');
         const moldesSnap = await getDocs(moldesRef);
         moldesSnap.forEach(async (mDoc) => {
@@ -410,8 +386,8 @@ export class ChecklistComponent implements OnInit, OnDestroy {
             await deleteDoc(doc(this.firestore, 'moldes_checklists', mDoc.id));
           }
         });
-        alert('🗑️ Checklist eliminado.');
-      } catch (error) { alert('❌ Error al eliminar.'); }
+        alert(' 🗑️  Checklist eliminado.');
+      } catch (error) { alert(' ❌  Error al eliminar.'); }
     }
     this.cerrarPasswordModal();
   }
@@ -419,16 +395,13 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   async editarBloqueRutinas(checklist: any, event: Event) {
     event.stopPropagation();
     this.isEditMode = true;
-
     const targetName = checklist.name.replace(/ \((Diaria|Semanal|Catorcenal|Mensual|Trimestral)\)$/, "");
     const targetAssigned = checklist.assigned;
-
     const moldesRef = collection(this.firestore, 'moldes_checklists');
     const moldesSnap = await getDocs(moldesRef);
-
     let rutinasEncontradas: any[] = [];
     let sucursalOriginal = '';
-    
+
     moldesSnap.forEach((mDoc) => {
       const mData = mDoc.data();
       if (mData['name'] === targetName && mData['assigned'] === targetAssigned) {
@@ -443,7 +416,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       alert('Esta es una "Tarea Única" o no tiene rutinas registradas en la Bóveda. No se puede editar como Bloque.');
       return;
     }
-    
+
     this.formNameRutina = targetName;
     this.formAssignedRutina = [targetAssigned];
     this.formStoreRutina = sucursalOriginal;
@@ -455,44 +428,39 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   volverALista() { this.checklistSeleccionado.set(null); this.vistaActual.set('lista'); }
   toggleItem(item: any) { item.checked = !item.checked; this.actualizarEstado(); }
 
-  // 🔥 LÓGICA DE SUBIDA ADAPTADA PARA FOTO, FOTO_ANTES O FOTO_DESPUÉS 🔥
   async onFileSelected(event: any, item: any, tipoFoto: string = 'photo') {
     const file = event.target.files[0];
     if (!file) return;
-    
+
     const cloudName = 'duherjgyg';
     const uploadPreset = 'fotos_mega';
     item[tipoFoto] = 'subiendo...';
-    
-    const formData = new FormData(); 
-    formData.append('file', file); 
+
+    const formData = new FormData();
+    formData.append('file', file);
     formData.append('upload_preset', uploadPreset);
-    
+
     try {
       const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, { method: 'POST', body: formData });
       const data = await response.json();
-      if (data.secure_url) { item[tipoFoto] = data.secure_url; this.actualizarEstado(); } 
-      else { item[tipoFoto] = null; this.actualizarEstado(); alert('❌ Error de Cloudinary.'); }
-    } catch (error) { item[tipoFoto] = null; this.actualizarEstado(); alert('❌ Error de conexión.'); } 
+      if (data.secure_url) { item[tipoFoto] = data.secure_url; this.actualizarEstado(); }
+      else { item[tipoFoto] = null; this.actualizarEstado(); alert(' ❌  Error de Cloudinary.'); }
+    } catch (error) { item[tipoFoto] = null; this.actualizarEstado(); alert(' ❌  Error de conexión.'); }
     finally { event.target.value = ''; }
   }
 
   removeImage(item: any, tipoFoto: string = 'photo') { item[tipoFoto] = null; this.actualizarEstado(); }
 
-  // 🔥 VALIDA QUE SE HAYAN SUBIDO LAS 2 FOTOS SI SE EXIGEN 🔥
-  esItemCompleto(item: any): boolean { 
+  esItemCompleto(item: any): boolean {
     if (!item.checked) return false;
-    
     if (item.requiresAntesDespues) {
-      return (item.photoAntes !== null && item.photoAntes !== undefined && item.photoAntes !== 'subiendo...') && 
+      return (item.photoAntes !== null && item.photoAntes !== undefined && item.photoAntes !== 'subiendo...') &&
              (item.photoDespues !== null && item.photoDespues !== undefined && item.photoDespues !== 'subiendo...');
     }
-    
     if (item.requiresPhoto) {
       return (item.photo !== null && item.photo !== undefined && item.photo !== 'subiendo...');
     }
-    
-    return true; 
+    return true;
   }
 
   actualizarEstado() {
@@ -500,29 +468,28 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     const checkboxesMarcados = actual.items.filter((i:any) => i.checked).length;
     actual.calcCompletados = checkboxesMarcados;
     actual.calcProgreso = Math.round((checkboxesMarcados / actual.items.length) * 100) || 0;
-    
-    if (checkboxesMarcados === 0) { actual.status = 'pendiente'; } 
-    else if (checkboxesMarcados === actual.items.length) { actual.status = 'completo'; } 
+
+    if (checkboxesMarcados === 0) { actual.status = 'pendiente'; }
+    else if (checkboxesMarcados === actual.items.length) { actual.status = 'completo'; }
     else { actual.status = 'en-progreso'; }
-    
+
     this.guardarEnLaNube(actual);
   }
 
   enviarChecklist() {
     const actual = this.checklistSeleccionado(); if(!actual) return;
-    
     const fotosPendientes = actual.items.some((i:any) => i.photo === 'subiendo...' || i.photoAntes === 'subiendo...' || i.photoDespues === 'subiendo...');
-    if (fotosPendientes) { alert('⚠️ Espera, una foto se está subiendo.'); return; }
-    
+    if (fotosPendientes) { alert(' ⚠️  Espera, una foto se está subiendo.'); return; }
+
     const tareas100Porciento = actual.items.filter((i:any) => this.esItemCompleto(i)).length;
     if (tareas100Porciento < actual.items.length) {
-      const confirmar = confirm('⚠️ Faltan FOTOS obligatorias.\n¿Enviar así?');
+      const confirmar = confirm(' ⚠️  Faltan FOTOS obligatorias.\n¿Enviar así?');
       if (!confirmar) return;
     }
-    
+
     actual.enviado = true;
     this.guardarEnLaNube(actual);
-    this.mostrarToast('✅ ¡Checklist enviado correctamente!');
+    this.mostrarToast(' ✅  ¡Checklist enviado correctamente!');
     this.volverALista();
   }
 
@@ -534,38 +501,34 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   abrirModal() {
     this.formName = ''; this.formAssigned = [];
     this.formStore = this.sucursalesDisponibles().length > 0 ? this.sucursalesDisponibles()[0] : '';
-    // 🔥 RESETEAMOS EL FORMULARIO CON LA OPCIÓN ANTES/DESPUÉS 🔥
     this.formItems = [{ text: '', requiresPhoto: false, requiresAntesDespues: false, date: '', time: '' }];
     this.isModalOpen = true;
   }
-  
+
   cerrarModal() { this.isModalOpen = false; }
-  
   agregarItem() { this.formItems.push({ text: '', requiresPhoto: false, requiresAntesDespues: false, date: '', time: '' }); }
-  
   eliminarItem(index: number) { this.formItems.splice(index, 1); }
-  
   trackByIndex(index: number, obj: any): any { return index; }
-  
+
   guardarChecklistUnico() {
     if (!this.formName || this.formAssigned.length === 0) { alert('Faltan datos.'); return; }
-    
+
     const tareasValidas = this.formItems.filter(item => item.text.trim() !== '').map((item, i) => ({
-      id: Date.now() + i, 
-      text: item.text, 
-      requiresPhoto: item.requiresPhoto, 
-      requiresAntesDespues: item.requiresAntesDespues, // 🔥 GUARDAMOS SI PIDE LAS 2 FOTOS
+      id: Date.now() + i,
+      text: item.text,
+      requiresPhoto: item.requiresPhoto,
+      requiresAntesDespues: item.requiresAntesDespues, 
       date: item.date,
-      time: item.time, 
-      checked: false, 
-      photo: null, 
-      photoAntes: null, // 🔥 PREPARAMOS EL CAMPO
-      photoDespues: null, // 🔥 PREPARAMOS EL CAMPO
+      time: item.time,
+      checked: false,
+      photo: null,
+      photoAntes: null, 
+      photoDespues: null, 
       tipo: 'tarea'
     }));
-    
+
     if (tareasValidas.length === 0) { alert('Agrega tareas.'); return; }
-    
+
     this.formAssigned.forEach((empleadoNombre, index) => {
       const uniqueId = Date.now() + index; const offset = new Date().getTimezoneOffset() * 60000;
       const hoy = new Date(Date.now() - offset).toISOString().split('T')[0];
@@ -577,8 +540,8 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       };
       this.guardarEnLaNube(checklistTareas);
     });
-    
-    this.mostrarToast('✅ ¡Tareas creadas con éxito!');
+
+    this.mostrarToast(' ✅  ¡Tareas creadas con éxito!');
     this.cerrarModal();
   }
 
@@ -591,25 +554,42 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     this.isEditMode = false;
     this.formNameRutina = ''; this.formAssignedRutina = [];
     this.formStoreRutina = this.sucursalesDisponibles().length > 0 ? this.sucursalesDisponibles()[0] : '';
-    this.formRutinas = [{ text: '', requiresPhoto: false, frecuencia: 'Diaria', fechaFin: null, horaLimite: '', diaSemana: 'Lunes', diaMes: 1 }];
+    // 🔥 AHORA LAS RUTINAS INICIAN CON LA PROPIEDAD requiresAntesDespues 🔥
+    this.formRutinas = [{ text: '', requiresPhoto: false, requiresAntesDespues: false, frecuencia: 'Diaria', fechaFin: null, horaLimite: '', diaSemana: 'Lunes', diaMes: 1 }];
     this.isModalRutinasOpen = true;
   }
-  
+
   cerrarModalRutinas() { this.isModalRutinasOpen = false; }
-  agregarRutina() { this.formRutinas.push({ text: '', requiresPhoto: false, frecuencia: 'Diaria', fechaFin: null, horaLimite: '', diaSemana: 'Lunes', diaMes: 1 }); }
-  eliminarRutina(index: number) { this.formRutinas.splice(index, 1); }
   
+  agregarRutina() { 
+    // 🔥 AL AGREGAR, TAMBIÉN TRAE LA PROPIEDAD 🔥
+    this.formRutinas.push({ text: '', requiresPhoto: false, requiresAntesDespues: false, frecuencia: 'Diaria', fechaFin: null, horaLimite: '', diaSemana: 'Lunes', diaMes: 1 }); 
+  }
+  
+  eliminarRutina(index: number) { this.formRutinas.splice(index, 1); }
+
   async guardarBloqueRutinas() {
     if (!this.formNameRutina || this.formAssignedRutina.length === 0) { alert('Faltan datos.'); return; }
-    
+
     const rutinasValidas = this.formRutinas.filter(rutina => rutina.text.trim() !== '').map((rutina, i) => ({
-      id: Date.now() + 1000 + i, text: rutina.text, requiresPhoto: rutina.requiresPhoto, checked: false,
-      photo: null, tipo: 'rutina', frecuencia: rutina.frecuencia, fechaFin: rutina.fechaFin,
-      horaLimite: rutina.horaLimite, diaSemana: rutina.diaSemana || 'Lunes', diaMes: rutina.diaMes || 1
+      id: Date.now() + 1000 + i, 
+      text: rutina.text, 
+      requiresPhoto: rutina.requiresPhoto, 
+      requiresAntesDespues: rutina.requiresAntesDespues || false, // 🔥 GUARDAMOS LA ORDEN DE 2 FOTOS 🔥
+      checked: false,
+      photo: null, 
+      photoAntes: null, 
+      photoDespues: null,
+      tipo: 'rutina', 
+      frecuencia: rutina.frecuencia, 
+      fechaFin: rutina.fechaFin,
+      horaLimite: rutina.horaLimite, 
+      diaSemana: rutina.diaSemana || 'Lunes', 
+      diaMes: rutina.diaMes || 1
     }));
-    
+
     if (rutinasValidas.length === 0) { alert('Agrega rutinas.'); return; }
-    
+
     if (this.isEditMode) {
       const moldesRef = collection(this.firestore, 'moldes_checklists');
       const moldesSnap = await getDocs(moldesRef);
@@ -620,7 +600,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
         }
       });
     }
-
+    
     this.formAssignedRutina.forEach((empleadoNombre) => {
       const rutinasPorFrecuencia: { [key: string]: any[] } = {};
       rutinasValidas.forEach(r => {
@@ -628,19 +608,18 @@ export class ChecklistComponent implements OnInit, OnDestroy {
         if (!rutinasPorFrecuencia[llaveGrupo]) rutinasPorFrecuencia[llaveGrupo] = [];
         rutinasPorFrecuencia[llaveGrupo].push(r);
       });
-      
+
       Object.keys(rutinasPorFrecuencia).forEach((llaveGrupo) => {
         const partesGrupo = llaveGrupo.split('_');
         const frecuenciaReal = partesGrupo[0];
         let diaSemanaReal = null; let diaMesReal = null;
-        
-        if (frecuenciaReal === 'Semanal' || frecuenciaReal === 'Catorcenal') { diaSemanaReal = partesGrupo.length > 1 ? partesGrupo[1] : 'Lunes'; } 
+
+        if (frecuenciaReal === 'Semanal' || frecuenciaReal === 'Catorcenal') { diaSemanaReal = partesGrupo.length > 1 ? partesGrupo[1] : 'Lunes'; }
         else if (frecuenciaReal === 'Mensual' || frecuenciaReal === 'Trimestral') { diaMesReal = partesGrupo.length > 1 ? parseInt(partesGrupo[1], 10) : 1; }
-        
+
         const nombreMoldeLimpio = this.formNameRutina.replace(/\s+/g, '_').toLowerCase();
         const empleadoLimpio = empleadoNombre.replace(/\s+/g, '_').toLowerCase();
         const moldeId = `molde_${nombreMoldeLimpio}_${empleadoLimpio}_${llaveGrupo}`;
-
         const nuevoMolde = {
           id: moldeId, name: this.formNameRutina, assigned: empleadoNombre, store: this.formStoreRutina,
           frecuencia: frecuenciaReal, diaSemana: diaSemanaReal, diaMes: diaMesReal, timestampCreacion: Date.now(),
@@ -649,8 +628,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
         setDoc(doc(this.firestore, 'moldes_checklists', moldeId), nuevoMolde);
       });
     });
-
-    this.mostrarToast(this.isEditMode ? '🔄 ¡Bloque actualizado con éxito!' : '🔄 ¡Bloque guardado en la Bóveda!');
+    this.mostrarToast(this.isEditMode ? ' 🔄  ¡Bloque actualizado con éxito!' : ' 🔄  ¡Bloque guardado en la Bóveda!');
     this.cerrarModalRutinas();
   }
 

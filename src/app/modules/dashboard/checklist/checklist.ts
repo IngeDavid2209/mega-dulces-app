@@ -1,7 +1,7 @@
 import { Component, signal, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterModule, ActivatedRoute } from '@angular/router'; // 🔥 AQUÍ ESTÁ EL ENRUTADOR
+import { RouterModule } from '@angular/router'; 
 import { Firestore, collection, doc, setDoc, getDoc, deleteDoc, onSnapshot, getDocs } from '@angular/fire/firestore';
 
 @Component({
@@ -17,10 +17,8 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   currentUser: any = null;
   vistaActual = signal<'lista' | 'detalle'>('lista');
   checklistSeleccionado = signal<any>(null);
-
   terminoBusquedaChecklist = '';
   toastMessage = '';
-
   notificacionesPendientes = signal<any[]>([]);
   isModalNotificacionOpen = false;
   empleadoParaNotificar = '';
@@ -29,15 +27,13 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   formName = '';
   formAssigned: string[] = [];
   formStore = '';
-
   formItems = [{ text: '', requiresPhoto: false, requiresAntesDespues: false, date: '', time: '' }];
-
   isModalRutinasOpen = false;
   isEditMode = false;
   formNameRutina = '';
   formAssignedRutina: string[] = [];
   formStoreRutina = '';
-  
+
   formRutinas: any[] = [];
   frecuencias = ['Diaria', 'Semanal', 'Catorcenal', 'Mensual', 'Trimestral'];
   diasDelMes = Array.from({length: 31}, (_, i) => i + 1);
@@ -47,9 +43,8 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   checklists = signal<any[]>([]);
   empleados = signal<any[]>([]);
   sucursalesDisponibles = signal<string[]>([]);
-  
+
   private firestore = inject(Firestore);
-  private route = inject(ActivatedRoute); // 🔥 INYECTAMOS EL ENRUTADOR
   private destructoresRadares: (() => void)[] = [];
   private sucursalesAdministrativas = [
     'OFICINAS CORPORATIVAS', 'CAJA GENERAL', 'COMPRAS', 'CONTABILIDAD',
@@ -95,21 +90,6 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     const sesion = localStorage.getItem('md_sesion_actual');
     if (sesion) { this.currentUser = JSON.parse(sesion); }
     this.conectarRadarNube();
-
-    // 🔥 MAGIA: ATRAPA LA REDIRECCIÓN DESDE LA PANTALLA DE ÁREAS 🔥
-    this.route.queryParams.subscribe(params => {
-      if (params['assign'] && params['modal']) {
-        setTimeout(() => { // Pequeño retraso para que los datos carguen bien en pantalla
-          if (params['modal'] === 'tarea') {
-            this.abrirModal();
-            this.formAssigned = [params['assign']];
-          } else if (params['modal'] === 'rutina') {
-            this.abrirModalRutinas();
-            this.formAssignedRutina = [params['assign']];
-          }
-        }, 500);
-      }
-    });
   }
 
   ngOnDestroy() { this.destructoresRadares.forEach(apagarRadar => apagarRadar()); }
@@ -223,7 +203,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     };
     try {
       await setDoc(doc(this.firestore, 'notificaciones', notiId), payload);
-      this.mostrarToast(` 🔔  ¡Zumbido enviado a ${this.empleadoParaNotificar}!`);
+      this.mostrarToast(`🔔 ¡Zumbido enviado a ${this.empleadoParaNotificar}!`);
       this.cerrarModalNotificacion();
     } catch (error) { alert('Error al enviar la alerta.'); }
   }
@@ -379,8 +359,8 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   cerrarPasswordModal() { this.isPasswordModalOpen = false; this.checklistToDelete = null; this.passwordInput = ''; }
 
   async confirmarEliminacion() {
-    if (this.passwordInput !== 'Mega2323') { alert(' ❌  Contraseña maestra incorrecta.'); return; }
-    const confirmar = confirm(` ⚠️  ¿Borrar "${this.checklistToDelete.name}" y sus duplicados?`);
+    if (this.passwordInput !== 'Mega2323') { alert('❌ Contraseña maestra incorrecta.'); return; }
+    const confirmar = confirm(`⚠️ ¿Borrar "${this.checklistToDelete.name}" y sus duplicados?`);
     if (confirmar) {
       try {
         const targetName = this.checklistToDelete.name.replace(/ \((Diaria|Semanal|Catorcenal|Mensual|Trimestral)\)$/, "");
@@ -402,8 +382,8 @@ export class ChecklistComponent implements OnInit, OnDestroy {
             await deleteDoc(doc(this.firestore, 'moldes_checklists', mDoc.id));
           }
         });
-        alert(' 🗑️  Checklist eliminado.');
-      } catch (error) { alert(' ❌  Error al eliminar.'); }
+        alert('🗑️ Checklist eliminado.');
+      } catch (error) { alert('❌ Error al eliminar.'); }
     }
     this.cerrarPasswordModal();
   }
@@ -444,15 +424,12 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   volverALista() { this.checklistSeleccionado.set(null); this.vistaActual.set('lista'); }
   toggleItem(item: any) { item.checked = !item.checked; this.actualizarEstado(); }
 
-  // 🔥 AQUÍ SE CAPTURA LA HORA EXACTA DE LA FOTO 🔥
   async onFileSelected(event: any, item: any, tipoFoto: string = 'photo') {
     const file = event.target.files[0];
     if (!file) return;
-
     const cloudName = 'duherjgyg';
     const uploadPreset = 'fotos_mega';
     item[tipoFoto] = 'subiendo...';
-
     const formData = new FormData();
     formData.append('file', file);
     formData.append('upload_preset', uploadPreset);
@@ -462,19 +439,15 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       const data = await response.json();
       if (data.secure_url) { 
         item[tipoFoto] = data.secure_url; 
-        
-        // 🔥 GUARDAR LA HORA EXACTA 🔥
         const ahora = new Date();
         item[tipoFoto + 'Time'] = ahora.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
-        
         this.actualizarEstado(); 
       }
-      else { item[tipoFoto] = null; this.actualizarEstado(); alert(' ❌  Error de Cloudinary.'); }
-    } catch (error) { item[tipoFoto] = null; this.actualizarEstado(); alert(' ❌  Error de conexión.'); }
+      else { item[tipoFoto] = null; this.actualizarEstado(); alert('❌ Error de Cloudinary.'); }
+    } catch (error) { item[tipoFoto] = null; this.actualizarEstado(); alert('❌ Error de conexión.'); }
     finally { event.target.value = ''; }
   }
 
-  // 🔥 AL BORRAR LA FOTO TAMBIÉN BORRAMOS LA HORA 🔥
   removeImage(item: any, tipoFoto: string = 'photo') { 
     item[tipoFoto] = null; 
     item[tipoFoto + 'Time'] = null;
@@ -502,24 +475,22 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     if (checkboxesMarcados === 0) { actual.status = 'pendiente'; }
     else if (checkboxesMarcados === actual.items.length) { actual.status = 'completo'; }
     else { actual.status = 'en-progreso'; }
-
     this.guardarEnLaNube(actual);
   }
 
   enviarChecklist() {
     const actual = this.checklistSeleccionado(); if(!actual) return;
     const fotosPendientes = actual.items.some((i:any) => i.photo === 'subiendo...' || i.photoAntes === 'subiendo...' || i.photoDespues === 'subiendo...');
-    if (fotosPendientes) { alert(' ⚠️  Espera, una foto se está subiendo.'); return; }
+    if (fotosPendientes) { alert('⚠️ Espera, una foto se está subiendo.'); return; }
 
     const tareas100Porciento = actual.items.filter((i:any) => this.esItemCompleto(i)).length;
     if (tareas100Porciento < actual.items.length) {
-      const confirmar = confirm(' ⚠️  Faltan FOTOS obligatorias.\n¿Enviar así?');
+      const confirmar = confirm('⚠️ Faltan FOTOS obligatorias.\n¿Enviar así?');
       if (!confirmar) return;
     }
-
     actual.enviado = true;
     this.guardarEnLaNube(actual);
-    this.mostrarToast(' ✅  ¡Checklist enviado correctamente!');
+    this.mostrarToast('✅ ¡Checklist enviado correctamente!');
     this.volverALista();
   }
 
@@ -542,22 +513,9 @@ export class ChecklistComponent implements OnInit, OnDestroy {
 
   guardarChecklistUnico() {
     if (!this.formName || this.formAssigned.length === 0) { alert('Faltan datos.'); return; }
-
     const tareasValidas = this.formItems.filter(item => item.text.trim() !== '').map((item, i) => ({
-      id: Date.now() + i,
-      text: item.text,
-      requiresPhoto: item.requiresPhoto,
-      requiresAntesDespues: item.requiresAntesDespues, 
-      date: item.date,
-      time: item.time,
-      checked: false,
-      photo: null,
-      photoTime: null,
-      photoAntes: null, 
-      photoAntesTime: null,
-      photoDespues: null, 
-      photoDespuesTime: null,
-      tipo: 'tarea'
+      id: Date.now() + i, text: item.text, requiresPhoto: item.requiresPhoto, requiresAntesDespues: item.requiresAntesDespues, 
+      date: item.date, time: item.time, checked: false, photo: null, photoTime: null, photoAntes: null, photoAntesTime: null, photoDespues: null, photoDespuesTime: null, tipo: 'tarea'
     }));
 
     if (tareasValidas.length === 0) { alert('Agrega tareas.'); return; }
@@ -573,8 +531,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       };
       this.guardarEnLaNube(checklistTareas);
     });
-
-    this.mostrarToast(' ✅  ¡Tareas creadas con éxito!');
+    this.mostrarToast('✅ ¡Tareas creadas con éxito!');
     this.cerrarModal();
   }
 
@@ -592,34 +549,16 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   }
 
   cerrarModalRutinas() { this.isModalRutinasOpen = false; }
-  
-  agregarRutina() { 
-    this.formRutinas.push({ text: '', requiresPhoto: false, requiresAntesDespues: false, frecuencia: 'Diaria', fechaFin: null, horaLimite: '', diaSemana: 'Lunes', diaMes: 1 }); 
-  }
-  
+  agregarRutina() { this.formRutinas.push({ text: '', requiresPhoto: false, requiresAntesDespues: false, frecuencia: 'Diaria', fechaFin: null, horaLimite: '', diaSemana: 'Lunes', diaMes: 1 }); }
   eliminarRutina(index: number) { this.formRutinas.splice(index, 1); }
 
   async guardarBloqueRutinas() {
     if (!this.formNameRutina || this.formAssignedRutina.length === 0) { alert('Faltan datos.'); return; }
 
     const rutinasValidas = this.formRutinas.filter(rutina => rutina.text.trim() !== '').map((rutina, i) => ({
-      id: Date.now() + 1000 + i, 
-      text: rutina.text, 
-      requiresPhoto: rutina.requiresPhoto, 
-      requiresAntesDespues: rutina.requiresAntesDespues || false, 
-      checked: false,
-      photo: null, 
-      photoTime: null,
-      photoAntes: null, 
-      photoAntesTime: null,
-      photoDespues: null,
-      photoDespuesTime: null,
-      tipo: 'rutina', 
-      frecuencia: rutina.frecuencia, 
-      fechaFin: rutina.fechaFin,
-      horaLimite: rutina.horaLimite, 
-      diaSemana: rutina.diaSemana || 'Lunes', 
-      diaMes: rutina.diaMes || 1
+      id: Date.now() + 1000 + i, text: rutina.text, requiresPhoto: rutina.requiresPhoto, requiresAntesDespues: rutina.requiresAntesDespues || false, 
+      checked: false, photo: null, photoTime: null, photoAntes: null, photoAntesTime: null, photoDespues: null, photoDespuesTime: null,
+      tipo: 'rutina', frecuencia: rutina.frecuencia, fechaFin: rutina.fechaFin, horaLimite: rutina.horaLimite, diaSemana: rutina.diaSemana || 'Lunes', diaMes: rutina.diaMes || 1
     }));
 
     if (rutinasValidas.length === 0) { alert('Agrega rutinas.'); return; }
@@ -662,7 +601,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
         setDoc(doc(this.firestore, 'moldes_checklists', moldeId), nuevoMolde);
       });
     });
-    this.mostrarToast(this.isEditMode ? ' 🔄  ¡Bloque actualizado con éxito!' : ' 🔄  ¡Bloque guardado en la Bóveda!');
+    this.mostrarToast(this.isEditMode ? '🔄 ¡Bloque actualizado con éxito!' : '🔄 ¡Bloque guardado en la Bóveda!');
     this.cerrarModalRutinas();
   }
 

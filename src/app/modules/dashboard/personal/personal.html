@@ -22,7 +22,6 @@
 
     <aside class="sidebar" [class.mobile-open]="isMenuOpen" translate="no">
       <div style="display: flex; flex-direction: column; height: 100%;">
-
         <div class="sidebar-header">
           <img src="https://static.wixstatic.com/media/fd397e_0fd82a1ecec84a118ceeb603b493f25a~mv2.png" alt="Logo" style="width:32px; height:32px; border-radius:6px; object-fit:contain;">
           <span class="sidebar-brand">Mega Dulces</span>
@@ -68,6 +67,9 @@
               <path d="M23 21v-2a4 4 0 00-3-3.87"/>
               <path d="M16 3.13a4 4 0 010 7.75"/>
             </svg> Usuarios
+          </a>
+          <a class="nav-item" routerLink="/areas" routerLinkActive="active" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeAdministrarPersonal" (click)="isMenuOpen = false">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg> Áreas de Trabajo
           </a>
         </nav>
         <div class="bottom-nav" style="margin-top: auto; padding: 0 12px 20px 12px;">

@@ -10,13 +10,13 @@
   <div class="main-wrapper">
     <div class="mobile-overlay" *ngIf="isMenuOpen" (click)="toggleMenu()"></div>
     
-    <aside class="sidebar" [class.mobile-open]="isMenuOpen">
+   <aside class="sidebar" [class.mobile-open]="isMenuOpen" translate="no">
       <div style="display: flex; flex-direction: column; height: 100%;">
         <div class="sidebar-header">
-          <img src="https://static.wixstatic.com/media/fd397e_0fd82a1ecec84a118ceeb603b493f25a~mv2.png" style="width:32px;">
+          <img src="https://static.wixstatic.com/media/fd397e_0fd82a1ecec84a118ceeb603b493f25a~mv2.png" alt="Logo" style="width:32px; height:32px; border-radius:6px; object-fit:contain;">
           <span class="sidebar-brand">Mega Dulces</span>
         </div>
-      <nav class="sidebar-nav" style="flex: 1; padding: 16px 12px;">
+        <nav class="sidebar-nav" style="flex: 1; padding: 16px 12px;">
           <a class="nav-item" routerLink="/home" routerLinkActive="active" (click)="isMenuOpen = false">
             <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
@@ -62,6 +62,22 @@
             <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg> Áreas de Trabajo
           </a>
         </nav>
+        <div class="bottom-nav" style="margin-top: auto; padding: 0 12px 20px 12px;">
+          <button class="logout-btn" routerLink="/login">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
+              <polyline points="16 17 21 12 16 7"/>
+              <line x1="21" y1="12" x2="9" y2="12"/>
+            </svg> Cerrar Sesión
+          </button>
+          <div class="user-row">
+            <div class="user-avatar">{{ (currentUser?.nombre || 'A').charAt(0) | uppercase }}</div>
+            <div class="user-info">
+              <span class="user-name">{{ currentUser?.nombre || 'Administrador' }}</span>
+              <span class="user-role">{{ currentUser?.rol === 'admin' ? 'Gerente' : 'Colaborador' }}</span>
+            </div>
+          </div>
+        </div>
       </div>
     </aside>
 

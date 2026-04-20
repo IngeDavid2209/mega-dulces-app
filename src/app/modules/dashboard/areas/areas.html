@@ -80,7 +80,6 @@
       </div>
     </aside>
     <div class="content">
-
       <div *ngIf="vistaActual() === 'lista'">
         <div class="section-header">
           <div>
@@ -110,8 +109,20 @@
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg> Volver a Áreas
         </button>
         <div style="background: white; border-radius: 12px; padding: 25px; border: 1px solid var(--border); margin-bottom: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
-          <h2 style="margin: 0 0 5px 0; font-size: 24px; color: #0F172A;">{{ areaDetalle().nombre }}</h2>
-          <p style="margin: 0; color: #64748B;">{{ areaDetalle().descripcion || 'Sin descripción asignada a este departamento.' }}</p>
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+            <div>
+              <h2 style="margin: 0 0 5px 0; font-size: 24px; color: #0F172A;">{{ areaDetalle().nombre }}</h2>
+              <p style="margin: 0; color: #64748B;">{{ areaDetalle().descripcion || 'Sin descripción asignada a este departamento.' }}</p>
+            </div>
+            <div style="display: flex; gap: 10px;">
+              <button class="btn-primary" (click)="abrirModalTareaParaArea()" style="font-size: 13px; padding: 8px 16px;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg> Tarea a toda el Área
+              </button>
+              <button class="btn-secondary" (click)="abrirModalRutinaParaArea()" style="font-size: 13px; padding: 8px 16px; background: #F8FAFC; border: 1px solid #CBD5E1; color: #0F172A;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg> Rutina a toda el Área
+              </button>
+            </div>
+          </div>
         </div>
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 15px;">
           <h3 style="font-size: 18px; color: #0F172A; margin: 0;">Personal Asignado ({{ getEmpleadosDelArea().length }})</h3>
@@ -148,7 +159,6 @@
             <div class="form-group form-full" style="margin-top: 15px; border-top: 1px solid #E2E8F0; padding-top: 15px;">
               <label class="form-label">Asignar Personal Inicial (Opcional)</label>
               <input class="form-input" [(ngModel)]="terminoBusquedaCreacion" placeholder="Buscar empleado..." style="margin-bottom: 10px;">
-
               <div style="max-height: 180px; overflow-y: auto; border: 1px solid #E2E8F0; border-radius: 8px; padding: 5px;">
                 <div *ngFor="let u of empleadosParaCreacion" style="display:flex; justify-content:space-between; align-items:center; padding:8px 10px; border-bottom:1px solid #F1F5F9; cursor: pointer; transition: 0.2s;"
                      [style.background]="estaSeleccionadoParaCreacion(u) ? '#EFF6FF' : 'transparent'" (click)="toggleUsuarioParaCreacion(u)">
@@ -191,7 +201,6 @@
           </div>
           <div class="modal-body">
             <div class="form-group form-full"><label class="form-label">Nombre de la operación</label><input class="form-input" type="text" [(ngModel)]="formName" placeholder="Ej: Acomodo especial"></div>
-
             <div class="form-group form-full">
               <label class="form-label">Usuarios Asignados (Personal del Área)</label>
               <div class="checkbox-grid">
@@ -201,7 +210,6 @@
               </div>
             </div>
             <div class="form-group form-full"><label class="form-label">Departamento / Sucursal</label><select class="form-input select-input" [(ngModel)]="formStore"><option *ngFor="let suc of sucursalesDisponibles" [value]="suc">{{ suc }}</option></select></div>
-
             <div class="form-group form-full">
               <label class="form-label">Actividades</label>
               <div class="checklist-items">
@@ -216,7 +224,7 @@
                       <input type="checkbox" [(ngModel)]="item.requiresAntesDespues" (change)="item.requiresAntesDespues ? item.requiresPhoto = false : null" style="margin-right: 6px;">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg> Antes y Desp.
                     </label>
-                    
+
                     <div *ngIf="item.requiresAntesDespues" style="display: flex; align-items: center; gap: 5px; margin-left: 10px; background: white; padding: 2px 8px; border-radius: 6px; border: 1px solid #E2E8F0;">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: #64748B;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
                       <input type="number" class="form-input" [(ngModel)]="item.tiempoEstimado" title="Tiempo en minutos" style="width: 50px; padding: 2px 4px; font-size: 12px; height: 24px; border: none; outline: none; background: transparent; text-align: center; font-weight: 600;">
@@ -248,7 +256,6 @@
           </div>
           <div class="modal-body">
             <div class="form-group form-full"><label class="form-label">Identificador del Bloque</label><input class="form-input" type="text" [(ngModel)]="formNameRutina" placeholder="Ej: Protocolo de Cierre Nocturno"></div>
-
             <div class="form-group form-full">
               <label class="form-label">Responsables de ejecución (Personal del Área)</label>
               <div class="checkbox-grid">
@@ -260,7 +267,7 @@
             <div class="form-group form-full">
               <label class="form-label">Sucursal asignada</label>
               <select class="form-input select-input" [(ngModel)]="formStoreRutina"><option *ngFor="let suc of sucursalesDisponibles" [value]="suc">{{ suc }}</option></select>
-              <small *ngIf="esSucursalAdministrativa(formStoreRutina)" style="color: #64748B; display: block; margin-top: 6px;"> ℹ️  Las rutinas diarias para esta zona se omiten automáticamente los domingos.</small>
+              <small *ngIf="esSucursalAdministrativa(formStoreRutina)" style="color: #64748B; display: block; margin-top: 6px;">  ℹ️   Las rutinas diarias para esta zona se omiten automáticamente los domingos.</small>
             </div>
             <div class="form-group form-full" style="margin-top: 15px; border-top: 1px dashed var(--border); padding-top: 20px;">
               <label class="form-label">Configuración de Frecuencias</label>
@@ -292,7 +299,7 @@
                     <label class="photo-toggle" style="display:flex; align-items:center; cursor:pointer; background:#FFFBEB; color:#D97706; padding:4px 8px; border-radius:6px; border:1px solid #FDE68A; font-size:12px; font-weight:600;">
                       <input type="checkbox" [(ngModel)]="rutina.requiresAntesDespues" (change)="rutina.requiresAntesDespues ? rutina.requiresPhoto = false : null"> Antes/Desp.
                     </label>
-
+                    
                     <div *ngIf="rutina.requiresAntesDespues" style="display: flex; align-items: center; gap: 5px; margin-left: 10px; background: white; padding: 2px 8px; border-radius: 6px; border: 1px solid #E2E8F0;">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: #64748B;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
                       <input type="number" class="form-input" [(ngModel)]="rutina.tiempoEstimado" title="Tiempo en minutos" style="width: 50px; padding: 2px 4px; font-size: 12px; height: 24px; border: none; outline: none; background: transparent; text-align: center; font-weight: 600;">

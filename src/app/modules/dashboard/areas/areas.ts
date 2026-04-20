@@ -1,7 +1,7 @@
 import { Component, signal, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterModule } from '@angular/router'; 
+import { RouterModule, Router } from '@angular/router'; 
 import { Firestore, collection, onSnapshot, doc, setDoc, deleteDoc } from '@angular/fire/firestore';
 import Swal from 'sweetalert2';
 
@@ -15,7 +15,6 @@ import Swal from 'sweetalert2';
 export class AreasComponent implements OnInit, OnDestroy {
   isMenuOpen = false;
   toggleMenu() { this.isMenuOpen = !this.isMenuOpen; }
-
   currentUser: any = null; 
   areas = signal<any[]>([]);
   usuarios = signal<any[]>([]);
@@ -36,18 +35,20 @@ export class AreasComponent implements OnInit, OnDestroy {
   empleadosFiltradosAsignacion = signal<any[]>([]);
   terminoBusquedaAsignacion = '';
 
-  // 🔥 VARIABLES PARA TAREAS Y RUTINAS DIRECTAS 🔥
+  // 🔥 VARIABLES PARA TAREAS Y RUTINAS DIRECTAS CON CRONÓMETRO 🔥
   isModalTareaOpen = false;
   isModalRutinaOpen = false;
 
   formName = '';
   formAssigned: string[] = [];
   formStore = '';
-  formItems = [{ text: '', requiresPhoto: false, requiresAntesDespues: false, date: '', time: '' }];
+  // 🔥 AQUÍ ESTÁ EL TIEMPO ESTIMADO 🔥
+  formItems = [{ text: '', requiresPhoto: false, requiresAntesDespues: false, tiempoEstimado: 30, date: '', time: '' }];
 
   formNameRutina = '';
   formAssignedRutina: string[] = [];
   formStoreRutina = '';
+  // 🔥 AQUÍ ESTÁ EL TIEMPO ESTIMADO 🔥
   formRutinas: any[] = [];
   frecuencias = ['Diaria', 'Semanal', 'Catorcenal', 'Mensual', 'Trimestral'];
   diasDelMes = Array.from({length: 31}, (_, i) => i + 1);
@@ -59,13 +60,16 @@ export class AreasComponent implements OnInit, OnDestroy {
   ];
 
   private firestore = inject(Firestore); 
+  private router = inject(Router);
   private destructoresRadares: (() => void)[] = [];
 
   ngOnInit() {
     const sesion = localStorage.getItem('md_sesion_actual');
     if (sesion) { this.currentUser = JSON.parse(sesion); }
+    
     if (this.currentUser?.rol !== 'admin' && !this.currentUser?.puedeAdministrarPersonal) {
-      window.location.href = '/home'; return;
+      this.router.navigate(['/home']);
+      return;
     }
     this.conectarConLaNube();
   }
@@ -90,8 +94,15 @@ export class AreasComponent implements OnInit, OnDestroy {
     this.destructoresRadares.push(radarUsuarios);
   }
 
-  verDetalleArea(area: any) { this.areaDetalle.set(area); this.vistaActual.set('detalle'); }
-  volverALista() { this.areaDetalle.set(null); this.vistaActual.set('lista'); }
+  verDetalleArea(area: any) {
+    this.areaDetalle.set(area);
+    this.vistaActual.set('detalle');
+  }
+
+  volverALista() {
+    this.areaDetalle.set(null);
+    this.vistaActual.set('lista');
+  }
 
   getEmpleadosDelArea() {
     const area = this.areaDetalle();
@@ -136,29 +147,37 @@ export class AreasComponent implements OnInit, OnDestroy {
     if (!this.formNombreArea.trim()) { Swal.fire('Falta el nombre', 'Debes asignarle un nombre al área.', 'warning'); return; }
     const nombreFormateado = this.formNombreArea.trim();
     const existe = this.areas().some(a => a.nombre.toLowerCase() === nombreFormateado.toLowerCase());
+    
     if (existe) { Swal.fire('Área Duplicada', 'Ya existe un área con ese nombre.', 'error'); return; }
 
     const areaId = 'area_' + Date.now();
     try {
-      await setDoc(doc(this.firestore, 'areas_operativas', areaId), { nombre: nombreFormateado, descripcion: this.formDescripcionArea.trim(), fechaCreacion: new Date().toISOString() });
+      await setDoc(doc(this.firestore, 'areas_operativas', areaId), {
+        nombre: nombreFormateado, descripcion: this.formDescripcionArea.trim(), fechaCreacion: new Date().toISOString()
+      });
       for (const u of this.formAssignedUsers) {
         let nuevasAreas = u.areas ? [...u.areas] : [];
-        if (!nuevasAreas.includes(nombreFormateado)) { nuevasAreas.push(nombreFormateado); await setDoc(doc(this.firestore, 'usuarios', u.idFirestore), { areas: nuevasAreas }, { merge: true }); }
+        if (!nuevasAreas.includes(nombreFormateado)) {
+          nuevasAreas.push(nombreFormateado);
+          await setDoc(doc(this.firestore, 'usuarios', u.idFirestore), { areas: nuevasAreas }, { merge: true });
+        }
       }
       this.cerrarModal();
-      Swal.fire({ toast: true, position: 'top-end', showConfirmButton: false, timer: 3000, icon: 'success', title: 'Área creada' });
+      Swal.fire({ toast: true, position: 'top-end', showConfirmButton: false, timer: 3000, icon: 'success', title: 'Área creada y personal asignado' });
     } catch (error) { Swal.fire('Error', 'Hubo un problema al crear el área.', 'error'); }
   }
 
   async eliminarArea(area: any, event: Event) {
-    event.stopPropagation(); 
-    if (this.contarEmpleadosEnArea(area.nombre) > 0) { Swal.fire('Atención', 'Hay personal en esta área. Quítalos primero.', 'warning'); return; }
+    event.stopPropagation();
+    if (this.contarEmpleadosEnArea(area.nombre) > 0) {
+      Swal.fire('Atención', 'Hay personal en esta área. Quítalos primero.', 'warning'); return;
+    }
     const res = await Swal.fire({ title: '¿Borrar?', text: area.nombre, icon: 'warning', showCancelButton: true });
     if (res.isConfirmed) await deleteDoc(doc(this.firestore, 'areas_operativas', area.id));
   }
 
   abrirAsignacion(area: any, event: Event) {
-    event.stopPropagation(); 
+    event.stopPropagation();
     this.areaSeleccionada = area;
     this.actualizarListaAsignacion();
     this.isModalAsignacionOpen = true;
@@ -193,13 +212,13 @@ export class AreasComponent implements OnInit, OnDestroy {
   // --- TAREAS ÚNICAS ---
   abrirModalTarea(empleadoNombre: string) {
     this.formName = ''; 
-    this.formAssigned = [empleadoNombre]; // Pre-seleccionar
+    this.formAssigned = [empleadoNombre];
     this.formStore = this.sucursalesDisponibles.length > 0 ? this.sucursalesDisponibles[0] : '';
-    this.formItems = [{ text: '', requiresPhoto: false, requiresAntesDespues: false, date: '', time: '' }];
+    this.formItems = [{ text: '', requiresPhoto: false, requiresAntesDespues: false, tiempoEstimado: 30, date: '', time: '' }];
     this.isModalTareaOpen = true;
   }
   cerrarModalTarea() { this.isModalTareaOpen = false; }
-  agregarItem() { this.formItems.push({ text: '', requiresPhoto: false, requiresAntesDespues: false, date: '', time: '' }); }
+  agregarItem() { this.formItems.push({ text: '', requiresPhoto: false, requiresAntesDespues: false, tiempoEstimado: 30, date: '', time: '' }); }
   eliminarItem(index: number) { this.formItems.splice(index, 1); }
   
   toggleEmpleadoTarea(nombre: string) {
@@ -211,9 +230,16 @@ export class AreasComponent implements OnInit, OnDestroy {
     if (!this.formName || this.formAssigned.length === 0) { Swal.fire('Faltan datos', 'Completa los campos.', 'warning'); return; }
 
     const tareasValidas = this.formItems.filter(item => item.text.trim() !== '').map((item, i) => ({
-      id: Date.now() + i, text: item.text, requiresPhoto: item.requiresPhoto, requiresAntesDespues: item.requiresAntesDespues, 
-      date: item.date, time: item.time, checked: false,
-      photo: null, photoTime: null, photoAntes: null, photoAntesTime: null, photoDespues: null, photoDespuesTime: null, tipo: 'tarea'
+      id: Date.now() + i, 
+      text: item.text, 
+      requiresPhoto: item.requiresPhoto, 
+      requiresAntesDespues: item.requiresAntesDespues, 
+      tiempoEstimado: item.requiresAntesDespues ? (item.tiempoEstimado || 30) : null,
+      date: item.date, 
+      time: item.time, 
+      checked: false,
+      photo: null, photoTime: null, photoAntes: null, photoAntesTime: null, photoAntesTimestamp: null, photoDespues: null, photoDespuesTime: null, 
+      tipo: 'tarea'
     }));
 
     if (tareasValidas.length === 0) { Swal.fire('Error', 'Agrega al menos una actividad.', 'warning'); return; }
@@ -238,9 +264,9 @@ export class AreasComponent implements OnInit, OnDestroy {
   // --- RUTINAS ---
   abrirModalRutina(empleadoNombre: string) {
     this.formNameRutina = ''; 
-    this.formAssignedRutina = [empleadoNombre]; // Pre-seleccionar
+    this.formAssignedRutina = [empleadoNombre];
     this.formStoreRutina = this.sucursalesDisponibles.length > 0 ? this.sucursalesDisponibles[0] : '';
-    this.formRutinas = [{ text: '', requiresPhoto: false, requiresAntesDespues: false, frecuencia: 'Diaria', fechaFin: null, horaLimite: '', diaSemana: 'Lunes', diaMes: 1 }];
+    this.formRutinas = [{ text: '', requiresPhoto: false, requiresAntesDespues: false, tiempoEstimado: 30, frecuencia: 'Diaria', fechaFin: null, horaLimite: '', diaSemana: 'Lunes', diaMes: 1 }];
     this.isModalRutinaOpen = true;
   }
   cerrarModalRutina() { this.isModalRutinaOpen = false; }
@@ -249,7 +275,7 @@ export class AreasComponent implements OnInit, OnDestroy {
     const index = this.formAssignedRutina.indexOf(nombre);
     if (index > -1) { this.formAssignedRutina.splice(index, 1); } else { this.formAssignedRutina.push(nombre); }
   }
-  agregarRutina() { this.formRutinas.push({ text: '', requiresPhoto: false, requiresAntesDespues: false, frecuencia: 'Diaria', fechaFin: null, horaLimite: '', diaSemana: 'Lunes', diaMes: 1 }); }
+  agregarRutina() { this.formRutinas.push({ text: '', requiresPhoto: false, requiresAntesDespues: false, tiempoEstimado: 30, frecuencia: 'Diaria', fechaFin: null, horaLimite: '', diaSemana: 'Lunes', diaMes: 1 }); }
   eliminarRutina(index: number) { this.formRutinas.splice(index, 1); }
   alCambiarFrecuencia(rutina: any) { rutina.fechaFin = null; }
   
@@ -271,8 +297,12 @@ export class AreasComponent implements OnInit, OnDestroy {
     if (!this.formNameRutina || this.formAssignedRutina.length === 0) { Swal.fire('Faltan datos', 'Completa los campos.', 'warning'); return; }
 
     const rutinasValidas = this.formRutinas.filter(rutina => rutina.text.trim() !== '').map((rutina, i) => ({
-      id: Date.now() + 1000 + i, text: rutina.text, requiresPhoto: rutina.requiresPhoto, requiresAntesDespues: rutina.requiresAntesDespues || false, 
-      checked: false, photo: null, photoTime: null, photoAntes: null, photoAntesTime: null, photoDespues: null, photoDespuesTime: null,
+      id: Date.now() + 1000 + i, 
+      text: rutina.text, 
+      requiresPhoto: rutina.requiresPhoto, 
+      requiresAntesDespues: rutina.requiresAntesDespues || false, 
+      tiempoEstimado: rutina.requiresAntesDespues ? (rutina.tiempoEstimado || 30) : null,
+      checked: false, photo: null, photoTime: null, photoAntes: null, photoAntesTime: null, photoAntesTimestamp: null, photoDespues: null, photoDespuesTime: null,
       tipo: 'rutina', frecuencia: rutina.frecuencia, fechaFin: rutina.fechaFin, horaLimite: rutina.horaLimite, diaSemana: rutina.diaSemana || 'Lunes', diaMes: rutina.diaMes || 1
     }));
 

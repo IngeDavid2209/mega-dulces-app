@@ -1,7 +1,7 @@
 import { Component, signal, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterModule } from '@angular/router'; 
+import { RouterModule, ActivatedRoute } from '@angular/router'; 
 import { Firestore, collection, doc, setDoc, getDoc, deleteDoc, onSnapshot, getDocs } from '@angular/fire/firestore';
 
 @Component({
@@ -17,8 +17,10 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   currentUser: any = null;
   vistaActual = signal<'lista' | 'detalle'>('lista');
   checklistSeleccionado = signal<any>(null);
+
   terminoBusquedaChecklist = '';
   toastMessage = '';
+
   notificacionesPendientes = signal<any[]>([]);
   isModalNotificacionOpen = false;
   empleadoParaNotificar = '';
@@ -27,13 +29,16 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   formName = '';
   formAssigned: string[] = [];
   formStore = '';
-  formItems = [{ text: '', requiresPhoto: false, requiresAntesDespues: false, date: '', time: '' }];
+
+  // 🔥 TIEMPO ESTIMADO POR DEFECTO PARA EL CRONÓMETRO (30 min) 🔥
+  formItems = [{ text: '', requiresPhoto: false, requiresAntesDespues: false, tiempoEstimado: 30, date: '', time: '' }];
+
   isModalRutinasOpen = false;
   isEditMode = false;
   formNameRutina = '';
   formAssignedRutina: string[] = [];
   formStoreRutina = '';
-
+  
   formRutinas: any[] = [];
   frecuencias = ['Diaria', 'Semanal', 'Catorcenal', 'Mensual', 'Trimestral'];
   diasDelMes = Array.from({length: 31}, (_, i) => i + 1);
@@ -43,9 +48,12 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   checklists = signal<any[]>([]);
   empleados = signal<any[]>([]);
   sucursalesDisponibles = signal<string[]>([]);
-
+  
   private firestore = inject(Firestore);
+  private route = inject(ActivatedRoute); 
   private destructoresRadares: (() => void)[] = [];
+  private intervalId: any; // 🔥 INTERVALO PARA EL CRONÓMETRO 🔥
+
   private sucursalesAdministrativas = [
     'OFICINAS CORPORATIVAS', 'CAJA GENERAL', 'COMPRAS', 'CONTABILIDAD',
     'FINANZAS', 'SISTEMAS', 'RH', 'MKT', 'MANTENIMIENTO'
@@ -90,9 +98,53 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     const sesion = localStorage.getItem('md_sesion_actual');
     if (sesion) { this.currentUser = JSON.parse(sesion); }
     this.conectarRadarNube();
+
+    // MAGIA: ATRAPA LA REDIRECCIÓN DESDE LA PANTALLA DE ÁREAS
+    this.route.queryParams.subscribe(params => {
+      if (params['assign'] && params['modal']) {
+        setTimeout(() => { 
+          if (params['modal'] === 'tarea') {
+            this.abrirModal();
+            this.formAssigned = [params['assign']];
+          } else if (params['modal'] === 'rutina') {
+            this.abrirModalRutinas();
+            this.formAssignedRutina = [params['assign']];
+          }
+        }, 500);
+      }
+    });
+
+    // 🔥 REFRESCA LA VISTA CADA 30 SEGUNDOS PARA EL CRONÓMETRO 🔥
+    this.intervalId = setInterval(() => {
+      // El refresco es automático por el signal de Angular
+    }, 30000);
   }
 
-  ngOnDestroy() { this.destructoresRadares.forEach(apagarRadar => apagarRadar()); }
+  ngOnDestroy() { 
+    this.destructoresRadares.forEach(apagarRadar => apagarRadar()); 
+    if (this.intervalId) { clearInterval(this.intervalId); }
+  }
+
+  // =========================================================
+  // 🔥 LÓGICA MÁGICA DEL CRONÓMETRO 🔥
+  // =========================================================
+  
+  isDespuesExpirado(item: any): boolean {
+    if (!item.requiresAntesDespues || !item.photoAntesTimestamp || !item.tiempoEstimado) return false;
+    const limite = item.photoAntesTimestamp + (item.tiempoEstimado * 60000);
+    return Date.now() > limite;
+  }
+
+  getTiempoRestanteTexto(item: any): string {
+    if (!item.requiresAntesDespues || !item.photoAntesTimestamp || !item.tiempoEstimado) return '';
+    if (item.photoDespues) return 'Completado';
+    const limite = item.photoAntesTimestamp + (item.tiempoEstimado * 60000);
+    const ahora = Date.now();
+    if (ahora > limite) return 'Agotado';
+    const faltan = Math.ceil((limite - ahora) / 60000);
+    return `${faltan} min`;
+  }
+  // =========================================================
 
   conectarRadarNube() {
     const usuariosRef = collection(this.firestore, 'usuarios');
@@ -203,7 +255,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     };
     try {
       await setDoc(doc(this.firestore, 'notificaciones', notiId), payload);
-      this.mostrarToast(`🔔 ¡Zumbido enviado a ${this.empleadoParaNotificar}!`);
+      this.mostrarToast(` 🔔 ¡Zumbido enviado a ${this.empleadoParaNotificar}!`);
       this.cerrarModalNotificacion();
     } catch (error) { alert('Error al enviar la alerta.'); }
   }
@@ -337,7 +389,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
           id: checklistId, timestampCreacion: Date.now(), name: `${molde.name} (${molde.frecuencia})`,
           assigned: molde.assigned, store: molde.store, date: fechaString, time: '23:59',
           status: 'pendiente', enviado: false, createdBy: 'Robot de Rutinas', notaEmpleado: '',
-          items: itemsVigentes.map((i:any) => ({...i, checked: false, photo: null, photoTime: null, photoAntesTime: null, photoDespuesTime: null}))
+          items: itemsVigentes.map((i:any) => ({...i, checked: false, photo: null, photoTime: null, photoAntes: null, photoAntesTime: null, photoAntesTimestamp: null, photoDespues: null, photoDespuesTime: null}))
         };
         await setDoc(docRef, nuevoChecklist);
       }
@@ -441,6 +493,12 @@ export class ChecklistComponent implements OnInit, OnDestroy {
         item[tipoFoto] = data.secure_url; 
         const ahora = new Date();
         item[tipoFoto + 'Time'] = ahora.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+        
+        // 🔥 INICIAMOS EL CRONÓMETRO CUANDO SUBE EL "ANTES" 🔥
+        if (tipoFoto === 'photoAntes') {
+          item.photoAntesTimestamp = Date.now();
+        }
+
         this.actualizarEstado(); 
       }
       else { item[tipoFoto] = null; this.actualizarEstado(); alert('❌ Error de Cloudinary.'); }
@@ -448,9 +506,13 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     finally { event.target.value = ''; }
   }
 
+  // 🔥 SI BORRA LA FOTO "ANTES", SE REINICIA EL CRONÓMETRO 🔥
   removeImage(item: any, tipoFoto: string = 'photo') { 
     item[tipoFoto] = null; 
     item[tipoFoto + 'Time'] = null;
+    if (tipoFoto === 'photoAntes') {
+      item.photoAntesTimestamp = null;
+    }
     this.actualizarEstado(); 
   }
 
@@ -502,20 +564,24 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   abrirModal() {
     this.formName = ''; this.formAssigned = [];
     this.formStore = this.sucursalesDisponibles().length > 0 ? this.sucursalesDisponibles()[0] : '';
-    this.formItems = [{ text: '', requiresPhoto: false, requiresAntesDespues: false, date: '', time: '' }];
+    this.formItems = [{ text: '', requiresPhoto: false, requiresAntesDespues: false, tiempoEstimado: 30, date: '', time: '' }];
     this.isModalOpen = true;
   }
 
   cerrarModal() { this.isModalOpen = false; }
-  agregarItem() { this.formItems.push({ text: '', requiresPhoto: false, requiresAntesDespues: false, date: '', time: '' }); }
+  agregarItem() { this.formItems.push({ text: '', requiresPhoto: false, requiresAntesDespues: false, tiempoEstimado: 30, date: '', time: '' }); }
   eliminarItem(index: number) { this.formItems.splice(index, 1); }
   trackByIndex(index: number, obj: any): any { return index; }
 
   guardarChecklistUnico() {
     if (!this.formName || this.formAssigned.length === 0) { alert('Faltan datos.'); return; }
+
+    // 🔥 GUARDAMOS EL TIEMPO ESTIMADO EN LA TAREA 🔥
     const tareasValidas = this.formItems.filter(item => item.text.trim() !== '').map((item, i) => ({
       id: Date.now() + i, text: item.text, requiresPhoto: item.requiresPhoto, requiresAntesDespues: item.requiresAntesDespues, 
-      date: item.date, time: item.time, checked: false, photo: null, photoTime: null, photoAntes: null, photoAntesTime: null, photoDespues: null, photoDespuesTime: null, tipo: 'tarea'
+      tiempoEstimado: item.requiresAntesDespues ? (item.tiempoEstimado || 30) : null,
+      date: item.date, time: item.time, checked: false, 
+      photo: null, photoTime: null, photoAntes: null, photoAntesTime: null, photoAntesTimestamp: null, photoDespues: null, photoDespuesTime: null, tipo: 'tarea'
     }));
 
     if (tareasValidas.length === 0) { alert('Agrega tareas.'); return; }
@@ -544,20 +610,22 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     this.isEditMode = false;
     this.formNameRutina = ''; this.formAssignedRutina = [];
     this.formStoreRutina = this.sucursalesDisponibles().length > 0 ? this.sucursalesDisponibles()[0] : '';
-    this.formRutinas = [{ text: '', requiresPhoto: false, requiresAntesDespues: false, frecuencia: 'Diaria', fechaFin: null, horaLimite: '', diaSemana: 'Lunes', diaMes: 1 }];
+    this.formRutinas = [{ text: '', requiresPhoto: false, requiresAntesDespues: false, tiempoEstimado: 30, frecuencia: 'Diaria', fechaFin: null, horaLimite: '', diaSemana: 'Lunes', diaMes: 1 }];
     this.isModalRutinasOpen = true;
   }
 
   cerrarModalRutinas() { this.isModalRutinasOpen = false; }
-  agregarRutina() { this.formRutinas.push({ text: '', requiresPhoto: false, requiresAntesDespues: false, frecuencia: 'Diaria', fechaFin: null, horaLimite: '', diaSemana: 'Lunes', diaMes: 1 }); }
+  agregarRutina() { this.formRutinas.push({ text: '', requiresPhoto: false, requiresAntesDespues: false, tiempoEstimado: 30, frecuencia: 'Diaria', fechaFin: null, horaLimite: '', diaSemana: 'Lunes', diaMes: 1 }); }
   eliminarRutina(index: number) { this.formRutinas.splice(index, 1); }
 
   async guardarBloqueRutinas() {
     if (!this.formNameRutina || this.formAssignedRutina.length === 0) { alert('Faltan datos.'); return; }
 
+    // 🔥 GUARDAMOS EL TIEMPO ESTIMADO EN LAS RUTINAS 🔥
     const rutinasValidas = this.formRutinas.filter(rutina => rutina.text.trim() !== '').map((rutina, i) => ({
       id: Date.now() + 1000 + i, text: rutina.text, requiresPhoto: rutina.requiresPhoto, requiresAntesDespues: rutina.requiresAntesDespues || false, 
-      checked: false, photo: null, photoTime: null, photoAntes: null, photoAntesTime: null, photoDespues: null, photoDespuesTime: null,
+      tiempoEstimado: rutina.requiresAntesDespues ? (rutina.tiempoEstimado || 30) : null,
+      checked: false, photo: null, photoTime: null, photoAntes: null, photoAntesTime: null, photoAntesTimestamp: null, photoDespues: null, photoDespuesTime: null,
       tipo: 'rutina', frecuencia: rutina.frecuencia, fechaFin: rutina.fechaFin, horaLimite: rutina.horaLimite, diaSemana: rutina.diaSemana || 'Lunes', diaMes: rutina.diaMes || 1
     }));
 

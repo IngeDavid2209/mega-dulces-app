@@ -50,7 +50,7 @@ export class CalendarioComponent implements OnInit, OnDestroy {
     const usuariosRef = collection(this.firestore, 'usuarios');
     this.destructores.push(onSnapshot(usuariosRef, (snap) => {
       const trabajadores = snap.docs.map(d => d.data()).filter((u: any) => u.rol === 'trabajador');
-      this.empleados.set(trabajadores.sort((a,b) => a.nombre.localeCompare(b.nombre)));
+      this.empleados.set(trabajadores.sort((a: any, b: any) => (a.nombre || '').localeCompare(b.nombre || '')));
     }));
 
     const checklistsRef = collection(this.firestore, 'checklists');

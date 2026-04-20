@@ -258,7 +258,6 @@ export class ReportesComponent implements OnInit, OnDestroy {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Reporte Auditoría');
 
-    // 🔥 AHORA EXPORTAMOS LOS COMENTARIOS AL EXCEL 🔥
     worksheet.columns = [
       { header: 'Nombre Operación', key: 'name', width: 40 },
       { header: 'Sucursal', key: 'store', width: 20 },
@@ -282,7 +281,7 @@ export class ReportesComponent implements OnInit, OnDestroy {
         status: this.getDisplayStatus(c).toUpperCase(),
         tareas: `${this.getCompletados(c)} de ${c.items?.length || 0}`,
         progreso: `${this.getProgreso(c)}%`,
-        notas: c.notaEmpleado || 'Sin comentarios' // 🔥 SE AGREGAN LAS NOTAS AL EXCEL
+        notas: c.notaEmpleado || 'Sin comentarios'
       });
     });
 
@@ -353,7 +352,6 @@ export class ReportesComponent implements OnInit, OnDestroy {
         }).join('\n');
       }
 
-      // 🔥 AGREGAMOS LA NOTA AL PDF SIMPLE 🔥
       if (c.notaEmpleado) {
         detalle += `\n\n📌 NOTA DEL COLABORADOR:\n${c.notaEmpleado}`;
       }
@@ -396,11 +394,20 @@ export class ReportesComponent implements OnInit, OnDestroy {
     doc.save(`Reporte_MegaDulces_${this.fechaInicio}_al_${this.fechaFin}.pdf`);
   }
 
+  // =======================================================================
+  // 🔥 NUEVA GENERACIÓN DE PDF VISUAL NATIVO (ELIMINA HTML2CANVAS) 🔥
+  // =======================================================================
   async descargarPDFVisual() {
-    if (this.resultados().length === 0) return;
+    if (this.resultados().length === 0) {
+      Swal.fire({ icon: 'info', title: 'Sin Datos', text: 'No hay datos para generar el reporte visual.', confirmButtonColor: '#0F172A' });
+      return;
+    }
+
     if (this.resultados().length > 30) {
       const result = await Swal.fire({
-        title: 'Reporte Pesado', text: 'Estás intentando generar un reporte visual con más de 30 checklists. Esto procesará cientos de fotos y podría tomar varios minutos. ¿Deseas continuar?', icon: 'warning',
+        title: 'Reporte Pesado', 
+        text: 'Estás intentando generar un reporte visual con más de 30 checklists. Esto descargará muchas fotos y tomará algo de tiempo. ¿Deseas continuar?', 
+        icon: 'warning',
         showCancelButton: true, confirmButtonColor: '#0F172A', cancelButtonColor: '#64748B', confirmButtonText: 'Sí, generar PDF', cancelButtonText: 'Cancelar'
       });
       if (!result.isConfirmed) return;
@@ -408,42 +415,188 @@ export class ReportesComponent implements OnInit, OnDestroy {
 
     this.generandoReporte.set(true);
 
-    setTimeout(async () => {
-      const contenedor = document.getElementById('reporte-imprimir-fotos');
-      if (!contenedor) { this.generandoReporte.set(false); return; }
+    try {
+      const doc = new jsPDF('p', 'mm', 'a4');
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
 
-      try {
-        const pdf = new jsPDF('p', 'mm', 'a4');
-        const pdfWidth = pdf.internal.pageSize.getWidth();
-        const pdfHeight = pdf.internal.pageSize.getHeight();
-        let currentY = 10; const margin = 10; const usableHeight = pdfHeight - (margin * 2); 
-        const tarjetas = Array.from(contenedor.children) as HTMLElement[];
+      // FUNCIÓN PARA DESCARGAR IMÁGENES SEGURAS EN BASE64
+      const getBase64Image = (url: string): Promise<string | null> => {
+        return new Promise((resolve) => {
+          const img = new Image();
+          img.crossOrigin = 'Anonymous';
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const MAX_WIDTH = 500;
+            const scaleSize = MAX_WIDTH / img.width;
+            canvas.width = MAX_WIDTH;
+            canvas.height = img.height * scaleSize;
+            const ctx = canvas.getContext('2d');
+            ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
+            resolve(canvas.toDataURL('image/jpeg', 0.6));
+          };
+          img.onerror = () => resolve(null);
+          img.src = url;
+        });
+      };
 
-        for (let i = 0; i < tarjetas.length; i++) {
-          const tarjetaHTML = tarjetas[i];
-          const canvas = await html2canvas(tarjetaHTML, { scale: 1.5, useCORS: true, logging: false, backgroundColor: '#ffffff' });
-          const imgData = canvas.toDataURL('image/jpeg', 0.8); 
-          const imgHeight = (canvas.height * pdfWidth) / canvas.width;
+      // 1. PORTADA CORPORATIVA
+      doc.setFillColor(15, 23, 42); 
+      doc.rect(0, 0, pageWidth, 28, 'F');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(22);
+      doc.setTextColor(255, 255, 255);
+      doc.text('MEGA DULCES', 14, 15);
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(200, 200, 200);
+      doc.text('REPORTE DE AUDITORÍA VISUAL', 14, 22);
 
-          if (currentY + imgHeight > pdfHeight - margin) {
-            if (imgHeight > usableHeight) {
-              if (currentY > margin) { pdf.addPage(); currentY = margin; }
-              let heightLeft = imgHeight; let positionShift = 0;
-              while (heightLeft > 0) {
-                pdf.addImage(imgData, 'JPEG', 0, currentY + positionShift, pdfWidth, imgHeight);
-                heightLeft -= usableHeight;
-                if (heightLeft > 0) { pdf.addPage(); positionShift -= usableHeight; currentY = margin; } 
-                else { currentY = margin + (heightLeft + usableHeight); }
-              }
-            } else { pdf.addPage(); currentY = margin; pdf.addImage(imgData, 'JPEG', 0, currentY, pdfWidth, imgHeight); currentY += imgHeight; }
-          } else { pdf.addImage(imgData, 'JPEG', 0, currentY, pdfWidth, imgHeight); currentY += imgHeight; }
-          currentY += 5; 
+      const totalProgresos = this.resultados().reduce((sum, r) => sum + this.getProgreso(r), 0);
+      const promedio = this.resultados().length > 0 ? Math.round(totalProgresos / this.resultados().length) : 0;
+
+      autoTable(doc, {
+        startY: 35,
+        head: [['Resumen Ejecutivo', '']],
+        body: [
+          ['Período analizado', `${this.fechaInicio} al ${this.fechaFin}`],
+          ['Filtro aplicado', this.empleadoSeleccionado || 'Todos los colaboradores'],
+          ['Total de registros', `${this.resultados().length} checklists validados`],
+          ['Cumplimiento general', `${promedio}% de efectividad`]
+        ],
+        theme: 'grid',
+        headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold', fontSize: 12 },
+        bodyStyles: { textColor: [51, 65, 85], fontSize: 10, cellPadding: 5 },
+        columnStyles: { 0: { fontStyle: 'bold', cellWidth: 60 } }
+      });
+
+      let startY = (doc as any).lastAutoTable.finalY + 15;
+
+      // 2. IMPRESIÓN DE CADA CHECKLIST
+      for (let i = 0; i < this.resultados().length; i++) {
+        const checklist = this.resultados()[i];
+
+        // Salto de página si ya no cabe el siguiente bloque
+        if (startY > pageHeight - 40) {
+          doc.addPage();
+          startY = 20;
         }
-        pdf.save(`Corte_Mensual_Visual_${this.fechaInicio}_al_${this.fechaFin}.pdf`);
-      } catch (error) {
-        Swal.fire({ icon: 'error', title: 'Error de Procesamiento', text: 'Ocurrió un error al procesar las fotografías. Asegúrate de tener buena conexión.', confirmButtonColor: '#0F172A' });
+
+        const progreso = this.getProgreso(checklist);
+        let badgeText = `${progreso}% COMPLETADO`;
+        let badgeColor = [29, 78, 216]; 
+        if (progreso === 100) badgeColor = [16, 185, 129];
+        else if (this.getDisplayStatus(checklist) === 'vencido') badgeColor = [220, 38, 38];
+
+        // Tarjeta principal (Título y datos)
+        autoTable(doc, {
+          startY: startY,
+          head: [[checklist.name.toUpperCase(), badgeText]],
+          body: [[`Responsable: ${checklist.assigned}   |   Sucursal: ${checklist.store}   |   Fecha: ${checklist.date}`, '']],
+          theme: 'grid',
+          headStyles: { fillColor: [248, 250, 252], textColor: [15, 23, 42], fontSize: 12, fontStyle: 'bold', lineColor: [226, 232, 240] },
+          bodyStyles: { fillColor: [255, 255, 255], textColor: [100, 116, 139], fontSize: 9, lineColor: [226, 232, 240], cellPadding: 3 },
+          columnStyles: { 1: { halign: 'right', cellWidth: 45 } },
+          didParseCell: (data) => {
+            if (data.section === 'head' && data.column.index === 1) {
+              data.cell.styles.textColor = badgeColor as [number, number, number];
+            }
+          }
+        });
+
+        let currentY = (doc as any).lastAutoTable.finalY;
+        const itemsData: any[] = [];
+
+        // Generar filas para las tareas y fotos
+        for (const item of checklist.items) {
+          const checkIcon = item.checked ? '✓' : 'X';
+          itemsData.push([{ content: `${checkIcon}  ${item.text}`, colSpan: 2, styles: { fontStyle: item.checked ? 'normal' : 'bold', textColor: item.checked ? [51, 65, 85] : [220, 38, 38] } }]);
+
+          if (item.requiresAntesDespues) {
+            let imgAntes = item.photoAntes ? await getBase64Image(item.photoAntes) : null;
+            let imgDespues = item.photoDespues ? await getBase64Image(item.photoDespues) : null;
+
+            if (imgAntes || imgDespues) {
+              itemsData.push([
+                { content: imgAntes || 'Sin evidencia', styles: { minCellHeight: 65, halign: 'center', valign: 'middle' } },
+                { content: imgDespues || 'Sin evidencia', styles: { minCellHeight: 65, halign: 'center', valign: 'middle' } }
+              ]);
+              itemsData.push([
+                { content: `ANTES ${item.photoAntesTime ? '('+item.photoAntesTime+')' : ''}`, styles: { halign: 'center', fontSize: 8, textColor: [15, 23, 42], fontStyle: 'bold' } },
+                { content: `DESPUÉS ${item.photoDespuesTime ? '('+item.photoDespuesTime+')' : ''}`, styles: { halign: 'center', fontSize: 8, textColor: [16, 185, 129], fontStyle: 'bold' } }
+              ]);
+            } else if (item.checked) {
+              itemsData.push([{ content: '⚠️ Tarea marcada como completada SIN EVIDENCIA FOTOGRÁFICA.', colSpan: 2, styles: { textColor: [220, 38, 38], fontStyle: 'bold' } }]);
+            }
+          } else if (item.requiresPhoto) {
+            let img = item.photo ? await getBase64Image(item.photo) : null;
+            if (img) {
+              itemsData.push([{ content: img, colSpan: 2, styles: { minCellHeight: 70, halign: 'center', valign: 'middle' } }]);
+              itemsData.push([{ content: `EVIDENCIA ${item.photoTime ? '('+item.photoTime+')' : ''}`, colSpan: 2, styles: { halign: 'center', fontSize: 8, fontStyle: 'bold' } }]);
+            } else if (item.checked) {
+              itemsData.push([{ content: '⚠️ Tarea marcada como completada SIN EVIDENCIA FOTOGRÁFICA.', colSpan: 2, styles: { textColor: [220, 38, 38], fontStyle: 'bold' } }]);
+            }
+          }
+        }
+
+        if (checklist.notaEmpleado) {
+          itemsData.push([{ content: `COMENTARIOS DEL COLABORADOR:\n${checklist.notaEmpleado}`, colSpan: 2, styles: { fillColor: [255, 251, 235], textColor: [146, 64, 14], fontStyle: 'italic', cellPadding: 5 } }]);
+        }
+
+        if (itemsData.length > 0) {
+          autoTable(doc, {
+            startY: currentY,
+            body: itemsData,
+            theme: 'plain',
+            styles: { cellPadding: 3, lineColor: [226, 232, 240], lineWidth: { left: 0.5, right: 0.5, bottom: 0.5 } },
+columnStyles: { 0: { cellWidth: 91 }, 1: { cellWidth: 91 } },            
+            // Truco maestro para dibujar imágenes nativamente
+            didParseCell: (data) => {
+              if (data.cell.raw && typeof data.cell.raw === 'object' && (data.cell.raw as any).content && ((data.cell.raw as any).content as string).startsWith('data:image')) {
+                (data.cell as any).customImage = (data.cell.raw as any).content;
+                data.cell.text = []; // Borramos el texto para que no escriba el código base64
+              }
+            },
+            didDrawCell: (data) => {
+              if ((data.cell as any).customImage) {
+                const base64 = (data.cell as any).customImage;
+                const padding = 3;
+                const dim = data.cell;
+                const imgProps = doc.getImageProperties(base64);
+                const cellW = dim.width - padding * 2;
+                const cellH = dim.height - padding * 2;
+                const imgRatio = imgProps.width / imgProps.height;
+                const cellRatio = cellW / cellH;
+
+                let finalW, finalH;
+                if (imgRatio > cellRatio) { finalW = cellW; finalH = finalW / imgRatio; } 
+                else { finalH = cellH; finalW = finalH * imgRatio; }
+                
+                const x = dim.x + (dim.width - finalW) / 2;
+                const y = dim.y + (dim.height - finalH) / 2;
+                doc.addImage(base64, 'JPEG', x, y, finalW, finalH);
+              }
+            }
+          });
+        }
+        
+        startY = (doc as any).lastAutoTable.finalY + 10;
       }
+
+      // 3. PIE DE PÁGINA GLOBAL
+      const pageCount = doc.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(148, 163, 184);
+        doc.text(`Mega Dulces App - Documento Confidencial | Página ${i} de ${pageCount}`, pageWidth / 2, pageHeight - 10, { align: 'center' });
+      }
+
+      doc.save(`Auditoria_Visual_${this.fechaInicio}_al_${this.fechaFin}.pdf`);
+    } catch (error) {
+      console.error(error);
+      Swal.fire({ icon: 'error', title: 'Error de Procesamiento', text: 'Ocurrió un error al generar el PDF. Revisa tu conexión a internet.', confirmButtonColor: '#0F172A' });
+    } finally {
       this.generandoReporte.set(false);
-    }, 500);
+    }
   }
 }

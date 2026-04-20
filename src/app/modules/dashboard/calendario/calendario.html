@@ -109,7 +109,7 @@
       <div class="modal-title">Actividad del {{ diaSeleccionado()?.fechaStr }}</div>
       <button class="modal-close" (click)="cerrarDetalle()">X</button>
     </div>
-  <div class="modal-body" style="max-height: 60vh; overflow-y: auto; padding-top: 10px;">
+<div class="modal-body" style="max-height: 60vh; overflow-y: auto; padding-top: 10px;">
       
       <div *ngFor="let tarea of diaSeleccionado()?.tareas" style="background: #F8FAFC; border: 1px solid var(--border); padding: 15px; border-radius: 8px; margin-bottom: 12px; transition: all 0.3s ease;">
         
@@ -135,10 +135,42 @@
         </div>
         
         <div *ngIf="tarea.expandido" style="margin-top: 12px; border-top: 1px dashed #CBD5E1; padding-top: 12px; padding-left: 28px; animation: fadeIn 0.3s ease;">
-          <div *ngFor="let item of tarea.items" style="display: flex; align-items: center; gap: 8px; font-size: 13px; margin-bottom: 6px;">
-            <svg *ngIf="item.checked" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
-            <svg *ngIf="!item.checked" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-            <span [style.text-decoration]="item.checked ? 'line-through' : 'none'" [style.color]="item.checked ? '#94A3B8' : '#0F172A'">{{ item.text }}</span>
+          
+          <div *ngFor="let item of tarea.items" style="margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid #F1F5F9;">
+            <div style="display: flex; align-items: center; gap: 8px; font-size: 13px; margin-bottom: 6px;">
+              <svg *ngIf="item.checked" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              <svg *ngIf="!item.checked" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+              <span [style.text-decoration]="item.checked ? 'line-through' : 'none'" [style.color]="item.checked ? '#94A3B8' : '#0F172A'">{{ item.text }}</span>
+            </div>
+
+            <div *ngIf="item.photo" style="margin-left: 24px; margin-top: 8px;">
+              <div style="font-size: 11px; font-weight: 700; color: #64748B; margin-bottom: 4px;">📸 EVIDENCIA <span *ngIf="item.photoTime" style="font-weight: normal;">(Subida a las {{ item.photoTime }})</span></div>
+              <a [href]="item.photo" target="_blank" title="Ver foto en grande">
+                <img [src]="item.photo" style="height: 60px; width: 60px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border); box-shadow: 0 1px 2px rgba(0,0,0,0.05); transition: 0.2s;">
+              </a>
+            </div>
+
+            <div *ngIf="item.requiresAntesDespues" style="margin-left: 24px; margin-top: 8px; display: flex; gap: 15px; flex-wrap: wrap;">
+              
+              <div *ngIf="item.photoAntes" style="display: flex; flex-direction: column; gap: 4px;">
+                <span style="font-size: 11px; font-weight: 700; color: var(--primary-navy);">ANTES <span *ngIf="item.photoAntesTime" style="font-weight:normal; color:#64748B;">({{item.photoAntesTime}})</span></span>
+                <a [href]="item.photoAntes" target="_blank" title="Ver foto en grande">
+                  <img [src]="item.photoAntes" style="height: 70px; width: 70px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border); box-shadow: 0 1px 2px rgba(0,0,0,0.05); transition: 0.2s;">
+                </a>
+              </div>
+              
+              <div *ngIf="item.photoDespues" style="display: flex; flex-direction: column; gap: 4px;">
+                <span style="font-size: 11px; font-weight: 700; color: #10B981;">DESPUÉS <span *ngIf="item.photoDespuesTime" style="font-weight:normal; color:#64748B;">({{item.photoDespuesTime}})</span></span>
+                <a [href]="item.photoDespues" target="_blank" title="Ver foto en grande">
+                  <img [src]="item.photoDespues" style="height: 70px; width: 70px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border); box-shadow: 0 1px 2px rgba(0,0,0,0.05); transition: 0.2s;">
+                </a>
+              </div>
+              
+              <div *ngIf="item.checked && (!item.photoAntes || !item.photoDespues)" style="align-self: center; font-size: 11px; font-weight: 700; color: #EF4444; background: #FEF2F2; padding: 4px 8px; border-radius: 4px; border: 1px solid #FECACA;">
+                ⚠️ Falta evidencia visual
+              </div>
+            </div>
+
           </div>
         </div>
         

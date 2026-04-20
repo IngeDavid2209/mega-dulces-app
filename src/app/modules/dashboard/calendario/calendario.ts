@@ -33,6 +33,7 @@ export class CalendarioComponent implements OnInit, OnDestroy {
 
   diaSeleccionado = signal<any>(null);
   isModalOpen = false;
+  fotoAmpliada = signal<string | null>(null);
 
   private firestore = inject(Firestore);
   private router = inject(Router);
@@ -165,5 +166,13 @@ export class CalendarioComponent implements OnInit, OnDestroy {
   cerrarSesion() {
     localStorage.removeItem('md_sesion_actual');
     this.router.navigate(['/login']);
+  }
+  abrirFoto(url: string, event: Event) {
+    event.stopPropagation(); // Evita que se cierre el acordeón al dar clic
+    this.fotoAmpliada.set(url);
+  }
+
+  cerrarFoto() {
+    this.fotoAmpliada.set(null);
   }
 }

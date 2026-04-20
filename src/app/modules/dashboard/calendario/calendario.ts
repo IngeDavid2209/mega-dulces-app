@@ -19,7 +19,6 @@ export class CalendarioComponent implements OnInit, OnDestroy {
   empleados = signal<any[]>([]);
   checklistsGlobales: any[] = [];
   
-  // 🔥 NUEVOS FILTROS 🔥
   areas = signal<any[]>([]);
   areaSeleccionada = 'Todas';
   terminoBusqueda = '';
@@ -33,6 +32,8 @@ export class CalendarioComponent implements OnInit, OnDestroy {
 
   diaSeleccionado = signal<any>(null);
   isModalOpen = false;
+
+  // 🔥 VISOR DE FOTOS INTEGRADO 🔥
   fotoAmpliada = signal<string | null>(null);
 
   private firestore = inject(Firestore);
@@ -58,7 +59,6 @@ export class CalendarioComponent implements OnInit, OnDestroy {
       this.empleados.set(trabajadores.sort((a: any, b: any) => (a.nombre || '').localeCompare(b.nombre || '')));
     }));
 
-    // 🔥 CONECTAMOS LAS ÁREAS 🔥
     const areasRef = collection(this.firestore, 'areas_operativas');
     this.destructores.push(onSnapshot(areasRef, (snap) => {
       const areasNube = snap.docs.map(d => d.data());
@@ -72,7 +72,6 @@ export class CalendarioComponent implements OnInit, OnDestroy {
     }));
   }
 
-  // 🔥 LÓGICA DE FILTRADO COMBINADO 🔥
   get empleadosFiltrados() {
     let filtrados = this.empleados();
     if (this.areaSeleccionada !== 'Todas') {
@@ -120,7 +119,6 @@ export class CalendarioComponent implements OnInit, OnDestroy {
       
       let tareasDelDia = this.checklistsGlobales.filter(c => c.date === fechaStr);
       
-      // Aplicamos los filtros al calendario
       if (this.empleadoSeleccionado !== 'Todos') {
         tareasDelDia = tareasDelDia.filter(c => c.assigned === this.empleadoSeleccionado);
       } else if (this.areaSeleccionada !== 'Todas') {
@@ -158,17 +156,18 @@ export class CalendarioComponent implements OnInit, OnDestroy {
     this.diaSeleccionado.set(null);
   }
 
-  toggleTareaExpandida(tarea: any) {
-    // Si no existe la propiedad, la crea como true (expandido). Si ya existe, la invierte.
-    tarea.expandido = !tarea.expandido;
-  }
-
   cerrarSesion() {
     localStorage.removeItem('md_sesion_actual');
     this.router.navigate(['/login']);
   }
+
+  toggleTareaExpandida(tarea: any) {
+    tarea.expandido = !tarea.expandido;
+  }
+
+  // 🔥 FUNCIONES DEL VISOR DE FOTOS (AHÍ MISMO) 🔥
   abrirFoto(url: string, event: Event) {
-    event.stopPropagation(); // Evita que se cierre el acordeón al dar clic
+    event.stopPropagation(); 
     this.fotoAmpliada.set(url);
   }
 

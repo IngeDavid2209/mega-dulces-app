@@ -11,7 +11,7 @@
   </header>
   <div class="main-wrapper">
     <div class="mobile-overlay" *ngIf="isMenuOpen" (click)="toggleMenu()"></div>
-<aside class="sidebar" [class.mobile-open]="isMenuOpen" translate="no">
+    <aside class="sidebar" [class.mobile-open]="isMenuOpen" translate="no">
       <div style="display: flex; flex-direction: column; height: 100%;">
         <div class="sidebar-header">
           <img src="https://static.wixstatic.com/media/fd397e_0fd82a1ecec84a118ceeb603b493f25a~mv2.png" alt="Logo" style="width:32px; height:32px; border-radius:6px; object-fit:contain;">
@@ -44,8 +44,8 @@
             </svg> Estadísticas
           </a>
           <a class="nav-item" routerLink="/calendario" routerLinkActive="active" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeVerEstadisticas" (click)="isMenuOpen = false">
-  <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg> Calendario
-</a>
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg> Calendario
+          </a>
           <a class="nav-item" routerLink="/reportes" routerLinkActive="active" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeVerHistorial" (click)="isMenuOpen = false">
             <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
@@ -152,8 +152,7 @@
               </span>
             </div>
             <div class="checklist-preview-box">
-              <div class="preview-box-title" style="display: flex; align-items: center;"><svg width="12" height="12" style="margin-right: 4px;"
-                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> Horarios Límite:</div>
+              <div class="preview-box-title" style="display: flex; align-items: center;"><svg width="12" height="12" style="margin-right: 4px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> Horarios Límite:</div>
               <ng-container *ngFor="let item of getPrimerasTareas(checklist)">
                 <div class="preview-item">
                   <span class="preview-item-text" [style.text-decoration]="item.checked ? 'line-through' : 'none'" [style.opacity]="item.checked ? '0.5' : '1'">• {{ item.text }}</span>
@@ -207,8 +206,7 @@
         <div class="checklist-detail-items">
           <div class="checklist-detail-item" *ngFor="let item of checklistSeleccionado().items">
             <div class="item-main-row">
-              <div class="item-check" [class.checked]="item.checked" [class.disabled-check]="checklistSeleccionado().enviado || currentUser?.nombre !== checklistSeleccionado().assigned || isTareaVencida(item, checklistSeleccionado().date)"
-                (click)="!checklistSeleccionado().enviado && currentUser?.nombre === checklistSeleccionado().assigned && !isTareaVencida(item, checklistSeleccionado().date) && toggleItem(item)">
+              <div class="item-check" [class.checked]="item.checked" [class.disabled-check]="checklistSeleccionado().enviado || currentUser?.nombre !== checklistSeleccionado().assigned || isTareaVencida(item, checklistSeleccionado().date)" (click)="!checklistSeleccionado().enviado && currentUser?.nombre === checklistSeleccionado().assigned && !isTareaVencida(item, checklistSeleccionado().date) && toggleItem(item)">
                 <svg *ngIf="item.checked" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
               </div>
               <div class="item-text" [class.done]="item.checked">
@@ -218,19 +216,15 @@
                   <span *ngIf="item.horaLimite"> | <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin: 0 2px;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> {{ formatearHora(item.horaLimite) }}</span>
                 </span>
                 <span class="item-tag tag-task" *ngIf="item.tipo === 'tarea' && (item.date || item.time)">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 2px;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg> {{ item.date ||
-                  'Sin fecha' }} | <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin: 0 2px;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> {{ item.time ?
-                  formatearHora(item.time) : 'Sin hora' }}
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 2px;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg> {{ item.date || 'Sin fecha' }} | <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin: 0 2px;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> {{ item.time ? formatearHora(item.time) : 'Sin hora' }}
                 </span>
               </div>
             </div>
             <div class="alert-box alert-danger" *ngIf="isTareaVencida(item, checklistSeleccionado().date) && !item.checked">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg> Tiempo límite agotado.
-              Tarea bloqueada.
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg> Tiempo límite agotado. Tarea bloqueada.
             </div>
-
+            
             <div class="item-photo-section" *ngIf="item.requiresPhoto || item.requiresAntesDespues" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--border);">
-              
               <ng-container *ngIf="item.requiresPhoto && !item.requiresAntesDespues">
                 <label class="btn-upload-mini" *ngIf="!item.photo && !checklistSeleccionado().enviado && currentUser?.nombre === checklistSeleccionado().assigned && !isTareaVencida(item, checklistSeleccionado().date)">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg> Adjuntar Evidencia
@@ -239,7 +233,7 @@
                 <div class="preview-wrap-mini" *ngIf="item.photo">
                   <span class="preview-title" style="display: flex; align-items: center;">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px;"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg> Evidencia Fotográfica:
-                    <span *ngIf="item.photoTime" style="margin-left: 8px; font-weight: 600; font-size: 11px; background: #F1F5F9; padding: 2px 6px; border-radius: 4px; color: #64748B;">🕒 {{ item.photoTime }}</span>
+                    <span *ngIf="item.photoTime" style="margin-left: 8px; font-weight: 600; font-size: 11px; background: #F1F5F9; padding: 2px 6px; border-radius: 4px; color: #64748B;"> 🕒  {{ item.photoTime }}</span>
                   </span>
                   <div class="preview-image-box">
                     <img [src]="item.photo" alt="Evidencia">
@@ -263,8 +257,8 @@
                     </label>
                     <div class="preview-wrap-mini" *ngIf="item.photoAntes">
                       <span class="preview-title" style="display: flex; align-items: center; justify-content: space-between;">
-                        <span style="color: var(--primary-navy); font-weight: 700;">📸 ANTES:</span>
-                        <span *ngIf="item.photoAntesTime" style="font-weight: 600; font-size: 11px; background: #EFF6FF; color: #2563EB; padding: 2px 6px; border-radius: 4px; border: 1px solid #BFDBFE;">🕒 {{ item.photoAntesTime }}</span>
+                        <span style="color: var(--primary-navy); font-weight: 700;"> 📸  ANTES:</span>
+                        <span *ngIf="item.photoAntesTime" style="font-weight: 600; font-size: 11px; background: #EFF6FF; color: #2563EB; padding: 2px 6px; border-radius: 4px; border: 1px solid #BFDBFE;"> 🕒  {{ item.photoAntesTime }}</span>
                       </span>
                       <div class="preview-image-box">
                         <img [src]="item.photoAntes" alt="Antes">
@@ -272,15 +266,26 @@
                       </div>
                     </div>
                   </div>
+                  
                   <div style="flex: 1; min-width: 140px; background: #F8FAFC; padding: 10px; border-radius: 8px; border: 1px dashed var(--border);">
-                    <label class="btn-upload-mini" *ngIf="!item.photoDespues && !checklistSeleccionado().enviado && currentUser?.nombre === checklistSeleccionado().assigned && !isTareaVencida(item, checklistSeleccionado().date)" style="background: white; border: 1px solid var(--border);">
+                    
+                    <div *ngIf="item.photoAntes && !item.photoDespues && item.tiempoEstimado"
+                         style="display: flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 6px; font-weight: bold; font-size: 12px; margin-bottom: 10px;"
+                         [ngStyle]="{'background-color': isDespuesExpirado(item) ? '#FEF2F2' : '#FFFBEB', 'color': isDespuesExpirado(item) ? '#EF4444' : '#D97706', 'border': isDespuesExpirado(item) ? '1px solid #FECACA' : '1px solid #FDE68A'}">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                      <span *ngIf="!isDespuesExpirado(item)">Tiempo restante: {{ getTiempoRestanteTexto(item) }}</span>
+                      <span *ngIf="isDespuesExpirado(item)">¡Tiempo Agotado! (Límite: {{ item.tiempoEstimado }} min)</span>
+                    </div>
+
+                    <label class="btn-upload-mini" *ngIf="!item.photoDespues && !checklistSeleccionado().enviado && currentUser?.nombre === checklistSeleccionado().assigned && !isTareaVencida(item, checklistSeleccionado().date) && !isDespuesExpirado(item)" style="background: white; border: 1px solid var(--border);">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg> Subir DESPUÉS
                       <input type="file" accept="image/*" capture="environment" (change)="onFileSelected($event, item, 'photoDespues')" style="display: none;">
                     </label>
+
                     <div class="preview-wrap-mini" *ngIf="item.photoDespues">
                       <span class="preview-title" style="display: flex; align-items: center; justify-content: space-between;">
-                        <span style="color: #10B981; font-weight: 700;">📸 DESPUÉS:</span>
-                        <span *ngIf="item.photoDespuesTime" style="font-weight: 600; font-size: 11px; background: #ECFDF5; color: #047857; padding: 2px 6px; border-radius: 4px; border: 1px solid #A7F3D0;">🕒 {{ item.photoDespuesTime }}</span>
+                        <span style="color: #10B981; font-weight: 700;"> 📸  DESPUÉS:</span>
+                        <span *ngIf="item.photoDespuesTime" style="font-weight: 600; font-size: 11px; background: #ECFDF5; color: #047857; padding: 2px 6px; border-radius: 4px; border: 1px solid #A7F3D0;"> 🕒  {{ item.photoDespuesTime }}</span>
                       </span>
                       <div class="preview-image-box">
                         <img [src]="item.photoDespues" alt="Después">
@@ -321,7 +326,6 @@
           <p style="margin: 5px 0 0 0; font-size: 14px; color: var(--text-main); white-space: pre-wrap;">{{ checklistSeleccionado().notaEmpleado }}</p>
         </div>
       </div>
-
       <div class="modal-overlay" *ngIf="isModalOpen">
         <div class="modal">
           <div class="modal-header">
@@ -380,7 +384,6 @@
           </div>
         </div>
       </div>
-
       <div class="modal-overlay" *ngIf="isModalRutinasOpen">
         <div class="modal">
           <div class="modal-header">
@@ -407,7 +410,7 @@
                 <option *ngFor="let suc of sucursalesDisponibles()" [value]="suc">{{ suc }}</option>
               </select>
               <small *ngIf="esSucursalAdministrativa(formStoreRutina)" style="color: #64748B; display: block; margin-top: 6px;">
-                ℹ️  Las rutinas diarias para esta zona se omiten automáticamente los domingos.
+                ℹ️   Las rutinas diarias para esta zona se omiten automáticamente los domingos.
               </small>
             </div>
             <div class="form-group form-full" style="margin-top: 15px; border-top: 1px dashed var(--border); padding-top: 20px;">
@@ -415,7 +418,7 @@
               <div class="checklist-items">
                 <div class="checklist-item-wrap" *ngFor="let rutina of formRutinas; let i = index; trackBy: trackByIndex" style="display:flex; flex-direction:column; gap:10px;">
                   <input class="form-input item-input" type="text" [(ngModel)]="rutina.text" placeholder="Ej: Limpieza profunda" style="flex: 1; min-width: 200px;">
-                  
+
                   <div style="display:flex; flex-wrap:wrap; gap:10px;">
                     <div class="routine-settings" style="flex:1;">
                       <select class="form-input select-input" [(ngModel)]="rutina.frecuencia" (change)="alCambiarFrecuencia(rutina)">
@@ -439,15 +442,15 @@
                       </div>
                     </div>
                   </div>
-                  
+
                   <div style="display: flex; gap: 8px; align-items: center; width: 100%; margin-top: 8px;">
                     <span class="routine-period-text" style="flex: 1; font-size:12px;">{{ getTextoPeriodo(rutina) }}</span>
                     <label class="photo-toggle" style="display:flex; align-items:center; cursor:pointer; background:#F8FAFC; padding:4px 8px; border-radius:6px; border:1px solid #E2E8F0; font-size:12px; font-weight:600;">
-                      <input type="checkbox" [(ngModel)]="rutina.requiresPhoto" [disabled]="rutina.requiresAntesDespues" (change)="rutina.requiresPhoto ? rutina.requiresAntesDespues = false : null"> 
+                      <input type="checkbox" [(ngModel)]="rutina.requiresPhoto" [disabled]="rutina.requiresAntesDespues" (change)="rutina.requiresPhoto ? rutina.requiresAntesDespues = false : null">
                       1 Foto
                     </label>
                     <label class="photo-toggle" style="display:flex; align-items:center; cursor:pointer; background:#FFFBEB; color:#D97706; padding:4px 8px; border-radius:6px; border:1px solid #FDE68A; font-size:12px; font-weight:600;">
-                      <input type="checkbox" [(ngModel)]="rutina.requiresAntesDespues" (change)="rutina.requiresAntesDespues ? rutina.requiresPhoto = false : null"> 
+                      <input type="checkbox" [(ngModel)]="rutina.requiresAntesDespues" (change)="rutina.requiresAntesDespues ? rutina.requiresPhoto = false : null">
                       Antes/Desp.
                     </label>
                     <button class="btn-remove" (click)="eliminarRutina(i)" title="Eliminar rutina" style="background:transparent; border:none; color:#EF4444; cursor:pointer;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button>
@@ -463,7 +466,6 @@
           </div>
         </div>
       </div>
-
       <div class="modal-overlay" *ngIf="isPasswordModalOpen" style="z-index: 9999;">
         <div class="modal" style="max-width: 400px; text-align: center; padding: 30px;">
           <div style="margin-bottom: 15px; color: var(--primary-navy);"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></div>
@@ -505,7 +507,7 @@
     <div style="color: #EF4444; margin-bottom: 20px;">
       <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
     </div>
-    <h2 style="color: #991B1B; font-size: 24px; font-weight: 800; margin-bottom: 10px; text-transform: uppercase;"> ⚠️ Nuevo Aviso de {{ notificacionesPendientes()[0].de }}</h2>
+    <h2 style="color: #991B1B; font-size: 24px; font-weight: 800; margin-bottom: 10px; text-transform: uppercase;">  ⚠️  Nuevo Aviso de {{ notificacionesPendientes()[0].de }}</h2>
     <div style="background: white; padding: 24px; border-radius: 8px; font-size: 18px; color: #1E293B; font-weight: 600; margin-bottom: 30px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border-left: 4px solid #F59E0B;">
       "{{ notificacionesPendientes()[0].mensaje }}"
     </div>

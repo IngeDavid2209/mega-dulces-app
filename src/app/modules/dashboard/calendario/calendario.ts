@@ -157,6 +157,11 @@ export class CalendarioComponent implements OnInit, OnDestroy {
     this.diaSeleccionado.set(null);
   }
 
+  toggleTareaExpandida(tarea: any) {
+    // Si no existe la propiedad, la crea como true (expandido). Si ya existe, la invierte.
+    tarea.expandido = !tarea.expandido;
+  }
+
   cerrarSesion() {
     localStorage.removeItem('md_sesion_actual');
     this.router.navigate(['/login']);

@@ -1,0 +1,92 @@
+:host {
+  --primary-navy: #0F172A;
+  --primary-blue: #1E40AF;
+  --text-main: #1E293B;
+  --text-muted: #64748B;
+  --bg-app: #F8FAFC;
+  --bg-sidebar: #FFFFFF;
+  --border: #E2E8F0;
+}
+
+/* Base Layout - Igual al resto de tus pantallas */
+.app-layout { display: flex; flex-direction: column; height: 100vh; overflow: hidden; background-color: var(--bg-app); font-family: 'Inter', system-ui, sans-serif; }
+.header { background-color: var(--bg-sidebar); height: 64px; display: flex; align-items: center; padding: 0 24px; border-bottom: 1px solid var(--border); z-index: 20; }
+.header-left { display: flex; align-items: center; gap: 12px; }
+.header-brand { font-size: 18px; font-weight: 700; color: var(--text-main); line-height: 1.2; margin-left: 8px; }
+.header-brand small { display: block; font-size: 11px; color: var(--text-muted); font-weight: 500; }
+.main-wrapper { display: flex; flex: 1; overflow: hidden; }
+
+/* Sidebar */
+.sidebar { width: 260px; background-color: var(--bg-sidebar); display: flex; flex-direction: column; border-right: 1px solid var(--border); z-index: 10; }
+.sidebar-header { padding: 24px 20px 16px 24px; display: flex; align-items: center; gap: 12px; }
+.sidebar-brand { font-weight: 700; color: #0F172A; }
+.sidebar-nav { flex: 1; display: flex; flex-direction: column; padding: 12px 12px; }
+.nav-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; color: var(--text-muted); text-decoration: none; font-size: 14px; font-weight: 500; border-radius: 6px; transition: all 0.2s ease; margin-bottom: 4px; }
+.nav-item:hover { background-color: #F8FAFC; color: var(--primary-navy); }
+.nav-item.active { background-color: var(--primary-navy); color: #FFFFFF; font-weight: 600; box-shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.1); }
+.nav-icon { font-size: 18px; width: 24px; text-align: center; }
+.bottom-nav { border-top: 1px solid var(--border); padding: 15px 12px; }
+.logout-btn { width: 100%; display: flex; align-items: center; gap: 10px; background: transparent; border: none; color: #EF4444; font-weight: 600; padding: 10px 15px; cursor: pointer; border-radius: 8px; transition: 0.2s; }
+.logout-btn:hover { background: #FEF2F2; }
+
+/* Contenido Principal */
+.content { flex: 1; padding: 32px 40px; overflow-y: auto; }
+.section-title { font-size: 24px; font-weight: 800; color: var(--primary-navy); margin-bottom: 5px; }
+.section-sub { font-size: 14px; color: var(--text-muted); }
+
+/* Filtros y Navegación */
+.form-input { border: 1px solid var(--border); border-radius: 6px; outline: none; font-family: inherit; font-size: 14px; transition: 0.2s; background: white; }
+.form-input:focus { border-color: #3B82F6; box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
+.btn-nav { background: transparent; border: none; cursor: pointer; padding: 10px; color: var(--text-muted); display: flex; align-items: center; justify-content: center; transition: 0.2s; }
+.btn-nav:hover { color: var(--primary-navy); background: #F8FAFC; }
+
+/* ======================================================= */
+/* 🔥 EL DISEÑO DEL CALENDARIO 🔥                          */
+/* ======================================================= */
+.calendar-container { background: white; border-radius: 12px; border: 1px solid var(--border); overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+.calendar-header { display: grid; grid-template-columns: repeat(7, 1fr); background: #F8FAFC; border-bottom: 1px solid var(--border); }
+.calendar-day-name { padding: 15px 10px; text-align: center; font-weight: 700; font-size: 13px; color: var(--primary-navy); text-transform: uppercase; letter-spacing: 0.5px; }
+
+.calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); background: var(--border); gap: 1px; } /* Gap hace las líneas internas */
+.calendar-cell { background: white; min-height: 120px; padding: 10px; display: flex; flex-direction: column; transition: 0.2s; cursor: pointer; }
+.calendar-cell:hover:not(.empty) { background: #F1F5F9; }
+.calendar-cell.empty { background: #F8FAFC; cursor: default; }
+
+.cell-date { display: flex; justify-content: flex-end; margin-bottom: 10px; }
+.date-number { font-size: 14px; font-weight: 600; color: var(--text-muted); width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border-radius: 50%; }
+.calendar-cell.is-today .date-number { background: var(--primary-navy); color: white; }
+
+.cell-content { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+.task-summary { display: flex; gap: 5px; flex-wrap: wrap; justify-content: center; }
+
+/* Los "Focos" de estatus */
+.summary-dot { padding: 4px 8px; border-radius: 6px; font-size: 12px; font-weight: 800; color: white; display: flex; align-items: center; justify-content: center; min-width: 20px; }
+.summary-dot.complete { background: #10B981; }
+.summary-dot.pending { background: #F59E0B; }
+.summary-dot.missed { background: #EF4444; }
+
+/* Modal General */
+.modal-overlay { position: fixed; inset: 0; background: rgba(15,23,42,0.6); display: flex; justify-content: center; align-items: center; z-index: 1000; backdrop-filter: blur(2px); }
+.modal { background: white; border-radius: 12px; width: 90%; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); display: flex; flex-direction: column; max-height: 90vh; }
+.modal-header { padding: 20px 24px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+.modal-title { font-size: 18px; font-weight: 700; color: var(--primary-navy); }
+.modal-close { background: none; border: none; font-size: 20px; cursor: pointer; color: var(--text-muted); transition: 0.2s; font-weight: bold; }
+.modal-close:hover { color: #EF4444; }
+.modal-body { padding: 24px; overflow-y: auto; }
+
+/* Móvil */
+.btn-menu-mobile { display: none; background: transparent; border: none; color: var(--text-main); font-size: 26px; cursor: pointer; padding: 0; }
+@media screen and (max-width: 992px) {
+  .calendar-cell { min-height: 80px; padding: 5px; }
+  .summary-dot { padding: 2px 5px; font-size: 10px; }
+}
+@media screen and (max-width: 768px) {
+  .header { padding: max(15px, env(safe-area-inset-top)) 15px 12px 15px; }
+  .btn-menu-mobile { display: block; margin-right: 10px; }
+  .sidebar { position: fixed; left: -100%; top: 0; bottom: 0; transition: left 0.3s ease; }
+  .sidebar.mobile-open { left: 0; }
+  .content { padding: 15px; }
+  .section-header { flex-direction: column; align-items: flex-start; }
+  .calendar-container { overflow-x: auto; }
+  .calendar-header, .calendar-grid { min-width: 600px; /* Fuerza scroll en móvil */ }
+}

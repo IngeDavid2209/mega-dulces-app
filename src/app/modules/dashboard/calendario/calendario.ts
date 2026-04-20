@@ -18,6 +18,11 @@ export class CalendarioComponent implements OnInit, OnDestroy {
 
   empleados = signal<any[]>([]);
   checklistsGlobales: any[] = [];
+  
+  // 🔥 NUEVOS FILTROS 🔥
+  areas = signal<any[]>([]);
+  areaSeleccionada = 'Todas';
+  terminoBusqueda = '';
   empleadoSeleccionado = 'Todos';
   
   fechaActual = new Date();
@@ -26,7 +31,6 @@ export class CalendarioComponent implements OnInit, OnDestroy {
   diasCalendario = signal<any[]>([]);
   diasSemana = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
 
-  // Para el modal de detalles
   diaSeleccionado = signal<any>(null);
   isModalOpen = false;
 
@@ -41,7 +45,7 @@ export class CalendarioComponent implements OnInit, OnDestroy {
       this.router.navigate(['/home']); return;
     }
     this.conectarDatos();
-    this.actualizarMes(0); // Genera el mes actual
+    this.actualizarMes(0);
   }
 
   ngOnDestroy() { this.destructores.forEach(d => d()); }
@@ -53,11 +57,37 @@ export class CalendarioComponent implements OnInit, OnDestroy {
       this.empleados.set(trabajadores.sort((a: any, b: any) => (a.nombre || '').localeCompare(b.nombre || '')));
     }));
 
+    // 🔥 CONECTAMOS LAS ÁREAS 🔥
+    const areasRef = collection(this.firestore, 'areas_operativas');
+    this.destructores.push(onSnapshot(areasRef, (snap) => {
+      const areasNube = snap.docs.map(d => d.data());
+      this.areas.set(areasNube.sort((a: any, b: any) => (a.nombre || '').localeCompare(b.nombre || '')));
+    }));
+
     const checklistsRef = collection(this.firestore, 'checklists');
     this.destructores.push(onSnapshot(checklistsRef, (snap) => {
       this.checklistsGlobales = snap.docs.map(d => d.data()).filter((c:any) => !c.eliminado);
       this.generarCalendario();
     }));
+  }
+
+  // 🔥 LÓGICA DE FILTRADO COMBINADO 🔥
+  get empleadosFiltrados() {
+    let filtrados = this.empleados();
+    if (this.areaSeleccionada !== 'Todas') {
+      filtrados = filtrados.filter(e => e.areas && e.areas.includes(this.areaSeleccionada));
+    }
+    if (this.terminoBusqueda.trim()) {
+      const t = this.terminoBusqueda.toLowerCase();
+      filtrados = filtrados.filter(e => (e.nombre || '').toLowerCase().includes(t));
+    }
+    return filtrados;
+  }
+
+  alCambiarFiltro() {
+    const empAunValido = this.empleadoSeleccionado === 'Todos' || this.empleadosFiltrados.some(e => e.nombre === this.empleadoSeleccionado);
+    if (!empAunValido) { this.empleadoSeleccionado = 'Todos'; }
+    this.generarCalendario();
   }
 
   cambiarMes(incremento: number) {
@@ -72,8 +102,6 @@ export class CalendarioComponent implements OnInit, OnDestroy {
     this.mesActualNombre = this.fechaActual.toLocaleDateString('es-ES', opcionesMes).toUpperCase();
   }
 
-  cambiarEmpleado() { this.generarCalendario(); }
-
   generarCalendario() {
     const year = this.fechaActual.getFullYear();
     const month = this.fechaActual.getMonth();
@@ -83,40 +111,36 @@ export class CalendarioComponent implements OnInit, OnDestroy {
     let grid = [];
     const hoyStr = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0];
 
-    // Espacios en blanco para los días antes del inicio del mes
     for (let i = 0; i < primerDia; i++) { grid.push(null); }
 
-    // Días reales del mes
     for (let i = 1; i <= diasEnMes; i++) {
-      // Ajuste de zona horaria usando las 12 PM para evitar desfases
       const fechaLocal = new Date(year, month, i, 12);
       const fechaStr = fechaLocal.toISOString().split('T')[0];
       
       let tareasDelDia = this.checklistsGlobales.filter(c => c.date === fechaStr);
+      
+      // Aplicamos los filtros al calendario
       if (this.empleadoSeleccionado !== 'Todos') {
         tareasDelDia = tareasDelDia.filter(c => c.assigned === this.empleadoSeleccionado);
+      } else if (this.areaSeleccionada !== 'Todas') {
+        const nombresEmpleadosArea = this.empleadosFiltrados.map(e => e.nombre);
+        tareasDelDia = tareasDelDia.filter(c => nombresEmpleadosArea.includes(c.assigned));
       }
 
-      let completadas = 0;
-      let pendientes = 0;
-      let vencidas = 0;
+      let completadas = 0; let pendientes = 0; let vencidas = 0;
 
       tareasDelDia.forEach(tarea => {
         const tareasMarcadas = tarea.items ? tarea.items.filter((item:any) => item.checked).length : 0;
         const totalItems = tarea.items ? tarea.items.length : 0;
         
         if (tareasMarcadas === totalItems && totalItems > 0) { completadas++; }
-        else if (fechaStr < hoyStr) { vencidas++; } // Ya pasó el día y no la completó
+        else if (fechaStr < hoyStr) { vencidas++; } 
         else { pendientes++; }
       });
 
       grid.push({
-        numero: i,
-        fechaStr: fechaStr,
-        esHoy: fechaStr === hoyStr,
-        tareas: tareasDelDia,
-        completadas, pendientes, vencidas,
-        total: tareasDelDia.length
+        numero: i, fechaStr: fechaStr, esHoy: fechaStr === hoyStr,
+        tareas: tareasDelDia, completadas, pendientes, vencidas, total: tareasDelDia.length
       });
     }
     this.diasCalendario.set(grid);

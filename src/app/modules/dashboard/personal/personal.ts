@@ -24,6 +24,7 @@ export class PersonalComponent implements OnInit, OnDestroy {
   terminoBusqueda = '';
   isModalOpen = false;
   mostrarPassword = false;
+  formPuedeAdministrarAreas = false;
 
   // Formulario
   formNombre = ''; formUsuario = ''; formCorreo = ''; formPassword = '';
@@ -209,6 +210,7 @@ export class PersonalComponent implements OnInit, OnDestroy {
     this.formPuedeAdministrarPersonal = false; 
     this.formSucursales = [];
     this.formAreas = [];
+    this.formPuedeAdministrarAreas = false;
   }
 
   editarUsuario(user: any) {
@@ -219,7 +221,7 @@ export class PersonalComponent implements OnInit, OnDestroy {
     this.formRol = user.rol; this.formCargo = user.cargo || 'Trabajador General';
     this.formSucursales = user.sucursales ? [...user.sucursales] : [];
     this.formAreas = user.areas ? [...user.areas] : [];
-    
+    this.formPuedeAdministrarAreas = !!user.puedeAdministrarAreas;
     this.formPuedeCrearChecklists = !!user.puedeCrearChecklists;
     this.formPuedeCrearRutinas = !!user.puedeCrearRutinas;
     this.formPuedeCrearTareasUnicas = !!user.puedeCrearTareasUnicas;
@@ -269,7 +271,8 @@ export class PersonalComponent implements OnInit, OnDestroy {
       puedeVerHistorial: this.formRol === 'admin' ? true : this.formPuedeVerHistorial,
       puedeAdministrarPersonal: this.formRol === 'admin' ? true : this.formPuedeAdministrarPersonal,
       sucursales: this.formRol === 'admin' ? ['General (Acceso Total)'] : this.formSucursales,
-      areas: this.formRol === 'admin' ? ['Todas las áreas'] : this.formAreas 
+      areas: this.formRol === 'admin' ? ['Todas las áreas'] : this.formAreas,
+      puedeAdministrarAreas: this.formRol === 'admin' ? true : this.formPuedeAdministrarAreas,
     };
 
     try {

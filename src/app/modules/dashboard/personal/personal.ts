@@ -108,9 +108,19 @@ export class PersonalComponent implements OnInit, OnDestroy {
     this.destructoresRadares.push(radarPersonal);
   }
 
-getAdmins() { 
-    // 🔥 REGLA DE ORO: Si no es Admin Total, no ve a NADIE de la gerencia
-    if (this.currentUser?.rol !== 'admin') {
+// 1. 🔥 NUEVO: OBTENER LOS DATOS MÁS FRESCOS DEL USUARIO EN VIVO 🔥
+  get liveUser() {
+    if (!this.currentUser) return null;
+    // Busca en la base de datos el perfil actualizado al segundo, ignorando el caché
+    const usuarioFresco = this.usuarios().find(u => u.usuario === this.currentUser.usuario);
+    return usuarioFresco || this.currentUser;
+  }
+
+  // 2. 🔥 REEMPLAZAR getAdmins 🔥
+  getAdmins() { 
+    const yo = this.liveUser;
+    // Si NO es Admin Total en la base de datos EN VIVO, NO ve a la gerencia
+    if (yo?.rol !== 'admin') {
       return []; 
     }
 
@@ -119,34 +129,34 @@ getAdmins() {
        u.cargo?.toLowerCase().includes(this.terminoBusqueda.toLowerCase())));
   }
 
+  // 3. 🔥 REEMPLAZAR getTrabajadores 🔥
   getTrabajadores() { 
+    const yo = this.liveUser; // Usamos el usuario en vivo
     let lista = this.usuarios().filter(u => u.rol === 'trabajador');
 
-    // 🔥 FILTRO ESTRICTO PARA JEFES / ENCARGADOS
-    if (this.currentUser?.rol !== 'admin') {
-      const misSucursales = this.currentUser?.sucursales || [];
-      const misAreas = this.currentUser?.areas || [];
+    // 🔥 FILTRO ESTRICTO EN VIVO PARA JEFES / ENCARGADOS
+    if (yo?.rol !== 'admin') {
+      const misSucursales = yo?.sucursales || [];
+      const misAreas = yo?.areas || [];
 
-      // DEBUG: Esto aparecerá en tu consola para saber qué tiene Ivette
-      console.log("Revisando acceso de:", this.currentUser.nombre);
-      console.log("Sus Sucursales:", misSucursales);
-      console.log("Sus Áreas:", misAreas);
-
-      // Si no tiene nada asignado, por seguridad NO VE A NADIE
+      // Si no le asignaste ninguna zona ni área, por seguridad NO VE A NADIE
       if (misSucursales.length === 0 && misAreas.length === 0) return [];
 
       lista = lista.filter(emp => {
         const empSucursales = emp.sucursales || [emp.sucursal || ''];
         const empAreas = emp.areas || [];
 
-        // Checar si el jefe es global en algo
-        const esGlobalSuc = misSucursales.includes('General (Acceso Total)');
-        const esGlobalArea = misAreas.includes('Todas las áreas') || misAreas.includes('Todas');
+        // Checar si "yo" (Ivette) tengo permiso global
+        const yoSoyGlobalSucursal = misSucursales.includes('General (Acceso Total)');
+        const yoSoyGlobalArea = misAreas.includes('Todas las áreas') || misAreas.includes('Todas');
 
-        // Solo se muestra si comparten Sucursal Y Área
-        const coincideSucursal = esGlobalSuc || empSucursales.some((s: string) => misSucursales.includes(s));
-        const coincideArea = esGlobalArea || empAreas.some((a: string) => misAreas.includes(a));
+        // Solo muestro al empleado si compartimos Sucursal (o si soy global)
+        const coincideSucursal = yoSoyGlobalSucursal || empSucursales.some((s: string) => misSucursales.includes(s));
+        
+        // Solo muestro al empleado si compartimos Área (o si soy global)
+        const coincideArea = yoSoyGlobalArea || empAreas.some((a: string) => misAreas.includes(a));
 
+        // El candado final: Debe coincidir la Sucursal Y el Área
         return coincideSucursal && coincideArea;
       });
     }

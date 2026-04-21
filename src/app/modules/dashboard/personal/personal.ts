@@ -108,17 +108,55 @@ export class PersonalComponent implements OnInit, OnDestroy {
     this.destructoresRadares.push(radarPersonal);
   }
 
-  getAdmins() { 
+getAdmins() { 
+    // 🔥 REGLA 1: Si no eres Admin Total, NO puedes ver ni editar a los Administradores/Gerentes
+    if (this.currentUser?.rol !== 'admin') {
+      return []; 
+    }
+
     return this.usuarios().filter(u => u.rol === 'admin' && 
       (u.nombre.toLowerCase().includes(this.terminoBusqueda.toLowerCase()) || 
        u.cargo?.toLowerCase().includes(this.terminoBusqueda.toLowerCase())));
   }
 
   getTrabajadores() { 
-    return this.usuarios().filter(u => u.rol === 'trabajador' && 
-      (u.nombre.toLowerCase().includes(this.terminoBusqueda.toLowerCase()) || 
-       u.cargo?.toLowerCase().includes(this.terminoBusqueda.toLowerCase()) ||
-       (u.sucursales && u.sucursales.join(' ').toLowerCase().includes(this.terminoBusqueda.toLowerCase()))));
+    let listaTrabajadores = this.usuarios().filter(u => u.rol === 'trabajador');
+
+    // 🔥 REGLA 2: FILTRO ESTRICTO DE ÁREAS Y SUCURSALES PARA JEFES DE ZONA 🔥
+    if (this.currentUser?.rol !== 'admin') {
+      const misSucursales = this.currentUser?.sucursales || [];
+      const misAreas = this.currentUser?.areas || [];
+
+      // Vemos si el jefe tiene permisos globales sin ser admin
+      const soyGeneralSucursales = misSucursales.includes('General (Acceso Total)') || misSucursales.length === 0;
+      const soyGeneralAreas = misAreas.includes('Todas las áreas') || misAreas.includes('Todas') || misAreas.length === 0;
+
+      listaTrabajadores = listaTrabajadores.filter(emp => {
+        const empSucursales = emp.sucursales || [emp.sucursal || ''];
+        const empAreas = emp.areas || [];
+
+        // Comprueba si comparten al menos una sucursal
+        const comparteSucursal = soyGeneralSucursales || empSucursales.some((s: string) => misSucursales.includes(s));
+        // Comprueba si comparten al menos un área
+        const comparteArea = soyGeneralAreas || empAreas.some((a: string) => misAreas.includes(a));
+
+        // Solo se muestra si coinciden en Sucursal Y Área
+        return comparteSucursal && comparteArea;
+      });
+    }
+
+    // Filtro de búsqueda por texto (el buscador de arriba)
+    const termino = this.terminoBusqueda.trim().toLowerCase();
+    if (termino) {
+      listaTrabajadores = listaTrabajadores.filter(u => 
+        u.nombre.toLowerCase().includes(termino) || 
+        u.cargo?.toLowerCase().includes(termino) ||
+        (u.sucursales && u.sucursales.join(' ').toLowerCase().includes(termino)) ||
+        (u.areas && u.areas.join(' ').toLowerCase().includes(termino))
+      );
+    }
+
+    return listaTrabajadores;
   }
 
   getTrabajadoresAgrupados() {

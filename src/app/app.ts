@@ -12,25 +12,30 @@ import { Firestore, doc, setDoc } from '@angular/fire/firestore';
 export class AppComponent implements OnInit {
   title = 'mega-dulces-app';
   
-  // 1. Inyectamos Firebase al archivo raíz
   private firestore = inject(Firestore);
 
   ngOnInit() {
-    // 🔥 EL CORAZÓN DEL SISTEMA (LATIDO GLOBAL) 🔥
-    setInterval(() => {
+    // 🔥 FUNCIÓN DEL LATIDO (SEPARADA PARA PODER LLAMARLA AL INSTANTE) 🔥
+    const enviarLatido = () => {
       const sesion = localStorage.getItem('md_sesion_actual');
       if (sesion) {
         const currentUser = JSON.parse(sesion);
-        // Buscamos el ID correcto del usuario
+        // Buscamos el ID del usuario
         const docId = currentUser.idFirestore || currentUser.uid || currentUser.usuario;
         
         if (docId) {
           const userRef = doc(this.firestore, 'usuarios', docId);
-          // Actualizamos su última conexión sin borrar sus demás datos (merge: true)
+          // Enviamos la hora exacta
           setDoc(userRef, { ultimoLatido: Date.now() }, { merge: true })
             .catch(e => console.log('Sin red para latido'));
         }
       }
-    }, 60000); // 👈 El sistema envía una señal cada 60 segundos (1 minuto)
+    };
+
+    // 1. Mandamos el primer latido INMEDIATAMENTE al abrir la app
+    enviarLatido();
+
+    // 2. Dejamos el motor encendido para que lata cada 60 segundos
+    setInterval(enviarLatido, 60000);
   }
 }

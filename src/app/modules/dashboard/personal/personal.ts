@@ -39,7 +39,6 @@ export class PersonalComponent implements OnInit, OnDestroy {
   formPuedeAdministrarPersonal = false;
   
   formSucursales: string[] = []; 
-  // 🔥 NUEVO: ARREGLO PARA GUARDAR LAS ÁREAS DEL USUARIO 🔥
   formAreas: string[] = [];
 
   sucursalesDisponibles = [
@@ -48,7 +47,6 @@ export class PersonalComponent implements OnInit, OnDestroy {
     'OFICINAS CORPORATIVAS', 'CAJA GENERAL', 'COMPRAS', 'CONTABILIDAD', 'FINANZAS', 'SISTEMAS', 'RH', 'MKT', 'MANTENIMIENTO'
   ];
 
-  // 🔥 NUEVO: LISTA DE ÁREAS OPERATIVAS DISPONIBLES 🔥
   areasDisponibles = [
     'Cajas', 'Pasillos', 'Precios', 'Caducidades', 'Bodega', 'Mostrador', 'Limpieza General'
   ];
@@ -67,6 +65,30 @@ export class PersonalComponent implements OnInit, OnDestroy {
   ngOnDestroy() {
     this.destructoresRadares.forEach(apagarRadar => apagarRadar());
   }
+
+  // =========================================================
+  // 🔥 LÓGICA DEL MONITOR EN VIVO (HEARTBEAT) 🔥
+  // =========================================================
+  isOnline(timestamp: number | undefined): boolean {
+    if (!timestamp) return false;
+    const cincoMinutos = 5 * 60 * 1000;
+    return (Date.now() - timestamp) < cincoMinutos;
+  }
+
+  getLastSeenText(timestamp: number | undefined): string {
+    if (!timestamp) return 'Nunca ha entrado';
+    
+    const diffMs = Date.now() - timestamp;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHoras = Math.floor(diffMins / 60);
+    const diffDias = Math.floor(diffHoras / 24);
+
+    if (diffMins < 1) return 'Hace unos segundos';
+    if (diffMins < 60) return `Hace ${diffMins} min`;
+    if (diffHoras < 24) return `Hace ${diffHoras} ${diffHoras === 1 ? 'hora' : 'hrs'}`;
+    return `Hace ${diffDias} ${diffDias === 1 ? 'día' : 'días'}`;
+  }
+  // =========================================================
 
   conectarConLaNube() {
     const usuariosRef = collection(this.firestore, 'usuarios');
@@ -132,7 +154,7 @@ export class PersonalComponent implements OnInit, OnDestroy {
     this.formPuedeVerHistorial = false; 
     this.formPuedeAdministrarPersonal = false; 
     this.formSucursales = [];
-    this.formAreas = []; // 🔥 LIMPIAR ÁREAS
+    this.formAreas = [];
   }
 
   editarUsuario(user: any) {
@@ -142,11 +164,8 @@ export class PersonalComponent implements OnInit, OnDestroy {
     this.formCorreo = user.correo || ''; this.formPassword = user.password || '';
     this.formRol = user.rol; this.formCargo = user.cargo || 'Trabajador General';
     this.formSucursales = user.sucursales ? [...user.sucursales] : [];
-    
-    // 🔥 CARGAMOS LAS ÁREAS QUE YA TENÍA GUARDADAS 🔥
     this.formAreas = user.areas ? [...user.areas] : [];
     
-    // CARGAR PERMISOS
     this.formPuedeCrearChecklists = !!user.puedeCrearChecklists;
     this.formPuedeCrearRutinas = !!user.puedeCrearRutinas;
     this.formPuedeCrearTareasUnicas = !!user.puedeCrearTareasUnicas;
@@ -166,7 +185,6 @@ export class PersonalComponent implements OnInit, OnDestroy {
     else this.formSucursales.push(sucursal);
   }
 
-  // 🔥 NUEVO METODO PARA SELECCIONAR ÁREAS 🔥
   toggleArea(area: string) {
     const index = this.formAreas.indexOf(area);
     if (index > -1) this.formAreas.splice(index, 1);
@@ -189,8 +207,6 @@ export class PersonalComponent implements OnInit, OnDestroy {
     const payload = {
       nombre: this.formNombre, usuario: this.formUsuario, correo: this.formCorreo, password: this.formPassword,
       rol: this.formRol, cargo: this.formCargo,
-      
-      // GUARDAR PERMISOS
       puedeCrearChecklists: this.formRol === 'admin' ? true : this.formPuedeCrearChecklists,
       puedeCrearRutinas: this.formRol === 'admin' ? true : this.formPuedeCrearRutinas,
       puedeCrearTareasUnicas: this.formRol === 'admin' ? true : this.formPuedeCrearTareasUnicas,
@@ -199,7 +215,6 @@ export class PersonalComponent implements OnInit, OnDestroy {
       puedeVerHistorial: this.formRol === 'admin' ? true : this.formPuedeVerHistorial,
       puedeAdministrarPersonal: this.formRol === 'admin' ? true : this.formPuedeAdministrarPersonal,
       sucursales: this.formRol === 'admin' ? ['General (Acceso Total)'] : this.formSucursales,
-      // 🔥 GUARDAMOS LAS ÁREAS AUTORIZADAS 🔥
       areas: this.formRol === 'admin' ? ['Todas las áreas'] : this.formAreas 
     };
 
@@ -218,7 +233,7 @@ export class PersonalComponent implements OnInit, OnDestroy {
     }
   }
 
-async eliminarUsuario(userToDelete: any) {
+  async eliminarUsuario(userToDelete: any) {
     if (this.currentUser?.rol !== 'admin' && !this.currentUser?.puedeAdministrarPersonal) return;
     
     if (userToDelete.usuario === this.currentUser.usuario) {
@@ -292,7 +307,7 @@ async eliminarUsuario(userToDelete: any) {
       { header: 'Rol', key: 'rol', width: 15 },
       { header: 'Cargo', key: 'cargo', width: 25 },
       { header: 'Sucursales', key: 'sucursales', width: 30 },
-      { header: 'Áreas', key: 'areas', width: 30 }, // 🔥 COLUMNA NUEVA PARA EXCEL 🔥
+      { header: 'Áreas', key: 'areas', width: 30 }, 
       { header: 'Crea Check', key: 'creaCheck', width: 12 },
       { header: 'Crea Rutinas', key: 'creaRutinas', width: 12 },
       { header: 'Crea Tareas', key: 'creaTareas', width: 12 },
@@ -317,7 +332,7 @@ async eliminarUsuario(userToDelete: any) {
     listaOrdenada.forEach(u => {
       if (u.zonaCalculada !== zonaActual) {
         const separador = worksheet.addRow({ nombre: `📍 ZONA / DEPARTAMENTO: ${u.zonaCalculada.toUpperCase()}` });
-        worksheet.mergeCells(`A${separador.number}:N${separador.number}`); // 🔥 AHORA HASTA LA 'N' PORQUE AÑADIMOS UNA COLUMNA
+        worksheet.mergeCells(`A${separador.number}:N${separador.number}`); 
         
         separador.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
         separador.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF475569' } };
@@ -334,7 +349,7 @@ async eliminarUsuario(userToDelete: any) {
         rol: (u.rol || '').toUpperCase(),
         cargo: u.cargo || '-',
         sucursales: u.zonaCalculada,
-        areas: u.areas ? (Array.isArray(u.areas) ? u.areas.join(', ') : u.areas) : 'General', // 🔥 INYECTAR LAS ÁREAS
+        areas: u.areas ? (Array.isArray(u.areas) ? u.areas.join(', ') : u.areas) : 'General', 
         creaCheck: u.puedeCrearChecklists ? 'Sí' : 'No',
         creaRutinas: u.puedeCrearRutinas ? 'Sí' : 'No',
         creaTareas: u.puedeCrearTareasUnicas ? 'Sí' : 'No',
@@ -358,7 +373,6 @@ async eliminarUsuario(userToDelete: any) {
           const esSeparador = row.getCell(1).value?.toString().includes('📍 ZONA');
           
           if (!esSeparador) {
-            // 🔥 COLUMNAS 8 EN ADELANTE CENTRADAS (POR LA NUEVA COLUMNA DE ÁREAS EN LA POSICIÓN 7)
             if (colNumber >= 8 || colNumber === 4) {
               cell.alignment = { vertical: 'middle', horizontal: 'center' };
             } else {
@@ -390,5 +404,4 @@ async eliminarUsuario(userToDelete: any) {
   togglePassword() {
     this.mostrarPassword = !this.mostrarPassword;
   }
-
 }

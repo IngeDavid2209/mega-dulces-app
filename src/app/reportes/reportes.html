@@ -208,56 +208,73 @@
           </div>
 
           <div style="display: flex; flex-direction: column; gap: 12px;">
-            <div *ngFor="let item of checklistSeleccionado().items" style="background: var(--bg-app); border: 1px solid var(--border); border-radius: 8px; padding: 16px;">
-              <div style="display: flex; align-items: flex-start; gap: 16px;">
-                
-                <div style="width: 22px; height: 22px; min-width: 22px; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: white;" [style.background]="item.checked ? 'var(--primary-navy)' : 'transparent'" [style.border]="item.checked ? 'none' : '2px solid #CBD5E1'">
-                  <svg *ngIf="item.checked" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                </div>
-                
-                <div style="flex: 1;">
-                  <div style="font-size: 15px; font-weight: 500; margin-bottom: 6px;" [style.text-decoration]="item.checked ? 'line-through' : 'none'" [style.opacity]="item.checked ? '0.6' : '1'">{{ item.text }}</div>
-                  
-                  <div *ngIf="item.photo || item.requiresPhoto || item.requiresAntesDespues" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--border);">
-                    
-                    <div *ngIf="item.photo && !item.requiresAntesDespues" style="display: inline-block; border: 1px solid var(--border); border-radius: 6px; padding: 4px; background: white;">
-                      <div style="margin-bottom: 5px;" *ngIf="item.photoTime">
-                        <span style="font-weight: 600; font-size: 11px; background: #F1F5F9; padding: 2px 6px; border-radius: 4px; color: #64748B;">🕒 Tomada a las: {{ item.photoTime }}</span>
-                      </div>
-                      <img [src]="item.photo" alt="Evidencia" style="display: block; max-width: 100%; max-height: 400px; object-fit: contain;">
-                    </div>
-                    <div *ngIf="!item.photo && item.checked && item.requiresPhoto" style="color: var(--red); font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 6px;">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
-                      Tarea completada sin evidencia adjunta.
-                    </div>
+           <div *ngFor="let item of checklistSeleccionado().items" style="background: var(--bg-app); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 12px;">
+  <div style="display: flex; align-items: flex-start; gap: 16px;">
+    
+    <div style="width: 22px; height: 22px; min-width: 22px; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: white;" [style.background]="item.checked ? 'var(--primary-navy)' : 'transparent'" [style.border]="item.checked ? 'none' : '2px solid #CBD5E1'">
+      <svg *ngIf="item.checked" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+    </div>
+    
+    <div style="flex: 1;">
+      <div style="font-size: 15px; font-weight: 500; margin-bottom: 6px;" [style.text-decoration]="item.checked ? 'line-through' : 'none'" [style.opacity]="item.checked ? '0.6' : '1'">{{ item.text }}</div>
+      
+      <div style="display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px;">
+        <span *ngIf="!item.checked" style="color: #EF4444; font-size: 11px; font-weight: 700; background: #FEF2F2; padding: 4px 8px; border-radius: 4px; border: 1px solid #FECACA; display: inline-flex; align-items: center; gap: 4px; width: fit-content;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 15 15"></polyline></svg>
+          MOTIVO: Se le pasó el tiempo / Tarea ignorada
+        </span>
 
-                    <div *ngIf="item.requiresAntesDespues" style="display: flex; gap: 20px; flex-wrap: wrap;">
-                      <div style="flex: 1; min-width: 140px;" *ngIf="item.photoAntes">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
-                          <span style="color: var(--primary-navy); font-weight: 700;">📸 ANTES:</span>
-                          <span *ngIf="item.photoAntesTime" style="font-weight: 600; font-size: 11px; background: #EFF6FF; color: #2563EB; padding: 2px 6px; border-radius: 4px; border: 1px solid #BFDBFE;">🕒 {{ item.photoAntesTime }}</span>
-                        </div>
-                        <img [src]="item.photoAntes" alt="Antes" style="max-width: 100%; border-radius: 6px; border: 1px solid var(--border);">
-                      </div>
-                      
-                      <div style="flex: 1; min-width: 140px;" *ngIf="item.photoDespues">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
-                          <span style="color: #10B981; font-weight: 700;">📸 DESPUÉS:</span>
-                          <span *ngIf="item.photoDespuesTime" style="font-weight: 600; font-size: 11px; background: #ECFDF5; color: #047857; padding: 2px 6px; border-radius: 4px; border: 1px solid #A7F3D0;">🕒 {{ item.photoDespuesTime }}</span>
-                        </div>
-                        <img [src]="item.photoDespues" alt="Después" style="max-width: 100%; border-radius: 6px; border: 1px solid var(--border);">
-                      </div>
-                      
-                      <div *ngIf="(!item.photoAntes || !item.photoDespues) && item.checked" style="color: var(--red); font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 6px;">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
-                        Validada con faltantes de evidencia visual.
-                      </div>
-                    </div>
+        <span *ngIf="item.checked && item.requiresPhoto && !item.photo" style="color: #EF4444; font-size: 11px; font-weight: 700; background: #FEF2F2; padding: 4px 8px; border-radius: 4px; border: 1px solid #FECACA; display: inline-flex; align-items: center; gap: 4px; width: fit-content;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><line x1="4" y1="22" x2="20" y2="2"></line></svg>
+          MOTIVO: Palomeó la tarea pero NO subió foto
+        </span>
 
-                  </div>
-                </div>
-              </div>
+        <span *ngIf="item.checked && item.requiresAntesDespues && (!item.photoAntes || !item.photoDespues)" style="color: #EF4444; font-size: 11px; font-weight: 700; background: #FEF2F2; padding: 4px 8px; border-radius: 4px; border: 1px solid #FECACA; display: inline-flex; align-items: center; gap: 4px; width: fit-content;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><line x1="4" y1="22" x2="20" y2="2"></line></svg>
+          MOTIVO: Le faltó subir la foto del {{ !item.photoAntes ? 'ANTES' : 'DESPUÉS' }}
+        </span>
+      </div>
+      <div *ngIf="item.photo || item.requiresPhoto || item.requiresAntesDespues" style="margin-top: 10px; padding-top: 15px; border-top: 1px solid var(--border);">
+        
+        <div *ngIf="item.photo && !item.requiresAntesDespues" style="display: inline-block; border: 1px solid var(--border); border-radius: 6px; padding: 4px; background: white;">
+          <div style="margin-bottom: 5px;" *ngIf="item.photoTime">
+            <span style="font-weight: 600; font-size: 11px; background: #F1F5F9; padding: 2px 6px; border-radius: 4px; color: #64748B;">🕒 Tomada a las: {{ item.photoTime }}</span>
+          </div>
+          <img [src]="item.photo" alt="Evidencia" style="display: block; max-width: 100%; max-height: 400px; object-fit: contain;">
+        </div>
+        
+        <div *ngIf="!item.photo && item.checked && item.requiresPhoto" style="color: var(--red); font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 6px;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+          Tarea completada sin evidencia adjunta.
+        </div>
+
+        <div *ngIf="item.requiresAntesDespues" style="display: flex; gap: 20px; flex-wrap: wrap;">
+          <div style="flex: 1; min-width: 140px;" *ngIf="item.photoAntes">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+              <span style="color: var(--primary-navy); font-weight: 700;">📸 ANTES:</span>
+              <span *ngIf="item.photoAntesTime" style="font-weight: 600; font-size: 11px; background: #EFF6FF; color: #2563EB; padding: 2px 6px; border-radius: 4px; border: 1px solid #BFDBFE;">🕒 {{ item.photoAntesTime }}</span>
             </div>
+            <img [src]="item.photoAntes" alt="Antes" style="max-width: 100%; border-radius: 6px; border: 1px solid var(--border);">
+          </div>
+          
+          <div style="flex: 1; min-width: 140px;" *ngIf="item.photoDespues">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+              <span style="color: #10B981; font-weight: 700;">📸 DESPUÉS:</span>
+              <span *ngIf="item.photoDespuesTime" style="font-weight: 600; font-size: 11px; background: #ECFDF5; color: #047857; padding: 2px 6px; border-radius: 4px; border: 1px solid #A7F3D0;">🕒 {{ item.photoDespuesTime }}</span>
+            </div>
+            <img [src]="item.photoDespues" alt="Después" style="max-width: 100%; border-radius: 6px; border: 1px solid var(--border);">
+          </div>
+          
+          <div *ngIf="(!item.photoAntes || !item.photoDespues) && item.checked" style="color: var(--red); font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 6px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+            Validada con faltantes de evidencia visual.
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
           </div>
           
           <div *ngIf="checklistSeleccionado().notaEmpleado" style="margin-top: 20px; background: #FFFBEB; border-left: 4px solid #F59E0B; padding: 15px; border-radius: 8px;">

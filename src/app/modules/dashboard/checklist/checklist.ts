@@ -567,7 +567,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     this.guardarEnLaNube(actual);
   }
 
-  enviarChecklist() {
+enviarChecklist() {
     const actual = this.checklistSeleccionado(); if(!actual) return;
     const fotosPendientes = actual.items.some((i:any) => i.photo === 'subiendo...' || i.photoAntes === 'subiendo...' || i.photoDespues === 'subiendo...');
     if (fotosPendientes) { alert(' ⚠️  Espera, una foto se está subiendo.'); return; }
@@ -579,11 +579,15 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     }
     
     actual.enviado = true;
+    
+    // 🔥 NUEVO: GUARDAR LA HORA EXACTA DE ENVÍO 🔥
+    const ahora = new Date();
+    actual.horaEnvio = ahora.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+    
     this.guardarEnLaNube(actual);
     this.mostrarToast(' ✅   ¡ Checklist enviado correctamente!');
     this.volverALista();
   }
-
   toggleEmpleado(nombre: string) {
     const index = this.formAssigned.indexOf(nombre);
     if (index > -1) { this.formAssigned.splice(index, 1); } else { this.formAssigned.push(nombre); }

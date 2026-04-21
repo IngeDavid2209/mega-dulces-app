@@ -1,3 +1,12 @@
+<style>
+  @keyframes pulse-green {
+    0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+    70% { box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+  }
+  .pulse-online { animation: pulse-green 2s infinite; }
+</style>
+
 <div class="app-layout">
   <header class="header">
     <div class="header-left">
@@ -19,7 +28,6 @@
   </header>
   <div class="main-wrapper">
     <div class="mobile-overlay" *ngIf="isMenuOpen" (click)="toggleMenu()"></div>
-
     <aside class="sidebar" [class.mobile-open]="isMenuOpen" translate="no">
       <div style="display: flex; flex-direction: column; height: 100%;">
         <div class="sidebar-header">
@@ -53,8 +61,8 @@
             </svg> Estadísticas
           </a>
           <a class="nav-item" routerLink="/calendario" routerLinkActive="active" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeVerEstadisticas" (click)="isMenuOpen = false">
-  <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg> Calendario
-</a>
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg> Calendario
+          </a>
           <a class="nav-item" routerLink="/reportes" routerLinkActive="active" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeVerHistorial" (click)="isMenuOpen = false">
             <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
@@ -63,7 +71,7 @@
               <line x1="16" y1="17" x2="8" y2="17"/>
             </svg> Auditoría
           </a>
-          <a class="nav-item" routerLink="/personal" routerLinkActive="active" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeAdministrarPersonal" (click)="isMenuOpen = false">
+          <a class="nav-item active" routerLink="/personal" routerLinkActive="active" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeAdministrarPersonal" (click)="isMenuOpen = false">
             <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
               <circle cx="9" cy="7" r="4"/>
@@ -96,8 +104,8 @@
     <div class="content">
       <div class="section-header">
         <div>
-          <div class="section-title">Directorio de Usuarios</div>
-          <div class="section-sub">Gestión de accesos, credenciales y permisos corporativos</div>
+          <div class="section-title">Directorio y Monitor en Vivo</div>
+          <div class="section-sub">Gestión de accesos, conexión en tiempo real y permisos corporativos</div>
         </div>
         <div class="action-bar-container">
           <div class="search-wrapper">
@@ -146,10 +154,19 @@
                 <div class="user-name"
                   style="word-break: normal !important; white-space: normal !important; line-height: 1.3; font-size: 16px; font-weight: 600; color: var(--text-main); margin-bottom: 4px;">
                   {{ user.nombre }}</div>
-                <div class="user-badge badge-admin" style="display: inline-flex;"><svg width="12" height="12"
+                
+                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                  <div class="user-badge badge-admin" style="display: inline-flex;"><svg width="12" height="12"
                     viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px;">
                     <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-                  </svg> {{ user.cargo || 'Administrador' }}</div>
+                    </svg> {{ user.cargo || 'Administrador' }}
+                  </div>
+                  <div style="display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 20px;" [style.background]="isOnline(user.ultimoLatido) ? '#ECFDF5' : '#F1F5F9'" [style.color]="isOnline(user.ultimoLatido) ? '#10B981' : '#64748B'">
+                    <span style="width: 8px; height: 8px; border-radius: 50%;" [style.background]="isOnline(user.ultimoLatido) ? '#10B981' : '#94A3B8'" [class.pulse-online]="isOnline(user.ultimoLatido)"></span>
+                    {{ isOnline(user.ultimoLatido) ? 'En línea' : getLastSeenText(user.ultimoLatido) }}
+                  </div>
+                </div>
+
               </div>
             </div>
             <div class="action-buttons" style="display: flex; gap: 8px; flex-wrap: wrap;"
@@ -207,12 +224,21 @@
                     <div class="user-name"
                       style="word-break: normal !important; white-space: normal !important; line-height: 1.3; font-size: 16px; font-weight: 600; color: var(--text-main); margin-bottom: 4px;">
                       {{ user.nombre }}</div>
-                    <div class="user-badge" style="display: inline-flex;"><svg width="12" height="12"
+                    
+                    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                      <div class="user-badge" style="display: inline-flex;"><svg width="12" height="12"
                         viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                         style="margin-right: 4px;">
                         <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                         <circle cx="12" cy="7" r="4"></circle>
-                      </svg> {{ user.cargo || 'Colaborador' }}</div>
+                        </svg> {{ user.cargo || 'Colaborador' }}
+                      </div>
+                      <div style="display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 20px;" [style.background]="isOnline(user.ultimoLatido) ? '#ECFDF5' : '#F1F5F9'" [style.color]="isOnline(user.ultimoLatido) ? '#10B981' : '#64748B'">
+                        <span style="width: 8px; height: 8px; border-radius: 50%;" [style.background]="isOnline(user.ultimoLatido) ? '#10B981' : '#94A3B8'" [class.pulse-online]="isOnline(user.ultimoLatido)"></span>
+                        {{ isOnline(user.ultimoLatido) ? 'En línea' : getLastSeenText(user.ultimoLatido) }}
+                      </div>
+                    </div>
+
                   </div>
                 </div>
                 <div class="action-buttons" style="display: flex; gap: 8px; flex-wrap: wrap;">
@@ -243,10 +269,9 @@
               <div class="user-credentials">
                 <div class="cred-row"><span class="cred-label">Zonas:</span> <span class="cred-val">{{ user.sucursales ?
                     user.sucursales.join(', ') : (user.sucursal || 'General') }}</span></div>
-                
-                <div class="cred-row"><span class="cred-label">Áreas:</span> <span class="cred-val">{{ user.areas ?
-                  user.areas.join(', ') : 'Todas' }}</span></div>
 
+                <div class="cred-row"><span class="cred-label">Áreas:</span> <span class="cred-val">{{ user.areas ?
+                    user.areas.join(', ') : 'Todas' }}</span></div>
                 <div class="user-permissions-list"
                   *ngIf="user.puedeCrearChecklists || user.puedeCrearRutinas || user.puedeCrearTareasUnicas || user.puedeVerCheckstore || user.puedeVerEstadisticas || user.puedeVerHistorial || user.puedeAdministrarPersonal">
                   <span class="perm-tag" *ngIf="user.puedeCrearChecklists">Gestión Checklists</span>
@@ -385,7 +410,7 @@
                 </label>
               </div>
             </div>
-            
+
             <div class="form-group form-full" *ngIf="formRol === 'trabajador'">
               <label class="form-label">Zonas Asignadas (Multi-selección)</label>
               <div class="checkbox-grid">
@@ -396,7 +421,6 @@
                 </label>
               </div>
             </div>
-
             <div class="form-group form-full" *ngIf="formRol === 'trabajador'">
               <label class="form-label">Áreas Operativas Autorizadas (Multi-selección)</label>
               <div class="checkbox-grid">
@@ -407,7 +431,6 @@
                 </label>
               </div>
             </div>
-
             <div class="form-group form-full" style="padding-top: 16px; border-top: 1px solid var(--border);">
               <label class="form-label">Usuario de Acceso (Login)</label>
               <input class="form-input" type="text" [(ngModel)]="formUsuario" placeholder="Ej: ivette.cruz">

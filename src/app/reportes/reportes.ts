@@ -394,8 +394,8 @@ export class ReportesComponent implements OnInit, OnDestroy {
     doc.save(`Reporte_MegaDulces_${this.fechaInicio}_al_${this.fechaFin}.pdf`);
   }
 
-  // =======================================================================
-  // 🔥 NUEVA GENERACIÓN DE PDF VISUAL NATIVO (ELIMINA HTML2CANVAS) 🔥
+// =======================================================================
+  //  🔥  NUEVA GENERACIÓN DE PDF VISUAL NATIVO (DISEÑO BLINDADO)  🔥
   // =======================================================================
   async descargarPDFVisual() {
     if (this.resultados().length === 0) {
@@ -405,8 +405,8 @@ export class ReportesComponent implements OnInit, OnDestroy {
 
     if (this.resultados().length > 30) {
       const result = await Swal.fire({
-        title: 'Reporte Pesado', 
-        text: 'Estás intentando generar un reporte visual con más de 30 checklists. Esto descargará muchas fotos y tomará algo de tiempo. ¿Deseas continuar?', 
+        title: 'Reporte Pesado',
+        text: 'Estás intentando generar un reporte visual con más de 30 checklists. Esto descargará muchas fotos y tomará algo de tiempo. ¿Deseas continuar?',
         icon: 'warning',
         showCancelButton: true, confirmButtonColor: '#0F172A', cancelButtonColor: '#64748B', confirmButtonText: 'Sí, generar PDF', cancelButtonText: 'Cancelar'
       });
@@ -441,7 +441,7 @@ export class ReportesComponent implements OnInit, OnDestroy {
       };
 
       // 1. PORTADA CORPORATIVA
-      doc.setFillColor(15, 23, 42); 
+      doc.setFillColor(15, 23, 42);
       doc.rect(0, 0, pageWidth, 28, 'F');
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(22);
@@ -465,6 +465,7 @@ export class ReportesComponent implements OnInit, OnDestroy {
           ['Cumplimiento general', `${promedio}% de efectividad`]
         ],
         theme: 'grid',
+        margin: { bottom: 25 }, // Margen de seguridad inferior
         headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold', fontSize: 12 },
         bodyStyles: { textColor: [51, 65, 85], fontSize: 10, cellPadding: 5 },
         columnStyles: { 0: { fontStyle: 'bold', cellWidth: 60 } }
@@ -476,15 +477,15 @@ export class ReportesComponent implements OnInit, OnDestroy {
       for (let i = 0; i < this.resultados().length; i++) {
         const checklist = this.resultados()[i];
 
-        // Salto de página si ya no cabe el siguiente bloque
-        if (startY > pageHeight - 40) {
+        // Aumentamos el margen a 60 para asegurar que el título no se quede huérfano al final de la hoja
+        if (startY > pageHeight - 60) {
           doc.addPage();
           startY = 20;
         }
 
         const progreso = this.getProgreso(checklist);
         let badgeText = `${progreso}% COMPLETADO`;
-        let badgeColor = [29, 78, 216]; 
+        let badgeColor = [29, 78, 216];
         if (progreso === 100) badgeColor = [16, 185, 129];
         else if (this.getDisplayStatus(checklist) === 'vencido') badgeColor = [220, 38, 38];
 
@@ -494,6 +495,8 @@ export class ReportesComponent implements OnInit, OnDestroy {
           head: [[checklist.name.toUpperCase(), badgeText]],
           body: [[`Responsable: ${checklist.assigned}   |   Sucursal: ${checklist.store}   |   Fecha: ${checklist.date}`, '']],
           theme: 'grid',
+          rowPageBreak: 'avoid', // 🔥 EVITA QUE EL TÍTULO SE ROMPA
+          margin: { bottom: 25 },
           headStyles: { fillColor: [248, 250, 252], textColor: [15, 23, 42], fontSize: 12, fontStyle: 'bold', lineColor: [226, 232, 240] },
           bodyStyles: { fillColor: [255, 255, 255], textColor: [100, 116, 139], fontSize: 9, lineColor: [226, 232, 240], cellPadding: 3 },
           columnStyles: { 1: { halign: 'right', cellWidth: 45 } },
@@ -526,7 +529,7 @@ export class ReportesComponent implements OnInit, OnDestroy {
                 { content: `DESPUÉS ${item.photoDespuesTime ? '('+item.photoDespuesTime+')' : ''}`, styles: { halign: 'center', fontSize: 8, textColor: [16, 185, 129], fontStyle: 'bold' } }
               ]);
             } else if (item.checked) {
-              itemsData.push([{ content: '⚠️ Tarea marcada como completada SIN EVIDENCIA FOTOGRÁFICA.', colSpan: 2, styles: { textColor: [220, 38, 38], fontStyle: 'bold' } }]);
+              itemsData.push([{ content: ' ⚠️ Tarea marcada como completada SIN EVIDENCIA FOTOGRÁFICA.', colSpan: 2, styles: { textColor: [220, 38, 38], fontStyle: 'bold' } }]);
             }
           } else if (item.requiresPhoto) {
             let img = item.photo ? await getBase64Image(item.photo) : null;
@@ -534,7 +537,7 @@ export class ReportesComponent implements OnInit, OnDestroy {
               itemsData.push([{ content: img, colSpan: 2, styles: { minCellHeight: 70, halign: 'center', valign: 'middle' } }]);
               itemsData.push([{ content: `EVIDENCIA ${item.photoTime ? '('+item.photoTime+')' : ''}`, colSpan: 2, styles: { halign: 'center', fontSize: 8, fontStyle: 'bold' } }]);
             } else if (item.checked) {
-              itemsData.push([{ content: '⚠️ Tarea marcada como completada SIN EVIDENCIA FOTOGRÁFICA.', colSpan: 2, styles: { textColor: [220, 38, 38], fontStyle: 'bold' } }]);
+              itemsData.push([{ content: ' ⚠️ Tarea marcada como completada SIN EVIDENCIA FOTOGRÁFICA.', colSpan: 2, styles: { textColor: [220, 38, 38], fontStyle: 'bold' } }]);
             }
           }
         }
@@ -548,13 +551,14 @@ export class ReportesComponent implements OnInit, OnDestroy {
             startY: currentY,
             body: itemsData,
             theme: 'plain',
+            rowPageBreak: 'avoid', // 🔥 EL CANDADO MAESTRO PARA LAS FOTOS
+            margin: { bottom: 25 }, // Margen inferior para que no pise el número de página
             styles: { cellPadding: 3, lineColor: [226, 232, 240], lineWidth: { left: 0.5, right: 0.5, bottom: 0.5 } },
-columnStyles: { 0: { cellWidth: 91 }, 1: { cellWidth: 91 } },            
-            // Truco maestro para dibujar imágenes nativamente
+            columnStyles: { 0: { cellWidth: 91 }, 1: { cellWidth: 91 } },
             didParseCell: (data) => {
               if (data.cell.raw && typeof data.cell.raw === 'object' && (data.cell.raw as any).content && ((data.cell.raw as any).content as string).startsWith('data:image')) {
                 (data.cell as any).customImage = (data.cell.raw as any).content;
-                data.cell.text = []; // Borramos el texto para que no escriba el código base64
+                data.cell.text = []; 
               }
             },
             didDrawCell: (data) => {
@@ -567,11 +571,11 @@ columnStyles: { 0: { cellWidth: 91 }, 1: { cellWidth: 91 } },
                 const cellH = dim.height - padding * 2;
                 const imgRatio = imgProps.width / imgProps.height;
                 const cellRatio = cellW / cellH;
-
                 let finalW, finalH;
-                if (imgRatio > cellRatio) { finalW = cellW; finalH = finalW / imgRatio; } 
-                else { finalH = cellH; finalW = finalH * imgRatio; }
                 
+                if (imgRatio > cellRatio) { finalW = cellW; finalH = finalW / imgRatio; }
+                else { finalH = cellH; finalW = finalH * imgRatio; }
+
                 const x = dim.x + (dim.width - finalW) / 2;
                 const y = dim.y + (dim.height - finalH) / 2;
                 doc.addImage(base64, 'JPEG', x, y, finalW, finalH);
@@ -579,7 +583,7 @@ columnStyles: { 0: { cellWidth: 91 }, 1: { cellWidth: 91 } },
             }
           });
         }
-        
+
         startY = (doc as any).lastAutoTable.finalY + 10;
       }
 

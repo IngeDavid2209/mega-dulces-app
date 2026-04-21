@@ -393,9 +393,8 @@ export class ReportesComponent implements OnInit, OnDestroy {
     }
     doc.save(`Reporte_MegaDulces_${this.fechaInicio}_al_${this.fechaFin}.pdf`);
   }
-
 // =======================================================================
-  //  🔥  NUEVA GENERACIÓN DE PDF VISUAL NATIVO (DISEÑO BLINDADO)  🔥
+  //  🔥  NUEVA GENERACIÓN DE PDF: MODO "1 TAREA POR HOJA" (ÁLBUM NATIVO)  🔥
   // =======================================================================
   async descargarPDFVisual() {
     if (this.resultados().length === 0) {
@@ -406,7 +405,7 @@ export class ReportesComponent implements OnInit, OnDestroy {
     if (this.resultados().length > 30) {
       const result = await Swal.fire({
         title: 'Reporte Pesado',
-        text: 'Estás intentando generar un reporte visual con más de 30 checklists. Esto descargará muchas fotos y tomará algo de tiempo. ¿Deseas continuar?',
+        text: 'Estás generando un reporte visual muy grande. Esto descargará muchas fotos y tomará algo de tiempo. ¿Deseas continuar?',
         icon: 'warning',
         showCancelButton: true, confirmButtonColor: '#0F172A', cancelButtonColor: '#64748B', confirmButtonText: 'Sí, generar PDF', cancelButtonText: 'Cancelar'
       });
@@ -420,27 +419,42 @@ export class ReportesComponent implements OnInit, OnDestroy {
       const pageWidth = doc.internal.pageSize.getWidth();
       const pageHeight = doc.internal.pageSize.getHeight();
 
-      // FUNCIÓN PARA DESCARGAR IMÁGENES SEGURAS EN BASE64
+      // 🛠️ HELPER 1: DESCARGAR IMÁGENES SEGURAS EN BASE64
       const getBase64Image = (url: string): Promise<string | null> => {
         return new Promise((resolve) => {
           const img = new Image();
           img.crossOrigin = 'Anonymous';
           img.onload = () => {
             const canvas = document.createElement('canvas');
-            const MAX_WIDTH = 500;
+            const MAX_WIDTH = 600; // Mayor resolución para que se vean increíbles en hoja completa
             const scaleSize = MAX_WIDTH / img.width;
             canvas.width = MAX_WIDTH;
             canvas.height = img.height * scaleSize;
             const ctx = canvas.getContext('2d');
             ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
-            resolve(canvas.toDataURL('image/jpeg', 0.6));
+            resolve(canvas.toDataURL('image/jpeg', 0.7));
           };
           img.onerror = () => resolve(null);
           img.src = url;
         });
       };
 
-      // 1. PORTADA CORPORATIVA
+      // 🛠️ HELPER 2: ESCALAR FOTOS PERFECTAMENTE SIN DEFORMARLAS
+      const calculateFit = (imgW: number, imgH: number, maxW: number, maxH: number) => {
+        const imgRatio = imgW / imgH;
+        const maxRatio = maxW / maxH;
+        let finalW, finalH;
+        if (imgRatio > maxRatio) {
+          finalW = maxW;
+          finalH = finalW / imgRatio;
+        } else {
+          finalH = maxH;
+          finalW = finalH * imgRatio;
+        }
+        return { finalW, finalH };
+      };
+
+      // ================= 1. PORTADA CORPORATIVA =================
       doc.setFillColor(15, 23, 42);
       doc.rect(0, 0, pageWidth, 28, 'F');
       doc.setFont('helvetica', 'bold');
@@ -465,140 +479,179 @@ export class ReportesComponent implements OnInit, OnDestroy {
           ['Cumplimiento general', `${promedio}% de efectividad`]
         ],
         theme: 'grid',
-        margin: { bottom: 25 }, // Margen de seguridad inferior
         headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold', fontSize: 12 },
         bodyStyles: { textColor: [51, 65, 85], fontSize: 10, cellPadding: 5 },
         columnStyles: { 0: { fontStyle: 'bold', cellWidth: 60 } }
       });
 
-      let startY = (doc as any).lastAutoTable.finalY + 15;
-
-      // 2. IMPRESIÓN DE CADA CHECKLIST
+      // ================= 2. RECORRIDO DE CHECKLISTS =================
       for (let i = 0; i < this.resultados().length; i++) {
         const checklist = this.resultados()[i];
 
-        // Aumentamos el margen a 60 para asegurar que el título no se quede huérfano al final de la hoja
-        if (startY > pageHeight - 60) {
-          doc.addPage();
-          startY = 20;
-        }
+        // 📄 HOJA DE CARÁTULA DEL CHECKLIST
+        doc.addPage();
+        doc.setFillColor(15, 23, 42);
+        doc.rect(0, 0, pageWidth, 25, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(16);
+        doc.setFont('helvetica', 'bold');
+        doc.text(`AUDITORÍA: ${checklist.name.toUpperCase()}`, 14, 16);
+
+        doc.setTextColor(15, 23, 42);
+        doc.setFontSize(14);
+        doc.text('DATOS DE LA EVALUACIÓN', 14, 40);
+
+        doc.setDrawColor(226, 232, 240);
+        doc.setLineWidth(0.5);
+        doc.line(14, 44, pageWidth - 14, 44);
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(11);
+        doc.text('Responsable:', 14, 55);
+        doc.setFont('helvetica', 'normal');
+        doc.text(checklist.assigned || 'No asignado', 50, 55);
+
+        doc.setFont('helvetica', 'bold');
+        doc.text('Sucursal/Zona:', 14, 65);
+        doc.setFont('helvetica', 'normal');
+        doc.text(checklist.store || 'General', 50, 65);
+
+        doc.setFont('helvetica', 'bold');
+        doc.text('Fecha:', 14, 75);
+        doc.setFont('helvetica', 'normal');
+        doc.text(checklist.date || '--', 50, 75);
 
         const progreso = this.getProgreso(checklist);
-        let badgeText = `${progreso}% COMPLETADO`;
-        let badgeColor = [29, 78, 216];
-        if (progreso === 100) badgeColor = [16, 185, 129];
-        else if (this.getDisplayStatus(checklist) === 'vencido') badgeColor = [220, 38, 38];
-
-        // Tarjeta principal (Título y datos)
-        autoTable(doc, {
-          startY: startY,
-          head: [[checklist.name.toUpperCase(), badgeText]],
-          body: [[`Responsable: ${checklist.assigned}   |   Sucursal: ${checklist.store}   |   Fecha: ${checklist.date}`, '']],
-          theme: 'grid',
-          rowPageBreak: 'avoid', // 🔥 EVITA QUE EL TÍTULO SE ROMPA
-          margin: { bottom: 25 },
-          headStyles: { fillColor: [248, 250, 252], textColor: [15, 23, 42], fontSize: 12, fontStyle: 'bold', lineColor: [226, 232, 240] },
-          bodyStyles: { fillColor: [255, 255, 255], textColor: [100, 116, 139], fontSize: 9, lineColor: [226, 232, 240], cellPadding: 3 },
-          columnStyles: { 1: { halign: 'right', cellWidth: 45 } },
-          didParseCell: (data) => {
-            if (data.section === 'head' && data.column.index === 1) {
-              data.cell.styles.textColor = badgeColor as [number, number, number];
-            }
-          }
-        });
-
-        let currentY = (doc as any).lastAutoTable.finalY;
-        const itemsData: any[] = [];
-
-        // Generar filas para las tareas y fotos
-        for (const item of checklist.items) {
-          const checkIcon = item.checked ? '✓' : 'X';
-          itemsData.push([{ content: `${checkIcon}  ${item.text}`, colSpan: 2, styles: { fontStyle: item.checked ? 'normal' : 'bold', textColor: item.checked ? [51, 65, 85] : [220, 38, 38] } }]);
-
-          if (item.requiresAntesDespues) {
-            let imgAntes = item.photoAntes ? await getBase64Image(item.photoAntes) : null;
-            let imgDespues = item.photoDespues ? await getBase64Image(item.photoDespues) : null;
-
-            if (imgAntes || imgDespues) {
-              itemsData.push([
-                { content: imgAntes || 'Sin evidencia', styles: { minCellHeight: 65, halign: 'center', valign: 'middle' } },
-                { content: imgDespues || 'Sin evidencia', styles: { minCellHeight: 65, halign: 'center', valign: 'middle' } }
-              ]);
-              itemsData.push([
-                { content: `ANTES ${item.photoAntesTime ? '('+item.photoAntesTime+')' : ''}`, styles: { halign: 'center', fontSize: 8, textColor: [15, 23, 42], fontStyle: 'bold' } },
-                { content: `DESPUÉS ${item.photoDespuesTime ? '('+item.photoDespuesTime+')' : ''}`, styles: { halign: 'center', fontSize: 8, textColor: [16, 185, 129], fontStyle: 'bold' } }
-              ]);
-            } else if (item.checked) {
-              itemsData.push([{ content: ' ⚠️ Tarea marcada como completada SIN EVIDENCIA FOTOGRÁFICA.', colSpan: 2, styles: { textColor: [220, 38, 38], fontStyle: 'bold' } }]);
-            }
-          } else if (item.requiresPhoto) {
-            let img = item.photo ? await getBase64Image(item.photo) : null;
-            if (img) {
-              itemsData.push([{ content: img, colSpan: 2, styles: { minCellHeight: 70, halign: 'center', valign: 'middle' } }]);
-              itemsData.push([{ content: `EVIDENCIA ${item.photoTime ? '('+item.photoTime+')' : ''}`, colSpan: 2, styles: { halign: 'center', fontSize: 8, fontStyle: 'bold' } }]);
-            } else if (item.checked) {
-              itemsData.push([{ content: ' ⚠️ Tarea marcada como completada SIN EVIDENCIA FOTOGRÁFICA.', colSpan: 2, styles: { textColor: [220, 38, 38], fontStyle: 'bold' } }]);
-            }
-          }
-        }
+        doc.setFont('helvetica', 'bold');
+        doc.text('Avance Global:', 14, 85);
+        doc.setTextColor(progreso === 100 ? 16 : 29, progreso === 100 ? 185 : 78, progreso === 100 ? 129 : 216);
+        doc.text(`${progreso}% COMPLETADO`, 50, 85);
 
         if (checklist.notaEmpleado) {
-          itemsData.push([{ content: `COMENTARIOS DEL COLABORADOR:\n${checklist.notaEmpleado}`, colSpan: 2, styles: { fillColor: [255, 251, 235], textColor: [146, 64, 14], fontStyle: 'italic', cellPadding: 5 } }]);
+          doc.setTextColor(217, 119, 6);
+          doc.text('COMENTARIOS DEL COLABORADOR:', 14, 105);
+          doc.setFont('helvetica', 'normal');
+          doc.setTextColor(51, 65, 85);
+          const notes = doc.splitTextToSize(checklist.notaEmpleado, pageWidth - 28);
+          doc.text(notes, 14, 113);
         }
 
-        if (itemsData.length > 0) {
-          autoTable(doc, {
-            startY: currentY,
-            body: itemsData,
-            theme: 'plain',
-            rowPageBreak: 'avoid', // 🔥 EL CANDADO MAESTRO PARA LAS FOTOS
-            margin: { bottom: 25 }, // Margen inferior para que no pise el número de página
-            styles: { cellPadding: 3, lineColor: [226, 232, 240], lineWidth: { left: 0.5, right: 0.5, bottom: 0.5 } },
-            columnStyles: { 0: { cellWidth: 91 }, 1: { cellWidth: 91 } },
-            didParseCell: (data) => {
-              if (data.cell.raw && typeof data.cell.raw === 'object' && (data.cell.raw as any).content && ((data.cell.raw as any).content as string).startsWith('data:image')) {
-                (data.cell as any).customImage = (data.cell.raw as any).content;
-                data.cell.text = []; 
-              }
-            },
-            didDrawCell: (data) => {
-              if ((data.cell as any).customImage) {
-                const base64 = (data.cell as any).customImage;
-                const padding = 3;
-                const dim = data.cell;
-                const imgProps = doc.getImageProperties(base64);
-                const cellW = dim.width - padding * 2;
-                const cellH = dim.height - padding * 2;
-                const imgRatio = imgProps.width / imgProps.height;
-                const cellRatio = cellW / cellH;
-                let finalW, finalH;
-                
-                if (imgRatio > cellRatio) { finalW = cellW; finalH = finalW / imgRatio; }
-                else { finalH = cellH; finalW = finalH * imgRatio; }
+        // 📄 HOJAS INDIVIDUALES POR CADA TAREA
+        if (checklist.items && checklist.items.length > 0) {
+          for (let j = 0; j < checklist.items.length; j++) {
+            const item = checklist.items[j];
+            
+            // 🔥 AQUÍ ESTÁ LA MAGIA: 1 HOJA ENTERA NUEVA POR CADA TAREA
+            doc.addPage();
 
-                const x = dim.x + (dim.width - finalW) / 2;
-                const y = dim.y + (dim.height - finalH) / 2;
-                doc.addImage(base64, 'JPEG', x, y, finalW, finalH);
+            // ENCABEZADO DE TAREA
+            doc.setFillColor(241, 245, 249);
+            doc.rect(0, 0, pageWidth, 20, 'F');
+            doc.setTextColor(100, 116, 139);
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(10);
+            doc.text(`${checklist.name.toUpperCase()}  |  TAREA ${j + 1} DE ${checklist.items.length}`, 14, 13);
+
+            // NOMBRE DE LA TAREA
+            doc.setTextColor(15, 23, 42);
+            doc.setFontSize(14);
+            const checkIcon = item.checked ? '[ ✓ ] ' : '[ X ] ';
+            const taskText = doc.splitTextToSize(checkIcon + item.text, pageWidth - 28);
+            doc.text(taskText, 14, 35);
+
+            let currentY = 35 + (taskText.length * 7) + 5;
+
+            // ALERTAS DE ESTADO
+            doc.setFontSize(10);
+            if (!item.checked) {
+              doc.setTextColor(220, 38, 38);
+              doc.text('⚠️ TAREA NO COMPLETADA', 14, currentY);
+              currentY += 12;
+            } else if (item.requiresPhoto && !item.photo && !item.requiresAntesDespues) {
+              doc.setTextColor(220, 38, 38);
+              doc.text('⚠️ TAREA COMPLETADA SIN EVIDENCIA FOTOGRÁFICA', 14, currentY);
+              currentY += 12;
+            } else if (item.requiresAntesDespues && (!item.photoAntes || !item.photoDespues)) {
+              doc.setTextColor(220, 38, 38);
+              doc.text('⚠️ FALTAN EVIDENCIAS DE ANTES Y/O DESPUÉS', 14, currentY);
+              currentY += 12;
+            }
+
+            // DIBUJAR FOTOS GIGANTES
+            const availableHeight = pageHeight - currentY - 20; // 20 margen abajo para pie de página
+
+            if (item.requiresAntesDespues) {
+              const photoWidth = (pageWidth - 42) / 2; // Partimos la pantalla a la mitad
+              const maxPhotoHeight = availableHeight - 15;
+
+              let imgAntes = item.photoAntes ? await getBase64Image(item.photoAntes) : null;
+              let imgDespues = item.photoDespues ? await getBase64Image(item.photoDespues) : null;
+
+              // RENDERIZAR FOTO ANTES
+              doc.setTextColor(15, 23, 42);
+              doc.setFont('helvetica', 'bold');
+              doc.text(`EVIDENCIA: ANTES ${item.photoAntesTime ? '('+item.photoAntesTime+')' : ''}`, 14, currentY + 5);
+              if (imgAntes) {
+                const imgProps = doc.getImageProperties(imgAntes);
+                const { finalW, finalH } = calculateFit(imgProps.width, imgProps.height, photoWidth, maxPhotoHeight);
+                const x = 14 + (photoWidth - finalW) / 2; // Centrar foto en su mitad
+                doc.addImage(imgAntes, 'JPEG', x, currentY + 10, finalW, finalH);
+              } else {
+                doc.setTextColor(220, 38, 38);
+                doc.setFont('helvetica', 'normal');
+                doc.text('Sin imagen de "Antes"', 14, currentY + 15);
+              }
+
+              // RENDERIZAR FOTO DESPUÉS
+              doc.setTextColor(16, 185, 129); // Verde
+              doc.setFont('helvetica', 'bold');
+              doc.text(`EVIDENCIA: DESPUÉS ${item.photoDespuesTime ? '('+item.photoDespuesTime+')' : ''}`, 14 + photoWidth + 14, currentY + 5);
+              if (imgDespues) {
+                const imgProps = doc.getImageProperties(imgDespues);
+                const { finalW, finalH } = calculateFit(imgProps.width, imgProps.height, photoWidth, maxPhotoHeight);
+                const x = 14 + photoWidth + 14 + (photoWidth - finalW) / 2;
+                doc.addImage(imgDespues, 'JPEG', x, currentY + 10, finalW, finalH);
+              } else {
+                doc.setTextColor(220, 38, 38);
+                doc.setFont('helvetica', 'normal');
+                doc.text('Sin imagen de "Después"', 14 + photoWidth + 14, currentY + 15);
+              }
+
+            } else if (item.requiresPhoto || item.photo) {
+              // RENDERIZAR 1 FOTO GIGANTE AL CENTRO
+              const photoWidth = pageWidth - 28;
+              const maxPhotoHeight = availableHeight - 15;
+
+              let img = item.photo ? await getBase64Image(item.photo) : null;
+              if (img) {
+                doc.setTextColor(15, 23, 42);
+                doc.setFont('helvetica', 'bold');
+                doc.text(`EVIDENCIA FOTOGRÁFICA ${item.photoTime ? '('+item.photoTime+')' : ''}`, 14, currentY + 5);
+                
+                const imgProps = doc.getImageProperties(img);
+                const { finalW, finalH } = calculateFit(imgProps.width, imgProps.height, photoWidth, maxPhotoHeight);
+                const x = 14 + (photoWidth - finalW) / 2;
+                doc.addImage(img, 'JPEG', x, currentY + 10, finalW, finalH);
               }
             }
-          });
+          }
         }
-
-        startY = (doc as any).lastAutoTable.finalY + 10;
       }
 
-      // 3. PIE DE PÁGINA GLOBAL
+      // ================= 3. PIE DE PÁGINA GLOBAL =================
       const pageCount = doc.getNumberOfPages();
       for (let i = 1; i <= pageCount; i++) {
         doc.setPage(i);
-        doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(148, 163, 184);
-        doc.text(`Mega Dulces App - Documento Confidencial | Página ${i} de ${pageCount}`, pageWidth / 2, pageHeight - 10, { align: 'center' });
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8);
+        doc.setTextColor(148, 163, 184);
+        doc.text(`Mega Dulces App - Página ${i} de ${pageCount}`, pageWidth / 2, pageHeight - 8, { align: 'center' });
       }
 
       doc.save(`Auditoria_Visual_${this.fechaInicio}_al_${this.fechaFin}.pdf`);
     } catch (error) {
       console.error(error);
-      Swal.fire({ icon: 'error', title: 'Error de Procesamiento', text: 'Ocurrió un error al generar el PDF. Revisa tu conexión a internet.', confirmButtonColor: '#0F172A' });
+      Swal.fire({ icon: 'error', title: 'Error de Procesamiento', text: 'Ocurrió un error al generar el PDF.', confirmButtonColor: '#0F172A' });
     } finally {
       this.generandoReporte.set(false);
     }

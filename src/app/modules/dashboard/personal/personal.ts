@@ -109,7 +109,7 @@ export class PersonalComponent implements OnInit, OnDestroy {
   }
 
 getAdmins() { 
-    // 🔥 REGLA 1: Si no eres Admin Total, NO puedes ver ni editar a los Administradores/Gerentes
+    // 🔥 REGLA DE ORO: Si no es Admin Total, no ve a NADIE de la gerencia
     if (this.currentUser?.rol !== 'admin') {
       return []; 
     }
@@ -120,43 +120,49 @@ getAdmins() {
   }
 
   getTrabajadores() { 
-    let listaTrabajadores = this.usuarios().filter(u => u.rol === 'trabajador');
+    let lista = this.usuarios().filter(u => u.rol === 'trabajador');
 
-    // 🔥 REGLA 2: FILTRO ESTRICTO DE ÁREAS Y SUCURSALES PARA JEFES DE ZONA 🔥
+    // 🔥 FILTRO ESTRICTO PARA JEFES / ENCARGADOS
     if (this.currentUser?.rol !== 'admin') {
       const misSucursales = this.currentUser?.sucursales || [];
       const misAreas = this.currentUser?.areas || [];
 
-      // Vemos si el jefe tiene permisos globales sin ser admin
-      const soyGeneralSucursales = misSucursales.includes('General (Acceso Total)') || misSucursales.length === 0;
-      const soyGeneralAreas = misAreas.includes('Todas las áreas') || misAreas.includes('Todas') || misAreas.length === 0;
+      // DEBUG: Esto aparecerá en tu consola para saber qué tiene Ivette
+      console.log("Revisando acceso de:", this.currentUser.nombre);
+      console.log("Sus Sucursales:", misSucursales);
+      console.log("Sus Áreas:", misAreas);
 
-      listaTrabajadores = listaTrabajadores.filter(emp => {
+      // Si no tiene nada asignado, por seguridad NO VE A NADIE
+      if (misSucursales.length === 0 && misAreas.length === 0) return [];
+
+      lista = lista.filter(emp => {
         const empSucursales = emp.sucursales || [emp.sucursal || ''];
         const empAreas = emp.areas || [];
 
-        // Comprueba si comparten al menos una sucursal
-        const comparteSucursal = soyGeneralSucursales || empSucursales.some((s: string) => misSucursales.includes(s));
-        // Comprueba si comparten al menos un área
-        const comparteArea = soyGeneralAreas || empAreas.some((a: string) => misAreas.includes(a));
+        // Checar si el jefe es global en algo
+        const esGlobalSuc = misSucursales.includes('General (Acceso Total)');
+        const esGlobalArea = misAreas.includes('Todas las áreas') || misAreas.includes('Todas');
 
-        // Solo se muestra si coinciden en Sucursal Y Área
-        return comparteSucursal && comparteArea;
+        // Solo se muestra si comparten Sucursal Y Área
+        const coincideSucursal = esGlobalSuc || empSucursales.some((s: string) => misSucursales.includes(s));
+        const coincideArea = esGlobalArea || empAreas.some((a: string) => misAreas.includes(a));
+
+        return coincideSucursal && coincideArea;
       });
     }
 
-    // Filtro de búsqueda por texto (el buscador de arriba)
-    const termino = this.terminoBusqueda.trim().toLowerCase();
-    if (termino) {
-      listaTrabajadores = listaTrabajadores.filter(u => 
-        u.nombre.toLowerCase().includes(termino) || 
-        u.cargo?.toLowerCase().includes(termino) ||
-        (u.sucursales && u.sucursales.join(' ').toLowerCase().includes(termino)) ||
-        (u.areas && u.areas.join(' ').toLowerCase().includes(termino))
+    // Buscador de texto
+    const t = this.terminoBusqueda.toLowerCase().trim();
+    if (t) {
+      lista = lista.filter(u => 
+        u.nombre.toLowerCase().includes(t) || 
+        (u.cargo && u.cargo.toLowerCase().includes(t)) ||
+        (u.sucursales && u.sucursales.join(' ').toLowerCase().includes(t)) ||
+        (u.areas && u.areas.join(' ').toLowerCase().includes(t))
       );
     }
 
-    return listaTrabajadores;
+    return lista;
   }
 
   getTrabajadoresAgrupados() {

@@ -42,15 +42,42 @@ export class PersonalComponent implements OnInit, OnDestroy {
   formSucursales: string[] = []; 
   formAreas: string[] = [];
 
-  sucursalesDisponibles = [
-    'Canindo', 'La Piedad Abastos', '8 Esquinas', 'Padre Hidalgo',
-    'Morelia Madero', 'Morelia Abastos', 'Yurécuaro', 'Zamora Centro',
-    'OFICINAS CORPORATIVAS', 'CAJA GENERAL', 'COMPRAS', 'CONTABILIDAD', 'FINANZAS', 'SISTEMAS', 'RH', 'MKT', 'MANTENIMIENTO'
-  ];
+  // 🔥 LISTA INTELIGENTE DE SUCURSALES 🔥
+  get sucursalesDisponibles() {
+    const todas = [
+      'Canindo', 'La Piedad Abastos', '8 Esquinas', 'Padre Hidalgo',
+      'Morelia Madero', 'Morelia Abastos', 'Yurécuaro', 'Zamora Centro',
+      'OFICINAS CORPORATIVAS', 'CAJA GENERAL', 'COMPRAS', 'CONTABILIDAD', 'FINANZAS', 'SISTEMAS', 'RH', 'MKT', 'MANTENIMIENTO'
+    ];
+    
+    const yo = this.liveUser;
+    if (!yo) return [];
+    
+    // Si soy Admin Total, puedo ver y asignar CUALQUIER sucursal/oficina
+    if (yo.rol === 'admin' || yo.sucursales?.includes('General (Acceso Total)')) {
+      return todas;
+    }
+    
+    // Si soy Jefe/Encargado, SOLO puedo ver y asignar las que yo mismo tengo
+    return todas.filter(suc => yo.sucursales?.includes(suc));
+  }
 
-  areasDisponibles = [
-    'Cajas', 'Pasillos', 'Precios', 'Caducidades', 'Bodega', 'Mostrador', 'Limpieza General'
-  ];
+  // 🔥 LISTA INTELIGENTE DE ÁREAS 🔥
+  get areasDisponibles() {
+    const todas = [
+      'Cajas', 'Pasillos', 'Precios', 'Caducidades', 'Bodega', 'Mostrador', 'Limpieza General'
+    ];
+    
+    const yo = this.liveUser;
+    if (!yo) return [];
+    
+    if (yo.rol === 'admin' || yo.areas?.includes('Todas las áreas') || yo.areas?.includes('Todas')) {
+      return todas;
+    }
+    
+    // Solo puedo asignar a mis empleados a las áreas que yo controlo
+    return todas.filter(area => yo.areas?.includes(area));
+  }
 
   private auth = inject(Auth);
   private firestore = inject(Firestore); 

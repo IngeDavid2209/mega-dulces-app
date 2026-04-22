@@ -23,10 +23,12 @@ export class AreasComponent implements OnInit, OnDestroy {
   terminoBusqueda = '';
   isModalOpen = false;
   
+  // 🔥 VARIABLES DE JORNADA ACTUALIZADAS 🔥
   formNombreArea = '';
   formDescripcionArea = '';
   formFechaArea = ''; 
-  formHoraArea = '';  
+  formHoraEntrada = ''; // NUEVA
+  formHoraSalida = '';  // NUEVA
   formTurnoArea = ''; 
   formAssignedUsers: any[] = [];
   
@@ -94,24 +96,26 @@ export class AreasComponent implements OnInit, OnDestroy {
     this.destructoresRadares.push(radarUsuarios);
   }
 
-  // 🔥 NUEVO MOTOR DE BLOQUEO DE TIEMPO 🔥
+  // 🔥 RELOJ BIOLÓGICO CONECTADO A LA HORA DE SALIDA 🔥
   estaAreaBloqueada(area: any): boolean {
     if (!area || !area.fechaAsignada) return false;
 
     const hoy = new Date();
-    let horaLimite = "23:59:59"; // Si no hay hora, bloquea al terminar el día
+    let horaLimite = "23:59:59"; // Por defecto, bloquea al terminar el día
 
-    if (area.horaAsignada) {
-      horaLimite = area.horaAsignada + ":00";
-    } else if (area.turnoAsignado) {
-      // Límites lógicos si solo elige turno
+    // REGLA 1: Si hay hora de SALIDA exacta, el área se cierra puntualmente a esa hora
+    if (area.horaSalida) {
+      horaLimite = area.horaSalida + ":00";
+    } 
+    // REGLA 2: Si no hay hora de salida, pero hay turno, calculamos un aproximado
+    else if (area.turnoAsignado) {
       if (area.turnoAsignado === 'Mañana') horaLimite = "12:00:00";
       else if (area.turnoAsignado === 'Tarde') horaLimite = "18:00:00";
       else if (area.turnoAsignado === 'Noche') horaLimite = "23:59:59";
     }
 
     const fechaHoraLimite = new Date(`${area.fechaAsignada}T${horaLimite}`);
-    return fechaHoraLimite < hoy; // Retorna TRUE si ya se pasó el tiempo
+    return fechaHoraLimite < hoy; 
   }
   
   verDetalleArea(area: any) {
@@ -156,7 +160,7 @@ export class AreasComponent implements OnInit, OnDestroy {
   
   abrirModalNuevaArea() {
     this.formNombreArea = ''; this.formDescripcionArea = ''; this.formAssignedUsers = [];
-    this.formFechaArea = ''; this.formHoraArea = ''; this.formTurnoArea = '';
+    this.formFechaArea = ''; this.formHoraEntrada = ''; this.formHoraSalida = ''; this.formTurnoArea = '';
     this.terminoBusquedaCreacion = ''; this.isModalOpen = true;
   }
   
@@ -188,11 +192,13 @@ export class AreasComponent implements OnInit, OnDestroy {
     
     const areaId = 'area_' + Date.now();
     try {
+      // 🔥 GUARDANDO LA JORNADA COMPLETA 🔥
       await setDoc(doc(this.firestore, 'areas_operativas', areaId), {
         nombre: nombreFormateado, 
         descripcion: this.formDescripcionArea.trim(), 
         fechaAsignada: this.formFechaArea,
-        horaAsignada: this.formHoraArea,
+        horaEntrada: this.formHoraEntrada,
+        horaSalida: this.formHoraSalida,
         turnoAsignado: this.formTurnoArea,
         fechaCreacion: new Date().toISOString()
       });
@@ -235,7 +241,6 @@ export class AreasComponent implements OnInit, OnDestroy {
   
   abrirAsignacion(area: any, event: Event) {
     event.stopPropagation();
-    // 🔥 BLOQUEO DE SEGURIDAD 🔥
     if (this.estaAreaBloqueada(area)) {
       Swal.fire('Área Cerrada', 'El turno de esta área ya finalizó. No puedes modificar su personal.', 'warning');
       return;
@@ -269,7 +274,6 @@ export class AreasComponent implements OnInit, OnDestroy {
   mostrarToast(mensaje: string) { Swal.fire({ toast: true, position: 'top-end', showConfirmButton: false, timer: 3000, icon: 'success', title: mensaje }); }
   
   abrirModalTareaParaArea() {
-    // 🔥 BLOQUEO DE SEGURIDAD 🔥
     if (this.estaAreaBloqueada(this.areaDetalle())) {
       Swal.fire('Área Cerrada', 'El turno ya finalizó. No puedes asignar tareas.', 'warning'); return;
     }
@@ -283,7 +287,6 @@ export class AreasComponent implements OnInit, OnDestroy {
   }
   
   abrirModalRutinaParaArea() {
-    // 🔥 BLOQUEO DE SEGURIDAD 🔥
     if (this.estaAreaBloqueada(this.areaDetalle())) {
       Swal.fire('Área Cerrada', 'El turno ya finalizó. No puedes asignar rutinas.', 'warning'); return;
     }
@@ -337,7 +340,7 @@ export class AreasComponent implements OnInit, OnDestroy {
       };
       await setDoc(doc(this.firestore, 'checklists', uniqueId.toString()), checklistTareas);
     }
-    this.mostrarToast('  ✅   ¡ Tareas creadas con éxito!');
+    this.mostrarToast('✅ ¡Tareas creadadas con éxito!');
     this.cerrarModalTarea();
   }
   
@@ -415,7 +418,7 @@ export class AreasComponent implements OnInit, OnDestroy {
         await setDoc(doc(this.firestore, 'moldes_checklists', moldeId), nuevoMolde);
       }
     }
-    this.mostrarToast('  🔄  ¡Bloque guardado en la Bóveda!');
+    this.mostrarToast('🔄 ¡Bloque guardado en la Bóveda!');
     this.cerrarModalRutina();
   }
 }

@@ -101,9 +101,12 @@
 </div>
 <div class="user-role">{{ area.descripcion || 'Sin descripción' }}</div>
 
-<div style="font-size: 12px; color: #2563EB; margin-top: 8px; font-weight: 600; display: flex; align-items: center; gap: 4px;" *ngIf="area.fechaAsignada || area.horaAsignada">
+<div style="font-size: 12px; color: #2563EB; margin-top: 8px; font-weight: 600; display: flex; align-items: center; gap: 4px;" *ngIf="area.fechaAsignada || area.horaEntrada || area.horaSalida">
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-  {{ area.fechaAsignada || 'Sin fecha' }} <span *ngIf="area.horaAsignada"> a las {{ area.horaAsignada }} hrs</span>
+  {{ area.fechaAsignada || 'Fecha pendiente' }} 
+  <span *ngIf="area.horaEntrada && area.horaSalida"> | {{ area.horaEntrada }} a {{ area.horaSalida }} hrs</span>
+  <span *ngIf="area.horaEntrada && !area.horaSalida"> | Desde las {{ area.horaEntrada }} hrs</span>
+  <span *ngIf="!area.horaEntrada && area.horaSalida"> | Hasta las {{ area.horaSalida }} hrs</span>
 </div>
 <div style="font-size: 12px; color: #059669; margin-top: 4px; font-weight: 600; display: flex; align-items: center; gap: 4px;" *ngIf="area.turnoAsignado">
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
@@ -133,9 +136,12 @@
 </h2>
 <p style="margin: 0; color: #64748B;">{{ areaDetalle().descripcion || 'Sin descripción asignada a este departamento.' }}</p>
 
-<div style="margin-top: 10px; font-size: 14px; color: #2563EB; font-weight: 600; display: flex; align-items: center; gap: 6px;" *ngIf="areaDetalle().fechaAsignada || areaDetalle().horaAsignada">
+<div style="margin-top: 10px; font-size: 14px; color: #2563EB; font-weight: 600; display: flex; align-items: center; gap: 6px;" *ngIf="areaDetalle().fechaAsignada || areaDetalle().horaEntrada || areaDetalle().horaSalida">
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-  Programado para: {{ areaDetalle().fechaAsignada || 'Fecha pendiente' }} <span *ngIf="areaDetalle().horaAsignada"> | {{ areaDetalle().horaAsignada }} hrs</span>
+  Programado: {{ areaDetalle().fechaAsignada || 'Fecha pendiente' }}
+  <span *ngIf="areaDetalle().horaEntrada && areaDetalle().horaSalida"> | {{ areaDetalle().horaEntrada }} a {{ areaDetalle().horaSalida }} hrs</span>
+  <span *ngIf="areaDetalle().horaEntrada && !areaDetalle().horaSalida"> | Desde las {{ areaDetalle().horaEntrada }} hrs</span>
+  <span *ngIf="!areaDetalle().horaEntrada && areaDetalle().horaSalida"> | Hasta las {{ areaDetalle().horaSalida }} hrs</span>
 </div>
 <div style="margin-top: 6px; font-size: 14px; color: #059669; font-weight: 600; display: flex; align-items: center; gap: 6px;" *ngIf="areaDetalle().turnoAsignado">
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
@@ -178,7 +184,7 @@ Esta área aún no tiene personal asignado.
 </div>
 
 <div class="modal-overlay" *ngIf="isModalOpen">
-<div class="modal" style="max-width: 500px;">
+<div class="modal" style="max-width: 550px;">
 <div class="modal-header">
 <div class="modal-title">Crear Nueva Área</div>
 <button class="modal-close" (click)="cerrarModal()">X</button>
@@ -187,18 +193,22 @@ Esta área aún no tiene personal asignado.
 <div class="form-group form-full"><label class="form-label">Nombre del Área</label><input class="form-input" [(ngModel)]="formNombreArea" placeholder="Ej: Cajas"></div>
 <div class="form-group form-full" style="margin-top: 10px;"><label class="form-label">Descripción</label><textarea class="form-input" [(ngModel)]="formDescripcionArea" rows="2" placeholder="Ej: Encargados de cobrar..."></textarea></div>
 
-<div style="display: flex; gap: 15px; margin-top: 15px; flex-wrap: wrap;">
+<div style="display: flex; gap: 10px; margin-top: 15px; flex-wrap: wrap;">
   <div class="form-group" style="flex: 1; min-width: 120px;">
-    <label class="form-label">Fecha Programada</label>
+    <label class="form-label">Fecha Prog.</label>
     <input type="date" class="form-input" [(ngModel)]="formFechaArea">
   </div>
-  <div class="form-group" style="flex: 1; min-width: 120px;">
-    <label class="form-label">Horario</label>
-    <input type="time" class="form-input" [(ngModel)]="formHoraArea">
+  <div class="form-group" style="flex: 1; min-width: 90px;">
+    <label class="form-label">Entrada</label>
+    <input type="time" class="form-input" [(ngModel)]="formHoraEntrada">
   </div>
-  <div class="form-group" style="flex: 1; min-width: 120px;">
+  <div class="form-group" style="flex: 1; min-width: 90px;">
+    <label class="form-label">Salida</label>
+    <input type="time" class="form-input" [(ngModel)]="formHoraSalida">
+  </div>
+  <div class="form-group" style="flex: 1; min-width: 110px;">
     <label class="form-label">Turno</label>
-    <select class="form-input select-input" [(ngModel)]="formTurnoArea" style="width: 100%; height: 42px;">
+    <select class="form-input select-input" [(ngModel)]="formTurnoArea" style="height: 42px; width: 100%;">
       <option value="">Sin definir</option>
       <option value="Mañana">Mañana</option>
       <option value="Tarde">Tarde</option>

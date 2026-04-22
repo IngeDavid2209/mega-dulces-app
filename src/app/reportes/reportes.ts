@@ -468,8 +468,7 @@ export class ReportesComponent implements OnInit, OnDestroy {
 
       const totalProgresos = this.resultados().reduce((sum, r) => sum + this.getProgreso(r), 0);
       const promedio = this.resultados().length > 0 ? Math.round(totalProgresos / this.resultados().length) : 0;
-
-      autoTable(doc, {
+autoTable(doc, {
         startY: 35,
         head: [['Resumen Ejecutivo', '']],
         body: [
@@ -479,9 +478,9 @@ export class ReportesComponent implements OnInit, OnDestroy {
           ['Cumplimiento general', `${promedio}% de efectividad`]
         ],
         theme: 'grid',
-        headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold', fontSize: 12 },
-        bodyStyles: { textColor: [51, 65, 85], fontSize: 10, cellPadding: 5 },
-        columnStyles: { 0: { fontStyle: 'bold', cellWidth: 60 } }
+        headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold', fontSize: 14, cellPadding: 8 },
+        bodyStyles: { textColor: [51, 65, 85], fontSize: 12, cellPadding: 8 }, // cellPadding: 8 las hace más altas
+        columnStyles: { 0: { fontStyle: 'bold', cellWidth: 80 } } // Hacemos la primera columna un poco más ancha
       });
 
       // ================= 2. RECORRIDO DE CHECKLISTS =================

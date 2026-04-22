@@ -110,16 +110,23 @@ export class AreasComponent implements OnInit, OnDestroy {
   }
 
   // 🔥 FILTRO BLINDADO PARA JEFES 🔥
+// 🔥 FILTRO BLINDADO CORREGIDO 🔥
   getAreasFiltradas() {
     const yo = this.liveUser;
     let lista = this.areas();
 
     if (yo?.rol !== 'admin') {
-      const misAreasPermitidas = yo?.areas || [];
-      lista = lista.filter(a => misAreasPermitidas.includes(a.nombre));
+      const misAreas = yo?.areas || [];
+      // Checar si el usuario tiene el comodín de "Todas las áreas"
+      const esGlobalArea = misAreas.includes('Todas las áreas') || misAreas.includes('Todas');
+      
+      // Si no es global, entonces filtramos estrictamente
+      if (!esGlobalArea) {
+        lista = lista.filter(a => misAreas.includes(a.nombre));
+      }
     }
 
-    const term = this.terminoBusqueda.toLowerCase();
+    const term = this.terminoBusqueda.toLowerCase().trim();
     if (term) {
       lista = lista.filter(a => a.nombre.toLowerCase().includes(term));
     }
@@ -153,14 +160,15 @@ export class AreasComponent implements OnInit, OnDestroy {
     return this.formAssignedUsers.some(u => u.idFirestore === usuario.idFirestore);
   }
   
-  async guardarArea() {
+ async guardarArea() {
     if (!this.formNombreArea.trim()) { Swal.fire('Falta el nombre', 'Debes asignarle un nombre al área.', 'warning'); return; }
     const nombreFormateado = this.formNombreArea.trim();
     const existe = this.areas().some(a => a.nombre.toLowerCase() === nombreFormateado.toLowerCase());
     if (existe) { Swal.fire('Área Duplicada', 'Ya existe un área con ese nombre.', 'error'); return; }
+    
     const areaId = 'area_' + Date.now();
     try {
-      // 🔥 GUARDADO CON FECHA Y HORA PROGRAMADA 🔥
+      // 1. GUARDADO CON FECHA Y HORA PROGRAMADA
       await setDoc(doc(this.firestore, 'areas_operativas', areaId), {
         nombre: nombreFormateado, 
         descripcion: this.formDescripcionArea.trim(), 
@@ -168,6 +176,8 @@ export class AreasComponent implements OnInit, OnDestroy {
         horaAsignada: this.formHoraArea,
         fechaCreacion: new Date().toISOString()
       });
+
+      // 2. ASIGNACIÓN A LOS EMPLEADOS SELECCIONADOS
       for (const u of this.formAssignedUsers) {
         let nuevasAreas = u.areas ? [...u.areas] : [];
         if (!nuevasAreas.includes(nombreFormateado)) {
@@ -175,9 +185,28 @@ export class AreasComponent implements OnInit, OnDestroy {
           await setDoc(doc(this.firestore, 'usuarios', u.idFirestore), { areas: nuevasAreas }, { merge: true });
         }
       }
+
+      // 🔥 3. AUTO-ASIGNACIÓN DE SEGURIDAD (LA SOLUCIÓN) 🔥
+      // Si tú (el creador) no eres admin total, te la auto-asignamos para que la puedas ver
+      const yo = this.liveUser;
+      if (yo && yo.rol !== 'admin') {
+        const misAreas = yo.areas || [];
+        const esGlobalArea = misAreas.includes('Todas las áreas') || misAreas.includes('Todas');
+        
+        if (!esGlobalArea && !misAreas.includes(nombreFormateado)) {
+          misAreas.push(nombreFormateado);
+          const miId = yo.idFirestore || yo.uid;
+          if (miId) {
+            await setDoc(doc(this.firestore, 'usuarios', miId), { areas: misAreas }, { merge: true });
+          }
+        }
+      }
+
       this.cerrarModal();
-      Swal.fire({ toast: true, position: 'top-end', showConfirmButton: false, timer: 3000, icon: 'success', title: 'Área creada y personal asignado' });
-    } catch (error) { Swal.fire('Error', 'Hubo un problema al crear el área.', 'error'); }
+      Swal.fire({ toast: true, position: 'top-end', showConfirmButton: false, timer: 3000, icon: 'success', title: 'Área programada con éxito' });
+    } catch (error) { 
+      Swal.fire('Error', 'Hubo un problema al crear el área.', 'error'); 
+    }
   }
   
   async eliminarArea(area: any, event: Event) {

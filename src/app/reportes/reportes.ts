@@ -468,7 +468,8 @@ export class ReportesComponent implements OnInit, OnDestroy {
 
       const totalProgresos = this.resultados().reduce((sum, r) => sum + this.getProgreso(r), 0);
       const promedio = this.resultados().length > 0 ? Math.round(totalProgresos / this.resultados().length) : 0;
-autoTable(doc, {
+
+      autoTable(doc, {
         startY: 35,
         head: [['Resumen Ejecutivo', '']],
         body: [

@@ -1,11 +1,12 @@
 import { ApplicationConfig, provideZoneChangeDetection, isDevMode } from '@angular/core';
 import { provideRouter } from '@angular/router';
 import { routes } from './app.routes';
-import { initializeApp, provideFirebaseApp } from '@angular/fire/app';
+
+// 🔥 IMPORTACIONES DE FIREBASE ACTUALIZADAS 🔥
+import { initializeApp, provideFirebaseApp, getApp } from '@angular/fire/app';
 import { getAuth, provideAuth } from '@angular/fire/auth';
-import { getFirestore, provideFirestore } from '@angular/fire/firestore';
+import { getFirestore, provideFirestore, initializeFirestore, persistentLocalCache } from '@angular/fire/firestore';
 import { getStorage, provideStorage } from '@angular/fire/storage';
-// 🔥 IMPORTAMOS EL MÓDULO DE MENSAJERÍA (NOTIFICACIONES) 🔥
 import { getMessaging, provideMessaging } from '@angular/fire/messaging';
 import { provideServiceWorker } from '@angular/service-worker';
 
@@ -22,13 +23,28 @@ export const appConfig: ApplicationConfig = {
   providers: [
     provideFirebaseApp(() => initializeApp(firebaseConfig)),
     provideAuth(() => getAuth()),
-    provideFirestore(() => getFirestore()),
+    
+    // ====================================================================
+    // 🔥 BASE DE DATOS BLINDADA (MODO OFFLINE ACTIVADO) 🔥
+    // ====================================================================
+    provideFirestore(() => {
+      const app = getApp();
+      // Inicializamos Firestore con la Bóveda Local Persistente encendida
+      return initializeFirestore(app, {
+        localCache: persistentLocalCache() 
+      });
+    }),
+    // ====================================================================
+
     provideStorage(() => getStorage()),
-    provideMessaging(() => getMessaging()), // 🔥 ACTIVAMOS LAS NOTIFICACIONES AQUÍ 🔥
+    provideMessaging(() => getMessaging()), // Notificaciones activadas
+    
     provideZoneChangeDetection({ eventCoalescing: true }),
-    provideRouter(routes), provideServiceWorker('ngsw-worker.js', {
-            enabled: !isDevMode(),
-            registrationStrategy: 'registerWhenStable:30000'
-          }),
+    provideRouter(routes), 
+    
+    provideServiceWorker('ngsw-worker.js', {
+      enabled: !isDevMode(),
+      registrationStrategy: 'registerWhenStable:30000'
+    }),
   ]
 };

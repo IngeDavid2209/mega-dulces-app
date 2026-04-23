@@ -43,8 +43,9 @@ export class CalendarioComponent implements OnInit, OnDestroy {
   ngOnInit() {
     const sesion = localStorage.getItem('md_sesion_actual');
     if (sesion) { this.currentUser = JSON.parse(sesion); }
-    if (this.currentUser?.rol !== 'admin' && !this.currentUser?.puedeVerEstadisticas) {
-      this.router.navigate(['/home']); return;
+    if (this.currentUser?.rol !== 'admin' && !this.currentUser?.puedeVerCalendario) {
+      this.router.navigate(['/home']);
+      return;
     }
     this.conectarDatos();
     this.actualizarMes(0);

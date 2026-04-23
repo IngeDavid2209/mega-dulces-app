@@ -1,496 +1,555 @@
 <style>
-@keyframes pulse-green {
-  0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
-  70% { box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
-}
-.pulse-online { animation: pulse-green 2s infinite; }
+  @keyframes pulse-green {
+    0% {
+      box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+    }
+
+    70% {
+      box-shadow: 0 0 0 8px rgba(16, 185, 129, 0);
+    }
+
+    100% {
+      box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+    }
+  }
+
+  .pulse-online {
+    animation: pulse-green 2s infinite;
+  }
 </style>
 
 <div class="app-layout">
-<header class="header">
-<div class="header-left">
-<button class="btn-menu-mobile" (click)="toggleMenu()">
-<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-<line x1="3" y1="12" x2="21" y2="12"></line>
-<line x1="3" y1="6" x2="21" y2="6"></line>
-<line x1="3" y1="18" x2="21" y2="18"></line>
-</svg>
-</button>
-<div class="header-logo-wrap"
-style="background: transparent !important; box-shadow: none; width: auto; padding: 0 4px;">
-<img src="https://static.wixstatic.com/media/fd397e_0fd82a1ecec84a118ceeb603b493f25a~mv2.png" alt="Mega Dulces"
-style="height: 36px; width: auto; object-fit: contain;">
-</div>
-<div class="header-brand">Mega Dulces<small>Panel Enterprise</small></div>
-</div>
-<div class="header-right"></div>
-</header>
-<div class="main-wrapper">
-<div class="mobile-overlay" *ngIf="isMenuOpen" (click)="toggleMenu()"></div>
-<aside class="sidebar" [class.mobile-open]="isMenuOpen" translate="no">
-<div style="display: flex; flex-direction: column; height: 100%;">
-<div class="sidebar-header">
-<img src="https://static.wixstatic.com/media/fd397e_0fd82a1ecec84a118ceeb603b493f25a~mv2.png" alt="Logo" style="width:32px; height:32px; border-radius:6px; object-fit:contain;">
-<span class="sidebar-brand">Mega Dulces</span>
-</div>
-<nav class="sidebar-nav" style="flex: 1; padding: 16px 12px;">
-<a class="nav-item" routerLink="/home" routerLinkActive="active" (click)="isMenuOpen = false">
-<svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
-<rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
-</svg> Dashboard
-</a>
-<a class="nav-item" routerLink="/checklist" routerLinkActive="active" (click)="isMenuOpen = false">
-<svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-<polyline points="9 11 12 14 22 4"/>
-<path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
-</svg> Checklist
-</a>
-<a class="nav-item" routerLink="/checkstore" routerLinkActive="active" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeVerCheckstore" (click)="isMenuOpen = false">
-<svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-<polyline points="9 22 9 12 15 12 15 22"/>
-</svg> Sucursales
-</a>
-<a class="nav-item" routerLink="/estadisticas" routerLinkActive="active" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeVerEstadisticas" (click)="isMenuOpen = false">
-<svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-<line x1="18" y1="20" x2="18" y2="10"/>
-<line x1="12" y1="20" x2="12" y2="4"/>
-<line x1="6" y1="20" x2="6" y2="14"/>
-</svg> Estadísticas
-</a>
+  <header class="header">
+    <div class="header-left">
+      <button class="btn-menu-mobile" (click)="toggleMenu()">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="3" y1="12" x2="21" y2="12"></line>
+          <line x1="3" y1="6" x2="21" y2="6"></line>
+          <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+      </button>
+      <div class="header-logo-wrap"
+        style="background: transparent !important; box-shadow: none; width: auto; padding: 0 4px;">
+        <img src="https://static.wixstatic.com/media/fd397e_0fd82a1ecec84a118ceeb603b493f25a~mv2.png" alt="Mega Dulces"
+          style="height: 36px; width: auto; object-fit: contain;">
+      </div>
+      <div class="header-brand">Mega Dulces<small>Panel Enterprise</small></div>
+    </div>
+    <div class="header-right"></div>
+  </header>
+  <div class="main-wrapper">
+    <div class="mobile-overlay" *ngIf="isMenuOpen" (click)="toggleMenu()"></div>
+    <aside class="sidebar" [class.mobile-open]="isMenuOpen" translate="no">
+      <div style="display: flex; flex-direction: column; height: 100%;">
+        <div class="sidebar-header">
+          <img src="https://static.wixstatic.com/media/fd397e_0fd82a1ecec84a118ceeb603b493f25a~mv2.png" alt="Logo"
+            style="width:32px; height:32px; border-radius:6px; object-fit:contain;">
+          <span class="sidebar-brand">Mega Dulces</span>
+        </div>
+        <nav class="sidebar-nav" style="flex: 1; padding: 16px 12px;">
 
-<a class="nav-item" routerLink="/calendario" routerLinkActive="active" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeVerCalendario" (click)="isMenuOpen = false">
-<svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg> Calendario
-</a>
+          <a class="nav-item" routerLink="/home" routerLinkActive="active" (click)="isMenuOpen = false">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="7" height="7" />
+              <rect x="14" y="3" width="7" height="7" />
+              <rect x="3" y="14" width="7" height="7" />
+              <rect x="14" y="14" width="7" height="7" />
+            </svg>
+            Dashboard
+          </a>
 
-<a class="nav-item" routerLink="/reportes" routerLinkActive="active" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeVerHistorial" (click)="isMenuOpen = false">
-<svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-<polyline points="14 2 14 8 20 8"/>
-<line x1="16" y1="13" x2="8" y2="13"/>
-<line x1="16" y1="17" x2="8" y2="17"/>
-</svg> Auditoría
-</a>
-<a class="nav-item active" routerLink="/personal" routerLinkActive="active" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeAdministrarPersonal" (click)="isMenuOpen = false">
-<svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-<circle cx="9" cy="7" r="4"/>
-<path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-<path d="M16 3.13a4 4 0 010 7.75"/>
-</svg> Usuarios
-</a>
-<a class="nav-item" routerLink="/areas" routerLinkActive="active" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeAdministrarAreas" (click)="isMenuOpen = false">
-<svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg> Áreas de Trabajo
-</a>
-</nav>
-<div class="bottom-nav" style="margin-top: auto; padding: 0 12px 20px 12px;">
-<button class="logout-btn" routerLink="/login">
-<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-<path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
-<polyline points="16 17 21 12 16 7"/>
-<line x1="21" y1="12" x2="9" y2="12"/>
-</svg> Cerrar Sesión
-</button>
-<div class="user-row">
-<div class="user-avatar">{{ (currentUser?.nombre || 'A').charAt(0) | uppercase }}</div>
-<div class="user-info">
-<span class="user-name">{{ currentUser?.nombre || 'Administrador' }}</span>
-<span class="user-role">{{ currentUser?.rol === 'admin' ? 'Gerente' : 'Colaborador' }}</span>
-</div>
-</div>
-</div>
-</div>
-</aside>
-<div class="content">
-<div class="section-header">
-<div>
-<div class="section-title">Directorio y Monitor en Vivo</div>
-<div class="section-sub">Gestión de accesos, conexión en tiempo real y permisos corporativos</div>
-</div>
-<div class="action-bar-container">
-<div class="search-wrapper">
-<svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-<circle cx="11" cy="11" r="8"></circle>
-<line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-</svg>
-<input type="text" class="form-input search-input" [(ngModel)]="terminoBusqueda"
-placeholder="Buscar por nombre, cargo o sucursal...">
-</div>
-<div class="header-buttons">
-<button class="btn-secondary" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeAdministrarPersonal"
-(click)="descargarExcel()">
-<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-style="margin-right: 6px;">
-<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-<polyline points="7 10 12 15 17 10"></polyline>
-<line x1="12" y1="15" x2="12" y2="3"></line>
-</svg> Exportar
-</button>
-<button class="btn-primary" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeAdministrarPersonal"
-(click)="abrirModal()">
-<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-style="margin-right: 6px;">
-<line x1="12" y1="5" x2="12" y2="19"></line>
-<line x1="5" y1="12" x2="19" y2="12"></line>
-</svg> Nuevo Usuario
-</button>
-</div>
-</div>
-</div>
-<h2 class="category-title" *ngIf="getAdmins().length > 0">
-<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-style="margin-right: 8px; vertical-align: bottom;">
-<path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
-</svg> Administradores del Sistema
-</h2>
-<div class="user-grid" *ngIf="getAdmins().length > 0">
-<div class="user-card admin-card" *ngFor="let user of getAdmins()" style="width: 100%; box-sizing: border-box;">
-<div class="user-card-header"
-style="display: flex; flex-wrap: wrap; gap: 15px; align-items: center; justify-content: space-between;">
-<div style="display: flex; align-items: center; gap: 12px; flex: 1 1 200px; min-width: 0;">
-<div class="user-avatar admin-avatar" style="flex-shrink: 0;">{{ user.nombre.charAt(0) | uppercase }}
-</div>
-<div class="user-info" style="flex: 1; min-width: 0;">
-<div class="user-name"
-style="word-break: normal !important; white-space: normal !important; line-height: 1.3; font-size: 16px; font-weight: 600; color: var(--text-main); margin-bottom: 4px;">
-{{ user.nombre }}</div>
+          <a class="nav-item" routerLink="/checklist" routerLinkActive="active" (click)="isMenuOpen = false">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="9 11 12 14 22 4" />
+              <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />
+            </svg>
+            Checklist
+          </a>
 
-<div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-<div class="user-badge badge-admin" style="display: inline-flex;"><svg width="12" height="12"
-viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px;">
-<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-</svg> {{ user.cargo || 'Administrador' }}
-</div>
-<div style="display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 20px;"
-[style.background]="isOnline(user.ultimoLatido) ? '#ECFDF5' : '#F1F5F9'" [style.color]="isOnline(user.ultimoLatido) ? '#10B981' : '#64748B'">
-<span style="width: 8px; height: 8px; border-radius: 50%;" [style.background]="isOnline(user.ultimoLatido) ? '#10B981' : '#94A3B8'" [class.pulse-online]="isOnline(user.ultimoLatido)"></span>
-{{ isOnline(user.ultimoLatido) ? 'En línea' : getLastSeenText(user.ultimoLatido) }}
-</div>
-</div>
-</div>
-</div>
-<div class="action-buttons" style="display: flex; gap: 8px; flex-wrap: wrap;"
-*ngIf="currentUser?.rol === 'admin' || currentUser?.puedeAdministrarPersonal">
-<button class="btn-action" (click)="verHistorial(user.nombre)" title="Ver Historial"><svg
-viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none">
-<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-<polyline points="14 2 14 8 20 8"></polyline>
-<line x1="16" y1="13" x2="8" y2="13"></line>
-<line x1="16" y1="17" x2="8" y2="17"></line>
-<polyline points="10 9 9 9 8 9"></polyline>
-</svg></button>
-<button class="btn-action" (click)="editarUsuario(user)" title="Editar"><svg viewBox="0 0 24 24"
-width="16" height="16" stroke="currentColor" stroke-width="2" fill="none">
-<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-<path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-</svg></button>
-<button class="btn-action btn-delete" *ngIf="user.usuario !== currentUser?.usuario"
-(click)="eliminarUsuario(user)" title="Eliminar"><svg viewBox="0 0 24 24" width="16" height="16"
-stroke="currentColor" stroke-width="2" fill="none">
-<polyline points="3 6 5 6 21 6"></polyline>
-<path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-</svg></button>
-</div>
-</div>
-<div class="user-credentials">
-<div class="cred-row"><span class="cred-label">Nivel:</span> <span class="cred-val text-primary">Acceso Total</span></div>
-<div class="cred-row"><span class="cred-label">Usuario:</span> <span class="cred-val">{{ user.usuario }}</span></div>
-<div class="cred-row">
-<span class="cred-label">Password:</span>
-<span class="cred-val">{{ currentUser?.rol === 'admin' ? user.password : '••••••••' }}</span>
-</div>
-</div>
-</div>
-</div>
-<div *ngIf="getTrabajadores().length > 0">
-<div *ngFor="let grupo of getTrabajadoresAgrupados()" style="margin-top: 40px;">
-<div class="category-header">
-<h2 class="category-title" style="border: none; margin: 0; padding: 0; display: flex; align-items: center;">
-<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-style="margin-right: 8px;">
-<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-<circle cx="12" cy="10" r="3"></circle>
-</svg> {{ grupo.nombre }}
-</h2>
-<div class="category-count">{{ grupo.usuarios.length }} empleados</div>
-</div>
-<div class="user-grid">
-<div class="user-card" *ngFor="let user of grupo.usuarios" style="width: 100%; box-sizing: border-box;">
-<div class="user-card-header"
-style="display: flex; flex-wrap: wrap; gap: 15px; align-items: center; justify-content: space-between;">
-<div style="display: flex; align-items: center; gap: 12px; flex: 1 1 200px; min-width: 0;">
-<div class="user-avatar" style="flex-shrink: 0;">{{ user.nombre.charAt(0) | uppercase }}</div>
-<div class="user-info" style="flex: 1; min-width: 0;">
-<div class="user-name"
-style="word-break: normal !important; white-space: normal !important; line-height: 1.3; font-size: 16px; font-weight: 600; color: var(--text-main); margin-bottom: 4px;">
-{{ user.nombre }}</div>
+          <a class="nav-item" routerLink="/checkstore" routerLinkActive="active"
+            *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeVerCheckstore" (click)="isMenuOpen = false">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+              <polyline points="9 22 9 12 15 12 15 22" />
+            </svg>
+            Sucursales
+          </a>
 
-<div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-<div class="user-badge" style="display: inline-flex;"><svg width="12" height="12"
-viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-style="margin-right: 4px;">
-<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-<circle cx="12" cy="7" r="4"></circle>
-</svg> {{ user.cargo || 'Colaborador' }}
-</div>
-<div style="display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 20px;"
-[style.background]="isOnline(user.ultimoLatido) ? '#ECFDF5' : '#F1F5F9'" [style.color]="isOnline(user.ultimoLatido) ? '#10B981' : '#64748B'">
-<span style="width: 8px; height: 8px; border-radius: 50%;" [style.background]="isOnline(user.ultimoLatido) ? '#10B981' : '#94A3B8'" [class.pulse-online]="isOnline(user.ultimoLatido)"></span>
-{{ isOnline(user.ultimoLatido) ? 'En línea' : getLastSeenText(user.ultimoLatido) }}
-</div>
-</div>
-</div>
-</div>
-<div class="action-buttons" style="display: flex; gap: 8px; flex-wrap: wrap;">
-<button class="btn-action" (click)="verHistorial(user.nombre)" title="Ver Historial"><svg
-viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none">
-<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-<polyline points="14 2 14 8 20 8"></polyline>
-<line x1="16" y1="13" x2="8" y2="13"></line>
-<line x1="16" y1="17" x2="8" y2="17"></line>
-<polyline points="10 9 9 9 8 9"></polyline>
-</svg></button>
-<button class="btn-action"
-*ngIf="currentUser?.rol === 'admin' || currentUser?.puedeAdministrarPersonal"
-(click)="editarUsuario(user)" title="Editar"><svg viewBox="0 0 24 24" width="16" height="16"
-stroke="currentColor" stroke-width="2" fill="none">
-<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-<path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-</svg></button>
-<button class="btn-action btn-delete"
-*ngIf="currentUser?.rol === 'admin' || currentUser?.puedeAdministrarPersonal"
-(click)="eliminarUsuario(user)" title="Eliminar"><svg viewBox="0 0 24 24" width="16" height="16"
-stroke="currentColor" stroke-width="2" fill="none">
-<polyline points="3 6 5 6 21 6"></polyline>
-<path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-</svg></button>
-</div>
-</div>
-<div class="user-credentials">
-<div class="cred-row"><span class="cred-label">Zonas:</span> <span class="cred-val">{{ user.sucursales ?
-user.sucursales.join(', ') : (user.sucursal || 'General') }}</span></div>
-<div class="cred-row"><span class="cred-label">Áreas:</span> <span class="cred-val">{{ user.areas ?
-user.areas.join(', ') : 'Todas' }}</span></div>
-<div class="user-permissions-list"
-*ngIf="user.puedeCrearChecklists || user.puedeCrearRutinas || user.puedeCrearTareasUnicas || user.puedeVerCheckstore || user.puedeVerEstadisticas || user.puedeVerHistorial || user.puedeAdministrarPersonal || user.puedeVerCalendario">
-<span class="perm-tag" *ngIf="user.puedeCrearChecklists">Gestión Checklists</span>
-<span class="perm-tag" *ngIf="user.puedeCrearRutinas">Gestión Rutinas</span>
-<span class="perm-tag" *ngIf="user.puedeCrearTareasUnicas">Tareas Únicas</span>
-<span class="perm-tag" *ngIf="user.puedeVerCheckstore">Acceso Checkstore</span>
-<span class="perm-tag" *ngIf="user.puedeVerEstadisticas">Reportes</span>
-<span class="perm-tag" *ngIf="user.puedeVerCalendario">Calendario</span>
-<span class="perm-tag" *ngIf="user.puedeVerHistorial">Auditoría</span>
-<span class="perm-tag tag-admin" *ngIf="user.puedeAdministrarPersonal">Admin. Usuarios</span>
-</div>
-<div class="cred-row mt-8"><span class="cred-label">Usuario:</span> <span class="cred-val">{{
-user.usuario }}</span></div>
-<div class="cred-row">
-<span class="cred-label">Password:</span>
-<span class="cred-val">{{ currentUser?.rol === 'admin' ? user.password : '••••••••' }}</span>
-</div>
-</div>
-</div>
-</div>
-</div>
-</div>
-<div class="empty-state-text" *ngIf="getTrabajadores().length === 0 && getAdmins().length === 0">No se encontraron
-usuarios que coincidan con la búsqueda.</div>
+          <a class="nav-item" routerLink="/estadisticas" routerLinkActive="active"
+            *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeVerEstadisticas" (click)="isMenuOpen = false">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="20" x2="18" y2="10" />
+              <line x1="12" y1="20" x2="12" y2="4" />
+              <line x1="6" y1="20" x2="6" y2="14" />
+            </svg>
+            Estadísticas
+          </a>
 
-<div class="modal-overlay" *ngIf="isModalOpen">
-<div class="modal">
-<div class="modal-header">
-<div class="modal-title">{{ usuarioEnEdicion ? 'Modificar Usuario' : 'Registrar Nuevo Usuario' }}</div>
-<button class="modal-close" (click)="cerrarModal()"><svg width="24" height="24" viewBox="0 0 24 24"
-fill="none" stroke="currentColor" stroke-width="2">
-<line x1="18" y1="6" x2="6" y2="18"></line>
-<line x1="6" y1="6" x2="18" y2="18"></line>
-</svg></button>
-</div>
-<div class="modal-body">
-<div class="form-group form-full">
-<label class="form-label">Nombre Completo</label>
-<input class="form-input" type="text" [(ngModel)]="formNombre" placeholder="Ej: Ivette Cruz Oceguera">
-</div>
-<div class="form-row">
-<div class="form-group">
-<label class="form-label">Cargo / Puesto</label>
-<select class="form-input select-input" [(ngModel)]="formCargo">
-<optgroup label="ZONA COMERCIAL">
-<option value="Trabajador General">Trabajador General</option>
-<option value="Jefe de zona">Jefe de zona</option>
-<option value="Encargado(a) de tienda">Encargado(a) de tienda</option>
-<option value="Auxiliar de encargado">Auxiliar de encargado</option>
-<option value="Encargada de operaciones y almacén">Encargada de operaciones y almacén</option>
-<option value="Auxiliar de cajas">Auxiliar de cajas</option>
-</optgroup>
-<optgroup label="ZONA ADMINISTRATIVA">
-<option value="Director General">Director General</option>
-<option value="Administrador Megadulces">Administrador Megadulces</option>
-<option value="Jefe Regional">Jefe Regional</option>
-<option value="Auxiliar Administrativo">Auxiliar Administrativo</option>
-<option value="Caja General">Caja General</option>
-<option value="Auxiliar Caja General">Auxiliar Caja General</option>
-<option value="Jefatura Finanzas">Jefatura Finanzas</option>
-<option value="Auxiliar Finanzas">Auxiliar Finanzas</option>
-<option value="Coordinador Prevención">Coordinador Prevención</option>
-<option value="Auxiliar Prevención">Auxiliar Prevención</option>
-<option value="Jefatura Tesorería">Jefatura Tesorería</option>
-<option value="Encargado de Activos e Insumos">Encargado de Activos e Insumos</option>
-<option value="Jefatura RRHH">Jefatura RRHH</option>
-<option value="Auxiliar RRHH">Auxiliar RRHH</option>
-<option value="Sistemas">Sistemas</option>
-<option value="Jefatura Sistemas">Jefatura Sistemas</option>
-<option value="Coordinador MKT">Coordinador MKT</option>
-<option value="Jefatura MKT">Jefatura MKT</option>
-<option value="Auxiliar de mercadotecnia">Auxiliar de mercadotecnia</option>
-<option value="Diseñador">Diseñador</option>
-<option value="Jefatura Compras">Jefatura Compras</option>
-<option value="Auxiliar Compras">Auxiliar Compras</option>
-<option value="Jefe Mantenimiento">Jefe Mantenimiento</option>
-<option value="Intendencia">Intendencia</option>
-<option value="Coordinador Contabilidad">Coordinador Contabilidad</option>
-<option value="Auxiliar de Contabilidad">Auxiliar de Contabilidad</option>
-<option value="Practicante">Practicante</option>
-</optgroup>
-</select>
-</div>
-<div class="form-group">
-<label class="form-label">Nivel de Acceso</label>
-<select class="form-input select-input" [(ngModel)]="formRol">
-<option value="trabajador">Colaborador (App Operativa)</option>
-<option value="admin">Administrador (Panel Total)</option>
-</select>
-</div>
-</div>
-<div class="form-group form-full" *ngIf="formRol === 'trabajador'">
-<label class="form-label"
-style="margin-bottom: 12px; padding-top: 16px; border-top: 1px solid var(--border);">Privilegios
-Especiales del Colaborador</label>
-<div class="premium-permissions-list">
-<label class="premium-perm-item">
-<div class="perm-text"><strong>Gestión de Checklists</strong><span>Permite crear, editar y asignar
-tareas generales.</span></div>
-<div class="perm-switch"><input type="checkbox" [(ngModel)]="formPuedeCrearChecklists"><span
-class="slider"></span></div>
-</label>
-<label class="premium-perm-item">
-<div class="perm-text"><strong>Configuración de Rutinas</strong><span>Habilita la programación de
-tareas automáticas.</span></div>
-<div class="perm-switch"><input type="checkbox" [(ngModel)]="formPuedeCrearRutinas"><span
-class="slider"></span></div>
-</label>
-<label class="premium-perm-item">
-<div class="perm-text"><strong>Asignación de Tareas Únicas</strong><span>Permite delegar actividades
-esporádicas.</span></div>
-<div class="perm-switch"><input type="checkbox" [(ngModel)]="formPuedeCrearTareasUnicas"><span
-class="slider"></span></div>
-</label>
-<label class="premium-perm-item">
-<div class="perm-text"><strong>Acceso a Checkstore</strong><span>Vista global del estado de
-sucursales.</span></div>
-<div class="perm-switch"><input type="checkbox" [(ngModel)]="formPuedeVerCheckstore"><span
-class="slider"></span></div>
-</label>
-<label class="premium-perm-item">
-<div class="perm-text"><strong>Acceso a Estadísticas</strong><span>Visualización de reportes y
-cumplimiento.</span></div>
-<div class="perm-switch"><input type="checkbox" [(ngModel)]="formPuedeVerEstadisticas"><span
-class="slider"></span></div>
-</label>
+          <a class="nav-item" routerLink="/calendario" routerLinkActive="active"
+            *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeVerCalendario" (click)="isMenuOpen = false">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="16" y1="2" x2="16" y2="6"></line>
+              <line x1="8" y1="2" x2="8" y2="6"></line>
+              <line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>
+            Calendario
+          </a>
 
-<label class="premium-perm-item">
-  <div class="perm-text"><strong>Acceso a Calendario</strong><span>Visualización de tareas, rutinas y programación mensual.</span></div>
-  <div class="perm-switch"><input type="checkbox" [(ngModel)]="formPuedeVerCalendario"><span class="slider"></span></div>
-</label>
+          <a class="nav-item" routerLink="/reportes" routerLinkActive="active"
+            *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeVerHistorial" (click)="isMenuOpen = false">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+              <line x1="16" y1="13" x2="8" y2="13" />
+              <line x1="16" y1="17" x2="8" y2="17" />
+            </svg>
+            Auditoría
+          </a>
 
-<label class="premium-perm-item">
-<div class="perm-text"><strong>Auditoría e Historial</strong><span>Consulta de bóveda y tareas
-pasadas.</span></div>
-<div class="perm-switch"><input type="checkbox" [(ngModel)]="formPuedeVerHistorial"><span
-class="slider"></span></div>
-</label>
-<label class="premium-perm-item">
-<div class="perm-text"><strong>Administración de Áreas</strong><span>Creación y modificación de áreas de trabajo.</span></div>
-<div class="perm-switch"><input type="checkbox" [(ngModel)]="formPuedeAdministrarAreas"><span
-class="slider"></span></div>
-</label>
-<label class="premium-perm-item admin-level">
-<div class="perm-text"><strong style="color: var(--primary-navy);">Administración de
-Personal</strong><span>Creación y modificación de usuarios del sistema.</span></div>
-<div class="perm-switch"><input type="checkbox" [(ngModel)]="formPuedeAdministrarPersonal"><span
-class="slider admin-slider"></span></div>
-</label>
-</div>
-</div>
-<div class="form-group form-full" *ngIf="formRol === 'trabajador'">
-<label class="form-label">Zonas Asignadas (Multi-selección)</label>
-<div class="checkbox-grid">
-<label class="checkbox-label" *ngFor="let suc of sucursalesDisponibles"
-[class.selected]="formSucursales.includes(suc)">
-<input type="checkbox" [checked]="formSucursales.includes(suc)" (change)="toggleSucursal(suc)"
-class="custom-checkbox"> {{ suc }}
-</label>
-</div>
-</div>
-<div class="form-group form-full" *ngIf="formRol === 'trabajador'">
-<label class="form-label">Áreas Operativas Autorizadas (Multi-selección)</label>
-<div class="checkbox-grid">
-<label class="checkbox-label" *ngFor="let area of areasDisponibles"
-[class.selected]="formAreas.includes(area)">
-<input type="checkbox" [checked]="formAreas.includes(area)" (change)="toggleArea(area)"
-class="custom-checkbox"> {{ area }}
-</label>
-</div>
-</div>
-<div class="form-group form-full" style="padding-top: 16px; border-top: 1px solid var(--border);">
-<label class="form-label">Usuario de Acceso (Login)</label>
-<input class="form-input" type="text" [(ngModel)]="formUsuario" placeholder="Ej: ivette.cruz">
-</div>
-<div class="form-row">
-<div class="form-group">
-<label class="form-label">Correo Electrónico</label>
-<input class="form-input" type="email" [(ngModel)]="formCorreo" placeholder="correo@megadulces.com"
-[disabled]="usuarioEnEdicion" [class.input-disabled]="usuarioEnEdicion">
-</div>
-<div class="form-group">
-<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-<label class="form-label" style="margin-bottom: 0;">Contraseña</label>
-<span style="font-size: 11px; font-weight: 600;"
-[style.color]="(formPassword?.length || 0) === 6 ? '#10B981' : 'var(--text-muted)'">
-{{ formPassword?.length || 0 }} / 6
-</span>
-</div>
-<div class="password-input-wrapper" style="position: relative; display: flex; align-items: center;">
-<input class="form-input" [type]="mostrarPassword ? 'text' : 'password'" [(ngModel)]="formPassword"
-placeholder="••••••" maxlength="6" style="padding-right: 40px; width: 100%;">
-<button type="button" (click)="togglePassword()"
-style="position: absolute; right: 10px; background: transparent; border: none; cursor: pointer; color: #64748B; display: flex; align-items: center; justify-content: center; padding: 5px;">
-<svg *ngIf="!mostrarPassword" width="20" height="20" viewBox="0 0 24 24" fill="none"
-stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-<path
-d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24">
-</path>
-<line x1="1" y1="1" x2="23" y2="23"></line>
-</svg>
-<svg *ngIf="mostrarPassword" width="20" height="20" viewBox="0 0 24 24" fill="none"
-stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-<circle cx="12" cy="12" r="3"></circle>
-</svg>
-</button>
-</div>
-<div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Máximo 6 caracteres.</div>
-</div>
-</div>
-<div class="btn-group">
-<button class="btn-secondary" (click)="cerrarModal()">Cancelar</button>
-<button class="btn-primary" (click)="guardarUsuario()">{{ usuarioEnEdicion ? 'Guardar Cambios' : 'Crear Usuario' }}</button>
-</div>
-</div>
-</div>
-</div>
-</div>
-</div>
+          <a class="nav-item" routerLink="/personal" routerLinkActive="active"
+            *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeAdministrarPersonal" (click)="isMenuOpen = false">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
+              <circle cx="9" cy="7" r="4" />
+              <path d="M23 21v-2a4 4 0 00-3-3.87" />
+              <path d="M16 3.13a4 4 0 010 7.75" />
+            </svg>
+            Usuarios
+          </a>
+
+          <a class="nav-item" routerLink="/areas" routerLinkActive="active"
+            *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeAdministrarAreas" (click)="isMenuOpen = false">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="7" height="7"></rect>
+              <rect x="14" y="3" width="7" height="7"></rect>
+              <rect x="14" y="14" width="7" height="7"></rect>
+              <rect x="3" y="14" width="7" height="7"></rect>
+            </svg>
+            Áreas de Trabajo
+          </a>
+
+        </nav>
+        <div class="bottom-nav" style="margin-top: auto; padding: 0 12px 20px 12px;">
+          <button class="logout-btn" routerLink="/login">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" />
+              <polyline points="16 17 21 12 16 7" />
+              <line x1="21" y1="12" x2="9" y2="12" />
+            </svg> Cerrar Sesión
+          </button>
+          <div class="user-row">
+            <div class="user-avatar">{{ (currentUser?.nombre || 'A').charAt(0) | uppercase }}</div>
+            <div class="user-info">
+              <span class="user-name">{{ currentUser?.nombre || 'Administrador' }}</span>
+              <span class="user-role">{{ currentUser?.rol === 'admin' ? 'Gerente' : 'Colaborador' }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </aside>
+    <div class="content">
+      <div class="section-header">
+        <div>
+          <div class="section-title">Directorio y Monitor en Vivo</div>
+          <div class="section-sub">Gestión de accesos, conexión en tiempo real y permisos corporativos</div>
+        </div>
+        <div class="action-bar-container">
+          <div class="search-wrapper">
+            <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input type="text" class="form-input search-input" [(ngModel)]="terminoBusqueda"
+              placeholder="Buscar por nombre, cargo o sucursal...">
+          </div>
+          <div class="header-buttons">
+            <button class="btn-secondary" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeAdministrarPersonal"
+              (click)="descargarExcel()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                style="margin-right: 6px;">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg> Exportar
+            </button>
+            <button class="btn-primary" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeAdministrarPersonal"
+              (click)="abrirModal()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                style="margin-right: 6px;">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg> Nuevo Usuario
+            </button>
+          </div>
+        </div>
+      </div>
+      <h2 class="category-title" *ngIf="getAdmins().length > 0">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          style="margin-right: 8px; vertical-align: bottom;">
+          <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
+        </svg> Administradores del Sistema
+      </h2>
+      <div class="user-grid" *ngIf="getAdmins().length > 0">
+        <div class="user-card admin-card" *ngFor="let user of getAdmins()" style="width: 100%; box-sizing: border-box;">
+          <div class="user-card-header"
+            style="display: flex; flex-wrap: wrap; gap: 15px; align-items: center; justify-content: space-between;">
+            <div style="display: flex; align-items: center; gap: 12px; flex: 1 1 200px; min-width: 0;">
+              <div class="user-avatar admin-avatar" style="flex-shrink: 0;">{{ user.nombre.charAt(0) | uppercase }}
+              </div>
+              <div class="user-info" style="flex: 1; min-width: 0;">
+                <div class="user-name"
+                  style="word-break: normal !important; white-space: normal !important; line-height: 1.3; font-size: 16px; font-weight: 600; color: var(--text-main); margin-bottom: 4px;">
+                  {{ user.nombre }}</div>
+
+                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                  <div class="user-badge badge-admin" style="display: inline-flex;"><svg width="12" height="12"
+                      viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px;">
+                      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                    </svg> {{ user.cargo || 'Administrador' }}
+                  </div>
+                  <div
+                    style="display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 20px;"
+                    [style.background]="isOnline(user.ultimoLatido) ? '#ECFDF5' : '#F1F5F9'"
+                    [style.color]="isOnline(user.ultimoLatido) ? '#10B981' : '#64748B'">
+                    <span style="width: 8px; height: 8px; border-radius: 50%;"
+                      [style.background]="isOnline(user.ultimoLatido) ? '#10B981' : '#94A3B8'"
+                      [class.pulse-online]="isOnline(user.ultimoLatido)"></span>
+                    {{ isOnline(user.ultimoLatido) ? 'En línea' : getLastSeenText(user.ultimoLatido) }}
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="action-buttons" style="display: flex; gap: 8px; flex-wrap: wrap;"
+              *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeAdministrarPersonal">
+              <button class="btn-action" (click)="verHistorial(user.nombre)" title="Ver Historial"><svg
+                  viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                  <polyline points="14 2 14 8 20 8"></polyline>
+                  <line x1="16" y1="13" x2="8" y2="13"></line>
+                  <line x1="16" y1="17" x2="8" y2="17"></line>
+                  <polyline points="10 9 9 9 8 9"></polyline>
+                </svg></button>
+              <button class="btn-action" (click)="editarUsuario(user)" title="Editar"><svg viewBox="0 0 24 24"
+                  width="16" height="16" stroke="currentColor" stroke-width="2" fill="none">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                </svg></button>
+              <button class="btn-action btn-delete" *ngIf="user.usuario !== currentUser?.usuario"
+                (click)="eliminarUsuario(user)" title="Eliminar"><svg viewBox="0 0 24 24" width="16" height="16"
+                  stroke="currentColor" stroke-width="2" fill="none">
+                  <polyline points="3 6 5 6 21 6"></polyline>
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                </svg></button>
+            </div>
+          </div>
+          <div class="user-credentials">
+            <div class="cred-row"><span class="cred-label">Nivel:</span> <span class="cred-val text-primary">Acceso
+                Total</span></div>
+            <div class="cred-row"><span class="cred-label">Usuario:</span> <span class="cred-val">{{ user.usuario
+                }}</span></div>
+            <div class="cred-row">
+              <span class="cred-label">Password:</span>
+              <span class="cred-val">{{ currentUser?.rol === 'admin' ? user.password : '••••••••' }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div *ngIf="getTrabajadores().length > 0">
+        <div *ngFor="let grupo of getTrabajadoresAgrupados()" style="margin-top: 40px;">
+          <div class="category-header">
+            <h2 class="category-title" style="border: none; margin: 0; padding: 0; display: flex; align-items: center;">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                style="margin-right: 8px;">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                <circle cx="12" cy="10" r="3"></circle>
+              </svg> {{ grupo.nombre }}
+            </h2>
+            <div class="category-count">{{ grupo.usuarios.length }} empleados</div>
+          </div>
+          <div class="user-grid">
+            <div class="user-card" *ngFor="let user of grupo.usuarios" style="width: 100%; box-sizing: border-box;">
+              <div class="user-card-header"
+                style="display: flex; flex-wrap: wrap; gap: 15px; align-items: center; justify-content: space-between;">
+                <div style="display: flex; align-items: center; gap: 12px; flex: 1 1 200px; min-width: 0;">
+                  <div class="user-avatar" style="flex-shrink: 0;">{{ user.nombre.charAt(0) | uppercase }}</div>
+                  <div class="user-info" style="flex: 1; min-width: 0;">
+                    <div class="user-name"
+                      style="word-break: normal !important; white-space: normal !important; line-height: 1.3; font-size: 16px; font-weight: 600; color: var(--text-main); margin-bottom: 4px;">
+                      {{ user.nombre }}</div>
+
+                    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                      <div class="user-badge" style="display: inline-flex;"><svg width="12" height="12"
+                          viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                          style="margin-right: 4px;">
+                          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                          <circle cx="12" cy="7" r="4"></circle>
+                        </svg> {{ user.cargo || 'Colaborador' }}
+                      </div>
+                      <div
+                        style="display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 20px;"
+                        [style.background]="isOnline(user.ultimoLatido) ? '#ECFDF5' : '#F1F5F9'"
+                        [style.color]="isOnline(user.ultimoLatido) ? '#10B981' : '#64748B'">
+                        <span style="width: 8px; height: 8px; border-radius: 50%;"
+                          [style.background]="isOnline(user.ultimoLatido) ? '#10B981' : '#94A3B8'"
+                          [class.pulse-online]="isOnline(user.ultimoLatido)"></span>
+                        {{ isOnline(user.ultimoLatido) ? 'En línea' : getLastSeenText(user.ultimoLatido) }}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="action-buttons" style="display: flex; gap: 8px; flex-wrap: wrap;">
+                  <button class="btn-action" (click)="verHistorial(user.nombre)" title="Ver Historial"><svg
+                      viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                      <polyline points="14 2 14 8 20 8"></polyline>
+                      <line x1="16" y1="13" x2="8" y2="13"></line>
+                      <line x1="16" y1="17" x2="8" y2="17"></line>
+                      <polyline points="10 9 9 9 8 9"></polyline>
+                    </svg></button>
+                  <button class="btn-action"
+                    *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeAdministrarPersonal"
+                    (click)="editarUsuario(user)" title="Editar"><svg viewBox="0 0 24 24" width="16" height="16"
+                      stroke="currentColor" stroke-width="2" fill="none">
+                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                    </svg></button>
+                  <button class="btn-action btn-delete"
+                    *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeAdministrarPersonal"
+                    (click)="eliminarUsuario(user)" title="Eliminar"><svg viewBox="0 0 24 24" width="16" height="16"
+                      stroke="currentColor" stroke-width="2" fill="none">
+                      <polyline points="3 6 5 6 21 6"></polyline>
+                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    </svg></button>
+                </div>
+              </div>
+              <div class="user-credentials">
+                <div class="cred-row"><span class="cred-label">Zonas:</span> <span class="cred-val">{{ user.sucursales ?
+                    user.sucursales.join(', ') : (user.sucursal || 'General') }}</span></div>
+                <div class="cred-row"><span class="cred-label">Áreas:</span> <span class="cred-val">{{ user.areas ?
+                    user.areas.join(', ') : 'Todas' }}</span></div>
+                <div class="user-permissions-list"
+                  *ngIf="user.puedeCrearChecklists || user.puedeCrearRutinas || user.puedeCrearTareasUnicas || user.puedeVerCheckstore || user.puedeVerEstadisticas || user.puedeVerHistorial || user.puedeAdministrarPersonal || user.puedeVerCalendario">
+                  <span class="perm-tag" *ngIf="user.puedeCrearChecklists">Gestión Checklists</span>
+                  <span class="perm-tag" *ngIf="user.puedeCrearRutinas">Gestión Rutinas</span>
+                  <span class="perm-tag" *ngIf="user.puedeCrearTareasUnicas">Tareas Únicas</span>
+                  <span class="perm-tag" *ngIf="user.puedeVerCheckstore">Acceso Checkstore</span>
+                  <span class="perm-tag" *ngIf="user.puedeVerEstadisticas">Reportes</span>
+                  <span class="perm-tag" *ngIf="user.puedeVerCalendario">Calendario</span>
+                  <span class="perm-tag" *ngIf="user.puedeVerHistorial">Auditoría</span>
+                  <span class="perm-tag tag-admin" *ngIf="user.puedeAdministrarPersonal">Admin. Usuarios</span>
+                </div>
+                <div class="cred-row mt-8"><span class="cred-label">Usuario:</span> <span class="cred-val">{{
+                    user.usuario }}</span></div>
+                <div class="cred-row">
+                  <span class="cred-label">Password:</span>
+                  <span class="cred-val">{{ currentUser?.rol === 'admin' ? user.password : '••••••••' }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="empty-state-text" *ngIf="getTrabajadores().length === 0 && getAdmins().length === 0">No se encontraron
+        usuarios que coincidan con la búsqueda.</div>
+
+      <div class="modal-overlay" *ngIf="isModalOpen">
+        <div class="modal">
+          <div class="modal-header">
+            <div class="modal-title">{{ usuarioEnEdicion ? 'Modificar Usuario' : 'Registrar Nuevo Usuario' }}</div>
+            <button class="modal-close" (click)="cerrarModal()"><svg width="24" height="24" viewBox="0 0 24 24"
+                fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg></button>
+          </div>
+          <div class="modal-body">
+            <div class="form-group form-full">
+              <label class="form-label">Nombre Completo</label>
+              <input class="form-input" type="text" [(ngModel)]="formNombre" placeholder="Ej: Ivette Cruz Oceguera">
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Cargo / Puesto</label>
+                <select class="form-input select-input" [(ngModel)]="formCargo">
+                  <optgroup label="ZONA COMERCIAL">
+                    <option value="Trabajador General">Trabajador General</option>
+                    <option value="Jefe de zona">Jefe de zona</option>
+                    <option value="Encargado(a) de tienda">Encargado(a) de tienda</option>
+                    <option value="Auxiliar de encargado">Auxiliar de encargado</option>
+                    <option value="Encargada de operaciones y almacén">Encargada de operaciones y almacén</option>
+                    <option value="Auxiliar de cajas">Auxiliar de cajas</option>
+                  </optgroup>
+                  <optgroup label="ZONA ADMINISTRATIVA">
+                    <option value="Director General">Director General</option>
+                    <option value="Administrador Megadulces">Administrador Megadulces</option>
+                    <option value="Jefe Regional">Jefe Regional</option>
+                    <option value="Auxiliar Administrativo">Auxiliar Administrativo</option>
+                    <option value="Caja General">Caja General</option>
+                    <option value="Auxiliar Caja General">Auxiliar Caja General</option>
+                    <option value="Jefatura Finanzas">Jefatura Finanzas</option>
+                    <option value="Auxiliar Finanzas">Auxiliar Finanzas</option>
+                    <option value="Coordinador Prevención">Coordinador Prevención</option>
+                    <option value="Auxiliar Prevención">Auxiliar Prevención</option>
+                    <option value="Jefatura Tesorería">Jefatura Tesorería</option>
+                    <option value="Encargado de Activos e Insumos">Encargado de Activos e Insumos</option>
+                    <option value="Jefatura RRHH">Jefatura RRHH</option>
+                    <option value="Auxiliar RRHH">Auxiliar RRHH</option>
+                    <option value="Sistemas">Sistemas</option>
+                    <option value="Jefatura Sistemas">Jefatura Sistemas</option>
+                    <option value="Coordinador MKT">Coordinador MKT</option>
+                    <option value="Jefatura MKT">Jefatura MKT</option>
+                    <option value="Auxiliar de mercadotecnia">Auxiliar de mercadotecnia</option>
+                    <option value="Diseñador">Diseñador</option>
+                    <option value="Jefatura Compras">Jefatura Compras</option>
+                    <option value="Auxiliar Compras">Auxiliar Compras</option>
+                    <option value="Jefe Mantenimiento">Jefe Mantenimiento</option>
+                    <option value="Intendencia">Intendencia</option>
+                    <option value="Coordinador Contabilidad">Coordinador Contabilidad</option>
+                    <option value="Auxiliar de Contabilidad">Auxiliar de Contabilidad</option>
+                    <option value="Practicante">Practicante</option>
+                  </optgroup>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Nivel de Acceso</label>
+                <select class="form-input select-input" [(ngModel)]="formRol">
+                  <option value="trabajador">Colaborador (App Operativa)</option>
+                  <option value="admin">Administrador (Panel Total)</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group form-full" *ngIf="formRol === 'trabajador'">
+              <label class="form-label"
+                style="margin-bottom: 12px; padding-top: 16px; border-top: 1px solid var(--border);">Privilegios
+                Especiales del Colaborador</label>
+              <div class="premium-permissions-list">
+                <label class="premium-perm-item">
+                  <div class="perm-text"><strong>Gestión de Checklists</strong><span>Permite crear, editar y asignar
+                      tareas generales.</span></div>
+                  <div class="perm-switch"><input type="checkbox" [(ngModel)]="formPuedeCrearChecklists"><span
+                      class="slider"></span></div>
+                </label>
+                <label class="premium-perm-item">
+                  <div class="perm-text"><strong>Configuración de Rutinas</strong><span>Habilita la programación de
+                      tareas automáticas.</span></div>
+                  <div class="perm-switch"><input type="checkbox" [(ngModel)]="formPuedeCrearRutinas"><span
+                      class="slider"></span></div>
+                </label>
+                <label class="premium-perm-item">
+                  <div class="perm-text"><strong>Asignación de Tareas Únicas</strong><span>Permite delegar actividades
+                      esporádicas.</span></div>
+                  <div class="perm-switch"><input type="checkbox" [(ngModel)]="formPuedeCrearTareasUnicas"><span
+                      class="slider"></span></div>
+                </label>
+                <label class="premium-perm-item">
+                  <div class="perm-text"><strong>Acceso a Checkstore</strong><span>Vista global del estado de
+                      sucursales.</span></div>
+                  <div class="perm-switch"><input type="checkbox" [(ngModel)]="formPuedeVerCheckstore"><span
+                      class="slider"></span></div>
+                </label>
+                <label class="premium-perm-item">
+                  <div class="perm-text"><strong>Acceso a Estadísticas</strong><span>Visualización de reportes y
+                      cumplimiento.</span></div>
+                  <div class="perm-switch"><input type="checkbox" [(ngModel)]="formPuedeVerEstadisticas"><span
+                      class="slider"></span></div>
+                </label>
+
+                <label class="premium-perm-item">
+                  <div class="perm-text"><strong>Acceso a Calendario</strong><span>Visualización de tareas, rutinas y
+                      programación mensual.</span></div>
+                  <div class="perm-switch"><input type="checkbox" [(ngModel)]="formPuedeVerCalendario"><span
+                      class="slider"></span></div>
+                </label>
+
+                <label class="premium-perm-item">
+                  <div class="perm-text"><strong>Auditoría e Historial</strong><span>Consulta de bóveda y tareas
+                      pasadas.</span></div>
+                  <div class="perm-switch"><input type="checkbox" [(ngModel)]="formPuedeVerHistorial"><span
+                      class="slider"></span></div>
+                </label>
+                <label class="premium-perm-item">
+                  <div class="perm-text"><strong>Administración de Áreas</strong><span>Creación y modificación de áreas
+                      de trabajo.</span></div>
+                  <div class="perm-switch"><input type="checkbox" [(ngModel)]="formPuedeAdministrarAreas"><span
+                      class="slider"></span></div>
+                </label>
+                <label class="premium-perm-item admin-level">
+                  <div class="perm-text"><strong style="color: var(--primary-navy);">Administración de
+                      Personal</strong><span>Creación y modificación de usuarios del sistema.</span></div>
+                  <div class="perm-switch"><input type="checkbox" [(ngModel)]="formPuedeAdministrarPersonal"><span
+                      class="slider admin-slider"></span></div>
+                </label>
+              </div>
+            </div>
+            <div class="form-group form-full" *ngIf="formRol === 'trabajador'">
+              <label class="form-label">Zonas Asignadas (Multi-selección)</label>
+              <div class="checkbox-grid">
+                <label class="checkbox-label" *ngFor="let suc of sucursalesDisponibles"
+                  [class.selected]="formSucursales.includes(suc)">
+                  <input type="checkbox" [checked]="formSucursales.includes(suc)" (change)="toggleSucursal(suc)"
+                    class="custom-checkbox"> {{ suc }}
+                </label>
+              </div>
+            </div>
+            <div class="form-group form-full" *ngIf="formRol === 'trabajador'">
+              <label class="form-label">Áreas Operativas Autorizadas (Multi-selección)</label>
+              <div class="checkbox-grid">
+                <label class="checkbox-label" *ngFor="let area of areasDisponibles"
+                  [class.selected]="formAreas.includes(area)">
+                  <input type="checkbox" [checked]="formAreas.includes(area)" (change)="toggleArea(area)"
+                    class="custom-checkbox"> {{ area }}
+                </label>
+              </div>
+            </div>
+            <div class="form-group form-full" style="padding-top: 16px; border-top: 1px solid var(--border);">
+              <label class="form-label">Usuario de Acceso (Login)</label>
+              <input class="form-input" type="text" [(ngModel)]="formUsuario" placeholder="Ej: ivette.cruz">
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Correo Electrónico</label>
+                <input class="form-input" type="email" [(ngModel)]="formCorreo" placeholder="correo@megadulces.com"
+                  [disabled]="usuarioEnEdicion" [class.input-disabled]="usuarioEnEdicion">
+              </div>
+              <div class="form-group">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                  <label class="form-label" style="margin-bottom: 0;">Contraseña</label>
+                  <span style="font-size: 11px; font-weight: 600;"
+                    [style.color]="(formPassword?.length || 0) === 6 ? '#10B981' : 'var(--text-muted)'">
+                    {{ formPassword?.length || 0 }} / 6
+                  </span>
+                </div>
+                <div class="password-input-wrapper" style="position: relative; display: flex; align-items: center;">
+                  <input class="form-input" [type]="mostrarPassword ? 'text' : 'password'" [(ngModel)]="formPassword"
+                    placeholder="••••••" maxlength="6" style="padding-right: 40px; width: 100%;">
+                  <button type="button" (click)="togglePassword()"
+                    style="position: absolute; right: 10px; background: transparent; border: none; cursor: pointer; color: #64748B; display: flex; align-items: center; justify-content: center; padding: 5px;">
+                    <svg *ngIf="!mostrarPassword" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                      stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path
+                        d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24">
+                      </path>
+                      <line x1="1" y1="1" x2="23" y2="23"></line>
+                    </svg>
+                    <svg *ngIf="mostrarPassword" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                      stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                      <circle cx="12" cy="12" r="3"></circle>
+                    </svg>
+                  </button>
+                </div>
+                <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Máximo 6 caracteres.</div>
+              </div>
+            </div>
+            <div class="btn-group">
+              <button class="btn-secondary" (click)="cerrarModal()">Cancelar</button>
+              <button class="btn-primary" (click)="guardarUsuario()">{{ usuarioEnEdicion ? 'Guardar Cambios' :
+                'CrearUsuario' }}</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>

@@ -1,411 +1,681 @@
 <div class="app-layout">
-<header class="header">
-<div class="header-left">
-<button class="btn-menu-mobile" (click)="toggleMenu()"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg></button>
-<div class="header-logo-wrap" style="background: transparent !important; width: auto; padding: 0 4px;"><img src="https://static.wixstatic.com/media/fd397e_0fd82a1ecec84a118ceeb603b493f25a~mv2.png" style="height: 36px;"></div>
-<div class="header-brand">Mega Dulces<small>Panel Enterprise</small></div>
-</div>
-</header>
-<div class="main-wrapper">
-<div class="mobile-overlay" *ngIf="isMenuOpen" (click)="toggleMenu()"></div>
-<aside class="sidebar" [class.mobile-open]="isMenuOpen" translate="no">
-<div style="display: flex; flex-direction: column; height: 100%;">
-<div class="sidebar-header">
-<img src="https://static.wixstatic.com/media/fd397e_0fd82a1ecec84a118ceeb603b493f25a~mv2.png" alt="Logo" style="width:32px; height:32px; border-radius:6px; object-fit:contain;">
-<span class="sidebar-brand">Mega Dulces</span>
-</div>
-<nav class="sidebar-nav" style="flex: 1; padding: 16px 12px;">
-<a class="nav-item" routerLink="/home" routerLinkActive="active" (click)="isMenuOpen = false">
-<svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
-<rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
-</svg> Dashboard
-</a>
-<a class="nav-item" routerLink="/checklist" routerLinkActive="active" (click)="isMenuOpen = false">
-<svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-<polyline points="9 11 12 14 22 4"/>
-<path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
-</svg> Checklist
-</a>
-<a class="nav-item" routerLink="/checkstore" routerLinkActive="active" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeVerCheckstore" (click)="isMenuOpen = false">
-<svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-<path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
-<polyline points="9 22 9 12 15 12 15 22"/>
-</svg> Sucursales
-</a>
-<a class="nav-item" routerLink="/estadisticas" routerLinkActive="active" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeVerEstadisticas" (click)="isMenuOpen = false">
-<svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-<line x1="18" y1="20" x2="18" y2="10"/>
-<line x1="12" y1="20" x2="12" y2="4"/>
-<line x1="6" y1="20" x2="6" y2="14"/>
-</svg> Estadísticas
-</a>
-<a class="nav-item" routerLink="/calendario" routerLinkActive="active" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeVerCalendario" (click)="isMenuOpen = false">
-  <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg> Calendario
-</a>
-<a class="nav-item" routerLink="/reportes" routerLinkActive="active" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeVerHistorial" (click)="isMenuOpen = false">
-<svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-<path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
-<polyline points="14 2 14 8 20 8"/>
-<line x1="16" y1="13" x2="8" y2="13"/>
-<line x1="16" y1="17" x2="8" y2="17"/>
-</svg> Auditoría
-</a>
-<a class="nav-item" routerLink="/personal" routerLinkActive="active" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeAdministrarPersonal" (click)="isMenuOpen = false">
-<svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-<path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
-<circle cx="9" cy="7" r="4"/>
-<path d="M23 21v-2a4 4 0 00-3-3.87"/>
-<path d="M16 3.13a4 4 0 010 7.75"/>
-</svg> Usuarios
-</a>
-<a class="nav-item" routerLink="/areas" routerLinkActive="active" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeAdministrarAreas" (click)="isMenuOpen = false">
-<svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg> Áreas de Trabajo
-</a>
-</nav>
-<div class="bottom-nav" style="margin-top: auto; padding: 0 12px 20px 12px;">
-<button class="logout-btn" routerLink="/login">
-<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-<path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
-<polyline points="16 17 21 12 16 7"/>
-<line x1="21" y1="12" x2="9" y2="12"/>
-</svg> Cerrar Sesión
-</button>
-<div class="user-row">
-<div class="user-avatar">{{ (currentUser?.nombre || 'A').charAt(0) | uppercase }}</div>
-<div class="user-info">
-<span class="user-name">{{ currentUser?.nombre || 'Administrador' }}</span>
-<span class="user-role">{{ currentUser?.rol === 'admin' ? 'Gerente' : 'Colaborador' }}</span>
-</div>
-</div>
-</div>
-</div>
-</aside>
-<div class="content">
-<div *ngIf="vistaActual() === 'lista'">
-<div class="section-header">
-<div>
-<div class="section-title">Áreas Operativas</div>
-<div class="section-sub">Configura departamentos internos y asigna personal</div>
-</div>
-<button class="btn-primary" (click)="abrirModalNuevaArea()">+ Nueva Área</button>
-</div>
-<div class="user-grid">
+  <header class="header">
+    <div class="header-left">
+      <button class="btn-menu-mobile" (click)="toggleMenu()"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2">
+          <line x1="3" y1="12" x2="21" y2="12"></line>
+          <line x1="3" y1="6" x2="21" y2="6"></line>
+          <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg></button>
+      <div class="header-logo-wrap" style="background: transparent !important; width: auto; padding: 0 4px;"><img
+          src="https://static.wixstatic.com/media/fd397e_0fd82a1ecec84a118ceeb603b493f25a~mv2.png"
+          style="height: 36px;"></div>
+      <div class="header-brand">Mega Dulces<small>Panel Enterprise</small></div>
+    </div>
+  </header>
+  <div class="main-wrapper">
+    <div class="mobile-overlay" *ngIf="isMenuOpen" (click)="toggleMenu()"></div>
+    <aside class="sidebar" [class.mobile-open]="isMenuOpen" translate="no">
+      <div style="display: flex; flex-direction: column; height: 100%;">
+        <div class="sidebar-header">
+          <img src="https://static.wixstatic.com/media/fd397e_0fd82a1ecec84a118ceeb603b493f25a~mv2.png" alt="Logo"
+            style="width:32px; height:32px; border-radius:6px; object-fit:contain;">
+          <span class="sidebar-brand">Mega Dulces</span>
+        </div>
+        <nav class="sidebar-nav" style="flex: 1; padding: 16px 12px;">
 
-<div class="user-card" *ngFor="let area of getAreasFiltradas()" (click)="verDetalleArea(area)" style="cursor: pointer; transition: transform 0.2s;" [style.opacity]="estaAreaBloqueada(area) ? '0.65' : '1'">
-<div class="user-card-header">
-<div class="user-info">
-<div class="user-name" style="display: flex; align-items: center; gap: 8px;">
-  {{ area.nombre }}
-  <span *ngIf="estaAreaBloqueada(area)" style="background: #FEE2E2; color: #DC2626; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 800; border: 1px solid #FCA5A5; letter-spacing: 0.5px;"> 🔒 FUERA DE HORARIO</span>
-</div>
-<div class="user-role">{{ area.descripcion || 'Sin descripción' }}</div>
+          <a class="nav-item" routerLink="/home" routerLinkActive="active" (click)="isMenuOpen = false">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="7" height="7" />
+              <rect x="14" y="3" width="7" height="7" />
+              <rect x="3" y="14" width="7" height="7" />
+              <rect x="14" y="14" width="7" height="7" />
+            </svg>
+            Dashboard
+          </a>
 
-<div style="font-size: 12px; color: #2563EB; margin-top: 8px; font-weight: 600; display: flex; align-items: center; gap: 4px;" *ngIf="area.fechaAsignada || area.esRecurrente">
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-  <span *ngIf="area.esRecurrente">Todos los días</span>
-  <span *ngIf="!area.esRecurrente">{{ area.fechaAsignada }}</span>
-  
-  <span *ngIf="area.horaEntrada && area.horaSalida"> | {{ area.horaEntrada }} a {{ area.horaSalida }} hrs</span>
-  <span *ngIf="area.horaEntrada && !area.horaSalida"> | Desde las {{ area.horaEntrada }} hrs</span>
-</div>
+          <a class="nav-item" routerLink="/checklist" routerLinkActive="active" (click)="isMenuOpen = false">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="9 11 12 14 22 4" />
+              <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />
+            </svg>
+            Checklist
+          </a>
 
-<div style="font-size: 12px; color: #059669; margin-top: 4px; font-weight: 600; display: flex; align-items: center; gap: 4px;" *ngIf="area.turnoAsignado">
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-  Turno: {{ area.turnoAsignado }}
-</div>
+          <a class="nav-item" routerLink="/checkstore" routerLinkActive="active"
+            *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeVerCheckstore" (click)="isMenuOpen = false">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+              <polyline points="9 22 9 12 15 12 15 22" />
+            </svg>
+            Sucursales
+          </a>
 
-</div>
-<button class="btn-action btn-delete" (click)="eliminarArea(area, $event)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button>
-</div>
-<div class="user-credentials" style="display:flex; justify-content:space-between; align-items:center; background:#F8FAFC; padding:12px; border-radius:8px;">
-<span><strong>{{ contarEmpleadosEnArea(area.nombre) }}</strong> Empleados</span>
-<button class="btn-primary" [disabled]="estaAreaBloqueada(area)" [style.opacity]="estaAreaBloqueada(area) ? '0.5' : '1'" [style.cursor]="estaAreaBloqueada(area) ? 'not-allowed' : 'pointer'" style="background:white; color:#0F172A; border:1px solid #E2E8F0; padding:6px 12px; font-size:12px;" (click)="abrirAsignacion(area, $event)">Asignar Personal</button>
-</div>
-</div>
-</div>
-</div>
+          <a class="nav-item" routerLink="/estadisticas" routerLinkActive="active"
+            *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeVerEstadisticas" (click)="isMenuOpen = false">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="20" x2="18" y2="10" />
+              <line x1="12" y1="20" x2="12" y2="4" />
+              <line x1="6" y1="20" x2="6" y2="14" />
+            </svg>
+            Estadísticas
+          </a>
 
-<div *ngIf="vistaActual() === 'detalle' && areaDetalle()">
-<button class="btn-back" (click)="volverALista()" style="background:transparent; border:none; color:#64748B; cursor:pointer; display:flex; align-items:center; gap:5px; font-weight:600; margin-bottom:20px; font-size: 14px;">
-<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg> Volver a Áreas
-</button>
-<div style="background: white; border-radius: 12px; padding: 25px; border: 1px solid var(--border); margin-bottom: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
-<div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
-<div>
-<h2 style="margin: 0 0 5px 0; font-size: 24px; color: #0F172A; display: flex; align-items: center; gap: 10px;">
-  {{ areaDetalle().nombre }}
-  <span *ngIf="estaAreaBloqueada(areaDetalle())" style="background: #FEE2E2; color: #DC2626; padding: 4px 8px; border-radius: 6px; font-size: 12px; font-weight: 800; border: 1px solid #FCA5A5; letter-spacing: 0.5px;"> 🔒 FUERA DE HORARIO</span>
-</h2>
-<p style="margin: 0; color: #64748B;">{{ areaDetalle().descripcion || 'Sin descripción asignada a este departamento.' }}</p>
+          <a class="nav-item" routerLink="/calendario" routerLinkActive="active"
+            *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeVerCalendario" (click)="isMenuOpen = false">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="16" y1="2" x2="16" y2="6"></line>
+              <line x1="8" y1="2" x2="8" y2="6"></line>
+              <line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>
+            Calendario
+          </a>
 
-<div style="margin-top: 10px; font-size: 14px; color: #2563EB; font-weight: 600; display: flex; align-items: center; gap: 6px;" *ngIf="areaDetalle().fechaAsignada || areaDetalle().esRecurrente || areaDetalle().horaEntrada">
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-  <span *ngIf="areaDetalle().esRecurrente">Todos los días</span>
-  <span *ngIf="!areaDetalle().esRecurrente">Programado: {{ areaDetalle().fechaAsignada }}</span>
+          <a class="nav-item" routerLink="/reportes" routerLinkActive="active"
+            *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeVerHistorial" (click)="isMenuOpen = false">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+              <line x1="16" y1="13" x2="8" y2="13" />
+              <line x1="16" y1="17" x2="8" y2="17" />
+            </svg>
+            Auditoría
+          </a>
 
-  <span *ngIf="areaDetalle().horaEntrada && areaDetalle().horaSalida"> | {{ areaDetalle().horaEntrada }} a {{ areaDetalle().horaSalida }} hrs</span>
-  <span *ngIf="areaDetalle().horaEntrada && !areaDetalle().horaSalida"> | Desde las {{ areaDetalle().horaEntrada }} hrs</span>
-</div>
-<div style="margin-top: 6px; font-size: 14px; color: #059669; font-weight: 600; display: flex; align-items: center; gap: 6px;" *ngIf="areaDetalle().turnoAsignado">
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-  Turno asignado: {{ areaDetalle().turnoAsignado }}
-</div>
+          <a class="nav-item" routerLink="/personal" routerLinkActive="active"
+            *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeAdministrarPersonal" (click)="isMenuOpen = false">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
+              <circle cx="9" cy="7" r="4" />
+              <path d="M23 21v-2a4 4 0 00-3-3.87" />
+              <path d="M16 3.13a4 4 0 010 7.75" />
+            </svg>
+            Usuarios
+          </a>
 
-</div>
-<div style="display: flex; gap: 10px; flex-wrap: wrap;">
-<button class="btn-secondary" (click)="abrirModalEditarArea(areaDetalle())" style="font-size: 13px; padding: 8px 16px; background: white; border: 1px solid #E2E8F0;">
-  ✏️ Editar Jornada
-</button>
-<button class="btn-primary" (click)="abrirModalTareaParaArea()" style="font-size: 13px; padding: 8px 16px;" [disabled]="estaAreaBloqueada(areaDetalle())" [style.opacity]="estaAreaBloqueada(areaDetalle()) ? '0.5' : '1'" [style.cursor]="estaAreaBloqueada(areaDetalle()) ? 'not-allowed' : 'pointer'">
-<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg> Tarea a toda el Área
-</button>
-<button class="btn-secondary" (click)="abrirModalRutinaParaArea()" style="font-size: 13px; padding: 8px 16px; background: #F8FAFC; border: 1px solid #CBD5E1; color: #0F172A;" [disabled]="estaAreaBloqueada(areaDetalle())" [style.opacity]="estaAreaBloqueada(areaDetalle()) ? '0.5' : '1'" [style.cursor]="estaAreaBloqueada(areaDetalle()) ? 'not-allowed' : 'pointer'">
-<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg> Rutina a toda el Área
-</button>
-</div>
-</div>
-</div>
-<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 15px;">
-<h3 style="font-size: 18px; color: #0F172A; margin: 0;">Personal Asignado ({{ getEmpleadosDelArea().length }})</h3>
-<button class="btn-secondary" (click)="abrirAsignacion(areaDetalle(), $event)" style="font-size:13px; padding:6px 12px;" [disabled]="estaAreaBloqueada(areaDetalle())" [style.opacity]="estaAreaBloqueada(areaDetalle()) ? '0.5' : '1'" [style.cursor]="estaAreaBloqueada(areaDetalle()) ? 'not-allowed' : 'pointer'">+ Gestionar Personal</button>
-</div>
-<div class="user-grid">
-<div class="user-card" *ngFor="let emp of getEmpleadosDelArea()" style="display:flex; flex-direction:column; justify-content:space-between;">
-<div style="display:flex; align-items:center; gap:12px; border-bottom:1px solid #E2E8F0; padding-bottom:15px; margin-bottom:15px;">
-<div class="user-avatar" style="background:#0F172A; color:white;">{{ emp.nombre.charAt(0) | uppercase }}</div>
-<div>
-<div style="font-weight:700; color:#0F172A;">{{ emp.nombre }}</div>
-<div style="font-size:12px; color:#64748B;">{{ emp.cargo || 'Colaborador' }}</div>
-</div>
-</div>
-<div style="display:flex; gap:10px;">
-<button class="btn-primary" style="flex:1; justify-content:center; font-size:12px; padding:8px;" (click)="abrirModalTarea(emp.nombre)" [disabled]="estaAreaBloqueada(areaDetalle())" [style.opacity]="estaAreaBloqueada(areaDetalle()) ? '0.5' : '1'" [style.cursor]="estaAreaBloqueada(areaDetalle()) ? 'not-allowed' : 'pointer'">+ Tarea Única</button>
-<button class="btn-secondary" style="flex:1; justify-content:center; font-size:12px; padding:8px;" (click)="abrirModalRutina(emp.nombre)" [disabled]="estaAreaBloqueada(areaDetalle())" [style.opacity]="estaAreaBloqueada(areaDetalle()) ? '0.5' : '1'" [style.cursor]="estaAreaBloqueada(areaDetalle()) ? 'not-allowed' : 'pointer'">+ Rutina</button>
-</div>
-</div>
-<div *ngIf="getEmpleadosDelArea().length === 0" style="grid-column: 1/-1; text-align:center; padding:30px; background:white; border-radius:12px; border:1px dashed #CBD5E1; color:#64748B;">
-Esta área aún no tiene personal asignado.
-</div>
-</div>
-</div>
+          <a class="nav-item" routerLink="/areas" routerLinkActive="active"
+            *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeAdministrarAreas" (click)="isMenuOpen = false">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="7" height="7"></rect>
+              <rect x="14" y="3" width="7" height="7"></rect>
+              <rect x="14" y="14" width="7" height="7"></rect>
+              <rect x="3" y="14" width="7" height="7"></rect>
+            </svg>
+            Áreas de Trabajo
+          </a>
 
-<div class="modal-overlay" *ngIf="isModalOpen">
-<div class="modal" style="max-width: 550px;">
-<div class="modal-header">
-<div class="modal-title">{{ areaEditandoId ? 'Editar Jornada del Área' : 'Crear Nueva Área' }}</div>
-<button class="modal-close" (click)="cerrarModal()">X</button>
-</div>
-<div class="modal-body">
+        </nav>
+        <div class="bottom-nav" style="margin-top: auto; padding: 0 12px 20px 12px;">
+          <button class="logout-btn" routerLink="/login">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" />
+              <polyline points="16 17 21 12 16 7" />
+              <line x1="21" y1="12" x2="9" y2="12" />
+            </svg> Cerrar Sesión
+          </button>
+          <div class="user-row">
+            <div class="user-avatar">{{ (currentUser?.nombre || 'A').charAt(0) | uppercase }}</div>
+            <div class="user-info">
+              <span class="user-name">{{ currentUser?.nombre || 'Administrador' }}</span>
+              <span class="user-role">{{ currentUser?.rol === 'admin' ? 'Gerente' : 'Colaborador' }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </aside>
+    <div class="content">
+      <div *ngIf="vistaActual() === 'lista'">
+        <div class="section-header">
+          <div>
+            <div class="section-title">Áreas Operativas</div>
+            <div class="section-sub">Configura departamentos internos y asigna personal</div>
+          </div>
+          <button class="btn-primary" (click)="abrirModalNuevaArea()">+ Nueva Área</button>
+        </div>
+        <div class="user-grid">
 
-<div class="form-group form-full">
-  <label class="form-label">Nombre del Área</label>
-  <input class="form-input" [(ngModel)]="formNombreArea" [disabled]="areaEditandoId !== ''" [style.opacity]="areaEditandoId ? '0.7' : '1'" placeholder="Ej: Cajas">
-</div>
-<div class="form-group form-full" style="margin-top: 10px;">
-  <label class="form-label">Descripción</label>
-  <textarea class="form-input" [(ngModel)]="formDescripcionArea" rows="2" placeholder="Ej: Encargados de cobrar..."></textarea>
-</div>
+          <div class="user-card" *ngFor="let area of getAreasFiltradas()" (click)="verDetalleArea(area)"
+            style="cursor: pointer; transition: transform 0.2s;"
+            [style.opacity]="estaAreaBloqueada(area) ? '0.65' : '1'">
+            <div class="user-card-header">
+              <div class="user-info">
+                <div class="user-name" style="display: flex; align-items: center; gap: 8px;">
+                  {{ area.nombre }}
+                  <span *ngIf="estaAreaBloqueada(area)"
+                    style="background: #FEE2E2; color: #DC2626; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 800; border: 1px solid #FCA5A5; letter-spacing: 0.5px;">
+                    🔒 FUERA DE HORARIO</span>
+                </div>
+                <div class="user-role">{{ area.descripcion || 'Sin descripción' }}</div>
 
-<div class="form-group form-full" style="margin-top: 15px;">
-  <label class="photo-toggle" style="display: flex; align-items: center; cursor: pointer; background: #EFF6FF; padding: 12px; border-radius: 8px; border: 1px solid #BFDBFE; font-size: 13px; font-weight: 600; color: #1E3A8A;">
-    <input type="checkbox" [(ngModel)]="formEsRecurrente" style="margin-right: 10px; width: 16px; height: 16px; cursor: pointer;">
-    🔄 Jornada Recurrente (Activar y desactivar todos los días a la misma hora)
-  </label>
-</div>
+                <div
+                  style="font-size: 12px; color: #2563EB; margin-top: 8px; font-weight: 600; display: flex; align-items: center; gap: 4px;"
+                  *ngIf="area.fechaAsignada || area.esRecurrente">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                  </svg>
+                  <span *ngIf="area.esRecurrente">Todos los días</span>
+                  <span *ngIf="!area.esRecurrente">{{ area.fechaAsignada }}</span>
 
-<div style="display: flex; gap: 10px; margin-top: 15px; flex-wrap: wrap;">
-  <div class="form-group" style="flex: 1; min-width: 120px;" *ngIf="!formEsRecurrente">
-    <label class="form-label">Fecha Única</label>
-    <input type="date" class="form-input" [(ngModel)]="formFechaArea">
+                  <span *ngIf="area.horaEntrada && area.horaSalida"> | {{ area.horaEntrada }} a {{ area.horaSalida }}
+                    hrs</span>
+                  <span *ngIf="area.horaEntrada && !area.horaSalida"> | Desde las {{ area.horaEntrada }} hrs</span>
+                </div>
+
+                <div
+                  style="font-size: 12px; color: #059669; margin-top: 4px; font-weight: 600; display: flex; align-items: center; gap: 4px;"
+                  *ngIf="area.turnoAsignado">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="5" />
+                    <line x1="12" y1="1" x2="12" y2="3" />
+                    <line x1="12" y1="21" x2="12" y2="23" />
+                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+                    <line x1="1" y1="12" x2="3" y2="12" />
+                    <line x1="21" y1="12" x2="23" y2="12" />
+                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+                  </svg>
+                  Turno: {{ area.turnoAsignado }}
+                </div>
+
+              </div>
+              <button class="btn-action btn-delete" (click)="eliminarArea(area, $event)"><svg width="16" height="16"
+                  viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="3 6 5 6 21 6" />
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+                </svg></button>
+            </div>
+            <div class="user-credentials"
+              style="display:flex; justify-content:space-between; align-items:center; background:#F8FAFC; padding:12px; border-radius:8px;">
+              <span><strong>{{ contarEmpleadosEnArea(area.nombre) }}</strong> Empleados</span>
+              <button class="btn-primary" [disabled]="estaAreaBloqueada(area)"
+                [style.opacity]="estaAreaBloqueada(area) ? '0.5' : '1'"
+                [style.cursor]="estaAreaBloqueada(area) ? 'not-allowed' : 'pointer'"
+                style="background:white; color:#0F172A; border:1px solid #E2E8F0; padding:6px 12px; font-size:12px;"
+                (click)="abrirAsignacion(area, $event)">Asignar Personal</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div *ngIf="vistaActual() === 'detalle' && areaDetalle()">
+        <button class="btn-back" (click)="volverALista()"
+          style="background:transparent; border:none; color:#64748B; cursor:pointer; display:flex; align-items:center; gap:5px; font-weight:600; margin-bottom:20px; font-size: 14px;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="19" y1="12" x2="5" y2="12"></line>
+            <polyline points="12 19 5 12 12 5"></polyline>
+          </svg> Volver a Áreas
+        </button>
+        <div
+          style="background: white; border-radius: 12px; padding: 25px; border: 1px solid var(--border); margin-bottom: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+            <div>
+              <h2
+                style="margin: 0 0 5px 0; font-size: 24px; color: #0F172A; display: flex; align-items: center; gap: 10px;">
+                {{ areaDetalle().nombre }}
+                <span *ngIf="estaAreaBloqueada(areaDetalle())"
+                  style="background: #FEE2E2; color: #DC2626; padding: 4px 8px; border-radius: 6px; font-size: 12px; font-weight: 800; border: 1px solid #FCA5A5; letter-spacing: 0.5px;">
+                  🔒 FUERA DE HORARIO</span>
+              </h2>
+              <p style="margin: 0; color: #64748B;">{{ areaDetalle().descripcion || 'Sin descripción asignada aestedepartamento.' }}</p>
+
+              <div
+                style="margin-top: 10px; font-size: 14px; color: #2563EB; font-weight: 600; display: flex; align-items: center; gap: 6px;"
+                *ngIf="areaDetalle().fechaAsignada || areaDetalle().esRecurrente || areaDetalle().horaEntrada">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+                <span *ngIf="areaDetalle().esRecurrente">Todos los días</span>
+                <span *ngIf="!areaDetalle().esRecurrente">Programado: {{ areaDetalle().fechaAsignada }}</span>
+
+                <span *ngIf="areaDetalle().horaEntrada && areaDetalle().horaSalida"> | {{ areaDetalle().horaEntrada }} a
+                  {{ areaDetalle().horaSalida }} hrs</span>
+                <span *ngIf="areaDetalle().horaEntrada && !areaDetalle().horaSalida"> | Desde las {{
+                  areaDetalle().horaEntrada }} hrs</span>
+              </div>
+              <div
+                style="margin-top: 6px; font-size: 14px; color: #059669; font-weight: 600; display: flex; align-items: center; gap: 6px;"
+                *ngIf="areaDetalle().turnoAsignado">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="5" />
+                  <line x1="12" y1="1" x2="12" y2="3" />
+                  <line x1="12" y1="21" x2="12" y2="23" />
+                  <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+                  <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+                  <line x1="1" y1="12" x2="3" y2="12" />
+                  <line x1="21" y1="12" x2="23" y2="12" />
+                  <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+                  <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+                </svg>
+                Turno asignado: {{ areaDetalle().turnoAsignado }}
+              </div>
+
+            </div>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+              <button class="btn-secondary" (click)="abrirModalEditarArea(areaDetalle())"
+                style="font-size: 13px; padding: 8px 16px; background: white; border: 1px solid #E2E8F0;">
+                ✏️ Editar Jornada
+              </button>
+              <button class="btn-primary" (click)="abrirModalTareaParaArea()"
+                style="font-size: 13px; padding: 8px 16px;" [disabled]="estaAreaBloqueada(areaDetalle())"
+                [style.opacity]="estaAreaBloqueada(areaDetalle()) ? '0.5' : '1'"
+                [style.cursor]="estaAreaBloqueada(areaDetalle()) ? 'not-allowed' : 'pointer'">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                  style="margin-right:4px;">
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg> Tarea a toda el Área
+              </button>
+              <button class="btn-secondary" (click)="abrirModalRutinaParaArea()"
+                style="font-size: 13px; padding: 8px 16px; background: #F8FAFC; border: 1px solid #CBD5E1; color: #0F172A;"
+                [disabled]="estaAreaBloqueada(areaDetalle())"
+                [style.opacity]="estaAreaBloqueada(areaDetalle()) ? '0.5' : '1'"
+                [style.cursor]="estaAreaBloqueada(areaDetalle()) ? 'not-allowed' : 'pointer'">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                  style="margin-right:4px;">
+                  <polyline points="23 4 23 10 17 10"></polyline>
+                  <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                </svg> Rutina a toda el Área
+              </button>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 15px;">
+          <h3 style="font-size: 18px; color: #0F172A; margin: 0;">Personal Asignado ({{ getEmpleadosDelArea().length }})
+          </h3>
+          <button class="btn-secondary" (click)="abrirAsignacion(areaDetalle(), $event)"
+            style="font-size:13px; padding:6px 12px;" [disabled]="estaAreaBloqueada(areaDetalle())"
+            [style.opacity]="estaAreaBloqueada(areaDetalle()) ? '0.5' : '1'"
+            [style.cursor]="estaAreaBloqueada(areaDetalle()) ? 'not-allowed' : 'pointer'">+ Gestionar Personal</button>
+        </div>
+        <div class="user-grid">
+          <div class="user-card" *ngFor="let emp of getEmpleadosDelArea()"
+            style="display:flex; flex-direction:column; justify-content:space-between;">
+            <div
+              style="display:flex; align-items:center; gap:12px; border-bottom:1px solid #E2E8F0; padding-bottom:15px; margin-bottom:15px;">
+              <div class="user-avatar" style="background:#0F172A; color:white;">{{ emp.nombre.charAt(0) | uppercase }}
+              </div>
+              <div>
+                <div style="font-weight:700; color:#0F172A;">{{ emp.nombre }}</div>
+                <div style="font-size:12px; color:#64748B;">{{ emp.cargo || 'Colaborador' }}</div>
+              </div>
+            </div>
+            <div style="display:flex; gap:10px;">
+              <button class="btn-primary" style="flex:1; justify-content:center; font-size:12px; padding:8px;"
+                (click)="abrirModalTarea(emp.nombre)" [disabled]="estaAreaBloqueada(areaDetalle())"
+                [style.opacity]="estaAreaBloqueada(areaDetalle()) ? '0.5' : '1'"
+                [style.cursor]="estaAreaBloqueada(areaDetalle()) ? 'not-allowed' : 'pointer'">+ Tarea Única</button>
+              <button class="btn-secondary" style="flex:1; justify-content:center; font-size:12px; padding:8px;"
+                (click)="abrirModalRutina(emp.nombre)" [disabled]="estaAreaBloqueada(areaDetalle())"
+                [style.opacity]="estaAreaBloqueada(areaDetalle()) ? '0.5' : '1'"
+                [style.cursor]="estaAreaBloqueada(areaDetalle()) ? 'not-allowed' : 'pointer'">+ Rutina</button>
+            </div>
+          </div>
+          <div *ngIf="getEmpleadosDelArea().length === 0"
+            style="grid-column: 1/-1; text-align:center; padding:30px; background:white; border-radius:12px; border:1px dashed #CBD5E1; color:#64748B;">
+            Esta área aún no tiene personal asignado.
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-overlay" *ngIf="isModalOpen">
+        <div class="modal" style="max-width: 550px;">
+          <div class="modal-header">
+            <div class="modal-title">{{ areaEditandoId ? 'Editar Jornada del Área' : 'Crear Nueva Área' }}</div>
+            <button class="modal-close" (click)="cerrarModal()">X</button>
+          </div>
+          <div class="modal-body">
+
+            <div class="form-group form-full">
+              <label class="form-label">Nombre del Área</label>
+              <input class="form-input" [(ngModel)]="formNombreArea" [disabled]="areaEditandoId !== ''"
+                [style.opacity]="areaEditandoId ? '0.7' : '1'" placeholder="Ej: Cajas">
+            </div>
+            <div class="form-group form-full" style="margin-top: 10px;">
+              <label class="form-label">Descripción</label>
+              <textarea class="form-input" [(ngModel)]="formDescripcionArea" rows="2"
+                placeholder="Ej: Encargados de cobrar..."></textarea>
+            </div>
+
+            <div class="form-group form-full" style="margin-top: 15px;">
+              <label class="photo-toggle"
+                style="display: flex; align-items: center; cursor: pointer; background: #EFF6FF; padding: 12px; border-radius: 8px; border: 1px solid #BFDBFE; font-size: 13px; font-weight: 600; color: #1E3A8A;">
+                <input type="checkbox" [(ngModel)]="formEsRecurrente"
+                  style="margin-right: 10px; width: 16px; height: 16px; cursor: pointer;">
+                🔄 Jornada Recurrente (Activar y desactivar todos los días a la misma hora)
+              </label>
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-top: 15px; flex-wrap: wrap;">
+              <div class="form-group" style="flex: 1; min-width: 120px;" *ngIf="!formEsRecurrente">
+                <label class="form-label">Fecha Única</label>
+                <input type="date" class="form-input" [(ngModel)]="formFechaArea">
+              </div>
+              <div class="form-group" style="flex: 1; min-width: 90px;">
+                <label class="form-label">Entrada</label>
+                <input type="time" class="form-input" [(ngModel)]="formHoraEntrada">
+              </div>
+              <div class="form-group" style="flex: 1; min-width: 90px;">
+                <label class="form-label">Salida</label>
+                <input type="time" class="form-input" [(ngModel)]="formHoraSalida">
+              </div>
+              <div class="form-group" style="flex: 1; min-width: 110px;">
+                <label class="form-label">Turno</label>
+                <select class="form-input select-input" [(ngModel)]="formTurnoArea" style="height: 42px; width: 100%;">
+                  <option value="">Sin definir</option>
+                  <option value="Mañana">Mañana</option>
+                  <option value="Tarde">Tarde</option>
+                  <option value="Noche">Noche</option>
+                  <option value="Rolar turnos">Rolar turnos</option>
+                </select>
+              </div>
+            </div>
+
+            <div *ngIf="!areaEditandoId" class="form-group form-full"
+              style="margin-top: 15px; border-top: 1px solid #E2E8F0; padding-top: 15px;">
+              <label class="form-label">Asignar Personal Inicial (Opcional)</label>
+              <input class="form-input" [(ngModel)]="terminoBusquedaCreacion" placeholder="Buscar empleado..."
+                style="margin-bottom: 10px;">
+              <div
+                style="max-height: 180px; overflow-y: auto; border: 1px solid #E2E8F0; border-radius: 8px; padding: 5px;">
+                <div *ngFor="let u of empleadosParaCreacion"
+                  style="display:flex; justify-content:space-between; align-items:center; padding:8px 10px; border-bottom:1px solid #F1F5F9; cursor: pointer; transition: 0.2s;"
+                  [style.background]="estaSeleccionadoParaCreacion(u) ? '#EFF6FF' : 'transparent'"
+                  (click)="toggleUsuarioParaCreacion(u)">
+                  <div style="display: flex; align-items: center; gap: 10px;">
+                    <div class="user-avatar" style="width: 28px; height: 28px; font-size: 11px;">{{ u.nombre.charAt(0) |
+                      uppercase }}</div>
+                    <div>
+                      <div style="font-size: 13px; font-weight: 600; color: #0F172A;">{{ u.nombre }}</div>
+                      <div style="font-size: 11px; color: #64748B;">{{ u.cargo || 'Colaborador' }}</div>
+                    </div>
+                  </div>
+                  <input type="checkbox" [checked]="estaSeleccionadoParaCreacion(u)" style="pointer-events: none;">
+                </div>
+                <div *ngIf="empleadosParaCreacion.length === 0"
+                  style="text-align: center; padding: 15px; color: #64748B; font-size: 12px;">No se encontraron
+                  empleados.</div>
+              </div>
+              <div style="font-size: 11px; color: #64748B; margin-top: 6px; font-weight: bold;">Seleccionados: {{
+                formAssignedUsers.length }}</div>
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+              <button class="btn-secondary" (click)="cerrarModal()">Cancelar</button>
+              <button class="btn-primary" (click)="guardarArea()">{{ areaEditandoId ? 'Guardar Cambios' : 'Crear Área'
+                }}</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-overlay" *ngIf="isModalAsignacionOpen">
+        <div class="modal" style="max-width:500px;">
+          <div class="modal-header">
+            <div class="modal-title">Asignar a: {{ areaSeleccionada?.nombre }}</div><button class="modal-close"
+              (click)="isModalAsignacionOpen=false">X</button>
+          </div>
+          <div class="modal-body">
+            <input class="form-input" [(ngModel)]="terminoBusquedaAsignacion" (input)="actualizarListaAsignacion()"
+              placeholder="Buscar empleado...">
+            <div style="max-height:300px; overflow-y:auto; margin-top:15px;">
+              <div *ngFor="let u of empleadosFiltradosAsignacion()"
+                style="display:flex; justify-content:space-between; padding:10px; border-bottom:1px solid #F1F5F9;">
+                <span>{{ u.nombre }}</span>
+                <input type="checkbox" [checked]="tieneElArea(u)" (change)="toggleAreaUsuario(u)">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-overlay" *ngIf="isModalTareaOpen">
+        <div class="modal" style="max-width: 550px;">
+          <div class="modal-header">
+            <div class="modal-title">Nueva Tarea Única</div>
+            <button class="modal-close" (click)="cerrarModalTarea()"><svg width="24" height="24" viewBox="0 0 24 24"
+                fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg></button>
+          </div>
+          <div class="modal-body">
+            <div class="form-group form-full"><label class="form-label">Nombre de la operación</label><input
+                class="form-input" type="text" [(ngModel)]="formName" placeholder="Ej: Acomodo especial"></div>
+            <div class="form-group form-full">
+              <label class="form-label">Usuarios Asignados (Personal del Área)</label>
+              <div class="checkbox-grid">
+                <label class="checkbox-label" *ngFor="let emp of getEmpleadosDelArea()"
+                  [class.selected]="formAssigned.includes(emp.nombre)">
+                  <input type="checkbox" [checked]="formAssigned.includes(emp.nombre)"
+                    (change)="toggleEmpleadoTarea(emp.nombre)" class="custom-checkbox"> {{ emp.nombre }}
+                </label>
+              </div>
+            </div>
+            <div class="form-group form-full"><label class="form-label">Departamento / Sucursal</label><select
+                class="form-input select-input" [(ngModel)]="formStore">
+                <option *ngFor="let suc of sucursalesDisponibles" [value]="suc">{{ suc }}</option>
+              </select></div>
+            <div class="form-group form-full">
+              <label class="form-label">Actividades</label>
+              <div class="checklist-items">
+                <div class="checklist-item-wrap" *ngFor="let item of formItems; let i = index; trackBy: trackByIndex"
+                  style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 15px; margin-bottom: 10px;">
+                  <div class="item-wrap-top">
+                    <input class="form-input item-input" type="text" [(ngModel)]="item.text"
+                      placeholder="Descripción de la tarea">
+                    <label class="photo-toggle"
+                      style="display: flex; align-items: center; cursor: pointer; background: white; padding: 6px 10px; border-radius: 6px; border: 1px solid #E2E8F0; font-size: 13px; font-weight: 600;">
+                      <input type="checkbox" [(ngModel)]="item.requiresPhoto" [disabled]="item.requiresAntesDespues"
+                        (change)="item.requiresPhoto ? item.requiresAntesDespues = false : null"
+                        style="margin-right: 6px;">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        style="margin-right: 4px;">
+                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z">
+                        </path>
+                        <circle cx="12" cy="13" r="4"></circle>
+                      </svg> 1 Foto
+                    </label>
+                    <label class="photo-toggle"
+                      style="display: flex; align-items: center; cursor: pointer; background: #FFFBEB; color: #D97706; padding: 6px 10px; border-radius: 6px; border: 1px solid #FDE68A; font-size: 13px; font-weight: 600; margin-left: 8px;">
+                      <input type="checkbox" [(ngModel)]="item.requiresAntesDespues"
+                        (change)="item.requiresAntesDespues ? item.requiresPhoto = false : null"
+                        style="margin-right: 6px;">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        style="margin-right: 4px;">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                        <circle cx="12" cy="12" r="3"></circle>
+                      </svg> Antes y Desp.
+                    </label>
+                    <div *ngIf="item.requiresAntesDespues"
+                      style="display: flex; align-items: center; gap: 5px; margin-left: 10px; background: white; padding: 2px 8px; border-radius: 6px; border: 1px solid #E2E8F0;">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        style="color: #64748B;">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <polyline points="12 6 12 12 16 14"></polyline>
+                      </svg>
+                      <input type="number" class="form-input" [(ngModel)]="item.tiempoEstimado"
+                        title="Tiempo en minutos"
+                        style="width: 50px; padding: 2px 4px; font-size: 12px; height: 24px; border: none; outline: none; background: transparent; text-align: center; font-weight: 600;">
+                      <span style="font-size: 11px; color: #64748B; font-weight: 700;">min</span>
+                    </div>
+                    <button class="btn-remove" (click)="eliminarItem(i)" title="Eliminar"
+                      style="margin-left: 8px; background: transparent; border: none; color: #EF4444; cursor: pointer;"><svg
+                        width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="3 6 5 6 21 6"></polyline>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                      </svg></button>
+                  </div>
+                  <div class="item-wrap-bottom" style="display: flex; gap: 15px; margin-top: 10px;">
+                    <div class="time-input-group"
+                      style="display: flex; align-items: center; font-size: 13px; color: #64748B;"><svg width="14"
+                        height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        style="margin-right:4px;">
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                        <line x1="16" y1="2" x2="16" y2="6"></line>
+                        <line x1="8" y1="2" x2="8" y2="6"></line>
+                        <line x1="3" y1="10" x2="21" y2="10"></line>
+                      </svg> Fecha: <input class="form-input time-input" type="date" [(ngModel)]="item.date"
+                        style="padding: 4px 8px; margin-left: 6px;"></div>
+                    <div class="time-input-group"
+                      style="display: flex; align-items: center; font-size: 13px; color: #64748B;"><svg width="14"
+                        height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        style="margin-right:4px;">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <polyline points="12 6 12 12 16 14"></polyline>
+                      </svg> Límite: <input class="form-input time-input" type="time" [(ngModel)]="item.time"
+                        style="padding: 4px 8px; margin-left: 6px;"></div>
+                  </div>
+                </div>
+              </div>
+              <button class="btn-secondary" (click)="agregarItem()"
+                style="margin-top:12px; width: 100%; border: 1px dashed #CBD5E1; color: #475569;"><svg width="14"
+                  height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                  style="margin-right:4px; vertical-align:middle;">
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg> Añadir actividad</button>
+            </div>
+            <div class="btn-group"
+              style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; padding-top: 20px; border-top: 1px solid #E2E8F0;">
+              <button class="btn-secondary" (click)="cerrarModalTarea()">Cancelar</button>
+              <button class="btn-primary" (click)="guardarChecklistUnico()">Generar Tareas</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-overlay" *ngIf="isModalRutinaOpen">
+        <div class="modal" style="max-width: 650px;">
+          <div class="modal-header">
+            <div class="modal-title">Nuevo Bloque de Rutinas</div>
+            <button class="modal-close" (click)="cerrarModalRutina()"><svg width="24" height="24" viewBox="0 0 24 24"
+                fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg></button>
+          </div>
+          <div class="modal-body">
+            <div class="form-group form-full"><label class="form-label">Identificador del Bloque</label><input
+                class="form-input" type="text" [(ngModel)]="formNameRutina"
+                placeholder="Ej: Protocolo de Cierre Nocturno"></div>
+            <div class="form-group form-full">
+              <label class="form-label">Responsables de ejecución (Personal del Área)</label>
+              <div class="checkbox-grid">
+                <label class="checkbox-label" *ngFor="let emp of getEmpleadosDelArea()"
+                  [class.selected]="formAssignedRutina.includes(emp.nombre)">
+                  <input type="checkbox" [checked]="formAssignedRutina.includes(emp.nombre)"
+                    (change)="toggleEmpleadoRutina(emp.nombre)" class="custom-checkbox"> {{ emp.nombre }}
+                </label>
+              </div>
+            </div>
+            <div class="form-group form-full">
+              <label class="form-label">Sucursal asignada</label>
+              <select class="form-input select-input" [(ngModel)]="formStoreRutina">
+                <option *ngFor="let suc of sucursalesDisponibles" [value]="suc">{{ suc }}</option>
+              </select>
+              <small *ngIf="esSucursalAdministrativa(formStoreRutina)"
+                style="color: #64748B; display: block; margin-top: 6px;">   ℹ️   Las rutinas diarias para esta zona se
+                omiten automáticamente los domingos.</small>
+            </div>
+            <div class="form-group form-full"
+              style="margin-top: 15px; border-top: 1px dashed var(--border); padding-top: 20px;">
+              <label class="form-label">Configuración de Frecuencias</label>
+              <div class="checklist-items">
+                <div class="checklist-item-wrap"
+                  *ngFor="let rutina of formRutinas; let i = index; trackBy: trackByIndex"
+                  style="display:flex; flex-direction:column; gap:10px; background: #F8FAFC; border: 1px solid #E2E8F0; padding: 15px; border-radius: 8px; margin-bottom: 10px;">
+                  <input class="form-input item-input" type="text" [(ngModel)]="rutina.text"
+                    placeholder="Ej: Limpieza profunda" style="flex: 1;">
+                  <div style="display:flex; flex-wrap:wrap; gap:10px;">
+                    <div class="routine-settings" style="flex:1; display:flex; gap:10px;">
+                      <select class="form-input select-input" [(ngModel)]="rutina.frecuencia"
+                        (change)="alCambiarFrecuencia(rutina)">
+                        <option *ngFor="let f of frecuencias" [value]="f">{{ f }}</option>
+                      </select>
+                      <select *ngIf="rutina.frecuencia === 'Semanal' || rutina.frecuencia === 'Catorcenal'"
+                        class="form-input select-input" [(ngModel)]="rutina.diaSemana">
+                        <option value="Lunes">Lunes</option>
+                        <option value="Martes">Martes</option>
+                        <option value="Miércoles">Miércoles</option>
+                        <option value="Jueves">Jueves</option>
+                        <option value="Viernes">Viernes</option>
+                        <option value="Sábado">Sábado</option>
+                        <option value="Domingo">Domingo</option>
+                      </select>
+                      <select *ngIf="rutina.frecuencia === 'Mensual' || rutina.frecuencia === 'Trimestral'"
+                        class="form-input select-input" [(ngModel)]="rutina.diaMes">
+                        <option *ngFor="let d of diasDelMes" [value]="d">Día {{ d }}</option>
+                      </select>
+                      <div class="time-picker-wrap"
+                        style="display: flex; align-items: center; background: white; border: 1px solid #E2E8F0; border-radius: 6px; padding: 0 10px;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                          stroke-width="2" style="color: #64748B;">
+                          <circle cx="12" cy="12" r="10"></circle>
+                          <polyline points="12 6 12 12 16 14"></polyline>
+                        </svg>
+                        <input type="time" [(ngModel)]="rutina.horaLimite"
+                          style="border: none; outline: none; padding: 10px 5px;">
+                      </div>
+                    </div>
+                  </div>
+                  <div style="display: flex; gap: 8px; align-items: center; width: 100%; margin-top: 8px;">
+                    <span class="routine-period-text"
+                      style="flex: 1; font-size:12px; color: #64748B; font-weight: 600;">{{ getTextoPeriodo(rutina)
+                      }}</span>
+                    <label class="photo-toggle"
+                      style="display:flex; align-items:center; cursor:pointer; background:white; padding:4px 8px; border-radius:6px; border:1px solid #E2E8F0; font-size:12px; font-weight:600;">
+                      <input type="checkbox" [(ngModel)]="rutina.requiresPhoto" [disabled]="rutina.requiresAntesDespues"
+                        (change)="rutina.requiresPhoto ? rutina.requiresAntesDespues = false : null"> 1 Foto
+                    </label>
+                    <label class="photo-toggle"
+                      style="display:flex; align-items:center; cursor:pointer; background:#FFFBEB; color:#D97706; padding:4px 8px; border-radius:6px; border:1px solid #FDE68A; font-size:12px; font-weight:600;">
+                      <input type="checkbox" [(ngModel)]="rutina.requiresAntesDespues"
+                        (change)="rutina.requiresAntesDespues ? rutina.requiresPhoto = false : null"> Antes/Desp.
+                    </label>
+
+                    <div *ngIf="rutina.requiresAntesDespues"
+                      style="display: flex; align-items: center; gap: 5px; margin-left: 10px; background: white; padding: 2px 8px; border-radius: 6px; border: 1px solid #E2E8F0;">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        style="color: #64748B;">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <polyline points="12 6 12 12 16 14"></polyline>
+                      </svg>
+                      <input type="number" class="form-input" [(ngModel)]="rutina.tiempoEstimado"
+                        title="Tiempo en minutos"
+                        style="width: 50px; padding: 2px 4px; font-size: 12px; height: 24px; border: none; outline: none; background: transparent; text-align: center; font-weight: 600;">
+                      <span style="font-size: 11px; color: #64748B; font-weight: 700;">min</span>
+                    </div>
+                    <button class="btn-remove" (click)="eliminarRutina(i)" title="Eliminar rutina"
+                      style="background:transparent; border:none; color:#EF4444; cursor:pointer;"><svg width="18"
+                        height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="3 6 5 6 21 6"></polyline>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                      </svg></button>
+                  </div>
+                </div>
+              </div>
+              <button class="btn-outline-primary" (click)="agregarRutina()"
+                style="margin-top:12px; width: 100%; border: 1px dashed #CBD5E1; color: #475569; padding:10px; border-radius:8px; background:white; cursor:pointer; font-weight: 600;"><svg
+                  width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                  style="margin-right:4px; vertical-align:middle;">
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg> Añadir regla recurrente</button>
+            </div>
+            <div class="btn-group"
+              style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; padding-top: 20px; border-top: 1px solid #E2E8F0;">
+              <button class="btn-secondary" (click)="cerrarModalRutina()">Cancelar</button>
+              <button class="btn-primary" (click)="guardarBloqueRutinas()">Guardar en Bóveda</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
   </div>
-  <div class="form-group" style="flex: 1; min-width: 90px;">
-    <label class="form-label">Entrada</label>
-    <input type="time" class="form-input" [(ngModel)]="formHoraEntrada">
-  </div>
-  <div class="form-group" style="flex: 1; min-width: 90px;">
-    <label class="form-label">Salida</label>
-    <input type="time" class="form-input" [(ngModel)]="formHoraSalida">
-  </div>
-  <div class="form-group" style="flex: 1; min-width: 110px;">
-    <label class="form-label">Turno</label>
-    <select class="form-input select-input" [(ngModel)]="formTurnoArea" style="height: 42px; width: 100%;">
-      <option value="">Sin definir</option>
-      <option value="Mañana">Mañana</option>
-      <option value="Tarde">Tarde</option>
-      <option value="Noche">Noche</option>
-      <option value="Rolar turnos">Rolar turnos</option>
-    </select>
-  </div>
-</div>
-
-<div *ngIf="!areaEditandoId" class="form-group form-full" style="margin-top: 15px; border-top: 1px solid #E2E8F0; padding-top: 15px;">
-<label class="form-label">Asignar Personal Inicial (Opcional)</label>
-<input class="form-input" [(ngModel)]="terminoBusquedaCreacion" placeholder="Buscar empleado..." style="margin-bottom: 10px;">
-<div style="max-height: 180px; overflow-y: auto; border: 1px solid #E2E8F0; border-radius: 8px; padding: 5px;">
-<div *ngFor="let u of empleadosParaCreacion" style="display:flex; justify-content:space-between; align-items:center; padding:8px 10px; border-bottom:1px solid #F1F5F9; cursor: pointer; transition: 0.2s;"
-[style.background]="estaSeleccionadoParaCreacion(u) ? '#EFF6FF' : 'transparent'" (click)="toggleUsuarioParaCreacion(u)">
-<div style="display: flex; align-items: center; gap: 10px;">
-<div class="user-avatar" style="width: 28px; height: 28px; font-size: 11px;">{{ u.nombre.charAt(0) | uppercase }}</div>
-<div>
-<div style="font-size: 13px; font-weight: 600; color: #0F172A;">{{ u.nombre }}</div>
-<div style="font-size: 11px; color: #64748B;">{{ u.cargo || 'Colaborador' }}</div>
-</div>
-</div>
-<input type="checkbox" [checked]="estaSeleccionadoParaCreacion(u)" style="pointer-events: none;">
-</div>
-<div *ngIf="empleadosParaCreacion.length === 0" style="text-align: center; padding: 15px; color: #64748B; font-size: 12px;">No se encontraron empleados.</div>
-</div>
-<div style="font-size: 11px; color: #64748B; margin-top: 6px; font-weight: bold;">Seleccionados: {{ formAssignedUsers.length }}</div>
-</div>
-<div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
-  <button class="btn-secondary" (click)="cerrarModal()">Cancelar</button>
-  <button class="btn-primary" (click)="guardarArea()">{{ areaEditandoId ? 'Guardar Cambios' : 'Crear Área' }}</button>
-</div>
-</div>
-</div>
-</div>
-
-<div class="modal-overlay" *ngIf="isModalAsignacionOpen">
-<div class="modal" style="max-width:500px;">
-<div class="modal-header"><div class="modal-title">Asignar a: {{ areaSeleccionada?.nombre }}</div><button class="modal-close" (click)="isModalAsignacionOpen=false">X</button></div>
-<div class="modal-body">
-<input class="form-input" [(ngModel)]="terminoBusquedaAsignacion" (input)="actualizarListaAsignacion()" placeholder="Buscar empleado...">
-<div style="max-height:300px; overflow-y:auto; margin-top:15px;">
-<div *ngFor="let u of empleadosFiltradosAsignacion()" style="display:flex; justify-content:space-between; padding:10px; border-bottom:1px solid #F1F5F9;">
-<span>{{ u.nombre }}</span>
-<input type="checkbox" [checked]="tieneElArea(u)" (change)="toggleAreaUsuario(u)">
-</div>
-</div>
-</div>
-</div>
-</div>
-
-<div class="modal-overlay" *ngIf="isModalTareaOpen">
-<div class="modal" style="max-width: 550px;">
-<div class="modal-header">
-<div class="modal-title">Nueva Tarea Única</div>
-<button class="modal-close" (click)="cerrarModalTarea()"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
-</div>
-<div class="modal-body">
-<div class="form-group form-full"><label class="form-label">Nombre de la operación</label><input class="form-input" type="text" [(ngModel)]="formName" placeholder="Ej: Acomodo especial"></div>
-<div class="form-group form-full">
-<label class="form-label">Usuarios Asignados (Personal del Área)</label>
-<div class="checkbox-grid">
-<label class="checkbox-label" *ngFor="let emp of getEmpleadosDelArea()" [class.selected]="formAssigned.includes(emp.nombre)">
-<input type="checkbox" [checked]="formAssigned.includes(emp.nombre)" (change)="toggleEmpleadoTarea(emp.nombre)" class="custom-checkbox"> {{ emp.nombre }}
-</label>
-</div>
-</div>
-<div class="form-group form-full"><label class="form-label">Departamento / Sucursal</label><select class="form-input select-input" [(ngModel)]="formStore"><option *ngFor="let suc of sucursalesDisponibles" [value]="suc">{{ suc }}</option></select></div>
-<div class="form-group form-full">
-<label class="form-label">Actividades</label>
-<div class="checklist-items">
-<div class="checklist-item-wrap" *ngFor="let item of formItems; let i = index; trackBy: trackByIndex" style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 15px; margin-bottom: 10px;">
-<div class="item-wrap-top">
-<input class="form-input item-input" type="text" [(ngModel)]="item.text" placeholder="Descripción de la tarea">
-<label class="photo-toggle" style="display: flex; align-items: center; cursor: pointer; background: white; padding: 6px 10px; border-radius: 6px; border: 1px solid #E2E8F0; font-size: 13px; font-weight: 600;">
-<input type="checkbox" [(ngModel)]="item.requiresPhoto" [disabled]="item.requiresAntesDespues" (change)="item.requiresPhoto ? item.requiresAntesDespues = false : null" style="margin-right: 6px;">
-<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px;"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg> 1 Foto
-</label>
-<label class="photo-toggle" style="display: flex; align-items: center; cursor: pointer; background: #FFFBEB; color: #D97706; padding: 6px 10px; border-radius: 6px; border: 1px solid #FDE68A; font-size: 13px; font-weight: 600; margin-left: 8px;">
-<input type="checkbox" [(ngModel)]="item.requiresAntesDespues" (change)="item.requiresAntesDespues ? item.requiresPhoto = false : null" style="margin-right: 6px;">
-<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg> Antes y Desp.
-</label>
-<div *ngIf="item.requiresAntesDespues" style="display: flex; align-items: center; gap: 5px; margin-left: 10px; background: white; padding: 2px 8px; border-radius: 6px; border: 1px solid #E2E8F0;">
-<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: #64748B;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-<input type="number" class="form-input" [(ngModel)]="item.tiempoEstimado" title="Tiempo en minutos" style="width: 50px; padding: 2px 4px; font-size: 12px; height: 24px; border: none; outline: none; background: transparent; text-align: center; font-weight: 600;">
-<span style="font-size: 11px; color: #64748B; font-weight: 700;">min</span>
-</div>
-<button class="btn-remove" (click)="eliminarItem(i)" title="Eliminar" style="margin-left: 8px; background: transparent; border: none; color: #EF4444; cursor: pointer;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button>
-</div>
-<div class="item-wrap-bottom" style="display: flex; gap: 15px; margin-top: 10px;">
-<div class="time-input-group" style="display: flex; align-items: center; font-size: 13px; color: #64748B;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg> Fecha: <input class="form-input time-input" type="date" [(ngModel)]="item.date" style="padding: 4px 8px; margin-left: 6px;"></div>
-<div class="time-input-group" style="display: flex; align-items: center; font-size: 13px; color: #64748B;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> Límite: <input class="form-input time-input" type="time" [(ngModel)]="item.time" style="padding: 4px 8px; margin-left: 6px;"></div>
-</div>
-</div>
-</div>
-<button class="btn-secondary" (click)="agregarItem()" style="margin-top:12px; width: 100%; border: 1px dashed #CBD5E1; color: #475569;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px; vertical-align:middle;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg> Añadir actividad</button>
-</div>
-<div class="btn-group" style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; padding-top: 20px; border-top: 1px solid #E2E8F0;">
-<button class="btn-secondary" (click)="cerrarModalTarea()">Cancelar</button>
-<button class="btn-primary" (click)="guardarChecklistUnico()">Generar Tareas</button>
-</div>
-</div>
-</div>
-</div>
-
-<div class="modal-overlay" *ngIf="isModalRutinaOpen">
-<div class="modal" style="max-width: 650px;">
-<div class="modal-header">
-<div class="modal-title">Nuevo Bloque de Rutinas</div>
-<button class="modal-close" (click)="cerrarModalRutina()"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
-</div>
-<div class="modal-body">
-<div class="form-group form-full"><label class="form-label">Identificador del Bloque</label><input class="form-input" type="text" [(ngModel)]="formNameRutina" placeholder="Ej: Protocolo de Cierre Nocturno"></div>
-<div class="form-group form-full">
-<label class="form-label">Responsables de ejecución (Personal del Área)</label>
-<div class="checkbox-grid">
-<label class="checkbox-label" *ngFor="let emp of getEmpleadosDelArea()" [class.selected]="formAssignedRutina.includes(emp.nombre)">
-<input type="checkbox" [checked]="formAssignedRutina.includes(emp.nombre)" (change)="toggleEmpleadoRutina(emp.nombre)" class="custom-checkbox"> {{ emp.nombre }}
-</label>
-</div>
-</div>
-<div class="form-group form-full">
-<label class="form-label">Sucursal asignada</label>
-<select class="form-input select-input" [(ngModel)]="formStoreRutina"><option *ngFor="let suc of sucursalesDisponibles" [value]="suc">{{ suc }}</option></select>
-<small *ngIf="esSucursalAdministrativa(formStoreRutina)" style="color: #64748B; display: block; margin-top: 6px;">   ℹ️    Las rutinas diarias para esta zona se omiten automáticamente los domingos.</small>
-</div>
-<div class="form-group form-full" style="margin-top: 15px; border-top: 1px dashed var(--border); padding-top: 20px;">
-<label class="form-label">Configuración de Frecuencias</label>
-<div class="checklist-items">
-<div class="checklist-item-wrap" *ngFor="let rutina of formRutinas; let i = index; trackBy: trackByIndex" style="display:flex; flex-direction:column; gap:10px; background: #F8FAFC; border: 1px solid #E2E8F0; padding: 15px; border-radius: 8px; margin-bottom: 10px;">
-<input class="form-input item-input" type="text" [(ngModel)]="rutina.text" placeholder="Ej: Limpieza profunda" style="flex: 1;">
-<div style="display:flex; flex-wrap:wrap; gap:10px;">
-<div class="routine-settings" style="flex:1; display:flex; gap:10px;">
-<select class="form-input select-input" [(ngModel)]="rutina.frecuencia" (change)="alCambiarFrecuencia(rutina)">
-<option *ngFor="let f of frecuencias" [value]="f">{{ f }}</option>
-</select>
-<select *ngIf="rutina.frecuencia === 'Semanal' || rutina.frecuencia === 'Catorcenal'" class="form-input select-input" [(ngModel)]="rutina.diaSemana">
-<option value="Lunes">Lunes</option><option value="Martes">Martes</option><option value="Miércoles">Miércoles</option><option value="Jueves">Jueves</option><option value="Viernes">Viernes</option><option value="Sábado">Sábado</option><option value="Domingo">Domingo</option>
-</select>
-<select *ngIf="rutina.frecuencia === 'Mensual' || rutina.frecuencia === 'Trimestral'" class="form-input select-input" [(ngModel)]="rutina.diaMes">
-<option *ngFor="let d of diasDelMes" [value]="d">Día {{ d }}</option>
-</select>
-<div class="time-picker-wrap" style="display: flex; align-items: center; background: white; border: 1px solid #E2E8F0; border-radius: 6px; padding: 0 10px;">
-<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: #64748B;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-<input type="time" [(ngModel)]="rutina.horaLimite" style="border: none; outline: none; padding: 10px 5px;">
-</div>
-</div>
-</div>
-<div style="display: flex; gap: 8px; align-items: center; width: 100%; margin-top: 8px;">
-<span class="routine-period-text" style="flex: 1; font-size:12px; color: #64748B; font-weight: 600;">{{ getTextoPeriodo(rutina) }}</span>
-<label class="photo-toggle" style="display:flex; align-items:center; cursor:pointer; background:white; padding:4px 8px; border-radius:6px; border:1px solid #E2E8F0; font-size:12px; font-weight:600;">
-<input type="checkbox" [(ngModel)]="rutina.requiresPhoto" [disabled]="rutina.requiresAntesDespues" (change)="rutina.requiresPhoto ? rutina.requiresAntesDespues = false : null"> 1 Foto
-</label>
-<label class="photo-toggle" style="display:flex; align-items:center; cursor:pointer; background:#FFFBEB; color:#D97706; padding:4px 8px; border-radius:6px; border:1px solid #FDE68A; font-size:12px; font-weight:600;">
-<input type="checkbox" [(ngModel)]="rutina.requiresAntesDespues" (change)="rutina.requiresAntesDespues ? rutina.requiresPhoto = false : null"> Antes/Desp.
-</label>
-
-<div *ngIf="rutina.requiresAntesDespues" style="display: flex; align-items: center; gap: 5px; margin-left: 10px; background: white; padding: 2px 8px; border-radius: 6px; border: 1px solid #E2E8F0;">
-<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: #64748B;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-<input type="number" class="form-input" [(ngModel)]="rutina.tiempoEstimado" title="Tiempo en minutos" style="width: 50px; padding: 2px 4px; font-size: 12px; height: 24px; border: none; outline: none; background: transparent; text-align: center; font-weight: 600;">
-<span style="font-size: 11px; color: #64748B; font-weight: 700;">min</span>
-</div>
-<button class="btn-remove" (click)="eliminarRutina(i)" title="Eliminar rutina" style="background:transparent; border:none; color:#EF4444; cursor:pointer;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button>
-</div>
-</div>
-</div>
-<button class="btn-outline-primary" (click)="agregarRutina()" style="margin-top:12px; width: 100%; border: 1px dashed #CBD5E1; color: #475569; padding:10px; border-radius:8px; background:white; cursor:pointer; font-weight: 600;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px; vertical-align:middle;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg> Añadir regla recurrente</button>
-</div>
-<div class="btn-group" style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; padding-top: 20px; border-top: 1px solid #E2E8F0;">
-<button class="btn-secondary" (click)="cerrarModalRutina()">Cancelar</button>
-<button class="btn-primary" (click)="guardarBloqueRutinas()">Guardar en Bóveda</button>
-</div>
-</div>
-</div>
-</div>
-
-</div>
-</div>
 </div>

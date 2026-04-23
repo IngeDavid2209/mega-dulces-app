@@ -18,12 +18,12 @@ export class CalendarioComponent implements OnInit, OnDestroy {
   currentUser: any = null;
   empleados = signal<any[]>([]);
   checklistsGlobales: any[] = [];
-  
+
   areas = signal<any[]>([]);
   areaSeleccionada = 'Todas';
   terminoBusqueda = '';
   empleadoSeleccionado = 'Todos';
-  
+
   fechaActual = new Date();
   mesActualNombre = '';
   anioActual = 0;
@@ -70,7 +70,7 @@ export class CalendarioComponent implements OnInit, OnDestroy {
 
     const checklistsRef = collection(this.firestore, 'checklists');
     this.destructores.push(onSnapshot(checklistsRef, (snap) => {
-      this.checklistsGlobales = snap.docs.map(d => d.data()).filter((c:any) => !c.eliminado);
+      this.checklistsGlobales = snap.docs.map(d => d.data()).filter((c: any) => !c.eliminado);
       this.generarCalendario();
     }));
   }
@@ -104,7 +104,8 @@ export class CalendarioComponent implements OnInit, OnDestroy {
     const opcionesMes: Intl.DateTimeFormatOptions = { month: 'long' };
     this.mesActualNombre = this.fechaActual.toLocaleDateString('es-ES', opcionesMes).toUpperCase();
   }
-irAFechaPrecisa(event: any) {
+  // 🔥 BUSCADOR DE FECHA EXACTA (El que te marcaba error) 🔥
+  irAFechaPrecisa(event: any) {
     const input = event.target.value;
     if (!input) return;
 
@@ -115,17 +116,18 @@ irAFechaPrecisa(event: any) {
       const dia = parseInt(partes[2], 10);
 
       this.fechaActual = new Date(anio, mes, dia);
-      this.actualizarMes(0); 
+      this.actualizarMes(0);
       this.generarCalendario();
       this.abrirDiaPorString(input);
     }
   }
- // 🔥 BOTONES INTUITIVOS DE NAVEGACIÓN RÁPIDA 🔥
+
+  // 🔥 BOTONES INTUITIVOS DE NAVEGACIÓN RÁPIDA 🔥
   irAHoy() {
     this.fechaActual = new Date();
     this.actualizarMes(0);
     this.generarCalendario();
-    
+
     // Ajuste de zona horaria para México
     const offset = this.fechaActual.getTimezoneOffset() * 60000;
     const hoyStr = new Date(this.fechaActual.getTime() - offset).toISOString().split('T')[0];
@@ -138,7 +140,7 @@ irAFechaPrecisa(event: any) {
     this.fechaActual = ayer;
     this.actualizarMes(0);
     this.generarCalendario();
-    
+
     const offset = ayer.getTimezoneOffset() * 60000;
     const ayerStr = new Date(ayer.getTime() - offset).toISOString().split('T')[0];
     this.abrirDiaPorString(ayerStr);
@@ -146,9 +148,11 @@ irAFechaPrecisa(event: any) {
 
   abrirDiaPorString(fechaStr: string) {
     const partes = fechaStr.split('-');
+    if (partes.length < 3) return;
+
     const dia = parseInt(partes[2], 10);
     const diaEncontrado = this.diasCalendario().find(d => d && d.numero === dia);
-    
+
     if (diaEncontrado && diaEncontrado.total > 0) {
       this.abrirDetalleDia(diaEncontrado);
     } else {
@@ -161,13 +165,13 @@ irAFechaPrecisa(event: any) {
     const month = this.fechaActual.getMonth();
     const primerDia = new Date(year, month, 1).getDay();
     const diasEnMes = new Date(year, month + 1, 0).getDate();
-    
+
     let grid = [];
     const offset = new Date().getTimezoneOffset() * 60000;
     const hoyStr = new Date(Date.now() - offset).toISOString().split('T')[0];
-    
+
     for (let i = 0; i < primerDia; i++) { grid.push(null); }
-    
+
     for (let i = 1; i <= diasEnMes; i++) {
       // Ajuste para evitar bugs de zona horaria al buscar tareas
       const fechaLocal = new Date(year, month, i, 12);
@@ -181,18 +185,18 @@ irAFechaPrecisa(event: any) {
         const nombresEmpleadosArea = this.empleadosFiltrados.map(e => e.nombre);
         tareasDelDia = tareasDelDia.filter(c => nombresEmpleadosArea.includes(c.assigned));
       }
-      
+
       let completadas = 0; let pendientes = 0; let vencidas = 0;
-      
+
       tareasDelDia.forEach(tarea => {
-        const tareasMarcadas = tarea.items ? tarea.items.filter((item:any) => item.checked).length : 0;
+        const tareasMarcadas = tarea.items ? tarea.items.filter((item: any) => item.checked).length : 0;
         const totalItems = tarea.items ? tarea.items.length : 0;
 
         if (tareasMarcadas === totalItems && totalItems > 0) { completadas++; }
         else if (fechaStr < hoyStr) { vencidas++; }
         else { pendientes++; }
       });
-      
+
       grid.push({
         numero: i, fechaStr: fechaStr, esHoy: fechaStr === hoyStr,
         tareas: tareasDelDia, completadas, pendientes, vencidas, total: tareasDelDia.length

@@ -104,34 +104,55 @@ export class CalendarioComponent implements OnInit, OnDestroy {
     const opcionesMes: Intl.DateTimeFormatOptions = { month: 'long' };
     this.mesActualNombre = this.fechaActual.toLocaleDateString('es-ES', opcionesMes).toUpperCase();
   }
-
-  // 🔥 NUEVA FUNCIÓN: VIAJE EN EL TIEMPO AL SELECCIONAR FECHA 🔥
-  irAFechaPrecisa(event: Event) {
-    const input = (event.target as HTMLInputElement).value;
+irAFechaPrecisa(event: any) {
+    const input = event.target.value;
     if (!input) return;
 
-    // input viene en formato YYYY-MM-DD
     const partes = input.split('-');
     if (partes.length === 3) {
       const anio = parseInt(partes[0], 10);
       const mes = parseInt(partes[1], 10) - 1; // En JavaScript los meses son del 0 al 11
       const dia = parseInt(partes[2], 10);
 
-      // Cambiamos la máquina del tiempo
       this.fechaActual = new Date(anio, mes, dia);
-      this.actualizarMes(0); // Forzamos actualización de textos sin incrementar
+      this.actualizarMes(0); 
       this.generarCalendario();
+      this.abrirDiaPorString(input);
+    }
+  }
+ // 🔥 BOTONES INTUITIVOS DE NAVEGACIÓN RÁPIDA 🔥
+  irAHoy() {
+    this.fechaActual = new Date();
+    this.actualizarMes(0);
+    this.generarCalendario();
+    
+    // Ajuste de zona horaria para México
+    const offset = this.fechaActual.getTimezoneOffset() * 60000;
+    const hoyStr = new Date(this.fechaActual.getTime() - offset).toISOString().split('T')[0];
+    this.abrirDiaPorString(hoyStr);
+  }
 
-      // Buscamos el cuadro de ese día para abrirlo automáticamente
-      const diaEncontrado = this.diasCalendario().find(d => d && d.numero === dia);
-      
-      if (diaEncontrado) {
-        if (diaEncontrado.total > 0) {
-          this.abrirDetalleDia(diaEncontrado);
-        } else {
-          Swal.fire({ toast: true, position: 'top-end', showConfirmButton: false, timer: 3000, icon: 'info', title: 'No hay actividades registradas en esta fecha' });
-        }
-      }
+  irAAyer() {
+    const ayer = new Date();
+    ayer.setDate(ayer.getDate() - 1);
+    this.fechaActual = ayer;
+    this.actualizarMes(0);
+    this.generarCalendario();
+    
+    const offset = ayer.getTimezoneOffset() * 60000;
+    const ayerStr = new Date(ayer.getTime() - offset).toISOString().split('T')[0];
+    this.abrirDiaPorString(ayerStr);
+  }
+
+  abrirDiaPorString(fechaStr: string) {
+    const partes = fechaStr.split('-');
+    const dia = parseInt(partes[2], 10);
+    const diaEncontrado = this.diasCalendario().find(d => d && d.numero === dia);
+    
+    if (diaEncontrado && diaEncontrado.total > 0) {
+      this.abrirDetalleDia(diaEncontrado);
+    } else {
+      Swal.fire({ toast: true, position: 'top-end', showConfirmButton: false, timer: 3000, icon: 'info', title: 'Sin actividades registradas' });
     }
   }
 

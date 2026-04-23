@@ -143,10 +143,25 @@
             </select>
           </div>
 
-          <div class="filter-group">
-            <label style="font-size: 11px; font-weight: 700; color: #1E3A8A; margin-right: 8px;">VER DÍA EXACTO:</label>
-            <input type="date" class="form-input" [(ngModel)]="fechaBuscada" (change)="irAFechaPrecisa($event)"
-              style="padding: 8px; height: 38px; cursor: pointer; border-color: #BFDBFE; background: #EFF6FF; color: #1E3A8A; font-weight: 600;">
+         <div class="filter-group" style="display: flex; flex-direction: column; gap: 6px;">
+            <label style="font-size: 11px; font-weight: 800; color: #1E3A8A; text-transform: uppercase; letter-spacing: 0.5px;">Auditoría Rápida:</label>
+            
+            <div style="display: flex; background: #F8FAFC; border-radius: 10px; border: 1px solid #CBD5E1; overflow: hidden; height: 38px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+              
+              <button (click)="irAHoy()" style="background: white; border: none; border-right: 1px solid #E2E8F0; padding: 0 16px; font-size: 13px; font-weight: 800; color: #0F172A; cursor: pointer; transition: 0.2s;" onmouseover="this.style.background='#EFF6FF'; this.style.color='#2563EB'" onmouseout="this.style.background='white'; this.style.color='#0F172A'">
+                Hoy
+              </button>
+
+              <button (click)="irAAyer()" style="background: white; border: none; border-right: 1px solid #E2E8F0; padding: 0 16px; font-size: 13px; font-weight: 700; color: #475569; cursor: pointer; transition: 0.2s;" onmouseover="this.style.background='#F8FAFC'; this.style.color='#0F172A'" onmouseout="this.style.background='white'; this.style.color='#475569'">
+                Ayer
+              </button>
+
+              <div style="position: relative; display: flex; align-items: center; background: white; padding: 0 10px; cursor: pointer; transition: 0.2s;" onmouseover="this.style.background='#F8FAFC'" onmouseout="this.style.background='white'">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.5" style="position: absolute; left: 12px; pointer-events: none;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                <input type="date" [(ngModel)]="fechaBuscada" (change)="irAFechaPrecisa($event)" style="border: none; background: transparent; padding-left: 26px; font-size: 13px; font-weight: 700; color: #1E3A8A; cursor: pointer; outline: none; width: 135px; line-height: 38px;">
+              </div>
+              
+            </div>
           </div>
 
           <div class="month-navigation"

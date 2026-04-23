@@ -23,13 +23,15 @@ export class AreasComponent implements OnInit, OnDestroy {
   terminoBusqueda = '';
   isModalOpen = false;
   
-  // 🔥 VARIABLES DE JORNADA Y TURNO 🔥
+  // 🔥 VARIABLES DE FORMULARIO (MODIFICACIÓN Y RECURRENCIA) 🔥
+  areaEditandoId = '';
   formNombreArea = '';
   formDescripcionArea = '';
   formFechaArea = ''; 
   formHoraEntrada = ''; 
   formHoraSalida = '';  
   formTurnoArea = ''; 
+  formEsRecurrente = false; // <-- NUEVO: Para que se repita a diario
   formAssignedUsers: any[] = [];
   
   terminoBusquedaCreacion = '';
@@ -96,12 +98,34 @@ export class AreasComponent implements OnInit, OnDestroy {
     this.destructoresRadares.push(radarUsuarios);
   }
 
-  // 🔥 RELOJ BIOLÓGICO: BLOQUEO POR JORNADA 🔥
+  // 🔥 RELOJ BIOLÓGICO: BLOQUEO INTELIGENTE DIARIO O POR FECHA 🔥
   estaAreaBloqueada(area: any): boolean {
-    if (!area || !area.fechaAsignada) return false;
+    if (!area) return false;
     const hoy = new Date();
-    let horaLimite = "23:59:59"; 
+    
+    // REGLA 1: JORNADA RECURRENTE (SE REPITE TODOS LOS DÍAS)
+    if (area.esRecurrente && area.horaEntrada && area.horaSalida) {
+      const horaActual = hoy.getHours() * 60 + hoy.getMinutes(); // Minutos desde medianoche
+      
+      const [hE, mE] = area.horaEntrada.split(':').map(Number);
+      const minEntrada = hE * 60 + mE;
+      
+      const [hS, mS] = area.horaSalida.split(':').map(Number);
+      const minSalida = hS * 60 + mS;
 
+      if (minEntrada < minSalida) {
+        // Turno normal (Ej: 08:00 a 16:00). Bloquea si es antes de entrar o después de salir.
+        return horaActual < minEntrada || horaActual >= minSalida;
+      } else {
+        // Turno nocturno (Ej: 22:00 a 06:00). Bloquea solo durante el día.
+        return horaActual >= minSalida && horaActual < minEntrada;
+      }
+    }
+
+    // REGLA 2: JORNADA DE UN SOLO DÍA (FECHA EXACTA)
+    if (!area.fechaAsignada) return false;
+    
+    let horaLimite = "23:59:59"; 
     if (area.horaSalida) {
       horaLimite = area.horaSalida + ":00";
     } else if (area.turnoAsignado) {
@@ -154,12 +178,29 @@ export class AreasComponent implements OnInit, OnDestroy {
   }
   
   abrirModalNuevaArea() {
+    this.areaEditandoId = ''; // Modo Creación
     this.formNombreArea = ''; this.formDescripcionArea = ''; this.formAssignedUsers = [];
-    this.formFechaArea = ''; this.formHoraEntrada = ''; this.formHoraSalida = ''; this.formTurnoArea = '';
+    this.formFechaArea = ''; this.formHoraEntrada = ''; this.formHoraSalida = ''; 
+    this.formTurnoArea = ''; this.formEsRecurrente = false;
     this.terminoBusquedaCreacion = ''; this.isModalOpen = true;
   }
+
+  // 🔥 NUEVA FUNCIÓN PARA EDITAR ÁREAS EXISTENTES 🔥
+  abrirModalEditarArea(area: any) {
+    this.areaEditandoId = area.id; // Modo Edición
+    this.formNombreArea = area.nombre; 
+    this.formDescripcionArea = area.descripcion || ''; 
+    this.formFechaArea = area.fechaAsignada || ''; 
+    this.formHoraEntrada = area.horaEntrada || ''; 
+    this.formHoraSalida = area.horaSalida || ''; 
+    this.formTurnoArea = area.turnoAsignado || ''; 
+    this.formEsRecurrente = area.esRecurrente || false;
+    this.formAssignedUsers = []; // En edición, personal se maneja desde la vista detalle
+    this.terminoBusquedaCreacion = ''; 
+    this.isModalOpen = true;
+  }
   
-  cerrarModal() { this.isModalOpen = false; }
+  cerrarModal() { this.isModalOpen = false; this.areaEditandoId = ''; }
   
   get empleadosParaCreacion() {
     let filtrados = this.usuarios().filter(u => u.rol === 'trabajador');
@@ -182,40 +223,55 @@ export class AreasComponent implements OnInit, OnDestroy {
   async guardarArea() {
     if (!this.formNombreArea.trim()) { Swal.fire('Falta el nombre', 'Debes asignarle un nombre al área.', 'warning'); return; }
     const nombreFormateado = this.formNombreArea.trim();
-    const existe = this.areas().some(a => a.nombre.toLowerCase() === nombreFormateado.toLowerCase());
-    if (existe) { Swal.fire('Área Duplicada', 'Ya existe un área con ese nombre.', 'error'); return; }
     
-    const areaId = 'area_' + Date.now();
+    // Validación de duplicados solo si estamos creando una nueva
+    if (!this.areaEditandoId) {
+      const existe = this.areas().some(a => a.nombre.toLowerCase() === nombreFormateado.toLowerCase());
+      if (existe) { Swal.fire('Área Duplicada', 'Ya existe un área con ese nombre.', 'error'); return; }
+    }
+    
+    const areaId = this.areaEditandoId || ('area_' + Date.now());
+    
     try {
-      // 🔥 MODO OFFLINE: Sin "await" 🔥
-      setDoc(doc(this.firestore, 'areas_operativas', areaId), {
+      const datosGuardar: any = {
         nombre: nombreFormateado, 
         descripcion: this.formDescripcionArea.trim(), 
-        fechaAsignada: this.formFechaArea,
+        fechaAsignada: this.formEsRecurrente ? '' : this.formFechaArea, // Si es recurrente, borramos la fecha
         horaEntrada: this.formHoraEntrada,
         horaSalida: this.formHoraSalida,
         turnoAsignado: this.formTurnoArea,
-        fechaCreacion: new Date().toISOString()
-      });
+        esRecurrente: this.formEsRecurrente
+      };
 
-      for (const u of this.formAssignedUsers) {
-        let nuevasAreas = u.areas ? [...u.areas] : [];
-        if (!nuevasAreas.includes(nombreFormateado)) {
-          nuevasAreas.push(nombreFormateado);
-          setDoc(doc(this.firestore, 'usuarios', u.idFirestore), { areas: nuevasAreas }, { merge: true });
-        }
+      if (!this.areaEditandoId) {
+        datosGuardar['fechaCreacion'] = new Date().toISOString();
+      } else {
+        datosGuardar['fechaModificacion'] = new Date().toISOString();
       }
 
-      const yo = this.liveUser;
-      if (yo && yo.rol !== 'admin') {
-        const misAreas = yo.areas || [];
-        const esGlobalArea = misAreas.includes('Todas las áreas') || misAreas.includes('Todas');
-        
-        if (!esGlobalArea && !misAreas.includes(nombreFormateado)) {
-          misAreas.push(nombreFormateado);
-          const miId = yo.idFirestore || yo.uid;
-          if (miId) {
-            setDoc(doc(this.firestore, 'usuarios', miId), { areas: misAreas }, { merge: true });
+      // 🔥 MODO OFFLINE: Sin "await" 🔥
+      setDoc(doc(this.firestore, 'areas_operativas', areaId), datosGuardar, { merge: true });
+
+      // Si es un área nueva, asignamos los usuarios seleccionados
+      if (!this.areaEditandoId) {
+        for (const u of this.formAssignedUsers) {
+          let nuevasAreas = u.areas ? [...u.areas] : [];
+          if (!nuevasAreas.includes(nombreFormateado)) {
+            nuevasAreas.push(nombreFormateado);
+            setDoc(doc(this.firestore, 'usuarios', u.idFirestore), { areas: nuevasAreas }, { merge: true });
+          }
+        }
+
+        const yo = this.liveUser;
+        if (yo && yo.rol !== 'admin') {
+          const misAreas = yo.areas || [];
+          const esGlobalArea = misAreas.includes('Todas las áreas') || misAreas.includes('Todas');
+          if (!esGlobalArea && !misAreas.includes(nombreFormateado)) {
+            misAreas.push(nombreFormateado);
+            const miId = yo.idFirestore || yo.uid;
+            if (miId) {
+              setDoc(doc(this.firestore, 'usuarios', miId), { areas: misAreas }, { merge: true });
+            }
           }
         }
       }
@@ -223,13 +279,20 @@ export class AreasComponent implements OnInit, OnDestroy {
       this.cerrarModal();
 
       // 🔥 ALERTA INTELIGENTE DE INTERNET 🔥
+      const msg = this.areaEditandoId ? 'Área actualizada' : 'Área programada';
       if (navigator.onLine) {
-        Swal.fire({ toast: true, position: 'top-end', showConfirmButton: false, timer: 3000, icon: 'success', title: 'Área programada en la Nube ☁️' });
+        Swal.fire({ toast: true, position: 'top-end', showConfirmButton: false, timer: 3000, icon: 'success', title: `${msg} en la Nube ☁️` });
       } else {
-        Swal.fire({ toast: true, position: 'top-end', showConfirmButton: false, timer: 4000, icon: 'info', title: 'Sin Internet: Guardado en Bóveda Local 📦' });
+        Swal.fire({ toast: true, position: 'top-end', showConfirmButton: false, timer: 4000, icon: 'info', title: `Sin Internet: ${msg} en Bóveda Local 📦` });
       }
 
-    } catch (error) { Swal.fire('Error', 'Hubo un problema al crear el área.', 'error'); }
+      // Refrescar el detalle si estábamos editando
+      if (this.areaEditandoId && this.areaDetalle()) {
+        const areaActualizada = { ...this.areaDetalle(), ...datosGuardar };
+        this.areaDetalle.set(areaActualizada);
+      }
+
+    } catch (error) { Swal.fire('Error', 'Hubo un problema al procesar el área.', 'error'); }
   }
   
   async eliminarArea(area: any, event: Event) {
@@ -244,7 +307,7 @@ export class AreasComponent implements OnInit, OnDestroy {
   abrirAsignacion(area: any, event: Event) {
     event.stopPropagation();
     if (this.estaAreaBloqueada(area)) {
-      Swal.fire('Área Cerrada', 'El turno de esta área ya finalizó. No puedes modificar su personal.', 'warning');
+      Swal.fire('Área Cerrada', 'La jornada está inactiva en este momento. No puedes modificar su personal.', 'warning');
       return;
     }
     this.areaSeleccionada = area;
@@ -279,7 +342,7 @@ export class AreasComponent implements OnInit, OnDestroy {
   
   abrirModalTareaParaArea() {
     if (this.estaAreaBloqueada(this.areaDetalle())) {
-      Swal.fire('Área Cerrada', 'El turno ya finalizó. No puedes asignar tareas.', 'warning'); return;
+      Swal.fire('Área Cerrada', 'La jornada está inactiva. No puedes asignar tareas en este momento.', 'warning'); return;
     }
     const empleadosDelArea = this.getEmpleadosDelArea().map(emp => emp.nombre);
     if (empleadosDelArea.length === 0) { Swal.fire('Área Vacía', 'No hay personal asignado.', 'warning'); return; }
@@ -292,7 +355,7 @@ export class AreasComponent implements OnInit, OnDestroy {
   
   abrirModalRutinaParaArea() {
     if (this.estaAreaBloqueada(this.areaDetalle())) {
-      Swal.fire('Área Cerrada', 'El turno ya finalizó. No puedes asignar rutinas.', 'warning'); return;
+      Swal.fire('Área Cerrada', 'La jornada está inactiva. No puedes asignar rutinas en este momento.', 'warning'); return;
     }
     const empleadosDelArea = this.getEmpleadosDelArea().map(emp => emp.nombre);
     if (empleadosDelArea.length === 0) { Swal.fire('Área Vacía', 'No hay personal asignado.', 'warning'); return; }
@@ -304,7 +367,7 @@ export class AreasComponent implements OnInit, OnDestroy {
   }
   
   abrirModalTarea(empleadoNombre: string) {
-    if (this.estaAreaBloqueada(this.areaDetalle())) { Swal.fire('Cerrado', 'Turno finalizado.', 'warning'); return; }
+    if (this.estaAreaBloqueada(this.areaDetalle())) { Swal.fire('Cerrado', 'Jornada inactiva.', 'warning'); return; }
     this.formName = ''; this.formAssigned = [empleadoNombre];
     this.formStore = this.sucursalesDisponibles.length > 0 ? this.sucursalesDisponibles[0] : '';
     this.formItems = [{ text: '', requiresPhoto: false, requiresAntesDespues: false, tiempoEstimado: 30, date: '', time: '' }];
@@ -342,7 +405,7 @@ export class AreasComponent implements OnInit, OnDestroy {
         status: 'pendiente', enviado: false, createdBy: this.currentUser?.nombre || 'Desconocido', notaEmpleado: '',
         items: JSON.parse(JSON.stringify(tareasValidas))
       };
-      // 🔥 MODO OFFLINE EXTREMO PARA TAREAS: Sin "await" 🔥
+      // 🔥 MODO OFFLINE PARA TAREAS 🔥
       setDoc(doc(this.firestore, 'checklists', uniqueId.toString()), checklistTareas);
     }
     
@@ -356,7 +419,7 @@ export class AreasComponent implements OnInit, OnDestroy {
   }
   
   abrirModalRutina(empleadoNombre: string) {
-    if (this.estaAreaBloqueada(this.areaDetalle())) { Swal.fire('Cerrado', 'Turno finalizado.', 'warning'); return; }
+    if (this.estaAreaBloqueada(this.areaDetalle())) { Swal.fire('Cerrado', 'Jornada inactiva.', 'warning'); return; }
     this.formNameRutina = ''; this.formAssignedRutina = [empleadoNombre];
     this.formStoreRutina = this.sucursalesDisponibles.length > 0 ? this.sucursalesDisponibles[0] : '';
     this.formRutinas = [{ text: '', requiresPhoto: false, requiresAntesDespues: false, tiempoEstimado: 30, frecuencia: 'Diaria', fechaFin: null, horaLimite: '', diaSemana: 'Lunes', diaMes: 1 }];
@@ -426,7 +489,7 @@ export class AreasComponent implements OnInit, OnDestroy {
           frecuencia: frecuenciaReal, diaSemana: diaSemanaReal, diaMes: diaMesReal, timestampCreacion: Date.now(),
           createdBy: this.currentUser?.nombre || 'Desconocido', items: JSON.parse(JSON.stringify(rutinasPorFrecuencia[llaveGrupo]))
         };
-        // 🔥 MODO OFFLINE EXTREMO PARA RUTINAS: Sin "await" 🔥
+        // 🔥 MODO OFFLINE PARA RUTINAS 🔥
         setDoc(doc(this.firestore, 'moldes_checklists', moldeId), nuevoMolde);
       }
     }

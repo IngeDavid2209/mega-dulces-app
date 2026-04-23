@@ -23,12 +23,12 @@ export class AreasComponent implements OnInit, OnDestroy {
   terminoBusqueda = '';
   isModalOpen = false;
   
-  // 🔥 VARIABLES DE JORNADA ACTUALIZADAS 🔥
+  // 🔥 VARIABLES DE JORNADA Y TURNO 🔥
   formNombreArea = '';
   formDescripcionArea = '';
   formFechaArea = ''; 
-  formHoraEntrada = ''; // NUEVA
-  formHoraSalida = '';  // NUEVA
+  formHoraEntrada = ''; 
+  formHoraSalida = '';  
   formTurnoArea = ''; 
   formAssignedUsers: any[] = [];
   
@@ -96,18 +96,18 @@ export class AreasComponent implements OnInit, OnDestroy {
     this.destructoresRadares.push(radarUsuarios);
   }
 
-  // 🔥 RELOJ BIOLÓGICO CONECTADO A LA HORA DE SALIDA 🔥
+  // 🔥 RELOJ BIOLÓGICO: BLOQUEO POR JORNADA 🔥
   estaAreaBloqueada(area: any): boolean {
     if (!area || !area.fechaAsignada) return false;
 
     const hoy = new Date();
-    let horaLimite = "23:59:59"; // Por defecto, bloquea al terminar el día
+    let horaLimite = "23:59:59"; 
 
-    // REGLA 1: Si hay hora de SALIDA exacta, el área se cierra puntualmente a esa hora
+    // REGLA 1: Si hay hora de SALIDA exacta, se bloquea a esa hora
     if (area.horaSalida) {
       horaLimite = area.horaSalida + ":00";
     } 
-    // REGLA 2: Si no hay hora de salida, pero hay turno, calculamos un aproximado
+    // REGLA 2: Si no hay hora de salida pero hay turno, calculamos un aproximado
     else if (area.turnoAsignado) {
       if (area.turnoAsignado === 'Mañana') horaLimite = "12:00:00";
       else if (area.turnoAsignado === 'Tarde') horaLimite = "18:00:00";
@@ -192,7 +192,6 @@ export class AreasComponent implements OnInit, OnDestroy {
     
     const areaId = 'area_' + Date.now();
     try {
-      // 🔥 GUARDANDO LA JORNADA COMPLETA 🔥
       await setDoc(doc(this.firestore, 'areas_operativas', areaId), {
         nombre: nombreFormateado, 
         descripcion: this.formDescripcionArea.trim(), 
@@ -211,6 +210,7 @@ export class AreasComponent implements OnInit, OnDestroy {
         }
       }
 
+      // 🔥 AUTO-ASIGNACIÓN PARA JEFES 🔥
       const yo = this.liveUser;
       if (yo && yo.rol !== 'admin') {
         const misAreas = yo.areas || [];
@@ -340,7 +340,7 @@ export class AreasComponent implements OnInit, OnDestroy {
       };
       await setDoc(doc(this.firestore, 'checklists', uniqueId.toString()), checklistTareas);
     }
-    this.mostrarToast('✅ ¡Tareas creadadas con éxito!');
+    this.mostrarToast('✅ ¡Tareas creadas con éxito!');
     this.cerrarModalTarea();
   }
   
@@ -369,7 +369,7 @@ export class AreasComponent implements OnInit, OnDestroy {
   getTextoPeriodo(rutina: any): string {
     if (rutina.frecuencia === 'Diaria') return 'Activa siempre';
     if (rutina.frecuencia === 'Semanal') return `Todos los ${rutina.diaSemana || 'Lunes'}`;
-    if (rutina.frecuencia === 'Catorcenal') return `Cada 2 weeks, los ${rutina.diaSemana || 'Lunes'}`;
+    if (rutina.frecuencia === 'Catorcenal') return `Cada 2 semanas, los ${rutina.diaSemana || 'Lunes'}`;
     if (rutina.frecuencia === 'Mensual') return `Los días ${rutina.diaMes || 1} del mes`;
     if (rutina.frecuencia === 'Trimestral') return `El día ${rutina.diaMes || 1} cada 3 meses`;
     return '';

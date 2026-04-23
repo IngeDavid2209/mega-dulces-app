@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, Router } from '@angular/router';
 import { Firestore, collection, onSnapshot } from '@angular/fire/firestore';
+import Swal from 'sweetalert2';
 
 @Component({
   selector: 'app-calendario',
@@ -15,7 +16,6 @@ export class CalendarioComponent implements OnInit, OnDestroy {
   isMenuOpen = false;
   toggleMenu() { this.isMenuOpen = !this.isMenuOpen; }
   currentUser: any = null;
-
   empleados = signal<any[]>([]);
   checklistsGlobales: any[] = [];
   
@@ -29,12 +29,14 @@ export class CalendarioComponent implements OnInit, OnDestroy {
   anioActual = 0;
   diasCalendario = signal<any[]>([]);
   diasSemana = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
-
   diaSeleccionado = signal<any>(null);
   isModalOpen = false;
 
   // 🔥 VISOR DE FOTOS INTEGRADO 🔥
   fotoAmpliada = signal<string | null>(null);
+
+  // 🔥 NUEVO: BUSCADOR DE FECHA 🔥
+  fechaBuscada = '';
 
   private firestore = inject(Firestore);
   private router = inject(Router);
@@ -103,41 +105,73 @@ export class CalendarioComponent implements OnInit, OnDestroy {
     this.mesActualNombre = this.fechaActual.toLocaleDateString('es-ES', opcionesMes).toUpperCase();
   }
 
+  // 🔥 NUEVA FUNCIÓN: VIAJE EN EL TIEMPO AL SELECCIONAR FECHA 🔥
+  irAFechaPrecisa(event: Event) {
+    const input = (event.target as HTMLInputElement).value;
+    if (!input) return;
+
+    // input viene en formato YYYY-MM-DD
+    const partes = input.split('-');
+    if (partes.length === 3) {
+      const anio = parseInt(partes[0], 10);
+      const mes = parseInt(partes[1], 10) - 1; // En JavaScript los meses son del 0 al 11
+      const dia = parseInt(partes[2], 10);
+
+      // Cambiamos la máquina del tiempo
+      this.fechaActual = new Date(anio, mes, dia);
+      this.actualizarMes(0); // Forzamos actualización de textos sin incrementar
+      this.generarCalendario();
+
+      // Buscamos el cuadro de ese día para abrirlo automáticamente
+      const diaEncontrado = this.diasCalendario().find(d => d && d.numero === dia);
+      
+      if (diaEncontrado) {
+        if (diaEncontrado.total > 0) {
+          this.abrirDetalleDia(diaEncontrado);
+        } else {
+          Swal.fire({ toast: true, position: 'top-end', showConfirmButton: false, timer: 3000, icon: 'info', title: 'No hay actividades registradas en esta fecha' });
+        }
+      }
+    }
+  }
+
   generarCalendario() {
     const year = this.fechaActual.getFullYear();
     const month = this.fechaActual.getMonth();
     const primerDia = new Date(year, month, 1).getDay();
     const diasEnMes = new Date(year, month + 1, 0).getDate();
-
+    
     let grid = [];
-    const hoyStr = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0];
-
+    const offset = new Date().getTimezoneOffset() * 60000;
+    const hoyStr = new Date(Date.now() - offset).toISOString().split('T')[0];
+    
     for (let i = 0; i < primerDia; i++) { grid.push(null); }
-
+    
     for (let i = 1; i <= diasEnMes; i++) {
+      // Ajuste para evitar bugs de zona horaria al buscar tareas
       const fechaLocal = new Date(year, month, i, 12);
       const fechaStr = fechaLocal.toISOString().split('T')[0];
-      
+
       let tareasDelDia = this.checklistsGlobales.filter(c => c.date === fechaStr);
-      
+
       if (this.empleadoSeleccionado !== 'Todos') {
         tareasDelDia = tareasDelDia.filter(c => c.assigned === this.empleadoSeleccionado);
       } else if (this.areaSeleccionada !== 'Todas') {
         const nombresEmpleadosArea = this.empleadosFiltrados.map(e => e.nombre);
         tareasDelDia = tareasDelDia.filter(c => nombresEmpleadosArea.includes(c.assigned));
       }
-
+      
       let completadas = 0; let pendientes = 0; let vencidas = 0;
-
+      
       tareasDelDia.forEach(tarea => {
         const tareasMarcadas = tarea.items ? tarea.items.filter((item:any) => item.checked).length : 0;
         const totalItems = tarea.items ? tarea.items.length : 0;
-        
+
         if (tareasMarcadas === totalItems && totalItems > 0) { completadas++; }
-        else if (fechaStr < hoyStr) { vencidas++; } 
+        else if (fechaStr < hoyStr) { vencidas++; }
         else { pendientes++; }
       });
-
+      
       grid.push({
         numero: i, fechaStr: fechaStr, esHoy: fechaStr === hoyStr,
         tareas: tareasDelDia, completadas, pendientes, vencidas, total: tareasDelDia.length
@@ -151,7 +185,7 @@ export class CalendarioComponent implements OnInit, OnDestroy {
     this.diaSeleccionado.set(dia);
     this.isModalOpen = true;
   }
-  
+
   cerrarDetalle() {
     this.isModalOpen = false;
     this.diaSeleccionado.set(null);
@@ -166,9 +200,9 @@ export class CalendarioComponent implements OnInit, OnDestroy {
     tarea.expandido = !tarea.expandido;
   }
 
-  // 🔥 FUNCIONES DEL VISOR DE FOTOS (AHÍ MISMO) 🔥
+  // 🔥 FUNCIONES DEL VISOR DE FOTOS 🔥
   abrirFoto(url: string, event: Event) {
-    event.stopPropagation(); 
+    event.stopPropagation();
     this.fotoAmpliada.set(url);
   }
 

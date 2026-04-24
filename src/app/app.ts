@@ -1,6 +1,6 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router'; 
-import { Firestore, doc, setDoc, updateDoc } from '@angular/fire/firestore';
+import { Firestore, doc, setDoc, updateDoc, getDoc } from '@angular/fire/firestore'; // 🔥 Agregamos getDoc
 import { Storage, ref, uploadString, getDownloadURL } from '@angular/fire/storage';
 import * as localforage from 'localforage';
 
@@ -15,7 +15,7 @@ export class AppComponent implements OnInit {
   title = 'mega-dulces-app';
   
   private firestore = inject(Firestore);
-  private storage = inject(Storage); // 🔥 INYECTAMOS STORAGE PARA SUBIR LAS FOTOS 🔥
+  private storage = inject(Storage);
 
   ngOnInit() {
     // 🔥 FUNCIÓN DEL LATIDO (SE MANTIENE INTACTA) 🔥
@@ -33,73 +33,64 @@ export class AppComponent implements OnInit {
       }
     };
 
-    // 1. Mandamos el primer latido
     enviarLatido();
-
-    // 2. Motor encendido para el latido cada 60 seg
     setInterval(enviarLatido, 60000);
 
-    // =========================================================
     // 🔥 SYNC MANAGER (EL FRANCOTIRADOR DE INTERNET) 🔥
-    // =========================================================
-    
-    // Escuchamos el instante exacto en que regresa el internet
     window.addEventListener('online', () => {
       console.log('🌐 ¡Conexión recuperada! Iniciando sincronización fantasma...');
       this.sincronizarFotosOffline();
     });
 
-    // Por si el usuario cerró la app estando offline y la vuelve a abrir ya con internet
     if (navigator.onLine) {
       this.sincronizarFotosOffline();
     }
   }
 
-  // Función que procesa la cola de fotos estancadas
+  // 🔥 FUNCIÓN DE SINCRONIZACIÓN CORREGIDA PARA ARREGLOS 🔥
   async sincronizarFotosOffline() {
     try {
-      // 1. Buscamos en la bóveda si hay un arreglo de fotos pendientes
       const colaFotos: any[] = await localforage.getItem('md_fotos_offline') || [];
 
-      if (colaFotos.length === 0) {
-        return; // No hay nada pendiente, salimos silenciosamente
-      }
+      if (colaFotos.length === 0) return;
 
       console.log(`🚀 Subiendo ${colaFotos.length} fotos estancadas en segundo plano...`);
-
       const fotosRestantes = [];
 
-      // 2. Procesamos cada foto de la cola
       for (let item of colaFotos) {
         try {
-          // Creamos una ruta única en Storage
           const rutaStorage = `checklists_evidencias/sync_offline_${item.idTarea}_${Date.now()}.jpg`;
           const storageRef = ref(this.storage, rutaStorage);
 
-          // 3. Subimos el Base64 a Firebase Storage
           await uploadString(storageRef, item.base64, 'data_url');
           const urlDescarga = await getDownloadURL(storageRef);
 
-          // 4. Enlazamos la URL generada al documento de la tarea en Firestore
+          // 🛠️ CIRUGÍA LÁSER: Actualización de arreglos en Firestore
           const docRef = doc(this.firestore, 'checklists', item.idTarea);
-          
-          const updateData: any = {};
-          // Usamos notación de puntos para actualizar un ítem específico del array
-          updateData[`items.${item.indexItem}.${item.tipoFoto}`] = urlDescarga;
-          // Apagamos la alerta visual de "Pendiente por Sincronizar"
-          updateData[`items.${item.indexItem}.pendienteDeSync`] = false;
+          const docSnap = await getDoc(docRef); // Descargamos el documento completo
 
-          await updateDoc(docRef, updateData);
-          console.log(`📸 Foto subida y enlazada con éxito: Tarea ${item.idTarea}`);
+          if (docSnap.exists()) {
+            const checklistData = docSnap.data();
+            const itemsArray = checklistData['items'] || [];
+
+            // Modificamos el ítem específico dentro del arreglo
+            if (itemsArray[item.indexItem]) {
+              itemsArray[item.indexItem][item.tipoFoto] = urlDescarga;
+              itemsArray[item.indexItem].pendienteDeSync = false;
+
+              // Subimos el arreglo completo ya modificado
+              await updateDoc(docRef, { items: itemsArray });
+              console.log(`📸 Foto sincronizada con éxito: Tarea ${item.idTarea}`);
+            }
+          }
 
         } catch (error) {
-          console.error('❌ Falló una foto por intermitencia, se intentará luego:', error);
-          // Si el internet parpadeó y falló esta foto en particular, la regresamos a la cola
+          console.error('❌ Error sincronizando una foto, se queda en la cola:', error);
           fotosRestantes.push(item);
         }
       }
 
-      // 5. Actualizamos la bóveda (si todo salió bien, quedará vacía)
+      // Guardamos lo que haya quedado pendiente (si hubo algún error de red a mitad del proceso)
       await localforage.setItem('md_fotos_offline', fotosRestantes);
 
     } catch (error) {

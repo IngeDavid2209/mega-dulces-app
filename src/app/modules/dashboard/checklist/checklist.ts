@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, ActivatedRoute } from '@angular/router'; 
 import { Firestore, collection, doc, setDoc, getDoc, deleteDoc, onSnapshot, getDocs } from '@angular/fire/firestore';
-
+import * as localforage from 'localforage';
 @Component({
   selector: 'app-checklist',
   standalone: true,
@@ -497,10 +497,58 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   volverALista() { this.checklistSeleccionado.set(null); this.vistaActual.set('lista'); }
   toggleItem(item: any) { item.checked = !item.checked; this.actualizarEstado(); }
 
-  async onFileSelected(event: any, item: any, tipoFoto: string = 'photo') {
+async onFileSelected(event: any, item: any, tipoFoto: string = 'photo') {
     const file = event.target.files[0];
     if (!file) return;
-    
+
+    // Buscamos el checklist actual para saber a qué tarea pertenece esta foto
+    const checklistActual = this.checklistSeleccionado();
+    if (!checklistActual) return;
+
+    // ========================================================
+    // 🔥 MODO OFFLINE (SIN INTERNET DETECTADO) 🔥
+    // ========================================================
+    if (!navigator.onLine) {
+      console.log('📡 Sin internet detectado. Guardando foto en bóveda local...');
+      
+      // Engañamos visualmente al sistema para que deje avanzar al empleado
+      item[tipoFoto] = 'offline_syncing'; 
+      item.pendienteDeSync = true; // Marca oculta que el Sync Manager está buscando
+
+      const ahora = new Date();
+      item[tipoFoto + 'Time'] = ahora.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+
+      if (tipoFoto === 'photoAntes') { item.photoAntesTimestamp = Date.now(); }
+
+      // Magia: Convertimos la foto física en texto (Base64)
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = async () => {
+        const base64String = reader.result as string;
+        // Buscamos en qué posición está esta tarea específica
+        const indexItem = checklistActual.items.findIndex((i: any) => i === item);
+
+        // Armamos el paquete fantasma
+        const fotoEstancada = {
+          idTarea: checklistActual.id,
+          indexItem: indexItem,
+          tipoFoto: tipoFoto,
+          base64: base64String
+        };
+
+        // Guardamos en la bóveda
+        const colaActual: any[] = await localforage.getItem('md_fotos_offline') || [];
+        colaActual.push(fotoEstancada);
+        await localforage.setItem('md_fotos_offline', colaActual);
+
+        this.actualizarEstado(); // Guardamos el avance offline en Firestore local
+        this.mostrarToast(' 📡 Guardado sin conexión. Se subirá automáticamente.');
+      };
+      
+      event.target.value = '';
+      return; 
+    }
+
     const cloudName = 'duherjgyg';
     const uploadPreset = 'fotos_mega';
     item[tipoFoto] = 'subiendo...';
@@ -512,22 +560,22 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     try {
       const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, { method: 'POST', body: formData });
       const data = await response.json();
+      
       if (data.secure_url) {
         item[tipoFoto] = data.secure_url;
+        item.pendienteDeSync = false; // Como sí hubo internet, desactivamos la marca
+
         const ahora = new Date();
         item[tipoFoto + 'Time'] = ahora.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
 
-        // 🔥 INICIAMOS EL CRONÓMETRO CUANDO SUBE EL "ANTES" 🔥
-        if (tipoFoto === 'photoAntes') {
-          item.photoAntesTimestamp = Date.now();
-        }
+        if (tipoFoto === 'photoAntes') { item.photoAntesTimestamp = Date.now(); }
         
         this.actualizarEstado();
       } else { 
-        item[tipoFoto] = null; this.actualizarEstado(); alert(' ❌  Error de Cloudinary.'); 
+        item[tipoFoto] = null; this.actualizarEstado(); alert(' ❌ Error de Cloudinary.'); 
       }
     } catch (error) { 
-      item[tipoFoto] = null; this.actualizarEstado(); alert(' ❌  Error de conexión.'); 
+      item[tipoFoto] = null; this.actualizarEstado(); alert(' ❌ Error de conexión.'); 
     } finally { 
       event.target.value = ''; 
     }

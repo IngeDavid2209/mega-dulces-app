@@ -353,7 +353,7 @@ export class ReportesComponent implements OnInit, OnDestroy {
       }
 
       if (c.notaEmpleado) {
-        detalle += `\n\n📌 NOTA DEL COLABORADOR:\n${c.notaEmpleado}`;
+detalle += `\n\nNOTA DEL COLABORADOR:\n${c.notaEmpleado}`;
       }
 
       const marcados = c.items ? c.items.filter((i:any) => i.checked).length : 0;
@@ -397,6 +397,21 @@ export class ReportesComponent implements OnInit, OnDestroy {
   //  🔥  NUEVA GENERACIÓN DE PDF: MODO "1 TAREA POR HOJA" (ÁLBUM NATIVO)  🔥
   // =======================================================================
   async descargarPDFVisual() {
+
+    const cleanText = (str: string): string => {
+  if (!str) return '';
+  return str
+    .replace(/[^\x00-\x7F]/g, (char) => {
+      const map: Record<string, string> = {
+        'á':'a','é':'e','í':'i','ó':'o','ú':'u',
+        'Á':'A','É':'E','Í':'I','Ó':'O','Ú':'U',
+        'ñ':'ñ','Ñ':'Ñ','ü':'u','Ü':'U',
+        '📌':'','⚠️':'','📸':'','🕒':'','📝':'',
+        '➔':'->'
+      };
+      return map[char] || '';
+    });
+};
     if (this.resultados().length === 0) {
       Swal.fire({ icon: 'info', title: 'Sin Datos', text: 'No hay datos para generar el reporte visual.', confirmButtonColor: '#0F172A' });
       return;
@@ -495,7 +510,7 @@ export class ReportesComponent implements OnInit, OnDestroy {
         doc.setTextColor(255, 255, 255);
         doc.setFontSize(16);
         doc.setFont('helvetica', 'bold');
-        doc.text(`AUDITORÍA: ${checklist.name.toUpperCase()}`, 14, 16);
+doc.text(`AUDITORIA: ${cleanText(checklist.name).toUpperCase()}`, 14, 16);
 
         doc.setTextColor(15, 23, 42);
         doc.setFontSize(14);
@@ -509,7 +524,7 @@ export class ReportesComponent implements OnInit, OnDestroy {
         doc.setFontSize(11);
         doc.text('Responsable:', 14, 55);
         doc.setFont('helvetica', 'normal');
-        doc.text(checklist.assigned || 'No asignado', 50, 55);
+doc.text(cleanText(checklist.assigned) || 'No asignado', 50, 55);
 
         doc.setFont('helvetica', 'bold');
         doc.text('Sucursal/Zona:', 14, 65);
@@ -565,15 +580,15 @@ export class ReportesComponent implements OnInit, OnDestroy {
             doc.setFontSize(10);
             if (!item.checked) {
               doc.setTextColor(220, 38, 38);
-              doc.text('⚠️ TAREA NO COMPLETADA', 14, currentY);
+doc.text('TAREA NO COMPLETADA', 14, currentY);
               currentY += 12;
             } else if (item.requiresPhoto && !item.photo && !item.requiresAntesDespues) {
               doc.setTextColor(220, 38, 38);
-              doc.text('⚠️ TAREA COMPLETADA SIN EVIDENCIA FOTOGRÁFICA', 14, currentY);
+doc.text('TAREA COMPLETADA SIN EVIDENCIA FOTOGRÁFICA', 14, currentY);
               currentY += 12;
             } else if (item.requiresAntesDespues && (!item.photoAntes || !item.photoDespues)) {
               doc.setTextColor(220, 38, 38);
-              doc.text('⚠️ FALTAN EVIDENCIAS DE ANTES Y/O DESPUÉS', 14, currentY);
+doc.text('FALTAN EVIDENCIAS DE ANTES Y/O DESPUES', 14, currentY);
               currentY += 12;
             }
 

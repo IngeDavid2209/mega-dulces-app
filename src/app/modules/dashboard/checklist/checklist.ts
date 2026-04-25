@@ -758,4 +758,11 @@ enviarChecklist() {
     const horasStr = horas < 10 ? '0' + horas : horas.toString();
     return `${horasStr}:${partes[1]} ${ampm}`;
   }
+  // 🔥 ASPIRADORA DE EMOJIS PARA EL PDF 🔥
+  limpiarEmojis(texto: string): string {
+    if (!texto) return '';
+    // Esta expresión regular (Regex) detecta cualquier emoji o símbolo raro y lo elimina,
+    // dejando intactas las letras, números y acentos.
+    return texto.replace(/([\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF])/g, '').trim();
+  }
 }

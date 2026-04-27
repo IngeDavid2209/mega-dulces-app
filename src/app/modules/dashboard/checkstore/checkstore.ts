@@ -19,8 +19,14 @@ export class CheckstoreComponent implements OnInit, OnDestroy {
   
   comerciales = signal<any[]>([]);
   administrativas = signal<any[]>([]);
-  areasTrabajo = signal<any[]>([]);
+areasTrabajo = signal<any[]>([
+    { name: 'Cajas', location: 'Área Interna', color: '#D97706', progress: 0, totalChecklists: 0, completedItems: 0, totalItems: 0 },
+    { name: 'Bodega (Almacenistas)', location: 'Área Interna', color: '#D97706', progress: 0, totalChecklists: 0, completedItems: 0, totalItems: 0 },
+    { name: 'Pasillos (Anaqueles)', location: 'Área Interna', color: '#D97706', progress: 0, totalChecklists: 0, completedItems: 0, totalItems: 0 },
+    { name: 'Recepción', location: 'Área Interna', color: '#D97706', progress: 0, totalChecklists: 0, completedItems: 0, totalItems: 0 }
+  ]);
 
+  
   sucursalesComerciales = [
     { name: 'Canindo', location: 'Sucursal Canindo', icon: '🏪' },
     { name: 'La Piedad Abastos', location: 'Mercado de Abastos', icon: '🛍️' },

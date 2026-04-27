@@ -251,4 +251,61 @@
       </div>
     </div>
   </div>
+  <div class="zone-header mt-40" *ngIf="areasTrabajo().length > 0">
+  <div class="zone-icon" style="background: #FFFBEB; color: #D97706;">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <rect x="3" y="3" width="7" height="7"></rect>
+      <rect x="14" y="3" width="7" height="7"></rect>
+      <rect x="14" y="14" width="7" height="7"></rect>
+      <rect x="3" y="14" width="7" height="7"></rect>
+    </svg>
+  </div>
+  <div class="zone-text">
+    <h2>Áreas de Operación</h2>
+    <p>Monitoreo de Cajas, Bodegas, Pasillos y pisos de venta</p>
+  </div>
+</div>
+
+<div class="store-grid" *ngIf="areasTrabajo().length > 0">
+  <div class="store-card area-card" *ngFor="let area of areasTrabajo()" style="border-top: 4px solid #F59E0B;">
+    <div class="store-card-header">
+      <div class="store-icon" style="color: #D97706; background: #FFFBEB;">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+          <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+          <line x1="12" y1="22.08" x2="12" y2="12"></line>
+        </svg>
+      </div>
+      <div class="store-info">
+        <div class="store-name">{{ area.name }}</div>
+        <div class="store-location">Área Interna</div>
+      </div>
+    </div>
+    
+    <div class="store-progress">
+      <div class="progress-label">
+        <span>Avance del Área</span>
+        <span style="color: #D97706; font-weight: 700;">{{ area.progress }}%</span>
+      </div>
+      <div class="progress-bar-wrap">
+        <div class="progress-bar-fill" [style.width.%]="area.progress" style="background: #F59E0B;"></div>
+      </div>
+    </div>
+    
+    <div class="store-stats">
+      <div class="store-stat-item">
+        <div class="store-stat-val">{{ area.totalChecklists }}</div>
+        <div class="store-stat-label">Asignados</div>
+      </div>
+      <div class="store-stat-item">
+        <div class="store-stat-val">{{ area.completedItems }}</div>
+        <div class="store-stat-label">Completadas</div>
+      </div>
+      <div class="store-stat-item">
+        <div class="store-stat-val">{{ area.totalItems }}</div>
+        <div class="store-stat-label">Total</div>
+      </div>
+    </div>
+  </div>
+</div>
 </div>

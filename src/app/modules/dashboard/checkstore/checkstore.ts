@@ -19,6 +19,7 @@ export class CheckstoreComponent implements OnInit, OnDestroy {
   
   comerciales = signal<any[]>([]);
   administrativas = signal<any[]>([]);
+  areasTrabajo = signal<any[]>([]);
 
   sucursalesComerciales = [
     { name: 'Canindo', location: 'Sucursal Canindo', icon: '🏪' },

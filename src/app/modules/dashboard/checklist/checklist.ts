@@ -13,8 +13,10 @@ import * as localforage from 'localforage';
 })
 export class ChecklistComponent implements OnInit, OnDestroy {
   isMenuOpen = false;
+  isEditandoTarea = false;  // 🔥 ¡AQUÍ ESTÁ LA VARIABLE FANTASMA! 🔥
   toggleMenu() { this.isMenuOpen = !this.isMenuOpen; }
   currentUser: any = null;
+  // ... todo lo demás sigue igual
 
   vistaActual = signal<'lista' | 'detalle'>('lista');
   checklistSeleccionado = signal<any>(null);
@@ -641,7 +643,8 @@ enviarChecklist() {
     if (index > -1) { this.formAssigned.splice(index, 1); } else { this.formAssigned.push(nombre); }
   }
 
-  abrirModal() {
+abrirModal() {
+    this.isEditandoTarea = false; // Nos aseguramos de que sea Modo Creación
     this.formName = ''; this.formAssigned = [];
     this.formStore = this.sucursalesDisponibles().length > 0 ? this.sucursalesDisponibles()[0] : '';
     this.formItems = [{ text: '', requiresPhoto: false, requiresAntesDespues: false, tiempoEstimado: 30, date: '', time: '' }];
@@ -653,6 +656,26 @@ enviarChecklist() {
   eliminarItem(index: number) { this.formItems.splice(index, 1); }
   trackByIndex(index: number, obj: any): any { return index; }
 
+// 🔥 ABRE EL MODAL PERO CARGANDO LOS DATOS DE LA TAREA SELECCIONADA 🔥
+// 🔥 ABRE EL MODAL PERO CARGANDO LOS DATOS DE LA TAREA SELECCIONADA 🔥
+  abrirEditarChecklistActual() {
+    const actual = this.checklistSeleccionado();
+    if (!actual) return;
+
+    this.isEditandoTarea = true;
+    this.formName = actual.name;
+    this.formAssigned = [actual.assigned];
+    this.formStore = actual.store;
+    
+    // Clonamos los items para que si el usuario cancela la edición, no se arruine la vista original
+    this.formItems = JSON.parse(JSON.stringify(actual.items));
+    
+    this.isModalOpen = true;
+  }
+
+  // 🔥 GUARDA LA SOBREESCRITURA EN FIREBASE 🔥
+
+  // 🔥 FUNCIÓN ORIGINAL PARA CREAR TAREAS NUEVAS 🔥
   guardarChecklistUnico() {
     if (!this.formName || this.formAssigned.length === 0) { alert('Faltan datos.'); return; }
     
@@ -676,8 +699,56 @@ enviarChecklist() {
       };
       this.guardarEnLaNube(checklistTareas);
     });
-    this.mostrarToast(' ✅   ¡ Tareas creadas con éxito!');
+    this.mostrarToast(' ✅  ¡ Tareas creadas con éxito!');
     this.cerrarModal();
+  }
+  
+  async guardarCambiosChecklist() {
+    if (!this.formName || this.formAssigned.length === 0) { alert('Faltan datos.'); return; }
+    
+    const actual = this.checklistSeleccionado();
+    if (!actual) return;
+
+    // Mapeamos los items para no borrar las fotos si la tarea ya estaba a la mitad
+    const tareasValidas = this.formItems.filter(item => item.text.trim() !== '').map((item, i) => {
+      // Buscamos si el item ya existía para conservarle su estado (completado, fotos subidas, etc)
+      const itemOriginal = actual.items.find((orig: any) => orig.text === item.text);
+      if (itemOriginal) {
+        return { ...itemOriginal, requiresPhoto: item.requiresPhoto, requiresAntesDespues: item.requiresAntesDespues, tiempoEstimado: item.tiempoEstimado };
+      }
+      // Si es un renglón nuevo que el creador acaba de agregar:
+      return {
+        id: Date.now() + i, text: item.text, requiresPhoto: item.requiresPhoto, requiresAntesDespues: item.requiresAntesDespues,
+        tiempoEstimado: item.requiresAntesDespues ? (item.tiempoEstimado || 30) : null,
+        date: actual.date, time: actual.time || '23:59', checked: false,
+        photo: null, photoTime: null, photoAntes: null, photoAntesTime: null, photoAntesTimestamp: null, photoDespues: null, photoDespuesTime: null, tipo: 'tarea'
+      };
+    });
+
+    if (tareasValidas.length === 0) { alert('Agrega tareas.'); return; }
+
+    // Actualizamos el documento en la nube
+    try {
+      await setDoc(doc(this.firestore, 'checklists', actual.id.toString()), {
+        name: this.formName,
+        assigned: this.formAssigned[0], // Toma el primero de la lista
+        store: this.formStore,
+        items: tareasValidas
+      }, { merge: true });
+
+      this.mostrarToast(' ✏️ ¡Tarea actualizada con éxito!');
+      
+      // Actualizamos la vista local
+      actual.name = this.formName;
+      actual.assigned = this.formAssigned[0];
+      actual.store = this.formStore;
+      actual.items = tareasValidas;
+      
+      this.cerrarModal();
+    } catch (error) {
+      console.error(error);
+      alert('Error al actualizar la tarea.');
+    }
   }
 
   toggleEmpleadoRutina(nombre: string) {

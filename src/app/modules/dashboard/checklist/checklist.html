@@ -459,7 +459,8 @@
                         <circle cx="12" cy="12" r="10"></circle>
                         <polyline points="12 6 12 12 16 14"></polyline>
                       </svg>
-                      <span *ngIf="!isDespuesExpirado(item)">Tiempo restante: {{ getTiempoRestanteTexto(item) }}</span>
+                    <span *ngIf="!item.checked && isTareaVencida(item, checklistSeleccionado().date)"
+style="color: #EF4444; font-size: 11px; font-weight: 700; background: #FEF2F2; padding: 4px 8px; border-radius: 4px; border: 1px solid #FECACA; display: inline-flex; align-items: center; gap: 4px; width: fit-content;"></span>
                       <span *ngIf="isDespuesExpirado(item)">¡Tiempo Agotado! (Límite: {{ item.tiempoEstimado }}
                         min)</span>
                     </div>
@@ -663,7 +664,8 @@
             <div class="btn-group"
               style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; padding-top: 20px; border-top: 1px solid #E2E8F0;">
               <button class="btn-secondary" (click)="cerrarModal()">Cancelar</button>
-              <button class="btn-primary" (click)="guardarChecklistUnico()">Generar Tareas</button>
+              <button class="btn-primary" (click)="isEditandoTarea ? guardarCambiosChecklist() : guardarChecklistUnico()">
+  {{ isEditandoTarea ? 'Guardar Cambios' : 'Generar Tareas' }}</button>
             </div>
           </div>
         </div>
@@ -783,8 +785,7 @@
             <div class="btn-group"
               style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; padding-top: 20px; border-top: 1px solid #E2E8F0;">
               <button class="btn-secondary" (click)="cerrarModalRutinas()">Cancelar</button>
-              <button class="btn-primary" (click)="guardarBloqueRutinas()">{{ isEditMode ? 'Guardar Cambios' : 'Guardar
-                en Sistema' }}</button>
+              <button class="btn-primary" (click)="guardarBloqueRutinas()">{{ isEditMode ? 'Guardar Cambios' : 'Guardaren Sistema' }}</button>
             </div>
           </div>
         </div>

@@ -148,12 +148,13 @@
         </div>
 
         <div style="display: flex; gap: 20px;">
-          <div
-            style="background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); padding: 18px 25px; border-radius: 14px; text-align: center; border: 1px solid rgba(255,255,255,0.15);">
-            <div style="font-size: 36px; font-weight: 800; color: #FDE68A; line-height: 1;">{{ pendientes() }}</div>
-            <div
-              style="font-size: 13px; color: #E2E8F0; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 8px;">
-              Pendientes</div>
+      <div routerLink="/checklist"
+     style="background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); padding: 18px 25px; border-radius: 14px; text-align: center; border: 1px solid rgba(255,255,255,0.1); cursor: pointer; transition: all 0.2s ease;"
+     onmouseover="this.style.transform='translateY(-4px)'; this.style.background='rgba(255, 255, 255, 0.2)'"
+     onmouseout="this.style.transform='translateY(0)'; this.style.background='rgba(255, 255, 255, 0.1)'">
+  <div style="font-size: 36px; font-weight: 800; color: #FDE68A; line-height: 1;">{{ pendientes() }}</div>
+  <div style="font-size: 12px; font-weight: 700; color: #94A3B8; margin-top: 5px; letter-spacing: 1px;">PENDIENTES</div>
+</div>
           </div>
           <div
             style="background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); padding: 18px 25px; border-radius: 14px; text-align: center; border: 1px solid rgba(255,255,255,0.15);">

@@ -90,3 +90,61 @@
   .calendar-container { overflow-x: auto; }
   .calendar-header, .calendar-grid { min-width: 600px; /* Fuerza scroll en móvil */ }
 }
+/* 🔥 REPARACIÓN DEL CALENDARIO PARA CELULARES 🔥 */
+@media (max-width: 768px) {
+  /* Asegura que el contenedor principal no se desborde */
+  .calendar-container {
+    width: 100% !important;
+    overflow-x: hidden !important; 
+    padding: 0 !important;
+  }
+
+  /* Fuerza a que los 7 días se dividan el espacio exactamente igual */
+  .calendar-header, .calendar-grid {
+    display: grid !important;
+    grid-template-columns: repeat(7, 1fr) !important;
+    gap: 2px !important; /* Reduce la separación entre días */
+  }
+
+  /* Achica las letras de "LUN", "MAR", "MIE"... */
+  .calendar-day-name {
+    font-size: 10px !important;
+    padding: 5px 2px !important;
+    text-overflow: clip !important;
+  }
+
+  /* Reduce el relleno interno de cada cuadrito para ahorrar espacio */
+  .calendar-cell {
+    padding: 4px !important;
+    min-height: 80px !important;
+  }
+
+  /* Achica los números de los días */
+  .date-number {
+    font-size: 12px !important;
+    width: 20px !important;
+    height: 20px !important;
+    line-height: 20px !important;
+  }
+
+  /* Achica las bolitas de los colores (completado, pendiente) */
+  .summary-dot {
+    width: 16px !important;
+    height: 16px !important;
+    font-size: 10px !important;
+    line-height: 16px !important;
+  }
+
+  /* Ajusta los puntitos de colores para que se acomoden mejor */
+  .task-summary {
+    gap: 3px !important;
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+  }
+
+  /* Oculta la palabra "Tareas" en los cuadritos para no saturar la vista */
+  .cell-content > div:last-child {
+    font-size: 9px !important;
+    margin-top: 4px !important;
+  }
+}

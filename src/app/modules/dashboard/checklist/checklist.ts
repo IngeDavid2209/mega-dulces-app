@@ -409,7 +409,8 @@ export class ChecklistComponent implements OnInit, OnDestroy {
           id: checklistId, timestampCreacion: Date.now(), name: `${molde.name} (${molde.frecuencia})`,
           assigned: molde.assigned, store: molde.store, date: fechaString, time: '23:59',
           status: 'pendiente', enviado: false, createdBy: 'Robot de Rutinas', notaEmpleado: '',
-          items: itemsVigentes.map((i: any) => ({ ...i, checked: false, photo: null, photoTime: null, photoAntes: null, photoAntesTime: null, photoAntesTimestamp: null, photoDespues: null, photoDespuesTime: null }))
+          items: itemsVigentes.map((i: any) => ({ ...i, checked: false, photo: null, photoTime: null, photoAntes: null, photoAntesTime: null, photoAntesTimestamp: null, photos: []
+ }))
         };
         await setDoc(docRef, nuevoChecklist);
       }
@@ -581,7 +582,66 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       event.target.value = '';
     }
   }
+async onMultipleFilesSelected(event: any, item: any) {
+  const files: FileList = event.target.files;
+  if (!files || files.length === 0) return;
 
+  const checklistActual = this.checklistSeleccionado();
+  if (!checklistActual) return;
+
+  if (!item.photos) item.photos = [];
+
+  const cloudName = 'duherjgyg';
+  const uploadPreset = 'fotos_mega';
+
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+
+    // MODO OFFLINE
+    if (!navigator.onLine) {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = async () => {
+        const base64String = reader.result as string;
+        const indexItem = checklistActual.items.findIndex((it: any) => it === item);
+        const colaActual: any[] = await localforage.getItem('md_fotos_offline') || [];
+        colaActual.push({ idTarea: checklistActual.id, indexItem, tipoFoto: 'photos_multi', base64: base64String });
+        await localforage.setItem('md_fotos_offline', colaActual);
+      };
+      item.photos.push({ url: 'offline_syncing', time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }) });
+      this.actualizarEstado();
+      this.mostrarToast('📡 Foto guardada sin conexión.');
+      continue;
+    }
+
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', uploadPreset);
+
+    try {
+      const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, { method: 'POST', body: formData });
+      const data = await response.json();
+      if (data.secure_url) {
+        item.photos.push({
+          url: data.secure_url,
+          time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
+        });
+        this.actualizarEstado();
+      }
+    } catch (error) {
+      alert('❌ Error al subir una foto.');
+    }
+  }
+
+  event.target.value = '';
+}
+
+removeMultiPhoto(item: any, index: number) {
+  if (item.photos) {
+    item.photos.splice(index, 1);
+    this.actualizarEstado();
+  }
+}
   removeImage(item: any, tipoFoto: string = 'photo') {
     item[tipoFoto] = null;
     item[tipoFoto + 'Time'] = null;
@@ -717,7 +777,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       }
       // Si es un renglón nuevo que el creador acaba de agregar:
       return {
-        id: Date.now() + i, text: item.text, requiresPhoto: item.requiresPhoto, requiresAntesDespues: item.requiresAntesDespues,
+        id: Date.now() + i, text: item.text, requiresPhoto: item.requiresPhoto, requiresVariasFotos: (item as any).requiresVariasFotos || false,
         tiempoEstimado: item.requiresAntesDespues ? (item.tiempoEstimado || 30) : null,
         date: actual.date, time: actual.time || '23:59', checked: false,
         photo: null, photoTime: null, photoAntes: null, photoAntesTime: null, photoAntesTimestamp: null, photoDespues: null, photoDespuesTime: null, tipo: 'tarea'

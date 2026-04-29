@@ -32,7 +32,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   formName = '';
   formAssigned: string[] = [];
   formStore = '';
-  formItems = [{ text: '', requiresPhoto: false, requiresAntesDespues: false, requiresVariasFotos: false, tiempoEstimado: 30, date: '', time: '' }];
+  formItems = [{ text: '', requiresPhoto: false, requiresAntesDespues: false, requiresVariasFotos: false, tiempoEstimado: 30, date: '', time: '',permiteGaleria: false }];
   isModalRutinasOpen = false;
   isEditMode = false;
   formNameRutina = '';
@@ -706,13 +706,13 @@ removeMultiPhoto(item: any, index: number) {
     this.isEditandoTarea = false; // Nos aseguramos de que sea Modo Creación
     this.formName = ''; this.formAssigned = [];
     this.formStore = this.sucursalesDisponibles().length > 0 ? this.sucursalesDisponibles()[0] : '';
-    this.formItems = [{ text: '', requiresPhoto: false, requiresAntesDespues: false, requiresVariasFotos: false, tiempoEstimado: 30, date: '', time: '' }];
+    this.formItems = [{ text: '', requiresPhoto: false, requiresAntesDespues: false, requiresVariasFotos: false, tiempoEstimado: 30, date: '', time: '', permiteGaleria: false}];
     this.isModalOpen = true;
   }
 
 
   cerrarModal() { this.isModalOpen = false; }
-  agregarItem() { this.formItems.push({ text: '', requiresPhoto: false, requiresAntesDespues: false, requiresVariasFotos: false, tiempoEstimado: 30, date: '', time: '' }); } eliminarItem(index: number) { this.formItems.splice(index, 1); }
+  agregarItem() { this.formItems.push({ text: '', requiresPhoto: false, requiresAntesDespues: false, requiresVariasFotos: false, tiempoEstimado: 30, date: '', time: '',permiteGaleria: false}); } eliminarItem(index: number) { this.formItems.splice(index, 1); }
   trackByIndex(index: number, obj: any): any { return index; }
 
   // 🔥 ABRE EL MODAL PERO CARGANDO LOS DATOS DE LA TAREA SELECCIONADA 🔥
@@ -761,7 +761,6 @@ removeMultiPhoto(item: any, index: number) {
     this.mostrarToast(' ✅  ¡ Tareas creadas con éxito!');
     this.cerrarModal();
   }
-
   async guardarCambiosChecklist() {
     if (!this.formName || this.formAssigned.length === 0) { alert('Faltan datos.'); return; }
 

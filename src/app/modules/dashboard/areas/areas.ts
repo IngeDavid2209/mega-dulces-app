@@ -22,18 +22,18 @@ export class AreasComponent implements OnInit, OnDestroy {
   areaDetalle = signal<any>(null);
   terminoBusqueda = '';
   isModalOpen = false;
-  
+
   // 🔥 VARIABLES DE FORMULARIO (MODIFICACIÓN Y RECURRENCIA) 🔥
   areaEditandoId = '';
   formNombreArea = '';
   formDescripcionArea = '';
-  formFechaArea = ''; 
-  formHoraEntrada = ''; 
-  formHoraSalida = '';  
-  formTurnoArea = ''; 
+  formFechaArea = '';
+  formHoraEntrada = '';
+  formHoraSalida = '';
+  formTurnoArea = '';
   formEsRecurrente = false; // <-- NUEVO: Para que se repita a diario
   formAssignedUsers: any[] = [];
-  
+
   terminoBusquedaCreacion = '';
   isModalAsignacionOpen = false;
   areaSeleccionada: any = null;
@@ -51,13 +51,13 @@ export class AreasComponent implements OnInit, OnDestroy {
   formStoreRutina = '';
   formRutinas: any[] = [];
   frecuencias = ['Diaria', 'Semanal', 'Catorcenal', 'Mensual', 'Trimestral'];
-  diasDelMes = Array.from({length: 31}, (_, i) => i + 1);
+  diasDelMes = Array.from({ length: 31 }, (_, i) => i + 1);
   sucursalesDisponibles = [
     'Canindo', 'La Piedad Abastos', '8 Esquinas', 'Padre Hidalgo',
     'Morelia Madero', 'Morelia Abastos', 'Yurécuaro', 'Zamora Centro',
     'OFICINAS CORPORATIVAS', 'CAJA GENERAL', 'COMPRAS', 'CONTABILIDAD', 'FINANZAS', 'SISTEMAS', 'RH', 'MKT', 'MANTENIMIENTO'
   ];
-  
+
   private firestore = inject(Firestore);
   private router = inject(Router);
   private destructoresRadares: (() => void)[] = [];
@@ -77,9 +77,9 @@ export class AreasComponent implements OnInit, OnDestroy {
     }
     this.conectarConLaNube();
   }
-  
+
   ngOnDestroy() { this.destructoresRadares.forEach(apagarRadar => apagarRadar()); }
-  
+
   conectarConLaNube() {
     const areasRef = collection(this.firestore, 'areas_operativas');
     const radarAreas = onSnapshot(areasRef, (snapshot) => {
@@ -102,14 +102,14 @@ export class AreasComponent implements OnInit, OnDestroy {
   estaAreaBloqueada(area: any): boolean {
     if (!area) return false;
     const hoy = new Date();
-    
+
     // REGLA 1: JORNADA RECURRENTE (SE REPITE TODOS LOS DÍAS)
     if (area.esRecurrente && area.horaEntrada && area.horaSalida) {
       const horaActual = hoy.getHours() * 60 + hoy.getMinutes(); // Minutos desde medianoche
-      
+
       const [hE, mE] = area.horaEntrada.split(':').map(Number);
       const minEntrada = hE * 60 + mE;
-      
+
       const [hS, mS] = area.horaSalida.split(':').map(Number);
       const minSalida = hS * 60 + mS;
 
@@ -124,8 +124,8 @@ export class AreasComponent implements OnInit, OnDestroy {
 
     // REGLA 2: JORNADA DE UN SOLO DÍA (FECHA EXACTA)
     if (!area.fechaAsignada) return false;
-    
-    let horaLimite = "23:59:59"; 
+
+    let horaLimite = "23:59:59";
     if (area.horaSalida) {
       horaLimite = area.horaSalida + ":00";
     } else if (area.turnoAsignado) {
@@ -135,25 +135,25 @@ export class AreasComponent implements OnInit, OnDestroy {
     }
 
     const fechaHoraLimite = new Date(`${area.fechaAsignada}T${horaLimite}`);
-    return fechaHoraLimite < hoy; 
+    return fechaHoraLimite < hoy;
   }
-  
+
   verDetalleArea(area: any) {
     this.areaDetalle.set(area);
     this.vistaActual.set('detalle');
   }
-  
+
   volverALista() {
     this.areaDetalle.set(null);
     this.vistaActual.set('lista');
   }
-  
+
   getEmpleadosDelArea() {
     const area = this.areaDetalle();
     if (!area) return [];
     return this.usuarios().filter(u => u.rol === 'trabajador' && u.areas && u.areas.includes(area.nombre));
   }
-  
+
   getAreasFiltradas() {
     const yo = this.liveUser;
     let lista = this.areas();
@@ -172,15 +172,15 @@ export class AreasComponent implements OnInit, OnDestroy {
     }
     return lista;
   }
-  
+
   contarEmpleadosEnArea(nombreArea: string): number {
     return this.usuarios().filter(u => u.areas && u.areas.includes(nombreArea)).length;
   }
-  
+
   abrirModalNuevaArea() {
     this.areaEditandoId = ''; // Modo Creación
     this.formNombreArea = ''; this.formDescripcionArea = ''; this.formAssignedUsers = [];
-    this.formFechaArea = ''; this.formHoraEntrada = ''; this.formHoraSalida = ''; 
+    this.formFechaArea = ''; this.formHoraEntrada = ''; this.formHoraSalida = '';
     this.formTurnoArea = ''; this.formEsRecurrente = false;
     this.terminoBusquedaCreacion = ''; this.isModalOpen = true;
   }
@@ -188,20 +188,20 @@ export class AreasComponent implements OnInit, OnDestroy {
   // 🔥 NUEVA FUNCIÓN PARA EDITAR ÁREAS EXISTENTES 🔥
   abrirModalEditarArea(area: any) {
     this.areaEditandoId = area.id; // Modo Edición
-    this.formNombreArea = area.nombre; 
-    this.formDescripcionArea = area.descripcion || ''; 
-    this.formFechaArea = area.fechaAsignada || ''; 
-    this.formHoraEntrada = area.horaEntrada || ''; 
-    this.formHoraSalida = area.horaSalida || ''; 
-    this.formTurnoArea = area.turnoAsignado || ''; 
+    this.formNombreArea = area.nombre;
+    this.formDescripcionArea = area.descripcion || '';
+    this.formFechaArea = area.fechaAsignada || '';
+    this.formHoraEntrada = area.horaEntrada || '';
+    this.formHoraSalida = area.horaSalida || '';
+    this.formTurnoArea = area.turnoAsignado || '';
     this.formEsRecurrente = area.esRecurrente || false;
     this.formAssignedUsers = []; // En edición, personal se maneja desde la vista detalle
-    this.terminoBusquedaCreacion = ''; 
+    this.terminoBusquedaCreacion = '';
     this.isModalOpen = true;
   }
-  
+
   cerrarModal() { this.isModalOpen = false; this.areaEditandoId = ''; }
-  
+
   get empleadosParaCreacion() {
     let filtrados = this.usuarios().filter(u => u.rol === 'trabajador');
     if (this.terminoBusquedaCreacion) {
@@ -210,32 +210,32 @@ export class AreasComponent implements OnInit, OnDestroy {
     }
     return filtrados;
   }
-  
+
   toggleUsuarioParaCreacion(usuario: any) {
     const index = this.formAssignedUsers.findIndex(u => u.idFirestore === usuario.idFirestore);
     if (index > -1) { this.formAssignedUsers.splice(index, 1); } else { this.formAssignedUsers.push(usuario); }
   }
-  
+
   estaSeleccionadoParaCreacion(usuario: any): boolean {
     return this.formAssignedUsers.some(u => u.idFirestore === usuario.idFirestore);
   }
-  
+
   async guardarArea() {
     if (!this.formNombreArea.trim()) { Swal.fire('Falta el nombre', 'Debes asignarle un nombre al área.', 'warning'); return; }
     const nombreFormateado = this.formNombreArea.trim();
-    
+
     // Validación de duplicados solo si estamos creando una nueva
     if (!this.areaEditandoId) {
       const existe = this.areas().some(a => a.nombre.toLowerCase() === nombreFormateado.toLowerCase());
       if (existe) { Swal.fire('Área Duplicada', 'Ya existe un área con ese nombre.', 'error'); return; }
     }
-    
+
     const areaId = this.areaEditandoId || ('area_' + Date.now());
-    
+
     try {
       const datosGuardar: any = {
-        nombre: nombreFormateado, 
-        descripcion: this.formDescripcionArea.trim(), 
+        nombre: nombreFormateado,
+        descripcion: this.formDescripcionArea.trim(),
         fechaAsignada: this.formEsRecurrente ? '' : this.formFechaArea, // Si es recurrente, borramos la fecha
         horaEntrada: this.formHoraEntrada,
         horaSalida: this.formHoraSalida,
@@ -294,7 +294,7 @@ export class AreasComponent implements OnInit, OnDestroy {
 
     } catch (error) { Swal.fire('Error', 'Hubo un problema al procesar el área.', 'error'); }
   }
-  
+
   async eliminarArea(area: any, event: Event) {
     event.stopPropagation();
     if (this.contarEmpleadosEnArea(area.nombre) > 0) {
@@ -303,7 +303,7 @@ export class AreasComponent implements OnInit, OnDestroy {
     const res = await Swal.fire({ title: '¿Borrar?', text: area.nombre, icon: 'warning', showCancelButton: true });
     if (res.isConfirmed) await deleteDoc(doc(this.firestore, 'areas_operativas', area.id));
   }
-  
+
   abrirAsignacion(area: any, event: Event) {
     event.stopPropagation();
     if (this.estaAreaBloqueada(area)) {
@@ -314,9 +314,9 @@ export class AreasComponent implements OnInit, OnDestroy {
     this.actualizarListaAsignacion();
     this.isModalAsignacionOpen = true;
   }
-  
+
   cerrarAsignacion() { this.isModalAsignacionOpen = false; this.areaSeleccionada = null; }
-  
+
   actualizarListaAsignacion() {
     let filtrados = this.usuarios().filter(u => u.rol === 'trabajador');
     if (this.terminoBusquedaAsignacion) {
@@ -325,47 +325,47 @@ export class AreasComponent implements OnInit, OnDestroy {
     }
     this.empleadosFiltradosAsignacion.set(filtrados);
   }
-  
+
   tieneElArea(u: any) { return u.areas && u.areas.includes(this.areaSeleccionada.nombre); }
-  
+
   async toggleAreaUsuario(u: any) {
     let nuevasAreas = u.areas ? [...u.areas] : [];
     if (this.tieneElArea(u)) nuevasAreas = nuevasAreas.filter(a => a !== this.areaSeleccionada.nombre);
     else nuevasAreas.push(this.areaSeleccionada.nombre);
-    
+
     // MODO OFFLINE PARA ASIGNAR/DESASIGNAR PERSONAL
     setDoc(doc(this.firestore, 'usuarios', u.idFirestore), { areas: nuevasAreas }, { merge: true });
   }
-  
+
   trackByIndex(index: number, obj: any): any { return index; }
   mostrarToast(mensaje: string) { Swal.fire({ toast: true, position: 'top-end', showConfirmButton: false, timer: 3000, icon: 'success', title: mensaje }); }
-  
+
   abrirModalTareaParaArea() {
     if (this.estaAreaBloqueada(this.areaDetalle())) {
       Swal.fire('Área Cerrada', 'La jornada está inactiva. No puedes asignar tareas en este momento.', 'warning'); return;
     }
     const empleadosDelArea = this.getEmpleadosDelArea().map(emp => emp.nombre);
     if (empleadosDelArea.length === 0) { Swal.fire('Área Vacía', 'No hay personal asignado.', 'warning'); return; }
-    
-    this.formName = ''; this.formAssigned = [...empleadosDelArea]; 
+
+    this.formName = ''; this.formAssigned = [...empleadosDelArea];
     this.formStore = this.sucursalesDisponibles.length > 0 ? this.sucursalesDisponibles[0] : '';
     this.formItems = [{ text: '', requiresPhoto: false, requiresAntesDespues: false, tiempoEstimado: 30, date: '', time: '' }];
     this.isModalTareaOpen = true;
   }
-  
+
   abrirModalRutinaParaArea() {
     if (this.estaAreaBloqueada(this.areaDetalle())) {
       Swal.fire('Área Cerrada', 'La jornada está inactiva. No puedes asignar rutinas en este momento.', 'warning'); return;
     }
     const empleadosDelArea = this.getEmpleadosDelArea().map(emp => emp.nombre);
     if (empleadosDelArea.length === 0) { Swal.fire('Área Vacía', 'No hay personal asignado.', 'warning'); return; }
-    
+
     this.formNameRutina = ''; this.formAssignedRutina = [...empleadosDelArea];
     this.formStoreRutina = this.sucursalesDisponibles.length > 0 ? this.sucursalesDisponibles[0] : '';
     this.formRutinas = [{ text: '', requiresPhoto: false, requiresAntesDespues: false, tiempoEstimado: 30, frecuencia: 'Diaria', fechaFin: null, horaLimite: '', diaSemana: 'Lunes', diaMes: 1 }];
     this.isModalRutinaOpen = true;
   }
-  
+
   abrirModalTarea(empleadoNombre: string) {
     if (this.estaAreaBloqueada(this.areaDetalle())) { Swal.fire('Cerrado', 'Jornada inactiva.', 'warning'); return; }
     this.formName = ''; this.formAssigned = [empleadoNombre];
@@ -373,16 +373,16 @@ export class AreasComponent implements OnInit, OnDestroy {
     this.formItems = [{ text: '', requiresPhoto: false, requiresAntesDespues: false, tiempoEstimado: 30, date: '', time: '' }];
     this.isModalTareaOpen = true;
   }
-  
+
   cerrarModalTarea() { this.isModalTareaOpen = false; }
   agregarItem() { this.formItems.push({ text: '', requiresPhoto: false, requiresAntesDespues: false, tiempoEstimado: 30, date: '', time: '' }); }
   eliminarItem(index: number) { this.formItems.splice(index, 1); }
-  
+
   toggleEmpleadoTarea(nombre: string) {
     const index = this.formAssigned.indexOf(nombre);
     if (index > -1) { this.formAssigned.splice(index, 1); } else { this.formAssigned.push(nombre); }
   }
-  
+
   async guardarChecklistUnico() {
     if (!this.formName || this.formAssigned.length === 0) { Swal.fire('Faltan datos', 'Completa los campos.', 'warning'); return; }
     const tareasValidas = this.formItems.filter(item => item.text.trim() !== '').map((item, i) => ({
@@ -392,9 +392,9 @@ export class AreasComponent implements OnInit, OnDestroy {
       photo: null, photoTime: null, photoAntes: null, photoAntesTime: null, photoAntesTimestamp: null, photoDespues: null, photoDespuesTime: null,
       tipo: 'tarea'
     }));
-  
+
     if (tareasValidas.length === 0) { Swal.fire('Error', 'Agrega al menos una actividad.', 'warning'); return; }
-  
+
     for (const empleadoNombre of this.formAssigned) {
       const uniqueId = Date.now() + Math.floor(Math.random() * 1000);
       const offset = new Date().getTimezoneOffset() * 60000;
@@ -408,7 +408,7 @@ export class AreasComponent implements OnInit, OnDestroy {
       // 🔥 MODO OFFLINE PARA TAREAS 🔥
       setDoc(doc(this.firestore, 'checklists', uniqueId.toString()), checklistTareas);
     }
-    
+
     this.cerrarModalTarea();
 
     if (navigator.onLine) {
@@ -417,7 +417,7 @@ export class AreasComponent implements OnInit, OnDestroy {
       Swal.fire({ toast: true, position: 'top-end', showConfirmButton: false, timer: 4000, icon: 'info', title: 'Sin Internet: Tareas en Bóveda Local 📦' });
     }
   }
-  
+
   abrirModalRutina(empleadoNombre: string) {
     if (this.estaAreaBloqueada(this.areaDetalle())) { Swal.fire('Cerrado', 'Jornada inactiva.', 'warning'); return; }
     this.formNameRutina = ''; this.formAssignedRutina = [empleadoNombre];
@@ -425,21 +425,21 @@ export class AreasComponent implements OnInit, OnDestroy {
     this.formRutinas = [{ text: '', requiresPhoto: false, requiresAntesDespues: false, tiempoEstimado: 30, frecuencia: 'Diaria', fechaFin: null, horaLimite: '', diaSemana: 'Lunes', diaMes: 1 }];
     this.isModalRutinaOpen = true;
   }
-  
+
   cerrarModalRutina() { this.isModalRutinaOpen = false; }
-  
+
   toggleEmpleadoRutina(nombre: string) {
     const index = this.formAssignedRutina.indexOf(nombre);
     if (index > -1) { this.formAssignedRutina.splice(index, 1); } else { this.formAssignedRutina.push(nombre); }
   }
-  
+
   agregarRutina() {
     this.formRutinas.push({ text: '', requiresPhoto: false, requiresAntesDespues: false, tiempoEstimado: 30, frecuencia: 'Diaria', fechaFin: null, horaLimite: '', diaSemana: 'Lunes', diaMes: 1 });
   }
-  
+
   eliminarRutina(index: number) { this.formRutinas.splice(index, 1); }
   alCambiarFrecuencia(rutina: any) { rutina.fechaFin = null; }
-  
+
   getTextoPeriodo(rutina: any): string {
     if (rutina.frecuencia === 'Diaria') return 'Activa siempre';
     if (rutina.frecuencia === 'Semanal') return `Todos los ${rutina.diaSemana || 'Lunes'}`;
@@ -448,24 +448,24 @@ export class AreasComponent implements OnInit, OnDestroy {
     if (rutina.frecuencia === 'Trimestral') return `El día ${rutina.diaMes || 1} cada 3 meses`;
     return '';
   }
-  
+
   esSucursalAdministrativa(sucursal: string): boolean {
     const admins = ['OFICINAS CORPORATIVAS', 'CAJA GENERAL', 'COMPRAS', 'CONTABILIDAD', 'FINANZAS', 'SISTEMAS', 'RH', 'MKT', 'MANTENIMIENTO'];
     return admins.includes(sucursal);
   }
-  
+
   async guardarBloqueRutinas() {
     if (!this.formNameRutina || this.formAssignedRutina.length === 0) { Swal.fire('Faltan datos', 'Completa los campos.', 'warning'); return; }
-  
+
     const rutinasValidas = this.formRutinas.filter(rutina => rutina.text.trim() !== '').map((rutina, i) => ({
       id: Date.now() + 1000 + i, text: rutina.text, requiresPhoto: rutina.requiresPhoto,
       requiresAntesDespues: rutina.requiresAntesDespues || false, tiempoEstimado: rutina.requiresAntesDespues ? (rutina.tiempoEstimado || 30) : null,
       checked: false, photo: null, photoTime: null, photoAntes: null, photoAntesTime: null, photoAntesTimestamp: null, photoDespues: null, photoDespuesTime: null,
       tipo: 'rutina', frecuencia: rutina.frecuencia, fechaFin: rutina.fechaFin, horaLimite: rutina.horaLimite, diaSemana: rutina.diaSemana || 'Lunes', diaMes: rutina.diaMes || 1
     }));
-  
+
     if (rutinasValidas.length === 0) { Swal.fire('Error', 'Agrega rutinas.', 'warning'); return; }
-  
+
     for (const empleadoNombre of this.formAssignedRutina) {
       const rutinasPorFrecuencia: { [key: string]: any[] } = {};
       rutinasValidas.forEach(r => {
@@ -473,14 +473,14 @@ export class AreasComponent implements OnInit, OnDestroy {
         if (!rutinasPorFrecuencia[llaveGrupo]) rutinasPorFrecuencia[llaveGrupo] = [];
         rutinasPorFrecuencia[llaveGrupo].push(r);
       });
-  
+
       for (const llaveGrupo of Object.keys(rutinasPorFrecuencia)) {
         const partesGrupo = llaveGrupo.split('_');
         const frecuenciaReal = partesGrupo[0];
         let diaSemanaReal = null; let diaMesReal = null;
         if (frecuenciaReal === 'Semanal' || frecuenciaReal === 'Catorcenal') { diaSemanaReal = partesGrupo.length > 1 ? partesGrupo[1] : 'Lunes'; }
         else if (frecuenciaReal === 'Mensual' || frecuenciaReal === 'Trimestral') { diaMesReal = partesGrupo.length > 1 ? parseInt(partesGrupo[1], 10) : 1; }
-  
+
         const nombreMoldeLimpio = this.formNameRutina.replace(/\s+/g, '_').toLowerCase();
         const empleadoLimpio = empleadoNombre.replace(/\s+/g, '_').toLowerCase();
         const moldeId = `molde_${nombreMoldeLimpio}_${empleadoLimpio}_${llaveGrupo}`;
@@ -493,7 +493,7 @@ export class AreasComponent implements OnInit, OnDestroy {
         setDoc(doc(this.firestore, 'moldes_checklists', moldeId), nuevoMolde);
       }
     }
-    
+
     this.cerrarModalRutina();
 
     if (navigator.onLine) {

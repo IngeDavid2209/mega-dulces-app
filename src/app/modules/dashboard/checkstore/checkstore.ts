@@ -91,16 +91,16 @@ export class CheckstoreComponent implements OnInit, OnDestroy {
           progress: 0, totalChecklists: 0, completedItems: 0, totalItems: 0
         });
       });
-      
+
       this.areasDesdeFirebase = areasTemp;
-      
+
       // Si es administrador, le damos permiso automático de ver todas las áreas nuevas
       if (this.currentUser?.rol === 'admin' || (this.currentUser?.sucursales && this.currentUser?.sucursales.includes('Todas las sucursales'))) {
-         areasTemp.forEach(a => {
-           if (!this.sucursalesPermitidas.includes(a.name)) {
-             this.sucursalesPermitidas.push(a.name);
-           }
-         });
+        areasTemp.forEach(a => {
+          if (!this.sucursalesPermitidas.includes(a.name)) {
+            this.sucursalesPermitidas.push(a.name);
+          }
+        });
       }
 
       this.procesarMatematicas();
@@ -128,10 +128,10 @@ export class CheckstoreComponent implements OnInit, OnDestroy {
       // Escudo Anti-Clones
       const listasSinClones = new Map();
       checklistsTemp.forEach(c => {
-        const marcados = c.items ? c.items.filter((i:any) => i.checked).length : 0;
+        const marcados = c.items ? c.items.filter((i: any) => i.checked).length : 0;
         c.calcProgreso = c.items && c.items.length > 0 ? Math.round((marcados / c.items.length) * 100) : 0;
         const firma = `${c.name}_${c.assigned}_${c.store}_${c.date}`;
-        
+
         if (!listasSinClones.has(firma)) {
           listasSinClones.set(firma, c);
         } else {
@@ -155,12 +155,12 @@ export class CheckstoreComponent implements OnInit, OnDestroy {
     const calcularDatos = (listaBase: any[], defaultColor: string) => {
       // Filtramos las que tiene permitidas ver el usuario
       const listaPermitida = listaBase.filter(item => this.sucursalesPermitidas.includes(item.name));
-      
+
       return listaPermitida.map(sucursal => {
         const storeChecklists = this.checklistsDesdeFirebase.filter(c => c.store === sucursal.name);
         let totalItems = 0;
         let completedItems = 0;
-        
+
         storeChecklists.forEach(c => {
           if (c.items && Array.isArray(c.items)) {
             c.items.forEach((item: any) => {
@@ -173,15 +173,15 @@ export class CheckstoreComponent implements OnInit, OnDestroy {
         });
 
         const progress = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
-        
+
         let finalColor = defaultColor;
-        if(defaultColor === 'var(--red)') { 
-           // Solo aplicamos el semáforo rojo/amarillo/verde a comerciales y admin
-           if (progress >= 80) finalColor = 'var(--green)';
-           else if (progress >= 50) finalColor = 'var(--gold)';
+        if (defaultColor === 'var(--red)') {
+          // Solo aplicamos el semáforo rojo/amarillo/verde a comerciales y admin
+          if (progress >= 80) finalColor = 'var(--green)';
+          else if (progress >= 50) finalColor = 'var(--gold)';
         } else {
-           // Las tarjetas de áreas operativas se quedan siempre en su naranja corporativo
-           finalColor = defaultColor; 
+          // Las tarjetas de áreas operativas se quedan siempre en su naranja corporativo
+          finalColor = defaultColor;
         }
 
         return {

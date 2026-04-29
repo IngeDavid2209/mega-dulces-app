@@ -362,7 +362,8 @@
               </svg> Tiempo límite agotado. Tarea bloqueada.
             </div>
 
-            <div class="item-photo-section" *ngIf="item.requiresPhoto || item.requiresAntesDespues || item.requiresVariasFotos"
+            <div class="item-photo-section"
+              *ngIf="item.requiresPhoto || item.requiresAntesDespues || item.requiresVariasFotos"
               style="margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--border);">
               <ng-container *ngIf="item.requiresPhoto && !item.requiresAntesDespues">
                 <label class="btn-upload-mini"
@@ -474,7 +475,7 @@
                         </path>
                         <circle cx="12" cy="13" r="4"></circle>
                       </svg> Subir DESPUÉS
-                      <input type="file" accept="image/*"[attr.capture]="item.permiteGaleria ? null : 'environment'"
+                      <input type="file" accept="image/*" [attr.capture]="item.permiteGaleria ? null : 'environment'"
                         (change)="onFileSelected($event, item, 'photoDespues')" style="display: none;">
                     </label>
 
@@ -514,50 +515,57 @@
                 </div>
               </ng-container>
               <ng-container *ngIf="item.requiresVariasFotos && !item.requiresAntesDespues">
-  <div style="margin-bottom: 10px;">
-    <span style="font-size: 13px; font-weight: 600; color: #2563EB; display: flex; align-items: center; gap: 6px;">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <rect x="2" y="2" width="8" height="8" rx="1"></rect><rect x="14" y="2" width="8" height="8" rx="1"></rect>
-        <rect x="2" y="14" width="8" height="8" rx="1"></rect><rect x="14" y="14" width="8" height="8" rx="1"></rect>
-      </svg>
-      Evidencias múltiples ({{ (item.photos || []).length }} foto(s))
-    </span>
-  </div>
+                <div style="margin-bottom: 10px;">
+                  <span
+                    style="font-size: 13px; font-weight: 600; color: #2563EB; display: flex; align-items: center; gap: 6px;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <rect x="2" y="2" width="8" height="8" rx="1"></rect>
+                      <rect x="14" y="2" width="8" height="8" rx="1"></rect>
+                      <rect x="2" y="14" width="8" height="8" rx="1"></rect>
+                      <rect x="14" y="14" width="8" height="8" rx="1"></rect>
+                    </svg>
+                    Evidencias múltiples ({{ (item.photos || []).length }} foto(s))
+                  </span>
+                </div>
 
-  <!-- Galería de fotos ya subidas -->
-  <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 12px;">
-    <div *ngFor="let foto of (item.photos || []); let fi = index"
-      style="position: relative; width: 90px; height: 90px; border-radius: 8px; overflow: hidden; border: 1px solid #BFDBFE;">
-      <img [src]="foto.url" style="width: 100%; height: 100%; object-fit: cover;">
-      <span style="position: absolute; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.5); color: white; font-size: 9px; text-align: center; padding: 2px;">
-        {{ foto.time }}
-      </span>
-      <button *ngIf="!checklistSeleccionado().enviado && currentUser?.nombre === checklistSeleccionado().assigned"
-        (click)="removeMultiPhoto(item, fi)"
-        style="position: absolute; top: 3px; right: 3px; background: #EF4444; border: none; border-radius: 50%; width: 18px; height: 18px; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0;">
-        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
-          <line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>
-        </svg>
-      </button>
-    </div>
-  </div>
+                <!-- Galería de fotos ya subidas -->
+                <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 12px;">
+                  <div *ngFor="let foto of (item.photos || []); let fi = index"
+                    style="position: relative; width: 90px; height: 90px; border-radius: 8px; overflow: hidden; border: 1px solid #BFDBFE;">
+                    <img [src]="foto.url" style="width: 100%; height: 100%; object-fit: cover;">
+                    <span
+                      style="position: absolute; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.5); color: white; font-size: 9px; text-align: center; padding: 2px;">
+                      {{ foto.time }}
+                    </span>
+                    <button
+                      *ngIf="!checklistSeleccionado().enviado && currentUser?.nombre === checklistSeleccionado().assigned"
+                      (click)="removeMultiPhoto(item, fi)"
+                      style="position: absolute; top: 3px; right: 3px; background: #EF4444; border: none; border-radius: 50%; width: 18px; height: 18px; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0;">
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="3">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
 
-  <!-- Botón para agregar más fotos -->
-  <label class="btn-upload-mini"
-    *ngIf="!checklistSeleccionado().enviado && currentUser?.nombre === checklistSeleccionado().assigned && !isTareaVencida(item, checklistSeleccionado().date)">
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
-      <circle cx="12" cy="13" r="4"></circle>
-    </svg> + Agregar Foto(s)
-    <input type="file" accept="image/*"[attr.capture]="item.permiteGaleria ? null : 'environment'" multiple
-      (change)="onMultipleFilesSelected($event, item)" style="display: none;">
-  </label>
+                <!-- Botón para agregar más fotos -->
+                <label class="btn-upload-mini"
+                  *ngIf="!checklistSeleccionado().enviado && currentUser?.nombre === checklistSeleccionado().assigned && !isTareaVencida(item, checklistSeleccionado().date)">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                    <circle cx="12" cy="13" r="4"></circle>
+                  </svg> + Agregar Foto(s)
+                  <input type="file" accept="image/*" [attr.capture]="item.permiteGaleria ? null : 'environment'"
+                    multiple (change)="onMultipleFilesSelected($event, item)" style="display: none;">
+                </label>
 
-  <div class="alert-box alert-warning"
-    *ngIf="item.checked && (!item.photos || item.photos.length === 0) && !checklistSeleccionado().enviado && currentUser?.nombre === checklistSeleccionado().assigned">
-    * Se requiere al menos una evidencia fotográfica.
-  </div>
-</ng-container>
+                <div class="alert-box alert-warning"
+                  *ngIf="item.checked && (!item.photos || item.photos.length === 0) && !checklistSeleccionado().enviado && currentUser?.nombre === checklistSeleccionado().assigned">
+                  * Se requiere al menos una evidencia fotográfica.
+                </div>
+              </ng-container>
             </div>
           </div>
           <div style="margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border);">
@@ -660,7 +668,8 @@
                     <label class="photo-toggle"
                       style="display: flex; align-items: center; cursor: pointer; background: #EFF6FF; color: #2563EB; padding: 6px 10px; border-radius: 6px; border: 1px solid #BFDBFE; font-size: 13px; font-weight: 600; margin-left: 8px;">
                       <input type="checkbox" [(ngModel)]="item.requiresVariasFotos"
-                       (change)="item.requiresVariasFotos ? (item.requiresPhoto = false) || (item.requiresAntesDespues = false) : null" style="margin-right: 6px;">
+                        (change)="item.requiresVariasFotos ? (item.requiresPhoto = false) || (item.requiresAntesDespues = false) : null"
+                        style="margin-right: 6px;">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                         style="margin-right: 4px;">
                         <rect x="2" y="2" width="8" height="8" rx="1"></rect>
@@ -670,15 +679,18 @@
                       </svg>
                       Varias Fotos
                     </label>
-                    <label class="photo-toggle" style="display: flex; align-items: center; cursor: pointer; background: #F1F5F9; color: #475569; padding: 6px 10px; border-radius: 6px; border: 1px solid #CBD5E1; font-size: 13px; font-weight: 600; margin-left: 8px;" title="Permite al empleado subir fotos de su carrete">
-  <input type="checkbox" [(ngModel)]="item.permiteGaleria" style="margin-right: 6px;">
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px;">
-    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-    <circle cx="8.5" cy="8.5" r="1.5"></circle>
-    <polyline points="21 15 16 10 5 21"></polyline>
-  </svg>
-  Galería
-</label>
+                    <label class="photo-toggle"
+                      style="display: flex; align-items: center; cursor: pointer; background: #F1F5F9; color: #475569; padding: 6px 10px; border-radius: 6px; border: 1px solid #CBD5E1; font-size: 13px; font-weight: 600; margin-left: 8px;"
+                      title="Permite al empleado subir fotos de su carrete">
+                      <input type="checkbox" [(ngModel)]="item.permiteGaleria" style="margin-right: 6px;">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        style="margin-right: 4px;">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                        <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                        <polyline points="21 15 16 10 5 21"></polyline>
+                      </svg>
+                      Galería
+                    </label>
                     <button class="btn-remove" (click)="eliminarItem(i)" title="Eliminar"
                       style="margin-left: 8px; background: transparent; border: none; color: #EF4444; cursor: pointer;"><svg
                         width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

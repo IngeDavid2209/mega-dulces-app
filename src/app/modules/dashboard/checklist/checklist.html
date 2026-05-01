@@ -372,7 +372,8 @@
                     <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
                     <circle cx="12" cy="13" r="4"></circle>
                   </svg> Adjuntar Evidencia
-                  <input type="file" accept="image/* " [attr.capture]="item.permiteGaleria ? null : 'environment'"
+                  <input type="file" accept="image/*, application/pdf, .xls, .xlsx"
+                    [attr.capture]="item.permiteGaleria ? null : 'environment'"
                     (change)="onFileSelected($event, item, 'photo')" style="display: none;">
                 </label>
                 <div class="preview-wrap-mini" *ngIf="item.photo">
@@ -387,15 +388,36 @@
                       style="margin-left: 8px; font-weight: 600; font-size: 11px; background: #F1F5F9; padding: 2px 6px; border-radius: 4px; color: #64748B;">
                       🕒 {{ item.photoTime }}</span>
                   </span>
-                  <div class="preview-image-box">
-                    <img [src]="item.photo" alt="Evidencia">
+                  <div class="preview-image-box"
+                    style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+
+                    <!-- SI ES FOTO, SE MUESTRA NORMAL -->
+                    <img *ngIf="esImagen(item.photo)" [src]="item.photo" alt="Evidencia">
+
+                    <!-- SI ES DOCUMENTO, SE MUESTRA UN BOTÓN PARA ABRIRLO -->
+                    <a *ngIf="!esImagen(item.photo)" [href]="item.photo" target="_blank"
+                      style="background: #EFF6FF; color: #1E40AF; padding: 10px 15px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 13px; border: 1px solid #BFDBFE; display: flex; align-items: center; gap: 6px; width: 100%; justify-content: center;">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                        <line x1="16" y1="13" x2="8" y2="13"></line>
+                        <line x1="16" y1="17" x2="8" y2="17"></line>
+                        <polyline points="10 9 9 9 8 9"></polyline>
+                      </svg>
+                      Ver Documento Anexo
+                    </a>
+
+                    <!-- BOTÓN DE ELIMINAR (Se queda igual) -->
                     <button class="btn-remove-image-mini"
                       *ngIf="!checklistSeleccionado().enviado && currentUser?.nombre === checklistSeleccionado().assigned && !isTareaVencida(item, checklistSeleccionado().date)"
-                      (click)="removeImage(item, 'photo')" title="Borrar foto"><svg width="12" height="12"
-                        viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                      (click)="removeImage(item, 'photo')" title="Borrar archivo">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2.5">
                         <line x1="18" y1="6" x2="6" y2="18"></line>
                         <line x1="6" y1="6" x2="18" y2="18"></line>
-                      </svg></button>
+                      </svg>
+                    </button>
                   </div>
                 </div>
                 <div class="alert-box alert-warning"
@@ -425,7 +447,8 @@
                         </path>
                         <circle cx="12" cy="13" r="4"></circle>
                       </svg> Subir ANTES
-                      <input type="file" accept="image/*" [attr.capture]="item.permiteGaleria ? null : 'environment'"
+                      <input type="file" accept="image/*, application/pdf, .xls, .xlsx"
+                        [attr.capture]="item.permiteGaleria ? null : 'environment'"
                         (change)="onFileSelected($event, item, 'photoAntes')" style="display: none;">
                     </label>
                     <div class="preview-wrap-mini" *ngIf="item.photoAntes">
@@ -436,15 +459,36 @@
                           style="font-weight: 600; font-size: 11px; background: #EFF6FF; color: #2563EB; padding: 2px 6px; border-radius: 4px; border: 1px solid #BFDBFE;">
                           🕒 {{ item.photoAntesTime }}</span>
                       </span>
-                      <div class="preview-image-box">
-                        <img [src]="item.photoAntes" alt="Antes">
+                      <div class="preview-image-box"
+                        style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+
+                        <!-- SI ES FOTO, SE MUESTRA NORMAL -->
+                        <img *ngIf="esImagen(item.photo)" [src]="item.photo" alt="Evidencia">
+
+                        <!-- SI ES DOCUMENTO, SE MUESTRA UN BOTÓN PARA ABRIRLO -->
+                        <a *ngIf="!esImagen(item.photo)" [href]="item.photo" target="_blank"
+                          style="background: #EFF6FF; color: #1E40AF; padding: 10px 15px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 13px; border: 1px solid #BFDBFE; display: flex; align-items: center; gap: 6px; width: 100%; justify-content: center;">
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                            <polyline points="10 9 9 9 8 9"></polyline>
+                          </svg>
+                          Ver Documento Anexo
+                        </a>
+
+                        <!-- BOTÓN DE ELIMINAR (Se queda igual) -->
                         <button class="btn-remove-image-mini"
                           *ngIf="!checklistSeleccionado().enviado && currentUser?.nombre === checklistSeleccionado().assigned && !isTareaVencida(item, checklistSeleccionado().date)"
-                          (click)="removeImage(item, 'photoAntes')" title="Borrar foto Antes"><svg width="12"
-                            height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                          (click)="removeImage(item, 'photo')" title="Borrar archivo">
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2.5">
                             <line x1="18" y1="6" x2="6" y2="18"></line>
                             <line x1="6" y1="6" x2="18" y2="18"></line>
-                          </svg></button>
+                          </svg>
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -475,7 +519,8 @@
                         </path>
                         <circle cx="12" cy="13" r="4"></circle>
                       </svg> Subir DESPUÉS
-                      <input type="file" accept="image/*" [attr.capture]="item.permiteGaleria ? null : 'environment'"
+                      <input type="file" accept="image/*, application/pdf, .xls, .xlsx"
+                        [attr.capture]="item.permiteGaleria ? null : 'environment'"
                         (change)="onFileSelected($event, item, 'photoDespues')" style="display: none;">
                     </label>
 
@@ -487,15 +532,36 @@
                           style="font-weight: 600; font-size: 11px; background: #ECFDF5; color: #047857; padding: 2px 6px; border-radius: 4px; border: 1px solid #A7F3D0;">
                           🕒 {{ item.photoDespuesTime }}</span>
                       </span>
-                      <div class="preview-image-box">
-                        <img [src]="item.photoDespues" alt="Después">
+                      <div class="preview-image-box"
+                        style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+
+                        <!-- SI ES FOTO, SE MUESTRA NORMAL -->
+                        <img *ngIf="esImagen(item.photo)" [src]="item.photo" alt="Evidencia">
+
+                        <!-- SI ES DOCUMENTO, SE MUESTRA UN BOTÓN PARA ABRIRLO -->
+                        <a *ngIf="!esImagen(item.photo)" [href]="item.photo" target="_blank"
+                          style="background: #EFF6FF; color: #1E40AF; padding: 10px 15px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 13px; border: 1px solid #BFDBFE; display: flex; align-items: center; gap: 6px; width: 100%; justify-content: center;">
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                            <polyline points="10 9 9 9 8 9"></polyline>
+                          </svg>
+                          Ver Documento Anexo
+                        </a>
+
+                        <!-- BOTÓN DE ELIMINAR (Se queda igual) -->
                         <button class="btn-remove-image-mini"
                           *ngIf="!checklistSeleccionado().enviado && currentUser?.nombre === checklistSeleccionado().assigned && !isTareaVencida(item, checklistSeleccionado().date)"
-                          (click)="removeImage(item, 'photoDespues')" title="Borrar foto Después"><svg width="12"
-                            height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                          (click)="removeImage(item, 'photo')" title="Borrar archivo">
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2.5">
                             <line x1="18" y1="6" x2="6" y2="18"></line>
                             <line x1="6" y1="6" x2="18" y2="18"></line>
-                          </svg></button>
+                          </svg>
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -557,8 +623,9 @@
                     <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
                     <circle cx="12" cy="13" r="4"></circle>
                   </svg> + Agregar Foto(s)
-                  <input type="file" accept="image/*" [attr.capture]="item.permiteGaleria ? null : 'environment'"
-                    multiple (change)="onMultipleFilesSelected($event, item)" style="display: none;">
+                  <input type="file" accept="image/*, application/pdf, .xls, .xlsx"
+                    [attr.capture]="item.permiteGaleria ? null : 'environment'" multiple
+                    (change)="onMultipleFilesSelected($event, item)" style="display: none;">
                 </label>
 
                 <div class="alert-box alert-warning"

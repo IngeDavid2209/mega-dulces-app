@@ -561,7 +561,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     formData.append('upload_preset', uploadPreset);
 
     try {
-      const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, { method: 'POST', body: formData });
+      const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`, { method: 'POST', body: formData });
       const data = await response.json();
 
       if (data.secure_url) {
@@ -620,7 +620,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       formData.append('upload_preset', uploadPreset);
 
       try {
-        const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, { method: 'POST', body: formData });
+        const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`, { method: 'POST', body: formData });
         const data = await response.json();
         if (data.secure_url) {
           item.photos.push({
@@ -894,5 +894,13 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     // Esta expresión regular (Regex) detecta cualquier emoji o símbolo raro y lo elimina,
     // dejando intactas las letras, números y acentos.
     return texto.replace(/([\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF])/g, '').trim();
+  }
+  esImagen(url: string): boolean {
+    if (!url) return false;
+    // Si la URL termina en pdf, xls o xlsx, NO es imagen
+    if (url.toLowerCase().match(/\.(pdf|xls|xlsx)$/)) {
+      return false;
+    }
+    return true;
   }
 }

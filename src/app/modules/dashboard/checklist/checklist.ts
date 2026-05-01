@@ -644,7 +644,6 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     this.isEditandoTarea = false; 
     this.formName = ''; this.formAssigned = [];
     this.formStore = this.sucursalesDisponibles().length > 0 ? this.sucursalesDisponibles()[0] : '';
-    // 🔥 Variables insertadas 🔥
     this.formItems = [{ text: '', requiresPhoto: false, requiresAntesDespues: false, requiresVariasFotos: false, permiteGaleria: false, permiteDocumentos: false, tiempoEstimado: 30, date: '', time: '' }];
     this.isModalOpen = true;
   }
@@ -652,8 +651,9 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   cerrarModal() { this.isModalOpen = false; }
   
   // 🔥 Variables insertadas 🔥
-  agregarItem() { this.formItems.push({ text: '', requiresPhoto: false, requiresAntesDespues: false, requiresVariasFotos: false, permiteGaleria: false, permiteDocumentos: false, tiempoEstimado: 30, date: '', time: '' }); } 
-  eliminarItem(index: number) { this.formItems.splice(index, 1); }
+agregarItem() { 
+    this.formItems.push({ text: '', requiresPhoto: false, requiresAntesDespues: false, requiresVariasFotos: false, permiteGaleria: false, permiteDocumentos: false, tiempoEstimado: 30, date: '', time: '' }); 
+  }  eliminarItem(index: number) { this.formItems.splice(index, 1); }
   
   trackByIndex(index: number, obj: any): any { return index; }
 
@@ -668,12 +668,15 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     this.isModalOpen = true;
   }
 
-  guardarChecklistUnico() {
+ guardarChecklistUnico() {
     if (!this.formName || this.formAssigned.length === 0) { alert('Faltan datos.'); return; }
     const tareasValidas = this.formItems.filter(item => item.text.trim() !== '').map((item, i) => ({
-      id: Date.now() + i, text: item.text, requiresPhoto: item.requiresPhoto, requiresAntesDespues: item.requiresAntesDespues, 
+      id: Date.now() + i, 
+      text: item.text, 
+      requiresPhoto: item.requiresPhoto, 
+      requiresAntesDespues: item.requiresAntesDespues, 
       requiresVariasFotos: item.requiresVariasFotos || false,
-      // 🔥 Variables insertadas 🔥
+      // 🔥 AQUÍ SE EMPACAN LOS PERMISOS 🔥
       permiteGaleria: item.permiteGaleria || false,
       permiteDocumentos: item.permiteDocumentos || false,
       tiempoEstimado: item.requiresAntesDespues ? (item.tiempoEstimado || 30) : null,
@@ -692,11 +695,11 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       };
       this.guardarEnLaNube(checklistTareas);
     });
-    this.mostrarToast(' ✅  ¡ Tareas creadas con éxito!');
+    this.mostrarToast(' ✅  ¡Tareas creadas con éxito!');
     this.cerrarModal();
   }
 
-  async guardarCambiosChecklist() {
+async guardarCambiosChecklist() {
     if (!this.formName || this.formAssigned.length === 0) { alert('Faltan datos.'); return; }
     const actual = this.checklistSeleccionado();
     if (!actual) return;
@@ -704,9 +707,11 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       const itemOriginal = actual.items.find((orig: any) => orig.text === item.text);
       if (itemOriginal) {
         return { 
-          ...itemOriginal, requiresPhoto: item.requiresPhoto, requiresAntesDespues: item.requiresAntesDespues,
+          ...itemOriginal, 
+          requiresPhoto: item.requiresPhoto, 
+          requiresAntesDespues: item.requiresAntesDespues,
           requiresVariasFotos: item.requiresVariasFotos || false,
-          // 🔥 Variables insertadas 🔥
+          // 🔥 AQUÍ SE EMPACAN LOS PERMISOS 🔥
           permiteGaleria: item.permiteGaleria || false,
           permiteDocumentos: item.permiteDocumentos || false,
           tiempoEstimado: item.tiempoEstimado 
@@ -715,7 +720,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       return {
         id: Date.now() + i, text: item.text, requiresPhoto: item.requiresPhoto, 
         requiresVariasFotos: (item as any).requiresVariasFotos || false,
-        // 🔥 Variables insertadas 🔥
+        // 🔥 AQUÍ SE EMPACAN LOS PERMISOS 🔥
         permiteGaleria: (item as any).permiteGaleria || false,
         permiteDocumentos: (item as any).permiteDocumentos || false,
         tiempoEstimado: item.requiresAntesDespues ? (item.tiempoEstimado || 30) : null,
@@ -748,11 +753,10 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     if (index > -1) { this.formAssignedRutina.splice(index, 1); } else { this.formAssignedRutina.push(nombre); }
   }
 
-  abrirModalRutinas() {
+abrirModalRutinas() {
     this.isEditMode = false;
     this.formNameRutina = ''; this.formAssignedRutina = [];
     this.formStoreRutina = this.sucursalesDisponibles().length > 0 ? this.sucursalesDisponibles()[0] : '';
-    // 🔥 Variables insertadas 🔥
     this.formRutinas = [{ text: '', requiresPhoto: false, requiresAntesDespues: false, requiresVariasFotos: false, permiteGaleria: false, permiteDocumentos: false, tiempoEstimado: 30, frecuencia: 'Diaria', fechaFin: null, horaLimite: '', diaSemana: 'Lunes', diaMes: 1 }];
     this.isModalRutinasOpen = true;
   }
@@ -760,16 +764,17 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   cerrarModalRutinas() { this.isModalRutinasOpen = false; }
   
   // 🔥 Variables insertadas 🔥
-  agregarRutina() { this.formRutinas.push({ text: '', requiresPhoto: false, requiresAntesDespues: false, requiresVariasFotos: false, permiteGaleria: false, permiteDocumentos: false, tiempoEstimado: 30, frecuencia: 'Diaria', fechaFin: null, horaLimite: '', diaSemana: 'Lunes', diaMes: 1 }); }
-  
+agregarRutina() { 
+    this.formRutinas.push({ text: '', requiresPhoto: false, requiresAntesDespues: false, requiresVariasFotos: false, permiteGaleria: false, permiteDocumentos: false, tiempoEstimado: 30, frecuencia: 'Diaria', fechaFin: null, horaLimite: '', diaSemana: 'Lunes', diaMes: 1 }); 
+  }  
   eliminarRutina(index: number) { this.formRutinas.splice(index, 1); }
 
-  async guardarBloqueRutinas() {
+async guardarBloqueRutinas() {
     if (!this.formNameRutina || this.formAssignedRutina.length === 0) { alert('Faltan datos.'); return; }
     const rutinasValidas = this.formRutinas.filter(rutina => rutina.text.trim() !== '').map((rutina, i) => ({
       id: Date.now() + 1000 + i, text: rutina.text, requiresPhoto: rutina.requiresPhoto, requiresAntesDespues: rutina.requiresAntesDespues || false,
       requiresVariasFotos: rutina.requiresVariasFotos || false,
-      // 🔥 Variables insertadas 🔥
+      // 🔥 AQUÍ SE EMPACAN LOS PERMISOS 🔥
       permiteGaleria: rutina.permiteGaleria || false,
       permiteDocumentos: rutina.permiteDocumentos || false,
       tiempoEstimado: rutina.requiresAntesDespues ? (rutina.tiempoEstimado || 30) : null,
@@ -811,7 +816,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
         setDoc(doc(this.firestore, 'moldes_checklists', moldeId), nuevoMolde);
       });
     });
-    this.mostrarToast(this.isEditMode ? ' 🔄  ¡Bloque actualizado con éxito!' : ' 🔄  ¡Bloque guardado en la Bóveda!');
+    this.mostrarToast(this.isEditMode ? ' 🔄  ¡Bloque actualizado con éxito!' : ' 🔄  ¡Bloque guardado en la Bóveda!');
     this.cerrarModalRutinas();
   }
 

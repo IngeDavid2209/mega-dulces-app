@@ -372,7 +372,8 @@
                     <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
                     <circle cx="12" cy="13" r="4"></circle>
                   </svg> Adjuntar Evidencia
-                  <input type="file" a[accept]="item.permiteDocumentos ? 'image/*, application/pdf, .xls, .xlsx' : 'image/*'"
+                  <input type="file"
+                    a[accept]="item.permiteDocumentos ? 'image/*, application/pdf, .xls, .xlsx' : 'image/*'"
                     [attr.capture]="item.permiteGaleria ? null : 'environment'"
                     (change)="onFileSelected($event, item, 'photo')" style="display: none;">
                 </label>
@@ -447,7 +448,8 @@
                         </path>
                         <circle cx="12" cy="13" r="4"></circle>
                       </svg> Subir ANTES
-                      <input type="file" [accept]="item.permiteDocumentos ? 'image/*, application/pdf, .xls, .xlsx' : 'image/*'"
+                      <input type="file"
+                        [accept]="item.permiteDocumentos ? 'image/*, application/pdf, .xls, .xlsx' : 'image/*'"
                         [attr.capture]="item.permiteGaleria ? null : 'environment'"
                         (change)="onFileSelected($event, item, 'photoAntes')" style="display: none;">
                     </label>
@@ -519,7 +521,8 @@
                         </path>
                         <circle cx="12" cy="13" r="4"></circle>
                       </svg> Subir DESPUÉS
-                      <input type="file" [accept]="item.permiteDocumentos ? 'image/*, application/pdf, .xls, .xlsx' : 'image/*'"
+                      <input type="file"
+                        [accept]="item.permiteDocumentos ? 'image/*, application/pdf, .xls, .xlsx' : 'image/*'"
                         [attr.capture]="item.permiteGaleria ? null : 'environment'"
                         (change)="onFileSelected($event, item, 'photoDespues')" style="display: none;">
                     </label>
@@ -623,7 +626,7 @@
                     <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
                     <circle cx="12" cy="13" r="4"></circle>
                   </svg> + Agregar Foto(s)
-                  <input type="file" [accept]="item.permiteDocumentos ? 'image/*, application/pdf, .xls, .xlsx' : 'image/*'"
+                  <input type="file" accept="image/*, application/pdf, .xls, .xlsx"
                     [attr.capture]="item.permiteGaleria ? null : 'environment'" multiple
                     (change)="onMultipleFilesSelected($event, item)" style="display: none;">
                 </label>
@@ -716,13 +719,16 @@
               <label class="form-label">Actividades</label>
               <div class="checklist-items">
                 <div class="checklist-item-wrap" *ngFor="let item of formItems; let i = index; trackBy: trackByIndex">
-                  <div class="item-wrap-top">
+                  <div class="item-wrap-top" style="display: flex; align-items: center; flex-wrap: wrap; gap: 8px;">
+
                     <input class="form-input item-input" type="text" [(ngModel)]="item.text"
-                      placeholder="Descripción de la tarea">
+                      placeholder="Descripción de la tarea" style="flex: 1; min-width: 180px;">
+
+                    <!-- 🔥 1 FOTO 🔥 -->
                     <label class="photo-toggle"
                       style="display: flex; align-items: center; cursor: pointer; background: #F8FAFC; padding: 6px 10px; border-radius: 6px; border: 1px solid #E2E8F0; font-size: 13px; font-weight: 600;">
-                      <input type="checkbox" [(ngModel)]="item.requiresPhoto" [disabled]="item.requiresAntesDespues"
-                        (change)="item.requiresPhoto ? item.requiresAntesDespues = false : null"
+                      <input type="checkbox" [(ngModel)]="item.requiresPhoto"
+                        (change)="item.requiresPhoto ? item.requiresAntesDespues = false : null; item.requiresPhoto ? item.requiresVariasFotos = false : null"
                         style="margin-right: 6px;">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                         style="margin-right: 4px;">
@@ -732,23 +738,40 @@
                       </svg>
                       1 Foto
                     </label>
+
+                    <!-- 🔥 ANTES Y DESP. 🔥 -->
                     <label class="photo-toggle"
-                      style="display: flex; align-items: center; cursor: pointer; background: #EFF6FF; color: #2563EB; padding: 6px 10px; border-radius: 6px; border: 1px solid #BFDBFE; font-size: 13px; font-weight: 600; margin-left: 8px;">
-                      <input type="checkbox" [(ngModel)]="item.requiresVariasFotos"
-                        (change)="item.requiresVariasFotos ? (item.requiresPhoto = false) || (item.requiresAntesDespues = false) : null"
+                      style="display: flex; align-items: center; cursor: pointer; background: #FFFBEB; color: #D97706; padding: 6px 10px; border-radius: 6px; border: 1px solid #FDE68A; font-size: 13px; font-weight: 600;">
+                      <input type="checkbox" [(ngModel)]="item.requiresAntesDespues"
+                        (change)="item.requiresAntesDespues ? item.requiresPhoto = false : null; item.requiresAntesDespues ? item.requiresVariasFotos = false : null"
                         style="margin-right: 6px;">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                         style="margin-right: 4px;">
-                        <rect x="2" y="2" width="8" height="8" rx="1"></rect>
-                        <rect x="14" y="2" width="8" height="8" rx="1"></rect>
-                        <rect x="2" y="14" width="8" height="8" rx="1"></rect>
-                        <rect x="14" y="14" width="8" height="8" rx="1"></rect>
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                        <circle cx="12" cy="12" r="3"></circle>
+                      </svg>
+                      Antes y Desp.
+                    </label>
+
+                    <!-- 🔥 VARIAS FOTOS 🔥 -->
+                    <label class="photo-toggle"
+                      style="display: flex; align-items: center; cursor: pointer; background: #F0FDF4; color: #16A34A; padding: 6px 10px; border-radius: 6px; border: 1px solid #BBF7D0; font-size: 13px; font-weight: 600;">
+                      <input type="checkbox" [(ngModel)]="item.requiresVariasFotos"
+                        (change)="item.requiresVariasFotos ? item.requiresPhoto = false : null; item.requiresVariasFotos ? item.requiresAntesDespues = false : null"
+                        style="margin-right: 6px;">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        style="margin-right: 4px;">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                        <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                        <polyline points="21 15 16 10 5 21"></polyline>
                       </svg>
                       Varias Fotos
                     </label>
+
+                    <!-- 🔥 GALERÍA 🔥 -->
                     <label class="photo-toggle"
-                      style="display: flex; align-items: center; cursor: pointer; background: #F1F5F9; color: #475569; padding: 6px 10px; border-radius: 6px; border: 1px solid #CBD5E1; font-size: 13px; font-weight: 600; margin-left: 8px;"
-                      title="Permite al empleado subir fotos de su carrete">
+                      style="display: flex; align-items: center; cursor: pointer; background: #F1F5F9; color: #475569; padding: 6px 10px; border-radius: 6px; border: 1px solid #CBD5E1; font-size: 13px; font-weight: 600;"
+                      title="Permite subir fotos del carrete">
                       <input type="checkbox" [(ngModel)]="item.permiteGaleria" style="margin-right: 6px;">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                         style="margin-right: 4px;">
@@ -758,13 +781,32 @@
                       </svg>
                       Galería
                     </label>
-                    
+
+                    <!-- 🔥 DOCS 🔥 -->
+                    <label class="photo-toggle"
+                      style="display: flex; align-items: center; cursor: pointer; background: #F3E8FF; color: #7E22CE; padding: 6px 10px; border-radius: 6px; border: 1px solid #E9D5FF; font-size: 13px; font-weight: 600;"
+                      title="Permite subir Excel o PDF">
+                      <input type="checkbox" [(ngModel)]="item.permiteDocumentos" style="margin-right: 6px;">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        style="margin-right: 4px;">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                        <line x1="16" y1="13" x2="8" y2="13"></line>
+                        <line x1="16" y1="17" x2="8" y2="17"></line>
+                        <polyline points="10 9 9 9 8 9"></polyline>
+                      </svg>
+                      Docs.
+                    </label>
+
+                    <!-- 🔥 BASURA 🔥 -->
                     <button class="btn-remove" (click)="eliminarItem(i)" title="Eliminar"
-                      style="margin-left: 8px; background: transparent; border: none; color: #EF4444; cursor: pointer;"><svg
-                        width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      style="background: transparent; border: none; color: #EF4444; cursor: pointer; margin-left: 8px;">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2">
                         <polyline points="3 6 5 6 21 6"></polyline>
                         <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                      </svg></button>
+                      </svg>
+                    </button>
                   </div>
                   <div class="item-wrap-bottom" style="display: flex; gap: 15px; margin-top: 10px;">
                     <div class="time-input-group"

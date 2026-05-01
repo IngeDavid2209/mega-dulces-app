@@ -372,7 +372,7 @@
                     <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
                     <circle cx="12" cy="13" r="4"></circle>
                   </svg> Adjuntar Evidencia
-                  <input type="file" accept="image/*, application/pdf, .xls, .xlsx"
+                  <input type="file" a[accept]="item.permiteDocumentos ? 'image/*, application/pdf, .xls, .xlsx' : 'image/*'"
                     [attr.capture]="item.permiteGaleria ? null : 'environment'"
                     (change)="onFileSelected($event, item, 'photo')" style="display: none;">
                 </label>
@@ -447,7 +447,7 @@
                         </path>
                         <circle cx="12" cy="13" r="4"></circle>
                       </svg> Subir ANTES
-                      <input type="file" accept="image/*, application/pdf, .xls, .xlsx"
+                      <input type="file" [accept]="item.permiteDocumentos ? 'image/*, application/pdf, .xls, .xlsx' : 'image/*'"
                         [attr.capture]="item.permiteGaleria ? null : 'environment'"
                         (change)="onFileSelected($event, item, 'photoAntes')" style="display: none;">
                     </label>
@@ -519,7 +519,7 @@
                         </path>
                         <circle cx="12" cy="13" r="4"></circle>
                       </svg> Subir DESPUÉS
-                      <input type="file" accept="image/*, application/pdf, .xls, .xlsx"
+                      <input type="file" [accept]="item.permiteDocumentos ? 'image/*, application/pdf, .xls, .xlsx' : 'image/*'"
                         [attr.capture]="item.permiteGaleria ? null : 'environment'"
                         (change)="onFileSelected($event, item, 'photoDespues')" style="display: none;">
                     </label>
@@ -623,7 +623,7 @@
                     <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
                     <circle cx="12" cy="13" r="4"></circle>
                   </svg> + Agregar Foto(s)
-                  <input type="file" accept="image/*, application/pdf, .xls, .xlsx"
+                  <input type="file" [accept]="item.permiteDocumentos ? 'image/*, application/pdf, .xls, .xlsx' : 'image/*'"
                     [attr.capture]="item.permiteGaleria ? null : 'environment'" multiple
                     (change)="onMultipleFilesSelected($event, item)" style="display: none;">
                 </label>
@@ -758,6 +758,7 @@
                       </svg>
                       Galería
                     </label>
+                    
                     <button class="btn-remove" (click)="eliminarItem(i)" title="Eliminar"
                       style="margin-left: 8px; background: transparent; border: none; color: #EF4444; cursor: pointer;"><svg
                         width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

@@ -896,8 +896,9 @@ formItems: any[] = [{ text: '', requiresPhoto: false, requiresAntesDespues: fals
   }
   esImagen(url: string): boolean {
     if (!url) return false;
-    // Si la URL termina en pdf, xls o xlsx, NO es imagen
-    if (url.toLowerCase().match(/\.(pdf|xls|xlsx)$/)) {
+    const urlLower = url.toLowerCase();
+    // Si la URL dice que es un archivo 'raw' o termina en extensión de documento, NO es imagen.
+    if (urlLower.includes('/raw/upload/') || urlLower.match(/\.(pdf|xls|xlsx|doc|docx|csv|txt|zip|rar)$/)) {
       return false;
     }
     return true;

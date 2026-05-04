@@ -157,12 +157,12 @@ export class ChecklistComponent implements OnInit, OnDestroy {
         const misSucursales = this.currentUser.sucursales || [this.currentUser.sucursal || ''];
         this.sucursalesDisponibles.set(misSucursales);
       }
-      const trabajadores = todosLosUsuarios.filter((u: any) => u.rol === 'trabajador');
+      const personalActivo = todosLosUsuarios.filter((u: any) => u.rol === 'trabajador' || u.rol === 'admin');
       if (this.currentUser?.rol === 'admin') {
-        this.empleados.set(trabajadores);
+        this.empleados.set(personalActivo);
       } else if (this.currentUser?.puedeCrearChecklists) {
         const misSucursales = this.currentUser.sucursales || [this.currentUser.sucursal || ''];
-        const empleadosFiltrados = trabajadores.filter((t: any) => {
+        const empleadosFiltrados = personalActivo.filter((t: any) => {
           const susSucursales = t.sucursales || [t.sucursal || ''];
           return susSucursales.some((s: string) => misSucursales.includes(s));
         });

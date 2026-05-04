@@ -55,6 +55,36 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   'OFICINAS CORPORATIVAS', 'CAJA GENERAL', 'COMPRAS', 'CONTABILIDAD',
   'FINANZAS', 'SISTEMAS', 'RH', 'MKT', 'MANTENIMIENTO'
 ];
+// 🔥 ASIGNAR A TODOS LOS EMPLEADOS DE LA SUCURSAL SELECCIONADA 🔥
+  asignarATodos(tipo: 'tarea' | 'rutina') {
+    // Obtenemos la lista de empleados ya filtrados por la sucursal actual
+    const empleadosParaAsignar = tipo === 'tarea' ? this.empleadosFiltrados : this.empleadosFiltradosRutina;
+    
+    if (empleadosParaAsignar.length === 0) {
+      this.mostrarToast('⚠️ No hay empleados en esta sucursal para asignar.');
+      return;
+    }
+
+    // Extraemos solo los nombres
+    const nombres = empleadosParaAsignar.map(emp => emp.nombre);
+
+    if (tipo === 'tarea') {
+      this.formAssigned = [...nombres]; // Copiamos todos los nombres al arreglo de asignación
+    } else {
+      this.formAssignedRutina = [...nombres];
+    }
+    
+    this.mostrarToast(`✅ Se asignaron ${nombres.length} empleados.`);
+  }
+
+  // 🔥 LIMPIAR TODA LA SELECCIÓN 🔥
+  desmarcarTodos(tipo: 'tarea' | 'rutina') {
+    if (tipo === 'tarea') {
+      this.formAssigned = [];
+    } else {
+      this.formAssignedRutina = [];
+    }
+  }
 
   esSucursalAdministrativa(sucursal: string): boolean { return this.sucursalesAdministrativas.includes(sucursal); }
   
@@ -791,6 +821,11 @@ async guardarCambiosChecklist() {
   toggleEmpleadoRutina(nombre: string) {
     const index = this.formAssignedRutina.indexOf(nombre);
     if (index > -1) { this.formAssignedRutina.splice(index, 1); } else { this.formAssignedRutina.push(nombre); }
+  }
+  asignarATodoMiPersonal() {
+    const todosMisEmpleados = this.empleados().map(emp => emp.nombre);
+    this.formAssigned = [...todosMisEmpleados];
+    this.mostrarToast(`🚀 ¡Fuego! Asignado a todo el personal de tus sucursales.`);
   }
 
 abrirModalRutinas() {

@@ -90,7 +90,17 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   
   get empleadosFiltrados() {
     if (!this.formStore) return this.empleados();
+    
     return this.empleados().filter(emp => {
+      // 1. Si seleccionas "ADMINISTRADORES DEL SISTEMA", solo mostramos a los Admin
+      if (this.formStore === 'ADMINISTRADORES DEL SISTEMA') {
+        return emp.rol === 'admin';
+      }
+
+      // 2. Para cualquier otra sucursal, solo mostramos trabajadores (ocultamos admins)
+      if (emp.rol === 'admin') return false;
+
+      // 3. Lógica normal para trabajadores por sucursal
       if (emp.sucursales && emp.sucursales.includes('General (Acceso Total)')) return true;
       const susSucursales = emp.sucursales || [emp.sucursal || ''];
       return susSucursales.includes(this.formStore);
@@ -99,7 +109,17 @@ export class ChecklistComponent implements OnInit, OnDestroy {
 
   get empleadosFiltradosRutina() {
     if (!this.formStoreRutina) return this.empleados();
+    
     return this.empleados().filter(emp => {
+      // 1. Filtro exclusivo para la zona de Admins
+      if (this.formStoreRutina === 'ADMINISTRADORES DEL SISTEMA') {
+        return emp.rol === 'admin';
+      }
+
+      // 2. Ocultar admins en sucursales operativas
+      if (emp.rol === 'admin') return false;
+
+      // 3. Lógica normal para trabajadores
       if (emp.sucursales && emp.sucursales.includes('General (Acceso Total)')) return true;
       const susSucursales = emp.sucursales || [emp.sucursal || ''];
       return susSucursales.includes(this.formStoreRutina);

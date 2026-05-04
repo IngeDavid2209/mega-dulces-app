@@ -12,7 +12,7 @@ import * as localforage from 'localforage';
   styleUrls: ['./app.css']
 })
 export class AppComponent implements OnInit {
-  title = 'mega-dulces-app';
+  title = 'Mega Dulces Task';
   
   private firestore = inject(Firestore);
   private storage = inject(Storage);

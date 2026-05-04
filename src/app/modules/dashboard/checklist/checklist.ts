@@ -191,30 +191,41 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   }
 
   // =========================================================
-  conectarRadarNube() {
+conectarRadarNube() {
     const usuariosRef = collection(this.firestore, 'usuarios');
     const radarUsuarios = onSnapshot(usuariosRef, (snapshot) => {
       const todosLosUsuarios: any[] = [];
       snapshot.forEach(docSnap => todosLosUsuarios.push(docSnap.data()));
+      
       const todasLasSucursales = [
-  'ADMINISTRADORES DEL SISTEMA', // 🔥 NUEVA ZONA 🔥
-  'Canindo', 'La Piedad Abastos', '8 Esquinas', 'Padre Hidalgo',
-  'Morelia Madero', 'Morelia Abastos', 'Yurécuaro', 'Zamora Centro',
-  'OFICINAS CORPORATIVAS', 'CAJA GENERAL', 'COMPRAS', 'CONTABILIDAD',
-  'FINANZAS', 'SISTEMAS', 'RH', 'MKT', 'MANTENIMIENTO'
-];
+        'ADMINISTRADORES DEL SISTEMA',
+        'Canindo', 'La Piedad Abastos', '8 Esquinas', 'Padre Hidalgo',
+        'Morelia Madero', 'Morelia Abastos', 'Yurécuaro', 'Zamora Centro',
+        'OFICINAS CORPORATIVAS', 'CAJA GENERAL', 'COMPRAS', 'CONTABILIDAD',
+        'FINANZAS', 'SISTEMAS', 'RH', 'MKT', 'MANTENIMIENTO'
+      ];
+
+      // Configuración de sucursales visibles para el select
       if (this.currentUser?.rol === 'admin') {
         this.sucursalesDisponibles.set(todasLasSucursales);
       } else if (this.currentUser?.puedeCrearChecklists) {
         const misSucursales = this.currentUser.sucursales || [this.currentUser.sucursal || ''];
-        this.sucursalesDisponibles.set(misSucursales);
+        // Filtramos para que empleados normales NO vean la zona de Admins en el select
+        const sucursalesFiltradas = todasLasSucursales.filter(s => s !== 'ADMINISTRADORES DEL SISTEMA' && misSucursales.includes(s));
+        this.sucursalesDisponibles.set(sucursalesFiltradas);
       }
-      const personalActivo = todosLosUsuarios.filter((u: any) => u.rol === 'trabajador' || u.rol === 'admin');
+
+      // 🔥 LÓGICA DE PRIVACIDAD ÉLITE 🔥
       if (this.currentUser?.rol === 'admin') {
+        // ADMINS: Ven a todos (Trabajadores + otros Admins)
+        const personalActivo = todosLosUsuarios.filter((u: any) => u.rol === 'trabajador' || u.rol === 'admin');
         this.empleados.set(personalActivo);
       } else if (this.currentUser?.puedeCrearChecklists) {
+        // NO ADMINS: Solo ven trabajadores. Los admins son INVISIBLES.
+        const trabajadoresUnicamente = todosLosUsuarios.filter((u: any) => u.rol === 'trabajador');
         const misSucursales = this.currentUser.sucursales || [this.currentUser.sucursal || ''];
-        const empleadosFiltrados = personalActivo.filter((t: any) => {
+        
+        const empleadosFiltrados = trabajadoresUnicamente.filter((t: any) => {
           const susSucursales = t.sucursales || [t.sucursal || ''];
           return susSucursales.some((s: string) => misSucursales.includes(s));
         });

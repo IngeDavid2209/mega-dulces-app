@@ -668,34 +668,68 @@ agregarItem() {
     this.isModalOpen = true;
   }
 
- guardarChecklistUnico() {
+guardarChecklistUnico() {
     if (!this.formName || this.formAssigned.length === 0) { alert('Faltan datos.'); return; }
+    
     const tareasValidas = this.formItems.filter(item => item.text.trim() !== '').map((item, i) => ({
       id: Date.now() + i, 
       text: item.text, 
       requiresPhoto: item.requiresPhoto, 
       requiresAntesDespues: item.requiresAntesDespues, 
       requiresVariasFotos: item.requiresVariasFotos || false,
-      // 🔥 AQUÍ SE EMPACAN LOS PERMISOS 🔥
       permiteGaleria: item.permiteGaleria || false,
       permiteDocumentos: item.permiteDocumentos || false,
       tiempoEstimado: item.requiresAntesDespues ? (item.tiempoEstimado || 30) : null,
-      date: item.date, time: item.time, checked: false,
+      date: item.date, 
+      time: item.time, 
+      checked: false,
       photo: null, photoTime: null, photoAntes: null, photoAntesTime: null, photoAntesTimestamp: null, photoDespues: null, photoDespuesTime: null, tipo: 'tarea'
     }));
+
     if (tareasValidas.length === 0) { alert('Agrega tareas.'); return; }
+
     this.formAssigned.forEach((empleadoNombre, index) => {
-      const uniqueId = Date.now() + index; const offset = new Date().getTimezoneOffset() * 60000;
+      const uniqueId = Date.now() + index; 
+      const offset = new Date().getTimezoneOffset() * 60000;
       const hoy = new Date(Date.now() - offset).toISOString().split('T')[0];
+      
       const checklistTareas = {
-        id: uniqueId, timestampCreacion: Date.now(), name: this.formName, assigned: empleadoNombre,
-        store: this.formStore, date: tareasValidas[0].date || hoy, time: tareasValidas[0].time || '23:59',
-        status: 'pendiente', enviado: false, createdBy: this.currentUser?.nombre || 'Desconocido', notaEmpleado: '',
+        id: uniqueId, 
+        timestampCreacion: Date.now(), 
+        name: this.formName, 
+        assigned: empleadoNombre,
+        store: this.formStore, 
+        date: tareasValidas[0].date || hoy, 
+        time: tareasValidas[0].time || '23:59',
+        status: 'pendiente', 
+        enviado: false, 
+        createdBy: this.currentUser?.nombre || 'Desconocido', 
+        notaEmpleado: '',
         items: JSON.parse(JSON.stringify(tareasValidas))
       };
+
       this.guardarEnLaNube(checklistTareas);
+
+      // 🔥 LÓGICA DE WHATSAPP SEMIAUTOMÁTICO 🔥
+      const datosEmpleado = this.empleados().find(e => e.nombre === empleadoNombre);
+      if (datosEmpleado && datosEmpleado.telefono) {
+        const telefono = datosEmpleado.telefono;
+        const urlBase = 'https://api.whatsapp.com/send?phone=' + telefono + '&text=';
+        
+        // Armamos el cuerpo del mensaje (Limpiamos emojis para evitar errores de URL)
+        let mensaje = `*Mega Dulces Task* 🍭\n\n`;
+        mensaje += `¡Hola *${this.limpiarEmojis(empleadoNombre)}*!\n`;
+        mensaje += `Se te ha asignado un nuevo checklist: *${this.limpiarEmojis(this.formName)}*\n\n`;
+        mensaje += `📅 Fecha: ${checklistTareas.date}\n`;
+        mensaje += `⏰ Hora Límite: ${this.formatearHora(checklistTareas.time)}\n\n`;
+        mensaje += `Favor de ingresar a la plataforma para completar tus evidencias.`;
+
+        // Abrimos WhatsApp en una pestaña nueva
+        window.open(urlBase + encodeURIComponent(mensaje), '_blank');
+      }
     });
-    this.mostrarToast(' ✅  ¡Tareas creadas con éxito!');
+
+    this.mostrarToast(' ✅ ¡Tareas creadas y avisos de WhatsApp generados!');
     this.cerrarModal();
   }
 

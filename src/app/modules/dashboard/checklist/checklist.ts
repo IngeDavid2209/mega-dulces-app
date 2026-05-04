@@ -714,17 +714,18 @@ guardarChecklistUnico() {
       const datosEmpleado = this.empleados().find(e => e.nombre === empleadoNombre);
       if (datosEmpleado && datosEmpleado.telefono) {
         const telefono = datosEmpleado.telefono;
-        const urlApp = 'https://md-chlist.vercel.app'; // Tu URL oficial
+        const urlApp = 'https://md-chlist.vercel.app'; // <--- Asegúrate que esta sea tu URL
         const urlBase = 'https://api.whatsapp.com/send?phone=' + telefono + '&text=';
         
-        let mensaje = `*Mega Dulces Task* 🍭\n\n`;
+       let mensaje = `*Mega Dulces Task* 🍭\n\n`;
         mensaje += `¡Hola *${this.limpiarEmojis(empleadoNombre)}*!\n`;
         mensaje += `Se te ha asignado un nuevo checklist: *${this.limpiarEmojis(this.formName)}*\n\n`;
         mensaje += `📅 Fecha: ${checklistTareas.date}\n`;
         mensaje += `⏰ Hora Límite: ${this.formatearHora(checklistTareas.time)}\n\n`;
         
-        // 🔥 AQUÍ AGREGAMOS EL LINK DIRECTO 🔥
+        // 🔥 ESTA ES LA LÍNEA QUE FALTA EN TU CÓDIGO ACTUAL 🔥
         mensaje += `🔗 Entra aquí: ${urlApp}\n\n`;
+        
         mensaje += `Favor de ingresar a la plataforma para completar tus evidencias.`;
 
         // Abrimos WhatsApp en una pestaña nueva

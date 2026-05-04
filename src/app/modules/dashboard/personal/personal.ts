@@ -24,13 +24,9 @@ export class PersonalComponent implements OnInit, OnDestroy {
   isModalOpen = false;
   mostrarPassword = false;
   formPuedeAdministrarAreas = false;
-  
-  // Formulario
-  formNombre = ''; formUsuario = ''; formCorreo = ''; formPassword = '';
+    formNombre = ''; formUsuario = ''; formCorreo = '';formTelefono = ''; formPassword = '';
   formRol = 'trabajador'; formCargo = 'Trabajador General'; 
-  
-  // 🔥 PERMISOS ACTUALIZADOS 🔥
-  formPuedeCrearChecklists = false; 
+    formPuedeCrearChecklists = false; 
   formPuedeCrearRutinas = false;       
   formPuedeCrearTareasUnicas = false;  
   formPuedeVerCheckstore = false;      
@@ -38,7 +34,6 @@ export class PersonalComponent implements OnInit, OnDestroy {
   formPuedeVerHistorial = false;       
   formPuedeAdministrarPersonal = false;
   formPuedeVerCalendario = false; // 🔥 NUEVO: PERMISO DE CALENDARIO 🔥
-
   formSucursales: string[] = [];
   formAreas: string[] = [];
 
@@ -257,7 +252,7 @@ export class PersonalComponent implements OnInit, OnDestroy {
     this.isModalOpen = true;
   }
 
-  cerrarModal() { this.isModalOpen = false; this.usuarioEnEdicion = null; }
+  cerrarModal() { this.isModalOpen = false; this.usuarioEnEdicion = null; this.formTelefono = ''; }
 
   toggleSucursal(sucursal: string) {
     const index = this.formSucursales.indexOf(sucursal);
@@ -286,7 +281,7 @@ export class PersonalComponent implements OnInit, OnDestroy {
 
     const payload = {
       nombre: this.formNombre, usuario: this.formUsuario, correo: this.formCorreo, password: this.formPassword, 
-      rol: this.formRol, cargo: this.formCargo,
+      rol: this.formRol, cargo: this.formCargo, telefono: this.formTelefono,
       
       puedeCrearChecklists: this.formRol === 'admin' ? true : this.formPuedeCrearChecklists,
       puedeCrearRutinas: this.formRol === 'admin' ? true : this.formPuedeCrearRutinas,

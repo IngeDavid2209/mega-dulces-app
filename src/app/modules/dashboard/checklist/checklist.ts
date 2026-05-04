@@ -51,9 +51,10 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   private destructoresRadares: (() => void)[] = [];
   private intervalId: any;
   private sucursalesAdministrativas = [
-    'OFICINAS CORPORATIVAS', 'CAJA GENERAL', 'COMPRAS', 'CONTABILIDAD',
-    'FINANZAS', 'SISTEMAS', 'RH', 'MKT', 'MANTENIMIENTO'
-  ];
+  'ADMINISTRADORES DEL SISTEMA', // 🔥 AGREGADA AQUÍ TAMBIÉN 🔥
+  'OFICINAS CORPORATIVAS', 'CAJA GENERAL', 'COMPRAS', 'CONTABILIDAD',
+  'FINANZAS', 'SISTEMAS', 'RH', 'MKT', 'MANTENIMIENTO'
+];
 
   esSucursalAdministrativa(sucursal: string): boolean { return this.sucursalesAdministrativas.includes(sucursal); }
   
@@ -146,11 +147,12 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       const todosLosUsuarios: any[] = [];
       snapshot.forEach(docSnap => todosLosUsuarios.push(docSnap.data()));
       const todasLasSucursales = [
-        'Canindo', 'La Piedad Abastos', '8 Esquinas', 'Padre Hidalgo',
-        'Morelia Madero', 'Morelia Abastos', 'Yurécuaro', 'Zamora Centro',
-        'OFICINAS CORPORATIVAS', 'CAJA GENERAL', 'COMPRAS', 'CONTABILIDAD',
-        'FINANZAS', 'SISTEMAS', 'RH', 'MKT', 'MANTENIMIENTO'
-      ];
+  'ADMINISTRADORES DEL SISTEMA', // 🔥 NUEVA ZONA 🔥
+  'Canindo', 'La Piedad Abastos', '8 Esquinas', 'Padre Hidalgo',
+  'Morelia Madero', 'Morelia Abastos', 'Yurécuaro', 'Zamora Centro',
+  'OFICINAS CORPORATIVAS', 'CAJA GENERAL', 'COMPRAS', 'CONTABILIDAD',
+  'FINANZAS', 'SISTEMAS', 'RH', 'MKT', 'MANTENIMIENTO'
+];
       if (this.currentUser?.rol === 'admin') {
         this.sucursalesDisponibles.set(todasLasSucursales);
       } else if (this.currentUser?.puedeCrearChecklists) {

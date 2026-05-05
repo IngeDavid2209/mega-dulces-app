@@ -13,6 +13,7 @@ import * as localforage from 'localforage';
   styleUrls: ['./checklist.css']
 })
 export class ChecklistComponent implements OnInit, OnDestroy {
+  ultimaHoraNotificada: number = -1;
   isMenuOpen = false;
   isEditandoTarea = false;
   toggleMenu() { this.isMenuOpen = !this.isMenuOpen; }
@@ -145,6 +146,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     const sesion = localStorage.getItem('md_sesion_actual');
     if (sesion) { this.currentUser = JSON.parse(sesion); }
     this.conectarRadarNube();
+    this.iniciarRobotNotificador();
     this.route.queryParams.subscribe(params => {
       if (params['assign'] && params['modal']) {
         setTimeout(() => {
@@ -190,8 +192,45 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     return `${minutos}m ${segundos}s`;
   }
 
-  // =========================================================
-conectarRadarNube() {
+iniciarRobotNotificador() {
+    // 1. Le pedimos permiso al celular/computadora del empleado para mandar notificaciones
+    if ('Notification' in window && Notification.permission !== 'granted' && Notification.permission !== 'denied') {
+      Notification.requestPermission();
+    }
+
+    // 2. Un radar oculto que revisa el reloj cada 30 segundos
+    setInterval(() => {
+      const ahora = new Date();
+      
+      // Si estamos en el minuto 0 (la hora en punto: 10:00, 11:00, etc.) 
+      // y no hemos enviado la alerta de esta hora...
+      if (ahora.getMinutes() === 0 && this.ultimaHoraNotificada !== ahora.getHours()) {
+        this.ultimaHoraNotificada = ahora.getHours(); // Guardamos que ya avisamos esta hora
+        this.verificarYNotificarPendientes();
+      }
+    }, 30000); 
+  }
+
+  verificarYNotificarPendientes() {
+    // Filtramos las tareas que NO están completas ni enviadas
+    const misPendientes = this.checklists().filter(c => c.status !== 'completo' && c.enviado !== true);
+    
+    if (misPendientes.length > 0) {
+      const mensaje = `Tienes ${misPendientes.length} checklist(s) pendientes por terminar. ¡No te retrases! 🕒`;
+      
+      // 1. Notificación Nativa (Aparece en la barra de arriba del celular o Windows)
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification('Mega Dulces Task 🍭', {
+          body: mensaje,
+          vibrate: [200, 100, 200] // Hace que el celular vibre (si lo soporta)
+        } as any); // 🔥 EL TRUCO ESTÁ AQUÍ: Agregamos "as any" antes de cerrar el paréntesis 🔥
+      }
+      
+      // 2. Notificación Interna (El mensajito verde que sale abajo)
+      this.mostrarToast(`⏰ ¡Hora de checar! ${mensaje}`);
+    }
+  }
+  conectarRadarNube() {
     const usuariosRef = collection(this.firestore, 'usuarios');
     const radarUsuarios = onSnapshot(usuariosRef, (snapshot) => {
       const todosLosUsuarios: any[] = [];

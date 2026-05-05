@@ -14,6 +14,7 @@ import * as localforage from 'localforage';
 })
 export class ChecklistComponent implements OnInit, OnDestroy {
   ultimaHoraNotificada: number = -1;
+  cantidadPendientesAnterior: number = -1;
   isMenuOpen = false;
   isEditandoTarea = false;
   toggleMenu() { this.isMenuOpen = !this.isMenuOpen; }
@@ -212,14 +213,10 @@ iniciarRobotNotificador() {
   }
 
   verificarYNotificarPendientes() {
-    // Filtramos las tareas que NO están completas ni enviadas
     const misPendientes = this.checklists().filter(c => c.status !== 'completo' && c.enviado !== true);
-    
     if (misPendientes.length > 0) {
       const mensaje = `Tienes ${misPendientes.length} checklist(s) pendientes por terminar. ¡No te retrases! 🕒`;
-      
-      // 1. Notificación Nativa (Aparece en la barra de arriba del celular o Windows)
-      if ('Notification' in window && Notification.permission === 'granted') {
+            if ('Notification' in window && Notification.permission === 'granted') {
         new Notification('Mega Dulces Task 🍭', {
           body: mensaje,
           vibrate: [200, 100, 200] // Hace que el celular vibre (si lo soporta)
@@ -229,6 +226,16 @@ iniciarRobotNotificador() {
       // 2. Notificación Interna (El mensajito verde que sale abajo)
       this.mostrarToast(`⏰ ¡Hora de checar! ${mensaje}`);
     }
+  }
+lanzarNotificacionInmediata() {
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification('Nueva Tarea - Mega Dulces 🍭', {
+        body: '¡Acaban de asignarte una nueva tarea! Entra a revisarla. 🚀',
+        vibrate: [300, 100, 300]
+      } as any); // <--- 🔥 EL TRUCO ESTÁ AQUÍ AFUERA 🔥
+    }
+    // También mostramos el mensajito verde adentro de la app por si ya la tienen abierta
+    this.mostrarToast('🔔 ¡Te acaban de asignar una nueva tarea!');
   }
   conectarRadarNube() {
     const usuariosRef = collection(this.firestore, 'usuarios');
@@ -308,14 +315,32 @@ iniciarRobotNotificador() {
         }
       });
       const listasFinales = Array.from(listasSinClones.values());
-      listasFinales.sort((a, b) => b.timestampCreacion - a.timestampCreacion);
+      
+      // Mantenemos el orden que habíamos platicado (por fecha y luego por creación)
+      listasFinales.sort((a, b) => {
+        if (a.date !== b.date) return a.date.localeCompare(b.date);
+        return b.timestampCreacion - a.timestampCreacion;
+      });
+
       if (this.currentUser?.rol === 'admin') {
         this.checklists.set(listasFinales);
       } else {
         const misListas = listasFinales.filter((c: any) => c.assigned === this.currentUser.nombre);
         this.checklists.set(misListas);
+
+        // 🔥 DETECTAR NUEVAS TAREAS EN TIEMPO REAL 🔥
+        // Contamos cuántas tareas tiene pendientes ahorita mismo
+        const pendientesActuales = misListas.filter((c: any) => c.status !== 'completo' && c.enviado !== true).length;
+        
+        // Si ya había cargado antes (-1) y ahora tiene MÁS tareas que antes... ¡Le mandamos el aviso!
+        if (this.cantidadPendientesAnterior !== -1 && pendientesActuales > this.cantidadPendientesAnterior) {
+          this.lanzarNotificacionInmediata();
+        }
+        
+        // Actualizamos la memoria para la próxima vez que el radar detecte un cambio
+        this.cantidadPendientesAnterior = pendientesActuales;
       }
-    });
+    }); // <-- Aquí termina el radarChecklists
     this.destructoresRadares.push(radarChecklists);
 
     const notiRef = collection(this.firestore, 'notificaciones');

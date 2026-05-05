@@ -251,7 +251,7 @@ conectarRadarNube() {
         const c = docSnap.data() as any;
         if (c.eliminado === true) return;
         if (c.enviado === true) return;
-        if (c.date === fechaHoyLocal) {
+        if (c.date >= fechaHoyLocal) {
           const tareasMarcadas = c.items.filter((i: any) => i.checked).length;
           c.calcCompletados = tareasMarcadas;
           c.calcProgreso = Math.round((tareasMarcadas / c.items.length) * 100) || 0;

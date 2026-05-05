@@ -597,6 +597,44 @@ conectarRadarNube() {
     }
   }
 
+  // 🔥 SUBIR DOCUMENTO DE INSTRUCCIONES 🔥
+  async adjuntarDocumentoInstruccion(event: any, item: any) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    item.archivoInstruccion = 'subiendo...';
+    item.nombreArchivo = file.name;
+
+    const cloudName = 'duherjgyg';
+    const uploadPreset = 'fotos_mega'; 
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', uploadPreset);
+
+    try {
+      // Usamos 'auto/upload' para que acepte PDFs, Excel, Word, etc.
+      const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`, { method: 'POST', body: formData });
+      const data = await response.json();
+      if (data.secure_url) {
+        item.archivoInstruccion = data.secure_url;
+        this.mostrarToast('📎 Documento adjuntado correctamente');
+      } else {
+        item.archivoInstruccion = null; item.nombreArchivo = null;
+        alert('❌ Error al subir el documento.');
+      }
+    } catch (error) {
+      item.archivoInstruccion = null; item.nombreArchivo = null;
+      alert('❌ Error de conexión al subir.');
+    }
+    event.target.value = ''; // Limpiar el input
+  }
+
+  // 🔥 QUITAR EL DOCUMENTO SI TE EQUIVOCASTE 🔥
+  quitarDocumentoInstruccion(item: any) {
+    item.archivoInstruccion = null;
+    item.nombreArchivo = null;
+  }
+
   async onMultipleFilesSelected(event: any, item: any) {
     const files: FileList = event.target.files;
     if (!files || files.length === 0) return;
@@ -743,6 +781,8 @@ guardarChecklistUnico() {
       permiteGaleria: item.permiteGaleria || false,
       permiteDocumentos: item.permiteDocumentos || false,
       tiempoEstimado: item.requiresAntesDespues ? (item.tiempoEstimado || 30) : null,
+      archivoInstruccion: item.archivoInstruccion || null,
+      nombreArchivo: item.nombreArchivo || null,
       date: item.date, 
       time: item.time, 
       checked: false,
@@ -801,9 +841,11 @@ guardarChecklistUnico() {
   }
 
 async guardarCambiosChecklist() {
+    // 🔥 ESTAS 3 LÍNEAS SE HABÍAN BORRADO 🔥
     if (!this.formName || this.formAssigned.length === 0) { alert('Faltan datos.'); return; }
     const actual = this.checklistSeleccionado();
     if (!actual) return;
+
     const tareasValidas = this.formItems.filter(item => item.text.trim() !== '').map((item, i) => {
       const itemOriginal = actual.items.find((orig: any) => orig.text === item.text);
       if (itemOriginal) {
@@ -812,24 +854,30 @@ async guardarCambiosChecklist() {
           requiresPhoto: item.requiresPhoto, 
           requiresAntesDespues: item.requiresAntesDespues,
           requiresVariasFotos: item.requiresVariasFotos || false,
-          // 🔥 AQUÍ SE EMPACAN LOS PERMISOS 🔥
           permiteGaleria: item.permiteGaleria || false,
           permiteDocumentos: item.permiteDocumentos || false,
-          tiempoEstimado: item.tiempoEstimado 
+          tiempoEstimado: item.tiempoEstimado,
+          // 🔥 AQUÍ SE MANTIENEN O ACTUALIZAN LAS INSTRUCCIONES 🔥
+          archivoInstruccion: item.archivoInstruccion || itemOriginal.archivoInstruccion || null,
+          nombreArchivo: item.nombreArchivo || itemOriginal.nombreArchivo || null
         };
       }
       return {
         id: Date.now() + i, text: item.text, requiresPhoto: item.requiresPhoto, 
         requiresVariasFotos: (item as any).requiresVariasFotos || false,
-        // 🔥 AQUÍ SE EMPACAN LOS PERMISOS 🔥
         permiteGaleria: (item as any).permiteGaleria || false,
         permiteDocumentos: (item as any).permiteDocumentos || false,
         tiempoEstimado: item.requiresAntesDespues ? (item.tiempoEstimado || 30) : null,
+        // 🔥 AQUÍ SE GUARDAN LAS NUEVAS INSTRUCCIONES 🔥
+        archivoInstruccion: (item as any).archivoInstruccion || null,
+        nombreArchivo: (item as any).nombreArchivo || null,
         date: actual.date, time: actual.time || '23:59', checked: false,
         photo: null, photoTime: null, photoAntes: null, photoAntesTime: null, photoAntesTimestamp: null, photoDespues: null, photoDespuesTime: null, tipo: 'tarea'
       };
     });
+
     if (tareasValidas.length === 0) { alert('Agrega tareas.'); return; }
+    
     try {
       await setDoc(doc(this.firestore, 'checklists', actual.id.toString()), {
         name: this.formName,
@@ -837,6 +885,7 @@ async guardarCambiosChecklist() {
         store: this.formStore,
         items: tareasValidas
       }, { merge: true });
+      
       this.mostrarToast(' ✏️ ¡Tarea actualizada con éxito!');
       actual.name = this.formName;
       actual.assigned = this.formAssigned[0];
@@ -880,10 +929,12 @@ async guardarBloqueRutinas() {
     const rutinasValidas = this.formRutinas.filter(rutina => rutina.text.trim() !== '').map((rutina, i) => ({
       id: Date.now() + 1000 + i, text: rutina.text, requiresPhoto: rutina.requiresPhoto, requiresAntesDespues: rutina.requiresAntesDespues || false,
       requiresVariasFotos: rutina.requiresVariasFotos || false,
-      // 🔥 AQUÍ SE EMPACAN LOS PERMISOS 🔥
       permiteGaleria: rutina.permiteGaleria || false,
       permiteDocumentos: rutina.permiteDocumentos || false,
       tiempoEstimado: rutina.requiresAntesDespues ? (rutina.tiempoEstimado || 30) : null,
+      // 🔥 AQUÍ SE GUARDAN PARA LAS RUTINAS REPETITIVAS 🔥
+      archivoInstruccion: rutina.archivoInstruccion || null,
+      nombreArchivo: rutina.nombreArchivo || null,
       checked: false, photo: null, photoTime: null, photoAntes: null, photoAntesTime: null, photoAntesTimestamp: null, photoDespues: null, photoDespuesTime: null,
       tipo: 'rutina', frecuencia: rutina.frecuencia, fechaFin: rutina.fechaFin, horaLimite: rutina.horaLimite, diaSemana: rutina.diaSemana || 'Lunes', diaMes: rutina.diaMes || 1
     }));

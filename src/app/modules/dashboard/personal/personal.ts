@@ -281,8 +281,7 @@ export class PersonalComponent implements OnInit, OnDestroy {
 
     const payload = {
       nombre: this.formNombre, usuario: this.formUsuario, correo: this.formCorreo, password: this.formPassword, 
-      rol: this.formRol, cargo: this.formCargo, telefono: this.formTelefono,
-      
+      rol: this.formRol, cargo: this.formCargo, telefono: this.formTelefono,      
       puedeCrearChecklists: this.formRol === 'admin' ? true : this.formPuedeCrearChecklists,
       puedeCrearRutinas: this.formRol === 'admin' ? true : this.formPuedeCrearRutinas,
       puedeCrearTareasUnicas: this.formRol === 'admin' ? true : this.formPuedeCrearTareasUnicas,
@@ -291,7 +290,6 @@ export class PersonalComponent implements OnInit, OnDestroy {
       puedeVerHistorial: this.formRol === 'admin' ? true : this.formPuedeVerHistorial,
       puedeAdministrarPersonal: this.formRol === 'admin' ? true : this.formPuedeAdministrarPersonal,
       puedeVerCalendario: this.formRol === 'admin' ? true : this.formPuedeVerCalendario, // 🔥 SE GUARDA
-      
       sucursales: this.formRol === 'admin' ? ['General (Acceso Total)'] : this.formSucursales,
       areas: this.formRol === 'admin' ? ['Todas las áreas'] : this.formAreas,
       puedeAdministrarAreas: this.formRol === 'admin' ? true : this.formPuedeAdministrarAreas,

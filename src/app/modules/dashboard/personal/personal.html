@@ -507,11 +507,10 @@
               <input class="form-input" type="text" [(ngModel)]="formUsuario" placeholder="Ej: ivette.cruz">
             </div>
             <div class="form-row">
-              <div class="form-group">
-                <label class="form-label">Correo Electrónico</label>
-                <input class="form-input" type="email" [(ngModel)]="formCorreo" placeholder="correo@megadulces.com"
-                  [disabled]="usuarioEnEdicion" [class.input-disabled]="usuarioEnEdicion">
-              </div>
+            <div class="form-group">
+  <label>Correo Electrónico</label>
+<input type="email" class="form-input" [(ngModel)]="formCorreo" placeholder="ejemplo@gmail.com">
+</div>
               <!-- 🔥 CAMPO DE TELÉFONO PARA WHATSAPP 🔥 -->
               <div class="form-group form-full" style="margin-bottom: 20px;">
                 <label class="form-label" style="display: flex; align-items: center; gap: 8px;">

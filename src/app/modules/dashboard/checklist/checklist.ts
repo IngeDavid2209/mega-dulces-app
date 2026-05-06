@@ -13,8 +13,14 @@ import * as localforage from 'localforage';
   styleUrls: ['./checklist.css']
 })
 export class ChecklistComponent implements OnInit, OnDestroy {
+  // 🔥 VARIABLE PARA EL ROBOT DE ALERTAS 🔥
   ultimaHoraNotificada: number = -1;
   cantidadPendientesAnterior: number = -1;
+  
+  // 🔥 CONTROLES DE NOTIFICACIÓN (NUEVOS) 🔥
+  notificarPorWhatsApp: boolean = true; 
+  notificarPorCorreo: boolean = false; 
+
   isMenuOpen = false;
   isEditandoTarea = false;
   toggleMenu() { this.isMenuOpen = !this.isMenuOpen; }
@@ -31,14 +37,12 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   formName = '';
   formAssigned: string[] = [];
   formStore = '';
-  // 🔥 Variables insertadas 🔥
   formItems: any[] = [{ text: '', requiresPhoto: false, requiresAntesDespues: false, requiresVariasFotos: false, permiteGaleria: false, permiteDocumentos: false, tiempoEstimado: 30, date: '', time: '' }]; 
   isModalRutinasOpen = false;
   isEditMode = false;
   formNameRutina = '';
   formAssignedRutina: string[] = [];
   formStoreRutina = '';
-  // 🔥 Variables insertadas 🔥
   formRutinas: any[] = [{ text: '', requiresPhoto: false, requiresAntesDespues: false, requiresVariasFotos: false, permiteGaleria: false, permiteDocumentos: false, tiempoEstimado: 30, frecuencia: 'Diaria', fechaFin: null, horaLimite: '', diaSemana: 'Lunes', diaMes: 1 }];
   frecuencias = ['Diaria', 'Semanal', 'Catorcenal', 'Mensual', 'Trimestral'];
   diasDelMes = Array.from({ length: 31 }, (_, i) => i + 1);
@@ -53,25 +57,22 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   private destructoresRadares: (() => void)[] = [];
   private intervalId: any;
   private sucursalesAdministrativas = [
-  'ADMINISTRADORES DEL SISTEMA', // 🔥 AGREGADA AQUÍ TAMBIÉN 🔥
+  'ADMINISTRADORES DEL SISTEMA', 
   'OFICINAS CORPORATIVAS', 'CAJA GENERAL', 'COMPRAS', 'CONTABILIDAD',
   'FINANZAS', 'SISTEMAS', 'RH', 'MKT', 'MANTENIMIENTO'
-];
-// 🔥 ASIGNAR A TODOS LOS EMPLEADOS DE LA SUCURSAL SELECCIONADA 🔥
+  ];
+
+  // 🔥 ASIGNAR A TODOS LOS EMPLEADOS DE LA SUCURSAL SELECCIONADA 🔥
   asignarATodos(tipo: 'tarea' | 'rutina') {
-    // Obtenemos la lista de empleados ya filtrados por la sucursal actual
     const empleadosParaAsignar = tipo === 'tarea' ? this.empleadosFiltrados : this.empleadosFiltradosRutina;
     
     if (empleadosParaAsignar.length === 0) {
       this.mostrarToast('⚠️ No hay empleados en esta sucursal para asignar.');
       return;
     }
-
-    // Extraemos solo los nombres
     const nombres = empleadosParaAsignar.map(emp => emp.nombre);
-
     if (tipo === 'tarea') {
-      this.formAssigned = [...nombres]; // Copiamos todos los nombres al arreglo de asignación
+      this.formAssigned = [...nombres]; 
     } else {
       this.formAssignedRutina = [...nombres];
     }
@@ -94,15 +95,10 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     if (!this.formStore) return this.empleados();
     
     return this.empleados().filter(emp => {
-      // 1. Si seleccionas "ADMINISTRADORES DEL SISTEMA", solo mostramos a los Admin
       if (this.formStore === 'ADMINISTRADORES DEL SISTEMA') {
         return emp.rol === 'admin';
       }
-
-      // 2. Para cualquier otra sucursal, solo mostramos trabajadores (ocultamos admins)
       if (emp.rol === 'admin') return false;
-
-      // 3. Lógica normal para trabajadores por sucursal
       if (emp.sucursales && emp.sucursales.includes('General (Acceso Total)')) return true;
       const susSucursales = emp.sucursales || [emp.sucursal || ''];
       return susSucursales.includes(this.formStore);
@@ -113,15 +109,10 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     if (!this.formStoreRutina) return this.empleados();
     
     return this.empleados().filter(emp => {
-      // 1. Filtro exclusivo para la zona de Admins
       if (this.formStoreRutina === 'ADMINISTRADORES DEL SISTEMA') {
         return emp.rol === 'admin';
       }
-
-      // 2. Ocultar admins en sucursales operativas
       if (emp.rol === 'admin') return false;
-
-      // 3. Lógica normal para trabajadores
       if (emp.sucursales && emp.sucursales.includes('General (Acceso Total)')) return true;
       const susSucursales = emp.sucursales || [emp.sucursal || ''];
       return susSucursales.includes(this.formStoreRutina);
@@ -163,7 +154,6 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     });
     // 🔥 MOTOR DE TIEMPO REAL (1 SEGUNDO) PARA EL CRONÓMETRO 🔥
     this.intervalId = setInterval(() => {
-      // Angular detecta el cambio automáticamente por el signal y actualiza la vista
     }, 1000);
   }
 
@@ -193,20 +183,14 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     return `${minutos}m ${segundos}s`;
   }
 
-iniciarRobotNotificador() {
-    // 1. Le pedimos permiso al celular/computadora del empleado para mandar notificaciones
+  iniciarRobotNotificador() {
     if ('Notification' in window && Notification.permission !== 'granted' && Notification.permission !== 'denied') {
       Notification.requestPermission();
     }
-
-    // 2. Un radar oculto que revisa el reloj cada 30 segundos
     setInterval(() => {
       const ahora = new Date();
-      
-      // Si estamos en el minuto 0 (la hora en punto: 10:00, 11:00, etc.) 
-      // y no hemos enviado la alerta de esta hora...
       if (ahora.getMinutes() === 0 && this.ultimaHoraNotificada !== ahora.getHours()) {
-        this.ultimaHoraNotificada = ahora.getHours(); // Guardamos que ya avisamos esta hora
+        this.ultimaHoraNotificada = ahora.getHours(); 
         this.verificarYNotificarPendientes();
       }
     }, 30000); 
@@ -219,24 +203,23 @@ iniciarRobotNotificador() {
             if ('Notification' in window && Notification.permission === 'granted') {
         new Notification('Mega Dulces Task 🍭', {
           body: mensaje,
-          vibrate: [200, 100, 200] // Hace que el celular vibre (si lo soporta)
-        } as any); // 🔥 EL TRUCO ESTÁ AQUÍ: Agregamos "as any" antes de cerrar el paréntesis 🔥
+          vibrate: [200, 100, 200] 
+        } as any); 
       }
-      
-      // 2. Notificación Interna (El mensajito verde que sale abajo)
       this.mostrarToast(`⏰ ¡Hora de checar! ${mensaje}`);
     }
   }
-lanzarNotificacionInmediata() {
+
+  lanzarNotificacionInmediata() {
     if ('Notification' in window && Notification.permission === 'granted') {
       new Notification('Nueva Tarea - Mega Dulces 🍭', {
         body: '¡Acaban de asignarte una nueva tarea! Entra a revisarla. 🚀',
         vibrate: [300, 100, 300]
-      } as any); // <--- 🔥 EL TRUCO ESTÁ AQUÍ AFUERA 🔥
+      } as any); 
     }
-    // También mostramos el mensajito verde adentro de la app por si ya la tienen abierta
     this.mostrarToast('🔔 ¡Te acaban de asignar una nueva tarea!');
   }
+
   conectarRadarNube() {
     const usuariosRef = collection(this.firestore, 'usuarios');
     const radarUsuarios = onSnapshot(usuariosRef, (snapshot) => {
@@ -250,24 +233,17 @@ lanzarNotificacionInmediata() {
         'OFICINAS CORPORATIVAS', 'CAJA GENERAL', 'COMPRAS', 'CONTABILIDAD',
         'FINANZAS', 'SISTEMAS', 'RH', 'MKT', 'MANTENIMIENTO'
       ];
-
-      // Configuración de sucursales visibles para el select
       if (this.currentUser?.rol === 'admin') {
         this.sucursalesDisponibles.set(todasLasSucursales);
       } else if (this.currentUser?.puedeCrearChecklists) {
         const misSucursales = this.currentUser.sucursales || [this.currentUser.sucursal || ''];
-        // Filtramos para que empleados normales NO vean la zona de Admins en el select
         const sucursalesFiltradas = todasLasSucursales.filter(s => s !== 'ADMINISTRADORES DEL SISTEMA' && misSucursales.includes(s));
         this.sucursalesDisponibles.set(sucursalesFiltradas);
       }
-
-      // 🔥 LÓGICA DE PRIVACIDAD ÉLITE 🔥
       if (this.currentUser?.rol === 'admin') {
-        // ADMINS: Ven a todos (Trabajadores + otros Admins)
         const personalActivo = todosLosUsuarios.filter((u: any) => u.rol === 'trabajador' || u.rol === 'admin');
         this.empleados.set(personalActivo);
       } else if (this.currentUser?.puedeCrearChecklists) {
-        // NO ADMINS: Solo ven trabajadores. Los admins son INVISIBLES.
         const trabajadoresUnicamente = todosLosUsuarios.filter((u: any) => u.rol === 'trabajador');
         const misSucursales = this.currentUser.sucursales || [this.currentUser.sucursal || ''];
         
@@ -316,31 +292,24 @@ lanzarNotificacionInmediata() {
       });
       const listasFinales = Array.from(listasSinClones.values());
       
-      // Mantenemos el orden que habíamos platicado (por fecha y luego por creación)
       listasFinales.sort((a, b) => {
         if (a.date !== b.date) return a.date.localeCompare(b.date);
         return b.timestampCreacion - a.timestampCreacion;
       });
-
       if (this.currentUser?.rol === 'admin') {
         this.checklists.set(listasFinales);
       } else {
         const misListas = listasFinales.filter((c: any) => c.assigned === this.currentUser.nombre);
         this.checklists.set(misListas);
-
-        // 🔥 DETECTAR NUEVAS TAREAS EN TIEMPO REAL 🔥
-        // Contamos cuántas tareas tiene pendientes ahorita mismo
         const pendientesActuales = misListas.filter((c: any) => c.status !== 'completo' && c.enviado !== true).length;
         
-        // Si ya había cargado antes (-1) y ahora tiene MÁS tareas que antes... ¡Le mandamos el aviso!
         if (this.cantidadPendientesAnterior !== -1 && pendientesActuales > this.cantidadPendientesAnterior) {
           this.lanzarNotificacionInmediata();
         }
         
-        // Actualizamos la memoria para la próxima vez que el radar detecte un cambio
         this.cantidadPendientesAnterior = pendientesActuales;
       }
-    }); // <-- Aquí termina el radarChecklists
+    }); 
     this.destructoresRadares.push(radarChecklists);
 
     const notiRef = collection(this.firestore, 'notificaciones');
@@ -438,7 +407,7 @@ lanzarNotificacionInmediata() {
 
   calcularFechaFinDefault(frecuencia: string): string | null { return null; }
   alCambiarFrecuencia(rutina: any) { rutina.fechaFin = this.calcularFechaFinDefault(rutina.frecuencia); }
-
+  
   getTextoPeriodo(rutina: any): string {
     if (rutina.frecuencia === 'Diaria') return 'Activa siempre';
     if (rutina.frecuencia === 'Semanal') return `Todos los ${rutina.diaSemana || 'Lunes'}`;
@@ -475,7 +444,7 @@ lanzarNotificacionInmediata() {
     const diaHoyTexto = diasTexto[fechaLocal.getDay()];
     const diaMesActual = fechaLocal.getDate();
     const esDomingo = fechaLocal.getDay() === 0;
-
+    
     for (const molde of moldes) {
       if (this.esDiaCerrado(molde.store, fechaActual)) { continue; }
       if (esDomingo && this.esSucursalAdministrativa(molde.store) && molde.frecuencia === 'Diaria') { continue; }
@@ -500,14 +469,12 @@ lanzarNotificacionInmediata() {
           if (Math.abs(mesActual - mesCreacion) % 3 !== 0) { continue; }
         }
       }
-
       const itemsVigentes = molde.items.filter((item: any) => { return !item.fechaFin || fechaString <= item.fechaFin; });
       if (itemsVigentes.length === 0) continue;
       const llavePeriodo = this.obtenerLlavePeriodo(molde.frecuencia, fechaActual);
       const checklistId = `${molde.id}_${llavePeriodo}`;
       const docRef = doc(this.firestore, 'checklists', checklistId);
       const docSnap = await getDoc(docRef);
-
       if (!docSnap.exists()) {
         const nuevoChecklist = {
           id: checklistId, timestampCreacion: Date.now(), name: `${molde.name} (${molde.frecuencia})`,
@@ -535,7 +502,7 @@ lanzarNotificacionInmediata() {
   }
 
   cerrarPasswordModal() { this.isPasswordModalOpen = false; this.checklistToDelete = null; this.passwordInput = ''; }
-
+  
   async confirmarEliminacion() {
     if (this.passwordInput !== 'Mega2323') { alert(' ❌ Contraseña maestra incorrecta.'); return; }
     const confirmar = confirm(` ⚠️ ¿Borrar "${this.checklistToDelete.name}" y sus duplicados?`);
@@ -574,7 +541,6 @@ lanzarNotificacionInmediata() {
     const moldesSnap = await getDocs(moldesRef);
     let rutinasEncontradas: any[] = [];
     let sucursalOriginal = '';
-
     moldesSnap.forEach((mDoc) => {
       const mData = mDoc.data();
       if (mData['name'] === targetName && mData['assigned'] === targetAssigned) {
@@ -584,7 +550,6 @@ lanzarNotificacionInmediata() {
         }
       }
     });
-
     if (rutinasEncontradas.length === 0) {
       alert('Esta es una "Tarea Única" o no tiene rutinas registradas en la Bóveda. No se puede editar como Bloque.');
       return;
@@ -599,13 +564,12 @@ lanzarNotificacionInmediata() {
   verDetalle(checklist: any) { this.checklistSeleccionado.set(checklist); this.vistaActual.set('detalle'); }
   volverALista() { this.checklistSeleccionado.set(null); this.vistaActual.set('lista'); }
   toggleItem(item: any) { item.checked = !item.checked; this.actualizarEstado(); }
-
+  
   async onFileSelected(event: any, item: any, tipoFoto: string = 'photo') {
     const file = event.target.files[0];
     if (!file) return;
     const checklistActual = this.checklistSeleccionado();
     if (!checklistActual) return;
-
     if (!navigator.onLine) {
       console.log('📡 Sin internet detectado. Guardando foto en bóveda local...');
       item[tipoFoto] = 'offline_syncing';
@@ -633,14 +597,12 @@ lanzarNotificacionInmediata() {
       event.target.value = '';
       return;
     }
-
     const cloudName = 'duherjgyg';
     const uploadPreset = 'fotos_mega';
     item[tipoFoto] = 'subiendo...';
     const formData = new FormData();
     formData.append('file', file);
     formData.append('upload_preset', uploadPreset);
-
     try {
       const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`, { method: 'POST', body: formData });
       const data = await response.json();
@@ -665,18 +627,14 @@ lanzarNotificacionInmediata() {
   async adjuntarDocumentoInstruccion(event: any, item: any) {
     const file = event.target.files[0];
     if (!file) return;
-
     item.archivoInstruccion = 'subiendo...';
     item.nombreArchivo = file.name;
-
     const cloudName = 'duherjgyg';
     const uploadPreset = 'fotos_mega'; 
     const formData = new FormData();
     formData.append('file', file);
     formData.append('upload_preset', uploadPreset);
-
     try {
-      // Usamos 'auto/upload' para que acepte PDFs, Excel, Word, etc.
       const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`, { method: 'POST', body: formData });
       const data = await response.json();
       if (data.secure_url) {
@@ -690,7 +648,7 @@ lanzarNotificacionInmediata() {
       item.archivoInstruccion = null; item.nombreArchivo = null;
       alert('❌ Error de conexión al subir.');
     }
-    event.target.value = ''; // Limpiar el input
+    event.target.value = ''; 
   }
 
   // 🔥 QUITAR EL DOCUMENTO SI TE EQUIVOCASTE 🔥
@@ -786,17 +744,17 @@ lanzarNotificacionInmediata() {
   enviarChecklist() {
     const actual = this.checklistSeleccionado(); if (!actual) return;
     const fotosPendientes = actual.items.some((i: any) => i.photo === 'subiendo...' || i.photoAntes === 'subiendo...' || i.photoDespues === 'subiendo...');
-    if (fotosPendientes) { alert(' ⚠️  Espera, una foto se está subiendo.'); return; }
+    if (fotosPendientes) { alert(' ⚠️  Espera, una foto se está subiendo.'); return; }
     const tareas100Porciento = actual.items.filter((i: any) => this.esItemCompleto(i)).length;
     if (tareas100Porciento < actual.items.length) {
-      const confirmar = confirm(' ⚠️  Faltan FOTOS obligatorias.\n¿Enviar así?');
+      const confirmar = confirm(' ⚠️  Faltan FOTOS obligatorias.\n¿Enviar así?');
       if (!confirmar) return;
     }
     actual.enviado = true;
     const ahora = new Date();
     actual.horaEnvio = ahora.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
     this.guardarEnLaNube(actual);
-    this.mostrarToast(' ✅   ¡ Checklist enviado correctamente!');
+    this.mostrarToast(' ✅   ¡ Checklist enviado correctamente!');
     this.volverALista();
   }
 
@@ -815,13 +773,14 @@ lanzarNotificacionInmediata() {
 
   cerrarModal() { this.isModalOpen = false; }
   
-  // 🔥 Variables insertadas 🔥
-agregarItem() { 
+  agregarItem() { 
     this.formItems.push({ text: '', requiresPhoto: false, requiresAntesDespues: false, requiresVariasFotos: false, permiteGaleria: false, permiteDocumentos: false, tiempoEstimado: 30, date: '', time: '' }); 
-  }  eliminarItem(index: number) { this.formItems.splice(index, 1); }
+  }  
+  
+  eliminarItem(index: number) { this.formItems.splice(index, 1); }
   
   trackByIndex(index: number, obj: any): any { return index; }
-
+  
   abrirEditarChecklistActual() {
     const actual = this.checklistSeleccionado();
     if (!actual) return;
@@ -833,7 +792,23 @@ agregarItem() {
     this.isModalOpen = true;
   }
 
-guardarChecklistUnico() {
+  // 🔥 GENERADOR DE CORREOS 🔥
+  enviarAvisoPorCorreo(empleadoNombre: string, nombreTarea: string) {
+    const empleado = this.empleados().find(emp => emp.nombre === empleadoNombre);
+    const correoDestino = empleado?.correo || empleado?.email; 
+
+    if (!correoDestino) {
+      this.mostrarToast(`⚠️ No se pudo enviar correo a ${empleadoNombre} (Sin correo registrado).`);
+      return;
+    }
+
+    const asunto = encodeURIComponent(`NUEVA TAREA ASIGNADA: ${nombreTarea} - Mega Dulces`);
+    const cuerpo = encodeURIComponent(`Hola ${empleadoNombre},\n\nSe te ha asignado una nueva tarea en tu panel de Mega Dulces Task:\n\n📌 Operación: ${nombreTarea}\n\nPor favor, ingresa a la plataforma para revisar las instrucciones y subir tus evidencias.\n\nSaludos,\nAdministración.`);
+    
+    window.open(`mailto:${correoDestino}?subject=${asunto}&body=${cuerpo}`, '_blank');
+  }
+
+  guardarChecklistUnico() {
     if (!this.formName || this.formAssigned.length === 0) { alert('Faltan datos.'); return; }
     
     const tareasValidas = this.formItems.filter(item => item.text.trim() !== '').map((item, i) => ({
@@ -852,9 +827,9 @@ guardarChecklistUnico() {
       checked: false,
       photo: null, photoTime: null, photoAntes: null, photoAntesTime: null, photoAntesTimestamp: null, photoDespues: null, photoDespuesTime: null, tipo: 'tarea'
     }));
-
+    
     if (tareasValidas.length === 0) { alert('Agrega tareas.'); return; }
-
+    
     this.formAssigned.forEach((empleadoNombre, index) => {
       const uniqueId = Date.now() + index; 
       const offset = new Date().getTimezoneOffset() * 60000;
@@ -874,42 +849,42 @@ guardarChecklistUnico() {
         notaEmpleado: '',
         items: JSON.parse(JSON.stringify(tareasValidas))
       };
-
+      
       this.guardarEnLaNube(checklistTareas);
+      
+      // 🔥 SISTEMA DE NOTIFICACIONES MULTICANAL 🔥
+      if (this.notificarPorWhatsApp) {
+        const datosEmpleado = this.empleados().find(e => e.nombre === empleadoNombre);
+        if (datosEmpleado && datosEmpleado.telefono) {
+          const telefono = datosEmpleado.telefono;
+          const urlApp = 'https://md-chlist.vercel.app'; 
+          const urlBase = 'https://api.whatsapp.com/send?phone=' + telefono + '&text=';
+          
+          let mensaje = `*Mega Dulces Task* 🍭\n\n`;
+          mensaje += `¡Hola *${this.limpiarEmojis(empleadoNombre)}*!\n`;
+          mensaje += `Se te ha asignado un nuevo checklist: *${this.limpiarEmojis(this.formName)}*\n\n`;
+          mensaje += `📅 Fecha: ${checklistTareas.date}\n`;
+          mensaje += `⏰ Hora Límite: ${this.formatearHora(checklistTareas.time)}\n\n`;
+          mensaje += `🔗 Entra aquí: ${urlApp}\n\n`;
+          mensaje += `Favor de ingresar a la plataforma para completar tus evidencias.`;
+          
+          window.open(urlBase + encodeURIComponent(mensaje), '_blank');
+        }
+      }
 
-      // 🔥 LÓGICA DE WHATSAPP SEMIAUTOMÁTICO 🔥
-      const datosEmpleado = this.empleados().find(e => e.nombre === empleadoNombre);
-      if (datosEmpleado && datosEmpleado.telefono) {
-        const telefono = datosEmpleado.telefono;
-        const urlApp = 'https://md-chlist.vercel.app'; // <--- Asegúrate que esta sea tu URL
-        const urlBase = 'https://api.whatsapp.com/send?phone=' + telefono + '&text=';
-        
-       let mensaje = `*Mega Dulces Task* 🍭\n\n`;
-        mensaje += `¡Hola *${this.limpiarEmojis(empleadoNombre)}*!\n`;
-        mensaje += `Se te ha asignado un nuevo checklist: *${this.limpiarEmojis(this.formName)}*\n\n`;
-        mensaje += `📅 Fecha: ${checklistTareas.date}\n`;
-        mensaje += `⏰ Hora Límite: ${this.formatearHora(checklistTareas.time)}\n\n`;
-        
-        // 🔥 ESTA ES LA LÍNEA QUE FALTA EN TU CÓDIGO ACTUAL 🔥
-        mensaje += `🔗 Entra aquí: ${urlApp}\n\n`;
-        
-        mensaje += `Favor de ingresar a la plataforma para completar tus evidencias.`;
-
-        // Abrimos WhatsApp en una pestaña nueva
-        window.open(urlBase + encodeURIComponent(mensaje), '_blank');
+      if (this.notificarPorCorreo) {
+        this.enviarAvisoPorCorreo(empleadoNombre, this.formName);
       }
     });
-
-    this.mostrarToast(' ✅ ¡Tareas creadas y avisos de WhatsApp generados!');
+    
+    this.mostrarToast(' ✅ ¡Tareas creadas y avisos generados!');
     this.cerrarModal();
   }
 
-async guardarCambiosChecklist() {
-    // 🔥 ESTAS 3 LÍNEAS SE HABÍAN BORRADO 🔥
+  async guardarCambiosChecklist() {
     if (!this.formName || this.formAssigned.length === 0) { alert('Faltan datos.'); return; }
     const actual = this.checklistSeleccionado();
     if (!actual) return;
-
     const tareasValidas = this.formItems.filter(item => item.text.trim() !== '').map((item, i) => {
       const itemOriginal = actual.items.find((orig: any) => orig.text === item.text);
       if (itemOriginal) {
@@ -921,7 +896,6 @@ async guardarCambiosChecklist() {
           permiteGaleria: item.permiteGaleria || false,
           permiteDocumentos: item.permiteDocumentos || false,
           tiempoEstimado: item.tiempoEstimado,
-          // 🔥 AQUÍ SE MANTIENEN O ACTUALIZAN LAS INSTRUCCIONES 🔥
           archivoInstruccion: item.archivoInstruccion || itemOriginal.archivoInstruccion || null,
           nombreArchivo: item.nombreArchivo || itemOriginal.nombreArchivo || null
         };
@@ -932,14 +906,12 @@ async guardarCambiosChecklist() {
         permiteGaleria: (item as any).permiteGaleria || false,
         permiteDocumentos: (item as any).permiteDocumentos || false,
         tiempoEstimado: item.requiresAntesDespues ? (item.tiempoEstimado || 30) : null,
-        // 🔥 AQUÍ SE GUARDAN LAS NUEVAS INSTRUCCIONES 🔥
         archivoInstruccion: (item as any).archivoInstruccion || null,
         nombreArchivo: (item as any).nombreArchivo || null,
         date: actual.date, time: actual.time || '23:59', checked: false,
         photo: null, photoTime: null, photoAntes: null, photoAntesTime: null, photoAntesTimestamp: null, photoDespues: null, photoDespuesTime: null, tipo: 'tarea'
       };
     });
-
     if (tareasValidas.length === 0) { alert('Agrega tareas.'); return; }
     
     try {
@@ -966,13 +938,14 @@ async guardarCambiosChecklist() {
     const index = this.formAssignedRutina.indexOf(nombre);
     if (index > -1) { this.formAssignedRutina.splice(index, 1); } else { this.formAssignedRutina.push(nombre); }
   }
+
   asignarATodoMiPersonal() {
     const todosMisEmpleados = this.empleados().map(emp => emp.nombre);
     this.formAssigned = [...todosMisEmpleados];
     this.mostrarToast(`🚀 ¡Fuego! Asignado a todo el personal de tus sucursales.`);
   }
 
-abrirModalRutinas() {
+  abrirModalRutinas() {
     this.isEditMode = false;
     this.formNameRutina = ''; this.formAssignedRutina = [];
     this.formStoreRutina = this.sucursalesDisponibles().length > 0 ? this.sucursalesDisponibles()[0] : '';
@@ -982,13 +955,13 @@ abrirModalRutinas() {
 
   cerrarModalRutinas() { this.isModalRutinasOpen = false; }
   
-  // 🔥 Variables insertadas 🔥
-agregarRutina() { 
+  agregarRutina() { 
     this.formRutinas.push({ text: '', requiresPhoto: false, requiresAntesDespues: false, requiresVariasFotos: false, permiteGaleria: false, permiteDocumentos: false, tiempoEstimado: 30, frecuencia: 'Diaria', fechaFin: null, horaLimite: '', diaSemana: 'Lunes', diaMes: 1 }); 
   }  
+  
   eliminarRutina(index: number) { this.formRutinas.splice(index, 1); }
 
-async guardarBloqueRutinas() {
+  async guardarBloqueRutinas() {
     if (!this.formNameRutina || this.formAssignedRutina.length === 0) { alert('Faltan datos.'); return; }
     const rutinasValidas = this.formRutinas.filter(rutina => rutina.text.trim() !== '').map((rutina, i) => ({
       id: Date.now() + 1000 + i, text: rutina.text, requiresPhoto: rutina.requiresPhoto, requiresAntesDespues: rutina.requiresAntesDespues || false,
@@ -996,7 +969,6 @@ async guardarBloqueRutinas() {
       permiteGaleria: rutina.permiteGaleria || false,
       permiteDocumentos: rutina.permiteDocumentos || false,
       tiempoEstimado: rutina.requiresAntesDespues ? (rutina.tiempoEstimado || 30) : null,
-      // 🔥 AQUÍ SE GUARDAN PARA LAS RUTINAS REPETITIVAS 🔥
       archivoInstruccion: rutina.archivoInstruccion || null,
       nombreArchivo: rutina.nombreArchivo || null,
       checked: false, photo: null, photoTime: null, photoAntes: null, photoAntesTime: null, photoAntesTimestamp: null, photoDespues: null, photoDespuesTime: null,
@@ -1052,15 +1024,12 @@ async guardarBloqueRutinas() {
   // 🔥 ASPIRADORA DE EMOJIS PARA EL PDF 🔥
   limpiarEmojis(texto: string): string {
     if (!texto) return '';
-    // Esta expresión regular (Regex) detecta cualquier emoji o símbolo raro y lo elimina,
-    // dejando intactas las letras, números y acentos.
     return texto.replace(/([\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF])/g, '').trim();
   }
 
   esImagen(url: string): boolean {
     if (!url) return false;
     const urlLower = url.toLowerCase();
-    // Si la URL dice que es un archivo 'raw' o termina en extensión de documento, NO es imagen.
     if (urlLower.includes('/raw/upload/') || urlLower.match(/\.(pdf|xls|xlsx|doc|docx|csv|txt|zip|rar)$/)) {
       return false;
     }

@@ -792,21 +792,44 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     this.isModalOpen = true;
   }
 
-  // 🔥 GENERADOR DE CORREOS 🔥
-  enviarAvisoPorCorreo(empleadoNombre: string, nombreTarea: string) {
-    const empleado = this.empleados().find(emp => emp.nombre === empleadoNombre);
-    const correoDestino = empleado?.correo || empleado?.email; 
-
-    if (!correoDestino) {
-      this.mostrarToast(`⚠️ No se pudo enviar correo a ${empleadoNombre} (Sin correo registrado).`);
-      return;
-    }
-
-    const asunto = encodeURIComponent(`NUEVA TAREA ASIGNADA: ${nombreTarea} - Mega Dulces`);
-    const cuerpo = encodeURIComponent(`Hola ${empleadoNombre},\n\nSe te ha asignado una nueva tarea en tu panel de Mega Dulces Task:\n\n📌 Operación: ${nombreTarea}\n\nPor favor, ingresa a la plataforma para revisar las instrucciones y subir tus evidencias.\n\nSaludos,\nAdministración.`);
-    
-    window.open(`mailto:${correoDestino}?subject=${asunto}&body=${cuerpo}`, '_blank');
+ // 🔥 GENERADOR DE CORREOS AUTOMÁTICOS (100% GRATIS CON GOOGLE SCRIPT) 🔥
+async enviarAvisoPorCorreo(empleadoNombre: string, nombreTarea: string) {
+  const empleado = this.empleados().find(emp => emp.nombre === empleadoNombre);
+  const correoDestino = empleado?.correo || empleado?.email; 
+  
+  if (!correoDestino) {
+    this.mostrarToast(`⚠️ No se pudo enviar correo a ${empleadoNombre} (Sin correo registrado).`); 
+    return;
   }
+
+  // 1. Preparamos los datos
+  const asunto = `NUEVA TAREA ASIGNADA: ${nombreTarea} - Mega Dulces Task`;
+  const cuerpo = `Hola ${empleadoNombre},\n\nSe te ha asignado una nueva tarea en tu panel de Mega Dulces Task:\n\n📌 Operación: ${nombreTarea}\n\nPor favor, ingresa a la plataforma (https://mega-dulces-compras.vercel.app) para revisar las instrucciones y subir tus evidencias.\n\nSaludos,\nAdministración.`;
+
+  // 2. Tu enlace oficial de Google (El puente)
+  const googleScriptUrl = 'https://script.google.com/macros/s/AKfycbw3rrfQizd-jHzz0gBEF3Gj8fOEYOnJ-w4X1rY1GoKAzn7636mnEyDrd7gvSqvyLNH9sg/exec';
+  
+  // 3. Correo del usuario que asigna la tarea (para que le respondan a él)
+  const miCorreo = this.currentUser?.correo || 'gerencia@megadulces.com';
+
+  try {
+    // 4. Disparamos la petición silenciosa a Google
+    await fetch(googleScriptUrl, {
+      method: 'POST',
+      mode: 'no-cors', // Evita bloqueos de seguridad del navegador
+      body: JSON.stringify({
+        to: correoDestino,
+        subject: asunto,
+        body: cuerpo,
+        replyTo: miCorreo
+      })
+    });
+    
+    console.log(`✅ Correo automático enviado a ${correoDestino}`);
+  } catch (error) {
+    console.error('❌ Error enviando correo:', error);
+  }
+}
 
   guardarChecklistUnico() {
     if (!this.formName || this.formAssigned.length === 0) { alert('Faltan datos.'); return; }

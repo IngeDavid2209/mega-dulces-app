@@ -56,7 +56,7 @@ export const routes: Routes = [
   {
     path: 'perfil',
     canActivate: [authGuard],
-    loadComponent: () => import('./modules/dashboard/perfil').then(m => m.PerfilComponent)
+    loadComponent: () => import('./modules/dashboard/perfil/perfil').then(m => m.PerfilComponent)
   },
   
   // Cualquier ruta que no exista o intente saltarse el sistema, al login

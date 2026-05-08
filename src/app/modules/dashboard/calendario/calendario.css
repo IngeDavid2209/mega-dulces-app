@@ -491,3 +491,30 @@
     margin-top: 4px !important;
   }
 }
+/* =========================================
+   📱 RESPONSIVIDAD PARA EL CALENDARIO
+   ========================================= */
+@media (max-width: 768px) {
+  
+  /* 1. Hacemos que la caja principal permita hacer scroll hacia los lados */
+  .calendario-wrapper {
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch; /* Scroll suavecito en celulares */
+    padding-bottom: 15px; /* Espacio para que no se coma la barra de scroll */
+    margin: 0 -15px; /* (Opcional) Hace que el scroll llegue hasta las orillas del cel */
+    padding: 0 15px;
+  }
+
+  /* 2. Obligamos al calendario a tener un ancho mínimo para que no se aplaste */
+  /* NOTA: Cambia ".calendario-tabla" por la clase real de tu calendario */
+  .calendario-tabla {
+    min-width: 700px; /* Esto fuerza a que se active el scroll horizontal */
+  }
+
+  /* 3. Achicamos un poquito los números y bolitas para que quepan mejor */
+  .calendario-tabla td {
+    padding: 5px;
+    font-size: 14px;
+  }
+}

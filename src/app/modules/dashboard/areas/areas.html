@@ -108,10 +108,13 @@
         </nav>
 
 
-        <div class="bottom-nav" style="margin-top: auto; padding: 0 12px 20px 12px;">
+      <div class="bottom-nav" style="margin-top: auto; padding: 0 12px 20px 12px;">
   
-  <a routerLink="/perfil" routerLinkActive="active" class="menu-item" style="margin-bottom: 15px; display: flex; align-items: center; padding: 10px; color: #475569; text-decoration: none; border-radius: 8px; font-weight: 500;">
-    <span style="margin-right: 15px; font-size: 1.2rem;">👤</span> 
+  <a class="nav-item" routerLink="/perfil" routerLinkActive="active" (click)="isMenuOpen = false" style="margin-bottom: 10px;">
+    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+      <circle cx="12" cy="7" r="4"></circle>
+    </svg>
     Mi Perfil
   </a>
 

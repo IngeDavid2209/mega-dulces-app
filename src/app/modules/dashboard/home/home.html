@@ -20,6 +20,8 @@
   </header>
   <div class="main-wrapper">
     <div class="mobile-overlay" *ngIf="isMenuOpen" (click)="toggleMenu()"></div>
+
+
     <aside class="sidebar" [class.mobile-open]="isMenuOpen" translate="no">
       <div style="display: flex; flex-direction: column; height: 100%;">
         <div class="sidebar-header">
@@ -104,14 +106,15 @@
         </nav>
         <div class="bottom-nav" style="margin-top: auto; padding: 0 12px 20px 12px;">
 
-  
-  <a class="nav-item" routerLink="/perfil" routerLinkActive="active" (click)="isMenuOpen = false" style="margin-bottom: 10px;">
-    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-      <circle cx="12" cy="7" r="4"></circle>
-    </svg>
-    Mi Perfil
-  </a>
+
+          <a class="nav-item" routerLink="/perfil" routerLinkActive="active" (click)="isMenuOpen = false"
+            style="margin-bottom: 10px;">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+            Mi Perfil
+          </a>
 
           <button class="logout-btn" routerLink="/login">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -130,6 +133,8 @@
         </div>
       </div>
     </aside>
+
+    
     <div class="content" style="padding-top: 10px; width: 100%;">
 
       <div style="max-width: 1440px; margin: 0 auto; width: 100%;">

@@ -794,25 +794,26 @@ export class ChecklistComponent implements OnInit, OnDestroy {
 
  // 🔥 GENERADOR DE CORREOS AUTOMÁTICOS (100% GRATIS CON GOOGLE SCRIPT) 🔥
 // 🔥 GENERADOR DE CORREOS AUTOMÁTICOS (CON NOMBRE DEL JEFE/ASIGNADOR) 🔥
+//  🔥  GENERADOR DE CORREOS AUTOMÁTICOS (CON NOMBRE DEL JEFE/ASIGNADOR)  🔥
 async enviarAvisoPorCorreo(empleadoNombre: string, nombreTarea: string) {
   const empleado = this.empleados().find(emp => emp.nombre === empleadoNombre);
-  const correoDestino = empleado?.correo || empleado?.email; 
-  
+  const correoDestino = empleado?.correo || empleado?.email;
+
   if (!correoDestino) {
-    this.mostrarToast(`⚠️ No se pudo enviar correo a ${empleadoNombre} (Sin correo registrado).`); 
+    this.mostrarToast(` ⚠️  No se pudo enviar correo a ${empleadoNombre} (Sin correo registrado).`);
     return;
   }
 
-  // 🔥 Sacamos el nombre del jefe/usuario que está logueado asignando la tarea
+  //  🔥  Sacamos el nombre del jefe/usuario que está logueado asignando la tarea
   const nombreAsignador = this.currentUser?.nombre || 'Administración';
 
-  // 1. Preparamos los datos
+  // 1. Preparamos los datos (AQUÍ SE ACTUALIZÓ EL ENLACE AL NUEVO PROYECTO)
   const asunto = `NUEVA TAREA de ${nombreAsignador}: ${nombreTarea} - Mega Dulces Task`;
-  const cuerpo = `Hola ${empleadoNombre},\n\n¡${nombreAsignador} te ha asignado una nueva tarea en tu panel de Mega Dulces Task!\n\n📌 Operación: ${nombreTarea}\n\nPor favor, ingresa a la plataforma (https://mega-dulces-compras.vercel.app) para revisar las instrucciones y subir tus evidencias a tiempo.\n\nSaludos,\n${nombreAsignador}.`;
-
+  const cuerpo = `Hola ${empleadoNombre},\n\n¡${nombreAsignador} te ha asignado una nueva tarea en tu panel de Mega Dulces Task!\n\n 📌  Operación: ${nombreTarea}\n\nPor favor, ingresa a la plataforma (https://md-chlist.vercel.app/) para revisar las instrucciones y subir tus evidencias a tiempo.\n\nSaludos,\n${nombreAsignador}.`;
+  
   // 2. Tu enlace oficial de Google (El puente)
   const googleScriptUrl = 'https://script.google.com/macros/s/AKfycbw3rrfQizd-jHzz0gBEF3Gj8fOEYOnJ-w4X1rY1GoKAzn7636mnEyDrd7gvSqvyLNH9sg/exec';
-  
+
   // 3. Correo del usuario que asigna la tarea (para que le respondan a él)
   const miCorreo = this.currentUser?.correo || 'gerencia@megadulces.com';
 
@@ -828,10 +829,10 @@ async enviarAvisoPorCorreo(empleadoNombre: string, nombreTarea: string) {
         replyTo: miCorreo
       })
     });
-    
-    console.log(`✅ Correo automático enviado a ${correoDestino} de parte de ${nombreAsignador}`);
+
+    console.log(` ✅  Correo autom á tico enviado a ${correoDestino} de parte de ${nombreAsignador}`);
   } catch (error) {
-    console.error('❌ Error enviando correo:', error);
+    console.error(' ❌  Error enviando correo:', error);
   }
 }
 

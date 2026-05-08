@@ -793,6 +793,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   }
 
  // 🔥 GENERADOR DE CORREOS AUTOMÁTICOS (100% GRATIS CON GOOGLE SCRIPT) 🔥
+// 🔥 GENERADOR DE CORREOS AUTOMÁTICOS (CON NOMBRE DEL JEFE/ASIGNADOR) 🔥
 async enviarAvisoPorCorreo(empleadoNombre: string, nombreTarea: string) {
   const empleado = this.empleados().find(emp => emp.nombre === empleadoNombre);
   const correoDestino = empleado?.correo || empleado?.email; 
@@ -802,9 +803,12 @@ async enviarAvisoPorCorreo(empleadoNombre: string, nombreTarea: string) {
     return;
   }
 
+  // 🔥 Sacamos el nombre del jefe/usuario que está logueado asignando la tarea
+  const nombreAsignador = this.currentUser?.nombre || 'Administración';
+
   // 1. Preparamos los datos
-  const asunto = `NUEVA TAREA ASIGNADA: ${nombreTarea} - Mega Dulces Task`;
-  const cuerpo = `Hola ${empleadoNombre},\n\nSe te ha asignado una nueva tarea en tu panel de Mega Dulces Task:\n\n📌 Operación: ${nombreTarea}\n\nPor favor, ingresa a la plataforma (https://mega-dulces-compras.vercel.app) para revisar las instrucciones y subir tus evidencias.\n\nSaludos,\nAdministración.`;
+  const asunto = `NUEVA TAREA de ${nombreAsignador}: ${nombreTarea} - Mega Dulces Task`;
+  const cuerpo = `Hola ${empleadoNombre},\n\n¡${nombreAsignador} te ha asignado una nueva tarea en tu panel de Mega Dulces Task!\n\n📌 Operación: ${nombreTarea}\n\nPor favor, ingresa a la plataforma (https://mega-dulces-compras.vercel.app) para revisar las instrucciones y subir tus evidencias a tiempo.\n\nSaludos,\n${nombreAsignador}.`;
 
   // 2. Tu enlace oficial de Google (El puente)
   const googleScriptUrl = 'https://script.google.com/macros/s/AKfycbw3rrfQizd-jHzz0gBEF3Gj8fOEYOnJ-w4X1rY1GoKAzn7636mnEyDrd7gvSqvyLNH9sg/exec';
@@ -825,84 +829,107 @@ async enviarAvisoPorCorreo(empleadoNombre: string, nombreTarea: string) {
       })
     });
     
-    console.log(`✅ Correo automático enviado a ${correoDestino}`);
+    console.log(`✅ Correo automático enviado a ${correoDestino} de parte de ${nombreAsignador}`);
   } catch (error) {
     console.error('❌ Error enviando correo:', error);
   }
 }
 
   guardarChecklistUnico() {
-    if (!this.formName || this.formAssigned.length === 0) { alert('Faltan datos.'); return; }
-    
-    const tareasValidas = this.formItems.filter(item => item.text.trim() !== '').map((item, i) => ({
-      id: Date.now() + i, 
-      text: item.text, 
-      requiresPhoto: item.requiresPhoto, 
-      requiresAntesDespues: item.requiresAntesDespues, 
+  if (!this.formName || this.formAssigned.length === 0) { alert('Faltan datos.'); return; }
+
+  const tareasValidas = this.formItems
+    .filter(item => item.text.trim() !== '')
+    .map((item, i) => ({
+      id: Date.now() + i,
+      text: item.text,
+      requiresPhoto: item.requiresPhoto,
+      requiresAntesDespues: item.requiresAntesDespues,
       requiresVariasFotos: item.requiresVariasFotos || false,
       permiteGaleria: item.permiteGaleria || false,
       permiteDocumentos: item.permiteDocumentos || false,
       tiempoEstimado: item.requiresAntesDespues ? (item.tiempoEstimado || 30) : null,
       archivoInstruccion: item.archivoInstruccion || null,
       nombreArchivo: item.nombreArchivo || null,
-      date: item.date, 
-      time: item.time, 
+      date: item.date,
+      time: item.time,
       checked: false,
-      photo: null, photoTime: null, photoAntes: null, photoAntesTime: null, photoAntesTimestamp: null, photoDespues: null, photoDespuesTime: null, tipo: 'tarea'
+      photo: null, photoTime: null, photoAntes: null, photoAntesTime: null,
+      photoAntesTimestamp: null, photoDespues: null, photoDespuesTime: null, tipo: 'tarea'
     }));
-    
-    if (tareasValidas.length === 0) { alert('Agrega tareas.'); return; }
-    
-    this.formAssigned.forEach((empleadoNombre, index) => {
-      const uniqueId = Date.now() + index; 
-      const offset = new Date().getTimezoneOffset() * 60000;
-      const hoy = new Date(Date.now() - offset).toISOString().split('T')[0];
-      
-      const checklistTareas = {
-        id: uniqueId, 
-        timestampCreacion: Date.now(), 
-        name: this.formName, 
-        assigned: empleadoNombre,
-        store: this.formStore, 
-        date: tareasValidas[0].date || hoy, 
-        time: tareasValidas[0].time || '23:59',
-        status: 'pendiente', 
-        enviado: false, 
-        createdBy: this.currentUser?.nombre || 'Desconocido', 
-        notaEmpleado: '',
-        items: JSON.parse(JSON.stringify(tareasValidas))
-      };
-      
-      this.guardarEnLaNube(checklistTareas);
-      
-      // 🔥 SISTEMA DE NOTIFICACIONES MULTICANAL 🔥
-      if (this.notificarPorWhatsApp) {
-        const datosEmpleado = this.empleados().find(e => e.nombre === empleadoNombre);
-        if (datosEmpleado && datosEmpleado.telefono) {
-          const telefono = datosEmpleado.telefono;
-          const urlApp = 'https://md-chlist.vercel.app'; 
-          const urlBase = 'https://api.whatsapp.com/send?phone=' + telefono + '&text=';
-          
-          let mensaje = `*Mega Dulces Task* 🍭\n\n`;
-          mensaje += `¡Hola *${this.limpiarEmojis(empleadoNombre)}*!\n`;
-          mensaje += `Se te ha asignado un nuevo checklist: *${this.limpiarEmojis(this.formName)}*\n\n`;
-          mensaje += `📅 Fecha: ${checklistTareas.date}\n`;
-          mensaje += `⏰ Hora Límite: ${this.formatearHora(checklistTareas.time)}\n\n`;
-          mensaje += `🔗 Entra aquí: ${urlApp}\n\n`;
-          mensaje += `Favor de ingresar a la plataforma para completar tus evidencias.`;
-          
-          window.open(urlBase + encodeURIComponent(mensaje), '_blank');
-        }
-      }
 
-      if (this.notificarPorCorreo) {
-        this.enviarAvisoPorCorreo(empleadoNombre, this.formName);
+  if (tareasValidas.length === 0) { alert('Agrega tareas.'); return; }
+
+  // 🔥 Acumulamos las URLs de WhatsApp para abrirlas juntas al final
+  const urlsWhatsApp: string[] = [];
+
+  this.formAssigned.forEach((empleadoNombre, index) => {
+    const uniqueId = Date.now() + index;
+    const offset = new Date().getTimezoneOffset() * 60000;
+    const hoy = new Date(Date.now() - offset).toISOString().split('T')[0];
+
+    const checklistTareas = {
+      id: uniqueId,
+      timestampCreacion: Date.now(),
+      name: this.formName,
+      assigned: empleadoNombre,
+      store: this.formStore,
+      date: tareasValidas[0].date || hoy,
+      time: tareasValidas[0].time || '23:59',
+      status: 'pendiente',
+      enviado: false,
+      createdBy: this.currentUser?.nombre || 'Desconocido',
+      notaEmpleado: '',
+      items: JSON.parse(JSON.stringify(tareasValidas))
+    };
+
+    this.guardarEnLaNube(checklistTareas);
+
+    // 🔥 FIX: Construimos la URL pero NO la abrimos todavía
+    if (this.notificarPorWhatsApp) {
+      const datosEmpleado = this.empleados().find(e => e.nombre === empleadoNombre);
+      
+      // 🔥 Limpiamos el número: quitamos espacios, guiones y el + inicial
+      let telefono = datosEmpleado?.telefono || '';
+      telefono = telefono.replace(/[\s\-\(\)]/g, ''); // quita espacios y guiones
+      if (telefono.startsWith('+')) telefono = telefono.slice(1); // quita el +
+      
+      // Si no tiene código de país, asumimos México (52)
+      if (telefono.length === 10) telefono = '52' + telefono;
+
+      if (telefono) {
+        const urlApp = 'https://md-chlist.vercel.app';
+        let mensaje = `*Mega Dulces Task* 🍭\n\n`;
+        mensaje += `¡Hola *${this.limpiarEmojis(empleadoNombre)}*!\n`;
+        mensaje += `Se te ha asignado un nuevo checklist: *${this.limpiarEmojis(this.formName)}*\n\n`;
+        mensaje += `📅 Fecha: ${checklistTareas.date}\n`;
+        mensaje += `⏰ Hora Límite: ${this.formatearHora(checklistTareas.time)}\n\n`;
+        mensaje += `🔗 Entra aquí: ${urlApp}\n\n`;
+        mensaje += `Favor de ingresar a la plataforma para completar tus evidencias.`;
+
+        // 🔥 Usamos wa.me en lugar de api.whatsapp.com/send (más compatible)
+        const url = `https://wa.me/${telefono}?text=${encodeURIComponent(mensaje)}`;
+        urlsWhatsApp.push(url);
       }
-    });
-    
-    this.mostrarToast(' ✅ ¡Tareas creadas y avisos generados!');
-    this.cerrarModal();
-  }
+    }
+
+    if (this.notificarPorCorreo) {
+      this.enviarAvisoPorCorreo(empleadoNombre, this.formName);
+    }
+  });
+
+  // 🔥 Abrimos TODAS las ventanas de WhatsApp al final (fuera del forEach)
+  // Esto evita que el navegador las bloquee por ser llamadas asíncronas
+  urlsWhatsApp.forEach((url, i) => {
+    // Pequeño delay entre cada ventana para evitar bloqueo con múltiples destinatarios
+    setTimeout(() => {
+      window.open(url, '_blank');
+    }, i * 800);
+  });
+
+  this.mostrarToast('✅ ¡Tareas creadas y avisos generados!');
+  this.cerrarModal();
+}
 
   async guardarCambiosChecklist() {
     if (!this.formName || this.formAssigned.length === 0) { alert('Faltan datos.'); return; }

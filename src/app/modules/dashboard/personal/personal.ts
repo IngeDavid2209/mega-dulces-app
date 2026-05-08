@@ -1,12 +1,12 @@
 import { Component, signal, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterModule, Router } from '@angular/router'; 
-import { Auth, createUserWithEmailAndPassword } from '@angular/fire/auth'; 
+import { RouterModule, Router } from '@angular/router';
 import { Firestore, collection, doc, setDoc, deleteDoc, onSnapshot } from '@angular/fire/firestore';
+import {Auth,createUserWithEmailAndPassword,getAuth,verifyBeforeUpdateEmail,updatePassword,EmailAuthProvider,reauthenticateWithCredential} 
+from '@angular/fire/auth';
 import * as ExcelJS from 'exceljs';
 import Swal from 'sweetalert2';
-
 @Component({
   selector: 'app-personal',
   standalone: true,
@@ -17,21 +17,21 @@ import Swal from 'sweetalert2';
 export class PersonalComponent implements OnInit, OnDestroy {
   isMenuOpen = false;
   toggleMenu() { this.isMenuOpen = !this.isMenuOpen; }
-  currentUser: any = null; 
+  currentUser: any = null;
   usuarios = signal<any[]>([]);
   usuarioEnEdicion: any = null;
   terminoBusqueda = '';
   isModalOpen = false;
   mostrarPassword = false;
   formPuedeAdministrarAreas = false;
-    formNombre = ''; formUsuario = ''; formCorreo = '';formTelefono = ''; formPassword = '';
-  formRol = 'trabajador'; formCargo = 'Trabajador General'; 
-    formPuedeCrearChecklists = false; 
-  formPuedeCrearRutinas = false;       
-  formPuedeCrearTareasUnicas = false;  
-  formPuedeVerCheckstore = false;      
-  formPuedeVerEstadisticas = false;    
-  formPuedeVerHistorial = false;       
+  formNombre = ''; formUsuario = ''; formCorreo = ''; formTelefono = ''; formPassword = '';
+  formRol = 'trabajador'; formCargo = 'Trabajador General';
+  formPuedeCrearChecklists = false;
+  formPuedeCrearRutinas = false;
+  formPuedeCrearTareasUnicas = false;
+  formPuedeVerCheckstore = false;
+  formPuedeVerEstadisticas = false;
+  formPuedeVerHistorial = false;
   formPuedeAdministrarPersonal = false;
   formPuedeVerCalendario = false; // 🔥 NUEVO: PERMISO DE CALENDARIO 🔥
   formSucursales: string[] = [];
@@ -85,8 +85,8 @@ export class PersonalComponent implements OnInit, OnDestroy {
     this.conectarConLaNube();
   }
 
-  ngOnDestroy() { 
-    this.destructoresRadares.forEach(apagarRadar => apagarRadar()); 
+  ngOnDestroy() {
+    this.destructoresRadares.forEach(apagarRadar => apagarRadar());
   }
 
   // =========================================================
@@ -144,43 +144,43 @@ export class PersonalComponent implements OnInit, OnDestroy {
     if (yo?.rol !== 'admin') {
       return [];
     }
-    return this.usuarios().filter(u => u.rol === 'admin' && 
-      (u.nombre.toLowerCase().includes(this.terminoBusqueda.toLowerCase()) || 
-       u.cargo?.toLowerCase().includes(this.terminoBusqueda.toLowerCase())));
+    return this.usuarios().filter(u => u.rol === 'admin' &&
+      (u.nombre.toLowerCase().includes(this.terminoBusqueda.toLowerCase()) ||
+        u.cargo?.toLowerCase().includes(this.terminoBusqueda.toLowerCase())));
   }
 
   // 3. 🔥 REEMPLAZAR getTrabajadores 🔥
   getTrabajadores() {
-    const yo = this.liveUser; 
+    const yo = this.liveUser;
     let lista = this.usuarios().filter(u => u.rol === 'trabajador');
-    
+
     // 🔥 FILTRO ESTRICTO EN VIVO PARA JEFES / ENCARGADOS
     if (yo?.rol !== 'admin') {
       const misSucursales = yo?.sucursales || [];
       const misAreas = yo?.areas || [];
-      
+
       // Si no le asignaste ninguna zona ni área, por seguridad NO VE A NADIE
       if (misSucursales.length === 0 && misAreas.length === 0) return [];
-      
+
       lista = lista.filter(emp => {
         const empSucursales = emp.sucursales || [emp.sucursal || ''];
         const empAreas = emp.areas || [];
-        
+
         const yoSoyGlobalSucursal = misSucursales.includes('General (Acceso Total)');
         const yoSoyGlobalArea = misAreas.includes('Todas las áreas') || misAreas.includes('Todas');
-        
+
         const coincideSucursal = yoSoyGlobalSucursal || empSucursales.some((s: string) => misSucursales.includes(s));
         const coincideArea = yoSoyGlobalArea || empAreas.some((a: string) => misAreas.includes(a));
-        
+
         return coincideSucursal && coincideArea;
       });
     }
-    
+
     // Buscador de texto
     const t = this.terminoBusqueda.toLowerCase().trim();
     if (t) {
-      lista = lista.filter(u => 
-        u.nombre.toLowerCase().includes(t) || 
+      lista = lista.filter(u =>
+        u.nombre.toLowerCase().includes(t) ||
         (u.cargo && u.cargo.toLowerCase().includes(t)) ||
         (u.sucursales && u.sucursales.join(' ').toLowerCase().includes(t)) ||
         (u.areas && u.areas.join(' ').toLowerCase().includes(t))
@@ -192,13 +192,13 @@ export class PersonalComponent implements OnInit, OnDestroy {
   getTrabajadoresAgrupados() {
     const trabajadores = this.getTrabajadores();
     const gruposMap = new Map<string, any[]>();
-    
+
     trabajadores.forEach(user => {
       const nombreGrupo = user.sucursales?.length > 0 ? user.sucursales.join(' y ') : 'Sin Sucursal';
       if (!gruposMap.has(nombreGrupo)) gruposMap.set(nombreGrupo, []);
       gruposMap.get(nombreGrupo)!.push(user);
     });
-    
+
     return Array.from(gruposMap.keys()).map(key => ({ nombre: key, usuarios: gruposMap.get(key)! }));
   }
 
@@ -215,7 +215,7 @@ export class PersonalComponent implements OnInit, OnDestroy {
 
   limpiarForm() {
     this.formNombre = ''; this.formUsuario = ''; this.formCorreo = ''; this.formPassword = '';
-    this.formRol = 'trabajador'; this.formCargo = 'Trabajador General'; 
+    this.formRol = 'trabajador'; this.formCargo = 'Trabajador General';
     this.formPuedeCrearChecklists = false;
     this.formPuedeCrearRutinas = false;
     this.formPuedeCrearTareasUnicas = false;
@@ -232,13 +232,13 @@ export class PersonalComponent implements OnInit, OnDestroy {
   editarUsuario(user: any) {
     if (this.currentUser?.rol !== 'admin' && !this.currentUser?.puedeAdministrarPersonal) return;
     this.usuarioEnEdicion = user;
-    
+
     this.formNombre = user.nombre; this.formUsuario = user.usuario;
     this.formCorreo = user.correo || ''; this.formPassword = user.password || '';
     this.formRol = user.rol; this.formCargo = user.cargo || 'Trabajador General';
     this.formSucursales = user.sucursales ? [...user.sucursales] : [];
     this.formAreas = user.areas ? [...user.areas] : [];
-    
+
     this.formPuedeAdministrarAreas = !!user.puedeAdministrarAreas;
     this.formPuedeCrearChecklists = !!user.puedeCrearChecklists;
     this.formPuedeCrearRutinas = !!user.puedeCrearRutinas;
@@ -266,6 +266,7 @@ export class PersonalComponent implements OnInit, OnDestroy {
     else this.formAreas.push(area);
   }
 
+
   async guardarUsuario() {
     if (this.currentUser?.rol !== 'admin' && !this.currentUser?.puedeAdministrarPersonal) return;
 
@@ -273,15 +274,14 @@ export class PersonalComponent implements OnInit, OnDestroy {
       Swal.fire({ icon: 'warning', title: 'Datos Incompletos', text: 'Por favor completa el Nombre, Usuario y Contraseña.', confirmButtonColor: '#0F172A' });
       return;
     }
-
     if (!this.usuarioEnEdicion && !this.formCorreo) {
       Swal.fire({ icon: 'warning', title: 'Falta el Correo', text: 'Para crear un usuario nuevo el Correo Electrónico es obligatorio.', confirmButtonColor: '#0F172A' });
       return;
     }
 
     const payload = {
-      nombre: this.formNombre, usuario: this.formUsuario, correo: this.formCorreo, password: this.formPassword, 
-      rol: this.formRol, cargo: this.formCargo, telefono: this.formTelefono,      
+      nombre: this.formNombre, usuario: this.formUsuario, correo: this.formCorreo, password: this.formPassword,
+      rol: this.formRol, cargo: this.formCargo, telefono: this.formTelefono,
       puedeCrearChecklists: this.formRol === 'admin' ? true : this.formPuedeCrearChecklists,
       puedeCrearRutinas: this.formRol === 'admin' ? true : this.formPuedeCrearRutinas,
       puedeCrearTareasUnicas: this.formRol === 'admin' ? true : this.formPuedeCrearTareasUnicas,
@@ -289,7 +289,7 @@ export class PersonalComponent implements OnInit, OnDestroy {
       puedeVerEstadisticas: this.formRol === 'admin' ? true : this.formPuedeVerEstadisticas,
       puedeVerHistorial: this.formRol === 'admin' ? true : this.formPuedeVerHistorial,
       puedeAdministrarPersonal: this.formRol === 'admin' ? true : this.formPuedeAdministrarPersonal,
-      puedeVerCalendario: this.formRol === 'admin' ? true : this.formPuedeVerCalendario, // 🔥 SE GUARDA
+      puedeVerCalendario: this.formRol === 'admin' ? true : this.formPuedeVerCalendario,
       sucursales: this.formRol === 'admin' ? ['General (Acceso Total)'] : this.formSucursales,
       areas: this.formRol === 'admin' ? ['Todas las áreas'] : this.formAreas,
       puedeAdministrarAreas: this.formRol === 'admin' ? true : this.formPuedeAdministrarAreas,
@@ -298,184 +298,215 @@ export class PersonalComponent implements OnInit, OnDestroy {
     try {
       if (this.usuarioEnEdicion) {
         const docId = this.usuarioEnEdicion.idFirestore || this.usuarioEnEdicion.uid || this.usuarioEnEdicion.usuario;
+        const auth = getAuth();
+        const userAuth = auth.currentUser;
+        const esElMismoUsuario = this.usuarioEnEdicion.usuario === this.currentUser.usuario;
+        const correoDistinto = this.formCorreo !== this.usuarioEnEdicion.correo;
+        const passwordDistinta = this.formPassword !== this.usuarioEnEdicion.password;
+
+        // -------------------------------------------------------
+        // 🔥 FIX 1: CAMBIO DE CORREO (solo si es el mismo usuario)
+        // -------------------------------------------------------
+        if (esElMismoUsuario && correoDistinto && userAuth) {
+          // Pedimos su contraseña ACTUAL para reautenticar antes de cambiar correo
+          const { value: passActual } = await Swal.fire({
+            title: 'Confirma tu Identidad',
+            text: 'Para cambiar tu correo, ingresa tu contraseña actual:',
+            input: 'password',
+            inputPlaceholder: '••••••••',
+            icon: 'info',
+            showCancelButton: true,
+            confirmButtonColor: '#0F172A',
+            confirmButtonText: 'Confirmar'
+          });
+          if (!passActual) return;
+
+          try {
+            // Reautenticamos con la contraseña actual
+            const credential = EmailAuthProvider.credential(userAuth.email!, passActual);
+            await reauthenticateWithCredential(userAuth, credential);
+
+            // verifyBeforeUpdateEmail manda un correo de verificación al NUEVO correo
+            // El cambio se aplica cuando el usuario haga clic en ese correo
+            await verifyBeforeUpdateEmail(userAuth, this.formCorreo);
+
+            Swal.fire({
+              icon: 'info',
+              title: 'Verifica tu nuevo correo',
+              text: `Se envió un correo de verificación a "${this.formCorreo}". El cambio se aplicará cuando hagas clic en el enlace. Por ahora se guarda el correo nuevo en tu perfil.`,
+              confirmButtonColor: '#0F172A'
+            });
+          } catch (error: any) {
+            if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+              Swal.fire({ icon: 'error', title: 'Contraseña Incorrecta', text: 'La contraseña que ingresaste no es correcta.', confirmButtonColor: '#0F172A' });
+              return;
+            }
+            throw error;
+          }
+        } else if (!esElMismoUsuario && correoDistinto) {
+          Swal.fire({
+            icon: 'error',
+            title: 'Acción Restringida',
+            text: 'No puedes cambiarle el correo de acceso a otro trabajador. Si perdió su correo, elimina su cuenta y créale una nueva.',
+            confirmButtonColor: '#0F172A'
+          });
+          return;
+        }
+
+        // -------------------------------------------------------
+        // 🔥 FIX 2: CAMBIO DE CONTRASEÑA REAL EN FIREBASE AUTH
+        // -------------------------------------------------------
+        if (esElMismoUsuario && passwordDistinta && userAuth) {
+          try {
+            await updatePassword(userAuth, this.formPassword);
+            console.log('✅ Contraseña actualizada en Firebase Auth');
+          } catch (error: any) {
+            if (error.code === 'auth/requires-recent-login') {
+              Swal.fire({
+                icon: 'warning',
+                title: 'Sesión Expirada',
+                text: 'Por seguridad, cierra sesión y vuelve a entrar antes de cambiar tu contraseña.',
+                confirmButtonColor: '#0F172A'
+              });
+              return;
+            }
+            throw error;
+          }
+        }
+
+        // Guardamos en Firestore (siempre)
         await setDoc(doc(this.firestore, 'usuarios', docId), payload, { merge: true });
+
       } else {
+        // Creando usuario nuevo — esto ya funcionaba bien
         const creds = await createUserWithEmailAndPassword(this.auth, this.formCorreo, this.formPassword);
         await setDoc(doc(this.firestore, 'usuarios', creds.user.uid), { ...payload, uid: creds.user.uid });
       }
+
       this.cerrarModal();
-      Swal.fire({ icon: 'success', title: '¡Guardado!', text: 'El usuario se ha guardado en la nube correctamente.', confirmButtonColor: '#0F172A' });
-    } catch (error: any) {
+      Swal.fire({ icon: 'success', title: '¡Guardado!', text: 'El usuario se ha guardado correctamente.', confirmButtonColor: '#0F172A' });
+
+    }
+    catch (error: any) {
       Swal.fire({ icon: 'error', title: 'Error', text: error.message, confirmButtonColor: '#0F172A' });
-    }
-  }
-
-  async eliminarUsuario(userToDelete: any) {
-    if (this.currentUser?.rol !== 'admin' && !this.currentUser?.puedeAdministrarPersonal) return;
-
-    if (userToDelete.usuario === this.currentUser.usuario) {
-      Swal.fire({ icon: 'error', title: 'Acción no permitida', text: 'No puedes eliminar tu propio usuario.', confirmButtonColor: '#0F172A' });
-      return;
-    }
-
-    if (this.currentUser?.rol !== 'admin') {
-      const { value: password } = await Swal.fire({
-        title: 'Autenticación Requerida',
-        text: 'Ingresa la contraseña maestra para autorizar la eliminación de este usuario:',
-        input: 'password',
-        inputPlaceholder: '••••••••',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#EF4444',
-        cancelButtonColor: '#0F172A',
-        confirmButtonText: 'Verificar',
-        cancelButtonText: 'Cancelar'
-      });
-
-      if (password === undefined) return;
-      if (password !== 'Mega2323') {
-        Swal.fire({ icon: 'error', title: 'Clave Incorrecta', text: 'No tienes autorización para eliminar.', confirmButtonColor: '#0F172A' });
-        return;
-      }
-    }
-
-    const result = await Swal.fire({
-      title: `¿Eliminar a ${userToDelete.nombre}?`,
-      text: "Esta acción borrará todos sus accesos al sistema y no se puede deshacer.",
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#EF4444',
-      cancelButtonColor: '#0F172A',
-      confirmButtonText: 'Sí, eliminar',
-      cancelButtonText: 'Cancelar'
-    });
-
-    if (result.isConfirmed) {
-      try {
-        const docId = userToDelete.idFirestore || userToDelete.uid || userToDelete.usuario;
-        await deleteDoc(doc(this.firestore, 'usuarios', docId));
-        Swal.fire({ icon: 'success', title: 'Eliminado', text: 'El usuario fue borrado del sistema exitosamente.', confirmButtonColor: '#0F172A' });
-      } catch (error) {
-        Swal.fire({ icon: 'error', title: 'Error', text: 'Hubo un problema al intentar eliminar en la nube.', confirmButtonColor: '#0F172A' });
-      }
     }
   }
 
   async descargarExcel() {
     const list = this.usuarios();
-    if (list.length === 0) {
-      Swal.fire({ icon: 'info', title: 'Lista Vacía', text: 'No hay personal para exportar.', confirmButtonColor: '#0F172A' });
-      return;
-    }
-
-    const listaOrdenada = list.map(u => {
-      const zona = u.sucursales ? (Array.isArray(u.sucursales) ? u.sucursales.join(' - ') : u.sucursales) : 'General';
-      return { ...u, zonaCalculada: zona };
-    }).sort((a, b) => a.zonaCalculada.localeCompare(b.zonaCalculada));
-
-    const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet('Personal MegaDulces');
-    
-    worksheet.columns = [
-      { header: 'Nombre Completo', key: 'nombre', width: 35 },
-      { header: 'Usuario', key: 'usuario', width: 20 },
-      { header: 'Correo Electrónico', key: 'correo', width: 35 },
-      { header: 'Rol', key: 'rol', width: 15 },
-      { header: 'Cargo', key: 'cargo', width: 25 },
-      { header: 'Sucursales', key: 'sucursales', width: 30 },
-      { header: 'Áreas', key: 'areas', width: 30 },
-      { header: 'Crea Check', key: 'creaCheck', width: 12 },
-      { header: 'Crea Rutinas', key: 'creaRutinas', width: 12 },
-      { header: 'Crea Tareas', key: 'creaTareas', width: 12 },
-      { header: 'Ve Store', key: 'veStore', width: 12 },
-      { header: 'Ve Est.', key: 'veEst', width: 12 },
-      { header: 'Ve Hist.', key: 'veHist', width: 12 },
-      { header: 'Adm. Pers.', key: 'admPers', width: 12 },
-      { header: 'Calendario', key: 'veCal', width: 12 } // 🔥 SE AGREGÓ AL EXCEL
-    ];
-
-    const headerRow = worksheet.getRow(1);
-    headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
-    headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0F172A' } };
-    headerRow.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
-    headerRow.height = 30;
-
-    let zonaActual = '';
-
-    listaOrdenada.forEach(u => {
-      if (u.zonaCalculada !== zonaActual) {
-        const separador = worksheet.addRow({ nombre: ` 📍 ZONA / DEPARTAMENTO: ${u.zonaCalculada.toUpperCase()}` });
-        worksheet.mergeCells(`A${separador.number}:O${separador.number}`); // Ajustado a O por la nueva columna
-        
-        separador.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
-        separador.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF475569' } };
-        separador.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
-        separador.height = 25;
-        
-        zonaActual = u.zonaCalculada;
+      if (list.length === 0) {
+        Swal.fire({ icon: 'info', title: 'Lista Vacía', text: 'No hay personal para exportar.', confirmButtonColor: '#0F172A' });
+        return;
       }
-      
-      worksheet.addRow({
-        nombre: u.nombre || '-',
-        usuario: u.usuario || '-',
-        correo: u.correo || '-',
-        rol: (u.rol || '').toUpperCase(),
-        cargo: u.cargo || '-',
-        sucursales: u.zonaCalculada,
-        areas: u.areas ? (Array.isArray(u.areas) ? u.areas.join(', ') : u.areas) : 'General',
-        creaCheck: u.puedeCrearChecklists ? 'Sí' : 'No',
-        creaRutinas: u.puedeCrearRutinas ? 'Sí' : 'No',
-        creaTareas: u.puedeCrearTareasUnicas ? 'Sí' : 'No',
-        veStore: u.puedeVerCheckstore ? 'Sí' : 'No',
-        veEst: u.puedeVerEstadisticas ? 'Sí' : 'No',
-        veHist: u.puedeVerHistorial ? 'Sí' : 'No',
-        admPers: u.puedeAdministrarPersonal ? 'Sí' : 'No',
-        veCal: u.puedeVerCalendario ? 'Sí' : 'No' // 🔥 SE AGREGÓ AL EXCEL
-      });
-    });
 
-    worksheet.eachRow((row, rowNumber) => {
-      row.eachCell((cell, colNumber) => {
-        cell.border = {
-          top: { style: 'thin', color: { argb: 'FFCBD5E1' } },
-          left: { style: 'thin', color: { argb: 'FFCBD5E1' } },
-          bottom: { style: 'thin', color: { argb: 'FFCBD5E1' } },
-          right: { style: 'thin', color: { argb: 'FFCBD5E1' } }
-        };
-        
-        if (rowNumber > 1) {
-          const esSeparador = row.getCell(1).value?.toString().includes(' 📍 ZONA');
-          
-          if (!esSeparador) {
-            if (colNumber >= 8 || colNumber === 4) {
-              cell.alignment = { vertical: 'middle', horizontal: 'center' };
-            } else {
-              cell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
+      const listaOrdenada = list.map(u => {
+        const zona = u.sucursales ? (Array.isArray(u.sucursales) ? u.sucursales.join(' - ') : u.sucursales) : 'General';
+        return { ...u, zonaCalculada: zona };
+      }).sort((a, b) => a.zonaCalculada.localeCompare(b.zonaCalculada));
+
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet('Personal MegaDulces');
+
+      worksheet.columns = [
+        { header: 'Nombre Completo', key: 'nombre', width: 35 },
+        { header: 'Usuario', key: 'usuario', width: 20 },
+        { header: 'Correo Electrónico', key: 'correo', width: 35 },
+        { header: 'Rol', key: 'rol', width: 15 },
+        { header: 'Cargo', key: 'cargo', width: 25 },
+        { header: 'Sucursales', key: 'sucursales', width: 30 },
+        { header: 'Áreas', key: 'areas', width: 30 },
+        { header: 'Crea Check', key: 'creaCheck', width: 12 },
+        { header: 'Crea Rutinas', key: 'creaRutinas', width: 12 },
+        { header: 'Crea Tareas', key: 'creaTareas', width: 12 },
+        { header: 'Ve Store', key: 'veStore', width: 12 },
+        { header: 'Ve Est.', key: 'veEst', width: 12 },
+        { header: 'Ve Hist.', key: 'veHist', width: 12 },
+        { header: 'Adm. Pers.', key: 'admPers', width: 12 },
+        { header: 'Calendario', key: 'veCal', width: 12 } // 🔥 SE AGREGÓ AL EXCEL
+      ];
+
+      const headerRow = worksheet.getRow(1);
+      headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
+      headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0F172A' } };
+      headerRow.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+      headerRow.height = 30;
+
+      let zonaActual = '';
+
+      listaOrdenada.forEach(u => {
+        if (u.zonaCalculada !== zonaActual) {
+          const separador = worksheet.addRow({ nombre: ` 📍 ZONA / DEPARTAMENTO: ${u.zonaCalculada.toUpperCase()}` });
+          worksheet.mergeCells(`A${separador.number}:O${separador.number}`); // Ajustado a O por la nueva columna
+
+          separador.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
+          separador.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF475569' } };
+          separador.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
+          separador.height = 25;
+
+          zonaActual = u.zonaCalculada;
+        }
+
+        worksheet.addRow({
+          nombre: u.nombre || '-',
+          usuario: u.usuario || '-',
+          correo: u.correo || '-',
+          rol: (u.rol || '').toUpperCase(),
+          cargo: u.cargo || '-',
+          sucursales: u.zonaCalculada,
+          areas: u.areas ? (Array.isArray(u.areas) ? u.areas.join(', ') : u.areas) : 'General',
+          creaCheck: u.puedeCrearChecklists ? 'Sí' : 'No',
+          creaRutinas: u.puedeCrearRutinas ? 'Sí' : 'No',
+          creaTareas: u.puedeCrearTareasUnicas ? 'Sí' : 'No',
+          veStore: u.puedeVerCheckstore ? 'Sí' : 'No',
+          veEst: u.puedeVerEstadisticas ? 'Sí' : 'No',
+          veHist: u.puedeVerHistorial ? 'Sí' : 'No',
+          admPers: u.puedeAdministrarPersonal ? 'Sí' : 'No',
+          veCal: u.puedeVerCalendario ? 'Sí' : 'No' // 🔥 SE AGREGÓ AL EXCEL
+        });
+      });
+
+      worksheet.eachRow((row, rowNumber) => {
+        row.eachCell((cell, colNumber) => {
+          cell.border = {
+            top: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+            left: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+            bottom: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+            right: { style: 'thin', color: { argb: 'FFCBD5E1' } }
+          };
+
+          if (rowNumber > 1) {
+            const esSeparador = row.getCell(1).value?.toString().includes(' 📍 ZONA');
+
+            if (!esSeparador) {
+              if (colNumber >= 8 || colNumber === 4) {
+                cell.alignment = { vertical: 'middle', horizontal: 'center' };
+              } else {
+                cell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
+              }
             }
           }
-        }
+        });
       });
-    });
 
-    try {
-      const buffer = await workbook.xlsx.writeBuffer();
-      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-      
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `Nomina_Personal_Agrupado.xlsx`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error("Error al exportar Personal:", error);
-      Swal.fire({ icon: 'error', title: 'Error de Exportación', text: 'Hubo un error al generar el Excel de personal.', confirmButtonColor: '#0F172A' });
+      try {
+        const buffer = await workbook.xlsx.writeBuffer();
+        const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Nomina_Personal_Agrupado.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+      } catch (error) {
+        console.error("Error al exportar Personal:", error);
+        Swal.fire({ icon: 'error', title: 'Error de Exportación', text: 'Hubo un error al generar el Excel de personal.', confirmButtonColor: '#0F172A' });
+      }
+    }
+
+    togglePassword() {
+      this.mostrarPassword = !this.mostrarPassword;
     }
   }
-
-  togglePassword() {
-    this.mostrarPassword = !this.mostrarPassword;
-  }
-}

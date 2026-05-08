@@ -230,27 +230,31 @@ export class PersonalComponent implements OnInit, OnDestroy {
   }
 
   editarUsuario(user: any) {
-    if (this.currentUser?.rol !== 'admin' && !this.currentUser?.puedeAdministrarPersonal) return;
-    this.usuarioEnEdicion = user;
+  if (this.currentUser?.rol !== 'admin' && !this.currentUser?.puedeAdministrarPersonal) return;
+  this.usuarioEnEdicion = user;
 
-    this.formNombre = user.nombre; this.formUsuario = user.usuario;
-    this.formCorreo = user.correo || ''; this.formPassword = user.password || '';
-    this.formRol = user.rol; this.formCargo = user.cargo || 'Trabajador General';
-    this.formSucursales = user.sucursales ? [...user.sucursales] : [];
-    this.formAreas = user.areas ? [...user.areas] : [];
+  this.formNombre    = user.nombre;
+  this.formUsuario   = user.usuario;
+  this.formCorreo    = user.correo   || '';
+  this.formPassword  = user.password || '';
+  this.formTelefono  = user.telefono || ''; // 🔥 FIX: cargaba vacío antes
+  this.formRol       = user.rol;
+  this.formCargo     = user.cargo    || 'Trabajador General';
+  this.formSucursales = user.sucursales ? [...user.sucursales] : [];
+  this.formAreas      = user.areas      ? [...user.areas]      : [];
 
-    this.formPuedeAdministrarAreas = !!user.puedeAdministrarAreas;
-    this.formPuedeCrearChecklists = !!user.puedeCrearChecklists;
-    this.formPuedeCrearRutinas = !!user.puedeCrearRutinas;
-    this.formPuedeCrearTareasUnicas = !!user.puedeCrearTareasUnicas;
-    this.formPuedeVerCheckstore = !!user.puedeVerCheckstore;
-    this.formPuedeVerEstadisticas = !!user.puedeVerEstadisticas;
-    this.formPuedeVerHistorial = !!user.puedeVerHistorial;
-    this.formPuedeAdministrarPersonal = !!user.puedeAdministrarPersonal;
-    this.formPuedeVerCalendario = !!user.puedeVerCalendario; // 🔥 SE CARGA AL EDITAR
+  this.formPuedeAdministrarAreas    = !!user.puedeAdministrarAreas;
+  this.formPuedeCrearChecklists     = !!user.puedeCrearChecklists;
+  this.formPuedeCrearRutinas        = !!user.puedeCrearRutinas;
+  this.formPuedeCrearTareasUnicas   = !!user.puedeCrearTareasUnicas;
+  this.formPuedeVerCheckstore       = !!user.puedeVerCheckstore;
+  this.formPuedeVerEstadisticas     = !!user.puedeVerEstadisticas;
+  this.formPuedeVerHistorial        = !!user.puedeVerHistorial;
+  this.formPuedeAdministrarPersonal = !!user.puedeAdministrarPersonal;
+  this.formPuedeVerCalendario       = !!user.puedeVerCalendario;
 
-    this.isModalOpen = true;
-  }
+  this.isModalOpen = true;
+}
 
   cerrarModal() { this.isModalOpen = false; this.usuarioEnEdicion = null; this.formTelefono = ''; }
 
@@ -357,22 +361,46 @@ export class PersonalComponent implements OnInit, OnDestroy {
         // 🔥 FIX 2: CAMBIO DE CONTRASEÑA REAL EN FIREBASE AUTH
         // -------------------------------------------------------
         if (esElMismoUsuario && passwordDistinta && userAuth) {
-          try {
-            await updatePassword(userAuth, this.formPassword);
-            console.log('✅ Contraseña actualizada en Firebase Auth');
-          } catch (error: any) {
-            if (error.code === 'auth/requires-recent-login') {
-              Swal.fire({
-                icon: 'warning',
-                title: 'Sesión Expirada',
-                text: 'Por seguridad, cierra sesión y vuelve a entrar antes de cambiar tu contraseña.',
-                confirmButtonColor: '#0F172A'
-              });
-              return;
-            }
-            throw error;
-          }
-        }
+  // Pedimos la contraseña actual para reautenticar
+  const { value: passActual } = await Swal.fire({
+    title: 'Confirma tu contraseña actual',
+    text: 'Para cambiar tu contraseña ingresa la actual:',
+    input: 'password',
+    inputPlaceholder: '••••••••',
+    icon: 'info',
+    showCancelButton: true,
+    confirmButtonColor: '#0F172A',
+    confirmButtonText: 'Confirmar',
+    cancelButtonText: 'Cancelar'
+  });
+
+  if (!passActual) return; // canceló
+
+  try {
+    // Reautenticamos con la contraseña actual
+    const credential = EmailAuthProvider.credential(userAuth.email!, passActual);
+    await reauthenticateWithCredential(userAuth, credential);
+
+    // Ahora sí cambiamos la contraseña en Firebase Auth
+    await updatePassword(userAuth, this.formPassword);
+    console.log('✅ Contraseña actualizada en Firebase Auth');
+
+  } catch (error: any) {
+    if (
+      error.code === 'auth/wrong-password' ||
+      error.code === 'auth/invalid-credential'
+    ) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Contraseña Incorrecta',
+        text: 'La contraseña actual que ingresaste no es correcta.',
+        confirmButtonColor: '#0F172A'
+      });
+      return;
+    }
+    throw error;
+  }
+}
 
         // Guardamos en Firestore (siempre)
         await setDoc(doc(this.firestore, 'usuarios', docId), payload, { merge: true });

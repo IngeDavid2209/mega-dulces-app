@@ -6,6 +6,7 @@ import { authGuard } from './services/auth.guard';
 export const routes: Routes = [
   { path: '', redirectTo: 'login', pathMatch: 'full' },
   { path: 'calendario', component: CalendarioComponent },
+  
   // El Login es público, cualquiera puede verlo
   { 
     path: 'login', 
@@ -44,15 +45,20 @@ export const routes: Routes = [
     loadComponent: () => import('./modules/dashboard/personal/personal').then(m => m.PersonalComponent) 
   },
   
-  // 🔥 NUEVA RUTA: PANEL DE ÁREAS OPERATIVAS 🔥
+  // 🔥 PANEL DE ÁREAS OPERATIVAS 🔥
   { 
     path: 'areas', 
     canActivate: [authGuard],
     loadComponent: () => import('./modules/dashboard/areas/areas').then(m => m.AreasComponent) 
   },
   
+  // 🔥 NUEVA RUTA: PERFIL DEL USUARIO 🔥
+  {
+    path: 'perfil',
+    canActivate: [authGuard],
+    loadComponent: () => import('./modules/dashboard/perfil').then(m => m.PerfilComponent)
+  },
+  
   // Cualquier ruta que no exista o intente saltarse el sistema, al login
   { path: '**', redirectTo: 'login' }
-
-  
 ];

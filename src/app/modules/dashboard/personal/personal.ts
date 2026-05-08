@@ -3,10 +3,22 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, Router } from '@angular/router';
 import { Firestore, collection, doc, setDoc, deleteDoc, onSnapshot } from '@angular/fire/firestore';
-import {Auth,createUserWithEmailAndPassword,getAuth,verifyBeforeUpdateEmail,updatePassword,EmailAuthProvider,reauthenticateWithCredential} 
-from '@angular/fire/auth';
+import { 
+  Auth, 
+  createUserWithEmailAndPassword, 
+  getAuth, 
+  verifyBeforeUpdateEmail, 
+  updatePassword, 
+  EmailAuthProvider, 
+  reauthenticateWithCredential,
+  sendPasswordResetEmail 
+} from '@angular/fire/auth';
+
 import * as ExcelJS from 'exceljs';
 import Swal from 'sweetalert2';
+
+
+
 @Component({
   selector: 'app-personal',
   standalone: true,

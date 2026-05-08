@@ -1,510 +1,173 @@
-/* Contenedor principal de la pantalla */
+/* =========================================
+   1. LAYOUT Y MENÚ LATERAL (SIDEBAR)
+   ========================================= */
+.app-container {
+  display: flex;
+  min-height: 100vh;
+  background-color: #f8fafc;
+  font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+}
+
+.sidebar {
+  width: 260px;
+  background-color: #ffffff;
+  border-right: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  transition: transform 0.3s ease;
+}
+
+.main-content {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.mobile-header {
+  display: none;
+  padding: 15px 20px;
+  background: white;
+  border-bottom: 1px solid #e2e8f0;
+  justify-content: space-between;
+  align-items: center;
+}
+
+nav {
+  display: flex;
+  flex-direction: column;
+  padding: 10px 0;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  padding: 12px 24px;
+  color: #475569;
+  text-decoration: none;
+  font-weight: 500;
+  gap: 15px;
+  transition: all 0.2s ease;
+}
+
+.nav-item:hover, .nav-item.active {
+  background-color: #f1f5f9;
+  color: #0f172a;
+  border-right: 3px solid #0f172a;
+}
+
+.nav-icon {
+  width: 20px;
+  height: 20px;
+}
+
+.bottom-nav {
+  display: flex;
+  flex-direction: column;
+}
+
+.logout-btn {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  width: 100%;
+  padding: 12px 24px;
+  background: none;
+  border: none;
+  color: #ef4444;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+  font-size: 15px;
+}
+
+.logout-btn:hover {
+  background-color: #fef2f2;
+}
+
+.logout-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* =========================================
+   2. DISEÑO DEL PERFIL (TARJETA)
+   ========================================= */
 .perfil-container {
   padding: 20px 40px;
   max-width: 800px;
   margin: 0 auto;
-  font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   animation: fadeIn 0.4s ease-in-out;
 }
 
-.header-titulo h2 {
-  margin: 0;
-  color: #0f172a;
-  font-size: 28px;
-  font-weight: 700;
-}
+.header-titulo h2 { margin: 0; color: #0f172a; font-size: 28px; font-weight: 700; }
+.header-titulo p { color: #64748b; margin-top: 5px; margin-bottom: 30px; }
 
-.header-titulo p {
-  color: #64748b;
-  margin-top: 5px;
-  margin-bottom: 30px;
-}
-
-/* La Tarjeta Principal */
 .perfil-card {
   background: #ffffff;
   border-radius: 16px;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
   overflow: hidden;
-  position: relative;
   border: 1px solid #e2e8f0;
 }
-:host {
-  --primary-navy: #0F172A;
-  --primary-blue: #1E40AF;
-  --text-main: #1E293B;
-  --text-muted: #64748B;
-  --bg-app: #F8FAFC;
-  --bg-sidebar: #FFFFFF;
-  --border: #E2E8F0;
-  --card: #FFFFFF;
-  --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
-  --shadow-lg: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
-  --red: #EF4444;
+
+.perfil-cover {
+  height: 120px;
+  background: linear-gradient(135deg, #1e293b 0%, #3b82f6 100%);
 }
 
-/* --- HEADER BLANCO ENTERPRISE --- */
-.app-layout {
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  overflow: hidden;
-  background-color: var(--bg-app);
+.perfil-avatar-wrapper { display: flex; justify-content: center; margin-top: -50px; }
+
+.perfil-avatar {
+  width: 100px; height: 100px; background-color: #ffffff;
+  border: 4px solid #ffffff; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 40px; font-weight: bold; color: #3b82f6;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1); box-sizing: border-box;
 }
 
-.header {
-  background-color: var(--bg-sidebar) !important;
-  height: 64px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 24px;
-  border-bottom: 1px solid var(--border) !important;
-  z-index: 20;
+.perfil-body { padding: 20px 40px 40px; }
+.perfil-header-info { text-align: center; margin-bottom: 25px; }
+.perfil-header-info h3 { margin: 10px 0 5px; font-size: 22px; color: #1e293b; }
+.badge-rol { background-color: #e0f2fe; color: #0369a1; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; text-transform: uppercase; }
+.sucursal-text { color: #64748b; font-size: 14px; margin-top: 10px; }
+.divider { border: 0; height: 1px; background: #e2e8f0; margin: 25px 0; }
+
+.formulario-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.form-full-width { grid-column: 1 / -1; }
+.form-group label { display: block; font-weight: 600; color: #334155; margin-bottom: 8px; font-size: 14px; }
+.input-moderno {
+  width: 100%; padding: 12px 15px; border: 1px solid #cbd5e1; border-radius: 8px;
+  font-size: 15px; color: #1e293b; transition: all 0.3s ease; box-sizing: border-box; background-color: #f8fafc;
 }
+.input-moderno:focus { outline: none; border-color: #3b82f6; background-color: #ffffff; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
+.hint-text { display: block; color: #94a3b8; font-size: 12px; margin-top: 6px; }
 
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: 12px;
+.perfil-actions { margin-top: 35px; display: flex; justify-content: flex-end; }
+.btn-guardar {
+  display: flex; align-items: center; gap: 8px; background-color: #0f172a;
+  color: white; padding: 12px 24px; border: none; border-radius: 8px;
+  font-size: 16px; font-weight: 600; cursor: pointer; transition: background-color 0.2s, transform 0.1s;
 }
+.btn-guardar:hover { background-color: #1e293b; transform: translateY(-1px); }
+.icon-save { width: 18px; height: 18px; }
 
-.header-logo-wrap {
-  width: 32px;
-  height: 32px;
-  background-color: var(--primary-navy) !important;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 16px;
-}
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-.header-brand {
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--text-main) !important;
-  line-height: 1.2;
-  margin-left: 8px;
-}
-
-.header-brand small {
-  display: block;
-  font-size: 11px;
-  color: var(--text-muted) !important;
-  font-weight: 500;
-  text-transform: none;
-  letter-spacing: 0;
-}
-
-.header-right .header-user {
-  font-size: 14px;
-  color: var(--text-muted);
-}
-
-.header-right .header-user strong {
-  color: var(--primary-navy);
-  font-weight: 600;
-}
-
-.main-wrapper {
-  display: flex;
-  flex: 1;
-  overflow: hidden;
-}
-
-/* --- SIDEBAR BLANCO ENTERPRISE --- */
-.sidebar {
-  width: 260px;
-  background-color: var(--bg-sidebar) !important;
-  display: flex;
-  flex-direction: column;
-  border-right: 1px solid var(--border) !important;
-  z-index: 10;
-}
-
-.sidebar-header {
-  padding: 24px 20px 16px 24px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.sidebar-avatar {
-  width: 40px;
-  height: 40px;
-  background-color: #F1F5F9 !important;
-  color: var(--primary-navy) !important;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 18px;
-  font-weight: 600;
-  border: 1px solid var(--border);
-}
-
-.sidebar-name {
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--text-main) !important;
-  margin-bottom: 2px;
-}
-
-.sidebar-role {
-  font-size: 12px;
-  color: var(--text-muted) !important;
-  font-weight: 500;
-}
-
-.sidebar-nav {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  padding: 12px 12px;
-}
-
-/* Botones del Menú */
-.nav-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
-  color: var(--text-muted) !important;
-  text-decoration: none;
-  font-size: 14px;
-  font-weight: 500;
-  border-radius: 6px;
-  transition: all 0.2s ease;
-  margin-bottom: 4px;
-}
-
-.nav-item:hover {
-  background-color: #F8FAFC !important;
-  color: var(--primary-navy) !important;
-}
-
-.nav-item.active {
-  background-color: var(--primary-navy) !important;
-  color: #FFFFFF !important;
-  font-weight: 600;
-  box-shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.1);
-}
-
-.nav-icon {
-  font-size: 18px;
-  width: 24px;
-  text-align: center;
-}
-
-.nav-divider {
-  height: 1px;
-  background-color: var(--border);
-  margin: 12px 16px;
-}
-
-.nav-logout {
-  color: var(--red) !important;
-}
-
-.nav-logout:hover {
-  background-color: #FEF2F2 !important;
-}
-
-/* --- CONTENT Y DASHBOARD --- */
-.content {
-  flex: 1;
-  padding: 32px 40px;
-  overflow-y: auto;
-  background-color: var(--bg-app);
-}
-
-.home-welcome {
-  margin-bottom: 32px;
-}
-
-.home-welcome h1 {
-  font-size: 32px;
-  font-weight: 700;
-  color: var(--text-main);
-  margin-bottom: 8px;
-  letter-spacing: -0.5px;
-}
-
-.home-welcome h1 span {
-  color: var(--primary-blue);
-}
-
-.home-welcome p {
-  color: var(--text-muted);
-  font-size: 15px;
-  margin: 0;
-  font-weight: 400;
-}
-
-.home-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 24px;
-  margin-bottom: 32px;
-}
-
-.home-card {
-  background: var(--card);
-  border-radius: 8px;
-  padding: 32px 24px;
-  cursor: pointer;
-  transition: .2s;
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow);
-  position: relative;
-  overflow: hidden;
-}
-
-/* La micro-línea azul elegante al estilo Enterprise */
-.home-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: var(--primary-navy);
-  opacity: 0;
-  transition: .2s;
-}
-
-.home-card:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-lg);
-  border-color: #CBD5E1;
-}
-
-.home-card:hover::before {
-  opacity: 1;
-}
-
-.home-card-icon {
-  font-size: 40px;
-  margin-bottom: 16px;
-  opacity: 0.9;
-}
-
-.home-card-title {
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--text-main);
-  margin-bottom: 8px;
-}
-
-.home-card-desc {
-  font-size: 13px;
-  color: var(--text-muted);
-  line-height: 1.5;
-  font-weight: 400;
-}
-
-.home-card-count {
-  display: inline-block;
-  margin-top: 20px;
-  background: #F1F5F9;
-  border-radius: 6px;
-  padding: 6px 12px;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--primary-navy);
-  border: 1px solid #E2E8F0;
-}
-
-.home-stats {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 20px;
-}
-
-.stat-pill {
-  background: var(--card);
-  border-radius: 8px;
-  padding: 24px;
-  border: 1px solid var(--border);
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  box-shadow: var(--shadow);
-}
-
-.stat-pill-icon {
-  font-size: 32px;
-  opacity: 0.8;
-}
-
-.stat-pill-label {
-  font-size: 12px;
-  color: var(--text-muted);
-  margin-bottom: 4px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.stat-pill-val {
-  font-size: 28px;
-  font-weight: 700;
-  color: var(--text-main);
-  line-height: 1;
-}
-
-/* ======================================================= */
-/* 📱 MAGIA RESPONSIVE EXTREMA (HOME)                      */
-/* ======================================================= */
-.btn-menu-mobile {
-  display: none;
-  background: transparent;
-  border: none;
-  color: var(--text-main);
-  font-size: 26px;
-  cursor: pointer;
-  padding: 0;
-}
-
-@media screen and (max-width: 992px) {
-  .home-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media screen and (max-width: 768px) {
-
-  /* 🔥 FIX DEFINITIVO V3: FLEXBOX PERFECTO 🔥 */
-  .app-layout {
-    position: relative !important;
-    height: 100dvh !important;
-    width: 100vw !important;
-    display: flex !important;
-    flex-direction: column !important;
-    overflow: hidden !important;
-  }
-
-  .header {
-    position: relative !important;
-    flex: 0 0 auto !important;
-    width: 100% !important;
-    height: auto !important;
-    box-sizing: border-box !important;
-    padding-top: max(15px, env(safe-area-inset-top)) !important;
-    padding-bottom: 12px !important;
-    padding-left: 15px !important;
-    padding-right: 15px !important;
-    z-index: 100 !important;
-  }
-
-  .main-wrapper {
-    flex: 1 1 auto !important;
-    display: flex !important;
-    flex-direction: column !important;
-    overflow: hidden !important;
-    padding-top: 0 !important;
-  }
-
-  .content {
-    flex: 1 1 auto !important;
-    overflow-y: auto !important;
-    -webkit-overflow-scrolling: touch !important;
-    width: 100% !important;
-    box-sizing: border-box !important;
-    padding: 15px !important;
-    padding-bottom: max(40px, env(safe-area-inset-bottom, 30px)) !important;
-  }
-
-  /* Ajustes Estéticos */
-  .btn-menu-mobile {
-    display: block !important;
-    margin-right: 10px !important;
-  }
-
-  .header-brand {
-    font-size: 16px !important;
-    margin-left: 5px !important;
-  }
-
-  .header-brand small {
-    display: none !important;
-  }
-
-  .header-user {
-    display: none !important;
-  }
-
+/* =========================================
+   3. ADAPTACIÓN A CELULARES
+   ========================================= */
+@media (max-width: 768px) {
+  .app-container { flex-direction: column; }
+  .mobile-header { display: flex; }
   .sidebar {
-    position: fixed !important;
-    top: 0 !important;
-    bottom: 0 !important;
-    left: -100% !important;
-    height: 100dvh !important;
-    width: 280px !important;
-    z-index: 2000 !important;
-    transition: left 0.3s ease !important;
-    padding-top: max(48px, env(safe-area-inset-top)) !important;
+    position: fixed; top: 55px; left: -100%; height: calc(100vh - 55px);
+    width: 260px; z-index: 1000; box-shadow: 4px 0 10px rgba(0,0,0,0.1);
   }
-
-  .sidebar.mobile-open {
-    left: 0 !important;
-  }
-
-  .mobile-overlay {
-    position: fixed !important;
-    inset: 0 !important;
-    background: rgba(15, 23, 42, 0.6) !important;
-    z-index: 1999 !important;
-    backdrop-filter: blur(2px) !important;
-  }
-
-  /* Elementos del Dashboard */
-  .home-welcome h1 {
-    font-size: 24px !important;
-  }
-
-  .home-welcome p {
-    font-size: 14px !important;
-  }
-
-  .home-grid {
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 16px !important;
-    width: 100% !important;
-  }
-
-  .home-card {
-    padding: 24px 20px !important;
-  }
-
-  .home-card-icon {
-    font-size: 32px !important;
-    margin-bottom: 12px !important;
-  }
-
-  .home-card-title {
-    font-size: 16px !important;
-  }
-
-  .home-stats {
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 16px !important;
-    width: 100% !important;
-  }
-
-  .stat-pill {
-    padding: 20px !important;
-    gap: 16px !important;
-  }
-
-  .stat-pill-icon {
-    font-size: 28px !important;
-  }
-
-  .stat-pill-val {
-    font-size: 24px !important;
-  }
+  .sidebar.open { left: 0; }
+  .formulario-grid { grid-template-columns: 1fr; }
+  .perfil-container { padding: 15px; }
+  .perfil-body { padding: 20px; }
 }

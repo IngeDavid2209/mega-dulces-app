@@ -1,13 +1,14 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { RouterModule } from '@angular/router'; 
 import { Auth, updateEmail,verifyBeforeUpdateEmail, updatePassword, reauthenticateWithCredential, EmailAuthProvider } from '@angular/fire/auth';
 import { Firestore, doc, updateDoc } from '@angular/fire/firestore';
 import Swal from 'sweetalert2';
 @Component({
   selector: 'app-perfil',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule,RouterModule],
   templateUrl: './perfil.html',
   styleUrls: ['./perfil.css']
 })

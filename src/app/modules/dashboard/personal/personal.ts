@@ -391,7 +391,40 @@ export class PersonalComponent implements OnInit, OnDestroy {
       Swal.fire({ icon: 'error', title: 'Error', text: error.message, confirmButtonColor: '#0F172A' });
     }
   }
+// 🔥 FUNCIÓN PARA ELIMINAR USUARIO 🔥
+  async eliminarUsuario(usuarioParaBorrar: any) {
+    // 1. Verificamos que tengas los permisos
+    if (this.currentUser?.rol !== 'admin' && !this.currentUser?.puedeAdministrarPersonal) {
+      Swal.fire({ icon: 'error', title: 'Acceso Denegado', text: 'No tienes permiso para eliminar personal.', confirmButtonColor: '#0F172A' });
+      return;
+    }
 
+    // 2. Pedimos confirmación de seguridad
+    const confirmacion = await Swal.fire({
+      title: '¿Estás seguro?',
+      text: `Se eliminará permanentemente al usuario ${usuarioParaBorrar.nombre}. Esta acción no se puede deshacer.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#EF4444', // Rojo
+      cancelButtonColor: '#0F172A',  // Azul oscuro
+      confirmButtonText: 'Sí, eliminar',
+      cancelButtonText: 'Cancelar'
+    });
+
+    // 3. Si dice que sí, lo borramos de Firestore
+    if (confirmacion.isConfirmed) {
+      try {
+        const docId = usuarioParaBorrar.idFirestore || usuarioParaBorrar.uid || usuarioParaBorrar.usuario;
+        
+        // deleteDoc ya lo tienes importado arriba, así que esto funcionará directo
+        await deleteDoc(doc(this.firestore, 'usuarios', docId));
+        
+        Swal.fire({ icon: 'success', title: '¡Eliminado!', text: 'El usuario ha sido eliminado de la base de datos.', confirmButtonColor: '#0F172A' });
+      } catch (error: any) {
+        Swal.fire({ icon: 'error', title: 'Error', text: 'Hubo un problema al eliminar al usuario: ' + error.message, confirmButtonColor: '#0F172A' });
+      }
+    }
+  }
   async descargarExcel() {
     const list = this.usuarios();
       if (list.length === 0) {

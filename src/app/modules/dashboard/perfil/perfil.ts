@@ -1,10 +1,9 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Auth, updateEmail, updatePassword, reauthenticateWithCredential, EmailAuthProvider } from '@angular/fire/auth';
+import { Auth, updateEmail,verifyBeforeUpdateEmail, updatePassword, reauthenticateWithCredential, EmailAuthProvider } from '@angular/fire/auth';
 import { Firestore, doc, updateDoc } from '@angular/fire/firestore';
 import Swal from 'sweetalert2';
-
 @Component({
   selector: 'app-perfil',
   standalone: true,
@@ -34,6 +33,9 @@ export class PerfilComponent implements OnInit {
     }
   }
 
+// Asegúrate de tener 'verifyBeforeUpdateEmail' importado en la parte de arriba:
+// import { Auth, updatePassword, reauthenticateWithCredential, EmailAuthProvider, verifyBeforeUpdateEmail } from '@angular/fire/auth';
+
   async actualizarMisDatos() {
     const user = this.auth.currentUser;
     if (!user) {
@@ -42,10 +44,10 @@ export class PerfilComponent implements OnInit {
     }
 
     try {
-      // 1. RE-AUTENTICACIÓN
+      // 1. RE-AUTENTICACIÓN (Obligatorio para que Firebase nos deje cambiar el correo)
       const { value: passActual } = await Swal.fire({
         title: 'Confirmación de Seguridad',
-        text: 'Ingresa tu contraseña ACTUAL para aplicar los cambios:',
+        text: 'Ingresa tu contraseña ACTUAL para autorizar estos cambios:',
         input: 'password',
         confirmButtonColor: '#0F172A',
         showCancelButton: true,
@@ -57,9 +59,13 @@ export class PerfilComponent implements OnInit {
       const credential = EmailAuthProvider.credential(user.email!, passActual);
       await reauthenticateWithCredential(user, credential);
 
-      // 2. CAMBIO DE CORREO
-      if (this.formCorreo !== user.email) {
-        await updateEmail(user, this.formCorreo);
+      let correoCambiado = false;
+
+      // 2. CAMBIO DE CORREO (La magia sucede aquí)
+      if (this.formCorreo && this.formCorreo !== user.email) {
+        // Envia el link de confirmación al nuevo correo
+        await verifyBeforeUpdateEmail(user, this.formCorreo);
+        correoCambiado = true;
       }
 
       // 3. CAMBIO DE CONTRASEÑA
@@ -70,35 +76,42 @@ export class PerfilComponent implements OnInit {
         return;
       }
 
-      // 4. CAMBIO DE DATOS EN FIRESTORE
+      // 4. CAMBIO DE DATOS EN TU TABLA DE FIRESTORE
       const userRef = doc(this.firestore, 'usuarios', user.uid);
       
       const payload: any = {
         correo: this.formCorreo,
         telefono: this.formTelefono
       };
-      // Si escribieron nueva contraseña, la actualizamos en el texto de Firestore también
       if (this.formPassword) {
         payload.password = this.formPassword;
       }
 
       await updateDoc(userRef, payload);
 
-      // Actualizamos la sesión local
+      // Actualizamos la sesión en la memoria de la computadora
       this.currentUser.correo = this.formCorreo;
       this.currentUser.telefono = this.formTelefono;
       if (this.formPassword) this.currentUser.password = this.formPassword;
       localStorage.setItem('md_sesion_actual', JSON.stringify(this.currentUser));
 
-      Swal.fire('✅ ¡Éxito!', 'Tus datos de acceso han sido actualizados. Tus próximos inicios de sesión serán con estos nuevos datos.', 'success');
-      this.formPassword = ''; // Limpiamos el campo de contraseña
+      this.formPassword = ''; // Limpiamos la cajita de contraseña por seguridad
+
+      // 5. AVISO AL USUARIO
+      if (correoCambiado) {
+        Swal.fire('¡Verifica tu correo!', `Hemos enviado un enlace a ${this.formCorreo}. Haz clic en él para confirmar tu nuevo correo. Tus demás datos se guardaron.`, 'info');
+      } else {
+        Swal.fire('✅ ¡Éxito!', 'Tus datos han sido actualizados correctamente.', 'success');
+      }
 
     } catch (error: any) {
       console.error(error);
       if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
         Swal.fire('❌ Error', 'La contraseña actual es incorrecta.', 'error');
+      } else if (error.code === 'auth/requires-recent-login') {
+        Swal.fire('❌ Error de Seguridad', 'Por favor cierra sesión y vuelve a entrar para poder cambiar tu correo.', 'error');
       } else {
-        Swal.fire('❌ Error', 'No se pudieron actualizar los datos: ' + error.message, 'error');
+        Swal.fire('❌ Error', 'Hubo un problema al actualizar: ' + error.message, 'error');
       }
     }
   }

@@ -1,0 +1,200 @@
+/* Contenedor principal de la pantalla */
+.perfil-container {
+  padding: 20px 40px;
+  max-width: 800px;
+  margin: 0 auto;
+  font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  animation: fadeIn 0.4s ease-in-out;
+}
+
+.header-titulo h2 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.header-titulo p {
+  color: #64748b;
+  margin-top: 5px;
+  margin-bottom: 30px;
+}
+
+/* La Tarjeta Principal */
+.perfil-card {
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+  position: relative;
+  border: 1px solid #e2e8f0;
+}
+
+/* El Banner azul de arriba */
+.perfil-cover {
+  height: 120px;
+  background: linear-gradient(135deg, #1e293b 0%, #3b82f6 100%);
+}
+
+/* Círculo del Avatar */
+.perfil-avatar-wrapper {
+  display: flex;
+  justify-content: center;
+  margin-top: -50px;
+}
+
+.perfil-avatar {
+  width: 100px;
+  height: 100px;
+  background-color: #ffffff;
+  border: 4px solid #ffffff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 40px;
+  font-weight: bold;
+  color: #3b82f6;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  box-sizing: border-box;
+}
+
+/* Cuerpo de la tarjeta */
+.perfil-body {
+  padding: 20px 40px 40px;
+}
+
+.perfil-header-info {
+  text-align: center;
+  margin-bottom: 25px;
+}
+
+.perfil-header-info h3 {
+  margin: 10px 0 5px;
+  font-size: 22px;
+  color: #1e293b;
+}
+
+.badge-rol {
+  background-color: #e0f2fe;
+  color: #0369a1;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.sucursal-text {
+  color: #64748b;
+  font-size: 14px;
+  margin-top: 10px;
+}
+
+.divider {
+  border: 0;
+  height: 1px;
+  background: #e2e8f0;
+  margin: 25px 0;
+}
+
+/* Grid del formulario (2 columnas en PC, 1 en celular) */
+.formulario-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.form-full-width {
+  grid-column: 1 / -1;
+}
+
+.form-group label {
+  display: block;
+  font-weight: 600;
+  color: #334155;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.input-moderno {
+  width: 100%;
+  padding: 12px 15px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 15px;
+  color: #1e293b;
+  transition: all 0.3s ease;
+  box-sizing: border-box;
+  background-color: #f8fafc;
+}
+
+.input-moderno:focus {
+  outline: none;
+  border-color: #3b82f6;
+  background-color: #ffffff;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.hint-text {
+  display: block;
+  color: #94a3b8;
+  font-size: 12px;
+  margin-top: 6px;
+}
+
+/* Botón de Guardar */
+.perfil-actions {
+  margin-top: 35px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.btn-guardar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background-color: #0f172a;
+  color: white;
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.1s;
+}
+
+.btn-guardar:hover {
+  background-color: #1e293b;
+  transform: translateY(-1px);
+}
+
+.btn-guardar:active {
+  transform: translateY(0);
+}
+
+.icon-save {
+  width: 18px;
+  height: 18px;
+}
+
+/* Responsividad para celulares */
+@media (max-width: 600px) {
+  .formulario-grid {
+    grid-template-columns: 1fr;
+  }
+  .perfil-container {
+    padding: 15px;
+  }
+  .perfil-body {
+    padding: 20px;
+  }
+}
+
+/* Animación de entrada */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}

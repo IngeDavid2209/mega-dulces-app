@@ -15,9 +15,8 @@ export class PerfilComponent implements OnInit {
   private auth = inject(Auth);
   private firestore = inject(Firestore);
 
+  isMenuOpen = false;
   currentUser: any = null;
-  
-  // Variables para el formulario
   formCorreo = '';
   formPassword = '';
   formTelefono = '';

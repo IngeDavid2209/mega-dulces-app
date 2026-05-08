@@ -496,25 +496,25 @@
    ========================================= */
 @media (max-width: 768px) {
   
-  /* 1. Hacemos que la caja principal permita hacer scroll hacia los lados */
+  /* 1. Obligamos al wrapper a crear la barra de scroll sí o sí */
   .calendario-wrapper {
-    overflow-x: auto;
-    overflow-y: hidden;
-    -webkit-overflow-scrolling: touch; /* Scroll suavecito en celulares */
-    padding-bottom: 15px; /* Espacio para que no se coma la barra de scroll */
-    margin: 0 -15px; /* (Opcional) Hace que el scroll llegue hasta las orillas del cel */
-    padding: 0 15px;
+    width: 100% !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    -webkit-overflow-scrolling: touch !important;
+    padding-bottom: 15px !important;
   }
 
-  /* 2. Obligamos al calendario a tener un ancho mínimo para que no se aplaste */
-  /* NOTA: Cambia ".calendario-tabla" por la clase real de tu calendario */
-  .calendario-tabla {
-    min-width: 700px; /* Esto fuerza a que se active el scroll horizontal */
+  /* 2. Forzamos a la tarjeta, la cabecera y la cuadrícula a ser GIGANTES (800px) 
+        para que no quepan en el celular y activen el scroll a la fuerza */
+  .calendar-container, 
+  .calendar-header, 
+  .calendar-grid {
+    min-width: 800px !important;
   }
 
-  /* 3. Achicamos un poquito los números y bolitas para que quepan mejor */
-  .calendario-tabla td {
-    padding: 5px;
-    font-size: 14px;
+  /* 3. Evitamos que el texto de los días se rompa en dos líneas */
+  .calendar-day-name {
+    white-space: nowrap !important;
   }
 }

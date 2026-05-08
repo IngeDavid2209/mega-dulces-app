@@ -3,6 +3,10 @@ import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router'; 
 import { Firestore, collection, onSnapshot } from '@angular/fire/firestore'; 
 import { NotificacionesService } from '../../../services/notificaciones';
+import { Messaging, getToken } from '@angular/fire/messaging';
+import { doc, updateDoc } from '@angular/fire/firestore';
+import { Auth } from '@angular/fire/auth';
+
 
 @Component({
   selector: 'app-home',
@@ -25,23 +29,74 @@ export class HomeComponent implements OnInit, OnDestroy {
   // 🔥 NUEVO: SEÑAL PARA LAS ÁREAS DEL TRABAJADOR 🔥
   misAreasDetalle = signal<any[]>([]);
 
+  
+  // Tus herramientas inyectadas
   private firestore = inject(Firestore); 
   private notificacionesService = inject(NotificacionesService);
+  private messaging = inject(Messaging); // 🔥 NUEVO: Para las notificaciones Push
+  private auth = inject(Auth);           // 🔥 NUEVO: Para saber quién es el usuario
+
+  // Tus variables
   private destructoresRadares: (() => void)[] = [];
 
-  ngOnInit() {
+ ngOnInit() {
+    // 1. Recuperamos la sesión del usuario (tu código original)
     const sesion = localStorage.getItem('md_sesion_actual');
     if (sesion) {
       this.currentUser = JSON.parse(sesion);
+      
       if (this.currentUser && this.currentUser.nombre) {
+        // Ejecutamos tu servicio de permisos anterior
         this.notificacionesService.solicitarPermisos(this.currentUser.nombre);
+        
+        // 🔥 NUEVO: Activamos las Notificaciones Push de Firebase
+        // Lo ideal es hacerlo aquí adentro para asegurar que ya sabemos quién es el usuario
+        this.activarNotificacionesPush();
       }
     }
+
+    // 2. Conectamos el radar (tu código original)
     this.conectarRadarNube();
   }
 
   ngOnDestroy() {
     this.destructoresRadares.forEach(apagarRadar => apagarRadar());
+  }
+
+  async activarNotificacionesPush() {
+    try {
+      const user = this.auth.currentUser;
+      if (!user) return; // Si no hay usuario logueado, nos salimos
+
+      // 1. Le pedimos permiso al navegador/celular
+      const permission = await Notification.requestPermission();
+      
+      if (permission === 'granted') {
+        console.log('✅ Permiso de notificaciones concedido por el usuario.');
+        
+        // 2. Generamos el Token usando tu llave pública de Firebase
+        const token = await getToken(this.messaging, {
+          vapidKey: 'BltRm5eYik-A2jdDOiS3nukAh41n47mYwdpfw9L_IRFUZ2L6OSEDNAo_XiYIimZFXT3Bn6-QJ4BYZoimvjlKigY'
+        });
+
+        if (token) {
+          console.log('📱 Token FCM generado:', token);
+          
+          // 3. Guardamos este token en la base de datos del usuario
+          const userRef = doc(this.firestore, `usuarios/${user.uid}`);
+          await updateDoc(userRef, { 
+            fcmToken: token 
+          });
+          
+        } else {
+          console.log('No se pudo generar el token. Revisa tu Service Worker.');
+        }
+      } else {
+        console.log('❌ El usuario bloqueó las notificaciones.');
+      }
+    } catch (error) {
+      console.error('Error al configurar notificaciones push:', error);
+    }
   }
 
   // 🔥 RELOJ BIOLÓGICO: PARA MOSTRAR AL TRABAJADOR SI SU ÁREA ESTÁ ACTIVA 🔥

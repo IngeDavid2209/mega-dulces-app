@@ -47,24 +47,40 @@ export class AgendaComponent implements OnInit {
     }
   }
 
-  cargarAgenda() {
-    if (!this.currentUser?.uid) return;
+cargarAgenda() {
+    // Buscamos el ID sin importar cómo se llame en tu localStorage
+    const userId = this.currentUser?.uid || this.currentUser?.id; 
     
-    // Apuntamos a la subcolección "agenda" dentro del documento del usuario actual
-    const agendaRef = collection(this.firestore, `usuarios/${this.currentUser.uid}/agenda`);
+    if (!userId) {
+      console.error('❌ No se encontró el ID del usuario en la sesión.');
+      return;
+    }
+
+    console.log('📡 Conectando a la agenda del usuario:', userId);
+    
+    const agendaRef = collection(this.firestore, `usuarios/${userId}/agenda`);
     const q = query(agendaRef);
     
-    // Escuchamos en tiempo real
     onSnapshot(q, (snapshot) => {
       this.tareasPersonales = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
-      })).sort((a: any, b: any) => b.fechaCreacion - a.fechaCreacion); // Ordenamos de la más nueva a la más vieja
+      })).sort((a: any, b: any) => b.fechaCreacion - a.fechaCreacion);
+      
+      console.log('✅ Tareas cargadas:', this.tareasPersonales);
+    }, (error) => {
+      console.error('❌ Error de Firebase al leer la agenda:', error);
     });
   }
 
   async agregarTarea() {
     if (!this.nuevaTareaTexto.trim()) return;
+
+    const userId = this.currentUser?.uid || this.currentUser?.id;
+    if (!userId) {
+      alert('Error de sesión: No detecto tu ID de usuario.');
+      return;
+    }
 
     const tarea = {
       texto: this.nuevaTareaTexto,
@@ -73,11 +89,13 @@ export class AgendaComponent implements OnInit {
     };
 
     try {
-      const colRef = collection(this.firestore, `usuarios/${this.currentUser.uid}/agenda`);
+      const colRef = collection(this.firestore, `usuarios/${userId}/agenda`);
       await addDoc(colRef, tarea);
+      console.log('💾 Tarea guardada con éxito en Firebase.');
       this.nuevaTareaTexto = ''; // Limpiamos el input
     } catch (error) {
-      console.error("Error agregando tarea", error);
+      console.error("❌ Error de permisos al guardar en Firebase:", error);
+      alert('No se pudo guardar la tarea. Revisa la consola F12.');
     }
   }
 

@@ -6,7 +6,7 @@ import { NotificacionesService } from '../../../services/notificaciones';
 import { Messaging, getToken } from '@angular/fire/messaging';
 import { doc, updateDoc } from '@angular/fire/firestore';
 import { Auth } from '@angular/fire/auth';
-
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-home',
@@ -34,8 +34,8 @@ export class HomeComponent implements OnInit, OnDestroy {
   private firestore = inject(Firestore); 
   private notificacionesService = inject(NotificacionesService);
   private messaging = inject(Messaging); // 🔥 NUEVO: Para las notificaciones Push
-  private auth = inject(Auth);           // 🔥 NUEVO: Para saber quién es el usuario
-
+  private auth = inject(Auth);        
+private router = inject(Router);
   // Tus variables
   private destructoresRadares: (() => void)[] = [];
 
@@ -215,5 +215,19 @@ export class HomeComponent implements OnInit, OnDestroy {
     });
     
     this.destructoresRadares.push(radarAreas);
+  }
+  async cerrarSesion() {
+    try {
+      if (this.auth) {
+        await this.auth.signOut(); // Cierra la sesión en Firebase
+      }
+      localStorage.removeItem('md_sesion_actual'); // Borra los datos locales
+      this.router.navigate(['/login']); // Te manda a la pantalla de login
+    } catch (error) {
+      console.error('Error al cerrar sesión', error);
+      // Por si falla Firebase, de todos modos lo sacamos visualmente:
+      localStorage.removeItem('md_sesion_actual');
+      this.router.navigate(['/login']);
+    }
   }
 }

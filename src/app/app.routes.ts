@@ -2,11 +2,12 @@ import { Routes } from '@angular/router';
 
 import { CalendarioComponent } from './modules/dashboard/calendario/calendario';
 import { authGuard } from './services/auth.guard'; 
+import { AgendaComponent } from './agenda/agenda';
 
 export const routes: Routes = [
   { path: '', redirectTo: 'login', pathMatch: 'full' },
   { path: 'calendario', component: CalendarioComponent },
-  
+  { path: 'agenda', component: AgendaComponent },
   // El Login es público, cualquiera puede verlo
   { 
     path: 'login', 
@@ -58,6 +59,8 @@ export const routes: Routes = [
     canActivate: [authGuard],
     loadComponent: () => import('./modules/dashboard/perfil/perfil').then(m => m.PerfilComponent)
   },
+
+  
   
   // Cualquier ruta que no exista o intente saltarse el sistema, al login
   { path: '**', redirectTo: 'login' }

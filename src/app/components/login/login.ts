@@ -39,9 +39,11 @@ export class LoginComponent {
     // Este es un bypass manual solo para emergencias si Firebase falla.
     if (this.usuario === 'admin' && this.password === '123456') {
       const adminSeguridad = {
+        uid: 'admin-local',
         nombre: 'Administrador Supremo', usuario: 'admin', rol: 'admin',
         puedeCrearChecklists: true, puedeCrearRutinas: true, puedeCrearTareasUnicas: true,
-        puedeVerCheckstore: true, puedeVerEstadisticas: true, puedeVerHistorial: true, puedeAdministrarPersonal: true
+        puedeVerCheckstore: true, puedeVerEstadisticas: true, puedeVerHistorial: true,
+        puedeAdministrarPersonal: true
       };
       localStorage.setItem('md_sesion_actual', JSON.stringify(adminSeguridad));
       this.router.navigate(['/home']);
@@ -57,9 +59,8 @@ export class LoginComponent {
 
       snapshot.forEach(doc => {
         const data = doc.data();
-        // Buscamos si coincide el usuario o el correo
         if (data['usuario'] === this.usuario || data['correo'] === this.usuario) {
-          usuarioEncontrado = data;
+          usuarioEncontrado = { uid: doc.id, ...data }; // 👈 agrega uid: doc.id
         }
       });
 

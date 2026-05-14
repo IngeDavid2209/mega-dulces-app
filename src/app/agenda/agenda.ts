@@ -53,12 +53,15 @@ ngOnInit() {
 
 cargarAgenda() {
     // Buscamos el ID sin importar cómo se llame en tu localStorage
-const userId = this.currentUser?.uid || this.currentUser?.id || this.currentUser?.idUsuario || this.currentUser?.correo;    
-    if (!userId) {
-      console.error('❌ No se encontró el ID del usuario en la sesión.');
-      return;
-    }
+const userId = this.currentUser?.uid 
+            || this.currentUser?.id 
+            || this.currentUser?.idUsuario 
+            || this.currentUser?.correo;
 
+if (!userId) {
+  alert('Error de sesión: No detecto tu ID de usuario.');
+  return;
+}
     console.log('📡 Conectando a la agenda del usuario:', userId);
     
     const agendaRef = collection(this.firestore, `usuarios/${userId}/agenda`);
@@ -79,10 +82,15 @@ const userId = this.currentUser?.uid || this.currentUser?.id || this.currentUser
   async agregarTarea() {
     if (!this.nuevaTareaTexto.trim()) return;
 
-const userId = this.currentUser?.uid || this.currentUser?.id || this.currentUser?.idUsuario || this.currentUser?.correo;    if (!userId) {
-      alert('Error de sesión: No detecto tu ID de usuario.');
-      return;
-    }
+const userId = this.currentUser?.uid 
+            || this.currentUser?.id 
+            || this.currentUser?.idUsuario 
+            || this.currentUser?.correo;
+
+if (!userId) {
+  alert('Error de sesión: No detecto tu ID de usuario.');
+  return;
+}
 
     const tarea = {
       texto: this.nuevaTareaTexto,

@@ -53,8 +53,7 @@ ngOnInit() {
 
 cargarAgenda() {
     // Buscamos el ID sin importar cómo se llame en tu localStorage
-    const userId = this.currentUser?.uid || this.currentUser?.id; 
-    
+const userId = this.currentUser?.uid || this.currentUser?.id || this.currentUser?.idUsuario || this.currentUser?.correo;    
     if (!userId) {
       console.error('❌ No se encontró el ID del usuario en la sesión.');
       return;
@@ -80,8 +79,7 @@ cargarAgenda() {
   async agregarTarea() {
     if (!this.nuevaTareaTexto.trim()) return;
 
-    const userId = this.currentUser?.uid || this.currentUser?.id;
-    if (!userId) {
+const userId = this.currentUser?.uid || this.currentUser?.id || this.currentUser?.idUsuario || this.currentUser?.correo;    if (!userId) {
       alert('Error de sesión: No detecto tu ID de usuario.');
       return;
     }

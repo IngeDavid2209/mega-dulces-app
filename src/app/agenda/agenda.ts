@@ -23,10 +23,14 @@ export class AgendaComponent implements OnInit {
   private firestore = inject(Firestore);
   private router = inject(Router);
 
-  ngOnInit() {
+ngOnInit() {
     const sesion = localStorage.getItem('md_sesion_actual');
     if (sesion) {
       this.currentUser = JSON.parse(sesion);
+      
+      // 🔥 NUESTRO CHISMOSO: Va a imprimir todo lo que tiene tu usuario
+      console.log('🕵️‍♂️ DATOS DEL USUARIO:', this.currentUser); 
+      
       this.cargarAgenda();
     } else {
       this.router.navigate(['/login']);

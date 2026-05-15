@@ -18,7 +18,8 @@ export class CalendarioComponent implements OnInit, OnDestroy {
   currentUser: any = null;
   empleados = signal<any[]>([]);
   checklistsGlobales: any[] = [];
-
+ vistaActual: string = 'asignadas';
+ tareasPersonales: any[] = [];
   areas = signal<any[]>([]);
   areaSeleccionada = 'Todas';
   terminoBusqueda = '';

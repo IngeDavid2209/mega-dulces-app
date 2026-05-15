@@ -215,7 +215,26 @@
         Reporte de Auditoría: <span style="color: #2563EB;">{{ diaSeleccionado()?.fechaStr }}</span>
       </div>
     </div>
-    
+    <div class="tabs-container" style="display: flex; gap: 10px; margin-bottom: 20px;">
+  <button 
+    (click)="vistaActual = 'asignadas'" 
+    [ngStyle]="{'background': vistaActual === 'asignadas' ? '#0F172A' : '#F1F5F9', 'color': vistaActual === 'asignadas' ? 'white' : '#64748B'}"
+    style="padding: 10px 20px; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.2s;">
+    📋 Tareas Asignadas
+  </button>
+  <button 
+    (click)="vistaActual = 'personales'" 
+    [ngStyle]="{'background': vistaActual === 'personales' ? '#0F172A' : '#F1F5F9', 'color': vistaActual === 'personales' ? 'white' : '#64748B'}"
+    style="padding: 10px 20px; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.2s;">
+    📓 Mi Agenda Personal
+  </button>
+</div>
+
+<div *ngIf="vistaActual === 'asignadas'">
+   </div>
+
+<div *ngIf="vistaActual === 'personales'">
+   </div>
     <div style="max-width: 1000px; margin: 40px auto; padding: 0 20px; padding-bottom: 60px;">
       <div *ngIf="diaSeleccionado()?.tareas.length === 0" style="background: white; border: 2px dashed #CBD5E1; border-radius: 16px; padding: 60px 20px; text-align: center;">
         <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="1.5" style="margin-bottom: 15px;"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>

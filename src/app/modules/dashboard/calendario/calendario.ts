@@ -2,7 +2,8 @@ import { Component, signal, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, Router } from '@angular/router';
-import { Firestore, collection, onSnapshot } from '@angular/fire/firestore';
+// 🔥 Agregué getDocs y query para que pueda ir por la agenda personal
+import { Firestore, collection, onSnapshot, getDocs, query } from '@angular/fire/firestore';
 import Swal from 'sweetalert2';
 
 @Component({
@@ -15,11 +16,15 @@ import Swal from 'sweetalert2';
 export class CalendarioComponent implements OnInit, OnDestroy {
   isMenuOpen = false;
   toggleMenu() { this.isMenuOpen = !this.isMenuOpen; }
+
   currentUser: any = null;
   empleados = signal<any[]>([]);
   checklistsGlobales: any[] = [];
- vistaActual: string = 'asignadas';
- tareasPersonales: any[] = [];
+  
+  vistaActual: string = 'asignadas';
+  tareasPersonales: any[] = [];
+  tareasPersonalesDelDia: any[] = []; // 🔥 Nueva variable para guardar la agenda del día
+
   areas = signal<any[]>([]);
   areaSeleccionada = 'Todas';
   terminoBusqueda = '';
@@ -28,15 +33,13 @@ export class CalendarioComponent implements OnInit, OnDestroy {
   fechaActual = new Date();
   mesActualNombre = '';
   anioActual = 0;
+
   diasCalendario = signal<any[]>([]);
   diasSemana = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
   diaSeleccionado = signal<any>(null);
   isModalOpen = false;
 
-  // 🔥 VISOR DE FOTOS INTEGRADO 🔥
   fotoAmpliada = signal<string | null>(null);
-
-  // 🔥 NUEVO: BUSCADOR DE FECHA 🔥
   fechaBuscada = '';
 
   private firestore = inject(Firestore);
@@ -46,10 +49,12 @@ export class CalendarioComponent implements OnInit, OnDestroy {
   ngOnInit() {
     const sesion = localStorage.getItem('md_sesion_actual');
     if (sesion) { this.currentUser = JSON.parse(sesion); }
+
     if (this.currentUser?.rol !== 'admin' && !this.currentUser?.puedeVerCalendario) {
       this.router.navigate(['/home']);
       return;
     }
+
     this.conectarDatos();
     this.actualizarMes(0);
   }
@@ -105,17 +110,15 @@ export class CalendarioComponent implements OnInit, OnDestroy {
     const opcionesMes: Intl.DateTimeFormatOptions = { month: 'long' };
     this.mesActualNombre = this.fechaActual.toLocaleDateString('es-ES', opcionesMes).toUpperCase();
   }
-  // 🔥 BUSCADOR DE FECHA EXACTA (El que te marcaba error) 🔥
+
   irAFechaPrecisa(event: any) {
     const input = event.target.value;
     if (!input) return;
-
     const partes = input.split('-');
     if (partes.length === 3) {
       const anio = parseInt(partes[0], 10);
-      const mes = parseInt(partes[1], 10) - 1; // En JavaScript los meses son del 0 al 11
+      const mes = parseInt(partes[1], 10) - 1;
       const dia = parseInt(partes[2], 10);
-
       this.fechaActual = new Date(anio, mes, dia);
       this.actualizarMes(0);
       this.generarCalendario();
@@ -123,13 +126,10 @@ export class CalendarioComponent implements OnInit, OnDestroy {
     }
   }
 
-  // 🔥 BOTONES INTUITIVOS DE NAVEGACIÓN RÁPIDA 🔥
   irAHoy() {
     this.fechaActual = new Date();
     this.actualizarMes(0);
     this.generarCalendario();
-
-    // Ajuste de zona horaria para México
     const offset = this.fechaActual.getTimezoneOffset() * 60000;
     const hoyStr = new Date(this.fechaActual.getTime() - offset).toISOString().split('T')[0];
     this.abrirDiaPorString(hoyStr);
@@ -141,7 +141,6 @@ export class CalendarioComponent implements OnInit, OnDestroy {
     this.fechaActual = ayer;
     this.actualizarMes(0);
     this.generarCalendario();
-
     const offset = ayer.getTimezoneOffset() * 60000;
     const ayerStr = new Date(ayer.getTime() - offset).toISOString().split('T')[0];
     this.abrirDiaPorString(ayerStr);
@@ -150,11 +149,10 @@ export class CalendarioComponent implements OnInit, OnDestroy {
   abrirDiaPorString(fechaStr: string) {
     const partes = fechaStr.split('-');
     if (partes.length < 3) return;
-
     const dia = parseInt(partes[2], 10);
     const diaEncontrado = this.diasCalendario().find(d => d && d.numero === dia);
-
-    if (diaEncontrado && diaEncontrado.total > 0) {
+    // 🔥 Quité el ".total > 0" para que te deje abrir agendas en días vacíos
+    if (diaEncontrado) {
       this.abrirDetalleDia(diaEncontrado);
     } else {
       Swal.fire({ toast: true, position: 'top-end', showConfirmButton: false, timer: 3000, icon: 'info', title: 'Sin actividades registradas' });
@@ -166,18 +164,16 @@ export class CalendarioComponent implements OnInit, OnDestroy {
     const month = this.fechaActual.getMonth();
     const primerDia = new Date(year, month, 1).getDay();
     const diasEnMes = new Date(year, month + 1, 0).getDate();
-
     let grid = [];
+    
     const offset = new Date().getTimezoneOffset() * 60000;
     const hoyStr = new Date(Date.now() - offset).toISOString().split('T')[0];
 
     for (let i = 0; i < primerDia; i++) { grid.push(null); }
 
     for (let i = 1; i <= diasEnMes; i++) {
-      // Ajuste para evitar bugs de zona horaria al buscar tareas
       const fechaLocal = new Date(year, month, i, 12);
       const fechaStr = fechaLocal.toISOString().split('T')[0];
-
       let tareasDelDia = this.checklistsGlobales.filter(c => c.date === fechaStr);
 
       if (this.empleadoSeleccionado !== 'Todos') {
@@ -188,11 +184,10 @@ export class CalendarioComponent implements OnInit, OnDestroy {
       }
 
       let completadas = 0; let pendientes = 0; let vencidas = 0;
-
       tareasDelDia.forEach(tarea => {
         const tareasMarcadas = tarea.items ? tarea.items.filter((item: any) => item.checked).length : 0;
         const totalItems = tarea.items ? tarea.items.length : 0;
-
+        
         if (tareasMarcadas === totalItems && totalItems > 0) { completadas++; }
         else if (fechaStr < hoyStr) { vencidas++; }
         else { pendientes++; }
@@ -207,9 +202,47 @@ export class CalendarioComponent implements OnInit, OnDestroy {
   }
 
   abrirDetalleDia(dia: any) {
-    if (!dia || dia.total === 0) return;
+    if (!dia) return; // 🔥 Permite abrir días aunque no tengan checklists
     this.diaSeleccionado.set(dia);
+    this.vistaActual = 'asignadas';
+    this.cargarAgendaPersonal(dia.fechaStr); // 🔥 Mandamos traer la agenda
     this.isModalOpen = true;
+  }
+
+  // 🔥 NUEVA FUNCIÓN MÁGICA: Trae solo las tareas personales de ese día específico
+  async cargarAgendaPersonal(fechaStr: string) {
+    this.tareasPersonalesDelDia = [];
+    
+    // Por defecto, usa el ID del que tiene la sesión abierta
+    let userIdToFetch = this.currentUser?.uid || this.currentUser?.id || this.currentUser?.idUsuario || this.currentUser?.correo;
+
+    // Si es Admin y seleccionó a alguien en el filtro, traemos la agenda de ese empleado
+    if (this.currentUser?.rol === 'admin' && this.empleadoSeleccionado !== 'Todos') {
+      const emp = this.empleados().find(e => e.nombre === this.empleadoSeleccionado);
+      if (emp) {
+        userIdToFetch = emp.uid || emp.id || emp.idUsuario || emp.correo;
+      }
+    }
+
+    if (!userIdToFetch) return;
+
+    try {
+      const agendaRef = collection(this.firestore, `usuarios/${userIdToFetch}/agenda`);
+      const snapshot = await getDocs(query(agendaRef));
+
+      const todasLasTareas = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as any }));
+
+      // Filtramos las que coincidan exactamente con la fecha que se abrió
+      this.tareasPersonalesDelDia = todasLasTareas.filter(t => {
+        if (!t.fechaCreacion) return false;
+        const offset = new Date().getTimezoneOffset() * 60000;
+        const dateStr = new Date(t.fechaCreacion - offset).toISOString().split('T')[0];
+        return dateStr === fechaStr;
+      });
+
+    } catch (error) {
+      console.error('Error al cargar agenda personal:', error);
+    }
   }
 
   cerrarDetalle() {
@@ -226,7 +259,6 @@ export class CalendarioComponent implements OnInit, OnDestroy {
     tarea.expandido = !tarea.expandido;
   }
 
-  // 🔥 FUNCIONES DEL VISOR DE FOTOS 🔥
   abrirFoto(url: string, event: Event) {
     event.stopPropagation();
     this.fotoAmpliada.set(url);

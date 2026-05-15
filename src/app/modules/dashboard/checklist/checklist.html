@@ -398,6 +398,9 @@
                       <circle cx="8.5" cy="8.5" r="1.5"></circle>
                       <polyline points="21 15 16 10 5 21"></polyline>
                     </svg>
+
+                    //primer parte
+
                     <svg *ngIf="item.permiteDocumentos" width="12" height="12" viewBox="0 0 24 24" fill="none"
                       stroke="currentColor" stroke-width="2" style="margin-right: 4px;">
                       <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
@@ -575,6 +578,7 @@
               </ng-container>
             </div>
           </div>
+
           <div style="margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border);">
             <label
               style="display: block; font-size: 14px; font-weight: 600; color: var(--text-main); margin-bottom: 8px;">
@@ -591,6 +595,32 @@
               placeholder="Escribe aquí si hubo algún problema, material faltante, etc."
               [disabled]="checklistSeleccionado().enviado || currentUser?.nombre !== checklistSeleccionado().assigned"></textarea>
           </div>
+
+<div style="margin-top: 20px; border: 1px dashed #CBD5E1; padding: 16px; border-radius: 8px; background: #F8FAFC;">
+  <label style="font-size: 13px; font-weight: 800; color: #4338CA; display: block; margin-bottom: 12px; text-transform: uppercase;">
+    🚩 Dividir en Fases (Opcional)
+  </label>
+  
+  <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+    <input type="text" [(ngModel)]="nuevaFaseTexto" (keyup.enter)="agregarFase()" placeholder="Ej: Cotizar, Ir a sucursal, Revisar..." style="flex: 1; padding: 10px 14px; border-radius: 8px; border: 1px solid #CBD5E1; font-size: 14px; outline: none;">
+    <button (click)="agregarFase()" type="button" style="background: #4338CA; color: white; border: none; padding: 0 20px; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s;">
+      Añadir Fase
+    </button>
+  </div>
+
+  <div *ngIf="fasesTemporales.length > 0" style="display: flex; flex-direction: column; gap: 8px;">
+    <div *ngFor="let fase of fasesTemporales; let i = index" style="display: flex; align-items: center; justify-content: space-between; background: white; padding: 10px 14px; border: 1px solid #E2E8F0; border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.02);">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <span style="background: #EEF2FF; color: #4338CA; font-weight: 800; font-size: 12px; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border-radius: 50%;">{{ i + 1 }}</span>
+        <span style="font-size: 14px; font-weight: 600; color: #1E293B;">{{ fase.texto }}</span>
+      </div>
+      <button (click)="eliminarFase(i)" type="button" style="color: #EF4444; background: #FEF2F2; border: 1px solid #FECACA; border-radius: 6px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 18px; line-height: 1;">
+        &times;
+      </button>
+    </div>
+  </div>
+</div>
+
         </div>
         <div class="send-section"
           *ngIf="!checklistSeleccionado().enviado && currentUser?.nombre === checklistSeleccionado().assigned">

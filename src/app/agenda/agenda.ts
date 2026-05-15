@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, Router } from '@angular/router';
 import { Firestore, collection, query, onSnapshot, addDoc, doc, updateDoc, deleteDoc, getDocs } from '@angular/fire/firestore';
-import { Auth } from '@angular/fire/auth'; // Si no usas Auth aquí, puedes quitarlo, pero lo dejo por si acaso
+import { Auth } from '@angular/fire/auth';
 
 @Component({
   selector: 'app-agenda',
@@ -35,9 +35,8 @@ export class AgendaComponent implements OnInit {
     const sesion = localStorage.getItem('md_sesion_actual');
     if (sesion) {
       this.currentUser = JSON.parse(sesion);
-      this.usuarioSeleccionado = this.miPropioId(); // Por defecto veo mi propia agenda
+      this.usuarioSeleccionado = this.miPropioId();
 
-      // Si es el Jefe, le traemos la lista de sus empleados
       if (this.currentUser?.rol === 'admin') {
         this.cargarListaPersonal();
       }
@@ -48,12 +47,10 @@ export class AgendaComponent implements OnInit {
     }
   }
 
-  // Funciancita auxiliar para no repetir código con el ID
   miPropioId(): string {
     return this.currentUser?.uid || this.currentUser?.id || this.currentUser?.idUsuario || this.currentUser?.correo || '';
   }
 
-  // Trae a todos los empleados para llenar el desplegable del jefe
   async cargarListaPersonal() {
     try {
       const usersRef = collection(this.firestore, 'usuarios');
@@ -67,10 +64,9 @@ export class AgendaComponent implements OnInit {
     }
   }
 
-  // Se ejecuta cuando el jefe cambia el valor del menú desplegable
   cambiarUsuarioFiltro(event: any) {
     this.usuarioSeleccionado = event.target.value;
-    this.cargarAgenda(); // Recarga las tareas pero ahora con el ID del trabajador
+    this.cargarAgenda();
   }
 
   cargarAgenda() {
@@ -87,27 +83,19 @@ export class AgendaComponent implements OnInit {
     });
   }
 
-  async agregarTarea() {
+  // 🔥 1. El botón "+" solo prepara el borrador y abre el modal
+  agregarTarea() {
     if (!this.nuevaTareaTexto.trim()) return;
 
-    const userId = this.usuarioSeleccionado; 
-    if (!userId) return;
-
-    const tarea = {
+    this.tareaActiva = {
       texto: this.nuevaTareaTexto,
       completada: false,
       fechaCreacion: Date.now(),
       instrucciones: '',
       comentarios: '',
-      adjunto: null
+      adjunto: null,
+      esNueva: true // Bandera para saber que es creación
     };
-
-    try {
-      await addDoc(collection(this.firestore, `usuarios/${userId}/agenda`), tarea);
-      this.nuevaTareaTexto = ''; 
-    } catch (error) {
-      console.error("Error al guardar:", error);
-    }
   }
 
   async toggleTarea(tarea: any) {
@@ -123,7 +111,7 @@ export class AgendaComponent implements OnInit {
   }
 
   async eliminarTarea(tareaId: string, event?: Event) {
-    if (event) event.stopPropagation(); // Evita que se abra el modal al darle click al bote de basura
+    if (event) event.stopPropagation();
     
     const userId = this.usuarioSeleccionado; 
     if (!userId) return;
@@ -138,9 +126,9 @@ export class AgendaComponent implements OnInit {
     }
   }
 
-  // 🔥 FUNCIONES DEL MODAL DE DETALLES 🔥
+  // 🔥 2. Funciones del Modal de Detalles
   abrirDetalle(tarea: any) {
-    this.tareaActiva = { ...tarea }; // Clonamos la tarea para no afectar la lista hasta que guarde
+    this.tareaActiva = { ...tarea, esNueva: false }; // Clonamos para edición
   }
 
   cerrarDetalle() {
@@ -149,28 +137,33 @@ export class AgendaComponent implements OnInit {
 
   async guardarDetalles() {
     if (!this.tareaActiva) return;
-    const userId = this.usuarioSeleccionado; 
+    const userId = this.usuarioSeleccionado || this.miPropioId(); 
     if (!userId) return;
 
     try {
-      const docRef = doc(this.firestore, `usuarios/${userId}/agenda/${this.tareaActiva.id}`);
-      await updateDoc(docRef, {
-        texto: this.tareaActiva.texto,
-        instrucciones: this.tareaActiva.instrucciones || '',
-        comentarios: this.tareaActiva.comentarios || ''
-      });
-      console.log('✅ Detalles guardados');
+      if (this.tareaActiva.esNueva) {
+        // CREACIÓN: Guardar nueva tarea en Firebase
+        const { esNueva, ...tareaParaGuardar } = this.tareaActiva;
+        await addDoc(collection(this.firestore, `usuarios/${userId}/agenda`), tareaParaGuardar);
+        this.nuevaTareaTexto = ''; 
+      } else {
+        // ACTUALIZACIÓN: Guardar cambios en tarea existente
+        const docRef = doc(this.firestore, `usuarios/${userId}/agenda/${this.tareaActiva.id}`);
+        await updateDoc(docRef, {
+          texto: this.tareaActiva.texto,
+          instrucciones: this.tareaActiva.instrucciones || '',
+          comentarios: this.tareaActiva.comentarios || ''
+        });
+      }
       this.cerrarDetalle();
     } catch (error) {
-      console.error('Error al guardar detalles', error);
-      alert('Hubo un error al guardar los detalles.');
+      console.error('Error al guardar:', error);
+      alert('Hubo un error al procesar la solicitud.');
     }
   }
 
-  // Funciones del Layout (Menú y Sesión)
-  toggleMenu() {
-    this.isMenuOpen = !this.isMenuOpen;
-  }
+  // Layout
+  toggleMenu() { this.isMenuOpen = !this.isMenuOpen; }
 
   async cerrarSesion() {
     try {

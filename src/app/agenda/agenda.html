@@ -238,8 +238,9 @@
 
       <div
         style="padding: 20px 24px; border-bottom: 1px solid #E2E8F0; display: flex; justify-content: space-between; align-items: center;">
-        <h3 style="margin: 0; font-size: 18px; color: #0F172A; font-weight: 800;">Detalles de la Tarea</h3>
-        <button (click)="cerrarDetalle()"
+<h3 style="margin: 0; font-size: 18px; color: #0F172A; font-weight: 800;">
+  {{ tareaActiva.esNueva ? 'Crear Nueva Tarea' : 'Detalles de la Tarea' }}
+</h3>        <button (click)="cerrarDetalle()"
           style="background: none; border: none; font-size: 28px; color: #64748B; cursor: pointer; line-height: 1;">&times;</button>
       </div>
 

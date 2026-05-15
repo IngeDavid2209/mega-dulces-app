@@ -2,8 +2,9 @@ import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, Router } from '@angular/router';
-import { Auth } from '@angular/fire/auth';
-import { getDocs, Firestore, collection, addDoc, query, onSnapshot, doc, updateDoc, deleteDoc } from '@angular/fire/firestore';
+import { Firestore, collection, query, onSnapshot, addDoc, doc, updateDoc, deleteDoc, getDocs } from '@angular/fire/firestore';
+import { Auth } from '@angular/fire/auth'; // Si no usas Auth aquí, puedes quitarlo, pero lo dejo por si acaso
+
 @Component({
   selector: 'app-agenda',
   standalone: true,
@@ -12,23 +13,29 @@ import { getDocs, Firestore, collection, addDoc, query, onSnapshot, doc, updateD
   styleUrls: ['./agenda.css']
 })
 export class AgendaComponent implements OnInit {
- isMenuOpen = false;
+  isMenuOpen = false;
   currentUser: any = null;
+  
   nuevaTareaTexto: string = '';
   tareasPersonales: any[] = [];
+  
+  // Variables para el Jefe
   listaUsuarios: any[] = [];
   usuarioSeleccionado: string = '';
+
+  // Variable para el Modal de Detalles
+  tareaActiva: any = null;
 
   // Inyecciones
   private auth = inject(Auth);
   private firestore = inject(Firestore);
   private router = inject(Router);
 
-ngOnInit() {
+  ngOnInit() {
     const sesion = localStorage.getItem('md_sesion_actual');
     if (sesion) {
       this.currentUser = JSON.parse(sesion);
-      this.usuarioSeleccionado = this.miPropioId(); // Por defecto, veo mi propia agenda
+      this.usuarioSeleccionado = this.miPropioId(); // Por defecto veo mi propia agenda
 
       // Si es el Jefe, le traemos la lista de sus empleados
       if (this.currentUser?.rol === 'admin') {
@@ -53,7 +60,7 @@ ngOnInit() {
       const snapshot = await getDocs(query(usersRef));
       this.listaUsuarios = snapshot.docs.map(doc => ({
         id: doc.id,
-        ...doc.data()
+        ...doc.data() as any
       }));
     } catch (error) {
       console.error('Error al cargar lista de personal:', error);
@@ -67,7 +74,6 @@ ngOnInit() {
   }
 
   cargarAgenda() {
-    // MAGIA: Ahora usa "usuarioSeleccionado" en vez del usuario actual
     const userId = this.usuarioSeleccionado; 
     if (!userId) return;
 
@@ -76,7 +82,7 @@ ngOnInit() {
     onSnapshot(query(agendaRef), (snapshot) => {
       this.tareasPersonales = snapshot.docs.map(doc => ({
         id: doc.id,
-        ...doc.data()
+        ...doc.data() as any
       })).sort((a: any, b: any) => b.fechaCreacion - a.fechaCreacion);
     });
   }
@@ -84,15 +90,16 @@ ngOnInit() {
   async agregarTarea() {
     if (!this.nuevaTareaTexto.trim()) return;
 
-    // MAGIA PARTE 2: Si el jefe está viendo la agenda de "Juan" y escribe una tarea, 
-    // se le asigna directamente a Juan en tiempo real. ¡Asignación remota!
     const userId = this.usuarioSeleccionado; 
     if (!userId) return;
 
     const tarea = {
       texto: this.nuevaTareaTexto,
       completada: false,
-      fechaCreacion: Date.now()
+      fechaCreacion: Date.now(),
+      instrucciones: '',
+      comentarios: '',
+      adjunto: null
     };
 
     try {
@@ -104,37 +111,73 @@ ngOnInit() {
   }
 
   async toggleTarea(tarea: any) {
+    const userId = this.usuarioSeleccionado; 
+    if (!userId) return;
+
     try {
-      const docRef = doc(this.firestore, `usuarios/${this.currentUser.uid}/agenda/${tarea.id}`);
+      const docRef = doc(this.firestore, `usuarios/${userId}/agenda/${tarea.id}`);
       await updateDoc(docRef, { completada: !tarea.completada });
     } catch (error) {
       console.error("Error actualizando tarea", error);
     }
   }
 
-  async eliminarTarea(id: string) {
-    try {
-      const docRef = doc(this.firestore, `usuarios/${this.currentUser.uid}/agenda/${id}`);
-      await deleteDoc(docRef);
-    } catch (error) {
-      console.error("Error eliminando tarea", error);
+  async eliminarTarea(tareaId: string, event?: Event) {
+    if (event) event.stopPropagation(); // Evita que se abra el modal al darle click al bote de basura
+    
+    const userId = this.usuarioSeleccionado; 
+    if (!userId) return;
+
+    if(confirm('¿Estás seguro de eliminar esta tarea?')) {
+      try {
+        const docRef = doc(this.firestore, `usuarios/${userId}/agenda/${tareaId}`);
+        await deleteDoc(docRef);
+      } catch (error) {
+        console.error("Error eliminando tarea", error);
+      }
     }
   }
-  // Función para abrir/cerrar el menú en celulares
+
+  // 🔥 FUNCIONES DEL MODAL DE DETALLES 🔥
+  abrirDetalle(tarea: any) {
+    this.tareaActiva = { ...tarea }; // Clonamos la tarea para no afectar la lista hasta que guarde
+  }
+
+  cerrarDetalle() {
+    this.tareaActiva = null;
+  }
+
+  async guardarDetalles() {
+    if (!this.tareaActiva) return;
+    const userId = this.usuarioSeleccionado; 
+    if (!userId) return;
+
+    try {
+      const docRef = doc(this.firestore, `usuarios/${userId}/agenda/${this.tareaActiva.id}`);
+      await updateDoc(docRef, {
+        texto: this.tareaActiva.texto,
+        instrucciones: this.tareaActiva.instrucciones || '',
+        comentarios: this.tareaActiva.comentarios || ''
+      });
+      console.log('✅ Detalles guardados');
+      this.cerrarDetalle();
+    } catch (error) {
+      console.error('Error al guardar detalles', error);
+      alert('Hubo un error al guardar los detalles.');
+    }
+  }
+
+  // Funciones del Layout (Menú y Sesión)
   toggleMenu() {
     this.isMenuOpen = !this.isMenuOpen;
   }
 
-  // Función para salir del sistema
   async cerrarSesion() {
     try {
-      if (this.auth) {
-        await this.auth.signOut();
-      }
+      if (this.auth) await this.auth.signOut();
       localStorage.removeItem('md_sesion_actual');
       this.router.navigate(['/login']);
     } catch (error) {
-      console.error('Error al cerrar sesión', error);
       localStorage.removeItem('md_sesion_actual');
       this.router.navigate(['/login']);
     }

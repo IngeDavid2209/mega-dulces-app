@@ -86,13 +86,27 @@
     </aside>
 
     <div class="content" style="padding: 30px;">
-      <div class="agenda-container">
-        
-        <div class="section-header" style="margin-bottom: 30px;">
-          <div class="section-title">Mi Agenda Personal</div>
-          <div class="section-sub">Organiza tus actividades diarias y tareas fuera de checklist</div>
+     <div class="agenda-container">
+        <div class="section-header" style="margin-bottom: 24px;">
+          <h2 class="section-title">Mi Agenda Personal</h2>
+          <p class="section-sub">Organiza tus actividades diarias y tareas fuera de checklist</p>
         </div>
 
+        <div *ngIf="currentUser?.rol === 'admin'" style="margin-bottom: 24px; background: white; padding: 16px 20px; border-radius: 14px; border: 1px solid var(--border); box-shadow: 0 4px 10px rgba(0,0,0,0.02);">
+          <label style="font-size: 13px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 10px; display: flex; align-items: center; gap: 6px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+            Auditoría de Agendas
+          </label>
+          <select class="input-tarea" style="width: 100%; cursor: pointer; appearance: auto;" (change)="cambiarUsuarioFiltro($event)" [value]="usuarioSeleccionado">
+            <option [value]="miPropioId()">Mi Agenda (Personal)</option>
+            <option disabled>────────── EQUIPO ──────────</option>
+            <ng-container *ngFor="let user of listaUsuarios">
+              <option *ngIf="user.id !== miPropioId()" [value]="user.id">
+                {{ user.nombre || user.correo }} - {{ user.rol | uppercase }}
+              </option>
+            </ng-container>
+          </select>
+        </div>
         <div class="nueva-tarea-card">
           <input type="text" class="input-tarea" [(ngModel)]="nuevaTareaTexto" (keyup.enter)="agregarTarea()" placeholder="¿Qué tienes pendiente para hoy?">
           <button class="btn-agregar" (click)="agregarTarea()">

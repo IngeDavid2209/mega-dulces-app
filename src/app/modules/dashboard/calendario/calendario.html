@@ -211,17 +211,21 @@
               <div class="cell-date" *ngIf="dia">
                 <span class="date-number">{{ dia.numero }}</span>
               </div>
-              <div class="cell-content" *ngIf="dia && dia.total > 0">
-                <div class="task-summary">
-                  <div class="summary-dot complete" *ngIf="dia.completadas > 0"
-                    title="{{dia.completadas}} Tareas Completadas">{{ dia.completadas }}</div>
-                  <div class="summary-dot pending" *ngIf="dia.pendientes > 0"
-                    title="{{dia.pendientes}} Tareas Pendientes">{{ dia.pendientes }}</div>
-                  <div class="summary-dot missed" *ngIf="dia.vencidas > 0" title="{{dia.vencidas}} Tareas Vencidas">{{
-                    dia.vencidas }}</div>
+              <div class="cell-content" *ngIf="dia && (dia.total > 0 || dia.personalesCount > 0)">
+              <div class="task-summary">
+                <div class="summary-dot complete" *ngIf="dia.completadas > 0">{{ dia.completadas }}</div>
+                <div class="summary-dot pending" *ngIf="dia.pendientes > 0">{{ dia.pendientes }}</div>
+                <div class="summary-dot missed" *ngIf="dia.vencidas > 0">{{ dia.vencidas }}</div>
+                
+                <div class="summary-dot" *ngIf="dia.personalesCount > 0" 
+                     style="background: #3B82F6; border: 1.5px solid #DBEAFE; color: white;"
+                     title="{{dia.personalesCount}} Tareas Personales">
+                  {{ dia.personalesCount }}
                 </div>
-                <div style="font-size: 11px; text-align: center; color: #64748B; font-weight: 600; margin-top: 6px;">{{
-                  dia.total }} Tareas</div>
+              </div>
+              
+              <div style="font-size: 10px; text-align: center; color: #64748B; font-weight: 700; margin-top: 4px;">
+                {{ dia.total + dia.personalesCount }} Actividades
               </div>
             </div>
           </div>
@@ -235,6 +239,7 @@
             style="width:12px; height:12px; background:#F59E0B; border-radius:50%;"></span> Pendientes (Hoy)</span>
         <span style="display: flex; align-items: center; gap: 5px;"><span
             style="width:12px; height:12px; background:#EF4444; border-radius:50%;"></span> Vencidas / No Hechas</span>
+            <span style="display: flex; align-items: center; gap: 5px;"><span style="width:12px; height:12px; background:#3B82F6; border-radius:50%;"></span> Agenda Personal</span>
       </div>
     </div>
   </div>

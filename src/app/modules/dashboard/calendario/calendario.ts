@@ -29,7 +29,7 @@ export class CalendarioComponent implements OnInit, OnDestroy {
   areaSeleccionada = 'Todas';
   terminoBusqueda = '';
   empleadoSeleccionado = 'Todos';
-
+tareasAgendaMes: any[] = [];
   fechaActual = new Date();
   mesActualNombre = '';
   anioActual = 0;
@@ -159,7 +159,7 @@ export class CalendarioComponent implements OnInit, OnDestroy {
     }
   }
 
-  generarCalendario() {
+async generarCalendario() {
     const year = this.fechaActual.getFullYear();
     const month = this.fechaActual.getMonth();
     const primerDia = new Date(year, month, 1).getDay();
@@ -169,13 +169,28 @@ export class CalendarioComponent implements OnInit, OnDestroy {
     const offset = new Date().getTimezoneOffset() * 60000;
     const hoyStr = new Date(Date.now() - offset).toISOString().split('T')[0];
 
+    // 1. Identificamos de quién vamos a contar la agenda
+    let userId = this.currentUser?.uid || this.currentUser?.id || this.currentUser?.idUsuario || this.currentUser?.correo;
+    if (this.currentUser?.rol === 'admin' && this.empleadoSeleccionado !== 'Todos') {
+      const emp = this.empleados().find(e => e.nombre === this.empleadoSeleccionado);
+      if (emp) userId = emp.uid || emp.id || emp.idUsuario || emp.correo;
+    }
+
+    // 2. Traemos la agenda completa una sola vez para este mes (Optimizado)
+    if (userId) {
+      const agendaRef = collection(this.firestore, `usuarios/${userId}/agenda`);
+      const snap = await getDocs(query(agendaRef));
+      this.tareasAgendaMes = snap.docs.map(doc => ({ ...doc.data() as any }));
+    }
+
     for (let i = 0; i < primerDia; i++) { grid.push(null); }
 
     for (let i = 1; i <= diasEnMes; i++) {
       const fechaLocal = new Date(year, month, i, 12);
       const fechaStr = fechaLocal.toISOString().split('T')[0];
+      
+      // Conteo de Checklists (Operativo)
       let tareasDelDia = this.checklistsGlobales.filter(c => c.date === fechaStr);
-
       if (this.empleadoSeleccionado !== 'Todos') {
         tareasDelDia = tareasDelDia.filter(c => c.assigned === this.empleadoSeleccionado);
       } else if (this.areaSeleccionada !== 'Todas') {
@@ -183,19 +198,26 @@ export class CalendarioComponent implements OnInit, OnDestroy {
         tareasDelDia = tareasDelDia.filter(c => nombresEmpleadosArea.includes(c.assigned));
       }
 
+      // 🔥 NUEVO: Conteo de Agenda Personal (Azul)
+      const personalesDelDia = this.tareasAgendaMes.filter(t => {
+        if (!t.fechaCreacion) return false;
+        const dStr = new Date(t.fechaCreacion - offset).toISOString().split('T')[0];
+        return dStr === fechaStr;
+      }).length;
+
       let completadas = 0; let pendientes = 0; let vencidas = 0;
       tareasDelDia.forEach(tarea => {
         const tareasMarcadas = tarea.items ? tarea.items.filter((item: any) => item.checked).length : 0;
         const totalItems = tarea.items ? tarea.items.length : 0;
-        
-        if (tareasMarcadas === totalItems && totalItems > 0) { completadas++; }
-        else if (fechaStr < hoyStr) { vencidas++; }
-        else { pendientes++; }
+        if (tareasMarcadas === totalItems && totalItems > 0) completadas++;
+        else if (fechaStr < hoyStr) vencidas++;
+        else pendientes++;
       });
 
       grid.push({
         numero: i, fechaStr: fechaStr, esHoy: fechaStr === hoyStr,
-        tareas: tareasDelDia, completadas, pendientes, vencidas, total: tareasDelDia.length
+        tareas: tareasDelDia, completadas, pendientes, vencidas, total: tareasDelDia.length,
+        personalesCount: personalesDelDia // 👈 Guardamos el conteo azul
       });
     }
     this.diasCalendario.set(grid);

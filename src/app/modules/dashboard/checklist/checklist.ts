@@ -991,7 +991,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     checklist.subtareas[index].completada = !checklist.subtareas[index].completada;
     this.guardarEnLaNube(checklist);
   }
-  agregarIntegranteEquipo() {
+ agregarIntegranteEquipo() {
     if (!this.empleadoSeleccionadoEquipo) return;
     
     // Evitar duplicados
@@ -1008,7 +1008,10 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       iniciales: this.empleadoSeleccionadoEquipo.substring(0, 2).toUpperCase(),
       fases: []
     });
-    this.empleadoSeleccionadoEquipo = ''; // Limpiar el selector
+    
+    // 🔥 ESTAS DOS LÍNEAS HACEN LA MAGIA DE LIMPIAR EL BUSCADOR 🔥
+    this.empleadoSeleccionadoEquipo = ''; // Limpia el valor interno
+    this.busquedaEmpleadoEquipo = ''; // Limpia el texto que ves en la pantalla
   }
 
   eliminarIntegranteEquipo(index: number) {

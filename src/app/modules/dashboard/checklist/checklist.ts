@@ -24,7 +24,10 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   isMenuOpen = false;
   isEditandoTarea = false;
   toggleMenu() { this.isMenuOpen = !this.isMenuOpen; }
-  
+  pasoEquipo = 1; // Controla en qué paso del wizard estamos (1, 2 o 3)
+  nombreTareaEquipo = '';
+  metaGlobalEquipo = 100;
+  integrantesAsignados: any[] = [];
   currentUser: any = null;
   vistaActual = signal<'lista' | 'detalle'>('lista');
   checklistSeleccionado = signal<any>(null);

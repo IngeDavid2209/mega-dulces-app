@@ -1128,4 +1128,88 @@
       <polyline points="22 4 12 14.01 9 11.01"></polyline>
     </svg>
     {{ toastMessage }}
+
   </div>
+  <div class="modal-overlay" *ngIf="isModalEquipoOpen" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15,23,42,0.8); backdrop-filter: blur(5px); z-index: 10000; display: flex; justify-content: center; align-items: center; padding: 20px;">
+    
+    <div style="background: white; width: 100%; max-width: 750px; max-height: 90vh; border-radius: 20px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);">
+        
+        <div style="padding: 20px 24px; border-bottom: 1px solid #E2E8F0; display: flex; justify-content: space-between; align-items: center; background: #F8FAFC;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <div style="background: #10B981; color: white; padding: 8px; border-radius: 8px;"><i class="fa-solid fa-users"></i></div>
+                <h3 style="margin: 0; color: #1E293B; font-weight: 800;">Nueva tarea de equipo</h3>
+            </div>
+            <button (click)="cerrarModalEquipo()" style="background: none; border: none; font-size: 28px; color: #94A3B8; cursor: pointer;">&times;</button>
+        </div>
+
+        <div style="display: flex; justify-content: space-around; padding: 15px; background: #F1F5F9; border-bottom: 1px solid #E2E8F0;">
+            <div [style.color]="pasoEquipo >= 1 ? '#2563EB' : '#94A3B8'" style="font-size: 12px; font-weight: 800; display: flex; align-items: center; gap: 5px;">
+                <span [style.background]="pasoEquipo >= 1 ? '#2563EB' : '#94A3B8'" style="color:white; width:20px; height:20px; border-radius:50%; display:flex; align-items:center; justify-content:center;">1</span> Tarea general
+            </div>
+            <div [style.color]="pasoEquipo >= 2 ? '#2563EB' : '#94A3B8'" style="font-size: 12px; font-weight: 800; display: flex; align-items: center; gap: 5px;">
+                <span [style.background]="pasoEquipo >= 2 ? '#2563EB' : '#94A3B8'" style="color:white; width:20px; height:20px; border-radius:50%; display:flex; align-items:center; justify-content:center;">2</span> Asignar al equipo
+            </div>
+            <div [style.color]="pasoEquipo >= 3 ? '#2563EB' : '#94A3B8'" style="font-size: 12px; font-weight: 800; display: flex; align-items: center; gap: 5px;">
+                <span [style.background]="pasoEquipo >= 3 ? '#2563EB' : '#94A3B8'" style="color:white; width:20px; height:20px; border-radius:50%; display:flex; align-items:center; justify-content:center;">3</span> Revisar y crear
+            </div>
+        </div>
+
+        <div style="padding: 24px; overflow-y: auto; flex: 1;">
+            
+            <div *ngIf="pasoEquipo === 1" style="display: flex; flex-direction: column; gap: 20px;">
+                <div style="background: #EEF2FF; border: 1px solid #C7D2FE; padding: 20px; border-radius: 12px;">
+                    <label style="font-size: 11px; font-weight: 800; color: #4338CA; text-transform: uppercase;">🎯 Objetivo Común</label>
+                    <input type="text" [(ngModel)]="nombreTareaEquipo" placeholder="Ej: Comer 100 tacos, Limpieza general de sucursal..." style="width: 100%; padding: 12px; border: 1px solid #CBD5E1; border-radius: 8px; margin-top: 8px; font-weight: 700; font-size: 16px;">
+                    
+                    <div style="margin-top: 15px; display: flex; align-items: center; justify-content: space-between; background: #4338CA; padding: 10px 15px; border-radius: 8px; color: white;">
+                        <span style="font-weight: 800;">META DEL EQUIPO:</span>
+                        <input type="number" [(ngModel)]="metaGlobalEquipo" style="width: 80px; background: white; border: none; padding: 5px; border-radius: 4px; font-weight: 900; text-align: center;">
+                    </div>
+                </div>
+            </div>
+
+            <div *ngIf="pasoEquipo === 2">
+                <p style="font-size: 12px; font-weight: 800; color: #64748B; text-transform: uppercase; margin-bottom: 15px;">👤 Asignación por integrante</p>
+                
+                <div style="background: white; border: 1px solid #E2E8F0; border-radius: 12px; padding: 15px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                    <div style="display: flex; align-items: center; justify-content: space-between;">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <div style="width: 40px; height: 40px; background: #DBEAFE; color: #2563EB; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: 900;">AL</div>
+                            <div>
+                                <p style="margin: 0; font-weight: 800; font-size: 14px;">Ana López</p>
+                                <p style="margin: 0; font-size: 11px; color: #64748B;">Ventas</p>
+                            </div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <input type="number" value="20" style="width: 60px; padding: 8px; border: 1px solid #CBD5E1; border-radius: 6px; text-align: center; font-weight: 800;">
+                            <button style="background: #F1F5F9; border: 1px solid #CBD5E1; padding: 8px 12px; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer;">+ Dividir en fases</button>
+                        </div>
+                    </div>
+                </div>
+                <div style="background: white; border: 1px solid #E2E8F0; border-radius: 12px; padding: 15px; margin-bottom: 15px;">
+                     <div style="display: flex; align-items: center; justify-content: space-between;">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <div style="width: 40px; height: 40px; background: #F1F5F9; color: #64748B; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: 900;">JG</div>
+                            <p style="margin: 0; font-weight: 800; font-size: 14px;">Jorge García</p>
+                        </div>
+                        <span style="font-size: 11px; color: #D1D5DB;">Aún no asignado</span>
+                    </div>
+                </div>
+            </div>
+
+            <div *ngIf="pasoEquipo === 3" style="text-align: center; padding: 20px;">
+                <div style="font-size: 50px; color: #10B981; margin-bottom: 20px;"><i class="fa-solid fa-circle-check"></i></div>
+                <h2 style="margin: 0;">¡Todo listo!</h2>
+                <p style="color: #64748B;">Se notificará a los integrantes por WhatsApp y Correo.</p>
+            </div>
+
+        </div>
+
+        <div style="padding: 16px 24px; background: #F8FAFC; border-top: 1px solid #E2E8F0; display: flex; justify-content: space-between;">
+            <button (click)="pasoEquipo = pasoEquipo - 1" *ngIf="pasoEquipo > 1" style="padding: 10px 20px; border-radius: 8px; border: 1px solid #CBD5E1; background: white; font-weight: 700; cursor: pointer;">Atrás</button>
+            <span *ngIf="pasoEquipo === 1"></span> <button (click)="pasoEquipo = pasoEquipo + 1" *ngIf="pasoEquipo < 3" style="padding: 10px 25px; border-radius: 8px; background: #2563EB; color: white; border: none; font-weight: 800; cursor: pointer;">Siguiente: revisar y crear ></button>
+            <button (click)="cerrarModalEquipo()" *ngIf="pasoEquipo === 3" style="padding: 10px 25px; border-radius: 8px; background: #10B981; color: white; border: none; font-weight: 800; cursor: pointer;">Finalizar y Enviar 🚀</button>
+        </div>
+
+    </div>
+</div>

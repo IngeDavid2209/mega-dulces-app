@@ -33,6 +33,8 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   checklistSeleccionado = signal<any>(null);
   terminoBusquedaChecklist = '';
   toastMessage = '';
+  integrantesEquipo: any[] = []; 
+  empleadoSeleccionadoEquipo: string = '';
   isModalEquipoOpen = false;
   notificacionesPendientes = signal<any[]>([]);
   isModalNotificacionOpen = false;
@@ -987,5 +989,38 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     if (!checklist.subtareas) return;
     checklist.subtareas[index].completada = !checklist.subtareas[index].completada;
     this.guardarEnLaNube(checklist);
+  }
+  agregarIntegranteEquipo() {
+    if (!this.empleadoSeleccionadoEquipo) return;
+    
+    // Evitar duplicados
+    const existe = this.integrantesEquipo.find(i => i.nombre === this.empleadoSeleccionadoEquipo);
+    if (existe) {
+      this.mostrarToast('⚠️ Este empleado ya está en la lista.');
+      return;
+    }
+
+    const empData = this.empleados().find(e => e.nombre === this.empleadoSeleccionadoEquipo);
+    this.integrantesEquipo.push({
+      nombre: this.empleadoSeleccionadoEquipo,
+      departamento: empData?.sucursal || empData?.sucursales?.[0] || 'General',
+      iniciales: this.empleadoSeleccionadoEquipo.substring(0, 2).toUpperCase(),
+      fases: []
+    });
+    this.empleadoSeleccionadoEquipo = ''; // Limpiar el selector
+  }
+
+  eliminarIntegranteEquipo(index: number) {
+    this.integrantesEquipo.splice(index, 1);
+  }
+
+  abrirFasesIntegrante(index: number) {
+    // Por ahora usamos un prompt rápido para no empalmar ventanas
+    const nuevaFase = prompt(`Añadir una fase/subtarea para ${this.integrantesEquipo[index].nombre}:`);
+    if (nuevaFase && nuevaFase.trim()) {
+      if (!this.integrantesEquipo[index].fases) this.integrantesEquipo[index].fases = [];
+      this.integrantesEquipo[index].fases.push({ texto: nuevaFase, completada: false });
+      this.mostrarToast('✅ Fase agregada a ' + this.integrantesEquipo[index].nombre);
+    }
   }
 }

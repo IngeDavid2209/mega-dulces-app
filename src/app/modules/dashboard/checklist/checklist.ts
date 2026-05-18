@@ -30,7 +30,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   checklistSeleccionado = signal<any>(null);
   terminoBusquedaChecklist = '';
   toastMessage = '';
-  
+  isModalEquipoOpen = false;
   notificacionesPendientes = signal<any[]>([]);
   isModalNotificacionOpen = false;
   empleadoParaNotificar = '';
@@ -742,6 +742,14 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     this.formItems = [{ text: '', requiresPhoto: false, requiresAntesDespues: false, requiresVariasFotos: false, permiteGaleria: false, permiteDocumentos: false, tiempoEstimado: 30, date: '', time: '' }];
     this.fasesTemporales = []; // 🔥 LIMPIAMOS LAS FASES AL ABRIR UN NUEVO CHECKLIST
     this.isModalOpen = true;
+  }
+  abrirModalEquipo() {
+    this.isModalEquipoOpen = true;
+    // Aquí inicializaremos los datos de la tarea en equipo
+  }
+
+  cerrarModalEquipo() {
+    this.isModalEquipoOpen = false;
   }
 
   cerrarModal() { this.isModalOpen = false; }

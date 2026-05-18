@@ -35,6 +35,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   toastMessage = '';
   integrantesEquipo: any[] = []; 
   empleadoSeleccionadoEquipo: string = '';
+  mostrarDropdownEquipo: boolean = false;
   isModalEquipoOpen = false;
   notificacionesPendientes = signal<any[]>([]);
   isModalNotificacionOpen = false;
@@ -43,7 +44,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   
   isModalOpen = false;
   formName = '';
-  
+  busquedaEmpleadoEquipo: string = '';
   // 🔥 VARIABLES DE FASES TEMPORALES
   nuevaFaseTexto: string = '';
   fasesTemporales: any[] = [];
@@ -1022,5 +1023,21 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       this.integrantesEquipo[index].fases.push({ texto: nuevaFase, completada: false });
       this.mostrarToast('✅ Fase agregada a ' + this.integrantesEquipo[index].nombre);
     }
+  }
+  get empleadosEquipoFiltrados() {
+    if (!this.busquedaEmpleadoEquipo) return this.empleados();
+const termino = this.busquedaEmpleadoEquipo.toLowerCase();
+return this.empleados().filter((emp: any) => emp.nombre.toLowerCase().includes(termino));
+  }
+
+  seleccionarEmpleadoEquipo(emp: any) {
+    this.empleadoSeleccionadoEquipo = emp.nombre;
+    this.busquedaEmpleadoEquipo = emp.nombre; // Lo mostramos en el input
+    this.mostrarDropdownEquipo = false;
+  }
+
+  ocultarDropdownEquipo() {
+    // Un pequeño retraso para que alcance a registrar el click antes de cerrarse
+    setTimeout(() => { this.mostrarDropdownEquipo = false; }, 200);
   }
 }

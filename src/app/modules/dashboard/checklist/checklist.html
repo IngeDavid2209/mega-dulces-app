@@ -1141,60 +1141,34 @@
                   <div *ngIf="pasoEquipo === 2">
                       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
                           <p style="font-size: 12px; font-weight: 800; color: #64748B; text-transform: uppercase; margin: 0;">👤 Asignación por integrante</p>
-                          <div style="display: flex; gap: 10px;">
-                              <select [(ngModel)]="empleadoSeleccionadoEquipo" style="padding: 8px; border-radius: 6px; border: 1px solid #CBD5E1; font-size: 12px; outline: none;">
-                                  <option value="">Selecciona un empleado...</option>
-                                  <option *ngFor="let emp of empleados()" [value]="emp.nombre">{{ emp.nombre }}</option>
-                              </select>
-                              <button (click)="agregarIntegranteEquipo()" style="background: #4338CA; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-size: 12px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 4px rgba(67, 56, 202, 0.2);">
+                         <div style="display: flex; gap: 10px; align-items: flex-start;">
+                              
+                              <div style="position: relative; width: 250px;">
+                                  <input type="text"
+                                         [(ngModel)]="busquedaEmpleadoEquipo"
+                                         (focus)="mostrarDropdownEquipo = true"
+                                         (blur)="ocultarDropdownEquipo()"
+                                         placeholder="🔍 Buscar empleado..."
+                                         style="width: 100%; padding: 8px 12px 8px 30px; border-radius: 6px; border: 1px solid #CBD5E1; font-size: 12px; outline: none; box-sizing: border-box;">
+                                  
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="2" style="position: absolute; left: 10px; top: 10px;">
+                                      <circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                                  </svg>
+
+                                  <div *ngIf="mostrarDropdownEquipo && empleadosEquipoFiltrados.length > 0"
+                                       style="position: absolute; top: 100%; left: 0; width: 100%; background: white; border: 1px solid #CBD5E1; border-radius: 6px; margin-top: 4px; max-height: 160px; overflow-y: auto; z-index: 50; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);">
+                                      <div *ngFor="let emp of empleadosEquipoFiltrados"
+                                           (mousedown)="$event.preventDefault(); seleccionarEmpleadoEquipo(emp)"
+                                           style="padding: 10px 12px; cursor: pointer; font-size: 12px; border-bottom: 1px solid #F1F5F9; color: #1E293B;"
+                                           onmouseover="this.style.background='#F8FAFC'"
+                                           onmouseout="this.style.background='white'">
+                                          {{ emp.nombre }}
+                                      </div>
+                                  </div>
+                              </div>
+
+                              <button (click)="agregarIntegranteEquipo()" style="background: #4338CA; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-size: 12px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 4px rgba(67, 56, 202, 0.2); height: 33px;">
                                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg>
                                   Agregar
                               </button>
                           </div>
-                      </div>
-                      
-                      <div *ngIf="integrantesEquipo.length === 0" style="text-align: center; padding: 20px; color: #94A3B8; font-size: 13px; border: 1px dashed #CBD5E1; border-radius: 12px; margin-bottom: 15px;">
-                          Aún no has agregado a ningún integrante al equipo. Selecciona uno arriba.
-                      </div>
-
-                      <div *ngFor="let integrante of integrantesEquipo; let i = index" style="background: white; border: 1px solid #E2E8F0; border-radius: 12px; padding: 15px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-                          <div style="display: flex; align-items: center; justify-content: space-between;">
-                              <div style="display: flex; align-items: center; gap: 12px;">
-                                  <div style="width: 40px; height: 40px; background: #DBEAFE; color: #2563EB; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: 900;">{{ integrante.iniciales }}</div>
-                                  <div>
-                                      <p style="margin: 0; font-weight: 800; font-size: 14px; color: #1E293B;">{{ integrante.nombre }}</p>
-                                      <p style="margin: 0; font-size: 11px; color: #64748B;">{{ integrante.departamento }}</p>
-                                  </div>
-                              </div>
-                              <div style="display: flex; align-items: center; gap: 10px;">
-                                  <button (click)="abrirFasesIntegrante(i)" style="background: #F8FAFC; border: 1px solid #CBD5E1; color: #334155; padding: 8px 12px; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer;">
-                                      + Fases ({{ integrante.fases?.length || 0 }})
-                                  </button>
-                                  <button (click)="eliminarIntegranteEquipo(i)" style="background: #FEF2F2; color: #EF4444; border: 1px solid #FECACA; border-radius: 6px; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
-                                      &times;
-                                  </button>
-                              </div>
-                          </div>
-                      </div>
-                  </div>
-
-                  <div *ngIf="pasoEquipo === 3" style="text-align: center; padding: 20px;">
-                      <div style="font-size: 50px; color: #10B981; margin-bottom: 20px;"><svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg></div>
-                      <h2 style="margin: 0;">¡Todo listo!</h2>
-                      <p style="color: #64748B;">Se notificará a los integrantes por WhatsApp y Correo.</p>
-                  </div>
-
-              </div> <div style="padding: 16px 24px; background: #F8FAFC; border-top: 1px solid #E2E8F0; display: flex; justify-content: space-between;">
-                  <button (click)="pasoEquipo = pasoEquipo - 1" *ngIf="pasoEquipo > 1" style="padding: 10px 20px; border-radius: 8px; border: 1px solid #CBD5E1; background: white; font-weight: 700; color: #475569; cursor: pointer;">Atrás</button>
-                  <span *ngIf="pasoEquipo === 1"></span> 
-                  
-                  <button (click)="pasoEquipo = 2" *ngIf="pasoEquipo === 1" style="padding: 10px 25px; border-radius: 8px; background: #2563EB; color: white; border: none; font-weight: 800; cursor: pointer;">Siguiente: Asignar al equipo ></button>
-                  
-                  <button (click)="pasoEquipo = 3" *ngIf="pasoEquipo === 2" style="padding: 10px 25px; border-radius: 8px; background: #2563EB; color: white; border: none; font-weight: 800; cursor: pointer;">Siguiente: Revisar y crear ></button>
-                  
-                  <button (click)="cerrarModalEquipo()" *ngIf="pasoEquipo === 3" style="padding: 10px 25px; border-radius: 8px; background: #10B981; color: white; border: none; font-weight: 800; cursor: pointer;">Finalizar y Enviar 🚀</button>
-              </div>
-
-          </div>
-      </div>
-      

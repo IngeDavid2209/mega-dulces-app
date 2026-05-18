@@ -1193,12 +1193,7 @@
               </div>
 <div class="modal-overlay" *ngIf="isModalActividadIntegranteOpen" style="z-index: 11000; background: rgba(0,0,0,0.6);">
     <div class="modal" style="max-width: 700px; max-height: 85vh; overflow-y: auto;">
-        <div class="modal-header">
-            <div class="modal-title" style="font-size: 16px;">
-                Actividades para: <span style="color: #4338CA;">{{ integrantesEquipo[integranteActualIndex]?.nombre }}</span>
-            </div>
-            <button class="modal-close" (click)="cerrarModalActividadIntegrante()">&times;</button>
-        </div>
+        
         
         <div class="modal-body" style="padding-top: 15px;">
             <p style="font-size: 12px; color: #64748B; margin-bottom: 15px;">Define las tareas específicas que este integrante debe realizar dentro del equipo.</p>
@@ -1250,7 +1245,30 @@
                 + Añadir actividad para este usuario
             </button>
         </div>
+<div style="margin-top: 25px; border: 1px dashed #CBD5E1; padding: 16px; border-radius: 8px; background: #EEF2FF;">
+                <label style="font-size: 13px; font-weight: 800; color: #4338CA; display: block; margin-bottom: 12px; text-transform: uppercase;">
+                  🚩 Dividir esta tarea en Fases (Opcional)
+                </label>
 
+                <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                  <input type="text" [(ngModel)]="nuevaFaseIntegranteTexto" (keyup.enter)="agregarFaseIntegrante()" placeholder="Ej: Ir al almacén, Contar cajas, Reportar..." style="flex: 1; padding: 10px 14px; border-radius: 8px; border: 1px solid #C7D2FE; font-size: 14px; outline: none;">
+                  <button (click)="agregarFaseIntegrante()" type="button" style="background: #4338CA; color: white; border: none; padding: 0 20px; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s;">
+                    Añadir Fase
+                  </button>
+                </div>
+
+                <div *ngIf="fasesTemporalesIntegrante.length > 0" style="display: flex; flex-direction: column; gap: 8px;">
+                  <div *ngFor="let fase of fasesTemporalesIntegrante; let fIndex = index" style="display: flex; align-items: center; justify-content: space-between; background: white; padding: 10px 14px; border: 1px solid #E2E8F0; border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.02);">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                      <span style="background: #EEF2FF; color: #4338CA; font-weight: 800; font-size: 12px; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border-radius: 50%;">{{ fIndex + 1 }}</span>
+                      <span style="font-size: 14px; font-weight: 600; color: #1E293B;">{{ fase.texto }}</span>
+                    </div>
+                    <button (click)="eliminarFaseIntegrante(fIndex)" type="button" style="color: #EF4444; background: #FEF2F2; border: 1px solid #FECACA; border-radius: 6px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 18px; line-height: 1;">
+                      &times;
+                    </button>
+                  </div>
+                </div>
+            </div>
         <div class="btn-group" style="margin-top: 20px; border-top: 1px solid #E2E8F0; padding-top: 15px;">
             <button class="btn-secondary" (click)="cerrarModalActividadIntegrante()">Cancelar</button>
             <button class="btn-primary" (click)="guardarActividadesIntegrante()">Confirmar Actividades</button>

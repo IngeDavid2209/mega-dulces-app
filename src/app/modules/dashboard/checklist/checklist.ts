@@ -13,14 +13,15 @@ import * as localforage from 'localforage';
   styleUrls: ['./checklist.css']
 })
 export class ChecklistComponent implements OnInit, OnDestroy {
-  // 🔥 VARIABLE PARA EL ROBOT DE ALERTAS 🔥
   ultimaHoraNotificada: number = -1;
   cantidadPendientesAnterior: number = -1;
-  
-  // 🔥 CONTROLES DE NOTIFICACIÓN (NUEVOS) 🔥
   notificarPorWhatsApp: boolean = true; 
   notificarPorCorreo: boolean = false; 
-  
+  isModalActividadIntegranteOpen = false;
+  integranteActualIndex: number = -1;
+  formItemsActividad: any[] = []; 
+  fasesTemporalesIntegrante: any[] = []; // NUEVO: Para la lista de fases
+  nuevaFaseIntegranteTexto: string = ''; // NUEVO: Para el input
   isMenuOpen = false;
   isEditandoTarea = false;
   toggleMenu() { this.isMenuOpen = !this.isMenuOpen; }
@@ -41,21 +42,14 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   isModalNotificacionOpen = false;
   empleadoParaNotificar = '';
   mensajeNotificacion = '';
-  isModalActividadIntegranteOpen = false;
-  integranteActualIndex: number = -1;
   isModalOpen = false;
   formName = '';
-
-  formItemsActividad: any[] = [];
   busquedaEmpleadoEquipo: string = '';
-  // 🔥 VARIABLES DE FASES TEMPORALES
   nuevaFaseTexto: string = '';
   fasesTemporales: any[] = [];
-  
   formAssigned: string[] = [];
   formStore = '';
   formItems: any[] = [{ text: '', requiresPhoto: false, requiresAntesDespues: false, requiresVariasFotos: false, permiteGaleria: false, permiteDocumentos: false, tiempoEstimado: 30, date: '', time: '' }];
-  
   isModalRutinasOpen = false;
   isEditMode = false;
   formNameRutina = '';
@@ -1045,27 +1039,37 @@ return this.empleados().filter((emp: any) => emp.nombre.toLowerCase().includes(t
   ocultarDropdownEquipo() {
     // Un pequeño retraso para que alcance a registrar el click antes de cerrarse
     setTimeout(() => { this.mostrarDropdownEquipo = false; }, 200);
-  }
+  } 
+
   abrirActividadIntegrante(index: number) {
     this.integranteActualIndex = index;
     const integrante = this.integrantesEquipo[index];
     
-    // Si el integrante ya tiene actividades, las cargamos. Si no, empezamos con una limpia.
+    // Cargar Actividades
     if (integrante.fases && integrante.fases.length > 0) {
       this.formItemsActividad = JSON.parse(JSON.stringify(integrante.fases));
     } else {
       this.formItemsActividad = [{ text: '', requiresPhoto: false, requiresAntesDespues: false, requiresVariasFotos: false, permiteGaleria: false, permiteDocumentos: false, fechaInicio: '', horaInicio: '', fechaLimite: '', horaLimite: '' }];
     }
+
+    // 🔥 NUEVO: Cargar Fases del integrante
+    if (integrante.listaFases && integrante.listaFases.length > 0) {
+      this.fasesTemporalesIntegrante = JSON.parse(JSON.stringify(integrante.listaFases));
+    } else {
+      this.fasesTemporalesIntegrante = [];
+    }
     
     this.isModalActividadIntegranteOpen = true;
   }
 
-  // 👉 Función para guardar esas actividades y volver al modal de equipo
   guardarActividadesIntegrante() {
     if (this.integranteActualIndex > -1) {
-      // Guardamos los cambios en el integrante correspondiente
+      // Guardar Actividades
       this.integrantesEquipo[this.integranteActualIndex].fases = [...this.formItemsActividad];
-      this.mostrarToast('✅ Actividades asignadas a ' + this.integrantesEquipo[this.integranteActualIndex].nombre);
+      // 🔥 NUEVO: Guardar Fases
+      this.integrantesEquipo[this.integranteActualIndex].listaFases = [...this.fasesTemporalesIntegrante];
+      
+      this.mostrarToast('✅ Tareas y fases asignadas a ' + this.integrantesEquipo[this.integranteActualIndex].nombre);
       this.cerrarModalActividadIntegrante();
     }
   }
@@ -1075,12 +1079,23 @@ return this.empleados().filter((emp: any) => emp.nombre.toLowerCase().includes(t
     this.integranteActualIndex = -1;
   }
 
-  // Funciones auxiliares para el sub-modal
   agregarActividadIntegrante() {
     this.formItemsActividad.push({ text: '', requiresPhoto: false, requiresAntesDespues: false, requiresVariasFotos: false, permiteGaleria: false, permiteDocumentos: false, fechaInicio: '', horaInicio: '', fechaLimite: '', horaLimite: '' });
   }
 
   eliminarActividadIntegrante(index: number) {
     this.formItemsActividad.splice(index, 1);
+  }
+
+  // 🔥 NUEVO: Funciones para las Fases
+  agregarFaseIntegrante() {
+    if (this.nuevaFaseIntegranteTexto.trim()) {
+      this.fasesTemporalesIntegrante.push({ texto: this.nuevaFaseIntegranteTexto.trim(), completada: false });
+      this.nuevaFaseIntegranteTexto = '';
+    }
+  }
+
+  eliminarFaseIntegrante(index: number) {
+    this.fasesTemporalesIntegrante.splice(index, 1);
   }
 }

@@ -102,8 +102,6 @@
           </a>
         </nav>
         <div class="bottom-nav" style="margin-top: auto; padding: 0 12px 20px 12px;">
-
-
           <a class="nav-item" routerLink="/perfil" routerLinkActive="active" (click)="isMenuOpen = false"
             style="margin-bottom: 10px;">
             <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -112,8 +110,6 @@
             </svg>
             Mi Perfil
           </a>
-
-
           <button class="logout-btn" routerLink="/login">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" />
@@ -170,10 +166,16 @@
                   <line x1="5" y1="12" x2="19" y2="12"></line>
                 </svg> Tareas Únicas
               </button>
-              <button class="btn-equipo" (click)="abrirModalEquipo()" style="background: #10B981; color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 8px; margin-left: 10px;">
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-  + Tareas en Equipo
-</button>
+              <button class="btn-equipo" (click)="abrirModalEquipo()"
+                style="background: #10B981; color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 8px; margin-left: 10px;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="9" cy="7" r="4"></circle>
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                </svg>
+                + Tareas en Equipo
+              </button>
             </div>
           </div>
         </div>
@@ -402,9 +404,6 @@
                       <circle cx="8.5" cy="8.5" r="1.5"></circle>
                       <polyline points="21 15 16 10 5 21"></polyline>
                     </svg>
-
-                    //primer parte
-
                     <svg *ngIf="item.permiteDocumentos" width="12" height="12" viewBox="0 0 24 24" fill="none"
                       stroke="currentColor" stroke-width="2" style="margin-right: 4px;">
                       <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
@@ -475,7 +474,7 @@
                     <div class="preview-wrap-mini" *ngIf="item.photoAntes">
                       <span class="preview-title"
                         style="display: flex; align-items: center; justify-content: space-between;">
-                        <span style="color: var(--primary-navy); font-weight: 700;"> {{ item.permiteDocumentos ? ' 📄   DOC(ANTES):' : ' 📸 ANTES:' }}</span>
+                        <span style="color: var(--primary-navy); font-weight: 700;"> {{ item.permiteDocumentos ? ' 📄DOC(ANTES):' : ' 📸 ANTES:' }}</span>
                         <span *ngIf="item.photoAntesTime"
                           style="font-weight: 600; font-size: 11px; background: #EFF6FF; color: #2563EB; padding: 2px 6px; border-radius: 4px; border: 1px solid #BFDBFE;">
                           🕒
@@ -530,7 +529,8 @@
                     <div class="preview-wrap-mini" *ngIf="item.photoDespues">
                       <span class="preview-title"
                         style="display: flex; align-items: center; justify-content: space-between;">
-                        <span style="color: #10B981; font-weight: 700;"> {{ item.permiteDocumentos ? ' 📄 DOC(DESPUÉS):' : ' 📸 DESPUÉS:' }}</span>
+                        <span style="color: #10B981; font-weight: 700;"> {{ item.permiteDocumentos ? ' 📄 DOC(DESPUÉS):'
+                          : ' 📸 DESPUÉS:' }}</span>
                         <span *ngIf="item.photoDespuesTime"
                           style="font-weight: 600; font-size: 11px; background: #ECFDF5; color: #047857; padding: 2px 6px; border-radius: 4px; border: 1px solid #A7F3D0;">
                           🕒
@@ -582,7 +582,6 @@
               </ng-container>
             </div>
           </div>
-
           <div style="margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border);">
             <label
               style="display: block; font-size: 14px; font-weight: 600; color: var(--text-main); margin-bottom: 8px;">
@@ -599,32 +598,37 @@
               placeholder="Escribe aquí si hubo algún problema, material faltante, etc."
               [disabled]="checklistSeleccionado().enviado || currentUser?.nombre !== checklistSeleccionado().assigned"></textarea>
           </div>
-
-<div style="margin-top: 20px; border: 1px dashed #CBD5E1; padding: 16px; border-radius: 8px; background: #F8FAFC;">
-  <label style="font-size: 13px; font-weight: 800; color: #4338CA; display: block; margin-bottom: 12px; text-transform: uppercase;">
-    🚩 Dividir en Fases (Opcional)
-  </label>
-  
-  <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-    <input type="text" [(ngModel)]="nuevaFaseTexto" (keyup.enter)="agregarFase()" placeholder="Ej: Cotizar, Ir a sucursal, Revisar..." style="flex: 1; padding: 10px 14px; border-radius: 8px; border: 1px solid #CBD5E1; font-size: 14px; outline: none;">
-    <button (click)="agregarFase()" type="button" style="background: #4338CA; color: white; border: none; padding: 0 20px; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s;">
-      Añadir Fase
-    </button>
-  </div>
-
-  <div *ngIf="fasesTemporales.length > 0" style="display: flex; flex-direction: column; gap: 8px;">
-    <div *ngFor="let fase of fasesTemporales; let i = index" style="display: flex; align-items: center; justify-content: space-between; background: white; padding: 10px 14px; border: 1px solid #E2E8F0; border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.02);">
-      <div style="display: flex; align-items: center; gap: 10px;">
-        <span style="background: #EEF2FF; color: #4338CA; font-weight: 800; font-size: 12px; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border-radius: 50%;">{{ i + 1 }}</span>
-        <span style="font-size: 14px; font-weight: 600; color: #1E293B;">{{ fase.texto }}</span>
-      </div>
-      <button (click)="eliminarFase(i)" type="button" style="color: #EF4444; background: #FEF2F2; border: 1px solid #FECACA; border-radius: 6px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 18px; line-height: 1;">
-        &times;
-      </button>
-    </div>
-  </div>
-</div>
-
+          <div
+            style="margin-top: 20px; border: 1px dashed #CBD5E1; padding: 16px; border-radius: 8px; background: #F8FAFC;">
+            <label
+              style="font-size: 13px; font-weight: 800; color: #4338CA; display: block; margin-bottom: 12px; text-transform: uppercase;">
+              🚩 Dividir en Fases (Opcional)
+            </label>
+            <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+              <input type="text" [(ngModel)]="nuevaFaseTexto" (keyup.enter)="agregarFase()"
+                placeholder="Ej: Cotizar, Ir a sucursal, Revisar..."
+                style="flex: 1; padding: 10px 14px; border-radius: 8px; border: 1px solid #CBD5E1; font-size: 14px; outline: none;">
+              <button (click)="agregarFase()" type="button"
+                style="background: #4338CA; color: white; border: none; padding: 0 20px; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s;">
+                Añadir Fase
+              </button>
+            </div>
+            <div *ngIf="fasesTemporales.length > 0" style="display: flex; flex-direction: column; gap: 8px;">
+              <div *ngFor="let fase of fasesTemporales; let i = index"
+                style="display: flex; align-items: center; justify-content: space-between; background: white; padding: 10px 14px; border: 1px solid #E2E8F0; border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.02);">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                  <span
+                    style="background: #EEF2FF; color: #4338CA; font-weight: 800; font-size: 12px; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border-radius: 50%;">{{
+                    i + 1 }}</span>
+                  <span style="font-size: 14px; font-weight: 600; color: #1E293B;">{{ fase.texto }}</span>
+                </div>
+                <button (click)="eliminarFase(i)" type="button"
+                  style="color: #EF4444; background: #FEF2F2; border: 1px solid #FECACA; border-radius: 6px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 18px; line-height: 1;">
+                  &times;
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
         <div class="send-section"
           *ngIf="!checklistSeleccionado().enviado && currentUser?.nombre === checklistSeleccionado().assigned">
@@ -675,14 +679,11 @@
                   d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48">
                 </path>
               </svg>
-
-              {{ formItems.length > 0 && formItems[0].archivoInstruccion === 'subiendo...' ? ' ⏳ Subiendo archivo a la nube...' : ((formItems.length > 0 && formItems[0].nombreArchivo) || 'Adjuntar foto o documento deinstrucciones(Opcional)') }}
-
+              {{ formItems.length > 0 && formItems[0].archivoInstruccion === 'subiendo...' ? ' ⏳ Subiendo archivo a lanube...' : ((formItems.length > 0 && formItems[0].nombreArchivo) || 'Adjuntar foto o documento de instrucciones(Opcional)') }}
               <input type="file" *ngIf="formItems.length > 0"
                 (change)="adjuntarDocumentoInstruccion($event, formItems[0])" style="display: none;"
                 accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,image/*">
             </label>
-
             <span
               *ngIf="formItems.length > 0 && formItems[0].archivoInstruccion && formItems[0].archivoInstruccion !== 'subiendo...'"
               (click)="quitarDocumentoInstruccion(formItems[0])"
@@ -799,26 +800,20 @@
                       </svg>
                     </button>
                   </div>
-
                   <div
                     style="display: flex; flex-direction: column; gap: 12px; margin-top: 15px; padding-top: 10px; border-top: 1px dashed #E2E8F0;">
-
                     <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-                      <label style="color: #64748B; font-size: 13px; min-width: 110px;">📅 Fecha de inicio:</label>
+                      <label style="color: #64748B; font-size: 13px; min-width: 110px;"> 📅 Fecha de inicio:</label>
                       <input type="date" class="form-input" [(ngModel)]="item.fechaInicio" style="padding: 4px 8px;">
-
-                      <label style="color: #64748B; font-size: 13px; margin-left: 10px;">🕒 Hora de inicio:</label>
+                      <label style="color: #64748B; font-size: 13px; margin-left: 10px;"> 🕒 Hora de inicio:</label>
                       <input type="time" class="form-input" [(ngModel)]="item.horaInicio" style="padding: 4px 8px;">
                     </div>
-
                     <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-                      <label style="color: #64748B; font-size: 13px; min-width: 110px;">⏳ Fecha límite:</label>
+                      <label style="color: #64748B; font-size: 13px; min-width: 110px;"> ⏳ Fecha límite:</label>
                       <input type="date" class="form-input" [(ngModel)]="item.fechaLimite" style="padding: 4px 8px;">
-
-                      <label style="color: #64748B; font-size: 13px; margin-left: 10px;">⏰ Hora límite:</label>
+                      <label style="color: #64748B; font-size: 13px; margin-left: 10px;"> ⏰ Hora límite:</label>
                       <input type="time" class="form-input" [(ngModel)]="item.horaLimite" style="padding: 4px 8px;">
                     </div>
-
                   </div>
                 </div>
               </div>
@@ -831,35 +826,11 @@
                 </svg> Añadir actividad
               </button>
             </div>
-<div style="margin-bottom: 20px; border: 1px dashed #CBD5E1; padding: 16px; border-radius: 8px; background: #F8FAFC;">
-  <label style="font-size: 13px; font-weight: 800; color: #4338CA; display: block; margin-bottom: 12px; text-transform: uppercase;">
-    🚩 Dividir en Fases (Opcional)
-  </label>
-  
-  <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-    <input type="text" [(ngModel)]="nuevaFaseTexto" (keyup.enter)="agregarFase()" placeholder="Ej: Cotizar, Ir a sucursal, Revisar..." style="flex: 1; padding: 10px 14px; border-radius: 8px; border: 1px solid #CBD5E1; font-size: 14px; outline: none;">
-    <button (click)="agregarFase()" type="button" style="background: #4338CA; color: white; border: none; padding: 0 20px; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s;">
-      Añadir Fase
-    </button>
-  </div>
 
-  <div *ngIf="fasesTemporales.length > 0" style="display: flex; flex-direction: column; gap: 8px;">
-    <div *ngFor="let fase of fasesTemporales; let i = index" style="display: flex; align-items: center; justify-content: space-between; background: white; padding: 10px 14px; border: 1px solid #E2E8F0; border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.02);">
-      <div style="display: flex; align-items: center; gap: 10px;">
-        <span style="background: #EEF2FF; color: #4338CA; font-weight: 800; font-size: 12px; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border-radius: 50%;">{{ i + 1 }}</span>
-        <span style="font-size: 14px; font-weight: 600; color: #1E293B;">{{ fase.texto }}</span>
-      </div>
-      <button (click)="eliminarFase(i)" type="button" style="color: #EF4444; background: #FEF2F2; border: 1px solid #FECACA; border-radius: 6px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 18px; line-height: 1;">
-        &times;
-      </button>
-    </div>
-  </div>
-</div>
             <div
               style="margin-top: 15px; margin-bottom: 15px; padding: 15px; background-color: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
               <p style="font-size: 13px; font-weight: 600; color: #475569; margin-bottom: 10px;">Vías de Notificación:
               </p>
-
               <div style="display: flex; gap: 20px; align-items: center;">
                 <label
                   style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px; color: #15803d; font-weight: 500;">
@@ -885,6 +856,7 @@
           </div>
         </div>
       </div>
+
       <div class="modal-overlay" *ngIf="isModalRutinasOpen">
         <div class="modal">
           <div class="modal-header">
@@ -1036,11 +1008,12 @@
               style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; padding-top: 20px; border-top: 1px solid #E2E8F0;">
               <button class="btn-secondary" (click)="cerrarModalRutinas()">Cancelar</button>
               <button class="btn-primary" (click)="guardarBloqueRutinas()">{{ isEditMode ? 'Guardar Cambios' :
-                'Guardaren Sistema' }}</button>
+                'Guardar en Sistema' }}</button>
             </div>
           </div>
         </div>
       </div>
+
       <div class="modal-overlay" *ngIf="isPasswordModalOpen" style="z-index: 9999;">
         <div class="modal" style="max-width: 400px; text-align: center; padding: 30px;">
           <div style="margin-bottom: 15px; color: var(--primary-navy);"><svg width="48" height="48" viewBox="0 0 24 24"
@@ -1061,6 +1034,7 @@
           </div>
         </div>
       </div>
+
       <div class="modal-overlay" *ngIf="isModalNotificacionOpen" style="z-index: 9999;">
         <div class="modal" style="max-width: 400px; padding: 30px;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
@@ -1095,115 +1069,172 @@
           </div>
         </div>
       </div>
-    </div>
-  </div>
-  <div class="modal-overlay" *ngIf="notificacionesPendientes().length > 0"
-    style="z-index: 10000; background: rgba(0,0,0,0.85);">
-    <div class="modal"
-      style="max-width: 500px; padding: 40px; text-align: center; background: #FEF2F2; border: 3px solid #EF4444; animation: shakeAlert 0.5s cubic-bezier(.36,.07,.19,.97) both;">
-      <div style="color: #EF4444; margin-bottom: 20px;">
-        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
-          <line x1="12" y1="9" x2="12" y2="13"></line>
-          <line x1="12" y1="17" x2="12.01" y2="17"></line>
+
+      <div class="modal-overlay" *ngIf="notificacionesPendientes().length > 0"
+        style="z-index: 10000; background: rgba(0,0,0,0.85);">
+        <div class="modal"
+          style="max-width: 500px; padding: 40px; text-align: center; background: #FEF2F2; border: 3px solid #EF4444; animation: shakeAlert 0.5s cubic-bezier(.36,.07,.19,.97) both;">
+          <div style="color: #EF4444; margin-bottom: 20px;">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+              <line x1="12" y1="9" x2="12" y2="13"></line>
+              <line x1="12" y1="17" x2="12.01" y2="17"></line>
+            </svg>
+          </div>
+          <h2
+            style="color: #991B1B; font-size: 24px; font-weight: 800; margin-bottom: 10px; text-transform: uppercase;">
+            ⚠️
+            Nuevo Aviso de {{ notificacionesPendientes()[0].de }}</h2>
+          <div
+            style="background: white; padding: 24px; border-radius: 8px; font-size: 18px; color: #1E293B; font-weight: 600; margin-bottom: 30px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border-left: 4px solid #F59E0B;">
+            "{{ notificacionesPendientes()[0].mensaje }}"
+          </div>
+          <button class="btn-primary"
+            style="width: 100%; height: 54px; font-size: 16px; font-weight: 700; background: #EF4444;"
+            (click)="marcarNotificacionComoLeida(notificacionesPendientes()[0])">
+            Entendido, cerrar aviso
+          </button>
+        </div>
+      </div>
+
+      <div class="toast-notification" *ngIf="toastMessage">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+          <polyline points="22 4 12 14.01 9 11.01"></polyline>
         </svg>
+        {{ toastMessage }}
       </div>
-      <h2 style="color: #991B1B; font-size: 24px; font-weight: 800; margin-bottom: 10px; text-transform: uppercase;"> ⚠️
-        Nuevo Aviso de {{ notificacionesPendientes()[0].de }}</h2>
-      <div
-        style="background: white; padding: 24px; border-radius: 8px; font-size: 18px; color: #1E293B; font-weight: 600; margin-bottom: 30px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border-left: 4px solid #F59E0B;">
-        "{{ notificacionesPendientes()[0].mensaje }}"
-      </div>
-      <button class="btn-primary"
-        style="width: 100%; height: 54px; font-size: 16px; font-weight: 700; background: #EF4444;"
-        (click)="marcarNotificacionComoLeida(notificacionesPendientes()[0])">
-        Entendido, cerrar aviso
-      </button>
-    </div>
-  </div>
-  <div class="toast-notification" *ngIf="toastMessage">
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-      stroke-linecap="round" stroke-linejoin="round">
-      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-      <polyline points="22 4 12 14.01 9 11.01"></polyline>
-    </svg>
-    {{ toastMessage }}
 
-  </div>
-  <div class="modal-overlay" *ngIf="isModalEquipoOpen" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15,23,42,0.8); backdrop-filter: blur(5px); z-index: 10000; display: flex; justify-content: center; align-items: center; padding: 20px;">
-    
-    <div style="background: white; width: 100%; max-width: 750px; max-height: 90vh; border-radius: 20px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);">
-        
-        <div style="padding: 20px 24px; border-bottom: 1px solid #E2E8F0; display: flex; justify-content: space-between; align-items: center; background: #F8FAFC;">
+      <div class="modal-overlay" *ngIf="isModalEquipoOpen"
+        style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15,23,42,0.8); backdrop-filter: blur(5px); z-index: 10000; display: flex; justify-content: center; align-items: center; padding: 20px;">
+        <div
+          style="background: white; width: 100%; max-width: 750px; max-height: 90vh; border-radius: 20px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);">
+
+          <div
+            style="padding: 20px 24px; border-bottom: 1px solid #E2E8F0; display: flex; justify-content: space-between; align-items: center; background: #F8FAFC;">
             <div style="display: flex; align-items: center; gap: 10px;">
-                <div style="background: #10B981; color: white; padding: 8px; border-radius: 8px;"><i class="fa-solid fa-users"></i></div>
-                <h3 style="margin: 0; color: #1E293B; font-weight: 800;">Nueva tarea de equipo</h3>
+              <div style="background: #10B981; color: white; padding: 8px; border-radius: 8px;"><svg width="20"
+                  height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="9" cy="7" r="4"></circle>
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                </svg></div>
+              <h3 style="margin: 0; color: #1E293B; font-weight: 800;">Nueva tarea de equipo</h3>
             </div>
-            <button (click)="cerrarModalEquipo()" style="background: none; border: none; font-size: 28px; color: #94A3B8; cursor: pointer;">&times;</button>
-        </div>
+            <button (click)="cerrarModalEquipo()"
+              style="background: none; border: none; font-size: 28px; color: #94A3B8; cursor: pointer;">&times;</button>
+          </div>
 
-        <div style="display: flex; justify-content: space-around; padding: 15px; background: #F1F5F9; border-bottom: 1px solid #E2E8F0;">
-            <div [style.color]="pasoEquipo >= 1 ? '#2563EB' : '#94A3B8'" style="font-size: 12px; font-weight: 800; display: flex; align-items: center; gap: 5px;">
-                <span [style.background]="pasoEquipo >= 1 ? '#2563EB' : '#94A3B8'" style="color:white; width:20px; height:20px; border-radius:50%; display:flex; align-items:center; justify-content:center;">1</span> Tarea general
+          <div
+            style="display: flex; justify-content: space-around; padding: 15px; background: #F1F5F9; border-bottom: 1px solid #E2E8F0;">
+            <div [style.color]="pasoEquipo >= 1 ? '#2563EB' : '#94A3B8'"
+              style="font-size: 12px; font-weight: 800; display: flex; align-items: center; gap: 5px;">
+              <span [style.background]="pasoEquipo >= 1 ? '#2563EB' : '#94A3B8'"
+                style="color:white; width:20px; height:20px; border-radius:50%; display:flex; align-items:center; justify-content:center;">1</span>
+              Tarea general
             </div>
-            <div [style.color]="pasoEquipo >= 2 ? '#2563EB' : '#94A3B8'" style="font-size: 12px; font-weight: 800; display: flex; align-items: center; gap: 5px;">
-                <span [style.background]="pasoEquipo >= 2 ? '#2563EB' : '#94A3B8'" style="color:white; width:20px; height:20px; border-radius:50%; display:flex; align-items:center; justify-content:center;">2</span> Asignar al equipo
+            <div [style.color]="pasoEquipo >= 2 ? '#2563EB' : '#94A3B8'"
+              style="font-size: 12px; font-weight: 800; display: flex; align-items: center; gap: 5px;">
+              <span [style.background]="pasoEquipo >= 2 ? '#2563EB' : '#94A3B8'"
+                style="color:white; width:20px; height:20px; border-radius:50%; display:flex; align-items:center; justify-content:center;">2</span>
+              Asignar al equipo
             </div>
-            <div [style.color]="pasoEquipo >= 3 ? '#2563EB' : '#94A3B8'" style="font-size: 12px; font-weight: 800; display: flex; align-items: center; gap: 5px;">
-                <span [style.background]="pasoEquipo >= 3 ? '#2563EB' : '#94A3B8'" style="color:white; width:20px; height:20px; border-radius:50%; display:flex; align-items:center; justify-content:center;">3</span> Revisar y crear
+            <div [style.color]="pasoEquipo >= 3 ? '#2563EB' : '#94A3B8'"
+              style="font-size: 12px; font-weight: 800; display: flex; align-items: center; gap: 5px;">
+              <span [style.background]="pasoEquipo >= 3 ? '#2563EB' : '#94A3B8'"
+                style="color:white; width:20px; height:20px; border-radius:50%; display:flex; align-items:center; justify-content:center;">3</span>
+              Revisar y crear
             </div>
-        </div>
+          </div>
 
-        <div style="padding: 24px; overflow-y: auto; flex: 1;">
-        <div style="padding: 16px 24px; background: #F8FAFC; border-top: 1px solid #E2E8F0; display: flex; justify-content: space-between;">
-            <button (click)="pasoEquipo = pasoEquipo - 1" *ngIf="pasoEquipo > 1" style="padding: 10px 20px; border-radius: 8px; border: 1px solid #CBD5E1; background: white; font-weight: 700; color: #475569; cursor: pointer;">Atrás</button>
-            <span *ngIf="pasoEquipo === 1"></span> 
-            
-            <button (click)="pasoEquipo = 2" *ngIf="pasoEquipo === 1" style="padding: 10px 25px; border-radius: 8px; background: #2563EB; color: white; border: none; font-weight: 800; cursor: pointer;">Siguiente: Asignar al equipo ></button>
-            
-            <button (click)="pasoEquipo = 3" *ngIf="pasoEquipo === 2" style="padding: 10px 25px; border-radius: 8px; background: #2563EB; color: white; border: none; font-weight: 800; cursor: pointer;">Siguiente: Revisar y crear ></button>
-            
-            <button (click)="cerrarModalEquipo()" *ngIf="pasoEquipo === 3" style="padding: 10px 25px; border-radius: 8px; background: #10B981; color: white; border: none; font-weight: 800; cursor: pointer;">Finalizar y Enviar 🚀</button>
-        </div>
+          <div style="padding: 24px; overflow-y: auto; flex: 1;">
+
+            <div *ngIf="pasoEquipo === 1" style="display: flex; flex-direction: column; gap: 20px;">
+              <div style="background: #EEF2FF; border: 1px solid #C7D2FE; padding: 20px; border-radius: 12px;">
+                <label style="font-size: 11px; font-weight: 800; color: #4338CA; text-transform: uppercase;">🎯 Nombre
+                  de la Tarea en Equipo</label>
+                <input type="text" [(ngModel)]="nombreTareaEquipo"
+                  placeholder="Ej: Cambiar diseño de MD, Limpieza general..."
+                  style="width: 100%; padding: 12px; border: 1px solid #CBD5E1; border-radius: 8px; margin-top: 8px; font-weight: 700; font-size: 16px; outline: none;">
+              </div>
             </div>
 
-     <div *ngIf="pasoEquipo === 2">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                    <p style="font-size: 12px; font-weight: 800; color: #64748B; text-transform: uppercase; margin: 0;">👤 Asignación por integrante</p>
-                    
-                    <button style="background: #4338CA; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-size: 12px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 4px rgba(67, 56, 202, 0.2);">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg>
-                        Agregar Usuario
-                    </button>
-                </div>
-                
-                <div style="background: white; border: 1px solid #E2E8F0; border-radius: 12px; padding: 15px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-                    <div style="display: flex; align-items: center; justify-content: space-between;">
-                        <div style="display: flex; align-items: center; gap: 12px;">
-                            <div style="width: 40px; height: 40px; background: #DBEAFE; color: #2563EB; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: 900;">AL</div>
-                            <div>
-                                <p style="margin: 0; font-weight: 800; font-size: 14px; color: #1E293B;">Ana López</p>
-                                <p style="margin: 0; font-size: 11px; color: #64748B;">Ventas</p>
-                            </div>
-                        </div>
-                        <div style="display: flex; align-items: center; gap: 10px;">
-                            <button style="background: #F8FAFC; border: 1px solid #CBD5E1; color: #334155; padding: 8px 12px; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer;">+ Dividir en fases</button>
-                            
-                            <button style="background: #FEF2F2; color: #EF4444; border: 1px solid #FECACA; border-radius: 6px; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
-                                &times;
-                            </button>
-                        </div>
+            <div *ngIf="pasoEquipo === 2">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <p style="font-size: 12px; font-weight: 800; color: #64748B; text-transform: uppercase; margin: 0;">👤
+                  Asignación por integrante</p>
+                <button
+                  style="background: #4338CA; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-size: 12px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 4px rgba(67, 56, 202, 0.2);">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="8.5" cy="7" r="4"></circle>
+                    <line x1="20" y1="8" x2="20" y2="14"></line>
+                    <line x1="23" y1="11" x2="17" y2="11"></line>
+                  </svg>
+                  Agregar Usuario
+                </button>
+              </div>
+
+              <div
+                style="background: white; border: 1px solid #E2E8F0; border-radius: 12px; padding: 15px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                  <div style="display: flex; align-items: center; gap: 12px;">
+                    <div
+                      style="width: 40px; height: 40px; background: #DBEAFE; color: #2563EB; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: 900;">
+                      AL</div>
+                    <div>
+                      <p style="margin: 0; font-weight: 800; font-size: 14px; color: #1E293B;">Ana López</p>
+                      <p style="margin: 0; font-size: 11px; color: #64748B;">Ventas</p>
                     </div>
+                  </div>
+                  <div style="display: flex; align-items: center; gap: 10px;">
+                    <button
+                      style="background: #F8FAFC; border: 1px solid #CBD5E1; color: #334155; padding: 8px 12px; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer;">+
+                      Dividir en fases</button>
+                    <button
+                      style="background: #FEF2F2; color: #EF4444; border: 1px solid #FECACA; border-radius: 6px; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+                      &times;
+                    </button>
+                  </div>
                 </div>
-                
+              </div>
             </div>
-        </div>
 
-        <div style="padding: 16px 24px; background: #F8FAFC; border-top: 1px solid #E2E8F0; display: flex; justify-content: space-between;">
-            <button (click)="pasoEquipo = pasoEquipo - 1" *ngIf="pasoEquipo > 1" style="padding: 10px 20px; border-radius: 8px; border: 1px solid #CBD5E1; background: white; font-weight: 700; cursor: pointer;">Atrás</button>
-            <span *ngIf="pasoEquipo === 1"></span> <button (click)="pasoEquipo = pasoEquipo + 1" *ngIf="pasoEquipo < 3" style="padding: 10px 25px; border-radius: 8px; background: #2563EB; color: white; border: none; font-weight: 800; cursor: pointer;">Siguiente: revisar y crear ></button>
-            <button (click)="cerrarModalEquipo()" *ngIf="pasoEquipo === 3" style="padding: 10px 25px; border-radius: 8px; background: #10B981; color: white; border: none; font-weight: 800; cursor: pointer;">Finalizar y Enviar 🚀</button>
-        </div>
+            <div *ngIf="pasoEquipo === 3" style="text-align: center; padding: 20px;">
+              <div style="font-size: 50px; color: #10B981; margin-bottom: 20px;"><svg width="60" height="60"
+                  viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                  <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                </svg></div>
+              <h2 style="margin: 0;">¡Todo listo!</h2>
+              <p style="color: #64748B;">Se notificará a los integrantes por WhatsApp y Correo.</p>
+            </div>
 
+          </div>
+
+          <div
+            style="padding: 16px 24px; background: #F8FAFC; border-top: 1px solid #E2E8F0; display: flex; justify-content: space-between;">
+            <button (click)="pasoEquipo = pasoEquipo - 1" *ngIf="pasoEquipo > 1"
+              style="padding: 10px 20px; border-radius: 8px; border: 1px solid #CBD5E1; background: white; font-weight: 700; color: #475569; cursor: pointer;">Atrás</button>
+            <span *ngIf="pasoEquipo === 1"></span>
+
+            <button (click)="pasoEquipo = 2" *ngIf="pasoEquipo === 1"
+              style="padding: 10px 25px; border-radius: 8px; background: #2563EB; color: white; border: none; font-weight: 800; cursor: pointer;">Siguiente:
+              Asignar al equipo ></button>
+
+            <button (click)="pasoEquipo = 3" *ngIf="pasoEquipo === 2"
+              style="padding: 10px 25px; border-radius: 8px; background: #2563EB; color: white; border: none; font-weight: 800; cursor: pointer;">Siguiente:
+              Revisar y crear ></button>
+
+            <button (click)="cerrarModalEquipo()" *ngIf="pasoEquipo === 3"
+              style="padding: 10px 25px; border-radius: 8px; background: #10B981; color: white; border: none; font-weight: 800; cursor: pointer;">Finalizar
+              y Enviar 🚀</button>
+          </div>
+
+        </div>
+      </div>
     </div>
+  </div>
 </div>

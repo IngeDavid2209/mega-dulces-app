@@ -1174,9 +1174,9 @@
                                   </div>
                               </div>
                               <div style="display: flex; align-items: center; gap: 10px;">
-                                  <button (click)="abrirFasesIntegrante(i)" style="background: #F8FAFC; border: 1px solid #CBD5E1; color: #334155; padding: 8px 12px; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer;">
-                                      + Fases ({{ integrante.fases?.length || 0 }})
-                                  </button>
+                                  <button (click)="abrirActividadIntegrante(i)" style="background: #F8FAFC; border: 1px solid #CBD5E1; color: #334155; padding: 8px 12px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer;">
+    Actividad correspondiente ({{ integrante.fases?.length || 0 }})
+</button>
                                   <button (click)="eliminarIntegranteEquipo(i)" style="background: #FEF2F2; color: #EF4444; border: 1px solid #FECACA; border-radius: 6px; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
                                       &times;
                                   </button>
@@ -1191,7 +1191,72 @@
                   <button (click)="cerrarModalEquipo()" style="padding: 10px 20px; border-radius: 8px; border: 1px solid #CBD5E1; background: white; font-weight: 700; color: #475569; cursor: pointer;">Cancelar</button>
                   <button (click)="cerrarModalEquipo()" style="padding: 10px 25px; border-radius: 8px; background: #10B981; color: white; border: none; font-weight: 800; cursor: pointer;">Generar Tareas de Equipo 🚀</button>
               </div>
+<div class="modal-overlay" *ngIf="isModalActividadIntegranteOpen" style="z-index: 11000; background: rgba(0,0,0,0.6);">
+    <div class="modal" style="max-width: 700px; max-height: 85vh; overflow-y: auto;">
+        <div class="modal-header">
+            <div class="modal-title" style="font-size: 16px;">
+                Actividades para: <span style="color: #4338CA;">{{ integrantesEquipo[integranteActualIndex]?.nombre }}</span>
+            </div>
+            <button class="modal-close" (click)="cerrarModalActividadIntegrante()">&times;</button>
+        </div>
+        
+        <div class="modal-body" style="padding-top: 15px;">
+            <p style="font-size: 12px; color: #64748B; margin-bottom: 15px;">Define las tareas específicas que este integrante debe realizar dentro del equipo.</p>
+            
+            <div class="checklist-items">
+                <div class="checklist-item-wrap" *ngFor="let item of formItemsActividad; let i = index" style="background: #F8FAFC; border: 1px solid #E2E8F0; padding: 15px; border-radius: 10px; margin-bottom: 15px;">
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
+                        <input class="form-input" type="text" [(ngModel)]="item.text" placeholder="¿Qué debe hacer?" style="flex: 1;">
+                        <button (click)="eliminarActividadIntegrante(i)" style="background: none; border: none; color: #EF4444; cursor: pointer;"><i class="fa-solid fa-trash"></i></button>
+                    </div>
 
+                    <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px;">
+                        <label class="photo-toggle" style="font-size: 11px; padding: 4px 8px;">
+                            <input type="checkbox" [(ngModel)]="item.requiresPhoto" (change)="item.requiresPhoto ? item.requiresAntesDespues = false : null"> 1 Foto
+                        </label>
+                        <label class="photo-toggle" style="font-size: 11px; padding: 4px 8px; background: #FFFBEB; color: #D97706;">
+                            <input type="checkbox" [(ngModel)]="item.requiresAntesDespues" (change)="item.requiresAntesDespues ? item.requiresPhoto = false : null"> Antes/Desp.
+                        </label>
+                        <label class="photo-toggle" style="font-size: 11px; padding: 4px 8px; background: #F1F5F9;">
+                            <input type="checkbox" [(ngModel)]="item.permiteGaleria"> Galería
+                        </label>
+                        <label class="photo-toggle" style="font-size: 11px; padding: 4px 8px; background: #F3E8FF; color: #7E22CE;">
+                            <input type="checkbox" [(ngModel)]="item.permiteDocumentos"> Docs.
+                        </label>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                        <div>
+                            <label style="font-size: 10px; color: #64748B;">📅 Inicio</label>
+                            <input type="date" class="form-input" [(ngModel)]="item.fechaInicio" style="font-size: 11px; padding: 5px;">
+                        </div>
+                        <div>
+                            <label style="font-size: 10px; color: #64748B;">⏰ Hora</label>
+                            <input type="time" class="form-input" [(ngModel)]="item.horaInicio" style="font-size: 11px; padding: 5px;">
+                        </div>
+                        <div>
+                            <label style="font-size: 10px; color: #64748B;">⏳ Límite</label>
+                            <input type="date" class="form-input" [(ngModel)]="item.fechaLimite" style="font-size: 11px; padding: 5px;">
+                        </div>
+                        <div>
+                            <label style="font-size: 10px; color: #64748B;">⏰ Hora</label>
+                            <input type="time" class="form-input" [(ngModel)]="item.horaLimite" style="font-size: 11px; padding: 5px;">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <button (click)="agregarActividadIntegrante()" class="btn-secondary" style="width: 100%; border: 1px dashed #CBD5E1; margin-top: 10px;">
+                + Añadir actividad para este usuario
+            </button>
+        </div>
+
+        <div class="btn-group" style="margin-top: 20px; border-top: 1px solid #E2E8F0; padding-top: 15px;">
+            <button class="btn-secondary" (click)="cerrarModalActividadIntegrante()">Cancelar</button>
+            <button class="btn-primary" (click)="guardarActividadesIntegrante()">Confirmar Actividades</button>
+        </div>
+    </div>
+</div>
           </div>
       </div>
  

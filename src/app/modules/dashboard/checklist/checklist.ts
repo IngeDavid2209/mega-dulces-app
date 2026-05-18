@@ -41,9 +41,12 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   isModalNotificacionOpen = false;
   empleadoParaNotificar = '';
   mensajeNotificacion = '';
-  
+  isModalActividadIntegranteOpen = false;
+  integranteActualIndex: number = -1;
   isModalOpen = false;
   formName = '';
+
+  formItemsActividad: any[] = [];
   busquedaEmpleadoEquipo: string = '';
   // 🔥 VARIABLES DE FASES TEMPORALES
   nuevaFaseTexto: string = '';
@@ -1042,5 +1045,42 @@ return this.empleados().filter((emp: any) => emp.nombre.toLowerCase().includes(t
   ocultarDropdownEquipo() {
     // Un pequeño retraso para que alcance a registrar el click antes de cerrarse
     setTimeout(() => { this.mostrarDropdownEquipo = false; }, 200);
+  }
+  abrirActividadIntegrante(index: number) {
+    this.integranteActualIndex = index;
+    const integrante = this.integrantesEquipo[index];
+    
+    // Si el integrante ya tiene actividades, las cargamos. Si no, empezamos con una limpia.
+    if (integrante.fases && integrante.fases.length > 0) {
+      this.formItemsActividad = JSON.parse(JSON.stringify(integrante.fases));
+    } else {
+      this.formItemsActividad = [{ text: '', requiresPhoto: false, requiresAntesDespues: false, requiresVariasFotos: false, permiteGaleria: false, permiteDocumentos: false, fechaInicio: '', horaInicio: '', fechaLimite: '', horaLimite: '' }];
+    }
+    
+    this.isModalActividadIntegranteOpen = true;
+  }
+
+  // 👉 Función para guardar esas actividades y volver al modal de equipo
+  guardarActividadesIntegrante() {
+    if (this.integranteActualIndex > -1) {
+      // Guardamos los cambios en el integrante correspondiente
+      this.integrantesEquipo[this.integranteActualIndex].fases = [...this.formItemsActividad];
+      this.mostrarToast('✅ Actividades asignadas a ' + this.integrantesEquipo[this.integranteActualIndex].nombre);
+      this.cerrarModalActividadIntegrante();
+    }
+  }
+
+  cerrarModalActividadIntegrante() {
+    this.isModalActividadIntegranteOpen = false;
+    this.integranteActualIndex = -1;
+  }
+
+  // Funciones auxiliares para el sub-modal
+  agregarActividadIntegrante() {
+    this.formItemsActividad.push({ text: '', requiresPhoto: false, requiresAntesDespues: false, requiresVariasFotos: false, permiteGaleria: false, permiteDocumentos: false, fechaInicio: '', horaInicio: '', fechaLimite: '', horaLimite: '' });
+  }
+
+  eliminarActividadIntegrante(index: number) {
+    this.formItemsActividad.splice(index, 1);
   }
 }

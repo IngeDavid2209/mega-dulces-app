@@ -147,23 +147,26 @@
               Tu panel operativo está listo. Aquí tienes tu estatus de hoy.
             </p>
           </div>
-          <div style="display: flex; gap: 20px; margin-top: 15px;">
-            <div routerLink="/checklist"
+<div style="display: flex; gap: 15px; width: 100%; box-sizing: border-box;">
+              <div routerLink="/checklist"
               style="background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); padding: 18px 30px; border-radius: 14px; text-align: center; border: 1px solid rgba(255,255,255,0.1); cursor: pointer; transition: all 0.2s ease; min-width: 140px;"
               onmouseover="this.style.transform='translateY(-4px)'; this.style.background='rgba(255, 255, 255, 0.2)'"
               onmouseout="this.style.transform='translateY(0)'; this.style.background='rgba(255, 255, 255, 0.1)'">
               <div style="font-size: 38px; font-weight: 800; color: #FDE68A; line-height: 1;">{{ pendientes() }}</div>
-              <div style="font-size: 12px; font-weight: 700; color: #E2E8F0; margin-top: 8px; letter-spacing: 1px;">
-                PENDIENTES</div>
+              <div style="flex: 1; min-width: 0; background: rgba(255,255,255,0.1); border-radius: 12px; padding: 15px; text-align: center; ">
+   <h3>7</h3>
+   <p>PENDIENTES</p>
+</div>
             </div>
             <div routerLink="/checklist"
               style="background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); padding: 18px 30px; border-radius: 14px; text-align: center; border: 1px solid rgba(255,255,255,0.1); cursor: pointer; transition: all 0.2s ease; min-width: 140px;"
               onmouseover="this.style.transform='translateY(-4px)'; this.style.background='rgba(255, 255, 255, 0.2)'"
               onmouseout="this.style.transform='translateY(0)'; this.style.background='rgba(255, 255, 255, 0.1)'">
               <div style="font-size: 38px; font-weight: 800; color: #6EE7B7; line-height: 1;">{{ enProgreso() }}</div>
-              <div style="font-size: 12px; font-weight: 700; color: #E2E8F0; margin-top: 8px; letter-spacing: 1px;">EN
-                PROGRESO</div>
-            </div>
+              <div style="flex: 1; min-width: 0; background: rgba(255,255,255,0.1); border-radius: 12px; padding: 15px; text-align: center;  ">
+   <h3>0</h3>
+   <p>EN PROGRESO</p>
+</div>
           </div>
         </div>
         <div style="display: flex; flex-wrap: wrap; gap: 30px; align-items: flex-start;">

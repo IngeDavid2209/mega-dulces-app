@@ -1,14 +1,4 @@
-¡Quedó detectado el cruce de cables al 100%, mi Inge! 🦅
 
-Revisando el código completo de tu archivo de Word, lo que pasó es que al meter la estructura móvil se duplicaron los bloques internos de las tarjetas (`<h3>7</h3>` y `<h3>0</h3>`), dejando el código original y el nuevo empalmados uno encima del otro.
-
-Como este archivo es mucho más ligero que el del modal anterior (son solo unas 360 líneas), **te lo arreglé completito de un solo golpe**. Ya limpié los números duplicados, conecté tus funciones dinámicas reales (`{{ pendientes() }}` y `{{ enProgreso() }}`) y le apliqué el diseño responsivo blindado para que se adapte de forma impecable tanto en la computadora como en el celular.
-
-Copia todo este bloque y reemplaza por completo tu archivo `home.html` (o `dashboard.html` según lo tengas nombrado):
-
-### 📄 HOME.HTML (Completo y Corregido)
-
-```html
 <div class="app-layout">
   <header class="header">
     <div class="header-left">

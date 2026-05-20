@@ -419,8 +419,16 @@
             </div>
             <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
               <button class="btn-secondary" (click)="cerrarModal()">Cancelar</button>
-              <button class="btn-primary" (click)="guardarArea()">{{ areaEditandoId ? 'Guardar Cambios' : 'Crear Área'
-                }}</button>
+             <button class="btn-primary"
+        (click)="guardarArea()"
+        [disabled]="isGuardando">
+  <ng-container *ngIf="!isGuardando">
+    {{ areaEditandoId ? 'Guardar Cambios' : 'Crear Área' }}
+  </ng-container>
+  <ng-container *ngIf="isGuardando">
+    ⏳ Guardando...
+  </ng-container>
+</button>
             </div>
           </div>
         </div>

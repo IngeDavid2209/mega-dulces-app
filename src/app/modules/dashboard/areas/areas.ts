@@ -22,7 +22,7 @@ export class AreasComponent implements OnInit, OnDestroy {
   areaDetalle = signal<any>(null);
   terminoBusqueda = '';
   isModalOpen = false;
-
+isGuardando = false;   
   // 🔥 VARIABLES DE FORMULARIO (MODIFICACIÓN Y RECURRENCIA) 🔥
   areaEditandoId = '';
   formNombreArea = '';
@@ -220,80 +220,125 @@ export class AreasComponent implements OnInit, OnDestroy {
     return this.formAssignedUsers.some(u => u.idFirestore === usuario.idFirestore);
   }
 
-  async guardarArea() {
-    if (!this.formNombreArea.trim()) { Swal.fire('Falta el nombre', 'Debes asignarle un nombre al área.', 'warning'); return; }
-    const nombreFormateado = this.formNombreArea.trim();
-
-    // Validación de duplicados solo si estamos creando una nueva
-    if (!this.areaEditandoId) {
-      const existe = this.areas().some(a => a.nombre.toLowerCase() === nombreFormateado.toLowerCase());
-      if (existe) { Swal.fire('Área Duplicada', 'Ya existe un área con ese nombre.', 'error'); return; }
-    }
-
-    const areaId = this.areaEditandoId || ('area_' + Date.now());
-
-    try {
-      const datosGuardar: any = {
-        nombre: nombreFormateado,
-        descripcion: this.formDescripcionArea.trim(),
-        fechaAsignada: this.formEsRecurrente ? '' : this.formFechaArea, // Si es recurrente, borramos la fecha
-        horaEntrada: this.formHoraEntrada,
-        horaSalida: this.formHoraSalida,
-        turnoAsignado: this.formTurnoArea,
-        esRecurrente: this.formEsRecurrente
-      };
-
-      if (!this.areaEditandoId) {
-        datosGuardar['fechaCreacion'] = new Date().toISOString();
-      } else {
-        datosGuardar['fechaModificacion'] = new Date().toISOString();
-      }
-
-      // 🔥 MODO OFFLINE: Sin "await" 🔥
-      setDoc(doc(this.firestore, 'areas_operativas', areaId), datosGuardar, { merge: true });
-
-      // Si es un área nueva, asignamos los usuarios seleccionados
-      if (!this.areaEditandoId) {
-        for (const u of this.formAssignedUsers) {
-          let nuevasAreas = u.areas ? [...u.areas] : [];
-          if (!nuevasAreas.includes(nombreFormateado)) {
-            nuevasAreas.push(nombreFormateado);
-            setDoc(doc(this.firestore, 'usuarios', u.idFirestore), { areas: nuevasAreas }, { merge: true });
-          }
-        }
-
-        const yo = this.liveUser;
-        if (yo && yo.rol !== 'admin') {
-          const misAreas = yo.areas || [];
-          const esGlobalArea = misAreas.includes('Todas las áreas') || misAreas.includes('Todas');
-          if (!esGlobalArea && !misAreas.includes(nombreFormateado)) {
-            misAreas.push(nombreFormateado);
-            const miId = yo.idFirestore || yo.uid;
-            if (miId) {
-              setDoc(doc(this.firestore, 'usuarios', miId), { areas: misAreas }, { merge: true });
-            }
-          }
-        }
-      }
-
-      this.cerrarModal();
-
-      // 🔥 ALERTA INTELIGENTE DE INTERNET 🔥
-      const msg = this.areaEditandoId ? 'Área actualizada' : 'Área programada';
-      if (navigator.onLine) {
-        Swal.fire({ toast: true, position: 'top-end', showConfirmButton: false, timer: 3000, icon: 'success', title: `${msg} en la Nube ☁️` });
-      } else {
-        Swal.fire({ toast: true, position: 'top-end', showConfirmButton: false, timer: 4000, icon: 'info', title: `Sin Internet: ${msg} en Bóveda Local 📦` });
-      }
-
-      // Refrescar el detalle si estábamos editando
-      if (this.areaEditandoId && this.areaDetalle()) {
-        const areaActualizada = { ...this.areaDetalle(), ...datosGuardar };
-        this.areaDetalle.set(areaActualizada);
-      }
-
-    } catch (error) { Swal.fire('Error', 'Hubo un problema al procesar el área.', 'error'); }
+ 
+async guardarArea() {
+  // 🛡️ Anti-doble-click: si ya estamos guardando, ignorar
+  if (this.isGuardando) return;
+ 
+  if (!this.formNombreArea.trim()) {
+    Swal.fire('Falta el nombre', 'Debes asignarle un nombre al área.', 'warning');
+    return;
   }
+ 
+  const nombreFormateado = this.formNombreArea.trim();
+ 
+  // Validación de duplicados (solo al crear, no al editar)
+  if (!this.areaEditandoId) {
+    const existe = this.areas().some(
+      a => a.nombre.toLowerCase() === nombreFormateado.toLowerCase()
+    );
+    if (existe) {
+      Swal.fire('Área Duplicada', 'Ya existe un área con ese nombre.', 'error');
+      return;
+    }
+  }
+ 
+  // 🔒 Bloqueamos el botón
+  this.isGuardando = true;
+ 
+  const areaId = this.areaEditandoId || ('area_' + Date.now());
+ 
+  try {
+    const datosGuardar: any = {
+      nombre: nombreFormateado,
+      descripcion: this.formDescripcionArea.trim(),
+      fechaAsignada: this.formEsRecurrente ? '' : this.formFechaArea,
+      horaEntrada: this.formHoraEntrada,
+      horaSalida: this.formHoraSalida,
+      turnoAsignado: this.formTurnoArea,
+      esRecurrente: this.formEsRecurrente
+    };
+ 
+    if (!this.areaEditandoId) {
+      datosGuardar['fechaCreacion'] = new Date().toISOString();
+    } else {
+      datosGuardar['fechaModificacion'] = new Date().toISOString();
+    }
+ 
+    // ✅ AHORA SÍ ESPERAMOS A FIRESTORE (await)
+    await setDoc(
+      doc(this.firestore, 'areas_operativas', areaId),
+      datosGuardar,
+      { merge: true }
+    );
+ 
+    // Si es un área nueva, asignamos los usuarios seleccionados
+    if (!this.areaEditandoId) {
+      for (const u of this.formAssignedUsers) {
+        const nuevasAreas = u.areas ? [...u.areas] : [];
+        if (!nuevasAreas.includes(nombreFormateado)) {
+          nuevasAreas.push(nombreFormateado);
+          await setDoc(
+            doc(this.firestore, 'usuarios', u.idFirestore),
+            { areas: nuevasAreas },
+            { merge: true }
+          );
+        }
+      }
+ 
+      const yo = this.liveUser;
+      if (yo && yo.rol !== 'admin') {
+        const misAreas = yo.areas || [];
+        const esGlobalArea =
+          misAreas.includes('Todas las áreas') || misAreas.includes('Todas');
+        if (!esGlobalArea && !misAreas.includes(nombreFormateado)) {
+          misAreas.push(nombreFormateado);
+          const miId = yo.idFirestore || yo.uid;
+          if (miId) {
+            await setDoc(
+              doc(this.firestore, 'usuarios', miId),
+              { areas: misAreas },
+              { merge: true }
+            );
+          }
+        }
+      }
+    }
+ 
+    // Cerramos el modal SOLO después de que todo se guardó
+    this.cerrarModal();
+ 
+    // 🔥 ALERTA INTELIGENTE DE INTERNET 🔥
+    const msg = this.areaEditandoId ? 'Área actualizada' : 'Área programada';
+    if (navigator.onLine) {
+      Swal.fire({
+        toast: true, position: 'top-end', showConfirmButton: false,
+        timer: 3000, icon: 'success',
+        title: `${msg} en la Nube ☁️`
+      });
+    } else {
+      Swal.fire({
+        toast: true, position: 'top-end', showConfirmButton: false,
+        timer: 4000, icon: 'info',
+        title: `Sin Internet: ${msg} en Bóveda Local 📦`
+      });
+    }
+ 
+    // Refrescar el detalle si estábamos editando
+    if (this.areaEditandoId && this.areaDetalle()) {
+      const areaActualizada = { ...this.areaDetalle(), ...datosGuardar };
+      this.areaDetalle.set(areaActualizada);
+    }
+ 
+  } catch (error) {
+    console.error('Error al guardar área:', error);
+    Swal.fire('Error', 'Hubo un problema al procesar el área.', 'error');
+  } finally {
+    // 🔓 Siempre liberamos el botón (haya éxito o error)
+    this.isGuardando = false;
+  }
+}
+ 
 
   async eliminarArea(area: any, event: Event) {
     event.stopPropagation();

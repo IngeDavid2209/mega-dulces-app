@@ -1098,4 +1098,31 @@ return this.empleados().filter((emp: any) => emp.nombre.toLowerCase().includes(t
   eliminarFaseIntegrante(index: number) {
     this.fasesTemporalesIntegrante.splice(index, 1);
   }
+  getHoraInicioGeneral(checklist: any): string {
+  if (!checklist?.items || checklist.items.length === 0) return '';
+ 
+  const horas = checklist.items
+    .map((item: any) => item.horaInicio)
+    .filter((h: any) => !!h && typeof h === 'string' && h.includes(':'));
+ 
+  if (horas.length === 0) return '';
+ 
+  // Tomamos la más temprana
+  horas.sort();
+  return this.formatearHora(horas[0]);
+}
+
+getHoraLimiteGeneral(checklist: any): string {
+  if (!checklist?.items || checklist.items.length === 0) return '';
+ 
+  const horas = checklist.items
+    .map((item: any) => item.horaLimite || item.time)
+    .filter((h: any) => !!h && typeof h === 'string' && h.includes(':'));
+ 
+  if (horas.length === 0) return '';
+ 
+  // Tomamos la más tardía
+  horas.sort();
+  return this.formatearHora(horas[horas.length - 1]);
+}
 }

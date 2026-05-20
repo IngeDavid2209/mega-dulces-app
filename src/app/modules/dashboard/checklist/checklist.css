@@ -1347,3 +1347,112 @@
     justify-content: center;
   }
 }
+
+.checklist-meta-box {
+  margin-top: 12px;
+  margin-bottom: 12px;
+  padding: 12px 14px;
+  background: linear-gradient(135deg, #F8FAFC 0%, #EFF6FF 100%);
+  border: 1px solid #E2E8F0;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+ 
+/* Fila con Hora Inicio | Hora Límite */
+.meta-row {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+}
+ 
+.meta-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+ 
+.meta-label {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  color: #64748B;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+ 
+.meta-value {
+  font-size: 15px;
+  font-weight: 800;
+  color: #1E293B;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  text-align: center;
+}
+ 
+.meta-value-start {
+  color: #047857; /* verde para inicio */
+  border-color: #A7F3D0;
+  background: #ECFDF5;
+}
+ 
+.meta-value-end {
+  color: #B45309; /* ámbar para límite */
+  border-color: #FCD34D;
+  background: #FFFBEB;
+}
+ 
+.meta-divider {
+  width: 1px;
+  background: #CBD5E1;
+  margin: 4px 0;
+}
+ 
+/* Fila de "Asignado por" */
+.meta-assigned-by {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #475569;
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  padding: 6px 10px;
+  border-radius: 8px;
+}
+ 
+.meta-assigned-by svg {
+  color: #6366F1;
+  flex-shrink: 0;
+}
+ 
+.meta-assigned-label {
+  color: #64748B;
+  font-weight: 600;
+}
+ 
+.meta-assigned-name {
+  color: #1E293B;
+  font-weight: 800;
+}
+ 
+/* Ajustes responsive */
+@media (max-width: 480px) {
+  .meta-row {
+    flex-direction: column;
+    gap: 8px;
+  }
+  .meta-divider {
+    display: none;
+  }
+  .meta-value {
+    font-size: 14px;
+  }
+}

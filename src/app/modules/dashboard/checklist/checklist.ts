@@ -792,51 +792,121 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     } catch (error) { console.error(' ❌ Error enviando correo:', error); }
   }
 
-  guardarChecklistUnico() {
-    if (!this.formName || this.formAssigned.length === 0) { alert('Faltan datos.'); return; }
-    const tareasValidas = this.formItems.filter(item => item.text.trim() !== '').map((item, i) => ({
-      id: Date.now() + i, text: item.text, requiresPhoto: item.requiresPhoto, requiresAntesDespues: item.requiresAntesDespues,
-      requiresVariasFotos: item.requiresVariasFotos || false, permiteGaleria: item.permiteGaleria || false,
-      permiteDocumentos: item.permiteDocumentos || false, tiempoEstimado: item.requiresAntesDespues ? (item.tiempoEstimado || 30) : null,
-      archivoInstruccion: item.archivoInstruccion || null, nombreArchivo: item.nombreArchivo || null, date: item.date, time: item.time,
-      checked: false, photo: null, photoTime: null, photoAntes: null, photoAntesTime: null, photoAntesTimestamp: null, photoDespues: null, photoDespuesTime: null, tipo: 'tarea'
-    }));
-    if (tareasValidas.length === 0) { alert('Agrega tareas.'); return; }
-
-    const urlsWhatsApp: string[] = [];
-    this.formAssigned.forEach((empleadoNombre, index) => {
-      const uniqueId = Date.now() + index;
-      const offset = new Date().getTimezoneOffset() * 60000;
-      const hoy = new Date(Date.now() - offset).toISOString().split('T')[0];
-      const checklistTareas = {
-        id: uniqueId, timestampCreacion: Date.now(), name: this.formName, assigned: empleadoNombre, store: this.formStore,
-        date: tareasValidas[0].date || hoy, time: tareasValidas[0].time || '23:59', status: 'pendiente', enviado: false,
-        createdBy: this.currentUser?.nombre || 'Desconocido', notaEmpleado: '', 
-        items: JSON.parse(JSON.stringify(tareasValidas)),
-        subtareas: JSON.parse(JSON.stringify(this.fasesTemporales)) // 🔥 GUARDAMOS LAS FASES EN FIREBASE
-      };
-      this.guardarEnLaNube(checklistTareas);
-
-      if (this.notificarPorWhatsApp) {
-        const datosEmpleado = this.empleados().find(e => e.nombre === empleadoNombre);
-        let telefono = datosEmpleado?.telefono || '';
-        telefono = telefono.replace(/[\s\- \(\) ]/g, '');
-        if (telefono.startsWith('+')) telefono = telefono.slice(1);
-        if (telefono.length === 10) telefono = '52' + telefono;
-        if (telefono) {
-          const urlApp = 'https://md-chlist.vercel.app';
-          let mensaje = `*Mega Dulces Task* 🍭\n\n¡Hola *${this.limpiarEmojis(empleadoNombre)}*!\nSe te ha asignado un nuevo checklist: *${this.limpiarEmojis(this.formName)}*\n\n 📅 Fecha: ${checklistTareas.date}\n ⏰ Hora Límite: ${this.formatearHora(checklistTareas.time)}\n\n 🔗 Entra aquí: ${urlApp}\n\nFavor de ingresar a la plataforma para completar tus evidencias.`;
-          const url = `https://wa.me/${telefono}?text=${encodeURIComponent(mensaje)}`;
-          urlsWhatsApp.push(url);
-        }
-      }
-      if (this.notificarPorCorreo) { this.enviarAvisoPorCorreo(empleadoNombre, this.formName); }
-    });
-
-    urlsWhatsApp.forEach((url, i) => { setTimeout(() => { window.open(url, '_blank'); }, i * 800); });
-    this.mostrarToast(' ✅ ¡Tareas creadas y avisos generados!');
-    this.cerrarModal();
+guardarChecklistUnico() {
+  if (!this.formName || this.formAssigned.length === 0) {
+    alert('Faltan datos.');
+    return;
   }
+ 
+  // ---------------------------------------------------------------
+  //  AQUÍ ESTABA EL BUG:
+  //  Tu .map() leía item.date / item.time (campos viejos que NO existen
+  //  en tu formulario). Ahora copiamos también los 4 campos nuevos:
+  //  fechaInicio, horaInicio, fechaLimite, horaLimite
+  // ---------------------------------------------------------------
+  const tareasValidas = this.formItems
+    .filter(item => item.text.trim() !== '')
+    .map((item, i) => ({
+      id: Date.now() + i,
+      text: item.text,
+      requiresPhoto: item.requiresPhoto,
+      requiresAntesDespues: item.requiresAntesDespues,
+      requiresVariasFotos: item.requiresVariasFotos || false,
+      permiteGaleria: item.permiteGaleria || false,
+      permiteDocumentos: item.permiteDocumentos || false,
+      tiempoEstimado: item.requiresAntesDespues ? (item.tiempoEstimado || 30) : null,
+      archivoInstruccion: item.archivoInstruccion || null,
+      nombreArchivo: item.nombreArchivo || null,
+ 
+      // 👇 NUEVOS CAMPOS — los que llena el modal y antes se perdían
+      fechaInicio: item.fechaInicio || null,
+      horaInicio:  item.horaInicio  || null,
+      fechaLimite: item.fechaLimite || null,
+      horaLimite:  item.horaLimite  || null,
+ 
+      // Mantengo "date" y "time" por compatibilidad con el resto del
+      // sistema (vistas viejas, isTareaVencida, etc.).
+      // Los lleno con la FECHA y HORA LÍMITE del item.
+      date: item.fechaLimite || item.date || null,
+      time: item.horaLimite  || item.time || null,
+ 
+      checked: false,
+      photo: null,
+      photoTime: null,
+      photoAntes: null,
+      photoAntesTime: null,
+      photoAntesTimestamp: null,
+      photoDespues: null,
+      photoDespuesTime: null,
+      tipo: 'tarea'
+    }));
+ 
+  if (tareasValidas.length === 0) {
+    alert('Agrega tareas.');
+    return;
+  }
+ 
+  // 🔍 DEBUG — confirma en consola que las horas SÍ van con cada tarea
+  console.log('🔍 Tareas a guardar:', tareasValidas);
+ 
+  const urlsWhatsApp: string[] = [];
+ 
+  this.formAssigned.forEach((empleadoNombre, index) => {
+    const uniqueId = Date.now() + index;
+    const offset = new Date().getTimezoneOffset() * 60000;
+    const hoy = new Date(Date.now() - offset).toISOString().split('T')[0];
+ 
+    const checklistTareas = {
+      id: uniqueId,
+      timestampCreacion: Date.now(),
+      name: this.formName,
+      assigned: empleadoNombre,
+      store: this.formStore,
+      date: tareasValidas[0].date || hoy,
+      time: tareasValidas[0].time || '23:59',
+      status: 'pendiente',
+      enviado: false,
+      createdBy: this.currentUser?.nombre || 'Desconocido',
+      notaEmpleado: '',
+      items: JSON.parse(JSON.stringify(tareasValidas)),
+      subtareas: JSON.parse(JSON.stringify(this.fasesTemporales))
+    };
+ 
+    this.guardarEnLaNube(checklistTareas);
+ 
+    if (this.notificarPorWhatsApp) {
+      const datosEmpleado = this.empleados().find(e => e.nombre === empleadoNombre);
+      let telefono = datosEmpleado?.telefono || '';
+      telefono = telefono.replace(/[\s\- \(\) ]/g, '');
+      if (telefono.startsWith('+')) telefono = telefono.slice(1);
+      if (telefono.length === 10) telefono = '52' + telefono;
+      if (telefono) {
+        const urlApp = 'https://md-chlist.vercel.app';
+        const mensaje =
+          `*Mega Dulces Task* 🍭\n\n` +
+          `¡Hola *${this.limpiarEmojis(empleadoNombre)}*!\n` +
+          `Se te ha asignado un nuevo checklist: *${this.limpiarEmojis(this.formName)}*\n\n` +
+          ` 📅 Fecha: ${checklistTareas.date}\n` +
+          ` ⏰ Hora Límite: ${this.formatearHora(checklistTareas.time)}\n\n` +
+          ` 🔗 Entra aquí: ${urlApp}\n\n` +
+          `Favor de ingresar a la plataforma para completar tus evidencias.`;
+        const url = `https://wa.me/${telefono}?text=${encodeURIComponent(mensaje)}`;
+        urlsWhatsApp.push(url);
+      }
+    }
+ 
+    if (this.notificarPorCorreo) {
+      this.enviarAvisoPorCorreo(empleadoNombre, this.formName);
+    }
+  });
+ 
+  urlsWhatsApp.forEach((url, i) => {
+    setTimeout(() => { window.open(url, '_blank'); }, i * 800);
+  });
+ 
+  this.mostrarToast(' ✅ ¡Tareas creadas y avisos generados!');
+  this.cerrarModal();
+}
 
   async guardarCambiosChecklist() {
     if (!this.formName || this.formAssigned.length === 0) { alert('Faltan datos.'); return; }

@@ -181,9 +181,10 @@
         </div>
         <div class="checklist-grid">
           
+ 
 <div class="checklist-card" *ngFor="let checklist of checklistsFiltrados" (click)="verDetalle(checklist)">
  
-  <!-- ENCABEZADO: nombre + status + botones -->
+  <!-- Encabezado: título + status + acciones -->
   <div class="checklist-card-header">
     <div class="checklist-card-title">{{ checklist.name }}</div>
     <div style="display: flex; align-items: center; gap: 8px;">
@@ -215,7 +216,7 @@
     </div>
   </div>
  
-  <!-- INFO BÁSICA: asignado a, sucursal, fecha -->
+  <!-- Info básica -->
   <div class="checklist-card-info">
     <span style="display: flex; align-items: center; gap: 8px;">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -254,9 +255,7 @@
     </span>
   </div>
  
-  <!-- ============================================================
-       ASIGNADO POR (info general)
-       ============================================================ -->
+  <!-- Asignado por (general del checklist) -->
   <div class="meta-assigned-by" *ngIf="checklist.createdBy">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
       <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
@@ -267,9 +266,7 @@
     <strong class="meta-assigned-name">{{ checklist.createdBy }}</strong>
   </div>
  
-  <!-- ============================================================
-       PREVIEW DE TAREAS — CON HORA INICIO + LÍMITE POR CADA UNA
-       ============================================================ -->
+  <!-- HORARIOS DE TAREAS: cada tarea con inicio + límite juntos -->
   <div class="checklist-preview-box">
     <div class="preview-box-title">
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -280,20 +277,13 @@
     </div>
  
     <ng-container *ngFor="let item of getPrimerasTareas(checklist)">
-      <div class="task-row"
-        [class.task-row-done]="item.checked">
+      <div class="task-row" [class.task-row-done]="item.checked">
  
-        <!-- Nombre de la tarea -->
-        <div class="task-row-name">
-          • {{ item.text }}
-        </div>
+        <div class="task-row-name">• {{ item.text }}</div>
  
-        <!-- Bloque de horarios (inicio + límite JUNTOS) -->
         <div class="task-row-times">
  
-          <!-- Hora inicio -->
-          <div class="task-time task-time-start"
-               *ngIf="item.horaInicio; else sinInicio">
+          <div class="task-time task-time-start" *ngIf="item.horaInicio; else sinInicio">
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
               <circle cx="12" cy="12" r="10"></circle>
               <polyline points="12 6 12 12 16 14"></polyline>
@@ -308,12 +298,9 @@
             </div>
           </ng-template>
  
-          <!-- Separador visual -->
           <span class="task-time-arrow">→</span>
  
-          <!-- Hora límite -->
-          <div class="task-time task-time-end"
-               *ngIf="item.horaLimite || item.time; else sinLimite">
+          <div class="task-time task-time-end" *ngIf="item.horaLimite || item.time; else sinLimite">
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
               <circle cx="12" cy="12" r="10"></circle>
               <polyline points="12 6 12 12 16 14"></polyline>
@@ -337,7 +324,7 @@
     </div>
   </div>
  
-  <!-- BARRA DE PROGRESO -->
+  <!-- Barra de progreso -->
   <div class="checklist-progress">
     <div class="progress-label">
       <span>{{ checklist.calcCompletados || 0 }} de {{ checklist.items.length }} tareas</span>
@@ -880,21 +867,47 @@
                       </svg>
                     </button>
                   </div>
-                  <div
-                    style="display: flex; flex-direction: column; gap: 12px; margin-top: 15px; padding-top: 10px; border-top: 1px dashed #E2E8F0;">
-                    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-                      <label style="color: #64748B; font-size: 13px; min-width: 110px;"> 📅 Fecha de inicio:</label>
-                      <input type="date" class="form-input" [(ngModel)]="item.fechaInicio" style="padding: 4px 8px;">
-                      <label style="color: #64748B; font-size: 13px; margin-left: 10px;"> 🕒 Hora de inicio:</label>
-                      <input type="time" class="form-input" [(ngModel)]="item.horaInicio" style="padding: 4px 8px;">
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-                      <label style="color: #64748B; font-size: 13px; min-width: 110px;"> ⏳ Fecha límite:</label>
-                      <input type="date" class="form-input" [(ngModel)]="item.fechaLimite" style="padding: 4px 8px;">
-                      <label style="color: #64748B; font-size: 13px; margin-left: 10px;"> ⏰ Hora límite:</label>
-                      <input type="time" class="form-input" [(ngModel)]="item.horaLimite" style="padding: 4px 8px;">
-                    </div>
-                  </div>
+                  
+<div class="form-times-block">
+ 
+  <div class="form-times-title">
+    ⏱️ HORARIO DE LA TAREA
+    <small>(define cuándo inicia y cuándo vence)</small>
+  </div>
+ 
+  <!-- Fila INICIO -->
+  <div class="form-time-row">
+    <div class="form-time-field">
+      <label class="form-time-label">📅 Fecha de inicio</label>
+      <input type="date" class="form-input form-time-input" [(ngModel)]="item.fechaInicio">
+    </div>
+    <div class="form-time-field">
+      <label class="form-time-label">🕒 Hora de inicio <span class="req">*</span></label>
+      <input type="time" class="form-input form-time-input"
+             [(ngModel)]="item.horaInicio"
+             [class.input-warning]="!item.horaInicio">
+    </div>
+  </div>
+ 
+  <!-- Fila LÍMITE -->
+  <div class="form-time-row">
+    <div class="form-time-field">
+      <label class="form-time-label">⏳ Fecha límite</label>
+      <input type="date" class="form-input form-time-input" [(ngModel)]="item.fechaLimite">
+    </div>
+    <div class="form-time-field">
+      <label class="form-time-label">⏰ Hora límite <span class="req">*</span></label>
+      <input type="time" class="form-input form-time-input"
+             [(ngModel)]="item.horaLimite"
+             [class.input-warning]="!item.horaLimite">
+    </div>
+  </div>
+ 
+  <div class="form-time-warning" *ngIf="!item.horaInicio || !item.horaLimite">
+    ⚠️ Si no llenas las horas, la tarjeta del checklist mostrará "—" / "Sin límite".
+  </div>
+ 
+</div>
                 </div>
               </div>
               <button class="btn-secondary" (click)="agregarItem()"

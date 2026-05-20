@@ -255,95 +255,80 @@
   </div>
  
   <!-- ============================================================
-       NUEVO BLOQUE: HORA INICIO / HORA LÍMITE / ASIGNADO POR
+       ASIGNADO POR (info general)
        ============================================================ -->
-  <div class="checklist-meta-box">
- 
-    <!-- Horario general (inicio - límite) -->
-    <div class="meta-row">
-      <div class="meta-item">
-        <div class="meta-label">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="10"></circle>
-            <polyline points="12 6 12 12 16 14"></polyline>
-          </svg>
-          HORA INICIO
-        </div>
-        <div class="meta-value meta-value-start">
-          {{ getHoraInicioGeneral(checklist) || '—' }}
-        </div>
-      </div>
- 
-      <div class="meta-divider"></div>
- 
-      <div class="meta-item">
-        <div class="meta-label">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="10"></circle>
-            <polyline points="12 6 12 12 16 14"></polyline>
-            <line x1="16" y1="8" x2="20" y2="4"></line>
-          </svg>
-          HORA LÍMITE
-        </div>
-        <div class="meta-value meta-value-end">
-          {{ getHoraLimiteGeneral(checklist) || 'Sin límite' }}
-        </div>
-      </div>
-    </div>
- 
-    <!-- Asignado por -->
-    <div class="meta-assigned-by" *ngIf="checklist.createdBy">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
-        <circle cx="9" cy="7" r="4"></circle>
-        <polyline points="17 11 19 13 23 9"></polyline>
-      </svg>
-      <span class="meta-assigned-label">Asignado por:</span>
-      <strong class="meta-assigned-name">{{ checklist.createdBy }}</strong>
-    </div>
- 
+  <div class="meta-assigned-by" *ngIf="checklist.createdBy">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+      <circle cx="9" cy="7" r="4"></circle>
+      <polyline points="17 11 19 13 23 9"></polyline>
+    </svg>
+    <span class="meta-assigned-label">Asignado por:</span>
+    <strong class="meta-assigned-name">{{ checklist.createdBy }}</strong>
   </div>
-  <!-- ============================================================
-       FIN BLOQUE NUEVO
-       ============================================================ -->
  
-  <!-- PREVIEW DE LAS PRIMERAS TAREAS (ya lo tenías) -->
+  <!-- ============================================================
+       PREVIEW DE TAREAS — CON HORA INICIO + LÍMITE POR CADA UNA
+       ============================================================ -->
   <div class="checklist-preview-box">
-    <div class="preview-box-title" style="display: flex; align-items: center; margin-bottom: 8px;">
-      <svg width="12" height="12" style="margin-right: 4px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <div class="preview-box-title">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <circle cx="12" cy="12" r="10"></circle>
         <polyline points="12 6 12 12 16 14"></polyline>
-      </svg> HORARIOS DE TAREAS:
+      </svg>
+      HORARIOS DE TAREAS:
     </div>
  
     <ng-container *ngFor="let item of getPrimerasTareas(checklist)">
-      <div class="preview-item" style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px;">
-        <span class="preview-item-text"
-          [style.text-decoration]="item.checked ? 'line-through' : 'none'"
-          [style.opacity]="item.checked ? '0.5' : '1'"
-          style="flex: 1; padding-right: 10px;">
+      <div class="task-row"
+        [class.task-row-done]="item.checked">
+ 
+        <!-- Nombre de la tarea -->
+        <div class="task-row-name">
           • {{ item.text }}
-        </span>
-        <span class="preview-item-time"
-          [style.opacity]="item.checked ? '0.5' : '1'"
-          style="font-size: 11px; font-weight: 700; background: #F8FAFC; border: 1px solid #E2E8F0; padding: 4px 8px; border-radius: 6px; color: #475569; display: flex; align-items: center; gap: 4px; white-space: nowrap;">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="10"></circle>
-            <polyline points="12 6 12 12 16 14"></polyline>
-          </svg>
-          <span *ngIf="item.horaInicio && (item.horaLimite || item.time)">
-            {{ formatearHora(item.horaInicio) }} a {{ formatearHora(item.horaLimite || item.time) }}
-          </span>
-          <span *ngIf="item.horaInicio && !item.horaLimite && !item.time">
-            Desde {{ formatearHora(item.horaInicio) }}
-          </span>
-          <span *ngIf="!item.horaInicio && (item.horaLimite || item.time)">
-            Límite: {{ formatearHora(item.horaLimite || item.time) }}
-          </span>
-          <span *ngIf="!item.horaInicio && !item.horaLimite && !item.time">
-            Sin horario
-          </span>
-        </span>
+        </div>
+ 
+        <!-- Bloque de horarios (inicio + límite JUNTOS) -->
+        <div class="task-row-times">
+ 
+          <!-- Hora inicio -->
+          <div class="task-time task-time-start"
+               *ngIf="item.horaInicio; else sinInicio">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+            <span class="task-time-label">Inicio:</span>
+            <strong>{{ formatearHora(item.horaInicio) }}</strong>
+          </div>
+          <ng-template #sinInicio>
+            <div class="task-time task-time-empty">
+              <span class="task-time-label">Inicio:</span>
+              <span>—</span>
+            </div>
+          </ng-template>
+ 
+          <!-- Separador visual -->
+          <span class="task-time-arrow">→</span>
+ 
+          <!-- Hora límite -->
+          <div class="task-time task-time-end"
+               *ngIf="item.horaLimite || item.time; else sinLimite">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+            <span class="task-time-label">Límite:</span>
+            <strong>{{ formatearHora(item.horaLimite || item.time) }}</strong>
+          </div>
+          <ng-template #sinLimite>
+            <div class="task-time task-time-empty">
+              <span class="task-time-label">Límite:</span>
+              <span>Sin límite</span>
+            </div>
+          </ng-template>
+ 
+        </div>
       </div>
     </ng-container>
  

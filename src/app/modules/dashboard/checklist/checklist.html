@@ -243,22 +243,49 @@
                 </svg> ENVIADO
               </span>
             </div>
-            <div class="checklist-preview-box">
-              <div class="preview-box-title" style="display: flex; align-items: center;"><svg width="12" height="12"
-                  style="margin-right: 4px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <div class="checklist-preview-box">
+              <div class="preview-box-title" style="display: flex; align-items: center; margin-bottom: 8px;">
+                <svg width="12" height="12" style="margin-right: 4px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <circle cx="12" cy="12" r="10"></circle>
                   <polyline points="12 6 12 12 16 14"></polyline>
-                </svg> Horarios Límite:</div>
+                </svg> HORARIOS DE TAREAS:
+              </div>
+              
               <ng-container *ngFor="let item of getPrimerasTareas(checklist)">
-                <div class="preview-item">
-                  <span class="preview-item-text" [style.text-decoration]="item.checked ? 'line-through' : 'none'"
-                    [style.opacity]="item.checked ? '0.5' : '1'">• {{ item.text }}</span>
-                  <span class="preview-item-time" [style.opacity]="item.checked ? '0.5' : '1'">{{ (item.horaLimite ||
-                    item.time) ? formatearHora(item.horaLimite || item.time) : 'Sin límite' }}</span>
+                <div class="preview-item" style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px;">
+                  
+                  <span class="preview-item-text" [style.text-decoration]="item.checked ? 'line-through' : 'none'" [style.opacity]="item.checked ? '0.5' : '1'" style="flex: 1; padding-right: 10px;">
+                    • {{ item.text }}
+                  </span>
+
+                  <span class="preview-item-time" [style.opacity]="item.checked ? '0.5' : '1'" style="font-size: 11px; font-weight: 700; background: #F8FAFC; border: 1px solid #E2E8F0; padding: 4px 8px; border-radius: 6px; color: #475569; display: flex; align-items: center; gap: 4px; white-space: nowrap;">
+                    
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <polyline points="12 6 12 12 16 14"></polyline>
+                    </svg>
+
+                    <span *ngIf="item.horaInicio && (item.horaLimite || item.time)">
+                      {{ formatearHora(item.horaInicio) }} a {{ formatearHora(item.horaLimite || item.time) }}
+                    </span>
+                    
+                    <span *ngIf="item.horaInicio && !item.horaLimite && !item.time">
+                      Desde {{ formatearHora(item.horaInicio) }}
+                    </span>
+                    
+                    <span *ngIf="!item.horaInicio && (item.horaLimite || item.time)">
+                      Límite: {{ formatearHora(item.horaLimite || item.time) }}
+                    </span>
+                    
+                    <span *ngIf="!item.horaInicio && !item.horaLimite && !item.time">
+                      Sin horario
+                    </span>
+
+                  </span>
                 </div>
               </ng-container>
-              <div *ngIf="(checklist.items?.length || 0) > 4" class="preview-more">+ {{ (checklist.items?.length || 0) -
-                4 }} tareas adicionales...</div>
+
+              <div *ngIf="(checklist.items?.length || 0) > 4" class="preview-more">+ {{ (checklist.items?.length || 0) - 4 }} tareas adicionales...</div>
             </div>
             <div class="checklist-progress">
               <div class="progress-label">

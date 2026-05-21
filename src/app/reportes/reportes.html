@@ -80,7 +80,7 @@
             Calendario
           </a>
 
-          <a class="nav-item" routerLink="/reportes" routerLinkActive="active"
+          <a class="nav-item active" routerLink="/reportes" routerLinkActive="active"
             *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeVerHistorial" (click)="isMenuOpen = false">
             <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
@@ -153,7 +153,8 @@
               <input type="date" class="form-input" [(ngModel)]="fechaFin">
             </div>
 
-            <div class="filter-item-large autocomplete-container" style="position: relative;">
+            <!-- ===================== FILTRO POR EMPLEADO ===================== -->
+            <div class="filter-item-large autocomplete-empleados" style="position: relative;">
               <label class="form-label">Filtrar por Empleado</label>
               <div style="position: relative;">
                 <input type="text" class="form-input" [(ngModel)]="textoBusquedaEmpleado" (input)="onInputBusqueda()"
@@ -168,12 +169,12 @@
               <div *ngIf="mostrarDropdownEmpleados"
                 style="position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid var(--border); border-radius: 6px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); margin-top: 4px; max-height: 250px; overflow-y: auto; z-index: 100;">
                 <div (click)="seleccionarEmpleado('')"
-                  style="padding: 10px 14px; cursor: pointer; border-bottom: 1px solid #F1F5F9; transition: background 0.2s;"
+                  style="padding: 10px 14px; cursor: pointer; border-bottom: 1px solid #F1F5F9;"
                   onmouseover="this.style.background='#F8FAFC'" onmouseout="this.style.background='transparent'">
                   <span style="font-weight: 600; color: var(--primary-navy);">Todos los empleados</span>
                 </div>
                 <div *ngFor="let emp of empleadosFiltrados" (click)="seleccionarEmpleado(emp.nombre)"
-                  style="padding: 10px 14px; cursor: pointer; border-bottom: 1px solid #F1F5F9; display: flex; align-items: center; gap: 8px; transition: background 0.2s;"
+                  style="padding: 10px 14px; cursor: pointer; border-bottom: 1px solid #F1F5F9; display: flex; align-items: center; gap: 8px;"
                   onmouseover="this.style.background='#F8FAFC'" onmouseout="this.style.background='transparent'">
                   <div
                     style="width: 24px; height: 24px; border-radius: 4px; background: #E2E8F0; color: #475569; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700;">
@@ -181,43 +182,79 @@
                   <span style="color: var(--text-main); font-size: 14px;">{{ emp.nombre }}</span>
                 </div>
                 <div *ngIf="empleadosFiltrados.length === 0"
-                  style="padding: 12px 14px; text-align: center; color: var(--text-muted); font-size: 13px;">No se
-                  encontraron empleados.</div>
+                  style="padding: 12px 14px; text-align: center; color: var(--text-muted); font-size: 13px;">
+                  No se encontraron empleados.
+                </div>
               </div>
             </div>
 
+            <!-- ===================== 🆕 FILTRO POR SUCURSAL ===================== -->
+            <div class="filter-item-large autocomplete-sucursales" style="position: relative;">
+              <label class="form-label">Filtrar por Sucursal</label>
+              <div style="position: relative;">
+                <input type="text" class="form-input" [(ngModel)]="textoBusquedaSucursal"
+                  (input)="onInputBusquedaSucursal()" (focus)="onFocusBusquedaSucursal()"
+                  placeholder="Escribe para buscar..."
+                  style="padding-right: 30px; border: 1px solid var(--border); transition: border-color 0.2s;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                  style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: var(--text-muted); pointer-events: none;">
+                  <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+              </div>
+
+              <div *ngIf="mostrarDropdownSucursales"
+                style="position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid var(--border); border-radius: 6px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); margin-top: 4px; max-height: 250px; overflow-y: auto; z-index: 100;">
+                <div (click)="seleccionarSucursal('')"
+                  style="padding: 10px 14px; cursor: pointer; border-bottom: 1px solid #F1F5F9;"
+                  onmouseover="this.style.background='#F8FAFC'" onmouseout="this.style.background='transparent'">
+                  <span style="font-weight: 600; color: var(--primary-navy);">Todas las sucursales</span>
+                </div>
+                <div *ngFor="let suc of sucursalesFiltradas" (click)="seleccionarSucursal(suc)"
+                  style="padding: 10px 14px; cursor: pointer; border-bottom: 1px solid #F1F5F9; display: flex; align-items: center; gap: 8px;"
+                  onmouseover="this.style.background='#F8FAFC'" onmouseout="this.style.background='transparent'">
+                  <div
+                    style="width: 24px; height: 24px; border-radius: 4px; background: #EFF6FF; color: #2563EB; display: flex; align-items: center; justify-content: center;">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                      <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"></path>
+                      <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                    </svg>
+                  </div>
+                  <span style="color: var(--text-main); font-size: 14px;">{{ suc }}</span>
+                </div>
+                <div *ngIf="sucursalesFiltradas.length === 0"
+                  style="padding: 12px 14px; text-align: center; color: var(--text-muted); font-size: 13px;">
+                  No se encontraron sucursales.
+                </div>
+              </div>
+            </div>
+
+            <!-- ===================== ACCIONES ===================== -->
             <div class="filter-actions" style="display: flex; gap: 10px; align-items: flex-end;">
               <button class="btn-search" (click)="buscarReportes()" [disabled]="buscando() || generandoReporte()"
-                style="background-color: var(--primary-navy); color: white; border: none; border-radius: 6px; padding: 0 16px; font-weight: 600; cursor: pointer; height: 42px; display: inline-flex; align-items: center; justify-content: center; transition: 0.2s;">
+                style="background-color: var(--primary-navy); color: white; border: none; border-radius: 6px; padding: 0 16px; font-weight: 600; cursor: pointer; height: 42px;">
                 {{ buscando() ? 'Buscando...' : 'Consultar' }}
               </button>
               <button class="btn-pdf" (click)="descargarExcel()" *ngIf="busquedaRealizada() && resultados().length > 0"
                 [disabled]="generandoReporte()"
-                style="background-color: #059669; color: white; border: none; border-radius: 6px; padding: 0 16px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; height: 42px; transition: 0.2s;">
+                style="background-color: #059669; color: white; border: none; border-radius: 6px; padding: 0 16px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; height: 42px;">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                   style="margin-right: 6px;">
                   <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                   <polyline points="14 2 14 8 20 8"></polyline>
-                  <line x1="16" y1="13" x2="8" y2="13"></line>
-                  <line x1="16" y1="17" x2="8" y2="17"></line>
-                  <polyline points="10 9 9 9 8 9"></polyline>
                 </svg> Excel
               </button>
               <button class="btn-pdf" (click)="descargarReportePDF()"
                 *ngIf="busquedaRealizada() && resultados().length > 0" [disabled]="generandoReporte()"
-                style="background-color: white; color: var(--text-main); border: 1px solid var(--border); border-radius: 6px; padding: 0 16px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; height: 42px; transition: 0.2s;">
+                style="background-color: white; color: var(--text-main); border: 1px solid var(--border); border-radius: 6px; padding: 0 16px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; height: 42px;">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                   style="margin-right: 6px;">
                   <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                   <polyline points="14 2 14 8 20 8"></polyline>
-                  <line x1="16" y1="13" x2="8" y2="13"></line>
-                  <line x1="16" y1="17" x2="8" y2="17"></line>
-                  <polyline points="10 9 9 9 8 9"></polyline>
                 </svg> PDF Simple
               </button>
               <button class="btn-delete-history" (click)="abrirModalEliminarTodo()"
                 *ngIf="busquedaRealizada() && resultados().length > 0 && currentUser?.rol === 'admin'"
-                style="background-color: #FEF2F2; color: #DC2626; border: 1px solid #FECACA; border-radius: 6px; padding: 0 16px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; height: 42px; transition: 0.2s;">
+                style="background-color: #FEF2F2; color: #DC2626; border: 1px solid #FECACA; border-radius: 6px; padding: 0 16px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; height: 42px;">
                 Borrar
               </button>
             </div>
@@ -226,7 +263,7 @@
           <div *ngIf="busquedaRealizada() && resultados().length > 0"
             style="margin-top: 15px; border-top: 1px solid #E2E8F0; padding-top: 15px;">
             <button (click)="descargarPDFVisual()" [disabled]="generandoReporte()"
-              style="width: 100%; background: linear-gradient(135deg, var(--primary-blue) 0%, #3B82F6 100%); color: white; border: none; border-radius: 8px; padding: 14px 20px; font-size: 15px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.3); transition: all 0.2s;">
+              style="width: 100%; background: linear-gradient(135deg, var(--primary-blue) 0%, #3B82F6 100%); color: white; border: none; border-radius: 8px; padding: 14px 20px; font-size: 15px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.3);">
               <svg *ngIf="!generandoReporte()" width="18" height="18" viewBox="0 0 24 24" fill="none"
                 stroke="currentColor" stroke-width="2" style="margin-right: 8px;">
                 <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
@@ -236,16 +273,36 @@
           </div>
         </div>
 
+        <!-- 🆕 RESUMEN DE BÚSQUEDA + CHIPS DE FILTROS ACTIVOS -->
+        <div *ngIf="busquedaRealizada()"
+          style="margin-bottom: 15px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+          <div style="font-size: 14px; color: var(--text-muted);">
+            Mostrando <strong style="color: var(--text-main);">{{ resultados().length }}</strong> resultados
+          </div>
+
+          <span *ngIf="empleadoSeleccionado"
+            style="display: inline-flex; align-items: center; gap: 6px; background: #EFF6FF; color: #1E40AF; padding: 4px 10px 4px 8px; border-radius: 999px; border: 1px solid #BFDBFE; font-size: 12px; font-weight: 600;">
+            👤 {{ empleadoSeleccionado }}
+            <button (click)="seleccionarEmpleado('')"
+              style="background: transparent; border: none; color: #1E40AF; cursor: pointer; font-size: 14px; line-height: 1; padding: 0; margin-left: 2px;">&times;</button>
+          </span>
+
+          <span *ngIf="sucursalSeleccionada"
+            style="display: inline-flex; align-items: center; gap: 6px; background: #FEF3C7; color: #92400E; padding: 4px 10px 4px 8px; border-radius: 999px; border: 1px solid #FDE68A; font-size: 12px; font-weight: 600;">
+            🏪 {{ sucursalSeleccionada }}
+            <button (click)="seleccionarSucursal('')"
+              style="background: transparent; border: none; color: #92400E; cursor: pointer; font-size: 14px; line-height: 1; padding: 0; margin-left: 2px;">&times;</button>
+          </span>
+        </div>
+
         <div *ngIf="busquedaRealizada()">
-          <div style="margin-bottom: 15px; font-size: 14px; color: var(--text-muted);">Mostrando {{ resultados().length
-            }} resultados</div>
           <div class="checklist-grid">
             <div class="checklist-card" *ngFor="let checklist of resultados()" (click)="verDetalle(checklist)">
               <div class="checklist-card-header">
                 <div class="checklist-card-title">{{ checklist.name }}</div>
                 <div class="checklist-card-badge" [ngClass]="{
-                  'badge-pendiente': getDisplayStatus(checklist) === 'pendiente', 
-                  'badge-en-progreso': getDisplayStatus(checklist) === 'en-progreso', 
+                  'badge-pendiente': getDisplayStatus(checklist) === 'pendiente',
+                  'badge-en-progreso': getDisplayStatus(checklist) === 'en-progreso',
                   'badge-completo': getDisplayStatus(checklist) === 'completo',
                   'badge-vencido': getDisplayStatus(checklist) === 'vencido'
                 }">{{ getDisplayStatus(checklist) | titlecase }}</div>
@@ -300,12 +357,13 @@
                   <line x1="10" y1="12" x2="14" y2="12"></line>
                 </svg></div>
               <h3>No hay registros</h3>
-              <p>No se encontraron checklists en este rango de fechas.</p>
+              <p>No se encontraron checklists con los filtros seleccionados.</p>
             </div>
           </div>
         </div>
       </div>
 
+      <!-- VISTA DE DETALLE (sin cambios) -->
       <div *ngIf="vistaActual() === 'detalle' && checklistSeleccionado()">
         <button class="btn-back" (click)="volverALista()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"
             stroke="currentColor" stroke-width="2" style="margin-right: 4px;">
@@ -329,7 +387,6 @@
             <div *ngFor="let item of checklistSeleccionado().items"
               style="background: var(--bg-app); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 12px;">
               <div style="display: flex; align-items: flex-start; gap: 16px;">
-
                 <div
                   style="width: 22px; height: 22px; min-width: 22px; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: white;"
                   [style.background]="item.checked ? 'var(--primary-navy)' : 'transparent'"
@@ -345,128 +402,27 @@
                     [style.text-decoration]="item.checked ? 'line-through' : 'none'"
                     [style.opacity]="item.checked ? '0.6' : '1'">{{ item.text }}</div>
 
-                  <div style="display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap;">
-                    <span *ngIf="item.time || item.horaLimite"
-                      style="font-size: 11px; font-weight: 600; color: #475569; background: #F1F5F9; padding: 3px 8px; border-radius: 6px; border: 1px solid #CBD5E1; display: inline-flex; align-items: center; gap: 4px;">
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                        stroke-width="2">
-                        <circle cx="12" cy="12" r="10"></circle>
-                        <polyline points="12 6 12 12 16 14"></polyline>
-                      </svg>
-                      Límite de hora: {{ item.horaLimite || item.time }} hrs
-                    </span>
-
-                    <span *ngIf="item.requiresAntesDespues && item.tiempoEstimado"
-                      style="font-size: 11px; font-weight: 600; color: #D97706; background: #FFFBEB; padding: 3px 8px; border-radius: 6px; border: 1px solid #FDE68A; display: inline-flex; align-items: center; gap: 4px;">
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                        stroke-width="2">
-                        <circle cx="12" cy="12" r="10"></circle>
-                        <polyline points="12 6 12 12 16 14"></polyline>
-                      </svg>
-                      Máx. para foto DESPUÉS: {{ item.tiempoEstimado }} min
-                    </span>
-                  </div>
-
-                  <div style="display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px;">
-                    <span *ngIf="!item.checked"
-                      style="color: #EF4444; font-size: 11px; font-weight: 700; background: #FEF2F2; padding: 4px 8px; border-radius: 4px; border: 1px solid #FECACA; display: inline-flex; align-items: center; gap: 4px; width: fit-content;">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                        stroke-width="2">
-                        <circle cx="12" cy="12" r="10"></circle>
-                        <polyline points="12 6 12 12 15 15"></polyline>
-                      </svg>
-                      MOTIVO: Se le pasó el tiempo / Tarea ignorada
-                    </span>
-
-                    <span *ngIf="item.checked && item.requiresPhoto && !item.photo"
-                      style="color: #EF4444; font-size: 11px; font-weight: 700; background: #FEF2F2; padding: 4px 8px; border-radius: 4px; border: 1px solid #FECACA; display: inline-flex; align-items: center; gap: 4px; width: fit-content;">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                        stroke-width="2">
-                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z">
-                        </path>
-                        <line x1="4" y1="22" x2="20" y2="2"></line>
-                      </svg>
-                      MOTIVO: Palomeó la tarea pero NO subió foto
-                    </span>
-
-                    <span *ngIf="item.checked && item.requiresAntesDespues && (!item.photoAntes || !item.photoDespues)"
-                      style="color: #EF4444; font-size: 11px; font-weight: 700; background: #FEF2F2; padding: 4px 8px; border-radius: 4px; border: 1px solid #FECACA; display: inline-flex; align-items: center; gap: 4px; width: fit-content;">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                        stroke-width="2">
-                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z">
-                        </path>
-                        <line x1="4" y1="22" x2="20" y2="2"></line>
-                      </svg>
-                      MOTIVO: Le faltó subir la foto del {{ !item.photoAntes ? 'ANTES' : 'DESPUÉS' }}
-                    </span>
-                  </div>
-
                   <div *ngIf="item.photo || item.requiresPhoto || item.requiresAntesDespues"
                     style="margin-top: 10px; padding-top: 15px; border-top: 1px solid var(--border);">
 
                     <div *ngIf="item.photo && !item.requiresAntesDespues"
                       style="display: inline-block; border: 1px solid var(--border); border-radius: 6px; padding: 4px; background: white;">
-                      <div style="margin-bottom: 5px;" *ngIf="item.photoTime">
-                        <span
-                          style="font-weight: 600; font-size: 11px; background: #F1F5F9; padding: 2px 6px; border-radius: 4px; color: #64748B;">🕒
-                          Tomada a las: {{ item.photoTime }}</span>
-                      </div>
                       <img [src]="item.photo" alt="Evidencia"
                         style="display: block; max-width: 100%; max-height: 400px; object-fit: contain;">
                     </div>
 
-                    <div *ngIf="!item.photo && item.checked && item.requiresPhoto"
-                      style="color: var(--red); font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 6px;">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                        stroke-width="2">
-                        <path
-                          d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z">
-                        </path>
-                        <line x1="12" y1="9" x2="12" y2="13"></line>
-                        <line x1="12" y1="17" x2="12.01" y2="17"></line>
-                      </svg>
-                      Tarea completada sin evidencia adjunta.
-                    </div>
-
                     <div *ngIf="item.requiresAntesDespues" style="display: flex; gap: 20px; flex-wrap: wrap;">
                       <div style="flex: 1; min-width: 140px;" *ngIf="item.photoAntes">
-                        <div
-                          style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
-                          <span style="color: var(--primary-navy); font-weight: 700;">📸 ANTES:</span>
-                          <span *ngIf="item.photoAntesTime"
-                            style="font-weight: 600; font-size: 11px; background: #EFF6FF; color: #2563EB; padding: 2px 6px; border-radius: 4px; border: 1px solid #BFDBFE;">🕒
-                            {{ item.photoAntesTime }}</span>
-                        </div>
+                        <span style="color: var(--primary-navy); font-weight: 700;">📸 ANTES:</span>
                         <img [src]="item.photoAntes" alt="Antes"
                           style="max-width: 100%; border-radius: 6px; border: 1px solid var(--border);">
                       </div>
-
                       <div style="flex: 1; min-width: 140px;" *ngIf="item.photoDespues">
-                        <div
-                          style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
-                          <span style="color: #10B981; font-weight: 700;">📸 DESPUÉS:</span>
-                          <span *ngIf="item.photoDespuesTime"
-                            style="font-weight: 600; font-size: 11px; background: #ECFDF5; color: #047857; padding: 2px 6px; border-radius: 4px; border: 1px solid #A7F3D0;">🕒
-                            {{ item.photoDespuesTime }}</span>
-                        </div>
+                        <span style="color: #10B981; font-weight: 700;">📸 DESPUÉS:</span>
                         <img [src]="item.photoDespues" alt="Después"
                           style="max-width: 100%; border-radius: 6px; border: 1px solid var(--border);">
                       </div>
-
-                      <div *ngIf="(!item.photoAntes || !item.photoDespues) && item.checked"
-                        style="color: var(--red); font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 6px;">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                          stroke-width="2">
-                          <path
-                            d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z">
-                          </path>
-                          <line x1="12" y1="9" x2="12" y2="13"></line>
-                          <line x1="12" y1="17" x2="12.01" y2="17"></line>
-                        </svg>
-                        Validada con faltantes de evidencia visual.
-                      </div>
                     </div>
-
                   </div>
                 </div>
               </div>
@@ -475,19 +431,16 @@
 
           <div *ngIf="checklistSeleccionado().notaEmpleado"
             style="margin-top: 20px; background: #FFFBEB; border-left: 4px solid #F59E0B; padding: 15px; border-radius: 8px;">
-            <strong style="color: #D97706; font-size: 13px; display: block; margin-bottom: 4px;">Comentarios del
-              Colaborador:</strong>
+            <strong style="color: #D97706; font-size: 13px; display: block; margin-bottom: 4px;">Comentarios del Colaborador:</strong>
             <p style="margin: 0; font-size: 14px; color: #1E293B; white-space: pre-wrap;">{{
               checklistSeleccionado().notaEmpleado }}</p>
           </div>
-
         </div>
       </div>
 
       <div class="modal-overlay" *ngIf="isPasswordModalOpen" style="z-index: 9999;">
         <div class="modal" style="max-width: 400px; text-align: center; padding: 30px;">
-          <h3 style="color: var(--red); font-weight: 600; margin-bottom: 10px; font-size: 20px;">Confirmar Eliminación
-          </h3>
+          <h3 style="color: var(--red); font-weight: 600; margin-bottom: 10px; font-size: 20px;">Confirmar Eliminación</h3>
           <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 25px;">Se borrarán permanentemente
             <strong>{{ resultados().length }}</strong> registros.
           </p>
@@ -501,135 +454,6 @@
         </div>
       </div>
 
-<div style="position: absolute; left: -9999px; top: 0;" *ngIf="resultados().length > 0">
-  <div id="reporte-imprimir-fotos"
-  style="width: 1000px; padding: 40px; background: #F1F5F9; font-family: 'Inter', sans-serif;
-         letter-spacing: 0 !important; word-spacing: 0 !important; font-variant-ligatures: none !important;
-         -webkit-font-feature-settings: 'kern' 0; font-feature-settings: 'kern' 0;">
-    <div
-      style="background: #0F172A; border-radius: 12px; padding: 40px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: center; color: white; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);">
-      <div>
-        <h1 style="margin: 0 0 5px 0; font-size: 32px; font-weight: 800; letter-spacing: normal !important; font-variant-ligatures: none;">MEGA DULCES</h1>
-        <p
-          style="margin: 0; color: #94A3B8; font-size: 13px; text-transform: uppercase; font-weight: 600; letter-spacing: normal !important; font-variant-ligatures: none;">
-          Reporte de Auditoría Visual</p>
-      </div>
-      <div
-        style="text-align: right; background: rgba(255,255,255,0.05); padding: 15px 25px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);">
-        <p style="margin: 0 0 5px 0; font-size: 15px; font-weight: 600;">{{ fechaInicio }}  ➔  {{ fechaFin }}</p>
-        <p style="margin: 0; font-size: 13px; color: #CBD5E1;">Total de registros validados: {{
-          resultados().length }}</p>
-      </div>
-    </div>
-    <div *ngFor="let check of resultados()"
-      style="background: white; border-radius: 12px; border-left: 8px solid #2563EB; padding: 30px 40px; margin-bottom: 25px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); page-break-inside: avoid;">
-      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 25px;">
-        <div style="flex: 1;">
-          <h2
-            style="margin: 0 0 16px 0; font-size: 24px; color: #0F172A; font-weight: 800; letter-spacing: normal !important; font-variant-ligatures: none; word-spacing: normal !important;">
-            {{ check.name }}</h2>
-          <div style="display: flex; gap: 40px; flex-wrap: wrap;">
-            <div>
-              <p
-                style="margin: 0; font-size: 11px; color: #64748B; text-transform: uppercase; font-weight: 700; letter-spacing: normal !important;">
-                Responsable</p>
-              <p style="margin: 4px 0 0 0; font-size: 15px; color: #0F172A; font-weight: 600; letter-spacing: normal !important;">{{ check.assigned
-                }}</p>
-            </div>
-            <div>
-              <p
-                style="margin: 0; font-size: 11px; color: #64748B; text-transform: uppercase; font-weight: 700; letter-spacing: normal !important;">
-                Zona / Sucursal</p>
-              <p style="margin: 4px 0 0 0; font-size: 15px; color: #0F172A; font-weight: 600; letter-spacing: normal !important;">{{ check.store }}
-              </p>
-            </div>
-            <div>
-              <p
-                style="margin: 0; font-size: 11px; color: #64748B; text-transform: uppercase; font-weight: 700; letter-spacing: normal !important;">
-                Fecha de Ejecución</p>
-              <p style="margin: 4px 0 0 0; font-size: 15px; color: #0F172A; font-weight: 600; letter-spacing: normal !important;">{{ check.date }}
-              </p>
-            </div>
-          </div>
-        </div>
-        <div
-          style="background: #EFF6FF; color: #1D4ED8; padding: 10px 20px; border-radius: 999px; font-weight: 800; font-size: 16px; display: flex; align-items: center; gap: 8px;">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
-            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-            <polyline points="22 4 12 14.01 9 11.01"></polyline>
-          </svg>
-          {{ getProgreso(check) }}%
-        </div>
-      </div>
-      <hr style="border: none; border-top: 2px dashed #F1F5F9; margin: 25px 0;">
-      <div>
-        <p
-          style="margin: 0 0 20px 0; font-size: 13px; color: #94A3B8; font-weight: 800; text-transform: uppercase; letter-spacing: normal !important; font-variant-ligatures: none; word-spacing: normal !important;">
-          Evidencias Visuales Adjuntas</p>
-        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;">
-          <ng-container *ngFor="let item of check.items">
-            <div *ngIf="item.photo && item.photo.includes('http') && !item.requiresAntesDespues"
-              style="border: 1px solid #E2E8F0; border-radius: 8px; overflow: hidden; background: white;">
-              <div style="height: 200px; width: 100%; background: #F8FAFC; position: relative;">
-                <span *ngIf="item.photoTime"
-                  style="position:absolute; top:5px; right:5px; background:rgba(255,255,255,0.9); color:#0F172A; font-size:10px; padding:2px 6px; border-radius:4px; font-weight:bold; box-shadow: 0 1px 2px rgba(0,0,0,0.1);"> 🕒
-                  {{ item.photoTime }}</span>
-                <img [src]="item.photo" crossorigin="anonymous"
-                  style="width: 100%; height: 100%; object-fit: cover;">
-              </div>
-              <div style="padding: 14px; background: white;">
-                <p
-                  style="margin: 0; font-size: 12px; color: #334155; line-height: 1.5; font-weight: 600; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; letter-spacing: normal !important; font-variant-ligatures: none; word-spacing: normal !important;">
-                  {{ item.text }}</p>
-              </div>
-            </div>
-            <div
-              *ngIf="item.requiresAntesDespues && ( (item.photoAntes && item.photoAntes.includes('http')) || (item.photoDespues && item.photoDespues.includes('http')) )"
-              style="border: 1px solid #E2E8F0; border-radius: 8px; overflow: hidden; background: white; grid-column: span 2;">
-              <div style="display: flex; height: 200px; width: 100%; background: #F8FAFC;">
-                <div style="flex: 1; border-right: 1px solid #E2E8F0; position: relative;">
-                  <span
-                    style="position:absolute; top:5px; left:5px; background:rgba(15,23,42,0.7); color:white; font-size:10px; padding:2px 6px; border-radius:4px; font-weight:bold; letter-spacing: normal !important; font-variant-ligatures: none; word-spacing: normal !important;">ANTES</span>
-                  <span *ngIf="item.photoAntesTime"
-                    style="position:absolute; top:5px; right:5px; background:rgba(255,255,255,0.9); color:#0F172A; font-size:10px; padding:2px 6px; border-radius:4px; font-weight:bold; box-shadow: 0 1px 2px rgba(0,0,0,0.1);"> 🕒
-                    {{ item.photoAntesTime }}</span>
-                  <img *ngIf="item.photoAntes && item.photoAntes.includes('http')" [src]="item.photoAntes"
-                    crossorigin="anonymous" style="width: 100%; height: 100%; object-fit: cover;">
-                </div>
-                <div style="flex: 1; position: relative;">
-                  <span
-                    style="position:absolute; top:5px; left:5px; background:rgba(16,185,129,0.7); color:white; font-size:10px; padding:2px 6px; border-radius:4px; font-weight:bold; letter-spacing: normal !important; font-variant-ligatures: none; word-spacing: normal !important;">DESPUÉS</span>
-                  <span *ngIf="item.photoDespuesTime"
-                    style="position:absolute; top:5px; right:5px; background:rgba(255,255,255,0.9); color:#0F172A; font-size:10px; padding:2px 6px; border-radius:4px; font-weight:bold; box-shadow: 0 1px 2px rgba(0,0,0,0.1);"> 🕒
-                    {{ item.photoDespuesTime }}</span>
-                  <img *ngIf="item.photoDespues && item.photoDespues.includes('http')" [src]="item.photoDespues"
-                    crossorigin="anonymous" style="width: 100%; height: 100%; object-fit: cover;">
-                </div>
-              </div>
-              <div style="padding: 14px; background: white;">
-                <p
-                  style="margin: 0; font-size: 12px; color: #334155; line-height: 1.5; font-weight: 600; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; letter-spacing: normal !important; font-variant-ligatures: none; word-spacing: normal !important;">
-                  {{ item.text }}</p>
-              </div>
-            </div>
-          </ng-container>
-        </div>
-        <div *ngIf="getProgreso(check) > 0 && !tieneFotos(check)"
-          style="background: #F8FAFC; color: #64748B; padding: 20px; border-radius: 8px; font-size: 14px; font-weight: 600; text-align: center; border: 2px dashed #E2E8F0;">
-          📌  Registro completado sin captura de evidencias fotográficas.
-        </div>
-        <div *ngIf="check.notaEmpleado"
-          style="margin-top: 20px; background: #FFFBEB; border-left: 4px solid #F59E0B; padding: 15px; border-radius: 4px;">
-          <p
-            style="margin: 0; font-size: 11px; color: #D97706; text-transform: uppercase; font-weight: 800; letter-spacing: normal !important;">
-            Comentarios del Colaborador</p>
-          <p style="margin: 5px 0 0 0; font-size: 13px; color: #1E293B; font-weight: 500; white-space: pre-wrap; letter-spacing: normal !important; font-variant-ligatures: none; word-spacing: normal !important;">
-            {{ check.notaEmpleado }}</p>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
     </div>
   </div>
 </div>

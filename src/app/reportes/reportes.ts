@@ -1,7 +1,7 @@
 import { Component, signal, OnInit, OnDestroy, inject, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterModule, ActivatedRoute } from '@angular/router'; 
+import { RouterModule, ActivatedRoute } from '@angular/router';
 import { Firestore, collection, getDocs, doc, deleteDoc, onSnapshot } from '@angular/fire/firestore';
 
 import jsPDF from 'jspdf';
@@ -15,7 +15,7 @@ import Swal from 'sweetalert2';
   standalone: true,
   imports: [CommonModule, FormsModule, RouterModule],
   templateUrl: './reportes.html',
-  styleUrls: ['./reportes.css'] 
+  styleUrls: ['./reportes.css']
 })
 export class ReportesComponent implements OnInit, OnDestroy {
   isMenuOpen = false;
@@ -24,11 +24,23 @@ export class ReportesComponent implements OnInit, OnDestroy {
   currentUser: any = null;
   fechaInicio = '';
   fechaFin = '';
-  
+
+  // ----- Filtro por EMPLEADO -----
   empleadoSeleccionado = '';
-  textoBusquedaEmpleado = ''; 
-  mostrarDropdownEmpleados = false; 
-  
+  textoBusquedaEmpleado = '';
+  mostrarDropdownEmpleados = false;
+
+  // ----- 🆕 Filtro por SUCURSAL -----
+  sucursalSeleccionada = '';
+  textoBusquedaSucursal = '';
+  mostrarDropdownSucursales = false;
+
+  sucursalesDisponibles: string[] = [
+    'ADMINISTRADORES DEL SISTEMA', 'Canindo', 'La Piedad Abastos', '8 Esquinas', 'Padre Hidalgo',
+    'Morelia Madero', 'Morelia Abastos', 'Yurécuaro', 'Zamora Centro', 'OFICINAS CORPORATIVAS',
+    'CAJA GENERAL', 'COMPRAS', 'CONTABILIDAD', 'FINANZAS', 'SISTEMAS', 'RH', 'MKT', 'MANTENIMIENTO'
+  ];
+
   empleados = signal<any[]>([]);
   resultados = signal<any[]>([]);
   buscando = signal(false);
@@ -42,16 +54,26 @@ export class ReportesComponent implements OnInit, OnDestroy {
   passwordInput = '';
 
   private firestore = inject(Firestore);
-  private route = inject(ActivatedRoute); 
+  private route = inject(ActivatedRoute);
   private busquedaSub: any = null;
 
   @HostListener('document:click', ['$event'])
   onClickOutside(event: Event) {
     const target = event.target as HTMLElement;
-    if (!target.closest('.autocomplete-container')) {
+
+    // Cerrar dropdown de EMPLEADOS al hacer click afuera
+    if (!target.closest('.autocomplete-empleados')) {
       this.mostrarDropdownEmpleados = false;
       if (this.empleadoSeleccionado !== this.textoBusquedaEmpleado) {
         this.textoBusquedaEmpleado = this.empleadoSeleccionado || 'Todos los empleados';
+      }
+    }
+
+    // 🆕 Cerrar dropdown de SUCURSALES al hacer click afuera
+    if (!target.closest('.autocomplete-sucursales')) {
+      this.mostrarDropdownSucursales = false;
+      if (this.sucursalSeleccionada !== this.textoBusquedaSucursal) {
+        this.textoBusquedaSucursal = this.sucursalSeleccionada || 'Todas las sucursales';
       }
     }
   }
@@ -59,23 +81,30 @@ export class ReportesComponent implements OnInit, OnDestroy {
   ngOnInit() {
     const sesion = localStorage.getItem('md_sesion_actual');
     if (sesion) { this.currentUser = JSON.parse(sesion); }
-    
+
     const hoy = new Date();
     const offset = hoy.getTimezoneOffset() * 60000;
     const hoyLocal = new Date(hoy.getTime() - offset);
-    
+
     this.fechaFin = hoyLocal.toISOString().split('T')[0];
     const primeroDeMes = new Date(hoyLocal.getFullYear(), hoyLocal.getMonth(), 1);
     this.fechaInicio = primeroDeMes.toISOString().split('T')[0];
-    
+
     this.textoBusquedaEmpleado = 'Todos los empleados';
+    this.textoBusquedaSucursal = 'Todas las sucursales';
 
     this.cargarEmpleados().then(() => {
       this.route.queryParams.subscribe(params => {
         if (params['empleado']) {
           this.empleadoSeleccionado = params['empleado'];
           this.textoBusquedaEmpleado = this.empleadoSeleccionado;
-          this.buscarReportes(); 
+          this.buscarReportes();
+        }
+        // 🆕 También aceptamos queryParam de sucursal por si lo necesitas a futuro
+        if (params['sucursal']) {
+          this.sucursalSeleccionada = params['sucursal'];
+          this.textoBusquedaSucursal = this.sucursalSeleccionada;
+          this.buscarReportes();
         }
       });
     });
@@ -94,6 +123,9 @@ export class ReportesComponent implements OnInit, OnDestroy {
     this.empleados.set(lista);
   }
 
+  // ============================================================================
+  //  EMPLEADOS — getters y handlers
+  // ============================================================================
   get empleadosFiltrados() {
     if (this.textoBusquedaEmpleado === 'Todos los empleados' || this.textoBusquedaEmpleado.trim() === '') {
       return this.empleados();
@@ -122,8 +154,44 @@ export class ReportesComponent implements OnInit, OnDestroy {
 
   onFocusBusqueda() {
     this.mostrarDropdownEmpleados = true;
-    this.textoBusquedaEmpleado = ''; 
+    this.textoBusquedaEmpleado = '';
   }
+
+  // ============================================================================
+  //  🆕 SUCURSALES — getters y handlers (mismo patrón que empleados)
+  // ============================================================================
+  get sucursalesFiltradas(): string[] {
+    if (this.textoBusquedaSucursal === 'Todas las sucursales' || this.textoBusquedaSucursal.trim() === '') {
+      return this.sucursalesDisponibles;
+    }
+    const termino = this.textoBusquedaSucursal.toLowerCase();
+    return this.sucursalesDisponibles.filter(s => s.toLowerCase().includes(termino));
+  }
+
+  seleccionarSucursal(nombreSucursal: string) {
+    if (nombreSucursal === '') {
+      this.sucursalSeleccionada = '';
+      this.textoBusquedaSucursal = 'Todas las sucursales';
+    } else {
+      this.sucursalSeleccionada = nombreSucursal;
+      this.textoBusquedaSucursal = nombreSucursal;
+    }
+    this.mostrarDropdownSucursales = false;
+  }
+
+  onInputBusquedaSucursal() {
+    this.mostrarDropdownSucursales = true;
+    if (this.textoBusquedaSucursal.trim() === '') {
+      this.sucursalSeleccionada = '';
+    }
+  }
+
+  onFocusBusquedaSucursal() {
+    this.mostrarDropdownSucursales = true;
+    this.textoBusquedaSucursal = '';
+  }
+
+  // ============================================================================
 
   buscarReportes() {
     this.buscando.set(true);
@@ -131,7 +199,7 @@ export class ReportesComponent implements OnInit, OnDestroy {
     if (this.busquedaSub) { this.busquedaSub(); }
 
     const checklistsRef = collection(this.firestore, 'checklists');
-    
+
     this.busquedaSub = onSnapshot(checklistsRef, (snapshot) => {
       const listasSinClones = new Map();
 
@@ -140,19 +208,24 @@ export class ReportesComponent implements OnInit, OnDestroy {
         if (c.eliminado === true) return;
 
         if (c.date >= this.fechaInicio && c.date <= this.fechaFin) {
-          if (!this.empleadoSeleccionado || c.assigned === this.empleadoSeleccionado) {
-            const marcados = c.items ? c.items.filter((i:any) => i.checked).length : 0;
-            c.calcProgreso = c.items && c.items.length > 0 ? Math.round((marcados / c.items.length) * 100) : 0;
-            c.calcCompletados = marcados; 
 
-            const firma = `${c.name}_${c.assigned}_${c.store}_${c.date}`;
-            if (!listasSinClones.has(firma)) {
+          // Filtro por empleado
+          if (this.empleadoSeleccionado && c.assigned !== this.empleadoSeleccionado) return;
+
+          // 🆕 Filtro por sucursal
+          if (this.sucursalSeleccionada && c.store !== this.sucursalSeleccionada) return;
+
+          const marcados = c.items ? c.items.filter((i: any) => i.checked).length : 0;
+          c.calcProgreso = c.items && c.items.length > 0 ? Math.round((marcados / c.items.length) * 100) : 0;
+          c.calcCompletados = marcados;
+
+          const firma = `${c.name}_${c.assigned}_${c.store}_${c.date}`;
+          if (!listasSinClones.has(firma)) {
+            listasSinClones.set(firma, c);
+          } else {
+            const existente = listasSinClones.get(firma) as any;
+            if (existente && c.calcProgreso > existente.calcProgreso) {
               listasSinClones.set(firma, c);
-            } else {
-              const existente = listasSinClones.get(firma) as any;
-              if (existente && c.calcProgreso > existente.calcProgreso) {
-                listasSinClones.set(firma, c);
-              }
             }
           }
         }
@@ -160,7 +233,7 @@ export class ReportesComponent implements OnInit, OnDestroy {
 
       const filtrados = Array.from(listasSinClones.values());
       filtrados.sort((a, b) => b.timestampCreacion - a.timestampCreacion);
-      
+
       this.resultados.set(filtrados);
       this.buscando.set(false);
     }, (error) => {
@@ -174,21 +247,21 @@ export class ReportesComponent implements OnInit, OnDestroy {
   volverALista() { this.checklistSeleccionado.set(null); this.vistaActual.set('lista'); }
 
   abrirModalEliminarTodo() {
-    if (this.resultados().length === 0) { 
+    if (this.resultados().length === 0) {
       Swal.fire({ icon: 'info', title: 'Nada que borrar', text: 'No hay registros en pantalla.', confirmButtonColor: '#0F172A' });
-      return; 
+      return;
     }
     this.passwordInput = ''; this.isPasswordModalOpen = true;
   }
-  
+
   cerrarPasswordModal() { this.isPasswordModalOpen = false; this.passwordInput = ''; }
 
   async confirmarEliminacionTodo() {
-    if (this.passwordInput !== 'Mega2323') { 
+    if (this.passwordInput !== 'Mega2323') {
       Swal.fire({ icon: 'error', title: 'Clave Incorrecta', text: 'La contraseña maestra no es válida.', confirmButtonColor: '#0F172A' });
-      return; 
+      return;
     }
-    
+
     this.cerrarPasswordModal();
 
     const result = await Swal.fire({
@@ -203,17 +276,17 @@ export class ReportesComponent implements OnInit, OnDestroy {
     });
 
     if (result.isConfirmed) {
-      this.buscando.set(true); 
+      this.buscando.set(true);
       try {
         for (const checklist of this.resultados()) {
           const docId = checklist.id.toString();
           await deleteDoc(doc(this.firestore, 'checklists', docId));
         }
         Swal.fire({ icon: 'success', title: 'Limpieza Total', text: 'Historial eliminado con éxito.', confirmButtonColor: '#0F172A' });
-      } catch (error) { 
+      } catch (error) {
         Swal.fire({ icon: 'error', title: 'Fallo al borrar', text: 'Ocurrió un error en la base de datos.', confirmButtonColor: '#0F172A' });
-      } finally { 
-        this.buscando.set(false); 
+      } finally {
+        this.buscando.set(false);
       }
     }
   }
@@ -231,20 +304,20 @@ export class ReportesComponent implements OnInit, OnDestroy {
   getProgreso(checklist: any): number {
     if (checklist.calcProgreso !== undefined) return checklist.calcProgreso;
     if (!checklist.items || checklist.items.length === 0) return 0;
-    const marcados = checklist.items.filter((i:any) => i.checked).length;
+    const marcados = checklist.items.filter((i: any) => i.checked).length;
     return Math.round((marcados / checklist.items.length) * 100) || 0;
   }
 
-  getCompletados(checklist: any): number { 
+  getCompletados(checklist: any): number {
     if (!checklist.items) return 0;
-    return checklist.items.filter((i:any) => i.checked).length; 
+    return checklist.items.filter((i: any) => i.checked).length;
   }
 
   tieneFotos(checklist: any): boolean {
     if (!checklist.items) return false;
-    return checklist.items.some((item: any) => 
-      (item.photo && item.photo.includes('http')) || 
-      (item.photoAntes && item.photoAntes.includes('http')) || 
+    return checklist.items.some((item: any) =>
+      (item.photo && item.photo.includes('http')) ||
+      (item.photoAntes && item.photoAntes.includes('http')) ||
       (item.photoDespues && item.photoDespues.includes('http'))
     );
   }
@@ -266,14 +339,14 @@ export class ReportesComponent implements OnInit, OnDestroy {
       { header: 'Estatus', key: 'status', width: 15 },
       { header: 'Tareas Comp.', key: 'tareas', width: 15 },
       { header: 'Progreso', key: 'progreso', width: 15 },
-      { header: 'Comentarios del Empleado', key: 'notas', width: 60 } 
+      { header: 'Comentarios del Empleado', key: 'notas', width: 60 }
     ];
 
     const headerRow = worksheet.getRow(1);
     headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
     headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0F172A' } };
     headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
-    headerRow.height = 25; 
+    headerRow.height = 25;
 
     this.resultados().forEach(c => {
       worksheet.addRow({
@@ -292,7 +365,7 @@ export class ReportesComponent implements OnInit, OnDestroy {
           bottom: { style: 'thin', color: { argb: 'FFCBD5E1' } }, right: { style: 'thin', color: { argb: 'FFCBD5E1' } }
         };
         if (rowNumber > 1) {
-          if (colNumber >= 4 && colNumber <= 7) { cell.alignment = { vertical: 'middle', horizontal: 'center' }; } 
+          if (colNumber >= 4 && colNumber <= 7) { cell.alignment = { vertical: 'middle', horizontal: 'center' }; }
           else { cell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1, wrapText: true }; }
         }
       });
@@ -304,7 +377,9 @@ export class ReportesComponent implements OnInit, OnDestroy {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `Reporte_MegaDulces_${this.fechaInicio}_al_${this.fechaFin}.xlsx`;
+      // 🆕 Incluir sucursal en el nombre del archivo si está filtrado
+      const sufijoSucursal = this.sucursalSeleccionada ? `_${this.sucursalSeleccionada.replace(/\s+/g, '_')}` : '';
+      a.download = `Reporte_MegaDulces${sufijoSucursal}_${this.fechaInicio}_al_${this.fechaFin}.xlsx`;
       document.body.appendChild(a); a.click(); document.body.removeChild(a); window.URL.revokeObjectURL(url);
     } catch (error) {
       Swal.fire({ icon: 'error', title: 'Error de Exportación', text: 'Hubo un error al generar el archivo Excel.', confirmButtonColor: '#0F172A' });
@@ -312,39 +387,41 @@ export class ReportesComponent implements OnInit, OnDestroy {
   }
 
   descargarReportePDF() {
-    if (this.resultados().length === 0) { 
+    if (this.resultados().length === 0) {
       Swal.fire({ icon: 'info', title: 'Sin Datos', text: 'No hay datos para generar el PDF.', confirmButtonColor: '#0F172A' });
-      return; 
+      return;
     }
 
     const doc = new jsPDF({ orientation: 'landscape', format: 'a4' });
-    
-    doc.setFillColor(15, 23, 42); 
+
+    doc.setFillColor(15, 23, 42);
     doc.rect(0, 0, doc.internal.pageSize.getWidth(), 25, 'F');
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(22); doc.setTextColor(255, 255, 255); 
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(22); doc.setTextColor(255, 255, 255);
     doc.text('MEGA DULCES', 14, 16);
 
     doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(200, 200, 200);
     doc.text('Panel Enterprise • Reporte de Auditoría Operativa', 75, 16);
 
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(30, 41, 59); 
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(30, 41, 59);
     doc.text('Detalles de la Consulta', 14, 36);
 
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(100, 116, 139); 
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(100, 116, 139);
     doc.text(`Periodo analizado: ${this.fechaInicio} al ${this.fechaFin}`, 14, 42);
     doc.text(`Filtro de usuario: ${this.empleadoSeleccionado || 'Todos los colaboradores'}`, 14, 47);
-    doc.text(`Fecha de emisión: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}`, 14, 52);
-    doc.text(`Total de registros: ${this.resultados().length}`, 14, 57);
+    // 🆕 Mostrar filtro de sucursal en el PDF
+    doc.text(`Filtro de sucursal: ${this.sucursalSeleccionada || 'Todas las sucursales'}`, 14, 52);
+    doc.text(`Fecha de emisión: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}`, 14, 57);
+    doc.text(`Total de registros: ${this.resultados().length}`, 14, 62);
 
-    doc.setDrawColor(226, 232, 240); doc.setLineWidth(0.5); doc.line(14, 62, doc.internal.pageSize.getWidth() - 14, 62);
+    doc.setDrawColor(226, 232, 240); doc.setLineWidth(0.5); doc.line(14, 67, doc.internal.pageSize.getWidth() - 14, 67);
 
     const bodyData = this.resultados().map(c => {
-      const tareasCumplidas = c.items ? c.items.filter((i:any) => i.checked) : [];
+      const tareasCumplidas = c.items ? c.items.filter((i: any) => i.checked) : [];
       let detalle = '';
-      
-      if (tareasCumplidas.length === 0) { detalle = 'Sin tareas completadas.'; } 
+
+      if (tareasCumplidas.length === 0) { detalle = 'Sin tareas completadas.'; }
       else {
-        detalle = tareasCumplidas.map((t:any) => {
+        detalle = tareasCumplidas.map((t: any) => {
           let texto = `• ${t.text}`;
           if (t.requiresPhoto && (!t.photo || t.photo === '')) { texto += ' (Falta Evidencia)'; }
           if (t.requiresAntesDespues && (!t.photoAntes || !t.photoDespues)) { texto += ' (Falta Evid. Antes/Después)'; }
@@ -353,34 +430,34 @@ export class ReportesComponent implements OnInit, OnDestroy {
       }
 
       if (c.notaEmpleado) {
-detalle += `\n\nNOTA DEL COLABORADOR:\n${c.notaEmpleado}`;
+        detalle += `\n\nNOTA DEL COLABORADOR:\n${c.notaEmpleado}`;
       }
 
-      const marcados = c.items ? c.items.filter((i:any) => i.checked).length : 0;
+      const marcados = c.items ? c.items.filter((i: any) => i.checked).length : 0;
       const total = c.items ? c.items.length : 0;
       const progreso = total > 0 ? Math.round((marcados / total) * 100) : 0;
 
-      return [ 
-        c.date || '-', (c.name || '-').toUpperCase(), c.store || '-', c.assigned || '-', 
-        `${progreso}%`, this.getDisplayStatus(c).toUpperCase(), detalle 
+      return [
+        c.date || '-', (c.name || '-').toUpperCase(), c.store || '-', c.assigned || '-',
+        `${progreso}%`, this.getDisplayStatus(c).toUpperCase(), detalle
       ];
     });
 
     autoTable(doc, {
-      startY: 68,
+      startY: 73,
       head: [['Fecha', 'Operación', 'Sucursal', 'Responsable', 'Avance', 'Estado', 'Resumen de Tareas y Notas']],
-      body: bodyData, theme: 'plain', 
+      body: bodyData, theme: 'plain',
       headStyles: { fillColor: [248, 250, 252], textColor: [15, 23, 42], fontStyle: 'bold', fontSize: 9, cellPadding: 5, lineColor: [226, 232, 240], lineWidth: { bottom: 1 } },
       bodyStyles: { textColor: [51, 65, 85], fontSize: 8, cellPadding: 4, lineColor: [226, 232, 240], lineWidth: { bottom: 0.5 } },
-      alternateRowStyles: { fillColor: [255, 255, 255] }, 
-      columnStyles: { 
-        0: { cellWidth: 22 }, 1: { cellWidth: 40, fontStyle: 'bold', textColor: [15, 23, 42] }, 2: { cellWidth: 25 }, 3: { cellWidth: 35 }, 4: { cellWidth: 18, halign: 'center', fontStyle: 'bold' }, 5: { cellWidth: 25 }, 6: { cellWidth: 100 } 
+      alternateRowStyles: { fillColor: [255, 255, 255] },
+      columnStyles: {
+        0: { cellWidth: 22 }, 1: { cellWidth: 40, fontStyle: 'bold', textColor: [15, 23, 42] }, 2: { cellWidth: 25 }, 3: { cellWidth: 35 }, 4: { cellWidth: 18, halign: 'center', fontStyle: 'bold' }, 5: { cellWidth: 25 }, 6: { cellWidth: 100 }
       },
-      didParseCell: function(data) {
+      didParseCell: function (data) {
         if (data.section === 'body' && data.column.index === 5) {
           const estado = data.cell.raw as string;
-          if (estado.includes('COMPLETO')) { data.cell.styles.textColor = [21, 128, 61]; data.cell.styles.fontStyle = 'bold'; } 
-          else if (estado.includes('PROGRESO')) { data.cell.styles.textColor = [29, 78, 216]; } 
+          if (estado.includes('COMPLETO')) { data.cell.styles.textColor = [21, 128, 61]; data.cell.styles.fontStyle = 'bold'; }
+          else if (estado.includes('PROGRESO')) { data.cell.styles.textColor = [29, 78, 216]; }
           else if (estado.includes('VENCIDO')) { data.cell.styles.textColor = [220, 38, 38]; data.cell.styles.fontStyle = 'bold'; }
         }
       }
@@ -388,30 +465,33 @@ detalle += `\n\nNOTA DEL COLABORADOR:\n${c.notaEmpleado}`;
 
     const pageCount = doc.getNumberOfPages();
     for (let i = 1; i <= pageCount; i++) {
-      doc.setPage(i); doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(148, 163, 184); 
+      doc.setPage(i); doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(148, 163, 184);
       doc.text(`Mega Dulces App - Documento Confidencial | Página ${i} de ${pageCount}`, doc.internal.pageSize.getWidth() / 2, doc.internal.pageSize.getHeight() - 10, { align: 'center' });
     }
-    doc.save(`Reporte_MegaDulces_${this.fechaInicio}_al_${this.fechaFin}.pdf`);
+    // 🆕 Incluir sucursal en el nombre del archivo si está filtrado
+    const sufijoSucursal = this.sucursalSeleccionada ? `_${this.sucursalSeleccionada.replace(/\s+/g, '_')}` : '';
+    doc.save(`Reporte_MegaDulces${sufijoSucursal}_${this.fechaInicio}_al_${this.fechaFin}.pdf`);
   }
-// =======================================================================
-  //  🔥  NUEVA GENERACIÓN DE PDF: MODO "1 TAREA POR HOJA" (ÁLBUM NATIVO)  🔥
+
+  // =======================================================================
+  //  🔥  GENERACIÓN DE PDF VISUAL (1 TAREA POR HOJA)
   // =======================================================================
   async descargarPDFVisual() {
 
     const cleanText = (str: string): string => {
-  if (!str) return '';
-  return str
-    .replace(/[^\x00-\x7F]/g, (char) => {
-      const map: Record<string, string> = {
-        'á':'a','é':'e','í':'i','ó':'o','ú':'u',
-        'Á':'A','É':'E','Í':'I','Ó':'O','Ú':'U',
-        'ñ':'ñ','Ñ':'Ñ','ü':'u','Ü':'U',
-        '📌':'','⚠️':'','📸':'','🕒':'','📝':'',
-        '➔':'->'
-      };
-      return map[char] || '';
-    });
-};
+      if (!str) return '';
+      return str
+        .replace(/[^\x00-\x7F]/g, (char) => {
+          const map: Record<string, string> = {
+            'á': 'a', 'é': 'e', 'í': 'i', 'ó': 'o', 'ú': 'u',
+            'Á': 'A', 'É': 'E', 'Í': 'I', 'Ó': 'O', 'Ú': 'U',
+            'ñ': 'ñ', 'Ñ': 'Ñ', 'ü': 'u', 'Ü': 'U',
+            '📌': '', '⚠️': '', '📸': '', '🕒': '', '📝': '',
+            '➔': '->'
+          };
+          return map[char] || '';
+        });
+    };
     if (this.resultados().length === 0) {
       Swal.fire({ icon: 'info', title: 'Sin Datos', text: 'No hay datos para generar el reporte visual.', confirmButtonColor: '#0F172A' });
       return;
@@ -434,14 +514,13 @@ detalle += `\n\nNOTA DEL COLABORADOR:\n${c.notaEmpleado}`;
       const pageWidth = doc.internal.pageSize.getWidth();
       const pageHeight = doc.internal.pageSize.getHeight();
 
-      // 🛠️ HELPER 1: DESCARGAR IMÁGENES SEGURAS EN BASE64
       const getBase64Image = (url: string): Promise<string | null> => {
         return new Promise((resolve) => {
           const img = new Image();
           img.crossOrigin = 'Anonymous';
           img.onload = () => {
             const canvas = document.createElement('canvas');
-            const MAX_WIDTH = 600; // Mayor resolución para que se vean increíbles en hoja completa
+            const MAX_WIDTH = 600;
             const scaleSize = MAX_WIDTH / img.width;
             canvas.width = MAX_WIDTH;
             canvas.height = img.height * scaleSize;
@@ -454,7 +533,6 @@ detalle += `\n\nNOTA DEL COLABORADOR:\n${c.notaEmpleado}`;
         });
       };
 
-      // 🛠️ HELPER 2: ESCALAR FOTOS PERFECTAMENTE SIN DEFORMARLAS
       const calculateFit = (imgW: number, imgH: number, maxW: number, maxH: number) => {
         const imgRatio = imgW / imgH;
         const maxRatio = maxW / maxH;
@@ -469,7 +547,7 @@ detalle += `\n\nNOTA DEL COLABORADOR:\n${c.notaEmpleado}`;
         return { finalW, finalH };
       };
 
-      // ================= 1. PORTADA CORPORATIVA =================
+      // PORTADA
       doc.setFillColor(15, 23, 42);
       doc.rect(0, 0, pageWidth, 28, 'F');
       doc.setFont('helvetica', 'bold');
@@ -489,28 +567,29 @@ detalle += `\n\nNOTA DEL COLABORADOR:\n${c.notaEmpleado}`;
         head: [['Resumen Ejecutivo', '']],
         body: [
           ['Período analizado', `${this.fechaInicio} al ${this.fechaFin}`],
-          ['Filtro aplicado', this.empleadoSeleccionado || 'Todos los colaboradores'],
+          ['Filtro de empleado', this.empleadoSeleccionado || 'Todos los colaboradores'],
+          // 🆕 Mostrar filtro de sucursal en la portada
+          ['Filtro de sucursal', this.sucursalSeleccionada || 'Todas las sucursales'],
           ['Total de registros', `${this.resultados().length} checklists validados`],
           ['Cumplimiento general', `${promedio}% de efectividad`]
         ],
         theme: 'grid',
         headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold', fontSize: 14, cellPadding: 8 },
-        bodyStyles: { textColor: [51, 65, 85], fontSize: 12, cellPadding: 8 }, // cellPadding: 8 las hace más altas
-        columnStyles: { 0: { fontStyle: 'bold', cellWidth: 80 } } // Hacemos la primera columna un poco más ancha
+        bodyStyles: { textColor: [51, 65, 85], fontSize: 12, cellPadding: 8 },
+        columnStyles: { 0: { fontStyle: 'bold', cellWidth: 80 } }
       });
 
-      // ================= 2. RECORRIDO DE CHECKLISTS =================
+      // RECORRIDO DE CHECKLISTS
       for (let i = 0; i < this.resultados().length; i++) {
         const checklist = this.resultados()[i];
 
-        // 📄 HOJA DE CARÁTULA DEL CHECKLIST
         doc.addPage();
         doc.setFillColor(15, 23, 42);
         doc.rect(0, 0, pageWidth, 25, 'F');
         doc.setTextColor(255, 255, 255);
         doc.setFontSize(16);
         doc.setFont('helvetica', 'bold');
-doc.text(`AUDITORIA: ${cleanText(checklist.name).toUpperCase()}`, 14, 16);
+        doc.text(`AUDITORIA: ${cleanText(checklist.name).toUpperCase()}`, 14, 16);
 
         doc.setTextColor(15, 23, 42);
         doc.setFontSize(14);
@@ -524,7 +603,7 @@ doc.text(`AUDITORIA: ${cleanText(checklist.name).toUpperCase()}`, 14, 16);
         doc.setFontSize(11);
         doc.text('Responsable:', 14, 55);
         doc.setFont('helvetica', 'normal');
-doc.text(cleanText(checklist.assigned) || 'No asignado', 50, 55);
+        doc.text(cleanText(checklist.assigned) || 'No asignado', 50, 55);
 
         doc.setFont('helvetica', 'bold');
         doc.text('Sucursal/Zona:', 14, 65);
@@ -551,15 +630,12 @@ doc.text(cleanText(checklist.assigned) || 'No asignado', 50, 55);
           doc.text(notes, 14, 113);
         }
 
-        // 📄 HOJAS INDIVIDUALES POR CADA TAREA
         if (checklist.items && checklist.items.length > 0) {
           for (let j = 0; j < checklist.items.length; j++) {
             const item = checklist.items[j];
-            
-            // 🔥 AQUÍ ESTÁ LA MAGIA: 1 HOJA ENTERA NUEVA POR CADA TAREA
+
             doc.addPage();
 
-            // ENCABEZADO DE TAREA
             doc.setFillColor(241, 245, 249);
             doc.rect(0, 0, pageWidth, 20, 'F');
             doc.setTextColor(100, 116, 139);
@@ -567,7 +643,6 @@ doc.text(cleanText(checklist.assigned) || 'No asignado', 50, 55);
             doc.setFontSize(10);
             doc.text(`${checklist.name.toUpperCase()}  |  TAREA ${j + 1} DE ${checklist.items.length}`, 14, 13);
 
-            // NOMBRE DE LA TAREA
             doc.setTextColor(15, 23, 42);
             doc.setFontSize(14);
             const checkIcon = item.checked ? '[ ✓ ] ' : '[ X ] ';
@@ -576,40 +651,37 @@ doc.text(cleanText(checklist.assigned) || 'No asignado', 50, 55);
 
             let currentY = 35 + (taskText.length * 7) + 5;
 
-            // ALERTAS DE ESTADO
             doc.setFontSize(10);
             if (!item.checked) {
               doc.setTextColor(220, 38, 38);
-doc.text('TAREA NO COMPLETADA', 14, currentY);
+              doc.text('TAREA NO COMPLETADA', 14, currentY);
               currentY += 12;
             } else if (item.requiresPhoto && !item.photo && !item.requiresAntesDespues) {
               doc.setTextColor(220, 38, 38);
-doc.text('TAREA COMPLETADA SIN EVIDENCIA FOTOGRÁFICA', 14, currentY);
+              doc.text('TAREA COMPLETADA SIN EVIDENCIA FOTOGRÁFICA', 14, currentY);
               currentY += 12;
             } else if (item.requiresAntesDespues && (!item.photoAntes || !item.photoDespues)) {
               doc.setTextColor(220, 38, 38);
-doc.text('FALTAN EVIDENCIAS DE ANTES Y/O DESPUES', 14, currentY);
+              doc.text('FALTAN EVIDENCIAS DE ANTES Y/O DESPUES', 14, currentY);
               currentY += 12;
             }
 
-            // DIBUJAR FOTOS GIGANTES
-            const availableHeight = pageHeight - currentY - 20; // 20 margen abajo para pie de página
+            const availableHeight = pageHeight - currentY - 20;
 
             if (item.requiresAntesDespues) {
-              const photoWidth = (pageWidth - 42) / 2; // Partimos la pantalla a la mitad
+              const photoWidth = (pageWidth - 42) / 2;
               const maxPhotoHeight = availableHeight - 15;
 
               let imgAntes = item.photoAntes ? await getBase64Image(item.photoAntes) : null;
               let imgDespues = item.photoDespues ? await getBase64Image(item.photoDespues) : null;
 
-              // RENDERIZAR FOTO ANTES
               doc.setTextColor(15, 23, 42);
               doc.setFont('helvetica', 'bold');
-              doc.text(`EVIDENCIA: ANTES ${item.photoAntesTime ? '('+item.photoAntesTime+')' : ''}`, 14, currentY + 5);
+              doc.text(`EVIDENCIA: ANTES ${item.photoAntesTime ? '(' + item.photoAntesTime + ')' : ''}`, 14, currentY + 5);
               if (imgAntes) {
                 const imgProps = doc.getImageProperties(imgAntes);
                 const { finalW, finalH } = calculateFit(imgProps.width, imgProps.height, photoWidth, maxPhotoHeight);
-                const x = 14 + (photoWidth - finalW) / 2; // Centrar foto en su mitad
+                const x = 14 + (photoWidth - finalW) / 2;
                 doc.addImage(imgAntes, 'JPEG', x, currentY + 10, finalW, finalH);
               } else {
                 doc.setTextColor(220, 38, 38);
@@ -617,10 +689,9 @@ doc.text('FALTAN EVIDENCIAS DE ANTES Y/O DESPUES', 14, currentY);
                 doc.text('Sin imagen de "Antes"', 14, currentY + 15);
               }
 
-              // RENDERIZAR FOTO DESPUÉS
-              doc.setTextColor(16, 185, 129); // Verde
+              doc.setTextColor(16, 185, 129);
               doc.setFont('helvetica', 'bold');
-              doc.text(`EVIDENCIA: DESPUÉS ${item.photoDespuesTime ? '('+item.photoDespuesTime+')' : ''}`, 14 + photoWidth + 14, currentY + 5);
+              doc.text(`EVIDENCIA: DESPUÉS ${item.photoDespuesTime ? '(' + item.photoDespuesTime + ')' : ''}`, 14 + photoWidth + 14, currentY + 5);
               if (imgDespues) {
                 const imgProps = doc.getImageProperties(imgDespues);
                 const { finalW, finalH } = calculateFit(imgProps.width, imgProps.height, photoWidth, maxPhotoHeight);
@@ -633,7 +704,6 @@ doc.text('FALTAN EVIDENCIAS DE ANTES Y/O DESPUES', 14, currentY);
               }
 
             } else if (item.requiresPhoto || item.photo) {
-              // RENDERIZAR 1 FOTO GIGANTE AL CENTRO
               const photoWidth = pageWidth - 28;
               const maxPhotoHeight = availableHeight - 15;
 
@@ -641,8 +711,8 @@ doc.text('FALTAN EVIDENCIAS DE ANTES Y/O DESPUES', 14, currentY);
               if (img) {
                 doc.setTextColor(15, 23, 42);
                 doc.setFont('helvetica', 'bold');
-                doc.text(`EVIDENCIA FOTOGRÁFICA ${item.photoTime ? '('+item.photoTime+')' : ''}`, 14, currentY + 5);
-                
+                doc.text(`EVIDENCIA FOTOGRÁFICA ${item.photoTime ? '(' + item.photoTime + ')' : ''}`, 14, currentY + 5);
+
                 const imgProps = doc.getImageProperties(img);
                 const { finalW, finalH } = calculateFit(imgProps.width, imgProps.height, photoWidth, maxPhotoHeight);
                 const x = 14 + (photoWidth - finalW) / 2;
@@ -653,7 +723,6 @@ doc.text('FALTAN EVIDENCIAS DE ANTES Y/O DESPUES', 14, currentY);
         }
       }
 
-      // ================= 3. PIE DE PÁGINA GLOBAL =================
       const pageCount = doc.getNumberOfPages();
       for (let i = 1; i <= pageCount; i++) {
         doc.setPage(i);
@@ -663,7 +732,9 @@ doc.text('FALTAN EVIDENCIAS DE ANTES Y/O DESPUES', 14, currentY);
         doc.text(`Mega Dulces App - Página ${i} de ${pageCount}`, pageWidth / 2, pageHeight - 8, { align: 'center' });
       }
 
-      doc.save(`Auditoria_Visual_${this.fechaInicio}_al_${this.fechaFin}.pdf`);
+      // 🆕 Incluir sucursal en el nombre del archivo si está filtrado
+      const sufijoSucursal = this.sucursalSeleccionada ? `_${this.sucursalSeleccionada.replace(/\s+/g, '_')}` : '';
+      doc.save(`Auditoria_Visual${sufijoSucursal}_${this.fechaInicio}_al_${this.fechaFin}.pdf`);
     } catch (error) {
       console.error(error);
       Swal.fire({ icon: 'error', title: 'Error de Procesamiento', text: 'Ocurrió un error al generar el PDF.', confirmButtonColor: '#0F172A' });

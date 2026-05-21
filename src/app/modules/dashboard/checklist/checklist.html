@@ -180,162 +180,174 @@
           </div>
         </div>
         <div class="checklist-grid">
-          
  
-<div class="checklist-card" *ngFor="let checklist of checklistsFiltrados" (click)="verDetalle(checklist)">
  
-  <!-- Encabezado: título + status + acciones -->
-  <div class="checklist-card-header">
-    <div class="checklist-card-title">{{ checklist.name }}</div>
-    <div style="display: flex; align-items: center; gap: 8px;">
-      <div class="checklist-card-badge"
-        [ngClass]="{
-          'badge-pendiente': checklist.status === 'pendiente',
-          'badge-en-progreso': checklist.status === 'en-progreso',
-          'badge-completo': checklist.status === 'completo'
-        }">
-        {{ checklist.status === 'en-progreso' ? 'En Progreso' : (checklist.status | titlecase) }}
-      </div>
-      <button class="btn-delete-icon"
-        *ngIf="currentUser?.rol === 'admin' || checklist.createdBy === currentUser?.nombre"
-        (click)="editarBloqueRutinas(checklist, $event)" title="Editar Rutinas"
-        style="color: #3B82F6; background: #EFF6FF;">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-        </svg>
-      </button>
-      <button class="btn-delete-icon"
-        *ngIf="currentUser?.rol === 'admin' || checklist.createdBy === currentUser?.nombre"
-        (click)="eliminarChecklist(checklist, $event)" title="Eliminar">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <polyline points="3 6 5 6 21 6"></polyline>
-          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-        </svg>
-      </button>
-    </div>
-  </div>
+          <div class="checklist-card" *ngFor="let checklist of checklistsFiltrados" (click)="verDetalle(checklist)">
  
-  <!-- Info básica -->
-  <div class="checklist-card-info">
-    <span style="display: flex; align-items: center; gap: 8px;">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-        <circle cx="12" cy="7" r="4"></circle>
-      </svg> {{ checklist.assigned }}
-      <button class="btn-bell" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeCrearChecklists"
-        (click)="$event.stopPropagation(); abrirModalNotificacion(checklist.assigned)" title="Enviar Alerta">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
-          <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
-        </svg>
-      </button>
-    </span>
-    <span style="display: flex; align-items: center;">
-      <svg width="14" height="14" style="margin-right: 4px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-        <line x1="3" y1="9" x2="21" y2="9"></line>
-        <line x1="9" y1="21" x2="9" y2="9"></line>
-      </svg> {{ checklist.store }}
-    </span>
-    <span style="display: flex; align-items: center;">
-      <svg width="14" height="14" style="margin-right: 4px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-        <line x1="16" y1="2" x2="16" y2="6"></line>
-        <line x1="8" y1="2" x2="8" y2="6"></line>
-        <line x1="3" y1="10" x2="21" y2="10"></line>
-      </svg> {{ checklist.date }}
-    </span>
-    <span *ngIf="checklist.enviado"
-      style="display: flex; align-items: center; color: var(--primary-navy); font-weight: 600; background: #F1F5F9; padding: 2px 8px; border-radius: 4px; border: 1px solid #E2E8F0; font-size: 11px;">
-      <svg width="12" height="12" style="margin-right: 4px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <line x1="22" y1="2" x2="11" y2="13"></line>
-        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-      </svg> ENVIADO
-    </span>
-  </div>
+            <!-- Encabezado: título + status + acciones -->
+            <div class="checklist-card-header">
+              <div class="checklist-card-title">{{ checklist.name }}</div>
+              <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
  
-  <!-- Asignado por (general del checklist) -->
-  <div class="meta-assigned-by" *ngIf="checklist.createdBy">
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
-      <circle cx="9" cy="7" r="4"></circle>
-      <polyline points="17 11 19 13 23 9"></polyline>
-    </svg>
-    <span class="meta-assigned-label">Asignado por:</span>
-    <strong class="meta-assigned-name">{{ checklist.createdBy }}</strong>
-  </div>
+                <!-- ✅ FIX: Badge de status (queda solo, sin VENCIDO adentro) -->
+                <div class="checklist-card-badge" [ngClass]="{
+                    'badge-pendiente': checklist.status === 'pendiente',
+                    'badge-en-progreso': checklist.status === 'en-progreso',
+                    'badge-completo': checklist.status === 'completo'
+                  }">
+                  {{ checklist.status === 'en-progreso' ? 'En Progreso' : (checklist.status | titlecase) }}
+                </div>
  
-  <!-- HORARIOS DE TAREAS: cada tarea con inicio + límite juntos -->
-  <div class="checklist-preview-box">
-    <div class="preview-box-title">
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <circle cx="12" cy="12" r="10"></circle>
-        <polyline points="12 6 12 12 16 14"></polyline>
-      </svg>
-      HORARIOS DE TAREAS:
-    </div>
+                <!-- ✅ FIX: Badge VENCIDO ahora es HERMANO, no hijo del anterior -->
+                <div class="checklist-card-badge badge-vencido" *ngIf="estaVencido(checklist)">
+                  ⏰ VENCIDO
+                </div>
  
-    <ng-container *ngFor="let item of getPrimerasTareas(checklist)">
-      <div class="task-row" [class.task-row-done]="item.checked">
- 
-        <div class="task-row-name">• {{ item.text }}</div>
- 
-        <div class="task-row-times">
- 
-          <div class="task-time task-time-start" *ngIf="item.horaInicio; else sinInicio">
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-              <circle cx="12" cy="12" r="10"></circle>
-              <polyline points="12 6 12 12 16 14"></polyline>
-            </svg>
-            <span class="task-time-label">Inicio:</span>
-            <strong>{{ formatearHora(item.horaInicio) }}</strong>
-          </div>
-          <ng-template #sinInicio>
-            <div class="task-time task-time-empty">
-              <span class="task-time-label">Inicio:</span>
-              <span>—</span>
+                <button class="btn-delete-icon"
+                  *ngIf="currentUser?.rol === 'admin' || checklist.createdBy === currentUser?.nombre"
+                  (click)="editarBloqueRutinas(checklist, $event)" title="Editar Rutinas"
+                  style="color: #3B82F6; background: #EFF6FF;">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                  </svg>
+                </button>
+                <button class="btn-delete-icon"
+                  *ngIf="currentUser?.rol === 'admin' || checklist.createdBy === currentUser?.nombre"
+                  (click)="eliminarChecklist(checklist, $event)" title="Eliminar">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="3 6 5 6 21 6"></polyline>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                  </svg>
+                </button>
+              </div>
             </div>
-          </ng-template>
  
-          <span class="task-time-arrow">→</span>
- 
-          <div class="task-time task-time-end" *ngIf="item.horaLimite || item.time; else sinLimite">
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-              <circle cx="12" cy="12" r="10"></circle>
-              <polyline points="12 6 12 12 16 14"></polyline>
-            </svg>
-            <span class="task-time-label">Límite:</span>
-            <strong>{{ formatearHora(item.horaLimite || item.time) }}</strong>
-          </div>
-          <ng-template #sinLimite>
-            <div class="task-time task-time-empty">
-              <span class="task-time-label">Límite:</span>
-              <span>Sin límite</span>
+            <!-- Info básica -->
+            <div class="checklist-card-info">
+              <span style="display: flex; align-items: center; gap: 8px;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="12" cy="7" r="4"></circle>
+                </svg> {{ checklist.assigned }}
+                <button class="btn-bell" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeCrearChecklists"
+                  (click)="$event.stopPropagation(); abrirModalNotificacion(checklist.assigned)" title="Enviar Alerta">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                    <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                  </svg>
+                </button>
+              </span>
+              <span style="display: flex; align-items: center;">
+                <svg width="14" height="14" style="margin-right: 4px;" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                  <line x1="3" y1="9" x2="21" y2="9"></line>
+                  <line x1="9" y1="21" x2="9" y2="9"></line>
+                </svg> {{ checklist.store }}
+              </span>
+              <span style="display: flex; align-items: center;">
+                <svg width="14" height="14" style="margin-right: 4px;" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                  <line x1="16" y1="2" x2="16" y2="6"></line>
+                  <line x1="8" y1="2" x2="8" y2="6"></line>
+                  <line x1="3" y1="10" x2="21" y2="10"></line>
+                </svg> {{ checklist.date }}
+              </span>
+              <span *ngIf="checklist.enviado"
+                style="display: flex; align-items: center; color: var(--primary-navy); font-weight: 600; background: #F1F5F9; padding: 2px 8px; border-radius: 4px; border: 1px solid #E2E8F0; font-size: 11px;">
+                <svg width="12" height="12" style="margin-right: 4px;" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2">
+                  <line x1="22" y1="2" x2="11" y2="13"></line>
+                  <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                </svg> ENVIADO
+              </span>
             </div>
-          </ng-template>
  
-        </div>
-      </div>
-    </ng-container>
+            <!-- Asignado por (general del checklist) -->
+            <div class="meta-assigned-by" *ngIf="checklist.createdBy">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+                <circle cx="9" cy="7" r="4"></circle>
+                <polyline points="17 11 19 13 23 9"></polyline>
+              </svg>
+              <span class="meta-assigned-label">Asignado por:</span>
+              <strong class="meta-assigned-name">{{ checklist.createdBy }}</strong>
+            </div>
  
-    <div *ngIf="(checklist.items?.length || 0) > 4" class="preview-more">
-      + {{ (checklist.items?.length || 0) - 4 }} tareas adicionales...
-    </div>
-  </div>
+            <!-- HORARIOS DE TAREAS: cada tarea con inicio + límite juntos -->
+            <div class="checklist-preview-box">
+              <div class="preview-box-title">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+                HORARIOS DE TAREAS:
+              </div>
  
-  <!-- Barra de progreso -->
-  <div class="checklist-progress">
-    <div class="progress-label">
-      <span>{{ checklist.calcCompletados || 0 }} de {{ checklist.items.length }} tareas</span>
-      <span>{{ checklist.calcProgreso || 0 }}%</span>
-    </div>
-    <div class="progress-bar-wrap">
-      <div class="progress-bar-fill" [style.width.%]="checklist.calcProgreso || 0"></div>
-    </div>
-  </div>
+              <ng-container *ngFor="let item of getPrimerasTareas(checklist)">
+                <div class="task-row" [class.task-row-done]="item.checked">
  
-</div>
+                  <div class="task-row-name">• {{ item.text }}</div>
+ 
+                  <div class="task-row-times">
+ 
+                    <div class="task-time task-time-start" *ngIf="item.horaInicio; else sinInicio">
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2.5">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <polyline points="12 6 12 12 16 14"></polyline>
+                      </svg>
+                      <span class="task-time-label">Inicio:</span>
+                      <strong>{{ formatearHora(item.horaInicio) }}</strong>
+                    </div>
+                    <ng-template #sinInicio>
+                      <div class="task-time task-time-empty">
+                        <span class="task-time-label">Inicio:</span>
+                        <span>—</span>
+                      </div>
+                    </ng-template>
+ 
+                    <span class="task-time-arrow">→</span>
+ 
+                    <div class="task-time task-time-end" *ngIf="item.horaLimite || item.time; else sinLimite">
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2.5">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <polyline points="12 6 12 12 16 14"></polyline>
+                      </svg>
+                      <span class="task-time-label">Límite:</span>
+                      <strong>{{ formatearHora(item.horaLimite || item.time) }}</strong>
+                    </div>
+                    <ng-template #sinLimite>
+                      <div class="task-time task-time-empty">
+                        <span class="task-time-label">Límite:</span>
+                        <span>Sin límite</span>
+                      </div>
+                    </ng-template>
+ 
+                  </div>
+                </div>
+              </ng-container>
+ 
+              <div *ngIf="(checklist.items?.length || 0) > 4" class="preview-more">
+                + {{ (checklist.items?.length || 0) - 4 }} tareas adicionales...
+              </div>
+            </div>
+ 
+            <!-- Barra de progreso -->
+            <div class="checklist-progress">
+              <div class="progress-label">
+                <span>{{ checklist.calcCompletados || 0 }} de {{ checklist.items.length }} tareas</span>
+                <span>{{ checklist.calcProgreso || 0 }}%</span>
+              </div>
+              <div class="progress-bar-wrap">
+                <div class="progress-bar-fill" [style.width.%]="checklist.calcProgreso || 0"></div>
+              </div>
+            </div>
+ 
+          </div>
           <div class="empty-state" *ngIf="checklistsFiltrados.length === 0">
             <div class="empty-state-icon"><svg width="48" height="48" viewBox="0 0 24 24" fill="none"
                 stroke="currentColor" stroke-width="2">
@@ -726,6 +738,10 @@
             checklistSeleccionado().notaEmpleado }}</p>
         </div>
       </div>
+ 
+      <!-- ╔════════════════════════════════════════════════╗ -->
+      <!-- ║   MODAL DE TAREAS ÚNICAS                       ║ -->
+      <!-- ╚════════════════════════════════════════════════╝ -->
       <div class="modal-overlay" *ngIf="isModalOpen">
         <div class="modal">
           <div class="modal-header">
@@ -746,7 +762,7 @@
                   d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48">
                 </path>
               </svg>
-              {{ formItems.length > 0 && formItems[0].archivoInstruccion === 'subiendo...' ? ' ⏳ Subiendo archivo alanube...' : ((formItems.length > 0 && formItems[0].nombreArchivo) || 'Adjuntar foto o documento deinstrucciones(Opcional)') }}
+              {{ formItems.length > 0 && formItems[0].archivoInstruccion === 'subiendo...' ? ' ⏳ Subiendo archivo a la nube...' : ((formItems.length > 0 && formItems[0].nombreArchivo) || 'Adjuntar foto o documento de instrucciones (Opcional)') }}
               <input type="file" *ngIf="formItems.length > 0"
                 (change)="adjuntarDocumentoInstruccion($event, formItems[0])" style="display: none;"
                 accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,image/*">
@@ -867,47 +883,45 @@
                       </svg>
                     </button>
                   </div>
-                  
-<div class="form-times-block">
  
-  <div class="form-times-title">
-    ⏱️ HORARIO DE LA TAREA
-    <small>(define cuándo inicia y cuándo vence)</small>
-  </div>
+                  <div class="form-times-block">
  
-  <!-- Fila INICIO -->
-  <div class="form-time-row">
-    <div class="form-time-field">
-      <label class="form-time-label">📅 Fecha de inicio</label>
-      <input type="date" class="form-input form-time-input" [(ngModel)]="item.fechaInicio">
-    </div>
-    <div class="form-time-field">
-      <label class="form-time-label">🕒 Hora de inicio <span class="req">*</span></label>
-      <input type="time" class="form-input form-time-input"
-             [(ngModel)]="item.horaInicio"
-             [class.input-warning]="!item.horaInicio">
-    </div>
-  </div>
+                    <div class="form-times-title">
+                      ⏱️ HORARIO DE LA TAREA
+                      <small>(define cuándo inicia y cuándo vence)</small>
+                    </div>
  
-  <!-- Fila LÍMITE -->
-  <div class="form-time-row">
-    <div class="form-time-field">
-      <label class="form-time-label">⏳ Fecha límite</label>
-      <input type="date" class="form-input form-time-input" [(ngModel)]="item.fechaLimite">
-    </div>
-    <div class="form-time-field">
-      <label class="form-time-label">⏰ Hora límite <span class="req">*</span></label>
-      <input type="time" class="form-input form-time-input"
-             [(ngModel)]="item.horaLimite"
-             [class.input-warning]="!item.horaLimite">
-    </div>
-  </div>
+                    <!-- Fila INICIO -->
+                    <div class="form-time-row">
+                      <div class="form-time-field">
+                        <label class="form-time-label">📅 Fecha de inicio</label>
+                        <input type="date" class="form-input form-time-input" [(ngModel)]="item.fechaInicio">
+                      </div>
+                      <div class="form-time-field">
+                        <label class="form-time-label">🕒 Hora de inicio <span class="req">*</span></label>
+                        <input type="time" class="form-input form-time-input" [(ngModel)]="item.horaInicio"
+                          [class.input-warning]="!item.horaInicio">
+                      </div>
+                    </div>
  
-  <div class="form-time-warning" *ngIf="!item.horaInicio || !item.horaLimite">
-    ⚠️ Si no llenas las horas, la tarjeta del checklist mostrará "—" / "Sin límite".
-  </div>
+                    <!-- Fila LÍMITE -->
+                    <div class="form-time-row">
+                      <div class="form-time-field">
+                        <label class="form-time-label">⏳ Fecha límite</label>
+                        <input type="date" class="form-input form-time-input" [(ngModel)]="item.fechaLimite">
+                      </div>
+                      <div class="form-time-field">
+                        <label class="form-time-label">⏰ Hora límite <span class="req">*</span></label>
+                        <input type="time" class="form-input form-time-input" [(ngModel)]="item.horaLimite"
+                          [class.input-warning]="!item.horaLimite">
+                      </div>
+                    </div>
  
-</div>
+                    <div class="form-time-warning" *ngIf="!item.horaInicio || !item.horaLimite">
+                      ⚠️ Si no llenas las horas, la tarjeta del checklist mostrará "—" / "Sin límite".
+                    </div>
+ 
+                  </div>
                 </div>
               </div>
               <button class="btn-secondary" (click)="agregarItem()"
@@ -919,7 +933,7 @@
                 </svg> Añadir actividad
               </button>
             </div>
-
+ 
             <div
               style="margin-top: 15px; margin-bottom: 15px; padding: 15px; background-color: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
               <p style="font-size: 13px; font-weight: 600; color: #475569; margin-bottom: 10px;">Vías de Notificación:
@@ -939,6 +953,19 @@
                 </label>
               </div>
             </div>
+ 
+            <!-- ✅ FIX: Counter de TAREAS ÚNICAS AQUÍ (antes de los botones del modal correcto) -->
+            <div class="counter-box" *ngIf="formAssigned.length > 0 && formItems.length > 0">
+              <div class="counter-icon">🎯</div>
+              <div class="counter-text">
+                Vas a generar
+                <strong>{{ totalTareasAGenerar() }}</strong>
+                tareas
+                (<strong>{{ formAssigned.length }}</strong> personas ×
+                <strong>{{ actividadesValidas() }}</strong> actividades)
+              </div>
+            </div>
+ 
             <div class="btn-group"
               style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; padding-top: 20px; border-top: 1px solid #E2E8F0;">
               <button class="btn-secondary" (click)="cerrarModal()">Cancelar</button>
@@ -949,7 +976,10 @@
           </div>
         </div>
       </div>
-
+ 
+      <!-- ╔════════════════════════════════════════════════╗ -->
+      <!-- ║   MODAL DE RUTINAS                             ║ -->
+      <!-- ╚════════════════════════════════════════════════╝ -->
       <div class="modal-overlay" *ngIf="isModalRutinasOpen">
         <div class="modal">
           <div class="modal-header">
@@ -994,6 +1024,29 @@
                 ℹ️ Las rutinas diarias para esta zona se omiten automáticamente los domingos.
               </small>
             </div>
+ 
+            <div class="form-group form-full" style="margin-top: 15px;">
+              <label class="form-label">📅 Vigencia del bloque (opcional)</label>
+              <div class="vigencia-row">
+                <div class="vigencia-field">
+                  <small>Inicio</small>
+                  <input type="date" class="form-input" [(ngModel)]="formFechaInicioBloque">
+                </div>
+                <div class="vigencia-field">
+                  <small>Fin</small>
+                  <input type="date" class="form-input" [(ngModel)]="formFechaFinBloque">
+                </div>
+                <button type="button" class="btn-clear-vigencia" *ngIf="formFechaInicioBloque || formFechaFinBloque"
+                  (click)="formFechaInicioBloque=''; formFechaFinBloque=''">
+                  Limpiar
+                </button>
+              </div>
+              <small class="vigencia-hint">
+                💡 Si dejas las fechas vacías, el bloque se considera <b>permanente</b>.
+                Cuando se llegue a la fecha de fin, las tarjetas aparecerán marcadas como <b>VENCIDAS</b>.
+              </small>
+            </div>
+ 
             <div class="form-group form-full"
               style="margin-top: 15px; border-top: 1px dashed var(--border); padding-top: 20px;">
               <label class="form-label">Configuración de Frecuencias</label>
@@ -1097,6 +1150,19 @@
                 </svg> Añadir regla recurrente
               </button>
             </div>
+ 
+            <!-- ✅ FIX: Counter de RUTINAS aquí (con las variables correctas formAssignedRutina/formRutinas) -->
+            <div class="counter-box" *ngIf="formAssignedRutina.length > 0 && formRutinas.length > 0">
+              <div class="counter-icon">📊</div>
+              <div class="counter-text">
+                Este bloque generará
+                <strong>{{ totalRutinasSemanales() }}</strong>
+                tareas por semana
+                (<strong>{{ formAssignedRutina.length }}</strong> personas ×
+                <strong>{{ totalEjecucionesPorSemana() }}</strong> ejecuciones)
+              </div>
+            </div>
+ 
             <div class="btn-group"
               style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; padding-top: 20px; border-top: 1px solid #E2E8F0;">
               <button class="btn-secondary" (click)="cerrarModalRutinas()">Cancelar</button>
@@ -1106,7 +1172,7 @@
           </div>
         </div>
       </div>
-
+ 
       <div class="modal-overlay" *ngIf="isPasswordModalOpen" style="z-index: 9999;">
         <div class="modal" style="max-width: 400px; text-align: center; padding: 30px;">
           <div style="margin-bottom: 15px; color: var(--primary-navy);"><svg width="48" height="48" viewBox="0 0 24 24"
@@ -1127,7 +1193,7 @@
           </div>
         </div>
       </div>
-
+ 
       <div class="modal-overlay" *ngIf="isModalNotificacionOpen" style="z-index: 9999;">
         <div class="modal" style="max-width: 400px; padding: 30px;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
@@ -1162,7 +1228,7 @@
           </div>
         </div>
       </div>
-
+ 
       <div class="modal-overlay" *ngIf="notificacionesPendientes().length > 0"
         style="z-index: 10000; background: rgba(0,0,0,0.85);">
         <div class="modal"
@@ -1189,7 +1255,7 @@
           </button>
         </div>
       </div>
-
+ 
       <div class="toast-notification" *ngIf="toastMessage">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
           stroke-linecap="round" stroke-linejoin="round">
@@ -1198,12 +1264,15 @@
         </svg>
         {{ toastMessage }}
       </div>
-
+ 
+      <!-- ╔════════════════════════════════════════════════╗ -->
+      <!-- ║   MODAL DE TAREA EN EQUIPO                     ║ -->
+      <!-- ╚════════════════════════════════════════════════╝ -->
       <div class="modal-overlay" *ngIf="isModalEquipoOpen"
         style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15,23,42,0.8); backdrop-filter: blur(5px); z-index: 10000; display: flex; justify-content: center; align-items: center; padding: 20px;">
         <div
           style="background: white; width: 100%; max-width: 750px; max-height: 90vh; border-radius: 20px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);">
-
+ 
           <div
             style="padding: 20px 24px; border-bottom: 1px solid #E2E8F0; display: flex; justify-content: space-between; align-items: center; background: #F8FAFC;">
             <div style="display: flex; align-items: center; gap: 10px;">
@@ -1219,9 +1288,9 @@
             <button (click)="cerrarModalEquipo()"
               style="background: none; border: none; font-size: 28px; color: #94A3B8; cursor: pointer;">&times;</button>
           </div>
-
+ 
           <div style="padding: 24px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 24px;">
-
+ 
             <div style="background: #EEF2FF; border: 1px solid #C7D2FE; padding: 20px; border-radius: 12px;">
               <label style="font-size: 11px; font-weight: 800; color: #4338CA; text-transform: uppercase;">🎯 Nombre de
                 la Tarea en Equipo</label>
@@ -1229,25 +1298,25 @@
                 placeholder="Ej: Cambiar diseño de MD, Limpieza general..."
                 style="width: 100%; padding: 12px; border: 1px solid #CBD5E1; border-radius: 8px; margin-top: 8px; font-weight: 700; font-size: 16px; outline: none; box-sizing: border-box;">
             </div>
-
+ 
             <div>
               <div
                 style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
                 <p style="font-size: 12px; font-weight: 800; color: #64748B; text-transform: uppercase; margin: 0;">👤
                   Asignación de Integrantes</p>
-
+ 
                 <div style="display: flex; gap: 10px; align-items: flex-start;">
                   <div style="position: relative; width: 250px;">
                     <input type="text" [(ngModel)]="busquedaEmpleadoEquipo" (focus)="mostrarDropdownEquipo = true"
                       (blur)="ocultarDropdownEquipo()" placeholder="🔍 Buscar empleado..."
                       style="width: 100%; padding: 8px 12px 8px 30px; border-radius: 6px; border: 1px solid #CBD5E1; font-size: 12px; outline: none; box-sizing: border-box;">
-
+ 
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="2"
                       style="position: absolute; left: 10px; top: 10px;">
                       <circle cx="11" cy="11" r="8"></circle>
                       <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                     </svg>
-
+ 
                     <div *ngIf="mostrarDropdownEquipo && empleadosEquipoFiltrados.length > 0"
                       style="position: absolute; top: 100%; left: 0; width: 100%; background: white; border: 1px solid #CBD5E1; border-radius: 6px; margin-top: 4px; max-height: 160px; overflow-y: auto; z-index: 50; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);">
                       <div *ngFor="let emp of empleadosEquipoFiltrados"
@@ -1258,7 +1327,7 @@
                       </div>
                     </div>
                   </div>
-
+ 
                   <button (click)="agregarIntegranteEquipo()"
                     style="background: #4338CA; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-size: 12px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 4px rgba(67, 56, 202, 0.2); height: 33px;">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
@@ -1271,12 +1340,12 @@
                   </button>
                 </div>
               </div>
-
+ 
               <div *ngIf="integrantesEquipo.length === 0"
                 style="text-align: center; padding: 20px; color: #94A3B8; font-size: 13px; border: 1px dashed #CBD5E1; border-radius: 12px;">
                 Aún no has agregado a ningún integrante al equipo. Búscalo y agrégalo arriba.
               </div>
-
+ 
               <div *ngFor="let integrante of integrantesEquipo; let i = index"
                 style="background: white; border: 1px solid #E2E8F0; border-radius: 12px; padding: 15px; margin-bottom: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
                 <div style="display: flex; align-items: center; justify-content: space-between;">
@@ -1303,9 +1372,9 @@
                 </div>
               </div>
             </div>
-
+ 
           </div>
-
+ 
           <div
             style="padding: 16px 24px; background: #F8FAFC; border-top: 1px solid #E2E8F0; display: flex; justify-content: flex-end; gap: 12px; border-bottom-left-radius: 20px; border-bottom-right-radius: 20px;">
             <button (click)="cerrarModalEquipo()"
@@ -1314,15 +1383,20 @@
               style="padding: 10px 25px; border-radius: 8px; background: #10B981; color: white; border: none; font-weight: 800; cursor: pointer;">Generar
               Tareas de Equipo 🚀</button>
           </div>
+ 
+          <!-- ╔════════════════════════════════════════════════╗ -->
+          <!-- ║   MODAL DE ACTIVIDAD INTEGRANTE                ║ -->
+          <!-- ║   (sin counter - aquí no aplica)               ║ -->
+          <!-- ╚════════════════════════════════════════════════╝ -->
           <div class="modal-overlay" *ngIf="isModalActividadIntegranteOpen"
             style="z-index: 11000; background: rgba(0,0,0,0.6);">
             <div class="modal" style="max-width: 700px; max-height: 85vh; overflow-y: auto;">
-
-
+ 
+ 
               <div class="modal-body" style="padding-top: 15px;">
                 <p style="font-size: 12px; color: #64748B; margin-bottom: 15px;">Define las tareas específicas que este
                   integrante debe realizar dentro del equipo.</p>
-
+ 
                 <div class="checklist-items">
                   <div class="checklist-item-wrap" *ngFor="let item of formItemsActividad; let i = index"
                     style="background: #F8FAFC; border: 1px solid #E2E8F0; padding: 15px; border-radius: 10px; margin-bottom: 15px;">
@@ -1333,7 +1407,7 @@
                         style="background: none; border: none; color: #EF4444; cursor: pointer;"><i
                           class="fa-solid fa-trash"></i></button>
                     </div>
-
+ 
                     <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px;">
                       <label class="photo-toggle" style="font-size: 11px; padding: 4px 8px;">
                         <input type="checkbox" [(ngModel)]="item.requiresPhoto"
@@ -1352,7 +1426,7 @@
                         <input type="checkbox" [(ngModel)]="item.permiteDocumentos"> Docs.
                       </label>
                     </div>
-
+ 
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                       <div>
                         <label style="font-size: 10px; color: #64748B;">📅 Inicio</label>
@@ -1377,7 +1451,7 @@
                     </div>
                   </div>
                 </div>
-
+ 
                 <button (click)="agregarActividadIntegrante()" class="btn-secondary"
                   style="width: 100%; border: 1px dashed #CBD5E1; margin-top: 10px;">
                   + Añadir actividad para este usuario
@@ -1389,7 +1463,7 @@
                   style="font-size: 13px; font-weight: 800; color: #4338CA; display: block; margin-bottom: 12px; text-transform: uppercase;">
                   🚩 Dividir esta tarea en Fases (Opcional)
                 </label>
-
+ 
                 <div style="display: flex; gap: 10px; margin-bottom: 15px;">
                   <input type="text" [(ngModel)]="nuevaFaseIntegranteTexto" (keyup.enter)="agregarFaseIntegrante()"
                     placeholder="Ej: Ir al almacén, Contar cajas, Reportar..."
@@ -1399,7 +1473,7 @@
                     Añadir Fase
                   </button>
                 </div>
-
+ 
                 <div *ngIf="fasesTemporalesIntegrante.length > 0"
                   style="display: flex; flex-direction: column; gap: 8px;">
                   <div *ngFor="let fase of fasesTemporalesIntegrante; let fIndex = index"
@@ -1417,7 +1491,9 @@
                   </div>
                 </div>
               </div>
-              <div class="btn-group" style="margin-top: 20px; border-top: 1px solid #E2E8F0; padding-top: 15px;">
+ 
+              <div class="btn-group"
+                style="margin-top: 20px; border-top: 1px solid #E2E8F0; padding-top: 15px; display: flex; gap: 10px; justify-content: flex-end;">
                 <button class="btn-secondary" (click)="cerrarModalActividadIntegrante()">Cancelar</button>
                 <button class="btn-primary" (click)="guardarActividadesIntegrante()">Confirmar Actividades</button>
               </div>
@@ -1425,3 +1501,6 @@
           </div>
         </div>
       </div>
+    </div>
+  </div>
+</div>

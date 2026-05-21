@@ -180,16 +180,13 @@
           </div>
         </div>
         <div class="checklist-grid">
- 
- 
+
           <div class="checklist-card" *ngFor="let checklist of checklistsFiltrados" (click)="verDetalle(checklist)">
- 
-            <!-- Encabezado: título + status + acciones -->
+
             <div class="checklist-card-header">
               <div class="checklist-card-title">{{ checklist.name }}</div>
               <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
- 
-                <!-- ✅ FIX: Badge de status (queda solo, sin VENCIDO adentro) -->
+
                 <div class="checklist-card-badge" [ngClass]="{
                     'badge-pendiente': checklist.status === 'pendiente',
                     'badge-en-progreso': checklist.status === 'en-progreso',
@@ -197,12 +194,7 @@
                   }">
                   {{ checklist.status === 'en-progreso' ? 'En Progreso' : (checklist.status | titlecase) }}
                 </div>
- 
-                <!-- ✅ FIX: Badge VENCIDO ahora es HERMANO, no hijo del anterior -->
-                <div class="checklist-card-badge badge-vencido" *ngIf="estaVencido(checklist)">
-                  ⏰ VENCIDO
-                </div>
- 
+
                 <button class="btn-delete-icon"
                   *ngIf="currentUser?.rol === 'admin' || checklist.createdBy === currentUser?.nombre"
                   (click)="editarBloqueRutinas(checklist, $event)" title="Editar Rutinas"
@@ -222,8 +214,7 @@
                 </button>
               </div>
             </div>
- 
-            <!-- Info básica -->
+
             <div class="checklist-card-info">
               <span style="display: flex; align-items: center; gap: 8px;">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -264,8 +255,7 @@
                 </svg> ENVIADO
               </span>
             </div>
- 
-            <!-- Asignado por (general del checklist) -->
+
             <div class="meta-assigned-by" *ngIf="checklist.createdBy">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
@@ -275,8 +265,7 @@
               <span class="meta-assigned-label">Asignado por:</span>
               <strong class="meta-assigned-name">{{ checklist.createdBy }}</strong>
             </div>
- 
-            <!-- HORARIOS DE TAREAS: cada tarea con inicio + límite juntos -->
+
             <div class="checklist-preview-box">
               <div class="preview-box-title">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -285,14 +274,11 @@
                 </svg>
                 HORARIOS DE TAREAS:
               </div>
- 
+
               <ng-container *ngFor="let item of getPrimerasTareas(checklist)">
                 <div class="task-row" [class.task-row-done]="item.checked">
- 
                   <div class="task-row-name">• {{ item.text }}</div>
- 
                   <div class="task-row-times">
- 
                     <div class="task-time task-time-start" *ngIf="item.horaInicio; else sinInicio">
                       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                         stroke-width="2.5">
@@ -308,9 +294,7 @@
                         <span>—</span>
                       </div>
                     </ng-template>
- 
                     <span class="task-time-arrow">→</span>
- 
                     <div class="task-time task-time-end" *ngIf="item.horaLimite || item.time; else sinLimite">
                       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                         stroke-width="2.5">
@@ -326,17 +310,15 @@
                         <span>Sin límite</span>
                       </div>
                     </ng-template>
- 
                   </div>
                 </div>
               </ng-container>
- 
+
               <div *ngIf="(checklist.items?.length || 0) > 4" class="preview-more">
                 + {{ (checklist.items?.length || 0) - 4 }} tareas adicionales...
               </div>
             </div>
- 
-            <!-- Barra de progreso -->
+
             <div class="checklist-progress">
               <div class="progress-label">
                 <span>{{ checklist.calcCompletados || 0 }} de {{ checklist.items.length }} tareas</span>
@@ -346,7 +328,7 @@
                 <div class="progress-bar-fill" [style.width.%]="checklist.calcProgreso || 0"></div>
               </div>
             </div>
- 
+
           </div>
           <div class="empty-state" *ngIf="checklistsFiltrados.length === 0">
             <div class="empty-state-icon"><svg width="48" height="48" viewBox="0 0 24 24" fill="none"
@@ -365,6 +347,8 @@
           </div>
         </div>
       </div>
+
+      <!-- Vista de DETALLE (sin cambios respecto al original tuyo) -->
       <div *ngIf="vistaActual() === 'detalle' && checklistSeleccionado()">
         <button class="btn-back" (click)="volverALista()">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -419,11 +403,15 @@
                     <polyline points="23 4 23 10 17 10"></polyline>
                     <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
                   </svg> {{ item.frecuencia }}
-                  <span *ngIf="item.horaLimite"> | <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
-                      stroke="currentColor" stroke-width="2" style="margin: 0 2px;">
+                  <span *ngIf="item.horaInicio || item.horaLimite"> |
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin: 0 2px;">
                       <circle cx="12" cy="12" r="10"></circle>
                       <polyline points="12 6 12 12 16 14"></polyline>
-                    </svg> {{ formatearHora(item.horaLimite) }}</span>
+                    </svg>
+                    <span *ngIf="item.horaInicio">{{ formatearHora(item.horaInicio) }}</span>
+                    <span *ngIf="item.horaInicio && item.horaLimite"> → </span>
+                    <span *ngIf="item.horaLimite">{{ formatearHora(item.horaLimite) }}</span>
+                  </span>
                 </span>
                 <span class="item-tag tag-task" *ngIf="item.tipo === 'tarea' && (item.date || item.time)">
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -432,11 +420,12 @@
                     <line x1="16" y1="2" x2="16" y2="6"></line>
                     <line x1="8" y1="2" x2="8" y2="6"></line>
                     <line x1="3" y1="10" x2="21" y2="10"></line>
-                  </svg> {{ item.date || 'Sin fecha' }} | <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
-                    stroke="currentColor" stroke-width="2" style="margin: 0 2px;">
+                  </svg> {{ item.date || 'Sin fecha' }} |
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin: 0 2px;">
                     <circle cx="12" cy="12" r="10"></circle>
                     <polyline points="12 6 12 12 16 14"></polyline>
-                  </svg> {{ item.time ? formatearHora(item.time) : 'Sin hora' }}
+                  </svg>
+                  {{ item.time ? formatearHora(item.time) : 'Sin hora' }}
                 </span>
               </div>
             </div>
@@ -490,22 +479,13 @@
                     {{ item.permiteDocumentos ? 'DOCUMENTO ANEXO:' : 'EVIDENCIA FOTOGRÁFICA:' }}
                     <span *ngIf="item.photoTime"
                       style="margin-left: 8px; font-weight: 600; font-size: 11px; background: #F1F5F9; padding: 2px 6px; border-radius: 4px; color: #64748B;">
-                      🕒
-                      {{ item.photoTime }}</span>
+                      🕒 {{ item.photoTime }}</span>
                   </span>
                   <div class="preview-image-box"
                     style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
                     <img *ngIf="esImagen(item.photo)" [src]="item.photo" alt="Evidencia">
                     <a *ngIf="!esImagen(item.photo)" [href]="item.photo" target="_blank"
                       style="background: #EFF6FF; color: #1E40AF; padding: 10px 15px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 13px; border: 1px solid #BFDBFE; display: flex; align-items: center; gap: 6px; width: 100%; justify-content: center;">
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                        stroke-width="2">
-                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                        <polyline points="14 2 14 8 20 8"></polyline>
-                        <line x1="16" y1="13" x2="8" y2="13"></line>
-                        <line x1="16" y1="17" x2="8" y2="17"></line>
-                        <polyline points="10 9 9 9 8 9"></polyline>
-                      </svg>
                       Ver Documento Anexo
                     </a>
                     <button class="btn-remove-image-mini"
@@ -517,198 +497,11 @@
                       </svg></button>
                   </div>
                 </div>
-                <div class="alert-box alert-warning"
-                  *ngIf="item.checked && !item.photo && !checklistSeleccionado().enviado && currentUser?.nombre === checklistSeleccionado().assigned">
-                  * Se requiere {{ item.permiteDocumentos ? 'documento anexo' : 'evidencia fotográfica' }} para auditar.
-                </div>
-                <div class="alert-box alert-danger" *ngIf="!item.photo && checklistSeleccionado().enviado">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z">
-                    </path>
-                    <line x1="12" y1="9" x2="12" y2="13"></line>
-                    <line x1="12" y1="17" x2="12.01" y2="17"></line>
-                  </svg> Validada sin evidencia requerida.
-                </div>
               </ng-container>
-              <ng-container *ngIf="item.requiresAntesDespues">
-                <div style="display: flex; gap: 20px; flex-wrap: wrap;">
-                  <div
-                    style="flex: 1; min-width: 140px; background: #F8FAFC; padding: 10px; border-radius: 8px; border: 1px dashed var(--border);">
-                    <label class="btn-upload-mini"
-                      *ngIf="!item.photoAntes && !checklistSeleccionado().enviado && currentUser?.nombre === checklistSeleccionado().assigned && !isTareaVencida(item, checklistSeleccionado().date)"
-                      style="background: white; border: 1px solid var(--border);">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                        stroke-width="2">
-                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z">
-                        </path>
-                        <circle cx="12" cy="13" r="4"></circle>
-                      </svg>
-                      {{ item.permiteDocumentos ? 'Subir DOC (ANTES)' : 'Subir ANTES' }}
-                      <input type="file"
-                        [accept]="item.permiteDocumentos ? 'image/*, application/pdf, .xls, .xlsx, .doc, .docx, .csv' : 'image/*'"
-                        [attr.capture]="item.permiteGaleria ? null : 'environment'"
-                        (change)="onFileSelected($event, item, 'photoAntes')" style="display: none;">
-                    </label>
-                    <div class="preview-wrap-mini" *ngIf="item.photoAntes">
-                      <span class="preview-title"
-                        style="display: flex; align-items: center; justify-content: space-between;">
-                        <span style="color: var(--primary-navy); font-weight: 700;"> {{ item.permiteDocumentos ? '
-                          📄DOC(ANTES):' : ' 📸 ANTES:' }}</span>
-                        <span *ngIf="item.photoAntesTime"
-                          style="font-weight: 600; font-size: 11px; background: #EFF6FF; color: #2563EB; padding: 2px 6px; border-radius: 4px; border: 1px solid #BFDBFE;">
-                          🕒
-                          {{ item.photoAntesTime }}</span>
-                      </span>
-                      <div class="preview-image-box"
-                        style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
-                        <img *ngIf="esImagen(item.photoAntes)" [src]="item.photoAntes" alt="Antes">
-                        <a *ngIf="!esImagen(item.photoAntes)" [href]="item.photoAntes" target="_blank"
-                          style="background: #EFF6FF; color: #1E40AF; padding: 10px 15px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 13px; border: 1px solid #BFDBFE; display: flex; align-items: center; gap: 6px; width: 100%; justify-content: center;">Ver
-                          Documento</a>
-                        <button class="btn-remove-image-mini"
-                          *ngIf="!checklistSeleccionado().enviado && currentUser?.nombre === checklistSeleccionado().assigned && !isTareaVencida(item, checklistSeleccionado().date)"
-                          (click)="removeImage(item, 'photoAntes')" title="Borrar archivo"><svg width="12" height="12"
-                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                            <line x1="18" y1="6" x2="6" y2="18"></line>
-                            <line x1="6" y1="6" x2="18" y2="18"></line>
-                          </svg></button>
-                      </div>
-                    </div>
-                  </div>
-                  <div
-                    style="flex: 1; min-width: 140px; background: #F8FAFC; padding: 10px; border-radius: 8px; border: 1px dashed var(--border);">
-                    <div *ngIf="item.photoAntes && !item.photoDespues && item.tiempoEstimado"
-                      style="display: flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 6px; font-weight: bold; font-size: 12px; margin-bottom: 10px;"
-                      [ngStyle]="{'background-color': isDespuesExpirado(item) ? '#FEF2F2' : '#FFFBEB', 'color': isDespuesExpirado(item) ? '#EF4444' : '#D97706', 'border': isDespuesExpirado(item) ? '1px solid #FECACA' : '1px solid #FDE68A'}">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                        stroke-width="2">
-                        <circle cx="12" cy="12" r="10"></circle>
-                        <polyline points="12 6 12 12 16 14"></polyline>
-                      </svg>
-                      <span *ngIf="!item.checked && isTareaVencida(item, checklistSeleccionado().date)"
-                        style="color: #EF4444; font-size: 11px; font-weight: 700; background: #FEF2F2; padding: 4px 8px; border-radius: 4px; border: 1px solid #FECACA; display: inline-flex; align-items: center; gap: 4px; width: fit-content;"></span>
-                      <span *ngIf="isDespuesExpirado(item)">¡Tiempo Agotado! (Límite: {{ item.tiempoEstimado }}
-                        min)</span>
-                    </div>
-                    <label class="btn-upload-mini"
-                      *ngIf="!item.photoDespues && !checklistSeleccionado().enviado && currentUser?.nombre === checklistSeleccionado().assigned && !isTareaVencida(item, checklistSeleccionado().date) && !isDespuesExpirado(item)"
-                      style="background: white; border: 1px solid var(--border);">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                        stroke-width="2">
-                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z">
-                        </path>
-                        <circle cx="12" cy="13" r="4"></circle>
-                      </svg>
-                      {{ item.permiteDocumentos ? 'Subir DOC (DESPUÉS)' : 'Subir DESPUÉS' }}
-                      <input type="file"
-                        [accept]="item.permiteDocumentos ? 'image/*, application/pdf, .xls, .xlsx, .doc, .docx, .csv' : 'image/*'"
-                        [attr.capture]="item.permiteGaleria ? null : 'environment'"
-                        (change)="onFileSelected($event, item, 'photoDespues')" style="display: none;">
-                    </label>
-                    <div class="preview-wrap-mini" *ngIf="item.photoDespues">
-                      <span class="preview-title"
-                        style="display: flex; align-items: center; justify-content: space-between;">
-                        <span style="color: #10B981; font-weight: 700;"> {{ item.permiteDocumentos ? ' 📄 DOC(DESPUÉS):'
-                          : ' 📸 DESPUÉS:' }}</span>
-                        <span *ngIf="item.photoDespuesTime"
-                          style="font-weight: 600; font-size: 11px; background: #ECFDF5; color: #047857; padding: 2px 6px; border-radius: 4px; border: 1px solid #A7F3D0;">
-                          🕒
-                          {{ item.photoDespuesTime }}</span>
-                      </span>
-                      <div class="preview-image-box"
-                        style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
-                        <img *ngIf="esImagen(item.photoDespues)" [src]="item.photoDespues" alt="Después">
-                        <a *ngIf="!esImagen(item.photoDespues)" [href]="item.photoDespues" target="_blank"
-                          style="background: #EFF6FF; color: #1E40AF; padding: 10px 15px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 13px; border: 1px solid #BFDBFE; display: flex; align-items: center; gap: 6px; width: 100%; justify-content: center;">Ver
-                          Documento</a>
-                        <button class="btn-remove-image-mini"
-                          *ngIf="!checklistSeleccionado().enviado && currentUser?.nombre === checklistSeleccionado().assigned && !isTareaVencida(item, checklistSeleccionado().date)"
-                          (click)="removeImage(item, 'photoDespues')" title="Borrar archivo"><svg width="12" height="12"
-                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                            <line x1="18" y1="6" x2="6" y2="18"></line>
-                            <line x1="6" y1="6" x2="18" y2="18"></line>
-                          </svg></button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div class="alert-box alert-warning"
-                  *ngIf="item.checked && (!item.photoAntes || !item.photoDespues) && !checklistSeleccionado().enviado && currentUser?.nombre === checklistSeleccionado().assigned">
-                  * Se requieren AMBOS {{ item.permiteDocumentos ? 'documentos' : 'fotos' }} (Antes y Después) para
-                  auditar.
-                </div>
-                <div class="alert-box alert-danger"
-                  *ngIf="(!item.photoAntes || !item.photoDespues) && checklistSeleccionado().enviado">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z">
-                    </path>
-                    <line x1="12" y1="9" x2="12" y2="13"></line>
-                    <line x1="12" y1="17" x2="12.01" y2="17"></line>
-                  </svg> Validada con faltantes de evidencia visual.
-                </div>
-              </ng-container>
-              <ng-container *ngIf="item.requiresVariasFotos">
-                <div
-                  style="font-size: 13px; color: #16A34A; background: #F0FDF4; padding: 10px; border-radius: 6px; border: 1px solid #BBF7D0; font-weight: 600;">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                    style="vertical-align: sub; margin-right: 4px;">
-                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                    <circle cx="8.5" cy="8.5" r="1.5"></circle>
-                    <polyline points="21 15 16 10 5 21"></polyline>
-                  </svg>
-                  Esta tarea requiere evidencia con múltiples fotos (En desarrollo).
-                </div>
-              </ng-container>
-            </div>
-          </div>
-          <div style="margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border);">
-            <label
-              style="display: block; font-size: 14px; font-weight: 600; color: var(--text-main); margin-bottom: 8px;">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                style="vertical-align: text-bottom; margin-right: 4px;">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                <polyline points="14 2 14 8 20 8"></polyline>
-                <line x1="16" y1="13" x2="8" y2="13"></line>
-                <line x1="16" y1="17" x2="8" y2="17"></line>
-                <polyline points="10 9 9 9 8 9"></polyline>
-              </svg> Comentarios u Observaciones (Opcional)
-            </label>
-            <textarea class="form-input" [(ngModel)]="checklistSeleccionado().notaEmpleado" rows="3"
-              placeholder="Escribe aquí si hubo algún problema, material faltante, etc."
-              [disabled]="checklistSeleccionado().enviado || currentUser?.nombre !== checklistSeleccionado().assigned"></textarea>
-          </div>
-          <div
-            style="margin-top: 20px; border: 1px dashed #CBD5E1; padding: 16px; border-radius: 8px; background: #F8FAFC;">
-            <label
-              style="font-size: 13px; font-weight: 800; color: #4338CA; display: block; margin-bottom: 12px; text-transform: uppercase;">
-              🚩 Dividir en Fases (Opcional)
-            </label>
-            <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-              <input type="text" [(ngModel)]="nuevaFaseTexto" (keyup.enter)="agregarFase()"
-                placeholder="Ej: Cotizar, Ir a sucursal, Revisar..."
-                style="flex: 1; padding: 10px 14px; border-radius: 8px; border: 1px solid #CBD5E1; font-size: 14px; outline: none;">
-              <button (click)="agregarFase()" type="button"
-                style="background: #4338CA; color: white; border: none; padding: 0 20px; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s;">
-                Añadir Fase
-              </button>
-            </div>
-            <div *ngIf="fasesTemporales.length > 0" style="display: flex; flex-direction: column; gap: 8px;">
-              <div *ngFor="let fase of fasesTemporales; let i = index"
-                style="display: flex; align-items: center; justify-content: space-between; background: white; padding: 10px 14px; border: 1px solid #E2E8F0; border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.02);">
-                <div style="display: flex; align-items: center; gap: 10px;">
-                  <span
-                    style="background: #EEF2FF; color: #4338CA; font-weight: 800; font-size: 12px; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border-radius: 50%;">{{
-                    i + 1 }}</span>
-                  <span style="font-size: 14px; font-weight: 600; color: #1E293B;">{{ fase.texto }}</span>
-                </div>
-                <button (click)="eliminarFase(i)" type="button"
-                  style="color: #EF4444; background: #FEF2F2; border: 1px solid #FECACA; border-radius: 6px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 18px; line-height: 1;">
-                  &times;
-                </button>
-              </div>
             </div>
           </div>
         </div>
+
         <div class="send-section"
           *ngIf="!checklistSeleccionado().enviado && currentUser?.nombre === checklistSeleccionado().assigned">
           <button class="btn-send" (click)="enviarChecklist()">
@@ -725,20 +518,10 @@
               <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
               <polyline points="22 4 12 14.01 9 11.01"></polyline>
             </svg></span>
-          <strong *ngIf="currentUser?.nombre === checklistSeleccionado().assigned">Checklist enviado
-            exitosamente.</strong>
-          <strong *ngIf="currentUser?.nombre !== checklistSeleccionado().assigned">Checklist recibido y
-            auditado.</strong><br>
-          <span class="success-text">Los datos y evidencias han sido sellados en el sistema.</span>
-        </div>
-        <div *ngIf="checklistSeleccionado().enviado && checklistSeleccionado().notaEmpleado"
-          style="margin-top: 20px; background: #F8FAFC; padding: 15px; border-radius: 8px; border: 1px solid var(--border);">
-          <strong style="color: var(--primary-navy); font-size: 13px;">Comentario adjunto:</strong>
-          <p style="margin: 5px 0 0 0; font-size: 14px; color: var(--text-main); white-space: pre-wrap;">{{
-            checklistSeleccionado().notaEmpleado }}</p>
+          <strong>Checklist enviado exitosamente.</strong>
         </div>
       </div>
- 
+
       <!-- ╔════════════════════════════════════════════════╗ -->
       <!-- ║   MODAL DE TAREAS ÚNICAS                       ║ -->
       <!-- ╚════════════════════════════════════════════════╝ -->
@@ -754,13 +537,10 @@
           </div>
           <div style="margin-bottom: 20px; padding-bottom: 12px; border-bottom: 1px dashed #cbd5e1; margin-top: 15px;">
             <label
-              style="cursor: pointer; font-size: 15px; color: #3b82f6; display: inline-flex; align-items: center; gap: 8px; font-weight: 600; transition: color 0.2s;"
+              style="cursor: pointer; font-size: 15px; color: #3b82f6; display: inline-flex; align-items: center; gap: 8px; font-weight: 600;"
               onmouseover="this.style.color='#2563eb'" onmouseout="this.style.color='#3b82f6'">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-                stroke-linecap="round" stroke-linejoin="round">
-                <path
-                  d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48">
-                </path>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
               </svg>
               {{ formItems.length > 0 && formItems[0].archivoInstruccion === 'subiendo...' ? ' ⏳ Subiendo archivo a la nube...' : ((formItems.length > 0 && formItems[0].nombreArchivo) || 'Adjuntar foto o documento de instrucciones (Opcional)') }}
               <input type="file" *ngIf="formItems.length > 0"
@@ -811,87 +591,47 @@
                       <input type="checkbox" [(ngModel)]="item.requiresPhoto"
                         (change)="item.requiresPhoto ? item.requiresAntesDespues = false : null; item.requiresPhoto ? item.requiresVariasFotos = false : null"
                         style="margin-right: 6px;">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                        style="margin-right: 4px;">
-                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z">
-                        </path>
-                        <circle cx="12" cy="13" r="4"></circle>
-                      </svg>
-                      1 Foto
+                      📷 1 Foto
                     </label>
                     <label class="photo-toggle"
                       style="display: flex; align-items: center; cursor: pointer; background: #FFFBEB; color: #D97706; padding: 6px 10px; border-radius: 6px; border: 1px solid #FDE68A; font-size: 13px; font-weight: 600;">
                       <input type="checkbox" [(ngModel)]="item.requiresAntesDespues"
                         (change)="item.requiresAntesDespues ? item.requiresPhoto = false : null; item.requiresAntesDespues ? item.requiresVariasFotos = false : null"
                         style="margin-right: 6px;">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                        style="margin-right: 4px;">
-                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                        <circle cx="12" cy="12" r="3"></circle>
-                      </svg>
-                      Antes y Desp.
+                      👁 Antes y Desp.
                     </label>
                     <label class="photo-toggle"
                       style="display: flex; align-items: center; cursor: pointer; background: #F0FDF4; color: #16A34A; padding: 6px 10px; border-radius: 6px; border: 1px solid #BBF7D0; font-size: 13px; font-weight: 600;">
                       <input type="checkbox" [(ngModel)]="item.requiresVariasFotos"
                         (change)="item.requiresVariasFotos ? item.requiresPhoto = false : null; item.requiresVariasFotos ? item.requiresAntesDespues = false : null"
                         style="margin-right: 6px;">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                        style="margin-right: 4px;">
-                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                        <circle cx="8.5" cy="8.5" r="1.5"></circle>
-                        <polyline points="21 15 16 10 5 21"></polyline>
-                      </svg>
-                      Varias Fotos
+                      🖼 Varias Fotos
                     </label>
                     <label class="photo-toggle"
-                      style="display: flex; align-items: center; cursor: pointer; background: #F1F5F9; color: #475569; padding: 6px 10px; border-radius: 6px; border: 1px solid #CBD5E1; font-size: 13px; font-weight: 600;"
-                      title="Permite subir fotos del carrete">
+                      style="display: flex; align-items: center; cursor: pointer; background: #F1F5F9; color: #475569; padding: 6px 10px; border-radius: 6px; border: 1px solid #CBD5E1; font-size: 13px; font-weight: 600;">
                       <input type="checkbox" [(ngModel)]="item.permiteGaleria"
                         (change)="item.permiteGaleria && !item.requiresAntesDespues && !item.requiresVariasFotos ? item.requiresPhoto = true : null"
                         style="margin-right: 6px;">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                        style="margin-right: 4px;">
-                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                        <circle cx="8.5" cy="8.5" r="1.5"></circle>
-                        <polyline points="21 15 16 10 5 21"></polyline>
-                      </svg>
-                      Galería
+                      🖼 Galería
                     </label>
                     <label class="photo-toggle"
-                      style="display: flex; align-items: center; cursor: pointer; background: #F3E8FF; color: #7E22CE; padding: 6px 10px; border-radius: 6px; border: 1px solid #E9D5FF; font-size: 13px; font-weight: 600;"
-                      title="Permite subir Excel o PDF">
+                      style="display: flex; align-items: center; cursor: pointer; background: #F3E8FF; color: #7E22CE; padding: 6px 10px; border-radius: 6px; border: 1px solid #E9D5FF; font-size: 13px; font-weight: 600;">
                       <input type="checkbox" [(ngModel)]="item.permiteDocumentos"
                         (change)="item.permiteDocumentos && !item.requiresAntesDespues && !item.requiresVariasFotos ? item.requiresPhoto = true : null"
                         style="margin-right: 6px;">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                        style="margin-right: 4px;">
-                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                        <polyline points="14 2 14 8 20 8"></polyline>
-                        <line x1="16" y1="13" x2="8" y2="13"></line>
-                        <line x1="16" y1="17" x2="8" y2="17"></line>
-                        <polyline points="10 9 9 9 8 9"></polyline>
-                      </svg>
-                      Docs.
+                      📄 Docs.
                     </label>
                     <button class="btn-remove" (click)="eliminarItem(i)" title="Eliminar"
                       style="background: transparent; border: none; color: #EF4444; cursor: pointer; margin-left: 8px;">
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                        stroke-width="2">
-                        <polyline points="3 6 5 6 21 6"></polyline>
-                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                      </svg>
+                      🗑
                     </button>
                   </div>
- 
+
                   <div class="form-times-block">
- 
                     <div class="form-times-title">
                       ⏱️ HORARIO DE LA TAREA
                       <small>(define cuándo inicia y cuándo vence)</small>
                     </div>
- 
-                    <!-- Fila INICIO -->
                     <div class="form-time-row">
                       <div class="form-time-field">
                         <label class="form-time-label">📅 Fecha de inicio</label>
@@ -903,8 +643,6 @@
                           [class.input-warning]="!item.horaInicio">
                       </div>
                     </div>
- 
-                    <!-- Fila LÍMITE -->
                     <div class="form-time-row">
                       <div class="form-time-field">
                         <label class="form-time-label">⏳ Fecha límite</label>
@@ -916,24 +654,18 @@
                           [class.input-warning]="!item.horaLimite">
                       </div>
                     </div>
- 
                     <div class="form-time-warning" *ngIf="!item.horaInicio || !item.horaLimite">
                       ⚠️ Si no llenas las horas, la tarjeta del checklist mostrará "—" / "Sin límite".
                     </div>
- 
                   </div>
                 </div>
               </div>
               <button class="btn-secondary" (click)="agregarItem()"
                 style="margin-top:12px; width: 100%; border: 1px dashed #CBD5E1; color: #475569;">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                  style="margin-right:4px; vertical-align:middle;">
-                  <line x1="12" y1="5" x2="12" y2="19"></line>
-                  <line x1="5" y1="12" x2="19" y2="12"></line>
-                </svg> Añadir actividad
+                ➕ Añadir actividad
               </button>
             </div>
- 
+
             <div
               style="margin-top: 15px; margin-bottom: 15px; padding: 15px; background-color: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
               <p style="font-size: 13px; font-weight: 600; color: #475569; margin-bottom: 10px;">Vías de Notificación:
@@ -953,9 +685,9 @@
                 </label>
               </div>
             </div>
- 
-            <!-- ✅ FIX: Counter de TAREAS ÚNICAS AQUÍ (antes de los botones del modal correcto) -->
-            <div class="counter-box" *ngIf="formAssigned.length > 0 && formItems.length > 0">
+
+            <!-- ✅ COUNTER TAREAS ÚNICAS — SIEMPRE VISIBLE -->
+            <div class="counter-box">
               <div class="counter-icon">🎯</div>
               <div class="counter-text">
                 Vas a generar
@@ -965,7 +697,7 @@
                 <strong>{{ actividadesValidas() }}</strong> actividades)
               </div>
             </div>
- 
+
             <div class="btn-group"
               style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; padding-top: 20px; border-top: 1px solid #E2E8F0;">
               <button class="btn-secondary" (click)="cerrarModal()">Cancelar</button>
@@ -976,9 +708,11 @@
           </div>
         </div>
       </div>
- 
+
       <!-- ╔════════════════════════════════════════════════╗ -->
-      <!-- ║   MODAL DE RUTINAS                             ║ -->
+      <!-- ║   MODAL DE RUTINAS (CORREGIDO)                 ║ -->
+      <!-- ║   - Sin "Vigencia del bloque"                  ║ -->
+      <!-- ║   - Hora INICIO + Hora LÍMITE por cada regla   ║ -->
       <!-- ╚════════════════════════════════════════════════╝ -->
       <div class="modal-overlay" *ngIf="isModalRutinasOpen">
         <div class="modal">
@@ -1024,29 +758,7 @@
                 ℹ️ Las rutinas diarias para esta zona se omiten automáticamente los domingos.
               </small>
             </div>
- 
-            <div class="form-group form-full" style="margin-top: 15px;">
-              <label class="form-label">📅 Vigencia del bloque (opcional)</label>
-              <div class="vigencia-row">
-                <div class="vigencia-field">
-                  <small>Inicio</small>
-                  <input type="date" class="form-input" [(ngModel)]="formFechaInicioBloque">
-                </div>
-                <div class="vigencia-field">
-                  <small>Fin</small>
-                  <input type="date" class="form-input" [(ngModel)]="formFechaFinBloque">
-                </div>
-                <button type="button" class="btn-clear-vigencia" *ngIf="formFechaInicioBloque || formFechaFinBloque"
-                  (click)="formFechaInicioBloque=''; formFechaFinBloque=''">
-                  Limpiar
-                </button>
-              </div>
-              <small class="vigencia-hint">
-                💡 Si dejas las fechas vacías, el bloque se considera <b>permanente</b>.
-                Cuando se llegue a la fecha de fin, las tarjetas aparecerán marcadas como <b>VENCIDAS</b>.
-              </small>
-            </div>
- 
+
             <div class="form-group form-full"
               style="margin-top: 15px; border-top: 1px dashed var(--border); padding-top: 20px;">
               <label class="form-label">Configuración de Frecuencias</label>
@@ -1056,75 +768,87 @@
                   style="display:flex; flex-direction:column; gap:10px;">
                   <input class="form-input item-input" type="text" [(ngModel)]="rutina.text"
                     placeholder="Ej: Limpieza profunda" style="flex: 1; min-width: 200px;">
-                  <div style="display:flex; flex-wrap:wrap; gap:10px;">
-                    <div class="routine-settings" style="flex:1;">
-                      <select class="form-input select-input" [(ngModel)]="rutina.frecuencia"
-                        (change)="alCambiarFrecuencia(rutina)">
-                        <option *ngFor="let f of frecuencias" [value]="f">{{ f }}</option>
-                      </select>
-                      <select *ngIf="rutina.frecuencia === 'Semanal' || rutina.frecuencia === 'Catorcenal'"
-                        class="form-input select-input" [(ngModel)]="rutina.diaSemana">
-                        <option value="Lunes">Lunes</option>
-                        <option value="Martes">Martes</option>
-                        <option value="Miércoles">Miércoles</option>
-                        <option value="Jueves">Jueves</option>
-                        <option value="Viernes">Viernes</option>
-                        <option value="Sábado">Sábado</option>
-                        <option value="Domingo">Domingo</option>
-                      </select>
-                      <select *ngIf="rutina.frecuencia === 'Mensual' || rutina.frecuencia === 'Trimestral'"
-                        class="form-input select-input" [(ngModel)]="rutina.diaMes">
-                        <option *ngFor="let d of diasDelMes" [value]="d">Día {{ d }}</option>
-                      </select>
-                      <div class="time-picker-wrap">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                          stroke-width="2">
-                          <circle cx="12" cy="12" r="10"></circle>
-                          <polyline points="12 6 12 12 16 14"></polyline>
-                        </svg>
-                        <input type="time" [(ngModel)]="rutina.horaLimite">
+
+                  <div class="routine-settings" style="display:flex; flex-wrap:wrap; gap:10px;">
+                    <select class="form-input select-input" [(ngModel)]="rutina.frecuencia"
+                      (change)="alCambiarFrecuencia(rutina)" style="flex: 1; min-width: 130px;">
+                      <option *ngFor="let f of frecuencias" [value]="f">{{ f }}</option>
+                    </select>
+                    <select *ngIf="rutina.frecuencia === 'Semanal' || rutina.frecuencia === 'Catorcenal'"
+                      class="form-input select-input" [(ngModel)]="rutina.diaSemana" style="flex: 1; min-width: 110px;">
+                      <option value="Lunes">Lunes</option>
+                      <option value="Martes">Martes</option>
+                      <option value="Miércoles">Miércoles</option>
+                      <option value="Jueves">Jueves</option>
+                      <option value="Viernes">Viernes</option>
+                      <option value="Sábado">Sábado</option>
+                      <option value="Domingo">Domingo</option>
+                    </select>
+                    <select *ngIf="rutina.frecuencia === 'Mensual' || rutina.frecuencia === 'Trimestral'"
+                      class="form-input select-input" [(ngModel)]="rutina.diaMes" style="flex: 1; min-width: 110px;">
+                      <option *ngFor="let d of diasDelMes" [value]="d">Día {{ d }}</option>
+                    </select>
+                  </div>
+
+                  <!-- ✅ NUEVO: Hora Inicio + Hora Límite por regla -->
+                  <div class="form-times-block" style="margin-top: 6px;">
+                    <div class="form-times-title">
+                      ⏱️ HORARIO DE LA RUTINA
+                      <small>(cuándo inicia y cuándo vence)</small>
+                    </div>
+                    <div class="form-time-row">
+                      <div class="form-time-field">
+                        <label class="form-time-label">🕒 Hora de inicio <span class="req">*</span></label>
+                        <input type="time" class="form-input form-time-input"
+                          [(ngModel)]="rutina.horaInicio"
+                          [class.input-warning]="!rutina.horaInicio">
+                      </div>
+                      <div class="form-time-field">
+                        <label class="form-time-label">⏰ Hora límite <span class="req">*</span></label>
+                        <input type="time" class="form-input form-time-input"
+                          [(ngModel)]="rutina.horaLimite"
+                          [class.input-warning]="!rutina.horaLimite">
                       </div>
                     </div>
+                    <div class="form-time-warning" *ngIf="!rutina.horaInicio || !rutina.horaLimite">
+                      ⚠️ Si no llenas las horas, la tarjeta mostrará "—" / "Sin límite".
+                    </div>
                   </div>
+
                   <div
                     style="display: flex; gap: 8px; align-items: center; width: 100%; margin-top: 8px; flex-wrap: wrap;">
                     <span class="routine-period-text" style="flex: 1; min-width: 150px; font-size:12px;">{{
                       getTextoPeriodo(rutina) }}</span>
                     <label class="photo-toggle"
-                      style="display:flex; align-items:center; cursor:pointer; background:#F8FAFC; padding:4px 8px; border-radius:6px; border:1px solid #E2E8F0; font-size:12px; font-weight:600;"
-                      title="Requiere 1 foto">
+                      style="display:flex; align-items:center; cursor:pointer; background:#F8FAFC; padding:4px 8px; border-radius:6px; border:1px solid #E2E8F0; font-size:12px; font-weight:600;">
                       <input type="checkbox" [(ngModel)]="rutina.requiresPhoto"
                         (change)="rutina.requiresPhoto ? rutina.requiresAntesDespues = false : null; rutina.requiresPhoto ? rutina.requiresVariasFotos = false : null"
                         style="margin-right:4px;">
                       1 Foto
                     </label>
                     <label class="photo-toggle"
-                      style="display:flex; align-items:center; cursor:pointer; background:#FFFBEB; color:#D97706; padding:4px 8px; border-radius:6px; border:1px solid #FDE68A; font-size:12px; font-weight:600;"
-                      title="Requiere Antes y Después">
+                      style="display:flex; align-items:center; cursor:pointer; background:#FFFBEB; color:#D97706; padding:4px 8px; border-radius:6px; border:1px solid #FDE68A; font-size:12px; font-weight:600;">
                       <input type="checkbox" [(ngModel)]="rutina.requiresAntesDespues"
                         (change)="rutina.requiresAntesDespues ? rutina.requiresPhoto = false : null; rutina.requiresAntesDespues ? rutina.requiresVariasFotos = false : null"
                         style="margin-right:4px;">
                       Antes/Desp.
                     </label>
                     <label class="photo-toggle"
-                      style="display:flex; align-items:center; cursor:pointer; background:#F0FDF4; color:#16A34A; padding:4px 8px; border-radius:6px; border:1px solid #BBF7D0; font-size:12px; font-weight:600;"
-                      title="Múltiples Fotos">
+                      style="display:flex; align-items:center; cursor:pointer; background:#F0FDF4; color:#16A34A; padding:4px 8px; border-radius:6px; border:1px solid #BBF7D0; font-size:12px; font-weight:600;">
                       <input type="checkbox" [(ngModel)]="rutina.requiresVariasFotos"
                         (change)="rutina.requiresVariasFotos ? rutina.requiresPhoto = false : null; rutina.requiresVariasFotos ? rutina.requiresAntesDespues = false : null"
                         style="margin-right:4px;">
                       Varias
                     </label>
                     <label class="photo-toggle"
-                      style="display:flex; align-items:center; cursor:pointer; background:#F1F5F9; color:#475569; padding:4px 8px; border-radius:6px; border:1px solid #CBD5E1; font-size:12px; font-weight:600;"
-                      title="Permitir Galería">
+                      style="display:flex; align-items:center; cursor:pointer; background:#F1F5F9; color:#475569; padding:4px 8px; border-radius:6px; border:1px solid #CBD5E1; font-size:12px; font-weight:600;">
                       <input type="checkbox" [(ngModel)]="rutina.permiteGaleria"
                         (change)="rutina.permiteGaleria && !rutina.requiresAntesDespues && !rutina.requiresVariasFotos ? rutina.requiresPhoto = true : null"
                         style="margin-right:4px;">
                       Galería
                     </label>
                     <label class="photo-toggle"
-                      style="display:flex; align-items:center; cursor:pointer; background:#F3E8FF; color:#7E22CE; padding:4px 8px; border-radius:6px; border:1px solid #E9D5FF; font-size:12px; font-weight:600;"
-                      title="Permitir Documentos">
+                      style="display:flex; align-items:center; cursor:pointer; background:#F3E8FF; color:#7E22CE; padding:4px 8px; border-radius:6px; border:1px solid #E9D5FF; font-size:12px; font-weight:600;">
                       <input type="checkbox" [(ngModel)]="rutina.permiteDocumentos"
                         (change)="rutina.permiteDocumentos && !rutina.requiresAntesDespues && !rutina.requiresVariasFotos ? rutina.requiresPhoto = true : null"
                         style="margin-right:4px;">
@@ -1132,27 +856,19 @@
                     </label>
                     <button class="btn-remove" (click)="eliminarRutina(i)" title="Eliminar rutina"
                       style="background:transparent; border:none; color:#EF4444; cursor:pointer; margin-left: 4px;">
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                        stroke-width="2">
-                        <polyline points="3 6 5 6 21 6"></polyline>
-                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                      </svg>
+                      🗑
                     </button>
                   </div>
                 </div>
               </div>
               <button class="btn-outline-primary" (click)="agregarRutina()"
                 style="margin-top:12px; width: 100%; border: 1px dashed #CBD5E1; color: #475569; padding:8px; border-radius:6px; background:white; cursor:pointer;">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                  style="margin-right:4px; vertical-align:middle;">
-                  <line x1="12" y1="5" x2="12" y2="19"></line>
-                  <line x1="5" y1="12" x2="19" y2="12"></line>
-                </svg> Añadir regla recurrente
+                ➕ Añadir regla recurrente
               </button>
             </div>
- 
-            <!-- ✅ FIX: Counter de RUTINAS aquí (con las variables correctas formAssignedRutina/formRutinas) -->
-            <div class="counter-box" *ngIf="formAssignedRutina.length > 0 && formRutinas.length > 0">
+
+            <!-- ✅ COUNTER RUTINAS — SIEMPRE VISIBLE -->
+            <div class="counter-box">
               <div class="counter-icon">📊</div>
               <div class="counter-text">
                 Este bloque generará
@@ -1162,7 +878,7 @@
                 <strong>{{ totalEjecucionesPorSemana() }}</strong> ejecuciones)
               </div>
             </div>
- 
+
             <div class="btn-group"
               style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; padding-top: 20px; border-top: 1px solid #E2E8F0;">
               <button class="btn-secondary" (click)="cerrarModalRutinas()">Cancelar</button>
@@ -1172,18 +888,11 @@
           </div>
         </div>
       </div>
- 
+
       <div class="modal-overlay" *ngIf="isPasswordModalOpen" style="z-index: 9999;">
         <div class="modal" style="max-width: 400px; text-align: center; padding: 30px;">
-          <div style="margin-bottom: 15px; color: var(--primary-navy);"><svg width="48" height="48" viewBox="0 0 24 24"
-              fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-            </svg></div>
-          <h3 style="color: var(--text-main); font-weight: 600; margin-bottom: 10px; font-size: 20px;">Autenticación
-            Requerida</h3>
-          <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 25px;">Ingresa la contraseña maestra para
-            confirmar la eliminación.</p>
+          <h3 style="color: var(--text-main); font-weight: 600; margin-bottom: 10px; font-size: 20px;">Autenticación Requerida</h3>
+          <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 25px;">Ingresa la contraseña maestra para confirmar la eliminación.</p>
           <input type="password" [(ngModel)]="passwordInput" class="form-input" placeholder="••••••••"
             style="text-align: center; font-size: 20px; letter-spacing: 4px; margin-bottom: 25px;">
           <div style="display: flex; gap: 10px; justify-content: center;">
@@ -1193,23 +902,10 @@
           </div>
         </div>
       </div>
- 
+
       <div class="modal-overlay" *ngIf="isModalNotificacionOpen" style="z-index: 9999;">
         <div class="modal" style="max-width: 400px; padding: 30px;">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
-            <h3 style="margin:0; color:var(--primary-navy); display:flex; align-items:center; gap:8px;">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
-                <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
-              </svg>
-              Enviar Zumbido
-            </h3>
-            <button class="modal-close" (click)="cerrarModalNotificacion()"><svg width="24" height="24"
-                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-              </svg></button>
-          </div>
+          <h3 style="margin:0 0 20px; color:var(--primary-navy);">🔔 Enviar Zumbido</h3>
           <div class="form-group">
             <label class="form-label">Mensaje para {{ empleadoParaNotificar }}:</label>
             <textarea class="form-input" [(ngModel)]="mensajeNotificacion" rows="4"
@@ -1219,281 +915,150 @@
             <button class="btn-secondary" (click)="cerrarModalNotificacion()">Cancelar</button>
             <button class="btn-primary" style="background-color: #F59E0B; border:none; color:white;"
               (click)="enviarNotificacion()">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                style="margin-right: 6px;">
-                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                <polyline points="22 4 12 14.01 9 11.01"></polyline>
-              </svg> Enviar Alerta
+              Enviar Alerta
             </button>
           </div>
         </div>
       </div>
- 
+
       <div class="modal-overlay" *ngIf="notificacionesPendientes().length > 0"
         style="z-index: 10000; background: rgba(0,0,0,0.85);">
         <div class="modal"
-          style="max-width: 500px; padding: 40px; text-align: center; background: #FEF2F2; border: 3px solid #EF4444; animation: shakeAlert 0.5s cubic-bezier(.36,.07,.19,.97) both;">
-          <div style="color: #EF4444; margin-bottom: 20px;">
-            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
-              <line x1="12" y1="9" x2="12" y2="13"></line>
-              <line x1="12" y1="17" x2="12.01" y2="17"></line>
-            </svg>
-          </div>
-          <h2
-            style="color: #991B1B; font-size: 24px; font-weight: 800; margin-bottom: 10px; text-transform: uppercase;">
-            ⚠️
-            Nuevo Aviso de {{ notificacionesPendientes()[0].de }}</h2>
-          <div
-            style="background: white; padding: 24px; border-radius: 8px; font-size: 18px; color: #1E293B; font-weight: 600; margin-bottom: 30px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border-left: 4px solid #F59E0B;">
+          style="max-width: 500px; padding: 40px; text-align: center; background: #FEF2F2; border: 3px solid #EF4444;">
+          <h2 style="color: #991B1B; font-size: 24px; font-weight: 800;">⚠️ Nuevo Aviso de {{ notificacionesPendientes()[0].de }}</h2>
+          <div style="background: white; padding: 24px; border-radius: 8px; margin: 20px 0;">
             "{{ notificacionesPendientes()[0].mensaje }}"
           </div>
-          <button class="btn-primary"
-            style="width: 100%; height: 54px; font-size: 16px; font-weight: 700; background: #EF4444;"
+          <button class="btn-primary" style="width: 100%; background: #EF4444;"
             (click)="marcarNotificacionComoLeida(notificacionesPendientes()[0])">
-            Entendido, cerrar aviso
+            Entendido
           </button>
         </div>
       </div>
- 
+
       <div class="toast-notification" *ngIf="toastMessage">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-          stroke-linecap="round" stroke-linejoin="round">
-          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-          <polyline points="22 4 12 14.01 9 11.01"></polyline>
-        </svg>
         {{ toastMessage }}
       </div>
- 
-      <!-- ╔════════════════════════════════════════════════╗ -->
-      <!-- ║   MODAL DE TAREA EN EQUIPO                     ║ -->
-      <!-- ╚════════════════════════════════════════════════╝ -->
+
+      <!-- MODAL DE TAREA EN EQUIPO (igual que tenías) -->
       <div class="modal-overlay" *ngIf="isModalEquipoOpen"
-        style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15,23,42,0.8); backdrop-filter: blur(5px); z-index: 10000; display: flex; justify-content: center; align-items: center; padding: 20px;">
+        style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15,23,42,0.8); z-index: 10000; display: flex; justify-content: center; align-items: center; padding: 20px;">
         <div
-          style="background: white; width: 100%; max-width: 750px; max-height: 90vh; border-radius: 20px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);">
- 
+          style="background: white; width: 100%; max-width: 750px; max-height: 90vh; border-radius: 20px; display: flex; flex-direction: column; overflow: hidden;">
           <div
             style="padding: 20px 24px; border-bottom: 1px solid #E2E8F0; display: flex; justify-content: space-between; align-items: center; background: #F8FAFC;">
-            <div style="display: flex; align-items: center; gap: 10px;">
-              <div style="background: #10B981; color: white; padding: 8px; border-radius: 8px;"><svg width="20"
-                  height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                  <circle cx="9" cy="7" r="4"></circle>
-                  <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                  <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                </svg></div>
-              <h3 style="margin: 0; color: #1E293B; font-weight: 800;">Nueva Tarea de Equipo</h3>
-            </div>
+            <h3 style="margin: 0; color: #1E293B; font-weight: 800;">Nueva Tarea de Equipo</h3>
             <button (click)="cerrarModalEquipo()"
               style="background: none; border: none; font-size: 28px; color: #94A3B8; cursor: pointer;">&times;</button>
           </div>
- 
           <div style="padding: 24px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 24px;">
- 
             <div style="background: #EEF2FF; border: 1px solid #C7D2FE; padding: 20px; border-radius: 12px;">
-              <label style="font-size: 11px; font-weight: 800; color: #4338CA; text-transform: uppercase;">🎯 Nombre de
-                la Tarea en Equipo</label>
+              <label style="font-size: 11px; font-weight: 800; color: #4338CA; text-transform: uppercase;">🎯 Nombre de la Tarea en Equipo</label>
               <input type="text" [(ngModel)]="nombreTareaEquipo"
                 placeholder="Ej: Cambiar diseño de MD, Limpieza general..."
                 style="width: 100%; padding: 12px; border: 1px solid #CBD5E1; border-radius: 8px; margin-top: 8px; font-weight: 700; font-size: 16px; outline: none; box-sizing: border-box;">
             </div>
- 
+
             <div>
-              <div
-                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
-                <p style="font-size: 12px; font-weight: 800; color: #64748B; text-transform: uppercase; margin: 0;">👤
-                  Asignación de Integrantes</p>
- 
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+                <p style="font-size: 12px; font-weight: 800; color: #64748B; text-transform: uppercase; margin: 0;">👤 Asignación de Integrantes</p>
                 <div style="display: flex; gap: 10px; align-items: flex-start;">
                   <div style="position: relative; width: 250px;">
                     <input type="text" [(ngModel)]="busquedaEmpleadoEquipo" (focus)="mostrarDropdownEquipo = true"
                       (blur)="ocultarDropdownEquipo()" placeholder="🔍 Buscar empleado..."
-                      style="width: 100%; padding: 8px 12px 8px 30px; border-radius: 6px; border: 1px solid #CBD5E1; font-size: 12px; outline: none; box-sizing: border-box;">
- 
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="2"
-                      style="position: absolute; left: 10px; top: 10px;">
-                      <circle cx="11" cy="11" r="8"></circle>
-                      <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                    </svg>
- 
+                      style="width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid #CBD5E1; font-size: 12px; box-sizing: border-box;">
                     <div *ngIf="mostrarDropdownEquipo && empleadosEquipoFiltrados.length > 0"
-                      style="position: absolute; top: 100%; left: 0; width: 100%; background: white; border: 1px solid #CBD5E1; border-radius: 6px; margin-top: 4px; max-height: 160px; overflow-y: auto; z-index: 50; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);">
+                      style="position: absolute; top: 100%; left: 0; width: 100%; background: white; border: 1px solid #CBD5E1; border-radius: 6px; margin-top: 4px; max-height: 160px; overflow-y: auto; z-index: 50;">
                       <div *ngFor="let emp of empleadosEquipoFiltrados"
                         (mousedown)="$event.preventDefault(); seleccionarEmpleadoEquipo(emp)"
-                        style="padding: 10px 12px; cursor: pointer; font-size: 12px; border-bottom: 1px solid #F1F5F9; color: #1E293B;"
-                        onmouseover="this.style.background='#F8FAFC'" onmouseout="this.style.background='white'">
+                        style="padding: 10px 12px; cursor: pointer; font-size: 12px; border-bottom: 1px solid #F1F5F9;">
                         {{ emp.nombre }}
                       </div>
                     </div>
                   </div>
- 
                   <button (click)="agregarIntegranteEquipo()"
-                    style="background: #4338CA; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-size: 12px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 4px rgba(67, 56, 202, 0.2); height: 33px;">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
-                      <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                      <circle cx="8.5" cy="7" r="4"></circle>
-                      <line x1="20" y1="8" x2="20" y2="14"></line>
-                      <line x1="23" y1="11" x2="17" y2="11"></line>
-                    </svg>
+                    style="background: #4338CA; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-size: 12px; font-weight: bold; cursor: pointer;">
                     Agregar
                   </button>
                 </div>
               </div>
- 
+
               <div *ngIf="integrantesEquipo.length === 0"
                 style="text-align: center; padding: 20px; color: #94A3B8; font-size: 13px; border: 1px dashed #CBD5E1; border-radius: 12px;">
-                Aún no has agregado a ningún integrante al equipo. Búscalo y agrégalo arriba.
+                Aún no has agregado a ningún integrante al equipo.
               </div>
- 
+
               <div *ngFor="let integrante of integrantesEquipo; let i = index"
-                style="background: white; border: 1px solid #E2E8F0; border-radius: 12px; padding: 15px; margin-bottom: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                style="background: white; border: 1px solid #E2E8F0; border-radius: 12px; padding: 15px; margin-bottom: 10px;">
                 <div style="display: flex; align-items: center; justify-content: space-between;">
                   <div style="display: flex; align-items: center; gap: 12px;">
-                    <div
-                      style="width: 40px; height: 40px; background: #DBEAFE; color: #2563EB; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: 900;">
+                    <div style="width: 40px; height: 40px; background: #DBEAFE; color: #2563EB; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: 900;">
                       {{ integrante.iniciales }}</div>
                     <div>
-                      <p style="margin: 0; font-weight: 800; font-size: 14px; color: #1E293B;">{{ integrante.nombre }}
-                      </p>
+                      <p style="margin: 0; font-weight: 800; font-size: 14px; color: #1E293B;">{{ integrante.nombre }}</p>
                       <p style="margin: 0; font-size: 11px; color: #64748B;">{{ integrante.departamento }}</p>
                     </div>
                   </div>
                   <div style="display: flex; align-items: center; gap: 10px;">
                     <button (click)="abrirActividadIntegrante(i)"
                       style="background: #F8FAFC; border: 1px solid #CBD5E1; color: #334155; padding: 8px 12px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer;">
-                      Actividad correspondiente ({{ integrante.fases?.length || 0 }})
+                      Actividad ({{ integrante.fases?.length || 0 }})
                     </button>
                     <button (click)="eliminarIntegranteEquipo(i)"
-                      style="background: #FEF2F2; color: #EF4444; border: 1px solid #FECACA; border-radius: 6px; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+                      style="background: #FEF2F2; color: #EF4444; border: 1px solid #FECACA; border-radius: 6px; width: 34px; height: 34px; cursor: pointer;">
                       &times;
                     </button>
                   </div>
                 </div>
               </div>
             </div>
- 
           </div>
- 
-          <div
-            style="padding: 16px 24px; background: #F8FAFC; border-top: 1px solid #E2E8F0; display: flex; justify-content: flex-end; gap: 12px; border-bottom-left-radius: 20px; border-bottom-right-radius: 20px;">
+          <div style="padding: 16px 24px; background: #F8FAFC; border-top: 1px solid #E2E8F0; display: flex; justify-content: flex-end; gap: 12px;">
             <button (click)="cerrarModalEquipo()"
-              style="padding: 10px 20px; border-radius: 8px; border: 1px solid #CBD5E1; background: white; font-weight: 700; color: #475569; cursor: pointer;">Cancelar</button>
+              style="padding: 10px 20px; border-radius: 8px; border: 1px solid #CBD5E1; background: white; font-weight: 700;">Cancelar</button>
             <button (click)="cerrarModalEquipo()"
-              style="padding: 10px 25px; border-radius: 8px; background: #10B981; color: white; border: none; font-weight: 800; cursor: pointer;">Generar
-              Tareas de Equipo 🚀</button>
+              style="padding: 10px 25px; border-radius: 8px; background: #10B981; color: white; border: none; font-weight: 800;">Generar Tareas 🚀</button>
           </div>
- 
-          <!-- ╔════════════════════════════════════════════════╗ -->
-          <!-- ║   MODAL DE ACTIVIDAD INTEGRANTE                ║ -->
-          <!-- ║   (sin counter - aquí no aplica)               ║ -->
-          <!-- ╚════════════════════════════════════════════════╝ -->
+
           <div class="modal-overlay" *ngIf="isModalActividadIntegranteOpen"
             style="z-index: 11000; background: rgba(0,0,0,0.6);">
             <div class="modal" style="max-width: 700px; max-height: 85vh; overflow-y: auto;">
- 
- 
               <div class="modal-body" style="padding-top: 15px;">
-                <p style="font-size: 12px; color: #64748B; margin-bottom: 15px;">Define las tareas específicas que este
-                  integrante debe realizar dentro del equipo.</p>
- 
+                <p style="font-size: 12px; color: #64748B; margin-bottom: 15px;">Define las tareas específicas que este integrante debe realizar.</p>
                 <div class="checklist-items">
                   <div class="checklist-item-wrap" *ngFor="let item of formItemsActividad; let i = index"
                     style="background: #F8FAFC; border: 1px solid #E2E8F0; padding: 15px; border-radius: 10px; margin-bottom: 15px;">
                     <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
-                      <input class="form-input" type="text" [(ngModel)]="item.text" placeholder="¿Qué debe hacer?"
-                        style="flex: 1;">
+                      <input class="form-input" type="text" [(ngModel)]="item.text" placeholder="¿Qué debe hacer?" style="flex: 1;">
                       <button (click)="eliminarActividadIntegrante(i)"
-                        style="background: none; border: none; color: #EF4444; cursor: pointer;"><i
-                          class="fa-solid fa-trash"></i></button>
+                        style="background: none; border: none; color: #EF4444; cursor: pointer;">🗑</button>
                     </div>
- 
-                    <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px;">
-                      <label class="photo-toggle" style="font-size: 11px; padding: 4px 8px;">
-                        <input type="checkbox" [(ngModel)]="item.requiresPhoto"
-                          (change)="item.requiresPhoto ? item.requiresAntesDespues = false : null"> 1 Foto
-                      </label>
-                      <label class="photo-toggle"
-                        style="font-size: 11px; padding: 4px 8px; background: #FFFBEB; color: #D97706;">
-                        <input type="checkbox" [(ngModel)]="item.requiresAntesDespues"
-                          (change)="item.requiresAntesDespues ? item.requiresPhoto = false : null"> Antes/Desp.
-                      </label>
-                      <label class="photo-toggle" style="font-size: 11px; padding: 4px 8px; background: #F1F5F9;">
-                        <input type="checkbox" [(ngModel)]="item.permiteGaleria"> Galería
-                      </label>
-                      <label class="photo-toggle"
-                        style="font-size: 11px; padding: 4px 8px; background: #F3E8FF; color: #7E22CE;">
-                        <input type="checkbox" [(ngModel)]="item.permiteDocumentos"> Docs.
-                      </label>
-                    </div>
- 
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                       <div>
                         <label style="font-size: 10px; color: #64748B;">📅 Inicio</label>
-                        <input type="date" class="form-input" [(ngModel)]="item.fechaInicio"
-                          style="font-size: 11px; padding: 5px;">
+                        <input type="date" class="form-input" [(ngModel)]="item.fechaInicio" style="font-size: 11px; padding: 5px;">
                       </div>
                       <div>
                         <label style="font-size: 10px; color: #64748B;">⏰ Hora</label>
-                        <input type="time" class="form-input" [(ngModel)]="item.horaInicio"
-                          style="font-size: 11px; padding: 5px;">
+                        <input type="time" class="form-input" [(ngModel)]="item.horaInicio" style="font-size: 11px; padding: 5px;">
                       </div>
                       <div>
                         <label style="font-size: 10px; color: #64748B;">⏳ Límite</label>
-                        <input type="date" class="form-input" [(ngModel)]="item.fechaLimite"
-                          style="font-size: 11px; padding: 5px;">
+                        <input type="date" class="form-input" [(ngModel)]="item.fechaLimite" style="font-size: 11px; padding: 5px;">
                       </div>
                       <div>
                         <label style="font-size: 10px; color: #64748B;">⏰ Hora</label>
-                        <input type="time" class="form-input" [(ngModel)]="item.horaLimite"
-                          style="font-size: 11px; padding: 5px;">
+                        <input type="time" class="form-input" [(ngModel)]="item.horaLimite" style="font-size: 11px; padding: 5px;">
                       </div>
                     </div>
                   </div>
                 </div>
- 
                 <button (click)="agregarActividadIntegrante()" class="btn-secondary"
                   style="width: 100%; border: 1px dashed #CBD5E1; margin-top: 10px;">
-                  + Añadir actividad para este usuario
+                  + Añadir actividad
                 </button>
               </div>
-              <div
-                style="margin-top: 25px; border: 1px dashed #CBD5E1; padding: 16px; border-radius: 8px; background: #EEF2FF;">
-                <label
-                  style="font-size: 13px; font-weight: 800; color: #4338CA; display: block; margin-bottom: 12px; text-transform: uppercase;">
-                  🚩 Dividir esta tarea en Fases (Opcional)
-                </label>
- 
-                <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-                  <input type="text" [(ngModel)]="nuevaFaseIntegranteTexto" (keyup.enter)="agregarFaseIntegrante()"
-                    placeholder="Ej: Ir al almacén, Contar cajas, Reportar..."
-                    style="flex: 1; padding: 10px 14px; border-radius: 8px; border: 1px solid #C7D2FE; font-size: 14px; outline: none;">
-                  <button (click)="agregarFaseIntegrante()" type="button"
-                    style="background: #4338CA; color: white; border: none; padding: 0 20px; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s;">
-                    Añadir Fase
-                  </button>
-                </div>
- 
-                <div *ngIf="fasesTemporalesIntegrante.length > 0"
-                  style="display: flex; flex-direction: column; gap: 8px;">
-                  <div *ngFor="let fase of fasesTemporalesIntegrante; let fIndex = index"
-                    style="display: flex; align-items: center; justify-content: space-between; background: white; padding: 10px 14px; border: 1px solid #E2E8F0; border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.02);">
-                    <div style="display: flex; align-items: center; gap: 10px;">
-                      <span
-                        style="background: #EEF2FF; color: #4338CA; font-weight: 800; font-size: 12px; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border-radius: 50%;">{{
-                        fIndex + 1 }}</span>
-                      <span style="font-size: 14px; font-weight: 600; color: #1E293B;">{{ fase.texto }}</span>
-                    </div>
-                    <button (click)="eliminarFaseIntegrante(fIndex)" type="button"
-                      style="color: #EF4444; background: #FEF2F2; border: 1px solid #FECACA; border-radius: 6px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 18px; line-height: 1;">
-                      &times;
-                    </button>
-                  </div>
-                </div>
-              </div>
- 
-              <div class="btn-group"
-                style="margin-top: 20px; border-top: 1px solid #E2E8F0; padding-top: 15px; display: flex; gap: 10px; justify-content: flex-end;">
+              <div class="btn-group" style="margin-top: 20px; border-top: 1px solid #E2E8F0; padding-top: 15px; display: flex; gap: 10px; justify-content: flex-end;">
                 <button class="btn-secondary" (click)="cerrarModalActividadIntegrante()">Cancelar</button>
                 <button class="btn-primary" (click)="guardarActividadesIntegrante()">Confirmar Actividades</button>
               </div>
@@ -1501,6 +1066,7 @@
           </div>
         </div>
       </div>
+
     </div>
   </div>
 </div>

@@ -1,119 +1,103 @@
+ 
 <div class="app-layout">
+ 
+  <!-- ====================== HEADER ====================== -->
   <header class="header">
     <div class="header-left">
       <button class="btn-menu-mobile" (click)="toggleMenu()">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-          stroke-linecap="round" stroke-linejoin="round">
+             stroke-linecap="round" stroke-linejoin="round">
           <line x1="3" y1="12" x2="21" y2="12"></line>
-          <line x1="3" y1="6" x2="21" y2="6"></line>
+          <line x1="3" y1="6"  x2="21" y2="6"></line>
           <line x1="3" y1="18" x2="21" y2="18"></line>
         </svg>
       </button>
-      <div class="header-logo-wrap"
-        style="background: transparent !important; box-shadow: none; width: auto; padding: 0 4px;">
-        <img src="https://static.wixstatic.com/media/fd397e_0fd82a1ecec84a118ceeb603b493f25a~mv2.png" alt="Mega Dulces"
-          style="height: 36px; width: auto; object-fit: contain;">
+      <div class="header-logo-wrap" style="background: transparent !important;">
+        <img src="https://static.wixstatic.com/media/fd397e_0fd82a1ecec84a118ceeb603b493f25a~mv2.png"
+             alt="Mega Dulces" style="height: 36px; width: auto; object-fit: contain;">
       </div>
       <div class="header-brand">Mega Dulces<small>Panel Enterprise</small></div>
     </div>
     <div class="header-right"></div>
   </header>
-
+ 
   <div class="main-wrapper">
+ 
+    <!-- ====================== SIDEBAR (igual que el tuyo) ====================== -->
     <div class="mobile-overlay" *ngIf="isMenuOpen" (click)="toggleMenu()"></div>
     <aside class="sidebar" [class.mobile-open]="isMenuOpen" translate="no">
       <div style="display: flex; flex-direction: column; height: 100%;">
         <div class="sidebar-header">
-          <img src="https://static.wixstatic.com/media/fd397e_0fd82a1ecec84a118ceeb603b493f25a~mv2.png" alt="Logo"
-            style="width:32px; height:32px; border-radius:6px; object-fit:contain;">
+          <img src="https://static.wixstatic.com/media/fd397e_0fd82a1ecec84a118ceeb603b493f25a~mv2.png"
+               alt="Logo" style="width:32px; height:32px; border-radius:6px;">
           <span class="sidebar-brand">Mega Dulces</span>
         </div>
         <nav class="sidebar-nav" style="flex: 1; padding: 16px 12px;">
           <a class="nav-item" routerLink="/home" routerLinkActive="active" (click)="isMenuOpen = false">
             <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="3" y="3" width="7" height="7" />
-              <rect x="14" y="3" width="7" height="7" />
-              <rect x="3" y="14" width="7" height="7" />
-              <rect x="14" y="14" width="7" height="7" />
-            </svg>
-            Dashboard
+              <rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" />
+              <rect x="3" y="14" width="7" height="7" /><rect x="14" y="14" width="7" height="7" />
+            </svg> Dashboard
           </a>
           <a class="nav-item" routerLink="/checklist" routerLinkActive="active" (click)="isMenuOpen = false">
             <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polyline points="9 11 12 14 22 4" />
               <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />
-            </svg>
-            Checklist
+            </svg> Checklist
           </a>
-          <a class="nav-item" routerLink="/checkstore" routerLinkActive="active"
-            *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeVerCheckstore" (click)="isMenuOpen = false">
+          <a class="nav-item active" routerLink="/checkstore" routerLinkActive="active"
+             *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeVerCheckstore" (click)="isMenuOpen = false">
             <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
               <polyline points="9 22 9 12 15 12 15 22" />
-            </svg>
-            Sucursales
+            </svg> Sucursales
           </a>
           <a class="nav-item" routerLink="/estadisticas" routerLinkActive="active"
-            *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeVerEstadisticas" (click)="isMenuOpen = false">
+             *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeVerEstadisticas" (click)="isMenuOpen = false">
             <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <line x1="18" y1="20" x2="18" y2="10" />
               <line x1="12" y1="20" x2="12" y2="4" />
-              <line x1="6" y1="20" x2="6" y2="14" />
-            </svg>
-            Estadísticas
+              <line x1="6"  y1="20" x2="6"  y2="14" />
+            </svg> Estadísticas
           </a>
           <a class="nav-item" routerLink="/calendario" routerLinkActive="active"
-            *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeVerCalendario" (click)="isMenuOpen = false">
+             *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeVerCalendario" (click)="isMenuOpen = false">
             <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-              <line x1="16" y1="2" x2="16" y2="6"></line>
-              <line x1="8" y1="2" x2="8" y2="6"></line>
+              <rect x="3" y="4" width="18" height="18" rx="2"></rect>
+              <line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line>
               <line x1="3" y1="10" x2="21" y2="10"></line>
-            </svg>
-            Calendario
+            </svg> Calendario
           </a>
           <a class="nav-item" routerLink="/reportes" routerLinkActive="active"
-            *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeVerHistorial" (click)="isMenuOpen = false">
+             *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeVerHistorial" (click)="isMenuOpen = false">
             <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
               <polyline points="14 2 14 8 20 8" />
-              <line x1="16" y1="13" x2="8" y2="13" />
-              <line x1="16" y1="17" x2="8" y2="17" />
-            </svg>
-            Auditoría
+            </svg> Auditoría
           </a>
           <a class="nav-item" routerLink="/personal" routerLinkActive="active"
-            *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeAdministrarPersonal" (click)="isMenuOpen = false">
+             *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeAdministrarPersonal" (click)="isMenuOpen = false">
             <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
               <circle cx="9" cy="7" r="4" />
-              <path d="M23 21v-2a4 4 0 00-3-3.87" />
-              <path d="M16 3.13a4 4 0 010 7.75" />
-            </svg>
-            Usuarios
+            </svg> Usuarios
           </a>
           <a class="nav-item" routerLink="/areas" routerLinkActive="active"
-            *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeAdministrarAreas" (click)="isMenuOpen = false">
+             *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeAdministrarAreas" (click)="isMenuOpen = false">
             <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="3" y="3" width="7" height="7"></rect>
-              <rect x="14" y="3" width="7" height="7"></rect>
-              <rect x="14" y="14" width="7" height="7"></rect>
-              <rect x="3" y="14" width="7" height="7"></rect>
-            </svg>
-            Áreas de Trabajo
+              <rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect>
+              <rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect>
+            </svg> Áreas de Trabajo
           </a>
         </nav>
         <div class="bottom-nav" style="margin-top: auto; padding: 0 12px 20px 12px;">
-
-  
-  <a class="nav-item" routerLink="/perfil" routerLinkActive="active" (click)="isMenuOpen = false" style="margin-bottom: 10px;">
-    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-      <circle cx="12" cy="7" r="4"></circle>
-    </svg>
-    Mi Perfil
-  </a>
-
+          <a class="nav-item" routerLink="/perfil" routerLinkActive="active" (click)="isMenuOpen = false"
+             style="margin-bottom: 10px;">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg> Mi Perfil
+          </a>
           <button class="logout-btn" routerLink="/login">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" />
@@ -131,189 +115,256 @@
         </div>
       </div>
     </aside>
-
+ 
+    <!-- ====================== CONTENT ====================== -->
     <div class="content">
+ 
+      <!-- TÍTULO -->
       <div class="section-header">
         <div>
           <div class="section-title">Panel de Sucursales</div>
           <div class="section-sub">Monitoreo operativo en tiempo real de todas las ubicaciones</div>
         </div>
       </div>
-
+ 
+      <!-- ============== HEADER DE RESUMEN GENERAL ============== -->
+      <div class="summary-grid">
+        <div class="summary-box">
+          <div class="summary-icon" style="background:#EFF6FF; color:#2563EB;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"></path>
+              <polyline points="9 22 9 12 15 12 15 22"></polyline>
+            </svg>
+          </div>
+          <div>
+            <div class="summary-value">{{ totalSucursales() }}</div>
+            <div class="summary-label">Sucursales totales</div>
+          </div>
+        </div>
+ 
+        <div class="summary-box">
+          <div class="summary-icon" style="background:#ECFDF5; color:#10B981;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+          </div>
+          <div>
+            <div class="summary-value">{{ totalActivas() }}</div>
+            <div class="summary-label">Activas hoy</div>
+          </div>
+        </div>
+ 
+        <div class="summary-box">
+          <div class="summary-icon" style="background:#F5F3FF; color:#7C3AED;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="20" x2="18" y2="10"></line>
+              <line x1="12" y1="20" x2="12" y2="4"></line>
+              <line x1="6" y1="20" x2="6" y2="14"></line>
+            </svg>
+          </div>
+          <div>
+            <div class="summary-value" [ngClass]="promedioColor()">{{ promedioGeneral() }}%</div>
+            <div class="summary-label">Promedio general</div>
+          </div>
+        </div>
+ 
+        <div class="summary-box">
+          <div class="summary-icon" style="background:#FEF2F2; color:#DC2626;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+              <line x1="12" y1="9" x2="12" y2="13"></line>
+              <line x1="12" y1="17" x2="12.01" y2="17"></line>
+            </svg>
+          </div>
+          <div>
+            <div class="summary-value" style="color:#DC2626;">{{ totalAlertas() }}</div>
+            <div class="summary-label">Alertas críticas</div>
+          </div>
+        </div>
+      </div>
+ 
+      <!-- ============== DESTACADAS (mejor / peor) ============== -->
+      <div class="highlights-grid" *ngIf="mejorSucursal() || peorSucursal()">
+        <div class="highlight-box highlight-best" *ngIf="mejorSucursal() as best">
+          <div class="highlight-tag">🏆 Mejor del día</div>
+          <div class="highlight-name">{{ best.name }}</div>
+          <div class="highlight-meta">{{ best.completedItems }}/{{ best.totalItems }} tareas</div>
+          <div class="highlight-pct pct-ok">{{ best.progress }}%</div>
+        </div>
+        <div class="highlight-box highlight-worst" *ngIf="peorSucursal() as worst">
+          <div class="highlight-tag">⚠️ Necesita atención</div>
+          <div class="highlight-name">{{ worst.name }}</div>
+          <div class="highlight-meta" *ngIf="worst.alertas > 0">{{ worst.alertas }} alertas activas</div>
+          <div class="highlight-meta" *ngIf="worst.alertas === 0">{{ worst.completedItems }}/{{ worst.totalItems }} tareas</div>
+          <div class="highlight-pct pct-bad">{{ worst.progress }}%</div>
+        </div>
+      </div>
+ 
+      <!-- ============== BARRA DE FILTROS ============== -->
+      <div class="filter-bar">
+        <div class="filter-search">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <input type="text" placeholder="Buscar sucursal..."
+                 [ngModel]="terminoBusqueda()"
+                 (ngModelChange)="terminoBusqueda.set($event)">
+        </div>
+ 
+        <div class="filter-orden">
+          <span class="filter-label">Ordenar:</span>
+          <button class="chip" [class.chip-active]="ordenamiento() === 'avance'"     (click)="cambiarOrden('avance')">% Avance</button>
+          <button class="chip" [class.chip-active]="ordenamiento() === 'alertas'"    (click)="cambiarOrden('alertas')">Alertas</button>
+          <button class="chip" [class.chip-active]="ordenamiento() === 'tareas'"     (click)="cambiarOrden('tareas')">Tareas</button>
+          <button class="chip" [class.chip-active]="ordenamiento() === 'alfabetico'" (click)="cambiarOrden('alfabetico')">A-Z</button>
+        </div>
+ 
+        <button class="toggle-alertas" [class.toggle-active]="soloConAlertas()" (click)="toggleSoloAlertas()">
+          🚨 Solo con alertas
+        </button>
+      </div>
+ 
+      <!-- ============== ZONA COMERCIAL ============== -->
       <div class="zone-header" *ngIf="comerciales().length > 0">
-        <div class="zone-icon" style="background: #F1F5F9; color: var(--primary-navy);">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <div class="zone-icon" style="background:#F1F5F9; color:var(--primary-navy);">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
             <polyline points="9 22 9 12 15 12 15 22"></polyline>
           </svg>
         </div>
         <div class="zone-text">
-          <h2>Zona Comercial</h2>
-          <p>Operaciones en sucursales físicas y puntos de venta</p>
+          <h2>🛒 Zona Comercial</h2>
+          <p>{{ comerciales().length }} sucursales · Puntos de venta físicos</p>
         </div>
       </div>
-
+ 
       <div class="store-grid" *ngIf="comerciales().length > 0">
-        <div class="store-card" *ngFor="let store of comerciales()">
-          <div class="store-card-header">
-            <div class="store-icon" [style.color]="store.color" [style.background-color]="store.color + '15'">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                <line x1="3" y1="9" x2="21" y2="9"></line>
-                <line x1="9" y1="21" x2="9" y2="9"></line>
-              </svg>
+        <div class="store-card" *ngFor="let store of comerciales()"
+             [class.card-empty]="store.totalItems === 0"
+             [style.border-left-color]="store.color">
+ 
+          <div class="store-card-top">
+            <div class="store-icon-mini" [style.color]="store.color" [style.background]="store.color + '15'">
+              {{ store.icon }}
             </div>
-            <div class="store-info">
+            <div class="store-info-mini">
               <div class="store-name">{{ store.name }}</div>
               <div class="store-location">{{ store.location }}</div>
             </div>
-          </div>
-          <div class="store-progress">
-            <div class="progress-label">
-              <span>Avance operativo</span>
-              <span [style.color]="store.color">{{ store.progress }}%</span>
-            </div>
-            <div class="progress-bar-wrap">
-              <div class="progress-bar-fill" [style.width.%]="store.progress" [style.background]="store.color"></div>
+            <div class="store-pct" [ngClass]="badgeProgreso(store.progress, store.totalItems)">
+              {{ store.progress }}%
             </div>
           </div>
-          <div class="store-stats">
-            <div class="store-stat-item">
-              <div class="store-stat-val">{{ store.totalChecklists }}</div>
-              <div class="store-stat-label">Checklists</div>
-            </div>
-            <div class="store-stat-item">
-              <div class="store-stat-val">{{ store.completedItems }}</div>
-              <div class="store-stat-label">Tareas Completadas</div>
-            </div>
-            <div class="store-stat-item">
-              <div class="store-stat-val">{{ store.totalItems }}</div>
-              <div class="store-stat-label">Total Tareas</div>
-            </div>
+ 
+          <div class="progress-bar-wrap">
+            <div class="progress-bar-fill" [style.width.%]="store.progress" [style.background]="store.color"></div>
+          </div>
+ 
+          <div class="store-footer">
+            <span class="store-mini-stat">📋 {{ store.totalChecklists }} checklists</span>
+            <span class="store-mini-stat">✅ {{ store.completedItems }}/{{ store.totalItems }}</span>
+            <span class="alert-badge" *ngIf="store.alertas > 0">🚨 {{ store.alertas }}</span>
           </div>
         </div>
       </div>
-
-      <div class="zone-header mt-40" *ngIf="administrativas().length > 0">
-        <div class="zone-icon" style="background: #F1F5F9; color: var(--primary-navy);">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect>
+ 
+      <div class="empty-state-section" *ngIf="comerciales().length === 0">
+        Sin sucursales comerciales que coincidan con el filtro.
+      </div>
+ 
+      <!-- ============== ZONA ADMINISTRATIVA ============== -->
+      <div class="zone-header zone-spacer" *ngIf="administrativas().length > 0">
+        <div class="zone-icon" style="background:#F5F3FF; color:#7C3AED;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="4" y="2" width="16" height="20" rx="2"></rect>
             <path d="M9 22v-4h6v4"></path>
-            <path d="M8 6h.01"></path>
-            <path d="M16 6h.01"></path>
-            <path d="M12 6h.01"></path>
-            <path d="M12 10h.01"></path>
-            <path d="M12 14h.01"></path>
-            <path d="M16 10h.01"></path>
-            <path d="M16 14h.01"></path>
-            <path d="M8 10h.01"></path>
-            <path d="M8 14h.01"></path>
           </svg>
         </div>
         <div class="zone-text">
-          <h2>Zona Administrativa</h2>
-          <p>Departamentos internos y oficinas corporativas</p>
+          <h2>🏢 Zona Administrativa</h2>
+          <p>{{ administrativas().length }} departamentos · Oficinas corporativas</p>
         </div>
       </div>
-
+ 
       <div class="store-grid" *ngIf="administrativas().length > 0">
-        <div class="store-card admin-card" *ngFor="let store of administrativas()">
-          <div class="store-card-header">
-            <div class="store-icon" style="color: var(--primary-navy); background: #F1F5F9;">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
-                <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
-              </svg>
+        <div class="store-card admin-card" *ngFor="let store of administrativas()"
+             [class.card-empty]="store.totalItems === 0"
+             [style.border-left-color]="store.color">
+ 
+          <div class="store-card-top">
+            <div class="store-icon-mini" [style.color]="store.color" [style.background]="store.color + '15'">
+              {{ store.icon }}
             </div>
-            <div class="store-info">
+            <div class="store-info-mini">
               <div class="store-name">{{ store.name }}</div>
               <div class="store-location">{{ store.location }}</div>
             </div>
-          </div>
-          <div class="store-progress">
-            <div class="progress-label">
-              <span>Avance departamental</span>
-              <span style="color: var(--primary-navy);">{{ store.progress }}%</span>
-            </div>
-            <div class="progress-bar-wrap">
-              <div class="progress-bar-fill" [style.width.%]="store.progress" style="background: var(--primary-navy);"></div>
+            <div class="store-pct" [ngClass]="badgeProgreso(store.progress, store.totalItems)">
+              {{ store.progress }}%
             </div>
           </div>
-          <div class="store-stats">
-            <div class="store-stat-item">
-              <div class="store-stat-val">{{ store.totalChecklists }}</div>
-              <div class="store-stat-label">Asignados</div>
-            </div>
-            <div class="store-stat-item">
-              <div class="store-stat-val">{{ store.completedItems }}</div>
-              <div class="store-stat-label">Completadas</div>
-            </div>
-            <div class="store-stat-item">
-              <div class="store-stat-val">{{ store.totalItems }}</div>
-              <div class="store-stat-label">Total</div>
-            </div>
+ 
+          <div class="progress-bar-wrap">
+            <div class="progress-bar-fill" [style.width.%]="store.progress" [style.background]="store.color"></div>
+          </div>
+ 
+          <div class="store-footer">
+            <span class="store-mini-stat">📋 {{ store.totalChecklists }}</span>
+            <span class="store-mini-stat">✅ {{ store.completedItems }}/{{ store.totalItems }}</span>
+            <span class="alert-badge" *ngIf="store.alertas > 0">🚨 {{ store.alertas }}</span>
           </div>
         </div>
       </div>
-
-      <div class="zone-header" *ngIf="areasTrabajo().length > 0" style="margin-top: 50px; margin-bottom: 24px;">
-        <div class="zone-icon" style="background: #FFFBEB; color: #D97706;">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="3" y="3" width="7" height="7"></rect>
-            <rect x="14" y="3" width="7" height="7"></rect>
-            <rect x="14" y="14" width="7" height="7"></rect>
-            <rect x="3" y="14" width="7" height="7"></rect>
+ 
+      <!-- ============== ÁREAS DE OPERACIÓN ============== -->
+      <div class="zone-header zone-spacer" *ngIf="areasTrabajo().length > 0">
+        <div class="zone-icon" style="background:#FFFBEB; color:#D97706;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect>
+            <rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect>
           </svg>
         </div>
         <div class="zone-text">
-          <h2>Áreas de Operación</h2>
-          <p>Monitoreo de Cajas, Bodegas, Pasillos y pisos de venta</p>
+          <h2>📍 Áreas de Operación</h2>
+          <p>{{ areasTrabajo().length }} áreas · Cajas, Bodegas, Pasillos, Piso de venta</p>
         </div>
       </div>
-
-      <div class="store-grid" *ngIf="areasTrabajo().length > 0" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 24px; margin-bottom: 60px;">
-        <div class="store-card area-card" *ngFor="let area of areasTrabajo()" style="border-top: 4px solid #F59E0B; display: flex; flex-direction: column;">
-          <div class="store-card-header">
-            <div class="store-icon" style="color: #D97706; background: #FFFBEB;">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
-                <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
-                <line x1="12" y1="22.08" x2="12" y2="12"></line>
-              </svg>
+ 
+      <div class="store-grid" *ngIf="areasTrabajo().length > 0">
+        <div class="store-card area-card" *ngFor="let area of areasTrabajo()"
+             [class.card-empty]="area.totalItems === 0">
+ 
+          <div class="store-card-top">
+            <div class="store-icon-mini" style="color:#D97706; background:#FFFBEB;">
+              {{ area.icon }}
             </div>
-            <div class="store-info">
+            <div class="store-info-mini">
               <div class="store-name">{{ area.name }}</div>
-              <div class="store-location">Área Interna</div>
+              <div class="store-location">{{ area.location }}</div>
             </div>
+            <div class="store-pct pct-warn">{{ area.progress }}%</div>
           </div>
-          
-          <div class="store-progress" style="margin-top: auto;">
-            <div class="progress-label">
-              <span>Avance del Área</span>
-              <span style="color: #D97706; font-weight: 700;">{{ area.progress }}%</span>
-            </div>
-            <div class="progress-bar-wrap">
-              <div class="progress-bar-fill" [style.width.%]="area.progress" style="background: #F59E0B;"></div>
-            </div>
+ 
+          <div class="progress-bar-wrap">
+            <div class="progress-bar-fill" [style.width.%]="area.progress" style="background:#F59E0B;"></div>
           </div>
-          
-          <div class="store-stats">
-            <div class="store-stat-item">
-              <div class="store-stat-val">{{ area.totalChecklists }}</div>
-              <div class="store-stat-label">Asignados</div>
-            </div>
-            <div class="store-stat-item">
-              <div class="store-stat-val">{{ area.completedItems }}</div>
-              <div class="store-stat-label">Completadas</div>
-            </div>
-            <div class="store-stat-item">
-              <div class="store-stat-val">{{ area.totalItems }}</div>
-              <div class="store-stat-label">Total</div>
-            </div>
+ 
+          <div class="store-footer">
+            <span class="store-mini-stat">📋 {{ area.totalChecklists }}</span>
+            <span class="store-mini-stat">✅ {{ area.completedItems }}/{{ area.totalItems }}</span>
+            <span class="alert-badge" *ngIf="area.alertas > 0">🚨 {{ area.alertas }}</span>
           </div>
         </div>
       </div>
-
+ 
+      <div class="empty-state-section"
+           *ngIf="comerciales().length === 0 && administrativas().length === 0 && areasTrabajo().length === 0">
+        🔍 Sin resultados. Prueba con otro filtro o búsqueda.
+      </div>
+ 
     </div>
   </div>
 </div>
+ 

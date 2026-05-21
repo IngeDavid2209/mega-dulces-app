@@ -1,71 +1,172 @@
-import { Component, signal, OnInit, OnDestroy, inject } from '@angular/core';
+
+import { Component, signal, computed, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { Firestore, collection, onSnapshot } from '@angular/fire/firestore';
-
+ 
 @Component({
   selector: 'app-checkstore',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [CommonModule, FormsModule, RouterModule],
   templateUrl: './checkstore.html',
   styleUrls: ['./checkstore.css']
 })
 export class CheckstoreComponent implements OnInit, OnDestroy {
+ 
+  // ----------------- ESTADO BÁSICO -----------------
   isMenuOpen = false;
   toggleMenu() { this.isMenuOpen = !this.isMenuOpen; }
   currentUser: any = null;
   sucursalesPermitidas: string[] = [];
-
-  comerciales = signal<any[]>([]);
-  administrativas = signal<any[]>([]);
-  areasTrabajo = signal<any[]>([]); // 🔥 AHORA EMPIEZA VACÍO PARA LLENARSE DESDE FIREBASE 🔥
-
+ 
+  // Reloj que se refresca cada minuto (para que las "alertas vencidas" sean dinámicas)
+  horaActual = signal<Date>(new Date());
+  private clockInterval: any = null;
+ 
+  // ----------------- FILTROS / BÚSQUEDA / ORDEN -----------------
+  terminoBusqueda  = signal<string>('');
+  ordenamiento     = signal<'avance' | 'alertas' | 'alfabetico' | 'tareas'>('avance');
+  soloConAlertas   = signal<boolean>(false);
+ 
+  // ----------------- DATOS RAW (signals) -----------------
+  private rawComerciales      = signal<any[]>([]);
+  private rawAdministrativas  = signal<any[]>([]);
+  private rawAreasTrabajo     = signal<any[]>([]);
+ 
+  // Catálogos hardcoded (igual que tu versión)
   sucursalesComerciales = [
-    { name: 'Canindo', location: 'Sucursal Canindo', icon: '🏪' },
+    { name: 'Canindo',           location: 'Sucursal Canindo',   icon: '🏪' },
     { name: 'La Piedad Abastos', location: 'Mercado de Abastos', icon: '🛍️' },
-    { name: '8 Esquinas', location: 'Zona 8 Esquinas', icon: '🏬' },
-    { name: 'Padre Hidalgo', location: 'Av. Padre Hidalgo', icon: '🏢' },
-    { name: 'Morelia Madero', location: 'Av. Madero', icon: '🏛️' },
-    { name: 'Morelia Abastos', location: 'Mercado de Abastos', icon: '🛒' },
-    { name: 'Yurécuaro', location: 'Sucursal Yurécuaro', icon: '🏪' },
-    { name: 'Zamora Centro', location: 'Centro, Zamora', icon: '🏙️' }
+    { name: '8 Esquinas',        location: 'Zona 8 Esquinas',    icon: '🏬' },
+    { name: 'Padre Hidalgo',     location: 'Av. Padre Hidalgo',  icon: '🏢' },
+    { name: 'Morelia Madero',    location: 'Av. Madero',         icon: '🏛️' },
+    { name: 'Morelia Abastos',   location: 'Mercado de Abastos', icon: '🛒' },
+    { name: 'Yurécuaro',         location: 'Sucursal Yurécuaro', icon: '🏪' },
+    { name: 'Zamora Centro',     location: 'Centro, Zamora',     icon: '🏙️' }
   ];
-
+ 
   sucursalesAdministrativas = [
-    { name: 'OFICINAS CORPORATIVAS', location: 'Dirección General', icon: '💼' },
-    { name: 'CAJA GENERAL', location: 'Finanzas y Valores', icon: '💰' },
-    { name: 'COMPRAS', location: 'Proveedores e Insumos', icon: '📦' },
-    { name: 'CONTABILIDAD', location: 'Gestión Fiscal', icon: '📈' },
-    { name: 'FINANZAS', location: 'Estrategia y Capital', icon: '🏦' },
-    { name: 'SISTEMAS', location: 'Soporte y TI', icon: '💻' },
-    { name: 'RH', location: 'Recursos Humanos', icon: '👥' },
-    { name: 'MKT', location: 'Mercadotecnia y Publicidad', icon: '📢' },
-    { name: 'MANTENIMIENTO', location: 'Soporte de Infraestructura', icon: '🛠️' }
+    { name: 'OFICINAS CORPORATIVAS', location: 'Dirección General',           icon: '💼' },
+    { name: 'CAJA GENERAL',          location: 'Finanzas y Valores',          icon: '💰' },
+    { name: 'COMPRAS',               location: 'Proveedores e Insumos',       icon: '📦' },
+    { name: 'CONTABILIDAD',          location: 'Gestión Fiscal',              icon: '📈' },
+    { name: 'FINANZAS',              location: 'Estrategia y Capital',        icon: '🏦' },
+    { name: 'SISTEMAS',              location: 'Soporte y TI',                icon: '💻' },
+    { name: 'RH',                    location: 'Recursos Humanos',            icon: '👥' },
+    { name: 'MKT',                   location: 'Mercadotecnia y Publicidad',  icon: '📢' },
+    { name: 'MANTENIMIENTO',         location: 'Soporte de Infraestructura',  icon: '🛠️' }
   ];
-
-  // Variables para guardar los datos puros de Firebase antes de la matemática
+ 
+  // Bufer de datos de Firebase
   areasDesdeFirebase: any[] = [];
   checklistsDesdeFirebase: any[] = [];
-
+ 
   private firestore = inject(Firestore);
   private destructoresRadares: (() => void)[] = [];
-
+ 
+  // ============================================================================
+  //  COMPUTED: aplica filtros/búsqueda/orden a cada lista
+  // ============================================================================
+  private aplicarFiltros(lista: any[]): any[] {
+    const term = this.terminoBusqueda().toLowerCase().trim();
+    const soloAlertas = this.soloConAlertas();
+ 
+    let resultado = lista.filter(s => {
+      if (term && !s.name.toLowerCase().includes(term) && !s.location.toLowerCase().includes(term)) {
+        return false;
+      }
+      if (soloAlertas && (s.alertas || 0) === 0) return false;
+      return true;
+    });
+ 
+    const orden = this.ordenamiento();
+    resultado.sort((a, b) => {
+      switch (orden) {
+        case 'avance':     return b.progress - a.progress;
+        case 'alertas':    return (b.alertas || 0) - (a.alertas || 0);
+        case 'alfabetico': return a.name.localeCompare(b.name);
+        case 'tareas':     return b.totalItems - a.totalItems;
+        default:           return 0;
+      }
+    });
+ 
+    return resultado;
+  }
+ 
+  comerciales      = computed(() => this.aplicarFiltros(this.rawComerciales()));
+  administrativas  = computed(() => this.aplicarFiltros(this.rawAdministrativas()));
+  areasTrabajo     = computed(() => this.aplicarFiltros(this.rawAreasTrabajo()));
+ 
+  // ----------------- RESUMEN GENERAL (header KPIs) -----------------
+  private todasLasSucursales = computed(() => [
+    ...this.rawComerciales(),
+    ...this.rawAdministrativas(),
+    ...this.rawAreasTrabajo()
+  ]);
+ 
+  totalSucursales       = computed(() => this.todasLasSucursales().length);
+  totalActivas          = computed(() => this.todasLasSucursales().filter(s => s.totalChecklists > 0).length);
+  totalAlertas          = computed(() => this.todasLasSucursales().reduce((a, s) => a + (s.alertas || 0), 0));
+ 
+  promedioGeneral = computed(() => {
+    const lista = this.todasLasSucursales().filter(s => s.totalItems > 0);
+    if (lista.length === 0) return 0;
+    const suma = lista.reduce((a, s) => a + s.progress, 0);
+    return Math.round(suma / lista.length);
+  });
+ 
+  promedioColor = computed(() => {
+    const p = this.promedioGeneral();
+    if (p >= 80) return 'pct-ok';
+    if (p >= 50) return 'pct-warn';
+    return 'pct-bad';
+  });
+ 
+  mejorSucursal = computed(() => {
+    const lista = this.todasLasSucursales().filter(s => s.totalItems > 0);
+    if (lista.length === 0) return null;
+    return [...lista].sort((a, b) => b.progress - a.progress)[0];
+  });
+ 
+  peorSucursal = computed(() => {
+    const lista = this.todasLasSucursales().filter(s => s.totalItems > 0);
+    if (lista.length === 0) return null;
+    return [...lista].sort((a, b) => a.progress - b.progress)[0];
+  });
+ 
+  // ============================================================================
+  //  LIFECYCLE
+  // ============================================================================
   ngOnInit() {
     const sesion = localStorage.getItem('md_sesion_actual');
     if (sesion) {
       this.currentUser = JSON.parse(sesion);
       this.determinarSucursalesPermitidas();
     }
-    this.conectarRadaresNube(); // 🔥 AHORA CONECTA 2 RADARES EN VEZ DE 1 🔥
+    this.conectarRadaresNube();
+ 
+    // Reloj cada minuto para refrescar alertas vencidas
+    this.clockInterval = setInterval(() => {
+      this.horaActual.set(new Date());
+      this.procesarMatematicas();
+    }, 60000);
   }
-
+ 
   ngOnDestroy() {
     this.destructoresRadares.forEach(apagarRadar => apagarRadar());
+    if (this.clockInterval) clearInterval(this.clockInterval);
   }
-
+ 
+  // ============================================================================
+  //  PERMISOS
+  // ============================================================================
   determinarSucursalesPermitidas() {
     if (!this.currentUser) return;
-    if (this.currentUser.rol === 'admin' || (this.currentUser.sucursales && this.currentUser.sucursales.includes('Todas las sucursales'))) {
+    if (
+      this.currentUser.rol === 'admin' ||
+      (this.currentUser.sucursales && this.currentUser.sucursales.includes('Todas las sucursales'))
+    ) {
       this.sucursalesPermitidas = [
         ...this.sucursalesComerciales.map(s => s.name),
         ...this.sucursalesAdministrativas.map(s => s.name)
@@ -74,130 +175,159 @@ export class CheckstoreComponent implements OnInit, OnDestroy {
       this.sucursalesPermitidas = this.currentUser.sucursales || [this.currentUser.sucursal || ''];
     }
   }
-
+ 
+  // ============================================================================
+  //  FIRESTORE
+  // ============================================================================
   conectarRadaresNube() {
-    // 🔥 RADAR 1: ESCANEA TUS ÁREAS DE TRABAJO DINÁMICAS (NUEVO) 🔥
-    const areasRef = collection(this.firestore, 'areas'); // ⚠️ OJO: Cambia 'areas' si tu colección se llama diferente
-    const radarAreas = onSnapshot(areasRef, (snapshot) => {
+    // Radar 1: áreas dinámicas
+    const areasRef = collection(this.firestore, 'areas');
+    const radarAreas = onSnapshot(areasRef, snap => {
       const areasTemp: any[] = [];
-      snapshot.forEach(docSnap => {
+      snap.forEach(docSnap => {
         const data = docSnap.data();
-        // Asumimos que guardaste el nombre del área en 'nombre' o 'name'
-        const nombreArea = data['nombre'] || data['name'] || 'Área Desconocida';
+        const nombreArea = (data as any)['nombre'] || (data as any)['name'] || 'Área Desconocida';
         areasTemp.push({
           name: nombreArea,
           location: 'Área Interna',
-          color: '#D97706', // El naranja corporativo
-          progress: 0, totalChecklists: 0, completedItems: 0, totalItems: 0
+          icon: '📍',
+          color: '#D97706',
+          progress: 0, totalChecklists: 0, completedItems: 0, totalItems: 0, alertas: 0
         });
       });
-
       this.areasDesdeFirebase = areasTemp;
-
-      // Si es administrador, le damos permiso automático de ver todas las áreas nuevas
-      if (this.currentUser?.rol === 'admin' || (this.currentUser?.sucursales && this.currentUser?.sucursales.includes('Todas las sucursales'))) {
+ 
+      if (
+        this.currentUser?.rol === 'admin' ||
+        (this.currentUser?.sucursales && this.currentUser?.sucursales.includes('Todas las sucursales'))
+      ) {
         areasTemp.forEach(a => {
           if (!this.sucursalesPermitidas.includes(a.name)) {
             this.sucursalesPermitidas.push(a.name);
           }
         });
       }
-
       this.procesarMatematicas();
     });
-
-    // 🔥 RADAR 2: ESCANEA LOS CHECKLISTS Y TAREAS (TU CÓDIGO ORIGINAL INTACTO) 🔥
+ 
+    // Radar 2: checklists
     const checklistsRef = collection(this.firestore, 'checklists');
-    const radarChecklists = onSnapshot(checklistsRef, (snapshot) => {
+    const radarChecklists = onSnapshot(checklistsRef, snap => {
       const checklistsTemp: any[] = [];
       const ahora = Date.now();
       const limite24h = 24 * 60 * 60 * 1000;
       const offset = new Date().getTimezoneOffset() * 60000;
       const fechaHoyLocal = new Date(Date.now() - offset).toISOString().split('T')[0];
-
-      snapshot.forEach(docSnap => {
+ 
+      snap.forEach(docSnap => {
         const c: any = docSnap.data();
         if (c.eliminado === true) return;
         const tiempoCreacion = typeof c.id === 'number' ? c.id : (c.timestampCreacion || ahora);
-
         if (c.date === fechaHoyLocal || (ahora - tiempoCreacion) <= limite24h) {
           checklistsTemp.push(c);
         }
       });
-
-      // Escudo Anti-Clones
-      const listasSinClones = new Map();
+ 
+      // Escudo anti-clones
+      const listasSinClones = new Map<string, any>();
       checklistsTemp.forEach(c => {
         const marcados = c.items ? c.items.filter((i: any) => i.checked).length : 0;
-        c.calcProgreso = c.items && c.items.length > 0 ? Math.round((marcados / c.items.length) * 100) : 0;
+        c.calcProgreso = c.items && c.items.length > 0
+          ? Math.round((marcados / c.items.length) * 100) : 0;
         const firma = `${c.name}_${c.assigned}_${c.store}_${c.date}`;
-
         if (!listasSinClones.has(firma)) {
           listasSinClones.set(firma, c);
         } else {
           const existente = listasSinClones.get(firma);
-          if (c.calcProgreso > existente.calcProgreso) {
-            listasSinClones.set(firma, c);
-          }
+          if (c.calcProgreso > existente.calcProgreso) listasSinClones.set(firma, c);
         }
       });
-
+ 
       this.checklistsDesdeFirebase = Array.from(listasSinClones.values());
       this.procesarMatematicas();
     });
-
+ 
     this.destructoresRadares.push(radarAreas);
     this.destructoresRadares.push(radarChecklists);
   }
-
-  // 🔥 EL CEREBRO MATEMÁTICO CENTRALIZADO 🔥
+ 
+  // ============================================================================
+  //  MATEMÁTICAS — calcula progress, alertas y stats por sucursal
+  // ============================================================================
   procesarMatematicas() {
-    const calcularDatos = (listaBase: any[], defaultColor: string) => {
-      // Filtramos las que tiene permitidas ver el usuario
+    const ahora = this.horaActual();
+ 
+    const calcularDatos = (listaBase: any[], colorDefault: string) => {
       const listaPermitida = listaBase.filter(item => this.sucursalesPermitidas.includes(item.name));
-
+ 
       return listaPermitida.map(sucursal => {
         const storeChecklists = this.checklistsDesdeFirebase.filter(c => c.store === sucursal.name);
         let totalItems = 0;
         let completedItems = 0;
-
+        let alertas = 0;
+ 
         storeChecklists.forEach(c => {
           if (c.items && Array.isArray(c.items)) {
             c.items.forEach((item: any) => {
               totalItems++;
-              if (item.checked === true) {
-                completedItems++;
+              if (item.checked === true) completedItems++;
+              // contar vencidas: no marcadas + horaLimite/time < ahora
+              if (!item.checked) {
+                const hl = item.horaLimite || item.time;
+                if (hl && hl.includes(':')) {
+                  const [h, m] = hl.split(':').map(Number);
+                  const limite = new Date(ahora);
+                  limite.setHours(h, m, 0, 0);
+                  if (ahora > limite) alertas++;
+                }
               }
             });
           }
         });
-
+ 
         const progress = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
-
-        let finalColor = defaultColor;
-        if (defaultColor === 'var(--red)') {
-          // Solo aplicamos el semáforo rojo/amarillo/verde a comerciales y admin
-          if (progress >= 80) finalColor = 'var(--green)';
-          else if (progress >= 50) finalColor = 'var(--gold)';
-        } else {
-          // Las tarjetas de áreas operativas se quedan siempre en su naranja corporativo
-          finalColor = defaultColor;
+ 
+        // Color semáforo
+        let finalColor = colorDefault;
+        if (colorDefault === 'semaforo') {
+          if (progress >= 80)      finalColor = '#10B981';
+          else if (progress >= 50) finalColor = '#F59E0B';
+          else if (totalItems > 0) finalColor = '#EF4444';
+          else                     finalColor = '#94A3B8'; // gris para sin actividad
         }
-
+ 
         return {
           ...sucursal,
           totalChecklists: storeChecklists.length,
           completedItems,
           totalItems,
           progress,
+          alertas,
           color: finalColor
         };
       });
     };
-
-    // Actualizamos las 3 filas visuales
-    this.comerciales.set(calcularDatos(this.sucursalesComerciales, 'var(--red)'));
-    this.administrativas.set(calcularDatos(this.sucursalesAdministrativas, 'var(--red)'));
-    this.areasTrabajo.set(calcularDatos(this.areasDesdeFirebase, '#D97706'));
+ 
+    this.rawComerciales.set(calcularDatos(this.sucursalesComerciales, 'semaforo'));
+    this.rawAdministrativas.set(calcularDatos(this.sucursalesAdministrativas, 'semaforo'));
+    this.rawAreasTrabajo.set(calcularDatos(this.areasDesdeFirebase, '#D97706'));
+  }
+ 
+  // ============================================================================
+  //  HELPERS
+  // ============================================================================
+  badgeProgreso(p: number, totalItems: number): string {
+    if (totalItems === 0) return 'pct-empty';
+    if (p >= 80) return 'pct-ok';
+    if (p >= 50) return 'pct-warn';
+    return 'pct-bad';
+  }
+ 
+  cambiarOrden(orden: 'avance' | 'alertas' | 'alfabetico' | 'tareas') {
+    this.ordenamiento.set(orden);
+  }
+ 
+  toggleSoloAlertas() {
+    this.soloConAlertas.set(!this.soloConAlertas());
   }
 }

@@ -6,6 +6,7 @@ import { Firestore, collection, query, onSnapshot, addDoc, doc, updateDoc, delet
 import { Auth } from '@angular/fire/auth';
 
 import { SidebarComponent } from '../../../shared/sidebar/sidebar';
+import { esAdminGlobal, sucursalesPermitidas } from '../../../shared/permisos.util';
 
 @Component({
   selector: 'app-tareas-unicas',
@@ -59,7 +60,21 @@ export class TareasUnicasComponent implements OnInit {
     try {
       const usersRef = collection(this.firestore, 'usuarios');
       const snapshot = await getDocs(query(usersRef));
-      this.listaUsuarios = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as any }));
+      let lista = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as any }));
+
+      // 🔥 Admin LIMITADO: solo trabajadores de sus sucursales (excluye otros admins)
+      if (!esAdminGlobal(this.currentUser)) {
+        const permitidas = sucursalesPermitidas(this.currentUser);
+        if (permitidas !== null) {
+          lista = lista.filter((u: any) => {
+            if (u.rol === 'admin') return false;
+            const susSuc: string[] = u.sucursales || (u.sucursal ? [u.sucursal] : []);
+            return susSuc.some((s: string) => permitidas.includes(s));
+          });
+        }
+      }
+
+      this.listaUsuarios = lista;
     } catch (error) {
       console.error('Error al cargar lista de personal:', error);
     }

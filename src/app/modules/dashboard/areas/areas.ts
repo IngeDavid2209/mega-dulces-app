@@ -7,6 +7,7 @@ import Swal from 'sweetalert2';
 
 import { SidebarComponent } from '../../../shared/sidebar/sidebar';
 import { obtenerSemanaISO, obtenerNombreDia } from '../../../shared/descansos.util';
+import { esAdminGlobal, sucursalesPermitidas } from '../../../shared/permisos.util';
 
 @Component({
   selector: 'app-areas',
@@ -159,7 +160,7 @@ isGuardando = false;
   getEmpleadosDelArea() {
     const area = this.areaDetalle();
     if (!area) return [];
-    return this.usuarios().filter(u => u.rol === 'trabajador' && u.areas && u.areas.includes(area.nombre));
+    return this.usuariosFiltradosPorAlcance().filter(u => u.rol === 'trabajador' && u.areas && u.areas.includes(area.nombre));
   }
 
   getAreasFiltradas() {
@@ -167,10 +168,27 @@ isGuardando = false;
     let lista = this.areas();
 
     if (yo?.rol !== 'admin') {
+      // Jefe/encargado: solo las áreas en las que está asignado
       const misAreas = yo?.areas || [];
       const esGlobalArea = misAreas.includes('Todas las áreas') || misAreas.includes('Todas');
       if (!esGlobalArea) {
         lista = lista.filter(a => misAreas.includes(a.nombre));
+      }
+    } else if (!esAdminGlobal(yo)) {
+      // 🔥 Admin LIMITADO a sucursales: solo áreas que tengan al menos
+      // un trabajador de sus sucursales asignadas.
+      const permitidas = sucursalesPermitidas(yo);
+      if (permitidas !== null) {
+        const areasConPersonalMio = new Set<string>();
+        for (const u of this.usuarios()) {
+          if (u.rol !== 'trabajador' || !u.areas) continue;
+          const susSuc: string[] = u.sucursales || (u.sucursal ? [u.sucursal] : []);
+          const compartoSucursal = susSuc.some((s: string) => permitidas.includes(s));
+          if (compartoSucursal) {
+            for (const a of u.areas) areasConPersonalMio.add(a);
+          }
+        }
+        lista = lista.filter(a => areasConPersonalMio.has(a.nombre));
       }
     }
 
@@ -181,8 +199,26 @@ isGuardando = false;
     return lista;
   }
 
+  /** Lista de usuarios visibles según el alcance del admin actual.
+   *  Admin global ve todos; admin limitado solo trabajadores de sus sucursales. */
+  private usuariosFiltradosPorAlcance(): any[] {
+    let lista = this.usuarios();
+    const yo = this.liveUser;
+    if (yo?.rol === 'admin' && !esAdminGlobal(yo)) {
+      const permitidas = sucursalesPermitidas(yo);
+      if (permitidas !== null) {
+        lista = lista.filter((u: any) => {
+          if (u.rol === 'admin') return false;
+          const susSuc: string[] = u.sucursales || (u.sucursal ? [u.sucursal] : []);
+          return susSuc.some((s: string) => permitidas.includes(s));
+        });
+      }
+    }
+    return lista;
+  }
+
   contarEmpleadosEnArea(nombreArea: string): number {
-    return this.usuarios().filter(u => u.areas && u.areas.includes(nombreArea)).length;
+    return this.usuariosFiltradosPorAlcance().filter(u => u.areas && u.areas.includes(nombreArea)).length;
   }
 
   abrirModalNuevaArea() {
@@ -272,7 +308,7 @@ isGuardando = false;
 
   /** Devuelve hasta N empleados asignados a un área (para mostrar mini-avatares). */
   getEmpleadosDeArea(nombreArea: string, limite: number = 5): any[] {
-    const lista = this.usuarios().filter(u => u.areas && u.areas.includes(nombreArea));
+    const lista = this.usuariosFiltradosPorAlcance().filter(u => u.areas && u.areas.includes(nombreArea));
     return lista.slice(0, limite);
   }
 
@@ -301,7 +337,7 @@ isGuardando = false;
   cerrarModal() { this.isModalOpen = false; this.areaEditandoId = ''; }
 
   get empleadosParaCreacion() {
-    let filtrados = this.usuarios().filter(u => u.rol === 'trabajador');
+    let filtrados = this.usuariosFiltradosPorAlcance().filter(u => u.rol === 'trabajador');
     if (this.terminoBusquedaCreacion) {
       const t = this.terminoBusquedaCreacion.toLowerCase();
       filtrados = filtrados.filter(u => u.nombre.toLowerCase().includes(t));

@@ -7,8 +7,9 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, Router } from '@angular/router';
 import { Firestore, collection, onSnapshot } from '@angular/fire/firestore';
- 
+
 import { SidebarComponent } from '../../../shared/sidebar/sidebar';
+import { esAdminGlobal, sucursalesPermitidas } from '../../../shared/permisos.util';
 
 @Component({
   selector: 'app-home',
@@ -63,7 +64,19 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
   }
  
   // ------- Métricas globales -------
-  totalSucursales      = computed(() => this.areas().length);
+  /** Para admin limitado: solo áreas que tengan al menos 1 empleado en sus sucursales. */
+  areasVisibles = computed(() => {
+    if (esAdminGlobal(this.currentUser)) return this.areas();
+    const conPersonal = new Set<string>();
+    for (const u of this.usuarios()) {
+      if (u.areas && Array.isArray(u.areas)) {
+        for (const a of u.areas) conPersonal.add(a);
+      }
+    }
+    return this.areas().filter(a => conPersonal.has(a.nombre));
+  });
+
+  totalSucursales      = computed(() => this.areasVisibles().length);
   totalEmpleados       = computed(() => this.usuarios().filter(u => u.rol !== 'admin').length);
   totalChecklistsHoy   = computed(() => this.checklistsHoy().length);
  
@@ -236,16 +249,24 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
  
   // ================================== FIRESTORE ==================================
   conectarConLaNube() {
+    // 🔥 Filtro de alcance: admin global ve todo; admin limitado solo sus sucursales.
+    const permitidas = sucursalesPermitidas(this.currentUser);
+    const esGlobal = esAdminGlobal(this.currentUser);
+
     const checklistsRef = collection(this.firestore, 'checklists');
     this.destructoresRadares.push(
       onSnapshot(checklistsRef, snap => {
-        const arr: any[] = [];
+        let arr: any[] = [];
         snap.forEach(d => arr.push({ ...d.data(), id: d.id }));
+        // Admin limitado: solo checklists de sus sucursales
+        if (!esGlobal && permitidas !== null) {
+          arr = arr.filter(c => permitidas.includes(c.store));
+        }
         this.checklists.set(arr);
         setTimeout(() => this.actualizarGrafica(), 100);
       })
     );
- 
+
     const areasRef = collection(this.firestore, 'areas_operativas');
     this.destructoresRadares.push(
       onSnapshot(areasRef, snap => {
@@ -254,12 +275,20 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
         this.areas.set(arr);
       })
     );
- 
+
     const usuariosRef = collection(this.firestore, 'usuarios');
     this.destructoresRadares.push(
       onSnapshot(usuariosRef, snap => {
-        const arr: any[] = [];
+        let arr: any[] = [];
         snap.forEach(d => arr.push({ ...d.data(), idFirestore: d.id }));
+        // Admin limitado: solo trabajadores de sus sucursales (excluye otros admins)
+        if (!esGlobal && permitidas !== null) {
+          arr = arr.filter(u => {
+            if (u.rol === 'admin') return false;
+            const susSuc: string[] = u.sucursales || (u.sucursal ? [u.sucursal] : []);
+            return susSuc.some((s: string) => permitidas.includes(s));
+          });
+        }
         this.usuarios.set(arr);
       })
     );

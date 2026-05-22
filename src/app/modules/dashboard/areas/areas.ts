@@ -36,6 +36,11 @@ isGuardando = false;
   formEsRecurrente = false; // <-- NUEVO: Para que se repita a diario
   formAssignedUsers: any[] = [];
 
+  // 🧙 WIZARD DE NUEVA ÁREA (Modo asistido para adultos mayores)
+  wizardStepArea: number = 1;
+  wizardTotalStepsArea: number = 3;
+  presetHorario: 'manana' | 'tarde' | 'noche' | 'dia' | 'custom' | '' = '';
+
   terminoBusquedaCreacion = '';
   isModalAsignacionOpen = false;
   areaSeleccionada: any = null;
@@ -183,9 +188,99 @@ isGuardando = false;
     this.areaEditandoId = ''; // Modo Creación
     this.formNombreArea = ''; this.formDescripcionArea = ''; this.formAssignedUsers = [];
     this.formFechaArea = ''; this.formHoraEntrada = ''; this.formHoraSalida = '';
-    this.formTurnoArea = ''; this.formEsRecurrente = false;
-    this.terminoBusquedaCreacion = ''; this.isModalOpen = true;
+    this.formTurnoArea = ''; this.formEsRecurrente = true; // Por defecto recurrente (lo más común)
+    this.terminoBusquedaCreacion = '';
+    // 🧙 Reset wizard
+    this.wizardStepArea = 1;
+    this.presetHorario = '';
+    this.isModalOpen = true;
   }
+
+  // ============================================================================
+  // 🧙 WIZARD DE NUEVA ÁREA
+  // ============================================================================
+  avanzarPasoArea() {
+    if (!this.puedeAvanzarPasoArea()) return;
+    if (this.wizardStepArea < this.wizardTotalStepsArea) {
+      this.wizardStepArea++;
+    }
+  }
+
+  retrocederPasoArea() {
+    if (this.wizardStepArea > 1) this.wizardStepArea--;
+  }
+
+  puedeAvanzarPasoArea(): boolean {
+    switch (this.wizardStepArea) {
+      case 1: return !!this.formNombreArea && this.formNombreArea.trim().length > 0;
+      case 2: return !!this.presetHorario;
+      case 3: return true; // El personal es opcional
+      default: return false;
+    }
+  }
+
+  /** Aplica un preset de horario al formulario. */
+  seleccionarPresetHorario(preset: 'manana' | 'tarde' | 'noche' | 'dia' | 'custom') {
+    this.presetHorario = preset;
+    this.formEsRecurrente = true;
+    switch (preset) {
+      case 'manana':
+        this.formHoraEntrada = '07:00';
+        this.formHoraSalida = '15:00';
+        this.formTurnoArea = 'Mañana';
+        break;
+      case 'tarde':
+        this.formHoraEntrada = '15:00';
+        this.formHoraSalida = '22:00';
+        this.formTurnoArea = 'Tarde';
+        break;
+      case 'noche':
+        this.formHoraEntrada = '22:00';
+        this.formHoraSalida = '07:00';
+        this.formTurnoArea = 'Noche';
+        break;
+      case 'dia':
+        this.formHoraEntrada = '08:00';
+        this.formHoraSalida = '20:00';
+        this.formTurnoArea = '';
+        break;
+      case 'custom':
+        // Deja los valores actuales; el usuario los ajusta a mano
+        this.formTurnoArea = this.formTurnoArea || '';
+        break;
+    }
+  }
+
+  /** Resumen humano del horario para el paso final. */
+  getResumenHorarioArea(): string {
+    if (!this.presetHorario) return 'Sin horario';
+    if (this.presetHorario === 'manana') return '🌅 Mañana · 7am a 3pm';
+    if (this.presetHorario === 'tarde') return '🌇 Tarde · 3pm a 10pm';
+    if (this.presetHorario === 'noche') return '🌙 Noche · 10pm a 7am';
+    if (this.presetHorario === 'dia') return '☀️ Día completo · 8am a 8pm';
+    // custom
+    const entrada = this.formHoraEntrada || '--';
+    const salida = this.formHoraSalida || '--';
+    return `⚙️ Personalizado · ${entrada} a ${salida}`;
+  }
+
+  finalizarWizardArea() {
+    // Reutiliza la lógica existente de guardarArea
+    this.guardarArea();
+  }
+
+  /** Devuelve hasta N empleados asignados a un área (para mostrar mini-avatares). */
+  getEmpleadosDeArea(nombreArea: string, limite: number = 5): any[] {
+    const lista = this.usuarios().filter(u => u.areas && u.areas.includes(nombreArea));
+    return lista.slice(0, limite);
+  }
+
+  /** Cantidad de empleados más allá de los mostrados como avatar. */
+  getEmpleadosExcedentes(nombreArea: string, limite: number = 5): number {
+    const total = this.contarEmpleadosEnArea(nombreArea);
+    return Math.max(0, total - limite);
+  }
+  // ============================================================================
 
   // 🔥 NUEVA FUNCIÓN PARA EDITAR ÁREAS EXISTENTES 🔥
   abrirModalEditarArea(area: any) {

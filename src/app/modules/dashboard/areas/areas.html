@@ -18,78 +18,146 @@
     <app-sidebar [currentUser]="currentUser" [isMenuOpen]="isMenuOpen" (closeMenu)="isMenuOpen = false"></app-sidebar>
     <div class="content">
       <div *ngIf="vistaActual() === 'lista'">
-        <div class="section-header">
-          <div>
-            <div class="section-title">Áreas Operativas</div>
-            <div class="section-sub">Configura departamentos internos y asigna personal</div>
+
+        <!-- ╔══════════════════════════════════════════════════╗ -->
+        <!-- ║   HEADER PRO de Áreas Operativas                 ║ -->
+        <!-- ╚══════════════════════════════════════════════════╝ -->
+        <div class="areas-header">
+          <div class="areas-header-text">
+            <h1 class="areas-header-title">Áreas Operativas</h1>
+            <p class="areas-header-sub">Configura departamentos y asigna personal a cada uno</p>
           </div>
-          <button class="btn-primary" (click)="abrirModalNuevaArea()">+ Nueva Área</button>
+          <button type="button" class="areas-btn-nueva" (click)="abrirModalNuevaArea()">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2.5" aria-hidden="true">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            Nueva Área
+          </button>
         </div>
-        <div class="user-grid">
 
-          <div class="user-card" *ngFor="let area of getAreasFiltradas()" (click)="verDetalleArea(area)"
-            style="cursor: pointer; transition: transform 0.2s;"
-            [style.opacity]="estaAreaBloqueada(area) ? '0.65' : '1'">
-            <div class="user-card-header">
-              <div class="user-info">
-                <div class="user-name" style="display: flex; align-items: center; gap: 8px;">
-                  {{ area.nombre }}
-                  <span *ngIf="estaAreaBloqueada(area)"
-                    style="background: #FEE2E2; color: #DC2626; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 800; border: 1px solid #FCA5A5; letter-spacing: 0.5px;">
-                    🔒 FUERA DE HORARIO</span>
-                </div>
-                <div class="user-role">{{ area.descripcion || 'Sin descripción' }}</div>
+        <!-- ╔══════════════════════════════════════════════════╗ -->
+        <!-- ║   CARDS DE ÁREAS (rediseñadas)                   ║ -->
+        <!-- ╚══════════════════════════════════════════════════╝ -->
+        <div class="areas-grid">
+          <article class="area-card"
+                   *ngFor="let area of getAreasFiltradas()"
+                   [class.area-card--vacia]="contarEmpleadosEnArea(area.nombre) === 0"
+                   [class.area-card--bloqueada]="estaAreaBloqueada(area)"
+                   (click)="verDetalleArea(area)">
 
-                <div
-                  style="font-size: 12px; color: #2563EB; margin-top: 8px; font-weight: 600; display: flex; align-items: center; gap: 4px;"
-                  *ngIf="area.fechaAsignada || area.esRecurrente">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                    <line x1="16" y1="2" x2="16" y2="6"></line>
-                    <line x1="8" y1="2" x2="8" y2="6"></line>
-                    <line x1="3" y1="10" x2="21" y2="10"></line>
-                  </svg>
-                  <span *ngIf="area.esRecurrente">Todos los días</span>
-                  <span *ngIf="!area.esRecurrente">{{ area.fechaAsignada }}</span>
+            <!-- Header de la card -->
+            <header class="area-card-header">
+              <h2 class="area-card-name">{{ area.nombre }}</h2>
+              <button type="button" class="area-card-delete"
+                      (click)="eliminarArea(area, $event)"
+                      [attr.aria-label]="'Eliminar ' + area.nombre">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="2.5" aria-hidden="true">
+                  <polyline points="3 6 5 6 21 6"></polyline>
+                  <path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"></path>
+                  <path d="M10 11v6"></path>
+                  <path d="M14 11v6"></path>
+                </svg>
+              </button>
+            </header>
 
-                  <span *ngIf="area.horaEntrada && area.horaSalida"> | {{ area.horaEntrada }} a {{ area.horaSalida }}
-                    hrs</span>
-                  <span *ngIf="area.horaEntrada && !area.horaSalida"> | Desde las {{ area.horaEntrada }} hrs</span>
-                </div>
+            <!-- Status pill: Activa / Fuera de horario / Vacía -->
+            <div class="area-card-status">
+              <span class="area-status-pill area-status-pill--bloqueada"
+                    *ngIf="estaAreaBloqueada(area)">
+                <span class="area-status-dot"></span>
+                Fuera de horario
+              </span>
+              <span class="area-status-pill area-status-pill--vacia"
+                    *ngIf="!estaAreaBloqueada(area) && contarEmpleadosEnArea(area.nombre) === 0">
+                <span class="area-status-dot"></span>
+                Sin personal asignado
+              </span>
+              <span class="area-status-pill area-status-pill--activa"
+                    *ngIf="!estaAreaBloqueada(area) && contarEmpleadosEnArea(area.nombre) > 0">
+                <span class="area-status-dot"></span>
+                Activa
+              </span>
+            </div>
 
-                <div
-                  style="font-size: 12px; color: #059669; margin-top: 4px; font-weight: 600; display: flex; align-items: center; gap: 4px;"
-                  *ngIf="area.turnoAsignado">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="12" cy="12" r="5" />
-                    <line x1="12" y1="1" x2="12" y2="3" />
-                    <line x1="12" y1="21" x2="12" y2="23" />
-                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
-                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
-                    <line x1="1" y1="12" x2="3" y2="12" />
-                    <line x1="21" y1="12" x2="23" y2="12" />
-                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
-                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
-                  </svg>
-                  Turno: {{ area.turnoAsignado }}
-                </div>
-
+            <!-- Info de horario y turno (grande, claro) -->
+            <div class="area-card-info" *ngIf="area.esRecurrente || area.fechaAsignada || area.turnoAsignado">
+              <div class="area-info-row" *ngIf="area.esRecurrente || area.fechaAsignada">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="2" aria-hidden="true">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                  <line x1="16" y1="2" x2="16" y2="6"></line>
+                  <line x1="8" y1="2" x2="8" y2="6"></line>
+                  <line x1="3" y1="10" x2="21" y2="10"></line>
+                </svg>
+                <span *ngIf="area.esRecurrente">Todos los días</span>
+                <span *ngIf="!area.esRecurrente">{{ area.fechaAsignada }}</span>
+                <strong *ngIf="area.horaEntrada && area.horaSalida">
+                  &nbsp;· {{ area.horaEntrada }} a {{ area.horaSalida }}
+                </strong>
               </div>
-              <button class="btn-action btn-delete" (click)="eliminarArea(area, $event)"><svg width="16" height="16"
-                  viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <polyline points="3 6 5 6 21 6" />
-                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
-                </svg></button>
+
+              <div class="area-info-row area-info-row--turno" *ngIf="area.turnoAsignado">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="2" aria-hidden="true">
+                  <circle cx="12" cy="12" r="5"></circle>
+                  <line x1="12" y1="1" x2="12" y2="3"></line>
+                  <line x1="12" y1="21" x2="12" y2="23"></line>
+                  <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                </svg>
+                Turno {{ area.turnoAsignado }}
+              </div>
             </div>
-            <div class="user-credentials"
-              style="display:flex; justify-content:space-between; align-items:center; background:#F8FAFC; padding:12px; border-radius:8px;">
-              <span><strong>{{ contarEmpleadosEnArea(area.nombre) }}</strong> Empleados</span>
-              <button class="btn-primary" [disabled]="estaAreaBloqueada(area)"
-                [style.opacity]="estaAreaBloqueada(area) ? '0.5' : '1'"
-                [style.cursor]="estaAreaBloqueada(area) ? 'not-allowed' : 'pointer'"
-                style="background:white; color:#0F172A; border:1px solid #E2E8F0; padding:6px 12px; font-size:12px;"
-                (click)="abrirAsignacion(area, $event)">Asignar Personal</button>
-            </div>
+
+            <!-- Footer: avatares + contador + acción -->
+            <footer class="area-card-footer">
+              <div class="area-card-personal">
+                <div class="area-avatares" *ngIf="contarEmpleadosEnArea(area.nombre) > 0">
+                  <div class="area-avatar" *ngFor="let emp of getEmpleadosDeArea(area.nombre)"
+                       [title]="emp.nombre">
+                    {{ (emp.nombre || '?').charAt(0) | uppercase }}
+                  </div>
+                  <div class="area-avatar area-avatar--mas"
+                       *ngIf="getEmpleadosExcedentes(area.nombre) > 0">
+                    +{{ getEmpleadosExcedentes(area.nombre) }}
+                  </div>
+                </div>
+                <div class="area-personal-texto">
+                  <strong>{{ contarEmpleadosEnArea(area.nombre) }}</strong>
+                  {{ contarEmpleadosEnArea(area.nombre) === 1 ? 'persona' : 'personas' }}
+                </div>
+              </div>
+
+              <button type="button" class="area-card-asignar"
+                      (click)="abrirAsignacion(area, $event)"
+                      [disabled]="estaAreaBloqueada(area)">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="2.5" aria-hidden="true">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="9" cy="7" r="4"></circle>
+                  <line x1="19" y1="8" x2="19" y2="14"></line>
+                  <line x1="22" y1="11" x2="16" y2="11"></line>
+                </svg>
+                Asignar Personal
+              </button>
+            </footer>
+          </article>
+
+          <!-- Estado vacío -->
+          <div class="areas-empty" *ngIf="getAreasFiltradas().length === 0">
+            <div class="areas-empty-icon">📋</div>
+            <h3>Aún no tienes áreas creadas</h3>
+            <p>Crea tu primera área para empezar a asignar personal.</p>
+            <button type="button" class="areas-btn-nueva" (click)="abrirModalNuevaArea()">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="2.5" aria-hidden="true">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              Crear primera área
+            </button>
           </div>
         </div>
       </div>
@@ -215,18 +283,21 @@
         </div>
       </div>
 
-      <div class="modal-overlay" *ngIf="isModalOpen">
+      <!-- ╔══════════════════════════════════════════════════╗ -->
+      <!-- ║   MODAL DE EDITAR JORNADA (uso avanzado)         ║ -->
+      <!-- ╚══════════════════════════════════════════════════╝ -->
+      <div class="modal-overlay" *ngIf="isModalOpen && areaEditandoId">
         <div class="modal" style="max-width: 550px;">
           <div class="modal-header">
-            <div class="modal-title">{{ areaEditandoId ? 'Editar Jornada del Área' : 'Crear Nueva Área' }}</div>
+            <div class="modal-title">Editar Jornada del Área</div>
             <button class="modal-close" (click)="cerrarModal()">X</button>
           </div>
           <div class="modal-body">
 
             <div class="form-group form-full">
               <label class="form-label">Nombre del Área</label>
-              <input class="form-input" [(ngModel)]="formNombreArea" [disabled]="areaEditandoId !== ''"
-                [style.opacity]="areaEditandoId ? '0.7' : '1'" placeholder="Ej: Cajas">
+              <input class="form-input" [(ngModel)]="formNombreArea" disabled
+                style="opacity: 0.7;" placeholder="Ej: Cajas">
             </div>
             <div class="form-group form-full" style="margin-top: 10px;">
               <label class="form-label">Descripción</label>
@@ -268,48 +339,206 @@
               </div>
             </div>
 
-            <div *ngIf="!areaEditandoId" class="form-group form-full"
-              style="margin-top: 15px; border-top: 1px solid #E2E8F0; padding-top: 15px;">
-              <label class="form-label">Asignar Personal Inicial (Opcional)</label>
-              <input class="form-input" [(ngModel)]="terminoBusquedaCreacion" placeholder="Buscar empleado..."
-                style="margin-bottom: 10px;">
-              <div
-                style="max-height: 180px; overflow-y: auto; border: 1px solid #E2E8F0; border-radius: 8px; padding: 5px;">
-                <div *ngFor="let u of empleadosParaCreacion"
-                  style="display:flex; justify-content:space-between; align-items:center; padding:8px 10px; border-bottom:1px solid #F1F5F9; cursor: pointer; transition: 0.2s;"
-                  [style.background]="estaSeleccionadoParaCreacion(u) ? '#EFF6FF' : 'transparent'"
-                  (click)="toggleUsuarioParaCreacion(u)">
-                  <div style="display: flex; align-items: center; gap: 10px;">
-                    <div class="user-avatar" style="width: 28px; height: 28px; font-size: 11px;">{{ u.nombre.charAt(0) |
-                      uppercase }}</div>
-                    <div>
-                      <div style="font-size: 13px; font-weight: 600; color: #0F172A;">{{ u.nombre }}</div>
-                      <div style="font-size: 11px; color: #64748B;">{{ u.cargo || 'Colaborador' }}</div>
-                    </div>
-                  </div>
-                  <input type="checkbox" [checked]="estaSeleccionadoParaCreacion(u)" style="pointer-events: none;">
-                </div>
-                <div *ngIf="empleadosParaCreacion.length === 0"
-                  style="text-align: center; padding: 15px; color: #64748B; font-size: 12px;">No se encontraron
-                  empleados.</div>
-              </div>
-              <div style="font-size: 11px; color: #64748B; margin-top: 6px; font-weight: bold;">Seleccionados: {{
-                formAssignedUsers.length }}</div>
-            </div>
             <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
               <button class="btn-secondary" (click)="cerrarModal()">Cancelar</button>
-             <button class="btn-primary"
-        (click)="guardarArea()"
-        [disabled]="isGuardando">
-  <ng-container *ngIf="!isGuardando">
-    {{ areaEditandoId ? 'Guardar Cambios' : 'Crear Área' }}
-  </ng-container>
-  <ng-container *ngIf="isGuardando">
-    ⏳ Guardando...
-  </ng-container>
-</button>
+              <button class="btn-primary" (click)="guardarArea()" [disabled]="isGuardando">
+                <ng-container *ngIf="!isGuardando">Guardar Cambios</ng-container>
+                <ng-container *ngIf="isGuardando">⏳ Guardando...</ng-container>
+              </button>
             </div>
           </div>
+        </div>
+      </div>
+
+      <!-- ╔══════════════════════════════════════════════════╗ -->
+      <!-- ║   WIZARD DE NUEVA ÁREA (Modo Asistido)           ║ -->
+      <!-- ╚══════════════════════════════════════════════════╝ -->
+      <div class="wizard-overlay" *ngIf="isModalOpen && !areaEditandoId">
+        <div class="wizard-modal">
+
+          <!-- HEADER -->
+          <div class="wizard-header">
+            <div class="wizard-title">Nueva Área</div>
+            <button class="wizard-close" (click)="cerrarModal()" aria-label="Cerrar">&times;</button>
+          </div>
+          <div class="wizard-progress-bar">
+            <div class="wizard-progress-fill"
+                 [style.width.%]="(wizardStepArea / wizardTotalStepsArea) * 100"></div>
+          </div>
+          <div class="wizard-step-counter">
+            Paso <strong>{{ wizardStepArea }}</strong> de {{ wizardTotalStepsArea }}
+          </div>
+
+          <!-- PASO 1 — NOMBRE -->
+          <div class="wizard-step" *ngIf="wizardStepArea === 1">
+            <h2 class="wizard-question">¿Cómo se llama el área?</h2>
+            <p class="wizard-hint">Escribe un nombre corto y claro. Por ejemplo: "Cajas", "Bodega", "Pasillo 1".</p>
+            <input class="wizard-input wizard-input-big" type="text"
+                   [(ngModel)]="formNombreArea"
+                   placeholder="Escribe el nombre aquí..."
+                   autofocus>
+          </div>
+
+          <!-- PASO 2 — HORARIO (con presets grandes) -->
+          <div class="wizard-step" *ngIf="wizardStepArea === 2">
+            <h2 class="wizard-question">¿Qué horario tiene?</h2>
+            <p class="wizard-hint">Selecciona el horario en el que esta área está activa.</p>
+
+            <div class="area-horario-grid">
+              <button type="button" class="area-horario-card"
+                      [class.selected]="presetHorario === 'manana'"
+                      (click)="seleccionarPresetHorario('manana')">
+                <div class="area-horario-icon">🌅</div>
+                <div class="area-horario-nombre">Mañana</div>
+                <div class="area-horario-hora">7am a 3pm</div>
+              </button>
+
+              <button type="button" class="area-horario-card"
+                      [class.selected]="presetHorario === 'tarde'"
+                      (click)="seleccionarPresetHorario('tarde')">
+                <div class="area-horario-icon">🌇</div>
+                <div class="area-horario-nombre">Tarde</div>
+                <div class="area-horario-hora">3pm a 10pm</div>
+              </button>
+
+              <button type="button" class="area-horario-card"
+                      [class.selected]="presetHorario === 'noche'"
+                      (click)="seleccionarPresetHorario('noche')">
+                <div class="area-horario-icon">🌙</div>
+                <div class="area-horario-nombre">Noche</div>
+                <div class="area-horario-hora">10pm a 7am</div>
+              </button>
+
+              <button type="button" class="area-horario-card"
+                      [class.selected]="presetHorario === 'dia'"
+                      (click)="seleccionarPresetHorario('dia')">
+                <div class="area-horario-icon">☀️</div>
+                <div class="area-horario-nombre">Día completo</div>
+                <div class="area-horario-hora">8am a 8pm</div>
+              </button>
+
+              <button type="button" class="area-horario-card area-horario-card--custom"
+                      [class.selected]="presetHorario === 'custom'"
+                      (click)="seleccionarPresetHorario('custom')">
+                <div class="area-horario-icon">⚙️</div>
+                <div class="area-horario-nombre">Personalizar</div>
+                <div class="area-horario-hora">Yo elijo las horas</div>
+              </button>
+            </div>
+
+            <!-- Inputs personalizados (solo si eligió custom) -->
+            <div class="area-horario-custom" *ngIf="presetHorario === 'custom'">
+              <div class="area-horario-custom-row">
+                <label>
+                  <span class="area-horario-custom-label">🕒 Entrada</span>
+                  <input type="time" class="wizard-input wizard-time-input" [(ngModel)]="formHoraEntrada">
+                </label>
+                <label>
+                  <span class="area-horario-custom-label">⏰ Salida</span>
+                  <input type="time" class="wizard-input wizard-time-input" [(ngModel)]="formHoraSalida">
+                </label>
+              </div>
+            </div>
+
+            <!-- Toggle "Todos los días" tipo switch grande -->
+            <div class="area-recurrente-box">
+              <label class="area-recurrente-label">
+                <input type="checkbox" [(ngModel)]="formEsRecurrente">
+                <span class="area-recurrente-switch"></span>
+                <span class="area-recurrente-texto">
+                  <strong>Se repite todos los días</strong>
+                  <small *ngIf="formEsRecurrente">Cada día a la misma hora</small>
+                  <small *ngIf="!formEsRecurrente">Solo un día específico</small>
+                </span>
+              </label>
+
+              <input *ngIf="!formEsRecurrente" type="date" class="wizard-input"
+                     [(ngModel)]="formFechaArea"
+                     style="margin-top: 14px;">
+            </div>
+          </div>
+
+          <!-- PASO 3 — PERSONAL (opcional) + RESUMEN -->
+          <div class="wizard-step" *ngIf="wizardStepArea === 3">
+            <h2 class="wizard-question">¿Quién va a trabajar aquí?</h2>
+            <p class="wizard-hint">Puedes asignar personas ahora, o saltar este paso y asignarlas después.</p>
+
+            <!-- Resumen breve -->
+            <div class="area-resumen">
+              <div class="area-resumen-row">
+                <span class="area-resumen-label">📋 Nombre</span>
+                <span class="area-resumen-valor">{{ formNombreArea || 'Sin nombre' }}</span>
+              </div>
+              <div class="area-resumen-row">
+                <span class="area-resumen-label">🕒 Horario</span>
+                <span class="area-resumen-valor">{{ getResumenHorarioArea() }}</span>
+              </div>
+            </div>
+
+            <!-- Buscador y lista de empleados -->
+            <div class="wizard-search-box" style="margin-top: 20px;">
+              <input type="text" class="wizard-input"
+                     [(ngModel)]="terminoBusquedaCreacion"
+                     placeholder="🔍 Buscar persona...">
+            </div>
+
+            <div class="area-empleados-lista">
+              <button type="button" class="area-empleado-row"
+                      *ngFor="let u of empleadosParaCreacion"
+                      [class.selected]="estaSeleccionadoParaCreacion(u)"
+                      (click)="toggleUsuarioParaCreacion(u)">
+                <div class="area-empleado-avatar">{{ (u.nombre || '?').charAt(0) | uppercase }}</div>
+                <div class="area-empleado-info">
+                  <div class="area-empleado-nombre">{{ u.nombre }}</div>
+                  <div class="area-empleado-cargo">{{ u.cargo || 'Colaborador' }}</div>
+                </div>
+                <div class="area-empleado-check">
+                  <svg *ngIf="estaSeleccionadoParaCreacion(u)" width="20" height="20" viewBox="0 0 24 24"
+                       fill="none" stroke="currentColor" stroke-width="3">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                  </svg>
+                </div>
+              </button>
+
+              <div class="area-empleados-empty" *ngIf="empleadosParaCreacion.length === 0">
+                😕 No se encontraron empleados con ese nombre.
+              </div>
+            </div>
+
+            <div class="area-contador-final" *ngIf="formAssignedUsers.length > 0">
+              ✅ Vas a asignar <strong>{{ formAssignedUsers.length }}</strong>
+              {{ formAssignedUsers.length === 1 ? 'persona' : 'personas' }} a esta área.
+            </div>
+            <div class="area-contador-final area-contador-final--vacio" *ngIf="formAssignedUsers.length === 0">
+              💡 Sin asignar personal — podrás hacerlo después desde la pantalla de Áreas.
+            </div>
+          </div>
+
+          <!-- FOOTER de navegación -->
+          <div class="wizard-footer">
+            <button type="button" class="wizard-btn wizard-btn-back"
+                    *ngIf="wizardStepArea > 1"
+                    (click)="retrocederPasoArea()">
+              ← Atrás
+            </button>
+            <div *ngIf="wizardStepArea === 1" style="flex:1"></div>
+
+            <button type="button" class="wizard-btn wizard-btn-next"
+                    *ngIf="wizardStepArea < wizardTotalStepsArea"
+                    [disabled]="!puedeAvanzarPasoArea()"
+                    (click)="avanzarPasoArea()">
+              Siguiente →
+            </button>
+
+            <button type="button" class="wizard-btn wizard-btn-finish"
+                    *ngIf="wizardStepArea === wizardTotalStepsArea"
+                    [disabled]="isGuardando"
+                    (click)="finalizarWizardArea()">
+              <ng-container *ngIf="!isGuardando">✅ CREAR ÁREA</ng-container>
+              <ng-container *ngIf="isGuardando">⏳ Creando...</ng-container>
+            </button>
+          </div>
+
         </div>
       </div>
 

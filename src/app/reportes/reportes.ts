@@ -2,7 +2,7 @@ import { Component, signal, OnInit, OnDestroy, inject, HostListener } from '@ang
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, ActivatedRoute } from '@angular/router';
-import { Firestore, collection, getDocs, doc, deleteDoc, onSnapshot } from '@angular/fire/firestore';
+import { Firestore, collection, getDocs, doc, deleteDoc, query, where } from '@angular/fire/firestore';
 import { sucursalesPermitidas } from '../shared/permisos.util';
 
 import jsPDF from 'jspdf';
@@ -196,17 +196,28 @@ export class ReportesComponent implements OnInit, OnDestroy {
 
   // ============================================================================
 
-  buscarReportes() {
+  async buscarReportes() {
     this.buscando.set(true);
     this.busquedaRealizada.set(true);
-    if (this.busquedaSub) { this.busquedaSub(); }
-
-    const checklistsRef = collection(this.firestore, 'checklists');
+    // Cierra cualquier suscripción previa (si quedó alguna).
+    if (this.busquedaSub) { this.busquedaSub(); this.busquedaSub = null; }
 
     // 🔥 Si soy admin limitado, calculamos las sucursales que SÍ puedo ver
     const sucursalesPermitidasUsuario = sucursalesPermitidas(this.currentUser);
 
-    this.busquedaSub = onSnapshot(checklistsRef, (snapshot) => {
+    // 💸 OPTIMIZACIÓN: usamos getDocs (one-shot) con where() de fecha en lugar de
+    // onSnapshot sobre toda la colección. Antes traíamos TODOS los checklists y
+    // filtrábamos en cliente; ahora Firestore solo nos manda los del rango pedido.
+    // Auditoría es búsqueda histórica, no necesita realtime.
+    try {
+      const checklistsRef = collection(this.firestore, 'checklists');
+      const q = query(
+        checklistsRef,
+        where('date', '>=', this.fechaInicio),
+        where('date', '<=', this.fechaFin)
+      );
+      const snapshot = await getDocs(q);
+
       const listasSinClones = new Map();
 
       snapshot.forEach(docSnap => {
@@ -216,26 +227,23 @@ export class ReportesComponent implements OnInit, OnDestroy {
         // 🔥 Admin limitado: descarta cualquier checklist que NO sea de sus sucursales
         if (sucursalesPermitidasUsuario !== null && !sucursalesPermitidasUsuario.includes(c.store)) return;
 
-        if (c.date >= this.fechaInicio && c.date <= this.fechaFin) {
+        // Filtro por empleado
+        if (this.empleadoSeleccionado && c.assigned !== this.empleadoSeleccionado) return;
 
-          // Filtro por empleado
-          if (this.empleadoSeleccionado && c.assigned !== this.empleadoSeleccionado) return;
+        // 🆕 Filtro por sucursal
+        if (this.sucursalSeleccionada && c.store !== this.sucursalSeleccionada) return;
 
-          // 🆕 Filtro por sucursal
-          if (this.sucursalSeleccionada && c.store !== this.sucursalSeleccionada) return;
+        const marcados = c.items ? c.items.filter((i: any) => i.checked).length : 0;
+        c.calcProgreso = c.items && c.items.length > 0 ? Math.round((marcados / c.items.length) * 100) : 0;
+        c.calcCompletados = marcados;
 
-          const marcados = c.items ? c.items.filter((i: any) => i.checked).length : 0;
-          c.calcProgreso = c.items && c.items.length > 0 ? Math.round((marcados / c.items.length) * 100) : 0;
-          c.calcCompletados = marcados;
-
-          const firma = `${c.name}_${c.assigned}_${c.store}_${c.date}`;
-          if (!listasSinClones.has(firma)) {
+        const firma = `${c.name}_${c.assigned}_${c.store}_${c.date}`;
+        if (!listasSinClones.has(firma)) {
+          listasSinClones.set(firma, c);
+        } else {
+          const existente = listasSinClones.get(firma) as any;
+          if (existente && c.calcProgreso > existente.calcProgreso) {
             listasSinClones.set(firma, c);
-          } else {
-            const existente = listasSinClones.get(firma) as any;
-            if (existente && c.calcProgreso > existente.calcProgreso) {
-              listasSinClones.set(firma, c);
-            }
           }
         }
       });
@@ -244,12 +252,12 @@ export class ReportesComponent implements OnInit, OnDestroy {
       filtrados.sort((a, b) => b.timestampCreacion - a.timestampCreacion);
 
       this.resultados.set(filtrados);
-      this.buscando.set(false);
-    }, (error) => {
+    } catch (error) {
       console.error("Error buscando el historial:", error);
       Swal.fire({ icon: 'error', title: 'Error de Red', text: 'Hubo un error de conexión al buscar el historial.', confirmButtonColor: '#0F172A' });
+    } finally {
       this.buscando.set(false);
-    });
+    }
   }
 
   verDetalle(checklist: any) { this.checklistSeleccionado.set(checklist); this.vistaActual.set('detalle'); }

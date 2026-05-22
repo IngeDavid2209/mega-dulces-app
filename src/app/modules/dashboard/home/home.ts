@@ -6,7 +6,7 @@ import {
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, Router } from '@angular/router';
-import { Firestore, collection, onSnapshot } from '@angular/fire/firestore';
+import { Firestore, collection, onSnapshot, query, where } from '@angular/fire/firestore';
 
 import { SidebarComponent } from '../../../shared/sidebar/sidebar';
 import { esAdminGlobal, sucursalesPermitidas, normalizarNombre } from '../../../shared/permisos.util';
@@ -256,9 +256,18 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
     const esTrabajador = this.currentUser?.rol === 'trabajador';
     const miNombreNorm = normalizarNombre(this.currentUser?.nombre);
 
+    // 💸 OPTIMIZACIÓN: solo traemos los últimos 7 días, no toda la historia.
+    // El Dashboard solo usa: KPIs de HOY + gráfica de tendencia de últimos 7 días.
+    // Antes leíamos TODA la colección checklists en cada admin → reads masivos.
+    const hace7Dias = new Date();
+    hace7Dias.setDate(hace7Dias.getDate() - 7);
+    const offsetDays = hace7Dias.getTimezoneOffset() * 60000;
+    const desdeISO = new Date(hace7Dias.getTime() - offsetDays).toISOString().split('T')[0];
+
     const checklistsRef = collection(this.firestore, 'checklists');
+    const checklistsQuery = query(checklistsRef, where('date', '>=', desdeISO));
     this.destructoresRadares.push(
-      onSnapshot(checklistsRef, snap => {
+      onSnapshot(checklistsQuery, snap => {
         let arr: any[] = [];
         snap.forEach(d => arr.push({ ...d.data(), id: d.id }));
 
@@ -269,7 +278,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
           // 🔥 Admin limitado: solo checklists de sus sucursales
           arr = arr.filter(c => permitidas.includes(c.store));
         }
-        // Admin global: ve todo, no se filtra
+        // Admin global: ve todo (de los últimos 7 días)
 
         this.checklists.set(arr);
         setTimeout(() => this.actualizarGrafica(), 100);

@@ -629,21 +629,24 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     });
     this.destructoresRadares.push(radarMoldes);
 
+    // 💸 OPTIMIZACIÓN: pedimos solo checklists de hoy en adelante.
+    // Antes traíamos TODA la historia y filtrábamos en cliente → reads masivos.
+    const offset = new Date().getTimezoneOffset() * 60000;
+    const fechaHoyLocal = new Date(Date.now() - offset).toISOString().split('T')[0];
+
     const checklistsRef = collection(this.firestore, 'checklists');
-    const radarChecklists = onSnapshot(checklistsRef, (snapshot) => {
+    const checklistsQuery = query(checklistsRef, where('date', '>=', fechaHoyLocal));
+    const radarChecklists = onSnapshot(checklistsQuery, (snapshot) => {
       const todasLasListas: any[] = [];
-      const offset = new Date().getTimezoneOffset() * 60000;
-      const fechaHoyLocal = new Date(Date.now() - offset).toISOString().split('T')[0];
 
       snapshot.forEach(docSnap => {
         const c = docSnap.data() as any;
         if (c.eliminado === true || c.enviado === true) return;
-        if (c.date >= fechaHoyLocal) {
-          const tareasMarcadas = c.items.filter((i: any) => i.checked).length;
-          c.calcCompletados = tareasMarcadas;
-          c.calcProgreso = Math.round((tareasMarcadas / c.items.length) * 100) || 0;
-          todasLasListas.push(c);
-        }
+        // El filtro de fecha ya viene aplicado en el query, no hace falta repetirlo.
+        const tareasMarcadas = c.items.filter((i: any) => i.checked).length;
+        c.calcCompletados = tareasMarcadas;
+        c.calcProgreso = Math.round((tareasMarcadas / c.items.length) * 100) || 0;
+        todasLasListas.push(c);
       });
 
       const listasSinClones = new Map();

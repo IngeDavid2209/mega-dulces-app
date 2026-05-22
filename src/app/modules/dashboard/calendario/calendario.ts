@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, Router } from '@angular/router';
 // 🔥 Agregué getDocs y query para que pueda ir por la agenda personal
-import { Firestore, collection, onSnapshot, getDocs, query } from '@angular/fire/firestore';
+import { Firestore, collection, onSnapshot, getDocs, query, where } from '@angular/fire/firestore';
 import Swal from 'sweetalert2';
 import { esAdminGlobal, sucursalesPermitidas, normalizarNombre } from '../../../shared/permisos.util';
 
@@ -47,6 +47,8 @@ tareasAgendaMes: any[] = [];
 
   private firestore = inject(Firestore);
   private router = inject(Router);
+  /** Snapshot dinámico de checklists del mes visible (se recrea al cambiar de mes). */
+  private radarChecklistsActivo: (() => void) | null = null;
   private destructores: (() => void)[] = [];
 
   ngOnInit() {
@@ -62,7 +64,10 @@ tareasAgendaMes: any[] = [];
     this.actualizarMes(0);
   }
 
-  ngOnDestroy() { this.destructores.forEach(d => d()); }
+  ngOnDestroy() {
+    this.destructores.forEach(d => d());
+    if (this.radarChecklistsActivo) { this.radarChecklistsActivo(); this.radarChecklistsActivo = null; }
+  }
 
   conectarDatos() {
     const usuariosRef = collection(this.firestore, 'usuarios');
@@ -89,8 +94,37 @@ tareasAgendaMes: any[] = [];
       this.areas.set(areasNube.sort((a: any, b: any) => (a.nombre || '').localeCompare(b.nombre || '')));
     }));
 
+    // 💸 OPTIMIZACIÓN: filtramos checklists al rango del mes visible (±1 mes para
+    // amortiguar al navegar rápido entre meses cercanos). Antes traíamos toda la
+    // colección histórica → ahora solo ~3 meses de data por conexión.
+    this.reconectarChecklistsDelMesVisible();
+  }
+
+  /**
+   * Cierra el snapshot anterior y abre uno nuevo filtrado al rango del mes visible
+   * (1 mes antes y 1 después). Se llama al iniciar y cada vez que cambia el mes.
+   */
+  private reconectarChecklistsDelMesVisible() {
+    if (this.radarChecklistsActivo) {
+      this.radarChecklistsActivo();
+      this.radarChecklistsActivo = null;
+    }
+
+    // Rango ±1 mes alrededor de fechaActual (3 meses de cobertura)
+    const offset = new Date().getTimezoneOffset() * 60000;
+    const inicio = new Date(this.fechaActual.getFullYear(), this.fechaActual.getMonth() - 1, 1, 12);
+    const fin = new Date(this.fechaActual.getFullYear(), this.fechaActual.getMonth() + 2, 0, 12);
+    const desdeISO = new Date(inicio.getTime() - offset).toISOString().split('T')[0];
+    const hastaISO = new Date(fin.getTime() - offset).toISOString().split('T')[0];
+
     const checklistsRef = collection(this.firestore, 'checklists');
-    this.destructores.push(onSnapshot(checklistsRef, (snap) => {
+    const q = query(
+      checklistsRef,
+      where('date', '>=', desdeISO),
+      where('date', '<=', hastaISO)
+    );
+
+    this.radarChecklistsActivo = onSnapshot(q, (snap) => {
       let lista = snap.docs.map(d => d.data()).filter((c: any) => !c.eliminado);
 
       // 🔥 Admin limitado: solo ve checklists de sus sucursales
@@ -103,7 +137,7 @@ tareasAgendaMes: any[] = [];
 
       this.checklistsGlobales = lista;
       this.generarCalendario();
-    }));
+    });
   }
 
   get empleadosFiltrados() {
@@ -126,6 +160,8 @@ tareasAgendaMes: any[] = [];
 
   cambiarMes(incremento: number) {
     this.actualizarMes(incremento);
+    // 💸 Recargar snapshot al nuevo rango (mes ±1)
+    this.reconectarChecklistsDelMesVisible();
     this.generarCalendario();
   }
 
@@ -146,6 +182,7 @@ tareasAgendaMes: any[] = [];
       const dia = parseInt(partes[2], 10);
       this.fechaActual = new Date(anio, mes, dia);
       this.actualizarMes(0);
+      this.reconectarChecklistsDelMesVisible(); // 💸
       this.generarCalendario();
       this.abrirDiaPorString(input);
     }
@@ -154,6 +191,7 @@ tareasAgendaMes: any[] = [];
   irAHoy() {
     this.fechaActual = new Date();
     this.actualizarMes(0);
+    this.reconectarChecklistsDelMesVisible(); // 💸
     this.generarCalendario();
     const offset = this.fechaActual.getTimezoneOffset() * 60000;
     const hoyStr = new Date(this.fechaActual.getTime() - offset).toISOString().split('T')[0];
@@ -165,6 +203,7 @@ tareasAgendaMes: any[] = [];
     ayer.setDate(ayer.getDate() - 1);
     this.fechaActual = ayer;
     this.actualizarMes(0);
+    this.reconectarChecklistsDelMesVisible(); // 💸
     this.generarCalendario();
     const offset = ayer.getTimezoneOffset() * 60000;
     const ayerStr = new Date(ayer.getTime() - offset).toISOString().split('T')[0];

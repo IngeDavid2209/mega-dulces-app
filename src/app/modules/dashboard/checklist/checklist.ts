@@ -2,9 +2,11 @@ import { Component, signal, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, ActivatedRoute } from '@angular/router';
-import { Firestore, collection, doc, setDoc, getDoc, deleteDoc, onSnapshot, getDocs } from '@angular/fire/firestore';
+import { Firestore, collection, doc, setDoc, getDoc, deleteDoc, onSnapshot, getDocs, query, where } from '@angular/fire/firestore';
 import * as localforage from 'localforage';
+import Swal from 'sweetalert2';
 import { esAdminGlobal, esAdminLimitado, sucursalesPermitidas } from '../../../shared/permisos.util';
+import { obtenerSemanaISO, obtenerNombreDia } from '../../../shared/descansos.util';
 
 import { SidebarComponent } from '../../../shared/sidebar/sidebar';
 
@@ -1035,7 +1037,43 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     } catch (error) { console.error(' ❌ Error enviando correo:', error); }
   }
 
-  guardarChecklistUnico() {
+  /**
+   * Devuelve los nombres de empleados que tienen día de descanso en la fecha dada.
+   * Consulta puntual a Firestore filtrada por semanaISO (1 documento por trabajador/semana).
+   */
+  private async verificarConflictosDescanso(empleadosNombres: string[], fechaStr: string): Promise<string[]> {
+    if (!fechaStr) return [];
+    try {
+      // Forzamos hora 12:00 para evitar saltos de día por timezone
+      const fecha = new Date(fechaStr + 'T12:00:00');
+      const semana = obtenerSemanaISO(fecha);
+      const nombreDia = obtenerNombreDia(fecha);
+
+      const descansosRef = collection(this.firestore, 'descansos_semanales');
+      const q = query(descansosRef, where('semanaISO', '==', semana));
+      const snap = await getDocs(q);
+      const docs: any[] = [];
+      snap.forEach(d => docs.push(d.data()));
+
+      const conflictos: string[] = [];
+      for (const nombre of empleadosNombres) {
+        const emp = this.empleados().find((e: any) => e.nombre === nombre);
+        if (!emp) continue;
+        const uid = emp.uid || emp.id || emp.idFirestore;
+        if (!uid) continue;
+        const doc = docs.find(d => d.userId === uid);
+        if (doc && doc.dias?.includes(nombreDia)) {
+          conflictos.push(nombre);
+        }
+      }
+      return conflictos;
+    } catch (e) {
+      console.error('Error verificando descansos:', e);
+      return []; // En caso de error, no bloqueamos el guardado
+    }
+  }
+
+  async guardarChecklistUnico() {
     if (!this.formName || this.formAssigned.length === 0) {
       alert('Faltan datos.');
       return;
@@ -1068,6 +1106,28 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     if (tareasValidas.length === 0) {
       alert('Agrega tareas.');
       return;
+    }
+
+    // 🔴 VALIDACIÓN DE DÍA DE DESCANSO
+    const offsetTz = new Date().getTimezoneOffset() * 60000;
+    const fechaCheckStr = tareasValidas[0].date ||
+      new Date(Date.now() - offsetTz).toISOString().split('T')[0];
+    const conflictosDescanso = await this.verificarConflictosDescanso(this.formAssigned, fechaCheckStr);
+    if (conflictosDescanso.length > 0) {
+      const html = `Los siguientes trabajadores tienen <strong>día de descanso</strong> el ${fechaCheckStr}:` +
+        `<ul style="text-align:left; margin: 12px 0; padding-left: 24px;">` +
+        conflictosDescanso.map((n: string) => `<li>${n}</li>`).join('') +
+        `</ul>¿Asignarles la tarea de todas formas?`;
+      const res = await Swal.fire({
+        title: '📅 Día de descanso detectado',
+        html,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, asignar igual',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#0F172A'
+      });
+      if (!res.isConfirmed) return;
     }
 
     const urlsWhatsApp: string[] = [];

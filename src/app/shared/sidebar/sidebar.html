@@ -109,6 +109,15 @@
         </svg>
         Áreas de Trabajo
       </a>
+
+      <a class="nav-item" routerLink="/descansos" routerLinkActive="active"
+         *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeAdministrarPersonal"
+         (click)="onNavClick()">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+        </svg>
+        Días de Descanso
+      </a>
     </nav>
 
     <div class="bottom-nav" style="margin-top: auto; padding: 0 12px 20px 12px;">

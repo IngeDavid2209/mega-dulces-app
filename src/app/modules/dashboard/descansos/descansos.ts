@@ -1,0 +1,288 @@
+import { Component, signal, OnInit, OnDestroy, inject } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { RouterModule, Router } from '@angular/router';
+import { Firestore, collection, onSnapshot, doc, setDoc, deleteDoc } from '@angular/fire/firestore';
+import Swal from 'sweetalert2';
+
+import { SidebarComponent } from '../../../shared/sidebar/sidebar';
+import { esAdminGlobal, sucursalesPermitidas } from '../../../shared/permisos.util';
+import {
+  DIAS_SEMANA,
+  obtenerSemanaISO,
+  desplazarSemanaISO,
+  semanaISOATexto,
+  idDescanso,
+  fechaLunesDeSemana
+} from '../../../shared/descansos.util';
+
+@Component({
+  selector: 'app-descansos',
+  standalone: true,
+  imports: [CommonModule, FormsModule, RouterModule, SidebarComponent],
+  templateUrl: './descansos.html',
+  styleUrls: ['./descansos.css']
+})
+export class DescansosComponent implements OnInit, OnDestroy {
+  isMenuOpen = false;
+  toggleMenu() { this.isMenuOpen = !this.isMenuOpen; }
+  cerrarSesion() {
+    localStorage.removeItem('md_sesion_actual');
+    this.router.navigate(['/login']);
+  }
+
+  currentUser: any = null;
+  usuarios = signal<any[]>([]);
+  descansos = signal<any[]>([]);
+  terminoBusqueda = '';
+  sucursalSeleccionada = 'Todas';
+
+  semanaActualISO = signal<string>(obtenerSemanaISO(new Date()));
+  diasSemana = [...DIAS_SEMANA];
+
+  // Lista interna de sucursales para el filtro
+  sucursalesDisponibles = signal<string[]>([]);
+
+  private firestore = inject(Firestore);
+  private router = inject(Router);
+  private destructores: (() => void)[] = [];
+  private semanasYaCargadas = new Set<string>();
+  private guardadoTimers = new Map<string, any>();
+
+  ngOnInit() {
+    const sesion = localStorage.getItem('md_sesion_actual');
+    if (sesion) { this.currentUser = JSON.parse(sesion); }
+    // Acceso: admin global o admin limitado / quien pueda administrar personal
+    const tienePermiso = this.currentUser?.rol === 'admin' || this.currentUser?.puedeAdministrarPersonal;
+    if (!tienePermiso) {
+      this.router.navigate(['/home']);
+      return;
+    }
+    this.conectarConLaNube();
+  }
+
+  ngOnDestroy() {
+    this.destructores.forEach(d => d());
+    // Limpiamos timers de guardado pendiente
+    this.guardadoTimers.forEach(t => clearTimeout(t));
+  }
+
+  conectarConLaNube() {
+    const usuariosRef = collection(this.firestore, 'usuarios');
+    const radarUsr = onSnapshot(usuariosRef, snap => {
+      const lista: any[] = [];
+      snap.forEach(d => lista.push({ ...d.data(), idFirestore: d.id }));
+      this.usuarios.set(lista);
+      this.recalcularSucursalesDisponibles();
+    });
+    this.destructores.push(radarUsr);
+
+    const descansosRef = collection(this.firestore, 'descansos_semanales');
+    const radarDesc = onSnapshot(descansosRef, snap => {
+      const lista: any[] = [];
+      snap.forEach(d => lista.push({ ...d.data(), idFirestore: d.id }));
+      this.descansos.set(lista);
+    });
+    this.destructores.push(radarDesc);
+  }
+
+  // ============================================================================
+  // FILTRADO DE TRABAJADORES (admin global ve todo, limitado solo sus sucursales)
+  // ============================================================================
+  get trabajadoresVisibles() {
+    let lista = this.usuarios().filter(u => u.rol === 'trabajador');
+
+    if (!esAdminGlobal(this.currentUser)) {
+      const permitidas = sucursalesPermitidas(this.currentUser);
+      if (permitidas !== null) {
+        lista = lista.filter(u => {
+          const susSuc = u.sucursales || [u.sucursal || ''];
+          return susSuc.some((s: string) => permitidas.includes(s));
+        });
+      }
+    }
+
+    if (this.sucursalSeleccionada && this.sucursalSeleccionada !== 'Todas') {
+      lista = lista.filter(u => {
+        const susSuc = u.sucursales || [u.sucursal || ''];
+        return susSuc.includes(this.sucursalSeleccionada);
+      });
+    }
+
+    const t = this.terminoBusqueda.toLowerCase().trim();
+    if (t) {
+      lista = lista.filter(u => (u.nombre || '').toLowerCase().includes(t));
+    }
+
+    return lista.sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''));
+  }
+
+  recalcularSucursalesDisponibles() {
+    const setSuc = new Set<string>();
+    for (const u of this.usuarios()) {
+      if (u.rol !== 'trabajador') continue;
+      const lista: string[] = u.sucursales || (u.sucursal ? [u.sucursal] : []);
+      for (const s of lista) {
+        if (s && s !== 'General (Acceso Total)') setSuc.add(s);
+      }
+    }
+    let arr = Array.from(setSuc).sort();
+    // Si soy admin limitado, mostrar solo las mías
+    if (!esAdminGlobal(this.currentUser)) {
+      const permitidas = sucursalesPermitidas(this.currentUser);
+      if (permitidas !== null) {
+        arr = arr.filter(s => permitidas.includes(s));
+      }
+    }
+    this.sucursalesDisponibles.set(arr);
+  }
+
+  // ============================================================================
+  // NAVEGACIÓN DE SEMANAS
+  // ============================================================================
+  cambiarSemana(delta: number) {
+    this.semanaActualISO.set(desplazarSemanaISO(this.semanaActualISO(), delta));
+  }
+
+  irASemanaActual() {
+    this.semanaActualISO.set(obtenerSemanaISO(new Date()));
+  }
+
+  esSemanaActualReal(): boolean {
+    return this.semanaActualISO() === obtenerSemanaISO(new Date());
+  }
+
+  textoSemana(): string {
+    return semanaISOATexto(this.semanaActualISO());
+  }
+
+  fechaDelDia(diaIndex: number): string {
+    // diaIndex: 0 = Lunes, 6 = Domingo
+    const lunes = fechaLunesDeSemana(this.semanaActualISO());
+    const fecha = new Date(lunes);
+    fecha.setUTCDate(lunes.getUTCDate() + diaIndex);
+    return `${fecha.getUTCDate()}`;
+  }
+
+  // ============================================================================
+  // ESTADO Y EDICIÓN DE DESCANSOS
+  // ============================================================================
+  diasDescansoDe(userId: string): string[] {
+    const semana = this.semanaActualISO();
+    const doc = this.descansos().find(d => d.userId === userId && d.semanaISO === semana);
+    return doc?.dias || [];
+  }
+
+  tieneDescansoEnDia(userId: string, dia: string): boolean {
+    return this.diasDescansoDe(userId).includes(dia);
+  }
+
+  contarDescansosUsuario(userId: string): number {
+    return this.diasDescansoDe(userId).length;
+  }
+
+  toggleDia(usuario: any, dia: string) {
+    const userId = usuario.uid || usuario.idFirestore;
+    if (!userId) return;
+    const semana = this.semanaActualISO();
+    const actuales = this.diasDescansoDe(userId);
+    let nuevos: string[];
+    if (actuales.includes(dia)) {
+      nuevos = actuales.filter(d => d !== dia);
+    } else {
+      nuevos = [...actuales, dia];
+    }
+    this.guardarDescansoDebounce(usuario, semana, nuevos);
+  }
+
+  /** Guarda con debounce de 400ms para soportar clics rápidos. */
+  private guardarDescansoDebounce(usuario: any, semana: string, dias: string[]) {
+    const userId = usuario.uid || usuario.idFirestore;
+    const docId = idDescanso(userId, semana);
+
+    // Actualización optimista local
+    const lista = [...this.descansos()];
+    const idx = lista.findIndex(d => d.userId === userId && d.semanaISO === semana);
+    const payloadLocal = {
+      userId, userNombre: usuario.nombre, semanaISO: semana, dias,
+      actualizadoPor: this.currentUser?.nombre || this.currentUser?.usuario || 'desconocido',
+      actualizadoEn: Date.now(),
+      idFirestore: docId
+    };
+    if (idx >= 0) lista[idx] = { ...lista[idx], ...payloadLocal };
+    else lista.push(payloadLocal);
+    this.descansos.set(lista);
+
+    // Debounce a Firestore
+    const existente = this.guardadoTimers.get(docId);
+    if (existente) clearTimeout(existente);
+    const timer = setTimeout(() => {
+      this.persistirDescanso(docId, payloadLocal, dias);
+    }, 400);
+    this.guardadoTimers.set(docId, timer);
+  }
+
+  private async persistirDescanso(docId: string, payload: any, diasFinales: string[]) {
+    try {
+      if (diasFinales.length === 0) {
+        // Sin días: borramos el documento para no dejar basura
+        await deleteDoc(doc(this.firestore, 'descansos_semanales', docId));
+      } else {
+        const { idFirestore, ...sinId } = payload;
+        await setDoc(doc(this.firestore, 'descansos_semanales', docId), sinId, { merge: true });
+      }
+    } catch (e) {
+      console.error('Error al guardar descanso:', e);
+      Swal.fire('Error', 'No se pudo guardar el descanso. Verifica tu conexión.', 'error');
+    }
+  }
+
+  // ============================================================================
+  // ACCIONES MASIVAS
+  // ============================================================================
+  limpiarSemanaDelUsuario(usuario: any, event: Event) {
+    event.stopPropagation();
+    const userId = usuario.uid || usuario.idFirestore;
+    if (!userId) return;
+    this.guardarDescansoDebounce(usuario, this.semanaActualISO(), []);
+  }
+
+  /** Aplica el patrón "Domingo" a todos los empleados visibles que no tengan nada esta semana. */
+  async aplicarDomingoATodos() {
+    const lista = this.trabajadoresVisibles;
+    if (lista.length === 0) {
+      Swal.fire('Sin empleados', 'No hay personal visible en esta vista.', 'info');
+      return;
+    }
+
+    const res = await Swal.fire({
+      title: '¿Aplicar Domingo a todos?',
+      text: `Marcará el Domingo como día de descanso a los ${lista.length} trabajadores visibles que aún no tienen días marcados esta semana.`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: 'Sí, aplicar',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#0F172A'
+    });
+    if (!res.isConfirmed) return;
+
+    let aplicados = 0;
+    for (const u of lista) {
+      const userId = u.uid || u.idFirestore;
+      if (!userId) continue;
+      const actuales = this.diasDescansoDe(userId);
+      if (actuales.length > 0) continue; // respetar quien ya tiene algo
+      this.guardarDescansoDebounce(u, this.semanaActualISO(), ['Domingo']);
+      aplicados++;
+    }
+
+    Swal.fire({
+      toast: true, position: 'top-end', showConfirmButton: false, timer: 3500,
+      icon: 'success', title: `Domingo aplicado a ${aplicados} personas`
+    });
+  }
+
+  trackByUser(_index: number, u: any): any {
+    return u.uid || u.idFirestore || u.usuario;
+  }
+}

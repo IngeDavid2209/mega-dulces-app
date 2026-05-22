@@ -47,10 +47,17 @@ export const routes: Routes = [
   },
   
   // 🔥 PANEL DE ÁREAS OPERATIVAS 🔥
-  { 
-    path: 'areas', 
+  {
+    path: 'areas',
     canActivate: [authGuard],
-    loadComponent: () => import('./modules/dashboard/areas/areas').then(m => m.AreasComponent) 
+    loadComponent: () => import('./modules/dashboard/areas/areas').then(m => m.AreasComponent)
+  },
+
+  // 📅 DÍAS DE DESCANSO SEMANALES
+  {
+    path: 'descansos',
+    canActivate: [authGuard],
+    loadComponent: () => import('./modules/dashboard/descansos/descansos').then(m => m.DescansosComponent)
   },
   
   // 🔥 NUEVA RUTA: PERFIL DEL USUARIO 🔥

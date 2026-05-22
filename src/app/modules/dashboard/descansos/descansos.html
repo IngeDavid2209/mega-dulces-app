@@ -1,0 +1,192 @@
+<div class="app-layout">
+  <header class="header">
+    <div class="header-left">
+      <button class="btn-menu-mobile" (click)="toggleMenu()">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="3" y1="12" x2="21" y2="12"></line>
+          <line x1="3" y1="6" x2="21" y2="6"></line>
+          <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+      </button>
+      <div class="header-logo-wrap" style="background: transparent !important; width: auto; padding: 0 4px;">
+        <img src="https://static.wixstatic.com/media/fd397e_0fd82a1ecec84a118ceeb603b493f25a~mv2.png"
+             style="height: 36px; object-fit: contain;">
+      </div>
+      <div class="header-brand">Mega Dulces<small>Panel Enterprise</small></div>
+    </div>
+  </header>
+
+  <div class="main-wrapper">
+    <div class="mobile-overlay" *ngIf="isMenuOpen" (click)="toggleMenu()"></div>
+    <app-sidebar [currentUser]="currentUser" [isMenuOpen]="isMenuOpen" (closeMenu)="isMenuOpen = false"></app-sidebar>
+
+    <div class="content">
+
+      <!-- ╔══════════════════════════════════════════════════╗ -->
+      <!-- ║   HEADER PRO                                     ║ -->
+      <!-- ╚══════════════════════════════════════════════════╝ -->
+      <div class="desc-header">
+        <div class="desc-header-icon" aria-hidden="true">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+          </svg>
+        </div>
+        <div class="desc-header-text">
+          <h1 class="desc-header-title">Días de Descanso</h1>
+          <p class="desc-header-sub">Marca los días libres de cada trabajador, semana por semana</p>
+        </div>
+      </div>
+
+      <!-- ╔══════════════════════════════════════════════════╗ -->
+      <!-- ║   NAVEGADOR DE SEMANA + ACCIONES MASIVAS         ║ -->
+      <!-- ╚══════════════════════════════════════════════════╝ -->
+      <div class="desc-week-bar">
+        <div class="desc-week-nav">
+          <button type="button" class="desc-week-arrow" (click)="cambiarSemana(-1)" aria-label="Semana anterior">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polyline points="15 18 9 12 15 6"></polyline>
+            </svg>
+          </button>
+          <div class="desc-week-label">
+            <span class="desc-week-text">{{ textoSemana() }}</span>
+            <span class="desc-week-iso">Semana {{ semanaActualISO() }}</span>
+          </div>
+          <button type="button" class="desc-week-arrow" (click)="cambiarSemana(1)" aria-label="Semana siguiente">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polyline points="9 18 15 12 9 6"></polyline>
+            </svg>
+          </button>
+        </div>
+
+        <div class="desc-week-actions">
+          <button type="button" class="desc-quick-btn"
+                  *ngIf="!esSemanaActualReal()"
+                  (click)="irASemanaActual()">
+            📍 Esta semana
+          </button>
+          <button type="button" class="desc-quick-btn desc-quick-btn--bulk"
+                  (click)="aplicarDomingoATodos()">
+            🚀 Domingo a todos
+          </button>
+        </div>
+      </div>
+
+      <!-- ╔══════════════════════════════════════════════════╗ -->
+      <!-- ║   FILTROS                                        ║ -->
+      <!-- ╚══════════════════════════════════════════════════╝ -->
+      <div class="desc-filters">
+        <div class="desc-filter-field desc-filter-field--wide">
+          <label class="desc-filter-label" for="desc-buscar">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            Buscar empleado
+          </label>
+          <input id="desc-buscar" type="text" class="desc-input"
+                 [(ngModel)]="terminoBusqueda" placeholder="Escribe un nombre...">
+        </div>
+
+        <div class="desc-filter-field">
+          <label class="desc-filter-label" for="desc-sucursal">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"></path>
+              <polyline points="9 22 9 12 15 12 15 22"></polyline>
+            </svg>
+            Sucursal
+          </label>
+          <select id="desc-sucursal" class="desc-input desc-select" [(ngModel)]="sucursalSeleccionada">
+            <option value="Todas">Todas las sucursales</option>
+            <option *ngFor="let s of sucursalesDisponibles()" [value]="s">{{ s }}</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- ╔══════════════════════════════════════════════════╗ -->
+      <!-- ║   PLANILLA SEMANAL                               ║ -->
+      <!-- ╚══════════════════════════════════════════════════╝ -->
+      <div class="desc-grid-wrap">
+        <div class="desc-grid">
+
+          <!-- Header de días -->
+          <div class="desc-grid-header">
+            <div class="desc-grid-empleado-header">Empleado</div>
+            <div class="desc-grid-dia-header" *ngFor="let dia of diasSemana; let i = index">
+              <span class="desc-dia-letra">{{ dia.substring(0, 3) }}</span>
+              <span class="desc-dia-fecha">{{ fechaDelDia(i) }}</span>
+            </div>
+            <div class="desc-grid-acciones-header">Total</div>
+          </div>
+
+          <!-- Filas de empleados -->
+          <div class="desc-grid-row" *ngFor="let u of trabajadoresVisibles; trackBy: trackByUser">
+            <div class="desc-grid-empleado">
+              <div class="desc-empleado-avatar">{{ (u.nombre || '?').charAt(0) | uppercase }}</div>
+              <div class="desc-empleado-info">
+                <div class="desc-empleado-nombre">{{ u.nombre }}</div>
+                <div class="desc-empleado-sucursal">
+                  {{ (u.sucursales && u.sucursales[0]) || u.sucursal || 'Sin sucursal' }}
+                </div>
+              </div>
+            </div>
+
+            <button type="button" class="desc-cell"
+                    *ngFor="let dia of diasSemana"
+                    [class.selected]="tieneDescansoEnDia(u.uid || u.idFirestore, dia)"
+                    (click)="toggleDia(u, dia)"
+                    [attr.aria-label]="dia + ' de descanso para ' + u.nombre">
+              <svg *ngIf="tieneDescansoEnDia(u.uid || u.idFirestore, dia)" width="22" height="22" viewBox="0 0 24 24"
+                   fill="none" stroke="currentColor" stroke-width="3">
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+            </button>
+
+            <div class="desc-grid-acciones">
+              <span class="desc-total-badge"
+                    [class.desc-total-badge--zero]="contarDescansosUsuario(u.uid || u.idFirestore) === 0">
+                {{ contarDescansosUsuario(u.uid || u.idFirestore) }}
+              </span>
+              <button type="button" class="desc-clear-btn"
+                      *ngIf="contarDescansosUsuario(u.uid || u.idFirestore) > 0"
+                      (click)="limpiarSemanaDelUsuario(u, $event)"
+                      aria-label="Limpiar descansos de esta semana">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- Estado vacío -->
+          <div class="desc-empty" *ngIf="trabajadoresVisibles.length === 0">
+            <div class="desc-empty-icon">👥</div>
+            <h3>No hay empleados que coincidan</h3>
+            <p>Ajusta los filtros o agrega personal en la pantalla de Usuarios.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Leyenda -->
+      <div class="desc-legend">
+        <div class="desc-legend-title">¿Cómo funciona?</div>
+        <ul class="desc-legend-list">
+          <li>
+            <span class="desc-legend-swatch desc-legend-swatch--marcado"></span>
+            Día marcado = descanso del trabajador
+          </li>
+          <li>
+            <span class="desc-legend-swatch"></span>
+            Click en cualquier celda para marcar/desmarcar. Se guarda automáticamente.
+          </li>
+          <li>
+            <span class="desc-legend-swatch desc-legend-swatch--info"></span>
+            Cuando crees una tarea para alguien en su día de descanso, el sistema te avisará.
+          </li>
+        </ul>
+      </div>
+
+    </div>
+  </div>
+</div>

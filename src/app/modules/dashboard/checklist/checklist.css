@@ -1784,6 +1784,74 @@
   font-weight: 600;
 }
 
+/* ⏱ SELECTOR DE TIEMPO entre Antes y Después (paso de evidencia) */
+.wizard-tiempo-ad {
+  margin-top: 20px;
+  background: #FFFBEB;
+  border: 2px solid #FDE68A;
+  border-radius: 14px;
+  padding: 18px;
+}
+
+.wizard-tiempo-ad-header {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.wizard-tiempo-ad-header strong {
+  font-size: 15px;
+  font-weight: 800;
+  color: #92400E;
+}
+
+.wizard-tiempo-ad-header small {
+  font-size: 12px;
+  color: #78350F;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.wizard-tiempo-ad-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.wizard-tiempo-chip {
+  flex: 1;
+  min-width: 90px;
+  padding: 12px 14px;
+  background: #FFFFFF;
+  border: 2px solid #FCD34D;
+  border-radius: 10px;
+  color: #92400E;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 0.15s, background 0.15s, border-color 0.15s;
+}
+
+.wizard-tiempo-chip:hover {
+  background: #FEF3C7;
+  transform: translateY(-1px);
+}
+
+.wizard-tiempo-chip.selected {
+  background: #92400E;
+  color: #FFFFFF;
+  border-color: #78350F;
+}
+
+.wizard-tiempo-chip--ilimitado.selected {
+  background: #047857;
+  color: #FFFFFF;
+  border-color: #065F46;
+}
+
+
 /* 📅 PASO ¿DESDE Y HASTA CUÁNDO? — tarjetas de vigencia (rutinas) */
 .wizard-vigencia-grid {
   display: grid;

@@ -56,7 +56,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   formStore = '';
   formItems: any[] = [{
     text: '', requiresPhoto: false, requiresAntesDespues: false, requiresVariasFotos: false,
-    permiteGaleria: false, permiteDocumentos: false, tiempoEstimado: 30,
+    permiteGaleria: false, permiteDocumentos: false, tiempoEstimado: 60,
     fechaInicio: '', horaInicio: '', fechaLimite: '', horaLimite: '',
     date: '', time: ''
   }];
@@ -69,7 +69,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   // ✅ Reglas de rutina con horaInicio + horaLimite + 📅 fechaInicio + fechaFin
   formRutinas: any[] = [{
     text: '', requiresPhoto: false, requiresAntesDespues: false, requiresVariasFotos: false,
-    permiteGaleria: false, permiteDocumentos: false, tiempoEstimado: 30,
+    permiteGaleria: false, permiteDocumentos: false, tiempoEstimado: 60,
     frecuencia: 'Diaria', fechaInicio: '', fechaFin: null,
     horaInicio: '', horaLimite: '',
     diaSemana: 'Lunes', diaMes: 1
@@ -193,6 +193,27 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     this.formItems[0].requiresVariasFotos = false;
     if (tipo === 'foto') this.formItems[0].requiresPhoto = true;
     else if (tipo === 'antesDespues') this.formItems[0].requiresAntesDespues = true;
+  }
+
+  /** Cambia el tiempo (en minutos) entre la foto "Antes" y la foto "Después". 0 = sin límite. */
+  seleccionarTiempoAntesDespues(minutos: number) {
+    if (this.formItems[0]) this.formItems[0].tiempoEstimado = minutos;
+  }
+
+  /** Cambia el tiempo (en minutos) entre la foto "Antes" y la foto "Después" en rutinas. */
+  seleccionarTiempoAntesDespuesRutina(minutos: number) {
+    if (this.formRutinas[0]) this.formRutinas[0].tiempoEstimado = minutos;
+  }
+
+  /** Texto humano del tiempo entre Antes/Después (para el resumen). */
+  getTextoTiempoAD(minutos: number | null | undefined): string {
+    if (!minutos || minutos <= 0) return 'Sin límite';
+    if (minutos === 30) return '30 minutos';
+    if (minutos === 60) return '1 hora';
+    if (minutos === 120) return '2 horas';
+    if (minutos === 240) return '4 horas';
+    if (minutos % 60 === 0) return `${minutos / 60} horas`;
+    return `${minutos} minutos`;
   }
 
   get empleadosFiltradosWizard() {
@@ -506,14 +527,18 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   }
 
   isDespuesExpirado(item: any): boolean {
-    if (!item.requiresAntesDespues || !item.photoAntesTimestamp || !item.tiempoEstimado) return false;
+    if (!item.requiresAntesDespues || !item.photoAntesTimestamp) return false;
+    // 🔥 Si tiempoEstimado es 0/null = "Sin límite": nunca expira
+    if (!item.tiempoEstimado || item.tiempoEstimado <= 0) return false;
     const limite = item.photoAntesTimestamp + (item.tiempoEstimado * 60000);
     return Date.now() > limite;
   }
 
   getTiempoRestanteTexto(item: any): string {
-    if (!item.requiresAntesDespues || !item.photoAntesTimestamp || !item.tiempoEstimado) return '';
+    if (!item.requiresAntesDespues || !item.photoAntesTimestamp) return '';
     if (item.photoDespues) return 'Completado';
+    // 🔥 Sin límite: no mostramos cuenta regresiva
+    if (!item.tiempoEstimado || item.tiempoEstimado <= 0) return 'Sin límite de tiempo';
     const limite = item.photoAntesTimestamp + (item.tiempoEstimado * 60000);
     const ahora = Date.now();
     if (ahora > limite) return 'Agotado';
@@ -715,12 +740,15 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   isTareaVencida(item: any, checklistDate: string): boolean {
     if (!checklistDate) return false;
     let hora = '23'; let minuto = '59';
-    if (item.tipo === 'rutina' && item.horaLimite) {
-      const partes = item.horaLimite.split(':');
-      if (partes.length === 2) { hora = partes[0]; minuto = partes[1]; }
-    } else if (item.tipo === 'tarea' && item.time) {
-      const partes = item.time.split(':');
-      if (partes.length === 2) { hora = partes[0]; minuto = partes[1]; }
+    // 🔥 Prioriza horaLimite (campo actual) sobre time (legacy). Aplica a ambos tipos.
+    // Esto evita que tareas con campos desincronizados se cierren con una hora vieja.
+    const horaUsar = item.horaLimite || item.time;
+    if (horaUsar && typeof horaUsar === 'string') {
+      const partes = horaUsar.split(':');
+      if (partes.length >= 2) {
+        hora = partes[0];
+        minuto = partes[1];
+      }
     }
     const [year, month, day] = checklistDate.split('-');
     const deadline = new Date(Number(year), Number(month) - 1, Number(day), Number(hora), Number(minuto), 59);
@@ -1090,7 +1118,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     this.formStore = this.sucursalesDisponibles().length > 0 ? this.sucursalesDisponibles()[0] : '';
     this.formItems = [{
       text: '', requiresPhoto: false, requiresAntesDespues: false, requiresVariasFotos: false,
-      permiteGaleria: false, permiteDocumentos: false, tiempoEstimado: 30,
+      permiteGaleria: false, permiteDocumentos: false, tiempoEstimado: 60,
       fechaInicio: '', horaInicio: '', fechaLimite: '', horaLimite: '',
       date: '', time: ''
     }];
@@ -1113,7 +1141,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   agregarItem() {
     this.formItems.push({
       text: '', requiresPhoto: false, requiresAntesDespues: false, requiresVariasFotos: false,
-      permiteGaleria: false, permiteDocumentos: false, tiempoEstimado: 30,
+      permiteGaleria: false, permiteDocumentos: false, tiempoEstimado: 60,
       fechaInicio: '', horaInicio: '', fechaLimite: '', horaLimite: '',
       date: '', time: ''
     });
@@ -1380,7 +1408,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     const hoyStr = this.hoyIsoStr;
     this.formRutinas = [{
       text: '', requiresPhoto: false, requiresAntesDespues: false, requiresVariasFotos: false,
-      permiteGaleria: false, permiteDocumentos: false, tiempoEstimado: 30,
+      permiteGaleria: false, permiteDocumentos: false, tiempoEstimado: 60,
       frecuencia: 'Diaria', fechaInicio: hoyStr, fechaFin: null,
       horaInicio: '', horaLimite: '',
       diaSemana: 'Lunes', diaMes: 1
@@ -1397,7 +1425,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   agregarRutina() {
     this.formRutinas.push({
       text: '', requiresPhoto: false, requiresAntesDespues: false, requiresVariasFotos: false,
-      permiteGaleria: false, permiteDocumentos: false, tiempoEstimado: 30,
+      permiteGaleria: false, permiteDocumentos: false, tiempoEstimado: 60,
       frecuencia: 'Diaria', fechaFin: null,
       horaInicio: '', horaLimite: '',
       diaSemana: 'Lunes', diaMes: 1

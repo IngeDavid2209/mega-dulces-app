@@ -113,133 +113,267 @@
     </aside>
 
     <div class="content">
-      <div class="section-header" style="display: flex; flex-direction: column; gap: 20px; margin-bottom: 25px;">
-        <div>
-          <div class="section-title">Calendario de Actividades</div>
-          <div class="section-sub">Auditoría visual del rendimiento del personal por día</div>
+      <!-- ╔══════════════════════════════════════════════════════╗ -->
+      <!-- ║   HEADER PRO DE CALENDARIO                           ║ -->
+      <!-- ╚══════════════════════════════════════════════════════╝ -->
+      <div class="cal-header-card">
+        <div class="cal-header-icon" aria-hidden="true">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+            <line x1="16" y1="2" x2="16" y2="6"></line>
+            <line x1="8" y1="2" x2="8" y2="6"></line>
+            <line x1="3" y1="10" x2="21" y2="10"></line>
+          </svg>
         </div>
-
-        <div
-          style="display: flex; gap: 15px; align-items: center; flex-wrap: wrap; background: white; padding: 15px; border-radius: 12px; border: 1px solid var(--border); box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
-          <div class="filter-group" style="position: relative; flex: 1; min-width: 200px;">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-              style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #64748B;">
-              <circle cx="11" cy="11" r="8"></circle>
-              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-            </svg>
-            <input type="text" class="form-input" [(ngModel)]="terminoBusqueda" (input)="alCambiarFiltro()"
-              placeholder="Buscar empleado..."
-              style="padding-left: 36px; width: 100%; box-sizing: border-box; height: 38px;">
-          </div>
-
-          <div class="filter-group">
-            <label style="font-size: 11px; font-weight: 700; color: #64748B; margin-right: 8px;">ÁREA:</label>
-            <select class="form-input" [(ngModel)]="areaSeleccionada" (change)="alCambiarFiltro()"
-              style="width: 160px; padding: 8px; height: 38px;">
-              <option value="Todas">Todas las Áreas</option>
-              <option *ngFor="let area of areas()" [value]="area.nombre">{{ area.nombre }}</option>
-            </select>
-          </div>
-
-          <div class="filter-group">
-            <label style="font-size: 11px; font-weight: 700; color: #64748B; margin-right: 8px;">EMPLEADO:</label>
-            <select class="form-input" [(ngModel)]="empleadoSeleccionado" (change)="alCambiarFiltro()"
-              style="width: 200px; padding: 8px; height: 38px;">
-              <option value="Todos">Todos ({{ empleadosFiltrados.length }})</option>
-              <option *ngFor="let emp of empleadosFiltrados" [value]="emp.nombre">{{ emp.nombre }}</option>
-            </select>
-          </div>
-
-          <div class="filter-group" style="display: flex; flex-direction: column; gap: 6px;">
-            <label
-              style="font-size: 11px; font-weight: 800; color: #1E3A8A; text-transform: uppercase; letter-spacing: 0.5px;">Auditoría
-              Rápida:</label>
-            <div
-              style="display: flex; background: #F8FAFC; border-radius: 10px; border: 1px solid #CBD5E1; overflow: hidden; height: 38px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
-              <button (click)="irAHoy()"
-                style="background: white; border: none; border-right: 1px solid #E2E8F0; padding: 0 16px; font-size: 13px; font-weight: 800; color: #0F172A; cursor: pointer; transition: 0.2s;"
-                onmouseover="this.style.background='#EFF6FF'; this.style.color='#2563EB'"
-                onmouseout="this.style.background='white'; this.style.color='#0F172A'">Hoy</button>
-              <button (click)="irAAyer()"
-                style="background: white; border: none; border-right: 1px solid #E2E8F0; padding: 0 16px; font-size: 13px; font-weight: 700; color: #475569; cursor: pointer; transition: 0.2s;"
-                onmouseover="this.style.background='#F8FAFC'; this.style.color='#0F172A'"
-                onmouseout="this.style.background='white'; this.style.color='#475569'">Ayer</button>
-              <div
-                style="position: relative; display: flex; align-items: center; background: white; padding: 0 10px; cursor: pointer; transition: 0.2s;"
-                onmouseover="this.style.background='#F8FAFC'" onmouseout="this.style.background='white'">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.5"
-                  style="position: absolute; left: 12px; pointer-events: none;">
-                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                  <line x1="16" y1="2" x2="16" y2="6"></line>
-                  <line x1="8" y1="2" x2="8" y2="6"></line>
-                  <line x1="3" y1="10" x2="21" y2="10"></line>
-                </svg>
-                <input type="date" [(ngModel)]="fechaBuscada" (change)="irAFechaPrecisa($event)"
-                  style="border: none; background: transparent; padding-left: 26px; font-size: 13px; font-weight: 700; color: #1E3A8A; cursor: pointer; outline: none; width: 135px; line-height: 38px;">
-              </div>
-            </div>
-          </div>
+        <div class="cal-header-text">
+          <h1 class="cal-header-title">Calendario Operativo</h1>
+          <p class="cal-header-sub">Auditoría visual del rendimiento del personal día por día</p>
         </div>
+        <span class="cal-header-badge" *ngIf="currentUser?.rol === 'admin'">
+          <span class="cal-header-badge-dot"></span>
+          Admin
+        </span>
+      </div>
 
-        <div class="month-navigation"
-          style="display: flex; align-items: center; background: #F8FAFC; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; height: 38px; margin-left: auto;">
-          <button class="btn-nav" (click)="cambiarMes(-1)" style="padding: 0 10px;">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <!-- ╔══════════════════════════════════════════════════════╗ -->
+      <!-- ║   NAVEGADOR DE MES (centro) + ATAJOS RÁPIDOS         ║ -->
+      <!-- ╚══════════════════════════════════════════════════════╝ -->
+      <div class="cal-month-bar">
+        <div class="cal-month-nav">
+          <button type="button" class="cal-month-arrow" (click)="cambiarMes(-1)" aria-label="Mes anterior">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
               <polyline points="15 18 9 12 15 6"></polyline>
             </svg>
           </button>
-          <div
-            style="padding: 0 15px; font-weight: 700; color: var(--primary-navy); min-width: 140px; text-align: center; font-size: 13px;">
-            {{ mesActualNombre }} {{ anioActual }}
+          <div class="cal-month-label">
+            <span class="cal-month-name">{{ mesActualNombre }}</span>
+            <span class="cal-month-year">{{ anioActual }}</span>
           </div>
-          <button class="btn-nav" (click)="cambiarMes(1)" style="padding: 0 10px;">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <button type="button" class="cal-month-arrow" (click)="cambiarMes(1)" aria-label="Mes siguiente">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
               <polyline points="9 18 15 12 9 6"></polyline>
             </svg>
           </button>
         </div>
+
+        <div class="cal-quick-actions">
+          <button type="button" class="cal-quick-btn cal-quick-btn--primary" (click)="irAHoy()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="8" x2="12" y2="12"></line>
+              <line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+            Hoy
+          </button>
+          <button type="button" class="cal-quick-btn" (click)="irAAyer()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+              <polyline points="11 17 6 12 11 7"></polyline>
+              <path d="M18 18v-2a4 4 0 0 0-4-4H6"></path>
+            </svg>
+            Ayer
+          </button>
+          <label class="cal-quick-date">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="16" y1="2" x2="16" y2="6"></line>
+              <line x1="8" y1="2" x2="8" y2="6"></line>
+              <line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>
+            <input type="date" [(ngModel)]="fechaBuscada" (change)="irAFechaPrecisa($event)">
+          </label>
+        </div>
       </div>
 
+      <!-- ╔══════════════════════════════════════════════════════╗ -->
+      <!-- ║   PANEL DE FILTROS                                   ║ -->
+      <!-- ╚══════════════════════════════════════════════════════╝ -->
+      <section class="cal-filter-card" aria-label="Filtros del calendario">
+        <div class="cal-filter-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2.5" aria-hidden="true">
+            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+          </svg>
+          Filtros de visualización
+        </div>
+
+        <div class="cal-filter-grid">
+          <div class="cal-filter-field cal-filter-field--wide">
+            <label class="cal-filter-label" for="cal-buscar">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+              Buscar empleado
+            </label>
+            <input id="cal-buscar" type="text" class="cal-input"
+                   [(ngModel)]="terminoBusqueda" (input)="alCambiarFiltro()"
+                   placeholder="Escribe un nombre...">
+          </div>
+
+          <div class="cal-filter-field">
+            <label class="cal-filter-label" for="cal-area">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                <rect x="3" y="3" width="7" height="7"></rect>
+                <rect x="14" y="3" width="7" height="7"></rect>
+                <rect x="14" y="14" width="7" height="7"></rect>
+                <rect x="3" y="14" width="7" height="7"></rect>
+              </svg>
+              Área
+            </label>
+            <select id="cal-area" class="cal-input cal-select"
+                    [(ngModel)]="areaSeleccionada" (change)="alCambiarFiltro()">
+              <option value="Todas">Todas las áreas</option>
+              <option *ngFor="let area of areas()" [value]="area.nombre">{{ area.nombre }}</option>
+            </select>
+          </div>
+
+          <div class="cal-filter-field">
+            <label class="cal-filter-label" for="cal-empleado">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+              </svg>
+              Empleado
+            </label>
+            <select id="cal-empleado" class="cal-input cal-select"
+                    [(ngModel)]="empleadoSeleccionado" (change)="alCambiarFiltro()">
+              <option value="Todos">Todos ({{ empleadosFiltrados.length }})</option>
+              <option *ngFor="let emp of empleadosFiltrados" [value]="emp.nombre">{{ emp.nombre }}</option>
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <!-- ╔══════════════════════════════════════════════════════╗ -->
+      <!-- ║   KPIs DEL MES                                       ║ -->
+      <!-- ╚══════════════════════════════════════════════════════╝ -->
+      <div class="cal-kpis">
+        <div class="cal-kpi cal-kpi--completo">
+          <div class="cal-kpi-icon" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+          </div>
+          <div class="cal-kpi-body">
+            <div class="cal-kpi-num">{{ getKpiMesCompletadas() }}</div>
+            <div class="cal-kpi-label">Completadas</div>
+          </div>
+        </div>
+
+        <div class="cal-kpi cal-kpi--pendiente">
+          <div class="cal-kpi-icon" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+          </div>
+          <div class="cal-kpi-body">
+            <div class="cal-kpi-num">{{ getKpiMesPendientes() }}</div>
+            <div class="cal-kpi-label">Pendientes</div>
+          </div>
+        </div>
+
+        <div class="cal-kpi cal-kpi--vencido">
+          <div class="cal-kpi-icon" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="8" x2="12" y2="12"></line>
+              <line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+          </div>
+          <div class="cal-kpi-body">
+            <div class="cal-kpi-num">{{ getKpiMesVencidas() }}</div>
+            <div class="cal-kpi-label">Vencidas</div>
+          </div>
+        </div>
+
+        <div class="cal-kpi cal-kpi--agenda">
+          <div class="cal-kpi-icon" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+              <polyline points="17 21 17 13 7 13 7 21"></polyline>
+              <polyline points="7 3 7 8 15 8"></polyline>
+            </svg>
+          </div>
+          <div class="cal-kpi-body">
+            <div class="cal-kpi-num">{{ getKpiMesAgenda() }}</div>
+            <div class="cal-kpi-label">Agenda personal</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ╔══════════════════════════════════════════════════════╗ -->
+      <!-- ║   CALENDARIO                                         ║ -->
+      <!-- ╚══════════════════════════════════════════════════════╝ -->
       <div class="calendario-wrapper">
-        <div class="calendar-container">
+        <div class="calendar-container cal-calendar">
           <div class="calendar-header">
-            <div class="calendar-day-name" *ngFor="let dia of diasSemana">{{ dia }}</div>
+            <div class="calendar-day-name" *ngFor="let dia of diasSemana; let i = index"
+                 [class.cal-day-name--weekend]="i === 0 || i === 6">{{ dia }}</div>
           </div>
           <div class="calendar-grid">
-            <div class="calendar-cell" *ngFor="let dia of diasCalendario()" [class.empty]="!dia"
-              [class.is-today]="dia?.esHoy" [class.has-tasks]="dia?.total > 0" (click)="abrirDetalleDia(dia)">
+            <div class="calendar-cell"
+                 *ngFor="let dia of diasCalendario(); let i = index"
+                 [class.empty]="!dia"
+                 [class.is-today]="dia?.esHoy"
+                 [class.has-tasks]="dia?.total > 0 || dia?.personalesCount > 0"
+                 [class.cal-cell--weekend]="esFinDeSemana(i)"
+                 [attr.data-estado]="estadoCelda(dia)"
+                 (click)="abrirDetalleDia(dia)">
+
+              <!-- Barra superior de estado predominante -->
+              <div class="cal-cell-bar" *ngIf="dia && estadoCelda(dia)"></div>
+
               <div class="cell-date" *ngIf="dia">
                 <span class="date-number">{{ dia.numero }}</span>
+                <span class="cal-today-pill" *ngIf="dia.esHoy">HOY</span>
               </div>
+
               <div class="cell-content" *ngIf="dia && (dia.total > 0 || dia.personalesCount > 0)">
-              <div class="task-summary">
-                <div class="summary-dot complete" *ngIf="dia.completadas > 0">{{ dia.completadas }}</div>
-                <div class="summary-dot pending" *ngIf="dia.pendientes > 0">{{ dia.pendientes }}</div>
-                <div class="summary-dot missed" *ngIf="dia.vencidas > 0">{{ dia.vencidas }}</div>
-                
-                <div class="summary-dot" *ngIf="dia.personalesCount > 0" 
-                     style="background: #3B82F6; border: 1.5px solid #DBEAFE; color: white;"
-                     title="{{dia.personalesCount}} Tareas Personales">
-                  {{ dia.personalesCount }}
+                <div class="task-summary">
+                  <div class="summary-dot complete" *ngIf="dia.completadas > 0"
+                       title="{{ dia.completadas }} completadas">{{ dia.completadas }}</div>
+                  <div class="summary-dot pending" *ngIf="dia.pendientes > 0"
+                       title="{{ dia.pendientes }} pendientes">{{ dia.pendientes }}</div>
+                  <div class="summary-dot missed" *ngIf="dia.vencidas > 0"
+                       title="{{ dia.vencidas }} vencidas">{{ dia.vencidas }}</div>
+                  <div class="summary-dot personal" *ngIf="dia.personalesCount > 0"
+                       title="{{ dia.personalesCount }} tareas personales">{{ dia.personalesCount }}</div>
                 </div>
-              </div>
-              
-              <div style="font-size: 10px; text-align: center; color: #64748B; font-weight: 700; margin-top: 4px;">
-                {{ dia.total + dia.personalesCount }} Actividades
+
+                <div class="cal-cell-footer">
+                  {{ dia.total + dia.personalesCount }} {{ (dia.total + dia.personalesCount) === 1 ? 'actividad' : 'actividades' }}
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
-      <div
-        style="display: flex; flex-wrap: wrap; gap: 20px; margin-top: 20px; justify-content: center; font-size: 12px; font-weight: 600; color: #64748B;">
-        <span style="display: flex; align-items: center; gap: 5px;"><span
-            style="width:12px; height:12px; background:#10B981; border-radius:50%;"></span> Completadas</span>
-        <span style="display: flex; align-items: center; gap: 5px;"><span
-            style="width:12px; height:12px; background:#F59E0B; border-radius:50%;"></span> Pendientes (Hoy)</span>
-        <span style="display: flex; align-items: center; gap: 5px;"><span
-            style="width:12px; height:12px; background:#EF4444; border-radius:50%;"></span> Vencidas / No Hechas</span>
-            <span style="display: flex; align-items: center; gap: 5px;"><span style="width:12px; height:12px; background:#3B82F6; border-radius:50%;"></span> Agenda Personal</span>
+
+      <!-- ╔══════════════════════════════════════════════════════╗ -->
+      <!-- ║   LEYENDA PROFESIONAL                                ║ -->
+      <!-- ╚══════════════════════════════════════════════════════╝ -->
+      <div class="cal-legend">
+        <div class="cal-legend-title">Leyenda</div>
+        <div class="cal-legend-items">
+          <span class="cal-legend-item">
+            <span class="cal-legend-swatch cal-legend-swatch--completo"></span>
+            Completadas
+          </span>
+          <span class="cal-legend-item">
+            <span class="cal-legend-swatch cal-legend-swatch--pendiente"></span>
+            Pendientes (hoy)
+          </span>
+          <span class="cal-legend-item">
+            <span class="cal-legend-swatch cal-legend-swatch--vencido"></span>
+            Vencidas / no hechas
+          </span>
+          <span class="cal-legend-item">
+            <span class="cal-legend-swatch cal-legend-swatch--personal"></span>
+            Agenda personal
+          </span>
+        </div>
       </div>
     </div>
   </div>

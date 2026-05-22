@@ -289,4 +289,48 @@ async generarCalendario() {
   cerrarFoto() {
     this.fotoAmpliada.set(null);
   }
+
+  // ============================================================================
+  // 📊 KPIs DEL MES (para el panel resumen)
+  // ============================================================================
+  getKpiMesCompletadas(): number {
+    return this.diasCalendario().reduce((sum, d) => sum + (d?.completadas || 0), 0);
+  }
+
+  getKpiMesPendientes(): number {
+    return this.diasCalendario().reduce((sum, d) => sum + (d?.pendientes || 0), 0);
+  }
+
+  getKpiMesVencidas(): number {
+    return this.diasCalendario().reduce((sum, d) => sum + (d?.vencidas || 0), 0);
+  }
+
+  getKpiMesAgenda(): number {
+    return this.diasCalendario().reduce((sum, d) => sum + (d?.personalesCount || 0), 0);
+  }
+
+  getKpiMesTotal(): number {
+    return this.diasCalendario().reduce(
+      (sum, d) => sum + (d?.total || 0) + (d?.personalesCount || 0), 0
+    );
+  }
+
+  // Estado predominante de una celda para colorear su barra superior
+  estadoCelda(dia: any): 'completo' | 'pendiente' | 'vencido' | 'mixto' | null {
+    if (!dia) return null;
+    const c = dia.completadas || 0;
+    const p = dia.pendientes || 0;
+    const v = dia.vencidas || 0;
+    if (c + p + v === 0) return null;
+    if (v > 0) return 'vencido';
+    if (p > 0 && c > 0) return 'mixto';
+    if (p > 0) return 'pendiente';
+    return 'completo';
+  }
+
+  // ¿Es sábado o domingo? (recibe el índice de la grilla)
+  esFinDeSemana(indiceEnGrilla: number): boolean {
+    const dow = indiceEnGrilla % 7; // 0 = Dom, 6 = Sáb
+    return dow === 0 || dow === 6;
+  }
 }

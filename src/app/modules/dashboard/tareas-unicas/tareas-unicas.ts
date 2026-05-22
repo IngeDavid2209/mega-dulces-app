@@ -15,7 +15,10 @@ import { Auth } from '@angular/fire/auth';
 export class TareasUnicasComponent implements OnInit {
   isMenuOpen = false;
   currentUser: any = null;
-  
+    wizardStep: number = 1;
+  wizardTotalSteps: number = 6;
+  wizardTipoEvidencia: 'ninguna' | 'foto' | 'antesDespues' = 'ninguna';
+  terminoBusquedaEmpleadoWizard: string = '';
   nuevaTareaTexto: string = '';
   proyectosUnicos: any[] = [];
   

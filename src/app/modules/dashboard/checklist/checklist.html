@@ -523,189 +523,236 @@
       </div>
 
       <!-- ╔════════════════════════════════════════════════╗ -->
-      <!-- ║   MODAL DE TAREAS ÚNICAS                       ║ -->
+      <!-- ║   WIZARD DE TAREAS ÚNICAS (Modo Asistido)      ║ -->
       <!-- ╚════════════════════════════════════════════════╝ -->
-      <div class="modal-overlay" *ngIf="isModalOpen">
-        <div class="modal">
-          <div class="modal-header">
-            <div class="modal-title">Nueva Tarea Única</div>
-            <button class="modal-close" (click)="cerrarModal()"><svg width="24" height="24" viewBox="0 0 24 24"
-                fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-              </svg></button>
-          </div>
-          <div style="margin-bottom: 20px; padding-bottom: 12px; border-bottom: 1px dashed #cbd5e1; margin-top: 15px;">
-            <label
-              style="cursor: pointer; font-size: 15px; color: #3b82f6; display: inline-flex; align-items: center; gap: 8px; font-weight: 600;"
-              onmouseover="this.style.color='#2563eb'" onmouseout="this.style.color='#3b82f6'">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
-              </svg>
-              {{ formItems.length > 0 && formItems[0].archivoInstruccion === 'subiendo...' ? ' ⏳ Subiendo archivo a la nube...' : ((formItems.length > 0 && formItems[0].nombreArchivo) || 'Adjuntar foto o documento de instrucciones (Opcional)') }}
-              <input type="file" *ngIf="formItems.length > 0"
-                (change)="adjuntarDocumentoInstruccion($event, formItems[0])" style="display: none;"
-                accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,image/*">
-            </label>
-            <span
-              *ngIf="formItems.length > 0 && formItems[0].archivoInstruccion && formItems[0].archivoInstruccion !== 'subiendo...'"
-              (click)="quitarDocumentoInstruccion(formItems[0])"
-              style="color: #ef4444; cursor: pointer; margin-left: 15px; font-size: 13px; font-weight: bold; padding: 4px 8px; border-radius: 4px; background-color: #fee2e2;">
-              ❌ Quitar
-            </span>
-          </div>
-          <div class="modal-body">
-            <div class="form-group form-full">
-              <label class="form-label">Nombre de la operación</label>
-              <input class="form-input" type="text" [(ngModel)]="formName" placeholder="Ej: Acomodo especial">
-            </div>
-            <div class="form-group form-full">
-              <label class="form-label">Asignar usuarios</label>
-              <div class="checkbox-grid">
-                <label class="checkbox-label" *ngFor="let emp of empleadosFiltrados"
-                  [class.selected]="formAssigned.includes(emp.nombre)">
-                  <input type="checkbox" [checked]="formAssigned.includes(emp.nombre)"
-                    (change)="toggleEmpleado(emp.nombre)" class="custom-checkbox"> {{ emp.nombre }}
-                </label>
-              </div>
-            </div>
-            <button type="button" (click)="asignarATodoMiPersonal()" class="btn-link"
-              style="color: #6366f1; font-weight: bold; margin-bottom: 10px;">
-              🚀 Asignar a TODO el personal a cargo
-            </button>
-            <div class="form-group form-full">
-              <label class="form-label">Departamento / Sucursal</label>
-              <select class="form-input select-input" [(ngModel)]="formStore">
-                <option *ngFor="let suc of sucursalesDisponibles()" [value]="suc">{{ suc }}</option>
-              </select>
-            </div>
-            <div class="form-group form-full">
-              <label class="form-label">Actividades</label>
-              <div class="checklist-items">
-                <div class="checklist-item-wrap" *ngFor="let item of formItems; let i = index; trackBy: trackByIndex">
-                  <div class="item-wrap-top" style="display: flex; align-items: center; flex-wrap: wrap; gap: 8px;">
-                    <input class="form-input item-input" type="text" [(ngModel)]="item.text"
-                      placeholder="Descripción de la tarea" style="flex: 1; min-width: 180px;">
-                    <label class="photo-toggle"
-                      style="display: flex; align-items: center; cursor: pointer; background: #F8FAFC; padding: 6px 10px; border-radius: 6px; border: 1px solid #E2E8F0; font-size: 13px; font-weight: 600;">
-                      <input type="checkbox" [(ngModel)]="item.requiresPhoto"
-                        (change)="item.requiresPhoto ? item.requiresAntesDespues = false : null; item.requiresPhoto ? item.requiresVariasFotos = false : null"
-                        style="margin-right: 6px;">
-                      📷 1 Foto
-                    </label>
-                    <label class="photo-toggle"
-                      style="display: flex; align-items: center; cursor: pointer; background: #FFFBEB; color: #D97706; padding: 6px 10px; border-radius: 6px; border: 1px solid #FDE68A; font-size: 13px; font-weight: 600;">
-                      <input type="checkbox" [(ngModel)]="item.requiresAntesDespues"
-                        (change)="item.requiresAntesDespues ? item.requiresPhoto = false : null; item.requiresAntesDespues ? item.requiresVariasFotos = false : null"
-                        style="margin-right: 6px;">
-                      👁 Antes y Desp.
-                    </label>
-                    <label class="photo-toggle"
-                      style="display: flex; align-items: center; cursor: pointer; background: #F0FDF4; color: #16A34A; padding: 6px 10px; border-radius: 6px; border: 1px solid #BBF7D0; font-size: 13px; font-weight: 600;">
-                      <input type="checkbox" [(ngModel)]="item.requiresVariasFotos"
-                        (change)="item.requiresVariasFotos ? item.requiresPhoto = false : null; item.requiresVariasFotos ? item.requiresAntesDespues = false : null"
-                        style="margin-right: 6px;">
-                      🖼 Varias Fotos
-                    </label>
-                    <label class="photo-toggle"
-                      style="display: flex; align-items: center; cursor: pointer; background: #F1F5F9; color: #475569; padding: 6px 10px; border-radius: 6px; border: 1px solid #CBD5E1; font-size: 13px; font-weight: 600;">
-                      <input type="checkbox" [(ngModel)]="item.permiteGaleria"
-                        (change)="item.permiteGaleria && !item.requiresAntesDespues && !item.requiresVariasFotos ? item.requiresPhoto = true : null"
-                        style="margin-right: 6px;">
-                      🖼 Galería
-                    </label>
-                    <label class="photo-toggle"
-                      style="display: flex; align-items: center; cursor: pointer; background: #F3E8FF; color: #7E22CE; padding: 6px 10px; border-radius: 6px; border: 1px solid #E9D5FF; font-size: 13px; font-weight: 600;">
-                      <input type="checkbox" [(ngModel)]="item.permiteDocumentos"
-                        (change)="item.permiteDocumentos && !item.requiresAntesDespues && !item.requiresVariasFotos ? item.requiresPhoto = true : null"
-                        style="margin-right: 6px;">
-                      📄 Docs.
-                    </label>
-                    <button class="btn-remove" (click)="eliminarItem(i)" title="Eliminar"
-                      style="background: transparent; border: none; color: #EF4444; cursor: pointer; margin-left: 8px;">
-                      🗑
-                    </button>
-                  </div>
+      <div class="wizard-overlay" *ngIf="isModalOpen">
+        <div class="wizard-modal">
 
-                  <div class="form-times-block">
-                    <div class="form-times-title">
-                      ⏱️ HORARIO DE LA TAREA
-                      <small>(define cuándo inicia y cuándo vence)</small>
-                    </div>
-                    <div class="form-time-row">
-                      <div class="form-time-field">
-                        <label class="form-time-label">📅 Fecha de inicio</label>
-                        <input type="date" class="form-input form-time-input" [(ngModel)]="item.fechaInicio">
-                      </div>
-                      <div class="form-time-field">
-                        <label class="form-time-label">🕒 Hora de inicio <span class="req">*</span></label>
-                        <input type="time" class="form-input form-time-input" [(ngModel)]="item.horaInicio"
-                          [class.input-warning]="!item.horaInicio">
-                      </div>
-                    </div>
-                    <div class="form-time-row">
-                      <div class="form-time-field">
-                        <label class="form-time-label">⏳ Fecha límite</label>
-                        <input type="date" class="form-input form-time-input" [(ngModel)]="item.fechaLimite">
-                      </div>
-                      <div class="form-time-field">
-                        <label class="form-time-label">⏰ Hora límite <span class="req">*</span></label>
-                        <input type="time" class="form-input form-time-input" [(ngModel)]="item.horaLimite"
-                          [class.input-warning]="!item.horaLimite">
-                      </div>
-                    </div>
-                    <div class="form-time-warning" *ngIf="!item.horaInicio || !item.horaLimite">
-                      ⚠️ Si no llenas las horas, la tarjeta del checklist mostrará "—" / "Sin límite".
-                    </div>
-                  </div>
+          <!-- ───── HEADER con barra de progreso ───── -->
+          <div class="wizard-header">
+            <div class="wizard-title">Nueva Tarea</div>
+            <button class="wizard-close" (click)="cerrarModal()" aria-label="Cerrar">&times;</button>
+          </div>
+          <div class="wizard-progress-bar">
+            <div class="wizard-progress-fill" [style.width.%]="(wizardStep / wizardTotalSteps) * 100"></div>
+          </div>
+          <div class="wizard-step-counter">
+            Paso <strong>{{ wizardStep }}</strong> de {{ wizardTotalSteps }}
+          </div>
+
+          <!-- PASO 1 — NOMBRE DE LA TAREA -->
+          <div class="wizard-step" *ngIf="wizardStep === 1">
+            <h2 class="wizard-question">¿Cómo se llama la tarea?</h2>
+            <p class="wizard-hint">Escribe un nombre corto y claro. Por ejemplo: "Limpieza del baño"</p>
+            <input class="wizard-input wizard-input-big" type="text"
+                   [(ngModel)]="formName"
+                   placeholder="Escribe el nombre aquí..."
+                   autofocus>
+          </div>
+
+          <!-- PASO 2 — QUIÉN HARÁ LA TAREA -->
+          <div class="wizard-step" *ngIf="wizardStep === 2">
+            <h2 class="wizard-question">¿Quién va a hacer la tarea?</h2>
+            <p class="wizard-hint">Toca a la persona o personas que harán esta tarea</p>
+
+            <div class="wizard-search-box">
+              <input type="text" class="wizard-input"
+                     [(ngModel)]="terminoBusquedaEmpleadoWizard"
+                     placeholder="🔍 Buscar persona...">
+            </div>
+
+            <div class="wizard-empleados-grid">
+              <button type="button" class="wizard-empleado-card"
+                      *ngFor="let emp of empleadosFiltradosWizard"
+                      [class.selected]="formAssigned.includes(emp.nombre)"
+                      (click)="toggleEmpleado(emp.nombre)">
+                <div class="wizard-empleado-avatar">{{ emp.nombre.charAt(0) | uppercase }}</div>
+                <div class="wizard-empleado-nombre">{{ emp.nombre }}</div>
+                <div class="wizard-empleado-check">
+                  <svg *ngIf="formAssigned.includes(emp.nombre)" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                       stroke="currentColor" stroke-width="3">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                  </svg>
                 </div>
-              </div>
-              <button class="btn-secondary" (click)="agregarItem()"
-                style="margin-top:12px; width: 100%; border: 1px dashed #CBD5E1; color: #475569;">
-                ➕ Añadir actividad
               </button>
             </div>
 
-            <div
-              style="margin-top: 15px; margin-bottom: 15px; padding: 15px; background-color: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
-              <p style="font-size: 13px; font-weight: 600; color: #475569; margin-bottom: 10px;">Vías de Notificación:
-              </p>
-              <div style="display: flex; gap: 20px; align-items: center;">
-                <label
-                  style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px; color: #15803d; font-weight: 500;">
-                  <input type="checkbox" [(ngModel)]="notificarPorWhatsApp"
-                    style="width: 16px; height: 16px; accent-color: #22c55e;">
-                  📱 WhatsApp
-                </label>
-                <label
-                  style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px; color: #0369a1; font-weight: 500;">
-                  <input type="checkbox" [(ngModel)]="notificarPorCorreo"
-                    style="width: 16px; height: 16px; accent-color: #0ea5e9;">
-                  📧 Correo Electrónico
-                </label>
-              </div>
-            </div>
-
-            <!-- ✅ COUNTER TAREAS ÚNICAS — SIEMPRE VISIBLE -->
-            <div class="counter-box">
-              <div class="counter-icon">🎯</div>
-              <div class="counter-text">
-                Vas a generar
-                <strong>{{ totalTareasAGenerar() }}</strong>
-                tareas
-                (<strong>{{ formAssigned.length }}</strong> personas ×
-                <strong>{{ actividadesValidas() }}</strong> actividades)
-              </div>
-            </div>
-
-            <div class="btn-group"
-              style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; padding-top: 20px; border-top: 1px solid #E2E8F0;">
-              <button class="btn-secondary" (click)="cerrarModal()">Cancelar</button>
-              <button class="btn-primary"
-                (click)="isEditandoTarea ? guardarCambiosChecklist() : guardarChecklistUnico()">
-                {{ isEditandoTarea ? 'Guardar Cambios' : 'Generar Tareas' }}</button>
+            <div class="wizard-helper-row" *ngIf="empleadosFiltradosWizard.length > 0">
+              <button type="button" class="wizard-link" (click)="asignarATodoMiPersonal()">
+                🚀 Seleccionar a todos
+              </button>
+              <span class="wizard-count" *ngIf="formAssigned.length > 0">
+                {{ formAssigned.length }} {{ formAssigned.length === 1 ? 'persona' : 'personas' }} seleccionadas
+              </span>
             </div>
           </div>
+
+          <!-- PASO 3 — SUCURSAL -->
+          <div class="wizard-step" *ngIf="wizardStep === 3">
+            <h2 class="wizard-question">¿En qué lugar?</h2>
+            <p class="wizard-hint">Selecciona la sucursal o departamento</p>
+
+            <div class="wizard-sucursales-grid">
+              <button type="button" class="wizard-sucursal-card"
+                      *ngFor="let suc of sucursalesDisponibles()"
+                      [class.selected]="formStore === suc"
+                      (click)="formStore = suc">
+                <div class="wizard-sucursal-icon">🏪</div>
+                <div class="wizard-sucursal-nombre">{{ suc }}</div>
+                <svg *ngIf="formStore === suc" class="wizard-sucursal-check" width="22" height="22" viewBox="0 0 24 24"
+                     fill="none" stroke="currentColor" stroke-width="3">
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- PASO 4 — HORARIO -->
+          <div class="wizard-step" *ngIf="wizardStep === 4">
+            <h2 class="wizard-question">¿A qué hora?</h2>
+            <p class="wizard-hint">Pon a qué hora empieza y a qué hora debe terminar</p>
+
+            <div class="wizard-time-block">
+              <label class="wizard-time-label">🕒 Hora en que empieza</label>
+              <input type="time" class="wizard-input wizard-time-input" [(ngModel)]="formItems[0].horaInicio">
+              <div class="wizard-time-shortcuts">
+                <button type="button" class="wizard-chip" (click)="ponerHoraInicio('07:00')">7:00 AM</button>
+                <button type="button" class="wizard-chip" (click)="ponerHoraInicio('08:00')">8:00 AM</button>
+                <button type="button" class="wizard-chip" (click)="ponerHoraInicio('09:00')">9:00 AM</button>
+                <button type="button" class="wizard-chip" (click)="ponerHoraInicio('12:00')">12:00 PM</button>
+                <button type="button" class="wizard-chip" (click)="ponerHoraInicio('15:00')">3:00 PM</button>
+              </div>
+            </div>
+
+            <div class="wizard-time-block">
+              <label class="wizard-time-label">⏰ Hora límite (cuándo termina)</label>
+              <input type="time" class="wizard-input wizard-time-input" [(ngModel)]="formItems[0].horaLimite">
+              <div class="wizard-time-shortcuts">
+                <button type="button" class="wizard-chip" (click)="ponerHoraLimite('10:00')">10:00 AM</button>
+                <button type="button" class="wizard-chip" (click)="ponerHoraLimite('14:00')">2:00 PM</button>
+                <button type="button" class="wizard-chip" (click)="ponerHoraLimite('17:00')">5:00 PM</button>
+                <button type="button" class="wizard-chip" (click)="ponerHoraLimite('20:00')">8:00 PM</button>
+                <button type="button" class="wizard-chip" (click)="ponerHoraLimite('22:00')">10:00 PM</button>
+              </div>
+            </div>
+
+            <div class="wizard-warning" *ngIf="!formItems[0]?.horaInicio || !formItems[0]?.horaLimite">
+              ⚠️ Faltan las horas. Llena las dos para continuar.
+            </div>
+          </div>
+
+          <!-- PASO 5 — TIPO DE EVIDENCIA -->
+          <div class="wizard-step" *ngIf="wizardStep === 5">
+            <h2 class="wizard-question">¿Necesita foto?</h2>
+            <p class="wizard-hint">¿Pediremos foto a la persona para comprobar que hizo la tarea?</p>
+
+            <div class="wizard-evidencia-grid">
+              <button type="button" class="wizard-evidencia-card"
+                      [class.selected]="wizardTipoEvidencia === 'ninguna'"
+                      (click)="seleccionarTipoEvidencia('ninguna')">
+                <div class="wizard-evidencia-icon">📋</div>
+                <div class="wizard-evidencia-titulo">Sin foto</div>
+                <div class="wizard-evidencia-desc">Solo marcar como hecho</div>
+              </button>
+
+              <button type="button" class="wizard-evidencia-card wizard-evidencia-foto"
+                      [class.selected]="wizardTipoEvidencia === 'foto'"
+                      (click)="seleccionarTipoEvidencia('foto')">
+                <div class="wizard-evidencia-icon">📷</div>
+                <div class="wizard-evidencia-titulo">Una foto</div>
+                <div class="wizard-evidencia-desc">Una foto al terminar</div>
+              </button>
+
+              <button type="button" class="wizard-evidencia-card wizard-evidencia-antes"
+                      [class.selected]="wizardTipoEvidencia === 'antesDespues'"
+                      (click)="seleccionarTipoEvidencia('antesDespues')">
+                <div class="wizard-evidencia-icon">📸📸</div>
+                <div class="wizard-evidencia-titulo">Antes y Después</div>
+                <div class="wizard-evidencia-desc">Dos fotos comparativas</div>
+              </button>
+            </div>
+          </div>
+
+          <!-- PASO 6 — RESUMEN -->
+          <div class="wizard-step" *ngIf="wizardStep === 6">
+            <h2 class="wizard-question">¿Todo correcto?</h2>
+            <p class="wizard-hint">Revisa los datos antes de crear la tarea</p>
+
+            <div class="wizard-resumen">
+              <div class="wizard-resumen-row" (click)="irAPasoWizard(1)">
+                <span class="wizard-resumen-label">📝 Tarea</span>
+                <span class="wizard-resumen-valor">{{ formName || 'Sin nombre' }}</span>
+                <span class="wizard-resumen-editar">Cambiar</span>
+              </div>
+
+              <div class="wizard-resumen-row" (click)="irAPasoWizard(2)">
+                <span class="wizard-resumen-label">👤 Para</span>
+                <span class="wizard-resumen-valor">{{ getEmpleadosResumen() }}</span>
+                <span class="wizard-resumen-editar">Cambiar</span>
+              </div>
+
+              <div class="wizard-resumen-row" (click)="irAPasoWizard(3)">
+                <span class="wizard-resumen-label">🏪 Lugar</span>
+                <span class="wizard-resumen-valor">{{ formStore || 'Sin asignar' }}</span>
+                <span class="wizard-resumen-editar">Cambiar</span>
+              </div>
+
+              <div class="wizard-resumen-row" (click)="irAPasoWizard(4)">
+                <span class="wizard-resumen-label">🕒 Horario</span>
+                <span class="wizard-resumen-valor">
+                  {{ formItems[0]?.horaInicio || '--' }} a {{ formItems[0]?.horaLimite || '--' }}
+                </span>
+                <span class="wizard-resumen-editar">Cambiar</span>
+              </div>
+
+              <div class="wizard-resumen-row" (click)="irAPasoWizard(5)">
+                <span class="wizard-resumen-label">📷 Evidencia</span>
+                <span class="wizard-resumen-valor">{{ getResumenEvidencia() }}</span>
+                <span class="wizard-resumen-editar">Cambiar</span>
+              </div>
+            </div>
+
+            <div class="wizard-notif-box">
+              <label class="wizard-notif-label">
+                <input type="checkbox" [(ngModel)]="notificarPorWhatsApp">
+                <span>📱 Avisarles por WhatsApp</span>
+              </label>
+              <label class="wizard-notif-label">
+                <input type="checkbox" [(ngModel)]="notificarPorCorreo">
+                <span>📧 Avisarles por Correo</span>
+              </label>
+            </div>
+
+            <div class="wizard-counter-final">
+              🎯 Vas a crear <strong>{{ formAssigned.length }}</strong>
+              {{ formAssigned.length === 1 ? 'tarea' : 'tareas' }}
+              (una para cada persona)
+            </div>
+          </div>
+
+          <!-- FOOTER de navegación -->
+          <div class="wizard-footer">
+            <button type="button" class="wizard-btn wizard-btn-back"
+                    *ngIf="wizardStep > 1"
+                    (click)="retrocederPasoWizard()">
+              ← Atrás
+            </button>
+            <div *ngIf="wizardStep === 1" style="flex:1"></div>
+
+            <button type="button" class="wizard-btn wizard-btn-next"
+                    *ngIf="wizardStep < wizardTotalSteps"
+                    [disabled]="!puedeAvanzarWizard()"
+                    (click)="avanzarPasoWizard()">
+              Siguiente →
+            </button>
+
+            <button type="button" class="wizard-btn wizard-btn-finish"
+                    *ngIf="wizardStep === wizardTotalSteps"
+                    (click)="finalizarWizard()">
+              ✅ CREAR TAREA
+            </button>
+          </div>
+
         </div>
       </div>
 

@@ -313,6 +313,33 @@ export class ReportesComponent implements OnInit, OnDestroy {
     return checklist.items.filter((i: any) => i.checked).length;
   }
 
+  // KPIs para el panel de Auditoría Operativa
+  getKpiTotal(): number {
+    return this.resultados().length;
+  }
+
+  getKpiCompletos(): number {
+    return this.resultados().filter(r => this.getDisplayStatus(r) === 'completo').length;
+  }
+
+  getKpiEnProgreso(): number {
+    return this.resultados().filter(r => this.getDisplayStatus(r) === 'en-progreso').length;
+  }
+
+  getKpiPendientes(): number {
+    return this.resultados().filter(r => {
+      const s = this.getDisplayStatus(r);
+      return s === 'pendiente' || s === 'vencido';
+    }).length;
+  }
+
+  getKpiProgresoPromedio(): number {
+    const lista = this.resultados();
+    if (lista.length === 0) return 0;
+    const suma = lista.reduce((acc, r) => acc + this.getProgreso(r), 0);
+    return Math.round(suma / lista.length);
+  }
+
   tieneFotos(checklist: any): boolean {
     if (!checklist.items) return false;
     return checklist.items.some((item: any) =>

@@ -977,6 +977,9 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       return (item.photoAntes !== null && item.photoAntes !== undefined && item.photoAntes !== 'subiendo...') &&
              (item.photoDespues !== null && item.photoDespues !== undefined && item.photoDespues !== 'subiendo...');
     }
+    if (item.requiresVariasFotos) {
+      return Array.isArray(item.photos) && item.photos.length > 0;
+    }
     if (item.requiresPhoto) return (item.photo !== null && item.photo !== undefined && item.photo !== 'subiendo...');
     return true;
   }
@@ -994,6 +997,15 @@ export class ChecklistComponent implements OnInit, OnDestroy {
 
   enviarChecklist() {
     const actual = this.checklistSeleccionado(); if (!actual) return;
+    // 🔒 Defensa: solo el dueño del checklist puede enviarlo
+    if (!this.esElDueno()) {
+      alert(' ⚠️ Solo el responsable asignado puede enviar este checklist.');
+      return;
+    }
+    if (actual.enviado) {
+      alert(' ⚠️ Este checklist ya fue enviado.');
+      return;
+    }
     const fotosPendientes = actual.items.some((i: any) => i.photo === 'subiendo...' || i.photoAntes === 'subiendo...' || i.photoDespues === 'subiendo...');
     if (fotosPendientes) { alert(' ⚠️ Espera, una foto se está subiendo.'); return; }
     const tareas100Porciento = actual.items.filter((i: any) => this.esItemCompleto(i)).length;

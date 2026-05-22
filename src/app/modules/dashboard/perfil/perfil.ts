@@ -5,10 +5,12 @@ import { RouterModule } from '@angular/router';
 import { Auth, updateEmail,verifyBeforeUpdateEmail, updatePassword, reauthenticateWithCredential, EmailAuthProvider } from '@angular/fire/auth';
 import { Firestore, doc, updateDoc } from '@angular/fire/firestore';
 import Swal from 'sweetalert2';
+import { SidebarComponent } from '../../../shared/sidebar/sidebar';
+
 @Component({
   selector: 'app-perfil',
   standalone: true,
-  imports: [CommonModule, FormsModule,RouterModule],
+  imports: [CommonModule, FormsModule,RouterModule, SidebarComponent],
   templateUrl: './perfil.html',
   styleUrls: ['./perfil.css']
 })

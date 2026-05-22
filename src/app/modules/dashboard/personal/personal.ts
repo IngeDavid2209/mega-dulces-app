@@ -20,10 +20,12 @@ import { esAdminGlobal, esAdminLimitado } from '../../../shared/permisos.util';
 
 
 
+import { SidebarComponent } from '../../../shared/sidebar/sidebar';
+
 @Component({
   selector: 'app-personal',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule],
+  imports: [CommonModule, FormsModule, RouterModule, SidebarComponent],
   templateUrl: './personal.html',
   styleUrls: ['./personal.css']
 })

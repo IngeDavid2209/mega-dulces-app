@@ -73,92 +73,17 @@
 }
  
 /* ================== SIDEBAR ================== */
-.sidebar {
-  width: 260px;
-  background-color: var(--bg-sidebar) !important;
-  display: flex;
-  flex-direction: column;
-  border-right: 1px solid var(--border) !important;
-  z-index: 10;
-}
  
-.sidebar-header {
-  padding: 24px 20px 16px 24px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
  
-.sidebar-brand {
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--text-main);
-}
  
-.sidebar-nav {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-}
  
-.nav-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
-  color: var(--text-muted) !important;
-  text-decoration: none;
-  font-size: 14px;
-  font-weight: 500;
-  border-radius: 8px;
-  transition: all 0.2s ease;
-  margin-bottom: 4px;
-  cursor: pointer;
-}
  
-.nav-item:hover {
-  background-color: #F8FAFC !important;
-  color: var(--primary-navy) !important;
-}
  
-.nav-item.active {
-  background-color: var(--primary-navy) !important;
-  color: #FFFFFF !important;
-  font-weight: 600;
-  box-shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.1);
-}
  
-.nav-icon {
-  width: 18px;
-  height: 18px;
-  flex-shrink: 0;
-}
  
-.bottom-nav {
-  margin-top: auto;
-  padding: 0 12px 20px 12px;
-}
  
-.logout-btn {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  padding: 10px 16px;
-  background: #FEF2F2;
-  border: 1px solid #FECACA;
-  border-radius: 8px;
-  color: #B91C1C;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  margin-bottom: 12px;
-  text-decoration: none;
-}
  
-.logout-btn:hover { background: #FEE2E2; }
  
-.logout-btn svg { width: 16px; height: 16px; }
  
 .user-row {
   display: flex;
@@ -663,18 +588,6 @@
   .header-brand small { display: none !important; }
   .header-right       { display: none !important; }
  
-  .sidebar {
-    position: fixed !important;
-    top: 0 !important;
-    bottom: 0 !important;
-    left: -100% !important;
-    height: 100dvh !important;
-    width: 280px !important;
-    z-index: 2000 !important;
-    transition: left 0.3s ease !important;
-    padding-top: max(48px, env(safe-area-inset-top)) !important;
-  }
-  .sidebar.mobile-open { left: 0 !important; }
  
   .mobile-overlay {
     display: block !important;

@@ -6,10 +6,12 @@ import { RouterModule } from '@angular/router';
 import { Firestore, collection, onSnapshot } from '@angular/fire/firestore';
 import { esAdminGlobal, sucursalesPermitidas } from '../../../shared/permisos.util';
  
+import { SidebarComponent } from '../../../shared/sidebar/sidebar';
+
 @Component({
   selector: 'app-checkstore',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule],
+  imports: [CommonModule, FormsModule, RouterModule, SidebarComponent],
   templateUrl: './checkstore.html',
   styleUrls: ['./checkstore.css']
 })

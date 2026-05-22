@@ -5,10 +5,12 @@ import { RouterModule, Router } from '@angular/router';
 import { Firestore, collection, onSnapshot, doc, setDoc, deleteDoc } from '@angular/fire/firestore';
 import Swal from 'sweetalert2';
 
+import { SidebarComponent } from '../../../shared/sidebar/sidebar';
+
 @Component({
   selector: 'app-areas',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule],
+  imports: [CommonModule, FormsModule, RouterModule, SidebarComponent],
   templateUrl: './areas.html',
   styleUrls: ['./areas.css']
 })

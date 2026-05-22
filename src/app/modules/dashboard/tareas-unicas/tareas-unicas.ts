@@ -5,10 +5,12 @@ import { RouterModule, Router } from '@angular/router';
 import { Firestore, collection, query, onSnapshot, addDoc, doc, updateDoc, deleteDoc, getDocs } from '@angular/fire/firestore';
 import { Auth } from '@angular/fire/auth';
 
+import { SidebarComponent } from '../../../shared/sidebar/sidebar';
+
 @Component({
   selector: 'app-tareas-unicas',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule],
+  imports: [CommonModule, FormsModule, RouterModule, SidebarComponent],
   templateUrl: './tareas-unicas.html', // ⚠️ Verifica si tu archivo se llama así o solo tareas-unicas.html
   styleUrls: ['./tareas-unicas.css'] // ⚠️ Igual aquí
 })

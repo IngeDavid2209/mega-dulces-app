@@ -1,0 +1,8 @@
+/* El sidebar usa exclusivamente las clases globales definidas en src/styles.css
+   (.sidebar, .sidebar-header, .sidebar-brand, .sidebar-nav, .nav-item, .bottom-nav,
+   .logout-btn, .user-row, .user-avatar, etc.).
+   No se duplican aquí. */
+
+:host {
+  display: contents;
+}

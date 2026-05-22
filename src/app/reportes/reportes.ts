@@ -11,10 +11,12 @@ import * as ExcelJS from 'exceljs';
 import html2canvas from 'html2canvas';
 import Swal from 'sweetalert2';
 
+import { SidebarComponent } from '../shared/sidebar/sidebar';
+
 @Component({
   selector: 'app-reportes',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule],
+  imports: [CommonModule, FormsModule, RouterModule, SidebarComponent],
   templateUrl: './reportes.html',
   styleUrls: ['./reportes.css']
 })

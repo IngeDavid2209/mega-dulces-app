@@ -5,10 +5,12 @@ import { FormsModule } from '@angular/forms';
 import { Firestore, collection, onSnapshot } from '@angular/fire/firestore';
 import { esAdminGlobal, sucursalesPermitidas } from '../../../shared/permisos.util';
 
+import { SidebarComponent } from '../../../shared/sidebar/sidebar';
+
 @Component({
   selector: 'app-estadisticas',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule], 
+  imports: [CommonModule, RouterModule, FormsModule, SidebarComponent], 
   templateUrl: './estadisticas.html', 
   styleUrls: ['./estadisticas.css']
 })

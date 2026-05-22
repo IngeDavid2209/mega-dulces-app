@@ -5,10 +5,12 @@ import { RouterModule, Router } from '@angular/router';
 import { Firestore, collection, query, onSnapshot, addDoc, doc, updateDoc, deleteDoc, getDocs } from '@angular/fire/firestore';
 import { Auth } from '@angular/fire/auth';
 
+import { SidebarComponent } from '../shared/sidebar/sidebar';
+
 @Component({
   selector: 'app-agenda',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule],
+  imports: [CommonModule, FormsModule, RouterModule, SidebarComponent],
   templateUrl: './agenda.html',
   styleUrls: ['./agenda.css']
 })

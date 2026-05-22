@@ -14,26 +14,7 @@
   <div class="main-wrapper">
     <div class="mobile-overlay" *ngIf="isMenuOpen" (click)="toggleMenu()"></div>
 
-    <aside class="sidebar" [class.mobile-open]="isMenuOpen" translate="no">
-      <div style="display: flex; flex-direction: column; height: 100%;">
-        <div class="sidebar-header">
-          <img src="https://static.wixstatic.com/media/fd397e_0fd82a1ecec84a118ceeb603b493f25a~mv2.png" style="width:32px; border-radius:6px; object-fit:contain;">
-          <span class="sidebar-brand">Mega Dulces</span>
-        </div>
-        <nav class="sidebar-nav" style="flex: 1; padding: 16px 12px;">
-          <a class="nav-item" routerLink="/home" routerLinkActive="active" (click)="isMenuOpen = false">Dashboard</a>
-          <a class="nav-item" routerLink="/checklist" routerLinkActive="active" (click)="isMenuOpen = false">Checklist</a>
-          <a class="nav-item" routerLink="/agenda" routerLinkActive="active" (click)="isMenuOpen = false">Agenda Personal</a>
-          <a class="nav-item" routerLink="/tareas-unicas" routerLinkActive="active" (click)="isMenuOpen = false" style="background: #EEF2FF; color: #4338CA; border-left: 3px solid #4338CA; font-weight: 700;">
-            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg> 
-            Proyectos Únicos
-          </a>
-        </nav>
-        <div class="bottom-nav" style="margin-top: auto; padding: 0 12px 20px 12px;">
-          <button class="logout-btn" (click)="cerrarSesion()">Cerrar Sesión</button>
-        </div>
-      </div>
-    </aside>
+    <app-sidebar [currentUser]="currentUser" [isMenuOpen]="isMenuOpen" (closeMenu)="isMenuOpen = false"></app-sidebar>
 
     <div class="content" style="padding: 30px;">
       <div style="max-width: 800px; margin: 0 auto;">

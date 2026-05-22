@@ -81,101 +81,18 @@
   overflow: hidden;
 }
 
-.sidebar {
-  width: 260px;
-  background-color: var(--bg-sidebar) !important;
-  display: flex;
-  flex-direction: column;
-  border-right: 1px solid var(--border) !important;
-  z-index: 10;
-}
 
-.sidebar-header {
-  padding: 24px 20px 16px 24px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
 
-.sidebar-avatar {
-  width: 40px;
-  height: 40px;
-  background-color: #F1F5F9 !important;
-  color: var(--primary-navy) !important;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 18px;
-  font-weight: 600;
-  border: 1px solid var(--border);
-}
 
-.sidebar-name {
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--text-main) !important;
-  margin-bottom: 2px;
-}
 
-.sidebar-role {
-  font-size: 12px;
-  color: var(--text-muted) !important;
-  font-weight: 500;
-}
 
-.sidebar-nav {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  padding: 12px 12px;
-}
 
-.nav-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
-  color: var(--text-muted) !important;
-  text-decoration: none;
-  font-size: 14px;
-  font-weight: 500;
-  border-radius: 6px;
-  transition: all 0.2s ease;
-  margin-bottom: 4px;
-}
 
-.nav-item:hover {
-  background-color: #F8FAFC !important;
-  color: var(--primary-navy) !important;
-}
 
-.nav-item.active {
-  background-color: var(--primary-navy) !important;
-  color: #FFFFFF !important;
-  font-weight: 600;
-  box-shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.1);
-}
 
-.nav-icon {
-  font-size: 18px;
-  width: 24px;
-  text-align: center;
-}
 
-.nav-divider {
-  height: 1px;
-  background-color: var(--border);
-  margin: 12px 16px;
-}
 
-.nav-logout {
-  color: var(--red) !important;
-}
 
-.nav-logout:hover {
-  background-color: #FEF2F2 !important;
-}
 
 /* --- CONTENT & HEADER --- */
 .content {
@@ -836,21 +753,7 @@
   }
 
   /* 🔥 FIX BLINDADO DEL NOTCH PARA EL SIDEBAR 🔥 */
-  .sidebar {
-    position: fixed !important;
-    top: 0 !important;
-    left: -100% !important;
-    width: 280px !important;
-    height: 100vh !important;
-    z-index: 2000 !important;
-    transition: left 0.3s ease !important;
-    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.1) !important;
-    padding-top: max(48px, env(safe-area-inset-top)) !important;
-  }
 
-  .sidebar.mobile-open {
-    left: 0 !important;
-  }
 
   .mobile-overlay {
     position: fixed !important;

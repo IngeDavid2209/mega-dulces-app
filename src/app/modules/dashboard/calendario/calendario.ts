@@ -7,10 +7,12 @@ import { Firestore, collection, onSnapshot, getDocs, query } from '@angular/fire
 import Swal from 'sweetalert2';
 import { esAdminGlobal, sucursalesPermitidas } from '../../../shared/permisos.util';
 
+import { SidebarComponent } from '../../../shared/sidebar/sidebar';
+
 @Component({
   selector: 'app-calendario',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule],
+  imports: [CommonModule, FormsModule, RouterModule, SidebarComponent],
   templateUrl: './calendario.html',
   styleUrls: ['./calendario.css']
 })

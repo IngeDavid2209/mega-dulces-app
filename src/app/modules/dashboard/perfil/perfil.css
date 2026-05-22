@@ -15,85 +15,15 @@
 /* =========================================
    2. MENÚ LATERAL (TU DISEÑO ORIGINAL)
    ========================================= */
-.sidebar {
-  width: 260px;
-  background-color: #ffffff;
-  border-right: 1px solid #e2e8f0;
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  flex-shrink: 0;
-  z-index: 100;
-}
 
-.sidebar-header {
-  padding: 20px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  border-bottom: 1px solid #f1f5f9;
-}
 
-.sidebar-brand {
-  font-weight: 700;
-  font-size: 1.2rem;
-  color: #0f172a;
-}
 
-.sidebar-nav {
-  flex: 1;
-  padding: 15px 10px;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
 
-.nav-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 15px;
-  color: #64748b;
-  text-decoration: none;
-  border-radius: 8px;
-  font-weight: 500;
-  transition: all 0.2s ease;
-}
 
-.nav-item:hover, .nav-item.active {
-  background-color: #f1f5f9;
-  color: #0f172a;
-}
 
-.nav-icon {
-  width: 20px;
-  height: 20px;
-}
 
-.bottom-nav {
-  padding: 15px;
-  border-top: 1px solid #f1f5f9;
-}
 
-.logout-btn {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  padding: 12px 15px;
-  background: none;
-  border: none;
-  color: #ef4444;
-  font-weight: 600;
-  cursor: pointer;
-  border-radius: 8px;
-  transition: all 0.2s;
-}
 
-.logout-btn:hover {
-  background-color: #fef2f2;
-}
 
 .user-row {
   display: flex;
@@ -209,7 +139,5 @@
 @media (max-width: 768px) {
   .app-container { flex-direction: column; height: auto; overflow: visible; }
   .mobile-header { display: flex; padding: 15px 20px; background: white; border-bottom: 1px solid #e2e8f0; justify-content: space-between; align-items: center; }
-  .sidebar { position: fixed; top: 0; left: -100%; height: 100vh; transition: left 0.3s; z-index: 1000; }
-  .sidebar.mobile-open { left: 0; }
   .formulario-grid { grid-template-columns: 1fr; }
 }

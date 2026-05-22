@@ -6,10 +6,12 @@ import { Firestore, collection, doc, setDoc, getDoc, deleteDoc, onSnapshot, getD
 import * as localforage from 'localforage';
 import { esAdminGlobal, esAdminLimitado, sucursalesPermitidas } from '../../../shared/permisos.util';
 
+import { SidebarComponent } from '../../../shared/sidebar/sidebar';
+
 @Component({
   selector: 'app-checklist',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule],
+  imports: [CommonModule, FormsModule, RouterModule, SidebarComponent],
   templateUrl: './checklist.html',
   styleUrls: ['./checklist.css']
 })

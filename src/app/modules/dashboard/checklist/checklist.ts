@@ -413,6 +413,56 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     if (this.intervalId) clearInterval(this.intervalId);
   }
 
+  /** Normaliza un nombre para comparación tolerante (sin tildes, sin espacios extra, lowercase). */
+  private normalizarNombre(n: string | undefined | null): string {
+    if (!n) return '';
+    return n.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ');
+  }
+
+  /** ¿El usuario actual es el dueño del checklist actualmente abierto (tolerante a tildes/espacios)? */
+  esElDueno(): boolean {
+    const cs = this.checklistSeleccionado();
+    if (!cs) return false;
+    return this.normalizarNombre(this.currentUser?.nombre) === this.normalizarNombre(cs.assigned);
+  }
+
+  /** ¿Puede editar el checklist actual? (es el dueño y no se ha enviado). */
+  puedoEditarChecklistActivo(): boolean {
+    const cs = this.checklistSeleccionado();
+    if (!cs || cs.enviado) return false;
+    return this.esElDueno();
+  }
+
+  /** ¿Puede editar este item específico? (no enviado, es dueño, no vencido). */
+  puedoEditarItem(item: any): boolean {
+    if (!this.puedoEditarChecklistActivo()) return false;
+    const cs = this.checklistSeleccionado();
+    return !this.isTareaVencida(item, cs.date);
+  }
+
+  /** Agrega una foto al array item.photos[] (para tareas con `requiresVariasFotos`). */
+  async onMultiplePhotoSelected(event: any, item: any) {
+    const file = event.target.files[0];
+    if (!file) return;
+    if (!item.photos) item.photos = [];
+    // Reutiliza el flujo existente: subimos al servidor y agregamos la URL al array.
+    // Aprovechamos onFileSelected con un objeto temporal y luego empujamos al array.
+    const tempItem: any = {};
+    await this.onFileSelected(event, tempItem, 'photo');
+    if (tempItem.photo && tempItem.photo !== 'subiendo...') {
+      item.photos.push({ url: tempItem.photo, time: tempItem.photoTime || '' });
+      this.actualizarEstado();
+    }
+  }
+
+  /** Quita una foto del array item.photos[] por índice. */
+  removerFotoDeArray(item: any, index: number) {
+    if (item.photos && index >= 0 && index < item.photos.length) {
+      item.photos.splice(index, 1);
+      this.actualizarEstado();
+    }
+  }
+
   isDespuesExpirado(item: any): boolean {
     if (!item.requiresAntesDespues || !item.photoAntesTimestamp || !item.tiempoEstimado) return false;
     const limite = item.photoAntesTimestamp + (item.tiempoEstimado * 60000);

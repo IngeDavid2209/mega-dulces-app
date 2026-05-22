@@ -89,6 +89,14 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   wizardTipoEvidencia: 'ninguna' | 'foto' | 'antesDespues' = 'ninguna';
   terminoBusquedaEmpleadoWizard: string = '';
 
+  // ============================================================================
+  //  🧙 WIZARD DE BLOQUE DE RUTINAS (mismo formato asistido)
+  // ============================================================================
+  wizardStepRutina: number = 1;
+  wizardTotalStepsRutina: number = 7;
+  wizardTipoEvidenciaRutina: 'ninguna' | 'foto' | 'antesDespues' = 'ninguna';
+  terminoBusquedaEmpleadoWizardRutina: string = '';
+
   private firestore = inject(Firestore);
   private route = inject(ActivatedRoute);
   private destructoresRadares: (() => void)[] = [];
@@ -153,8 +161,8 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   puedeAvanzarWizard(): boolean {
     switch (this.wizardStep) {
       case 1: return !!this.formName && this.formName.trim().length > 0;
-      case 2: return this.formAssigned.length > 0;
-      case 3: return !!this.formStore;
+      case 2: return !!this.formStore;
+      case 3: return this.formAssigned.length > 0;
       case 4: return !!this.formItems[0]?.horaInicio && !!this.formItems[0]?.horaLimite;
       case 5: return true;
       case 6: return true;
@@ -207,6 +215,111 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   finalizarWizard() {
     if (this.formItems[0]) this.formItems[0].text = this.formName;
     this.guardarChecklistUnico();
+  }
+
+  // ============================================================================
+  //  🧙 WIZARD DE RUTINAS: NAVEGACIÓN Y VALIDACIÓN
+  // ============================================================================
+  avanzarPasoWizardRutina() {
+    if (!this.puedeAvanzarWizardRutina()) return;
+    if (this.wizardStepRutina < this.wizardTotalStepsRutina) {
+      this.wizardStepRutina++;
+    }
+  }
+
+  retrocederPasoWizardRutina() {
+    if (this.wizardStepRutina > 1) {
+      this.wizardStepRutina--;
+    }
+  }
+
+  irAPasoWizardRutina(paso: number) {
+    if (paso >= 1 && paso <= this.wizardTotalStepsRutina) {
+      this.wizardStepRutina = paso;
+    }
+  }
+
+  puedeAvanzarWizardRutina(): boolean {
+    const regla = this.formRutinas[0];
+    switch (this.wizardStepRutina) {
+      case 1: return !!this.formNameRutina && this.formNameRutina.trim().length > 0;
+      case 2: return !!this.formStoreRutina;
+      case 3: return this.formAssignedRutina.length > 0;
+      case 4: return !!regla?.frecuencia;
+      case 5: return !!regla?.horaInicio && !!regla?.horaLimite;
+      case 6: return true;
+      case 7: return true;
+      default: return false;
+    }
+  }
+
+  seleccionarTipoEvidenciaRutina(tipo: 'ninguna' | 'foto' | 'antesDespues') {
+    this.wizardTipoEvidenciaRutina = tipo;
+    if (!this.formRutinas[0]) return;
+    this.formRutinas[0].requiresPhoto = false;
+    this.formRutinas[0].requiresAntesDespues = false;
+    this.formRutinas[0].requiresVariasFotos = false;
+    if (tipo === 'foto') this.formRutinas[0].requiresPhoto = true;
+    else if (tipo === 'antesDespues') this.formRutinas[0].requiresAntesDespues = true;
+  }
+
+  seleccionarFrecuenciaRutina(frecuencia: string) {
+    if (!this.formRutinas[0]) return;
+    this.formRutinas[0].frecuencia = frecuencia;
+  }
+
+  get empleadosFiltradosWizardRutina() {
+    let lista = this.empleadosFiltradosRutina;
+    if (this.terminoBusquedaEmpleadoWizardRutina.trim() !== '') {
+      const t = this.terminoBusquedaEmpleadoWizardRutina.toLowerCase();
+      lista = lista.filter(emp => emp.nombre.toLowerCase().includes(t));
+    }
+    return lista;
+  }
+
+  getResumenEvidenciaRutina(): string {
+    switch (this.wizardTipoEvidenciaRutina) {
+      case 'foto': return 'Sí, una foto';
+      case 'antesDespues': return 'Sí, foto Antes y Después';
+      default: return 'No requiere foto';
+    }
+  }
+
+  getEmpleadosResumenRutina(): string {
+    if (this.formAssignedRutina.length === 0) return 'Nadie';
+    if (this.formAssignedRutina.length === 1) return this.formAssignedRutina[0];
+    if (this.formAssignedRutina.length <= 3) return this.formAssignedRutina.join(', ');
+    return `${this.formAssignedRutina[0]}, ${this.formAssignedRutina[1]} y ${this.formAssignedRutina.length - 2} más`;
+  }
+
+  getResumenFrecuenciaRutina(): string {
+    const r = this.formRutinas[0];
+    if (!r) return '';
+    if (r.frecuencia === 'Diaria') return 'Todos los días';
+    if (r.frecuencia === 'Semanal') return `Cada semana, los ${r.diaSemana || 'Lunes'}`;
+    if (r.frecuencia === 'Catorcenal') return `Cada 2 semanas, los ${r.diaSemana || 'Lunes'}`;
+    if (r.frecuencia === 'Mensual') return `Los días ${r.diaMes || 1} del mes`;
+    if (r.frecuencia === 'Trimestral') return `El día ${r.diaMes || 1} cada 3 meses`;
+    return '';
+  }
+
+  ponerHoraInicioRutina(hora: string) {
+    if (this.formRutinas[0]) this.formRutinas[0].horaInicio = hora;
+  }
+
+  ponerHoraLimiteRutina(hora: string) {
+    if (this.formRutinas[0]) this.formRutinas[0].horaLimite = hora;
+  }
+
+  finalizarWizardRutina() {
+    if (this.formRutinas[0]) this.formRutinas[0].text = this.formNameRutina;
+    this.guardarBloqueRutinas();
+  }
+
+  asignarATodoMiPersonalRutina() {
+    const lista = this.empleadosFiltradosRutina.map(emp => emp.nombre);
+    this.formAssignedRutina = [...lista];
+    this.mostrarToast(` 🚀 Se asignaron ${lista.length} personas.`);
   }
 
   // ============================================================================
@@ -687,6 +800,13 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       horaInicio: r.horaInicio || '',
       horaLimite: r.horaLimite || ''
     }));
+    // 🧙 Reset wizard de rutinas para edición
+    this.wizardStepRutina = 1;
+    this.terminoBusquedaEmpleadoWizardRutina = '';
+    const primeraRutina = this.formRutinas[0];
+    if (primeraRutina?.requiresAntesDespues) this.wizardTipoEvidenciaRutina = 'antesDespues';
+    else if (primeraRutina?.requiresPhoto) this.wizardTipoEvidenciaRutina = 'foto';
+    else this.wizardTipoEvidenciaRutina = 'ninguna';
     this.isModalRutinasOpen = true;
   }
 
@@ -1067,6 +1187,10 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       horaInicio: '', horaLimite: '',
       diaSemana: 'Lunes', diaMes: 1
     }];
+    // 🧙 Reset wizard de rutinas
+    this.wizardStepRutina = 1;
+    this.wizardTipoEvidenciaRutina = 'ninguna';
+    this.terminoBusquedaEmpleadoWizardRutina = '';
     this.isModalRutinasOpen = true;
   }
 

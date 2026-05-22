@@ -550,10 +550,30 @@
                    autofocus>
           </div>
 
-          <!-- PASO 2 — QUIÉN HARÁ LA TAREA -->
+          <!-- PASO 2 — SUCURSAL -->
           <div class="wizard-step" *ngIf="wizardStep === 2">
+            <h2 class="wizard-question">¿En qué lugar?</h2>
+            <p class="wizard-hint">Selecciona la sucursal o departamento</p>
+
+            <div class="wizard-sucursales-grid">
+              <button type="button" class="wizard-sucursal-card"
+                      *ngFor="let suc of sucursalesDisponibles()"
+                      [class.selected]="formStore === suc"
+                      (click)="formStore = suc; formAssigned = []">
+                <div class="wizard-sucursal-icon">🏪</div>
+                <div class="wizard-sucursal-nombre">{{ suc }}</div>
+                <svg *ngIf="formStore === suc" class="wizard-sucursal-check" width="22" height="22" viewBox="0 0 24 24"
+                     fill="none" stroke="currentColor" stroke-width="3">
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- PASO 3 — QUIÉN HARÁ LA TAREA (filtrado por sucursal) -->
+          <div class="wizard-step" *ngIf="wizardStep === 3">
             <h2 class="wizard-question">¿Quién va a hacer la tarea?</h2>
-            <p class="wizard-hint">Toca a la persona o personas que harán esta tarea</p>
+            <p class="wizard-hint">Personas que trabajan en <strong>{{ formStore }}</strong></p>
 
             <div class="wizard-search-box">
               <input type="text" class="wizard-input"
@@ -577,33 +597,17 @@
               </button>
             </div>
 
+            <div class="wizard-empty-state" *ngIf="empleadosFiltradosWizard.length === 0">
+              😕 No hay personas asignadas a esta sucursal.
+            </div>
+
             <div class="wizard-helper-row" *ngIf="empleadosFiltradosWizard.length > 0">
-              <button type="button" class="wizard-link" (click)="asignarATodoMiPersonal()">
+              <button type="button" class="wizard-link" (click)="asignarATodos('tarea')">
                 🚀 Seleccionar a todos
               </button>
               <span class="wizard-count" *ngIf="formAssigned.length > 0">
                 {{ formAssigned.length }} {{ formAssigned.length === 1 ? 'persona' : 'personas' }} seleccionadas
               </span>
-            </div>
-          </div>
-
-          <!-- PASO 3 — SUCURSAL -->
-          <div class="wizard-step" *ngIf="wizardStep === 3">
-            <h2 class="wizard-question">¿En qué lugar?</h2>
-            <p class="wizard-hint">Selecciona la sucursal o departamento</p>
-
-            <div class="wizard-sucursales-grid">
-              <button type="button" class="wizard-sucursal-card"
-                      *ngFor="let suc of sucursalesDisponibles()"
-                      [class.selected]="formStore === suc"
-                      (click)="formStore = suc">
-                <div class="wizard-sucursal-icon">🏪</div>
-                <div class="wizard-sucursal-nombre">{{ suc }}</div>
-                <svg *ngIf="formStore === suc" class="wizard-sucursal-check" width="22" height="22" viewBox="0 0 24 24"
-                     fill="none" stroke="currentColor" stroke-width="3">
-                  <polyline points="20 6 9 17 4 12"></polyline>
-                </svg>
-              </button>
             </div>
           </div>
 
@@ -686,14 +690,14 @@
               </div>
 
               <div class="wizard-resumen-row" (click)="irAPasoWizard(2)">
-                <span class="wizard-resumen-label">👤 Para</span>
-                <span class="wizard-resumen-valor">{{ getEmpleadosResumen() }}</span>
+                <span class="wizard-resumen-label">🏪 Lugar</span>
+                <span class="wizard-resumen-valor">{{ formStore || 'Sin asignar' }}</span>
                 <span class="wizard-resumen-editar">Cambiar</span>
               </div>
 
               <div class="wizard-resumen-row" (click)="irAPasoWizard(3)">
-                <span class="wizard-resumen-label">🏪 Lugar</span>
-                <span class="wizard-resumen-valor">{{ formStore || 'Sin asignar' }}</span>
+                <span class="wizard-resumen-label">👤 Para</span>
+                <span class="wizard-resumen-valor">{{ getEmpleadosResumen() }}</span>
                 <span class="wizard-resumen-editar">Cambiar</span>
               </div>
 
@@ -757,182 +761,314 @@
       </div>
 
       <!-- ╔════════════════════════════════════════════════╗ -->
-      <!-- ║   MODAL DE RUTINAS (CORREGIDO)                 ║ -->
-      <!-- ║   - Sin "Vigencia del bloque"                  ║ -->
-      <!-- ║   - Hora INICIO + Hora LÍMITE por cada regla   ║ -->
+      <!-- ║   WIZARD DE BLOQUE DE RUTINAS (Modo Asistido)  ║ -->
       <!-- ╚════════════════════════════════════════════════╝ -->
-      <div class="modal-overlay" *ngIf="isModalRutinasOpen">
-        <div class="modal">
-          <div class="modal-header">
-            <div class="modal-title">{{ isEditMode ? 'Editar Bloque de Rutinas' : 'Nuevo Bloque de Rutinas' }}</div>
-            <button class="modal-close" (click)="cerrarModalRutinas()"><svg width="24" height="24" viewBox="0 0 24 24"
-                fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-              </svg></button>
+      <div class="wizard-overlay" *ngIf="isModalRutinasOpen">
+        <div class="wizard-modal">
+
+          <!-- HEADER con barra de progreso -->
+          <div class="wizard-header">
+            <div class="wizard-title">{{ isEditMode ? 'Editar Rutina' : 'Nueva Rutina' }}</div>
+            <button class="wizard-close" (click)="cerrarModalRutinas()" aria-label="Cerrar">&times;</button>
           </div>
-          <div class="modal-body">
-            <div class="form-group form-full">
-              <label class="form-label">Identificador del Bloque</label>
-              <input class="form-input" type="text" [(ngModel)]="formNameRutina"
-                placeholder="Ej: Protocolo de Cierre Nocturno" [disabled]="isEditMode">
-              <small *ngIf="isEditMode" style="color: #64748B;">El nombre no se puede cambiar en modo edición.</small>
-            </div>
-            <div class="opciones-seleccion" style="margin-bottom: 10px; display: flex; gap: 10px;">
-              <button type="button" (click)="asignarATodos('rutina')" class="btn-link"> ✅ Seleccionar Todos</button>
-              <button type="button" (click)="desmarcarTodos('rutina')" class="btn-link" style="color: #ef4444;"> ❌
-                Limpiar</button>
-            </div>
-            <div class="form-group form-full">
-              <label class="form-label">Responsables de ejecución</label>
-              <div class="checkbox-grid" [style.opacity]="isEditMode ? '0.6' : '1'">
-                <label class="checkbox-label" *ngFor="let emp of empleadosFiltradosRutina"
-                  [class.selected]="formAssignedRutina.includes(emp.nombre)"
-                  [style.pointer-events]="isEditMode ? 'none' : 'auto'">
-                  <input type="checkbox" [checked]="formAssignedRutina.includes(emp.nombre)"
-                    (change)="toggleEmpleadoRutina(emp.nombre)" class="custom-checkbox" [disabled]="isEditMode"> {{
-                  emp.nombre }}
-                </label>
-              </div>
-            </div>
-            <div class="form-group form-full">
-              <label class="form-label">Sucursal asignada</label>
-              <select class="form-input select-input" [(ngModel)]="formStoreRutina" [disabled]="isEditMode">
-                <option *ngFor="let suc of sucursalesDisponibles()" [value]="suc">{{ suc }}</option>
-              </select>
-              <small *ngIf="esSucursalAdministrativa(formStoreRutina)"
-                style="color: #64748B; display: block; margin-top: 6px;">
-                ℹ️ Las rutinas diarias para esta zona se omiten automáticamente los domingos.
-              </small>
-            </div>
+          <div class="wizard-progress-bar">
+            <div class="wizard-progress-fill" [style.width.%]="(wizardStepRutina / wizardTotalStepsRutina) * 100"></div>
+          </div>
+          <div class="wizard-step-counter">
+            Paso <strong>{{ wizardStepRutina }}</strong> de {{ wizardTotalStepsRutina }}
+          </div>
 
-            <div class="form-group form-full"
-              style="margin-top: 15px; border-top: 1px dashed var(--border); padding-top: 20px;">
-              <label class="form-label">Configuración de Frecuencias</label>
-              <div class="checklist-items">
-                <div class="checklist-item-wrap"
-                  *ngFor="let rutina of formRutinas; let i = index; trackBy: trackByIndex"
-                  style="display:flex; flex-direction:column; gap:10px;">
-                  <input class="form-input item-input" type="text" [(ngModel)]="rutina.text"
-                    placeholder="Ej: Limpieza profunda" style="flex: 1; min-width: 200px;">
+          <!-- PASO 1 — NOMBRE DEL BLOQUE -->
+          <div class="wizard-step" *ngIf="wizardStepRutina === 1">
+            <h2 class="wizard-question">¿Cómo se llama esta rutina?</h2>
+            <p class="wizard-hint">Por ejemplo: "Protocolo de cierre nocturno"</p>
+            <input class="wizard-input wizard-input-big" type="text"
+                   [(ngModel)]="formNameRutina"
+                   placeholder="Escribe el nombre aquí..."
+                   [disabled]="isEditMode"
+                   autofocus>
+            <p class="wizard-hint" *ngIf="isEditMode" style="margin-top:8px; color:#94A3B8;">
+              El nombre no se puede cambiar en modo edición.
+            </p>
+          </div>
 
-                  <div class="routine-settings" style="display:flex; flex-wrap:wrap; gap:10px;">
-                    <select class="form-input select-input" [(ngModel)]="rutina.frecuencia"
-                      (change)="alCambiarFrecuencia(rutina)" style="flex: 1; min-width: 130px;">
-                      <option *ngFor="let f of frecuencias" [value]="f">{{ f }}</option>
-                    </select>
-                    <select *ngIf="rutina.frecuencia === 'Semanal' || rutina.frecuencia === 'Catorcenal'"
-                      class="form-input select-input" [(ngModel)]="rutina.diaSemana" style="flex: 1; min-width: 110px;">
-                      <option value="Lunes">Lunes</option>
-                      <option value="Martes">Martes</option>
-                      <option value="Miércoles">Miércoles</option>
-                      <option value="Jueves">Jueves</option>
-                      <option value="Viernes">Viernes</option>
-                      <option value="Sábado">Sábado</option>
-                      <option value="Domingo">Domingo</option>
-                    </select>
-                    <select *ngIf="rutina.frecuencia === 'Mensual' || rutina.frecuencia === 'Trimestral'"
-                      class="form-input select-input" [(ngModel)]="rutina.diaMes" style="flex: 1; min-width: 110px;">
-                      <option *ngFor="let d of diasDelMes" [value]="d">Día {{ d }}</option>
-                    </select>
-                  </div>
+          <!-- PASO 2 — SUCURSAL -->
+          <div class="wizard-step" *ngIf="wizardStepRutina === 2">
+            <h2 class="wizard-question">¿En qué lugar?</h2>
+            <p class="wizard-hint">Selecciona la sucursal o departamento</p>
 
-                  <!-- ✅ NUEVO: Hora Inicio + Hora Límite por regla -->
-                  <div class="form-times-block" style="margin-top: 6px;">
-                    <div class="form-times-title">
-                      ⏱️ HORARIO DE LA RUTINA
-                      <small>(cuándo inicia y cuándo vence)</small>
-                    </div>
-                    <div class="form-time-row">
-                      <div class="form-time-field">
-                        <label class="form-time-label">🕒 Hora de inicio <span class="req">*</span></label>
-                        <input type="time" class="form-input form-time-input"
-                          [(ngModel)]="rutina.horaInicio"
-                          [class.input-warning]="!rutina.horaInicio">
-                      </div>
-                      <div class="form-time-field">
-                        <label class="form-time-label">⏰ Hora límite <span class="req">*</span></label>
-                        <input type="time" class="form-input form-time-input"
-                          [(ngModel)]="rutina.horaLimite"
-                          [class.input-warning]="!rutina.horaLimite">
-                      </div>
-                    </div>
-                    <div class="form-time-warning" *ngIf="!rutina.horaInicio || !rutina.horaLimite">
-                      ⚠️ Si no llenas las horas, la tarjeta mostrará "—" / "Sin límite".
-                    </div>
-                  </div>
-
-                  <div
-                    style="display: flex; gap: 8px; align-items: center; width: 100%; margin-top: 8px; flex-wrap: wrap;">
-                    <span class="routine-period-text" style="flex: 1; min-width: 150px; font-size:12px;">{{
-                      getTextoPeriodo(rutina) }}</span>
-                    <label class="photo-toggle"
-                      style="display:flex; align-items:center; cursor:pointer; background:#F8FAFC; padding:4px 8px; border-radius:6px; border:1px solid #E2E8F0; font-size:12px; font-weight:600;">
-                      <input type="checkbox" [(ngModel)]="rutina.requiresPhoto"
-                        (change)="rutina.requiresPhoto ? rutina.requiresAntesDespues = false : null; rutina.requiresPhoto ? rutina.requiresVariasFotos = false : null"
-                        style="margin-right:4px;">
-                      1 Foto
-                    </label>
-                    <label class="photo-toggle"
-                      style="display:flex; align-items:center; cursor:pointer; background:#FFFBEB; color:#D97706; padding:4px 8px; border-radius:6px; border:1px solid #FDE68A; font-size:12px; font-weight:600;">
-                      <input type="checkbox" [(ngModel)]="rutina.requiresAntesDespues"
-                        (change)="rutina.requiresAntesDespues ? rutina.requiresPhoto = false : null; rutina.requiresAntesDespues ? rutina.requiresVariasFotos = false : null"
-                        style="margin-right:4px;">
-                      Antes/Desp.
-                    </label>
-                    <label class="photo-toggle"
-                      style="display:flex; align-items:center; cursor:pointer; background:#F0FDF4; color:#16A34A; padding:4px 8px; border-radius:6px; border:1px solid #BBF7D0; font-size:12px; font-weight:600;">
-                      <input type="checkbox" [(ngModel)]="rutina.requiresVariasFotos"
-                        (change)="rutina.requiresVariasFotos ? rutina.requiresPhoto = false : null; rutina.requiresVariasFotos ? rutina.requiresAntesDespues = false : null"
-                        style="margin-right:4px;">
-                      Varias
-                    </label>
-                    <label class="photo-toggle"
-                      style="display:flex; align-items:center; cursor:pointer; background:#F1F5F9; color:#475569; padding:4px 8px; border-radius:6px; border:1px solid #CBD5E1; font-size:12px; font-weight:600;">
-                      <input type="checkbox" [(ngModel)]="rutina.permiteGaleria"
-                        (change)="rutina.permiteGaleria && !rutina.requiresAntesDespues && !rutina.requiresVariasFotos ? rutina.requiresPhoto = true : null"
-                        style="margin-right:4px;">
-                      Galería
-                    </label>
-                    <label class="photo-toggle"
-                      style="display:flex; align-items:center; cursor:pointer; background:#F3E8FF; color:#7E22CE; padding:4px 8px; border-radius:6px; border:1px solid #E9D5FF; font-size:12px; font-weight:600;">
-                      <input type="checkbox" [(ngModel)]="rutina.permiteDocumentos"
-                        (change)="rutina.permiteDocumentos && !rutina.requiresAntesDespues && !rutina.requiresVariasFotos ? rutina.requiresPhoto = true : null"
-                        style="margin-right:4px;">
-                      Docs
-                    </label>
-                    <button class="btn-remove" (click)="eliminarRutina(i)" title="Eliminar rutina"
-                      style="background:transparent; border:none; color:#EF4444; cursor:pointer; margin-left: 4px;">
-                      🗑
-                    </button>
-                  </div>
-                </div>
-              </div>
-              <button class="btn-outline-primary" (click)="agregarRutina()"
-                style="margin-top:12px; width: 100%; border: 1px dashed #CBD5E1; color: #475569; padding:8px; border-radius:6px; background:white; cursor:pointer;">
-                ➕ Añadir regla recurrente
+            <div class="wizard-sucursales-grid">
+              <button type="button" class="wizard-sucursal-card"
+                      *ngFor="let suc of sucursalesDisponibles()"
+                      [class.selected]="formStoreRutina === suc"
+                      (click)="!isEditMode && (formStoreRutina = suc); !isEditMode && (formAssignedRutina = [])">
+                <div class="wizard-sucursal-icon">🏪</div>
+                <div class="wizard-sucursal-nombre">{{ suc }}</div>
+                <svg *ngIf="formStoreRutina === suc" class="wizard-sucursal-check" width="22" height="22" viewBox="0 0 24 24"
+                     fill="none" stroke="currentColor" stroke-width="3">
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
               </button>
             </div>
 
-            <!-- ✅ COUNTER RUTINAS — SIEMPRE VISIBLE -->
-            <div class="counter-box">
-              <div class="counter-icon">📊</div>
-              <div class="counter-text">
-                Este bloque generará
-                <strong>{{ totalRutinasSemanales() }}</strong>
-                tareas por semana
-                (<strong>{{ formAssignedRutina.length }}</strong> personas ×
-                <strong>{{ totalEjecucionesPorSemana() }}</strong> ejecuciones)
+            <p class="wizard-hint" *ngIf="esSucursalAdministrativa(formStoreRutina)" style="margin-top:12px;">
+              ℹ️ Las rutinas diarias para esta zona se omiten automáticamente los domingos.
+            </p>
+          </div>
+
+          <!-- PASO 3 — RESPONSABLES (filtrados por sucursal) -->
+          <div class="wizard-step" *ngIf="wizardStepRutina === 3">
+            <h2 class="wizard-question">¿Quién la va a hacer?</h2>
+            <p class="wizard-hint">Personas que trabajan en <strong>{{ formStoreRutina }}</strong></p>
+
+            <div class="wizard-search-box">
+              <input type="text" class="wizard-input"
+                     [(ngModel)]="terminoBusquedaEmpleadoWizardRutina"
+                     placeholder="🔍 Buscar persona...">
+            </div>
+
+            <div class="wizard-empleados-grid">
+              <button type="button" class="wizard-empleado-card"
+                      *ngFor="let emp of empleadosFiltradosWizardRutina"
+                      [class.selected]="formAssignedRutina.includes(emp.nombre)"
+                      [disabled]="isEditMode"
+                      (click)="toggleEmpleadoRutina(emp.nombre)">
+                <div class="wizard-empleado-avatar">{{ emp.nombre.charAt(0) | uppercase }}</div>
+                <div class="wizard-empleado-nombre">{{ emp.nombre }}</div>
+                <div class="wizard-empleado-check">
+                  <svg *ngIf="formAssignedRutina.includes(emp.nombre)" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                       stroke="currentColor" stroke-width="3">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                  </svg>
+                </div>
+              </button>
+            </div>
+
+            <div class="wizard-empty-state" *ngIf="empleadosFiltradosWizardRutina.length === 0">
+              😕 No hay personas asignadas a esta sucursal.
+            </div>
+
+            <div class="wizard-helper-row" *ngIf="empleadosFiltradosWizardRutina.length > 0 && !isEditMode">
+              <button type="button" class="wizard-link" (click)="asignarATodoMiPersonalRutina()">
+                🚀 Seleccionar a todos
+              </button>
+              <span class="wizard-count" *ngIf="formAssignedRutina.length > 0">
+                {{ formAssignedRutina.length }} {{ formAssignedRutina.length === 1 ? 'persona' : 'personas' }} seleccionadas
+              </span>
+            </div>
+          </div>
+
+          <!-- PASO 4 — FRECUENCIA -->
+          <div class="wizard-step" *ngIf="wizardStepRutina === 4">
+            <h2 class="wizard-question">¿Cada cuándo se hace?</h2>
+            <p class="wizard-hint">Selecciona cada cuánto se debe repetir</p>
+
+            <div class="wizard-frecuencia-grid">
+              <button type="button" class="wizard-frecuencia-card"
+                      [class.selected]="formRutinas[0]?.frecuencia === 'Diaria'"
+                      (click)="seleccionarFrecuenciaRutina('Diaria')">
+                <div class="wizard-frecuencia-icon">📅</div>
+                <div class="wizard-frecuencia-nombre">Diaria</div>
+                <div class="wizard-frecuencia-desc">Todos los días</div>
+              </button>
+
+              <button type="button" class="wizard-frecuencia-card"
+                      [class.selected]="formRutinas[0]?.frecuencia === 'Semanal'"
+                      (click)="seleccionarFrecuenciaRutina('Semanal')">
+                <div class="wizard-frecuencia-icon">🗓️</div>
+                <div class="wizard-frecuencia-nombre">Semanal</div>
+                <div class="wizard-frecuencia-desc">Cada semana</div>
+              </button>
+
+              <button type="button" class="wizard-frecuencia-card"
+                      [class.selected]="formRutinas[0]?.frecuencia === 'Catorcenal'"
+                      (click)="seleccionarFrecuenciaRutina('Catorcenal')">
+                <div class="wizard-frecuencia-icon">📆</div>
+                <div class="wizard-frecuencia-nombre">Catorcenal</div>
+                <div class="wizard-frecuencia-desc">Cada 2 semanas</div>
+              </button>
+
+              <button type="button" class="wizard-frecuencia-card"
+                      [class.selected]="formRutinas[0]?.frecuencia === 'Mensual'"
+                      (click)="seleccionarFrecuenciaRutina('Mensual')">
+                <div class="wizard-frecuencia-icon">🗒️</div>
+                <div class="wizard-frecuencia-nombre">Mensual</div>
+                <div class="wizard-frecuencia-desc">Una vez al mes</div>
+              </button>
+
+              <button type="button" class="wizard-frecuencia-card"
+                      [class.selected]="formRutinas[0]?.frecuencia === 'Trimestral'"
+                      (click)="seleccionarFrecuenciaRutina('Trimestral')">
+                <div class="wizard-frecuencia-icon">📊</div>
+                <div class="wizard-frecuencia-nombre">Trimestral</div>
+                <div class="wizard-frecuencia-desc">Cada 3 meses</div>
+              </button>
+            </div>
+
+            <div class="wizard-subseleccion"
+                 *ngIf="formRutinas[0]?.frecuencia === 'Semanal' || formRutinas[0]?.frecuencia === 'Catorcenal'">
+              <label class="wizard-subseleccion-label">¿Qué día de la semana?</label>
+              <select [(ngModel)]="formRutinas[0].diaSemana">
+                <option value="Lunes">Lunes</option>
+                <option value="Martes">Martes</option>
+                <option value="Miércoles">Miércoles</option>
+                <option value="Jueves">Jueves</option>
+                <option value="Viernes">Viernes</option>
+                <option value="Sábado">Sábado</option>
+                <option value="Domingo">Domingo</option>
+              </select>
+            </div>
+
+            <div class="wizard-subseleccion"
+                 *ngIf="formRutinas[0]?.frecuencia === 'Mensual' || formRutinas[0]?.frecuencia === 'Trimestral'">
+              <label class="wizard-subseleccion-label">¿Qué día del mes?</label>
+              <select [(ngModel)]="formRutinas[0].diaMes">
+                <option *ngFor="let d of diasDelMes" [value]="d">Día {{ d }}</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- PASO 5 — HORARIO -->
+          <div class="wizard-step" *ngIf="wizardStepRutina === 5">
+            <h2 class="wizard-question">¿A qué hora?</h2>
+            <p class="wizard-hint">Pon a qué hora empieza y a qué hora debe terminar</p>
+
+            <div class="wizard-time-block">
+              <label class="wizard-time-label">🕒 Hora en que empieza</label>
+              <input type="time" class="wizard-input wizard-time-input" [(ngModel)]="formRutinas[0].horaInicio">
+              <div class="wizard-time-shortcuts">
+                <button type="button" class="wizard-chip" (click)="ponerHoraInicioRutina('07:00')">7:00 AM</button>
+                <button type="button" class="wizard-chip" (click)="ponerHoraInicioRutina('08:00')">8:00 AM</button>
+                <button type="button" class="wizard-chip" (click)="ponerHoraInicioRutina('09:00')">9:00 AM</button>
+                <button type="button" class="wizard-chip" (click)="ponerHoraInicioRutina('12:00')">12:00 PM</button>
+                <button type="button" class="wizard-chip" (click)="ponerHoraInicioRutina('15:00')">3:00 PM</button>
               </div>
             </div>
 
-            <div class="btn-group"
-              style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; padding-top: 20px; border-top: 1px solid #E2E8F0;">
-              <button class="btn-secondary" (click)="cerrarModalRutinas()">Cancelar</button>
-              <button class="btn-primary" (click)="guardarBloqueRutinas()">{{ isEditMode ? 'Guardar Cambios' :
-                'Guardar en Sistema' }}</button>
+            <div class="wizard-time-block">
+              <label class="wizard-time-label">⏰ Hora límite (cuándo termina)</label>
+              <input type="time" class="wizard-input wizard-time-input" [(ngModel)]="formRutinas[0].horaLimite">
+              <div class="wizard-time-shortcuts">
+                <button type="button" class="wizard-chip" (click)="ponerHoraLimiteRutina('10:00')">10:00 AM</button>
+                <button type="button" class="wizard-chip" (click)="ponerHoraLimiteRutina('14:00')">2:00 PM</button>
+                <button type="button" class="wizard-chip" (click)="ponerHoraLimiteRutina('17:00')">5:00 PM</button>
+                <button type="button" class="wizard-chip" (click)="ponerHoraLimiteRutina('20:00')">8:00 PM</button>
+                <button type="button" class="wizard-chip" (click)="ponerHoraLimiteRutina('22:00')">10:00 PM</button>
+              </div>
+            </div>
+
+            <div class="wizard-warning" *ngIf="!formRutinas[0]?.horaInicio || !formRutinas[0]?.horaLimite">
+              ⚠️ Faltan las horas. Llena las dos para continuar.
             </div>
           </div>
+
+          <!-- PASO 6 — TIPO DE EVIDENCIA -->
+          <div class="wizard-step" *ngIf="wizardStepRutina === 6">
+            <h2 class="wizard-question">¿Necesita foto?</h2>
+            <p class="wizard-hint">¿Pediremos foto para comprobar que se hizo?</p>
+
+            <div class="wizard-evidencia-grid">
+              <button type="button" class="wizard-evidencia-card"
+                      [class.selected]="wizardTipoEvidenciaRutina === 'ninguna'"
+                      (click)="seleccionarTipoEvidenciaRutina('ninguna')">
+                <div class="wizard-evidencia-icon">📋</div>
+                <div class="wizard-evidencia-titulo">Sin foto</div>
+                <div class="wizard-evidencia-desc">Solo marcar como hecho</div>
+              </button>
+
+              <button type="button" class="wizard-evidencia-card wizard-evidencia-foto"
+                      [class.selected]="wizardTipoEvidenciaRutina === 'foto'"
+                      (click)="seleccionarTipoEvidenciaRutina('foto')">
+                <div class="wizard-evidencia-icon">📷</div>
+                <div class="wizard-evidencia-titulo">Una foto</div>
+                <div class="wizard-evidencia-desc">Una foto al terminar</div>
+              </button>
+
+              <button type="button" class="wizard-evidencia-card wizard-evidencia-antes"
+                      [class.selected]="wizardTipoEvidenciaRutina === 'antesDespues'"
+                      (click)="seleccionarTipoEvidenciaRutina('antesDespues')">
+                <div class="wizard-evidencia-icon">📸📸</div>
+                <div class="wizard-evidencia-titulo">Antes y Después</div>
+                <div class="wizard-evidencia-desc">Dos fotos comparativas</div>
+              </button>
+            </div>
+          </div>
+
+          <!-- PASO 7 — RESUMEN -->
+          <div class="wizard-step" *ngIf="wizardStepRutina === 7">
+            <h2 class="wizard-question">¿Todo correcto?</h2>
+            <p class="wizard-hint">Revisa los datos antes de {{ isEditMode ? 'guardar los cambios' : 'crear la rutina' }}</p>
+
+            <div class="wizard-resumen">
+              <div class="wizard-resumen-row" (click)="irAPasoWizardRutina(1)">
+                <span class="wizard-resumen-label">📝 Rutina</span>
+                <span class="wizard-resumen-valor">{{ formNameRutina || 'Sin nombre' }}</span>
+                <span class="wizard-resumen-editar">Cambiar</span>
+              </div>
+
+              <div class="wizard-resumen-row" (click)="irAPasoWizardRutina(2)">
+                <span class="wizard-resumen-label">🏪 Lugar</span>
+                <span class="wizard-resumen-valor">{{ formStoreRutina || 'Sin asignar' }}</span>
+                <span class="wizard-resumen-editar">Cambiar</span>
+              </div>
+
+              <div class="wizard-resumen-row" (click)="irAPasoWizardRutina(3)">
+                <span class="wizard-resumen-label">👤 Para</span>
+                <span class="wizard-resumen-valor">{{ getEmpleadosResumenRutina() }}</span>
+                <span class="wizard-resumen-editar">Cambiar</span>
+              </div>
+
+              <div class="wizard-resumen-row" (click)="irAPasoWizardRutina(4)">
+                <span class="wizard-resumen-label">🔁 Repetir</span>
+                <span class="wizard-resumen-valor">{{ getResumenFrecuenciaRutina() }}</span>
+                <span class="wizard-resumen-editar">Cambiar</span>
+              </div>
+
+              <div class="wizard-resumen-row" (click)="irAPasoWizardRutina(5)">
+                <span class="wizard-resumen-label">🕒 Horario</span>
+                <span class="wizard-resumen-valor">
+                  {{ formRutinas[0]?.horaInicio || '--' }} a {{ formRutinas[0]?.horaLimite || '--' }}
+                </span>
+                <span class="wizard-resumen-editar">Cambiar</span>
+              </div>
+
+              <div class="wizard-resumen-row" (click)="irAPasoWizardRutina(6)">
+                <span class="wizard-resumen-label">📷 Evidencia</span>
+                <span class="wizard-resumen-valor">{{ getResumenEvidenciaRutina() }}</span>
+                <span class="wizard-resumen-editar">Cambiar</span>
+              </div>
+            </div>
+
+            <div class="wizard-counter-final">
+              📊 Este bloque generará
+              <strong>{{ totalRutinasSemanales() }}</strong>
+              tareas por semana
+            </div>
+          </div>
+
+          <!-- FOOTER de navegación -->
+          <div class="wizard-footer">
+            <button type="button" class="wizard-btn wizard-btn-back"
+                    *ngIf="wizardStepRutina > 1"
+                    (click)="retrocederPasoWizardRutina()">
+              ← Atrás
+            </button>
+            <div *ngIf="wizardStepRutina === 1" style="flex:1"></div>
+
+            <button type="button" class="wizard-btn wizard-btn-next"
+                    *ngIf="wizardStepRutina < wizardTotalStepsRutina"
+                    [disabled]="!puedeAvanzarWizardRutina()"
+                    (click)="avanzarPasoWizardRutina()">
+              Siguiente →
+            </button>
+
+            <button type="button" class="wizard-btn wizard-btn-finish"
+                    *ngIf="wizardStepRutina === wizardTotalStepsRutina"
+                    (click)="finalizarWizardRutina()">
+              ✅ {{ isEditMode ? 'GUARDAR CAMBIOS' : 'CREAR RUTINA' }}
+            </button>
+          </div>
+
         </div>
       </div>
 

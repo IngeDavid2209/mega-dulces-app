@@ -634,8 +634,51 @@
             </div>
           </div>
 
-          <!-- PASO 4 — HORARIO -->
+          <!-- PASO 4 — ¿QUÉ DÍA? 📅 -->
           <div class="wizard-step" *ngIf="wizardStep === 4">
+            <h2 class="wizard-question">¿Para qué día es?</h2>
+            <p class="wizard-hint">Selecciona en qué día debe aparecer esta tarea</p>
+
+            <div class="wizard-fecha-grid">
+              <button type="button" class="wizard-fecha-card"
+                      [class.selected]="presetFechaTarea === 'hoy'"
+                      (click)="seleccionarPresetFechaTarea('hoy')">
+                <div class="wizard-fecha-icon">📅</div>
+                <div class="wizard-fecha-nombre">Hoy</div>
+                <div class="wizard-fecha-desc">Aparece de inmediato</div>
+              </button>
+
+              <button type="button" class="wizard-fecha-card"
+                      [class.selected]="presetFechaTarea === 'manana'"
+                      (click)="seleccionarPresetFechaTarea('manana')">
+                <div class="wizard-fecha-icon">⏭️</div>
+                <div class="wizard-fecha-nombre">Mañana</div>
+                <div class="wizard-fecha-desc">Aparece el día siguiente</div>
+              </button>
+
+              <button type="button" class="wizard-fecha-card wizard-fecha-card--custom"
+                      [class.selected]="presetFechaTarea === 'custom'"
+                      (click)="seleccionarPresetFechaTarea('custom')">
+                <div class="wizard-fecha-icon">🗓️</div>
+                <div class="wizard-fecha-nombre">Otro día</div>
+                <div class="wizard-fecha-desc">Yo elijo la fecha</div>
+              </button>
+            </div>
+
+            <div class="wizard-fecha-custom" *ngIf="presetFechaTarea === 'custom'">
+              <label class="wizard-fecha-custom-label">Elige el día exacto:</label>
+              <input type="date" class="wizard-input wizard-time-input"
+                     [(ngModel)]="formFechaTarea"
+                     [min]="hoyIsoStr">
+            </div>
+
+            <div class="wizard-warning" *ngIf="!presetFechaTarea || !formFechaTarea">
+              ⚠️ Selecciona el día para continuar.
+            </div>
+          </div>
+
+          <!-- PASO 5 — HORARIO -->
+          <div class="wizard-step" *ngIf="wizardStep === 5">
             <h2 class="wizard-question">¿A qué hora?</h2>
             <p class="wizard-hint">Pon a qué hora empieza y a qué hora debe terminar</p>
 
@@ -668,8 +711,8 @@
             </div>
           </div>
 
-          <!-- PASO 5 — TIPO DE EVIDENCIA -->
-          <div class="wizard-step" *ngIf="wizardStep === 5">
+          <!-- PASO 6 — TIPO DE EVIDENCIA -->
+          <div class="wizard-step" *ngIf="wizardStep === 6">
             <h2 class="wizard-question">¿Necesita foto?</h2>
             <p class="wizard-hint">¿Pediremos foto a la persona para comprobar que hizo la tarea?</p>
 
@@ -700,8 +743,8 @@
             </div>
           </div>
 
-          <!-- PASO 6 — RESUMEN -->
-          <div class="wizard-step" *ngIf="wizardStep === 6">
+          <!-- PASO 7 — RESUMEN -->
+          <div class="wizard-step" *ngIf="wizardStep === 7">
             <h2 class="wizard-question">¿Todo correcto?</h2>
             <p class="wizard-hint">Revisa los datos antes de crear la tarea</p>
 
@@ -725,6 +768,12 @@
               </div>
 
               <div class="wizard-resumen-row" (click)="irAPasoWizard(4)">
+                <span class="wizard-resumen-label">📅 Día</span>
+                <span class="wizard-resumen-valor">{{ getResumenFechaTarea() }}</span>
+                <span class="wizard-resumen-editar">Cambiar</span>
+              </div>
+
+              <div class="wizard-resumen-row" (click)="irAPasoWizard(5)">
                 <span class="wizard-resumen-label">🕒 Horario</span>
                 <span class="wizard-resumen-valor">
                   {{ formItems[0]?.horaInicio || '--' }} a {{ formItems[0]?.horaLimite || '--' }}
@@ -732,7 +781,7 @@
                 <span class="wizard-resumen-editar">Cambiar</span>
               </div>
 
-              <div class="wizard-resumen-row" (click)="irAPasoWizard(5)">
+              <div class="wizard-resumen-row" (click)="irAPasoWizard(6)">
                 <span class="wizard-resumen-label">📷 Evidencia</span>
                 <span class="wizard-resumen-valor">{{ getResumenEvidencia() }}</span>
                 <span class="wizard-resumen-editar">Cambiar</span>
@@ -985,8 +1034,50 @@
             </div>
           </div>
 
-          <!-- PASO 6 — TIPO DE EVIDENCIA -->
+          <!-- PASO 6 — ¿DESDE Y HASTA CUÁNDO? 📅 -->
           <div class="wizard-step" *ngIf="wizardStepRutina === 6">
+            <h2 class="wizard-question">¿Desde y hasta cuándo?</h2>
+            <p class="wizard-hint">La rutina solo se generará dentro de estas fechas. "Hasta" es opcional — déjalo vacío si la rutina dura para siempre.</p>
+
+            <div class="wizard-vigencia-grid">
+              <div class="wizard-vigencia-card wizard-vigencia-card--inicio">
+                <div class="wizard-vigencia-card-header">
+                  <span class="wizard-vigencia-icon">▶️</span>
+                  <span class="wizard-vigencia-titulo">Desde</span>
+                </div>
+                <input type="date" class="wizard-input wizard-time-input"
+                       [(ngModel)]="formRutinas[0].fechaInicio"
+                       [min]="hoyIsoStr">
+                <span class="wizard-vigencia-hint">Día en que empieza la rutina</span>
+              </div>
+
+              <div class="wizard-vigencia-card wizard-vigencia-card--fin">
+                <div class="wizard-vigencia-card-header">
+                  <span class="wizard-vigencia-icon">⏹</span>
+                  <span class="wizard-vigencia-titulo">Hasta (opcional)</span>
+                </div>
+                <input type="date" class="wizard-input wizard-time-input"
+                       [(ngModel)]="formRutinas[0].fechaFin"
+                       [min]="formRutinas[0].fechaInicio || hoyIsoStr">
+                <span class="wizard-vigencia-hint">Déjalo vacío si la rutina sigue indefinidamente</span>
+                <button type="button" class="wizard-link"
+                        *ngIf="formRutinas[0].fechaFin"
+                        (click)="formRutinas[0].fechaFin = null">
+                  Quitar fecha de fin
+                </button>
+              </div>
+            </div>
+
+            <div class="wizard-warning" *ngIf="!formRutinas[0].fechaInicio">
+              ⚠️ Necesitas seleccionar la fecha de inicio para continuar.
+            </div>
+            <div class="wizard-warning" *ngIf="formRutinas[0].fechaInicio && formRutinas[0].fechaFin && formRutinas[0].fechaFin < formRutinas[0].fechaInicio">
+              ⚠️ La fecha de fin no puede ser anterior a la de inicio.
+            </div>
+          </div>
+
+          <!-- PASO 7 — TIPO DE EVIDENCIA -->
+          <div class="wizard-step" *ngIf="wizardStepRutina === 7">
             <h2 class="wizard-question">¿Necesita foto?</h2>
             <p class="wizard-hint">¿Pediremos foto para comprobar que se hizo?</p>
 
@@ -1017,8 +1108,8 @@
             </div>
           </div>
 
-          <!-- PASO 7 — RESUMEN -->
-          <div class="wizard-step" *ngIf="wizardStepRutina === 7">
+          <!-- PASO 8 — RESUMEN -->
+          <div class="wizard-step" *ngIf="wizardStepRutina === 8">
             <h2 class="wizard-question">¿Todo correcto?</h2>
             <p class="wizard-hint">Revisa los datos antes de {{ isEditMode ? 'guardar los cambios' : 'crear la rutina' }}</p>
 
@@ -1056,6 +1147,12 @@
               </div>
 
               <div class="wizard-resumen-row" (click)="irAPasoWizardRutina(6)">
+                <span class="wizard-resumen-label">📅 Vigencia</span>
+                <span class="wizard-resumen-valor">{{ getResumenVigenciaRutina() }}</span>
+                <span class="wizard-resumen-editar">Cambiar</span>
+              </div>
+
+              <div class="wizard-resumen-row" (click)="irAPasoWizardRutina(7)">
                 <span class="wizard-resumen-label">📷 Evidencia</span>
                 <span class="wizard-resumen-valor">{{ getResumenEvidenciaRutina() }}</span>
                 <span class="wizard-resumen-editar">Cambiar</span>

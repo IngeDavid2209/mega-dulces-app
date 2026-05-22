@@ -66,11 +66,11 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   formAssignedRutina: string[] = [];
   formStoreRutina = '';
 
-  // ✅ Reglas de rutina con horaInicio + horaLimite
+  // ✅ Reglas de rutina con horaInicio + horaLimite + 📅 fechaInicio + fechaFin
   formRutinas: any[] = [{
     text: '', requiresPhoto: false, requiresAntesDespues: false, requiresVariasFotos: false,
     permiteGaleria: false, permiteDocumentos: false, tiempoEstimado: 30,
-    frecuencia: 'Diaria', fechaFin: null,
+    frecuencia: 'Diaria', fechaInicio: '', fechaFin: null,
     horaInicio: '', horaLimite: '',
     diaSemana: 'Lunes', diaMes: 1
   }];
@@ -90,15 +90,24 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   //  🧙 WIZARD DE TAREAS ÚNICAS (Modo Asistido para adultos mayores)
   // ============================================================================
   wizardStep: number = 1;
-  wizardTotalSteps: number = 6;
+  wizardTotalSteps: number = 7;
   wizardTipoEvidencia: 'ninguna' | 'foto' | 'antesDespues' = 'ninguna';
   terminoBusquedaEmpleadoWizard: string = '';
+  // 📅 NUEVO: preset y valor de la fecha en que se ejecuta la tarea
+  presetFechaTarea: 'hoy' | 'manana' | 'custom' | '' = '';
+  formFechaTarea: string = ''; // YYYY-MM-DD
+
+  /** Fecha de hoy en formato YYYY-MM-DD (para usar como `min` en inputs date). */
+  get hoyIsoStr(): string {
+    const offset = new Date().getTimezoneOffset() * 60000;
+    return new Date(Date.now() - offset).toISOString().split('T')[0];
+  }
 
   // ============================================================================
   //  🧙 WIZARD DE BLOQUE DE RUTINAS (mismo formato asistido)
   // ============================================================================
   wizardStepRutina: number = 1;
-  wizardTotalStepsRutina: number = 7;
+  wizardTotalStepsRutina: number = 8;
   wizardTipoEvidenciaRutina: 'ninguna' | 'foto' | 'antesDespues' = 'ninguna';
   terminoBusquedaEmpleadoWizardRutina: string = '';
 
@@ -168,9 +177,10 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       case 1: return !!this.formName && this.formName.trim().length > 0;
       case 2: return !!this.formStore;
       case 3: return this.formAssigned.length > 0;
-      case 4: return !!this.formItems[0]?.horaInicio && !!this.formItems[0]?.horaLimite;
-      case 5: return true;
-      case 6: return true;
+      case 4: return !!this.presetFechaTarea && !!this.formFechaTarea; // 📅 fecha de ejecución
+      case 5: return !!this.formItems[0]?.horaInicio && !!this.formItems[0]?.horaLimite;
+      case 6: return true; // evidencia
+      case 7: return true; // resumen
       default: return false;
     }
   }
@@ -217,8 +227,32 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     if (this.formItems[0]) this.formItems[0].horaLimite = hora;
   }
 
+  /** 📅 Aplica un preset de fecha (hoy / mañana / personalizar) al formulario. */
+  seleccionarPresetFechaTarea(preset: 'hoy' | 'manana' | 'custom') {
+    this.presetFechaTarea = preset;
+    const offset = new Date().getTimezoneOffset() * 60000;
+    if (preset === 'hoy') {
+      this.formFechaTarea = new Date(Date.now() - offset).toISOString().split('T')[0];
+    } else if (preset === 'manana') {
+      this.formFechaTarea = new Date(Date.now() + 86400000 - offset).toISOString().split('T')[0];
+    }
+    // En 'custom' el usuario llena el input manualmente
+  }
+
+  /** 📅 Texto humano para el resumen del paso final. */
+  getResumenFechaTarea(): string {
+    if (!this.formFechaTarea) return 'Sin fecha';
+    if (this.presetFechaTarea === 'hoy') return `📅 Hoy (${this.formFechaTarea})`;
+    if (this.presetFechaTarea === 'manana') return `📅 Mañana (${this.formFechaTarea})`;
+    return `📅 ${this.formFechaTarea}`;
+  }
+
   finalizarWizard() {
-    if (this.formItems[0]) this.formItems[0].text = this.formName;
+    if (this.formItems[0]) {
+      this.formItems[0].text = this.formName;
+      // 📅 Aplica la fecha elegida al item — se guardará en `date` del checklist
+      this.formItems[0].fechaLimite = this.formFechaTarea;
+    }
     this.guardarChecklistUnico();
   }
 
@@ -252,10 +286,24 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       case 3: return this.formAssignedRutina.length > 0;
       case 4: return !!regla?.frecuencia;
       case 5: return !!regla?.horaInicio && !!regla?.horaLimite;
-      case 6: return true;
-      case 7: return true;
+      case 6: {
+        // 📅 Vigencia: fechaInicio es obligatoria. Si hay fechaFin, debe ser >= fechaInicio.
+        if (!regla?.fechaInicio) return false;
+        if (regla?.fechaFin && regla.fechaFin < regla.fechaInicio) return false;
+        return true;
+      }
+      case 7: return true; // evidencia
+      case 8: return true; // resumen
       default: return false;
     }
+  }
+
+  /** 📅 Resumen humano de la vigencia (Desde X hasta Y). */
+  getResumenVigenciaRutina(): string {
+    const r = this.formRutinas[0];
+    if (!r?.fechaInicio) return 'Sin vigencia';
+    if (r.fechaFin) return `Del ${r.fechaInicio} al ${r.fechaFin}`;
+    return `Desde ${r.fechaInicio} (sin fecha de fin)`;
   }
 
   seleccionarTipoEvidenciaRutina(tipo: 'ninguna' | 'foto' | 'antesDespues') {
@@ -771,7 +819,12 @@ export class ChecklistComponent implements OnInit, OnDestroy {
           if (Math.abs(mesActual - mesCreacion) % 3 !== 0) continue;
         }
       }
-      const itemsVigentes = molde.items.filter((item: any) => !item.fechaFin || fechaString <= item.fechaFin);
+      // 📅 Vigencia: solo aplican items cuya fechaInicio ya pasó (o no tiene) Y cuya fechaFin no ha pasado (o no tiene).
+      const itemsVigentes = molde.items.filter((item: any) => {
+        const empezo = !item.fechaInicio || fechaString >= item.fechaInicio;
+        const noTermino = !item.fechaFin || fechaString <= item.fechaFin;
+        return empezo && noTermino;
+      });
       if (itemsVigentes.length === 0) continue;
       const llavePeriodo = this.obtenerLlavePeriodo(molde.frecuencia, fechaActual);
       const checklistId = `${molde.id}_${llavePeriodo}`;
@@ -865,7 +918,9 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     this.formRutinas = rutinasEncontradas.map((r: any) => ({
       ...r,
       horaInicio: r.horaInicio || '',
-      horaLimite: r.horaLimite || ''
+      horaLimite: r.horaLimite || '',
+      fechaInicio: r.fechaInicio || this.hoyIsoStr,
+      fechaFin: r.fechaFin || null
     }));
     // 🧙 Reset wizard de rutinas para edición
     this.wizardStepRutina = 1;
@@ -1044,6 +1099,10 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     this.wizardStep = 1;
     this.wizardTipoEvidencia = 'ninguna';
     this.terminoBusquedaEmpleadoWizard = '';
+    // 📅 Reset preset de fecha (por defecto: hoy)
+    this.presetFechaTarea = 'hoy';
+    const offset = new Date().getTimezoneOffset() * 60000;
+    this.formFechaTarea = new Date(Date.now() - offset).toISOString().split('T')[0];
     this.isModalOpen = true;
   }
 
@@ -1317,10 +1376,12 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     this.formNameRutina = '';
     this.formAssignedRutina = [];
     this.formStoreRutina = this.sucursalesDisponibles().length > 0 ? this.sucursalesDisponibles()[0] : '';
+    // 📅 fechaInicio por defecto = hoy
+    const hoyStr = this.hoyIsoStr;
     this.formRutinas = [{
       text: '', requiresPhoto: false, requiresAntesDespues: false, requiresVariasFotos: false,
       permiteGaleria: false, permiteDocumentos: false, tiempoEstimado: 30,
-      frecuencia: 'Diaria', fechaFin: null,
+      frecuencia: 'Diaria', fechaInicio: hoyStr, fechaFin: null,
       horaInicio: '', horaLimite: '',
       diaSemana: 'Lunes', diaMes: 1
     }];
@@ -1361,7 +1422,8 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       checked: false, photo: null, photoTime: null, photoAntes: null, photoAntesTime: null, photoAntesTimestamp: null, photoDespues: null, photoDespuesTime: null,
       tipo: 'rutina',
       frecuencia: rutina.frecuencia,
-      fechaFin: rutina.fechaFin,
+      fechaInicio: rutina.fechaInicio || null,
+      fechaFin: rutina.fechaFin || null,
       horaInicio: rutina.horaInicio || null,
       horaLimite: rutina.horaLimite || null,
       diaSemana: rutina.diaSemana || 'Lunes',

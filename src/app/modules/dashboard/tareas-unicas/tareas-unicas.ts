@@ -68,6 +68,41 @@ export class TareasUnicasComponent implements OnInit {
     this.cargarProyectos();
   }
 
+  esViendoMisProyectos(): boolean {
+    return this.usuarioSeleccionado === this.miPropioId();
+  }
+
+  getNombreUsuarioVisualizado(): string {
+    if (this.esViendoMisProyectos()) {
+      return this.currentUser?.nombre || 'Mis proyectos';
+    }
+    const u = this.listaUsuarios.find(x => x.id === this.usuarioSeleccionado);
+    return u?.nombre || u?.correo || 'Usuario';
+  }
+
+  getInicialesUsuarioVisualizado(): string {
+    const nombre = this.getNombreUsuarioVisualizado();
+    const partes = nombre.trim().split(/\s+/);
+    if (partes.length >= 2) {
+      return (partes[0][0] + partes[1][0]).toUpperCase();
+    }
+    return (partes[0]?.substring(0, 2) || '??').toUpperCase();
+  }
+
+  getRolUsuarioVisualizado(): string {
+    if (this.esViendoMisProyectos()) return this.currentUser?.rol || 'admin';
+    const u = this.listaUsuarios.find(x => x.id === this.usuarioSeleccionado);
+    return u?.rol || 'trabajador';
+  }
+
+  getProyectosCompletados(): number {
+    return this.proyectosUnicos.filter(p => p.completada).length;
+  }
+
+  getProyectosEnCurso(): number {
+    return this.proyectosUnicos.filter(p => !p.completada).length;
+  }
+
   cargarProyectos() {
     const userId = this.usuarioSeleccionado; 
     if (!userId) return;

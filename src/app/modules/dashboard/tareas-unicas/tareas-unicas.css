@@ -1,0 +1,367 @@
+/* ============================================================================
+   PANEL DE AUDITORÍA (solo admin)
+   Diseño profesional con header, selector custom, stats y aviso contextual.
+   ============================================================================ */
+
+.auditoria-panel {
+  position: relative;
+  margin-bottom: 28px;
+  background: linear-gradient(180deg, #FFFFFF 0%, #FAFBFF 100%);
+  border: 1px solid #E2E8F0;
+  border-left: 4px solid #4338CA;
+  border-radius: 16px;
+  padding: 22px 24px 20px;
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 8px 24px -12px rgba(67, 56, 202, 0.15);
+  overflow: hidden;
+  transition: border-color 0.25s, box-shadow 0.25s;
+}
+
+.auditoria-panel::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 220px;
+  height: 220px;
+  background: radial-gradient(circle at top right,
+              rgba(67, 56, 202, 0.06) 0%,
+              transparent 60%);
+  pointer-events: none;
+}
+
+/* Estado: viendo a otra persona (no el propio) */
+.auditoria-panel--ajeno {
+  border-left-color: #D97706;
+  background: linear-gradient(180deg, #FFFFFF 0%, #FFFBEB 100%);
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 8px 24px -12px rgba(217, 119, 6, 0.18);
+}
+
+.auditoria-panel--ajeno::before {
+  background: radial-gradient(circle at top right,
+              rgba(217, 119, 6, 0.08) 0%,
+              transparent 60%);
+}
+
+
+/* ============== HEADER ============== */
+.auditoria-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  margin-bottom: 18px;
+  position: relative;
+}
+
+.auditoria-icon {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #4338CA 0%, #6366F1 100%);
+  color: #FFFFFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px -2px rgba(67, 56, 202, 0.35);
+}
+
+.auditoria-panel--ajeno .auditoria-icon {
+  background: linear-gradient(135deg, #D97706 0%, #F59E0B 100%);
+  box-shadow: 0 4px 12px -2px rgba(217, 119, 6, 0.4);
+}
+
+.auditoria-titulos {
+  flex: 1;
+  min-width: 0;
+}
+
+.auditoria-title {
+  margin: 0 0 2px 0;
+  font-size: 17px;
+  font-weight: 800;
+  color: #0F172A;
+  letter-spacing: -0.2px;
+  line-height: 1.2;
+}
+
+.auditoria-subtitle {
+  margin: 0;
+  font-size: 13px;
+  color: #64748B;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.auditoria-badge {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px 5px 8px;
+  background: #EEF2FF;
+  color: #4338CA;
+  border: 1px solid #C7D2FE;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.auditoria-badge-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #4338CA;
+  box-shadow: 0 0 0 3px rgba(67, 56, 202, 0.2);
+  animation: auditoriaPulse 2s ease-in-out infinite;
+}
+
+@keyframes auditoriaPulse {
+  0%, 100% { box-shadow: 0 0 0 3px rgba(67, 56, 202, 0.2); }
+  50% { box-shadow: 0 0 0 6px rgba(67, 56, 202, 0); }
+}
+
+
+/* ============== BODY: SELECTOR ============== */
+.auditoria-body {
+  position: relative;
+}
+
+.auditoria-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 800;
+  color: #64748B;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  margin-bottom: 10px;
+}
+
+.auditoria-select-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  background: #FFFFFF;
+  border: 2px solid #E2E8F0;
+  border-radius: 12px;
+  padding: 4px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  margin-bottom: 16px;
+}
+
+.auditoria-select-wrap:hover {
+  border-color: #C7D2FE;
+}
+
+.auditoria-select-wrap:focus-within {
+  border-color: #4338CA;
+  box-shadow: 0 0 0 4px rgba(67, 56, 202, 0.12);
+}
+
+.auditoria-panel--ajeno .auditoria-select-wrap:focus-within {
+  border-color: #D97706;
+  box-shadow: 0 0 0 4px rgba(217, 119, 6, 0.15);
+}
+
+.auditoria-avatar {
+  flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #4338CA 0%, #6366F1 100%);
+  color: #FFFFFF;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 10px;
+}
+
+.auditoria-panel--ajeno .auditoria-avatar {
+  background: linear-gradient(135deg, #D97706 0%, #F59E0B 100%);
+}
+
+.auditoria-select {
+  flex: 1;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background: transparent;
+  border: none;
+  outline: none;
+  padding: 8px 30px 8px 4px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #0F172A;
+  cursor: pointer;
+  font-family: inherit;
+  min-width: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.auditoria-select-caret {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #64748B;
+  pointer-events: none;
+}
+
+
+/* ============== STATS ============== */
+.auditoria-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.auditoria-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 8px;
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 12px;
+  text-align: center;
+  transition: transform 0.15s, border-color 0.15s;
+}
+
+.auditoria-stat:hover {
+  transform: translateY(-2px);
+  border-color: #C7D2FE;
+}
+
+.auditoria-stat-num {
+  font-size: 26px;
+  font-weight: 800;
+  color: #0F172A;
+  line-height: 1;
+  letter-spacing: -0.5px;
+}
+
+.auditoria-stat-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #64748B;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-top: 6px;
+}
+
+.auditoria-stat--curso .auditoria-stat-num {
+  color: #B45309;
+}
+
+.auditoria-stat--curso {
+  background: linear-gradient(180deg, #FFFBEB 0%, #FFFFFF 100%);
+  border-color: #FDE68A;
+}
+
+.auditoria-stat--completado .auditoria-stat-num {
+  color: #047857;
+}
+
+.auditoria-stat--completado {
+  background: linear-gradient(180deg, #ECFDF5 0%, #FFFFFF 100%);
+  border-color: #A7F3D0;
+}
+
+
+/* ============== AVISO ============== */
+.auditoria-aviso {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: #FFFBEB;
+  border: 1px solid #FDE68A;
+  border-radius: 10px;
+  font-size: 13px;
+  color: #92400E;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.auditoria-aviso svg {
+  flex-shrink: 0;
+  color: #D97706;
+}
+
+.auditoria-aviso strong {
+  font-weight: 800;
+  color: #78350F;
+}
+
+
+/* ============== RESPONSIVE (MÓVIL) ============== */
+@media (max-width: 640px) {
+  .auditoria-panel {
+    padding: 18px 16px 16px;
+    border-radius: 14px;
+  }
+
+  .auditoria-header {
+    gap: 12px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+
+  .auditoria-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+  }
+
+  .auditoria-title {
+    font-size: 15px;
+  }
+
+  .auditoria-subtitle {
+    font-size: 12px;
+  }
+
+  .auditoria-badge {
+    position: absolute;
+    top: 18px;
+    right: 16px;
+    font-size: 10px;
+    padding: 4px 8px 4px 6px;
+  }
+
+  .auditoria-titulos {
+    padding-right: 70px;
+  }
+
+  .auditoria-stats {
+    gap: 8px;
+  }
+
+  .auditoria-stat {
+    padding: 10px 4px;
+  }
+
+  .auditoria-stat-num {
+    font-size: 22px;
+  }
+
+  .auditoria-stat-label {
+    font-size: 10px;
+  }
+
+  .auditoria-select {
+    font-size: 14px;
+  }
+}

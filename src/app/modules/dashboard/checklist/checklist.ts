@@ -5,7 +5,7 @@ import { RouterModule, ActivatedRoute } from '@angular/router';
 import { Firestore, collection, doc, setDoc, getDoc, deleteDoc, onSnapshot, getDocs, query, where } from '@angular/fire/firestore';
 import * as localforage from 'localforage';
 import Swal from 'sweetalert2';
-import { esAdminGlobal, esAdminLimitado, sucursalesPermitidas } from '../../../shared/permisos.util';
+import { esAdminGlobal, esAdminLimitado, sucursalesPermitidas, normalizarNombre } from '../../../shared/permisos.util';
 import { obtenerSemanaISO, obtenerNombreDia } from '../../../shared/descansos.util';
 
 import { SidebarComponent } from '../../../shared/sidebar/sidebar';
@@ -413,17 +413,11 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     if (this.intervalId) clearInterval(this.intervalId);
   }
 
-  /** Normaliza un nombre para comparación tolerante (sin tildes, sin espacios extra, lowercase). */
-  private normalizarNombre(n: string | undefined | null): string {
-    if (!n) return '';
-    return n.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ');
-  }
-
   /** ¿El usuario actual es el dueño del checklist actualmente abierto (tolerante a tildes/espacios)? */
   esElDueno(): boolean {
     const cs = this.checklistSeleccionado();
     if (!cs) return false;
-    return this.normalizarNombre(this.currentUser?.nombre) === this.normalizarNombre(cs.assigned);
+    return normalizarNombre(this.currentUser?.nombre) === normalizarNombre(cs.assigned);
   }
 
   /** ¿Puede editar el checklist actual? (es el dueño y no se ha enviado). */
@@ -607,7 +601,9 @@ export class ChecklistComponent implements OnInit, OnDestroy {
         this.checklists.set(listasDeMisSucursales);
       } else {
         // Trabajador: solo sus propios checklists asignados
-        const misListas = listasFinales.filter((c: any) => c.assigned === this.currentUser.nombre);
+        // 🔥 Comparación tolerante a tildes/espacios/casing (mismo bug que en home)
+        const miNombreNorm = normalizarNombre(this.currentUser?.nombre);
+        const misListas = listasFinales.filter((c: any) => normalizarNombre(c.assigned) === miNombreNorm);
         this.checklists.set(misListas);
         const pendientesActuales = misListas.filter((c: any) => c.status !== 'completo' && c.enviado !== true).length;
         if (this.cantidadPendientesAnterior !== -1 && pendientesActuales > this.cantidadPendientesAnterior) {

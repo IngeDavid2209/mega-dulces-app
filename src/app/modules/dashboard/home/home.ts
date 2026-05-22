@@ -9,7 +9,7 @@ import { RouterModule, Router } from '@angular/router';
 import { Firestore, collection, onSnapshot } from '@angular/fire/firestore';
 
 import { SidebarComponent } from '../../../shared/sidebar/sidebar';
-import { esAdminGlobal, sucursalesPermitidas } from '../../../shared/permisos.util';
+import { esAdminGlobal, sucursalesPermitidas, normalizarNombre } from '../../../shared/permisos.util';
 
 @Component({
   selector: 'app-home',
@@ -249,19 +249,28 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
  
   // ================================== FIRESTORE ==================================
   conectarConLaNube() {
-    // 🔥 Filtro de alcance: admin global ve todo; admin limitado solo sus sucursales.
+    // 🔥 Filtro de alcance: admin global ve todo; admin limitado solo sus sucursales;
+    //    trabajador solo sus propias tareas (sin importar la sucursal).
     const permitidas = sucursalesPermitidas(this.currentUser);
     const esGlobal = esAdminGlobal(this.currentUser);
+    const esTrabajador = this.currentUser?.rol === 'trabajador';
+    const miNombreNorm = normalizarNombre(this.currentUser?.nombre);
 
     const checklistsRef = collection(this.firestore, 'checklists');
     this.destructoresRadares.push(
       onSnapshot(checklistsRef, snap => {
         let arr: any[] = [];
         snap.forEach(d => arr.push({ ...d.data(), id: d.id }));
-        // Admin limitado: solo checklists de sus sucursales
-        if (!esGlobal && permitidas !== null) {
+
+        if (esTrabajador) {
+          // 🔥 Trabajador: solo sus propias tareas (comparación tolerante a tildes/espacios)
+          arr = arr.filter(c => normalizarNombre(c.assigned) === miNombreNorm);
+        } else if (!esGlobal && permitidas !== null) {
+          // 🔥 Admin limitado: solo checklists de sus sucursales
           arr = arr.filter(c => permitidas.includes(c.store));
         }
+        // Admin global: ve todo, no se filtra
+
         this.checklists.set(arr);
         setTimeout(() => this.actualizarGrafica(), 100);
       })

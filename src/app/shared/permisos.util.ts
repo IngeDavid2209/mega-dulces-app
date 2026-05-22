@@ -59,3 +59,19 @@ export function filtrarPorSucursalPermitida<T>(
   if (permitidas === null) return items;
   return items.filter(it => permitidas.includes(getSucursal(it)));
 }
+
+/**
+ * Normaliza un nombre para comparación tolerante: sin tildes, lowercase, sin espacios extra.
+ * Útil cuando se compara `currentUser.nombre` contra otros nombres en la base de datos
+ * que pueden tener pequeñas variaciones de acento, mayúsculas o espacios.
+ */
+export function normalizarNombre(n: string | undefined | null): string {
+  if (!n) return '';
+  return n.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ');
+}
+
+/** ¿Es el mismo trabajador? Compara `currentUser.nombre` contra otro nombre con normalización. */
+export function esMismoTrabajador(currentUser: any, otroNombre: string | undefined | null): boolean {
+  if (!currentUser?.nombre || !otroNombre) return false;
+  return normalizarNombre(currentUser.nombre) === normalizarNombre(otroNombre);
+}

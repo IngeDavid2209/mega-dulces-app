@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router'; 
 import { FormsModule } from '@angular/forms';
 import { Firestore, collection, onSnapshot } from '@angular/fire/firestore';
-import { esAdminGlobal, sucursalesPermitidas } from '../../../shared/permisos.util';
+import { esAdminGlobal, sucursalesPermitidas, normalizarNombre } from '../../../shared/permisos.util';
 
 import { SidebarComponent } from '../../../shared/sidebar/sidebar';
 
@@ -199,7 +199,8 @@ export class EstadisticasComponent implements OnInit, OnDestroy {
     });
 
     const stats = empleados.map((emp: any) => {
-      const susListas = this.todosLosChecklists.filter(c => c.assigned === emp.nombre && c.store === suc);
+      const empNorm = normalizarNombre(emp.nombre);
+      const susListas = this.todosLosChecklists.filter(c => normalizarNombre(c.assigned) === empNorm && c.store === suc);
       let eTotal = 0;
       let eOk = 0;
 

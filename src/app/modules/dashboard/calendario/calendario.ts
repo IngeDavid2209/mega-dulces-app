@@ -5,7 +5,7 @@ import { RouterModule, Router } from '@angular/router';
 // 🔥 Agregué getDocs y query para que pueda ir por la agenda personal
 import { Firestore, collection, onSnapshot, getDocs, query } from '@angular/fire/firestore';
 import Swal from 'sweetalert2';
-import { esAdminGlobal, sucursalesPermitidas } from '../../../shared/permisos.util';
+import { esAdminGlobal, sucursalesPermitidas, normalizarNombre } from '../../../shared/permisos.util';
 
 import { SidebarComponent } from '../../../shared/sidebar/sidebar';
 
@@ -217,10 +217,11 @@ async generarCalendario() {
       // Conteo de Checklists (Operativo)
       let tareasDelDia = this.checklistsGlobales.filter(c => c.date === fechaStr);
       if (this.empleadoSeleccionado !== 'Todos') {
-        tareasDelDia = tareasDelDia.filter(c => c.assigned === this.empleadoSeleccionado);
+        const empNorm = normalizarNombre(this.empleadoSeleccionado);
+        tareasDelDia = tareasDelDia.filter(c => normalizarNombre(c.assigned) === empNorm);
       } else if (this.areaSeleccionada !== 'Todas') {
-        const nombresEmpleadosArea = this.empleadosFiltrados.map(e => e.nombre);
-        tareasDelDia = tareasDelDia.filter(c => nombresEmpleadosArea.includes(c.assigned));
+        const nombresEmpleadosArea = new Set(this.empleadosFiltrados.map(e => normalizarNombre(e.nombre)));
+        tareasDelDia = tareasDelDia.filter(c => nombresEmpleadosArea.has(normalizarNombre(c.assigned)));
       }
 
       // 🔥 NUEVO: Conteo de Agenda Personal (Azul)

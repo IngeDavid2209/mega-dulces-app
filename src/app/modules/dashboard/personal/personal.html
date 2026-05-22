@@ -419,6 +419,46 @@
                 </select>
               </div>
             </div>
+
+            <!-- 🔥 ALCANCE DEL ADMIN (Global vs Por sucursales) 🔥 -->
+            <div class="form-group form-full" *ngIf="formRol === 'admin'"
+                 style="padding-top: 16px; border-top: 1px solid var(--border);">
+              <label class="form-label" style="margin-bottom: 12px;">
+                Alcance del Administrador
+              </label>
+              <div class="alcance-toggle">
+                <label class="alcance-option"
+                       [class.selected]="formAlcance === 'global'"
+                       [class.disabled]="!puedeEditarAlcanceActual()">
+                  <input type="radio" name="alcance" value="global"
+                         [(ngModel)]="formAlcance"
+                         [disabled]="!puedeEditarAlcanceActual()">
+                  <div class="alcance-icon">🌐</div>
+                  <div class="alcance-text">
+                    <strong>Acceso Global</strong>
+                    <span>Administra todas las sucursales y áreas del sistema.</span>
+                  </div>
+                </label>
+
+                <label class="alcance-option"
+                       [class.selected]="formAlcance === 'sucursales'"
+                       [class.disabled]="!puedeEditarAlcanceActual()">
+                  <input type="radio" name="alcance" value="sucursales"
+                         [(ngModel)]="formAlcance"
+                         [disabled]="!puedeEditarAlcanceActual()">
+                  <div class="alcance-icon">🏪</div>
+                  <div class="alcance-text">
+                    <strong>Limitado a Sucursales</strong>
+                    <span>Mismos privilegios pero solo dentro de las sucursales asignadas abajo.</span>
+                  </div>
+                </label>
+              </div>
+              <div *ngIf="!puedeEditarAlcanceActual()"
+                   style="margin-top: 10px; padding: 10px 14px; background: #FEF3C7; border: 1px solid #FDE68A; border-radius: 8px; font-size: 13px; color: #92400E;">
+                ℹ️ Solo el Administrador principal (con acceso Global) puede modificar este campo.
+              </div>
+            </div>
+
             <div class="form-group form-full" *ngIf="formRol === 'trabajador'">
               <label class="form-label"
                 style="margin-bottom: 12px; padding-top: 16px; border-top: 1px solid var(--border);">Privilegios
@@ -482,8 +522,15 @@
                 </label>
               </div>
             </div>
-            <div class="form-group form-full" *ngIf="formRol === 'trabajador'">
-              <label class="form-label">Zonas Asignadas (Multi-selección)</label>
+            <div class="form-group form-full"
+                 *ngIf="formRol === 'trabajador' || (formRol === 'admin' && formAlcance === 'sucursales')">
+              <label class="form-label">
+                {{ formRol === 'admin' ? 'Sucursales que este Administrador puede gestionar' : 'Zonas Asignadas (Multi-selección)' }}
+                <span *ngIf="formRol === 'admin' && formAlcance === 'sucursales' && formSucursales.length === 0"
+                      style="color: #DC2626; font-weight: 700; font-size: 12px; margin-left: 8px;">
+                  * Requerido
+                </span>
+              </label>
               <div class="checkbox-grid">
                 <label class="checkbox-label" *ngFor="let suc of sucursalesDisponibles"
                   [class.selected]="formSucursales.includes(suc)">
@@ -492,8 +539,11 @@
                 </label>
               </div>
             </div>
-            <div class="form-group form-full" *ngIf="formRol === 'trabajador'">
-              <label class="form-label">Áreas Operativas Autorizadas (Multi-selección)</label>
+            <div class="form-group form-full"
+                 *ngIf="formRol === 'trabajador' || (formRol === 'admin' && formAlcance === 'sucursales')">
+              <label class="form-label">
+                {{ formRol === 'admin' ? 'Áreas que este Administrador puede gestionar (opcional)' : 'Áreas Operativas Autorizadas (Multi-selección)' }}
+              </label>
               <div class="checkbox-grid">
                 <label class="checkbox-label" *ngFor="let area of areasDisponibles"
                   [class.selected]="formAreas.includes(area)">

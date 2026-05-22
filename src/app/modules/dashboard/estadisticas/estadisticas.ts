@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router'; 
 import { FormsModule } from '@angular/forms';
 import { Firestore, collection, onSnapshot } from '@angular/fire/firestore';
+import { esAdminGlobal, sucursalesPermitidas } from '../../../shared/permisos.util';
 
 @Component({
   selector: 'app-estadisticas',
@@ -61,10 +62,12 @@ export class EstadisticasComponent implements OnInit, OnDestroy {
   determinarSucursalesPermitidas() {
     if (!this.currentUser) return;
 
-    if (this.currentUser.rol === 'admin' || (this.currentUser.sucursales && this.currentUser.sucursales.includes('Todas las sucursales'))) {
+    // Admin global: ve todas. Admin limitado y trabajador: solo sus sucursales asignadas.
+    if (esAdminGlobal(this.currentUser) || (this.currentUser.sucursales && this.currentUser.sucursales.includes('Todas las sucursales'))) {
       this.sucursalesPermitidas = [...this.nombresSucursales];
     } else {
-      this.sucursalesPermitidas = this.currentUser.sucursales || [this.currentUser.sucursal || ''];
+      const permitidas = sucursalesPermitidas(this.currentUser);
+      this.sucursalesPermitidas = permitidas ?? (this.currentUser.sucursales || [this.currentUser.sucursal || '']);
     }
 
     this.storeStats.set(

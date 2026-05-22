@@ -4,6 +4,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { Firestore, collection, onSnapshot } from '@angular/fire/firestore';
+import { esAdminGlobal, sucursalesPermitidas } from '../../../shared/permisos.util';
  
 @Component({
   selector: 'app-checkstore',
@@ -163,8 +164,9 @@ export class CheckstoreComponent implements OnInit, OnDestroy {
   // ============================================================================
   determinarSucursalesPermitidas() {
     if (!this.currentUser) return;
+    // Admin global: ve todas. Admin limitado y trabajador: ve solo las suyas.
     if (
-      this.currentUser.rol === 'admin' ||
+      esAdminGlobal(this.currentUser) ||
       (this.currentUser.sucursales && this.currentUser.sucursales.includes('Todas las sucursales'))
     ) {
       this.sucursalesPermitidas = [
@@ -172,7 +174,8 @@ export class CheckstoreComponent implements OnInit, OnDestroy {
         ...this.sucursalesAdministrativas.map(s => s.name)
       ];
     } else {
-      this.sucursalesPermitidas = this.currentUser.sucursales || [this.currentUser.sucursal || ''];
+      const permitidas = sucursalesPermitidas(this.currentUser);
+      this.sucursalesPermitidas = permitidas ?? (this.currentUser.sucursales || [this.currentUser.sucursal || '']);
     }
   }
  
@@ -197,8 +200,10 @@ export class CheckstoreComponent implements OnInit, OnDestroy {
       });
       this.areasDesdeFirebase = areasTemp;
  
+      // Admin global o trabajador con acceso total: agrega TODAS las áreas dinámicas.
+      // Admin limitado y trabajador normal: solo las áreas que coincidan con sus sucursales asignadas.
       if (
-        this.currentUser?.rol === 'admin' ||
+        esAdminGlobal(this.currentUser) ||
         (this.currentUser?.sucursales && this.currentUser?.sucursales.includes('Todas las sucursales'))
       ) {
         areasTemp.forEach(a => {

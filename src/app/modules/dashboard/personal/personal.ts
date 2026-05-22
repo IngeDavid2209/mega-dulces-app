@@ -16,6 +16,7 @@ import {
 
 import * as ExcelJS from 'exceljs';
 import Swal from 'sweetalert2';
+import { esAdminGlobal, esAdminLimitado } from '../../../shared/permisos.util';
 
 
 
@@ -48,6 +49,8 @@ export class PersonalComponent implements OnInit, OnDestroy {
   formPuedeVerCalendario = false; // 🔥 NUEVO: PERMISO DE CALENDARIO 🔥
   formSucursales: string[] = [];
   formAreas: string[] = [];
+  // 🔥 NUEVO: Alcance del admin (global = todas las sucursales, sucursales = solo las asignadas)
+  formAlcance: 'global' | 'sucursales' = 'global';
 
   // 🔥 LISTA INTELIGENTE DE SUCURSALES 🔥
   get sucursalesDisponibles() {
@@ -60,12 +63,12 @@ export class PersonalComponent implements OnInit, OnDestroy {
     const yo = this.liveUser;
     if (!yo) return [];
 
-    // Si soy Admin Total, puedo ver y asignar CUALQUIER sucursal/oficina
-    if (yo.rol === 'admin' || yo.sucursales?.includes('General (Acceso Total)')) {
+    // Si soy Admin Global, puedo ver y asignar CUALQUIER sucursal/oficina
+    if (esAdminGlobal(yo) || yo.sucursales?.includes('General (Acceso Total)')) {
       return todas;
     }
 
-    // Si soy Jefe/Encargado, SOLO puedo ver y asignar las que yo mismo tengo
+    // Admin limitado o Jefe/Encargado: SOLO ve y asigna las que yo mismo tengo
     return todas.filter(suc => yo.sucursales?.includes(suc));
   }
 
@@ -78,11 +81,11 @@ export class PersonalComponent implements OnInit, OnDestroy {
     const yo = this.liveUser;
     if (!yo) return [];
 
-    if (yo.rol === 'admin' || yo.areas?.includes('Todas las áreas') || yo.areas?.includes('Todas')) {
+    if (esAdminGlobal(yo) || yo.areas?.includes('Todas las áreas') || yo.areas?.includes('Todas')) {
       return todas;
     }
 
-    // Solo puedo asignar a mis empleados a las áreas que yo controlo
+    // Admin limitado o jefe: solo puedo asignar a mis empleados a las áreas que yo controlo
     return todas.filter(area => yo.areas?.includes(area));
   }
 
@@ -150,10 +153,11 @@ export class PersonalComponent implements OnInit, OnDestroy {
     return usuarioFresco || this.currentUser;
   }
 
-  // 2. 🔥 REEMPLAZAR getAdmins 🔥
+  // 2. 🔥 getAdmins: solo el admin GLOBAL ve la lista de admins.
+  //    Los admins limitados no ven ni gestionan otros admins (seguridad anti-escalada).
   getAdmins() {
     const yo = this.liveUser;
-    if (yo?.rol !== 'admin') {
+    if (!esAdminGlobal(yo)) {
       return [];
     }
     return this.usuarios().filter(u => u.rol === 'admin' &&
@@ -161,13 +165,14 @@ export class PersonalComponent implements OnInit, OnDestroy {
         u.cargo?.toLowerCase().includes(this.terminoBusqueda.toLowerCase())));
   }
 
-  // 3. 🔥 REEMPLAZAR getTrabajadores 🔥
+  // 3. 🔥 getTrabajadores: admins globales ven todos. Admins limitados y jefes
+  //    solo ven trabajadores de sus sucursales/áreas.
   getTrabajadores() {
     const yo = this.liveUser;
     let lista = this.usuarios().filter(u => u.rol === 'trabajador');
 
-    // 🔥 FILTRO ESTRICTO EN VIVO PARA JEFES / ENCARGADOS
-    if (yo?.rol !== 'admin') {
+    // 🔥 FILTRO ESTRICTO EN VIVO PARA ADMINS LIMITADOS Y JEFES / ENCARGADOS
+    if (!esAdminGlobal(yo)) {
       const misSucursales = yo?.sucursales || [];
       const misAreas = yo?.areas || [];
 
@@ -182,7 +187,9 @@ export class PersonalComponent implements OnInit, OnDestroy {
         const yoSoyGlobalArea = misAreas.includes('Todas las áreas') || misAreas.includes('Todas');
 
         const coincideSucursal = yoSoyGlobalSucursal || empSucursales.some((s: string) => misSucursales.includes(s));
-        const coincideArea = yoSoyGlobalArea || empAreas.some((a: string) => misAreas.includes(a));
+        // Admin limitado: si no le asignaste áreas, filtra solo por sucursal (no exige coincidencia de área)
+        const exigeArea = misAreas.length > 0;
+        const coincideArea = !exigeArea || yoSoyGlobalArea || empAreas.some((a: string) => misAreas.includes(a));
 
         return coincideSucursal && coincideArea;
       });
@@ -239,10 +246,26 @@ export class PersonalComponent implements OnInit, OnDestroy {
     this.formSucursales = [];
     this.formAreas = [];
     this.formPuedeAdministrarAreas = false;
+    this.formAlcance = 'global'; // 🔥 Por defecto los admins nuevos son globales
   }
 
   editarUsuario(user: any) {
   if (this.currentUser?.rol !== 'admin' && !this.currentUser?.puedeAdministrarPersonal) return;
+
+  // 🔒 SEGURIDAD: un admin limitado NO puede editar a otros admins (ni globales ni limitados),
+  // salvo a sí mismo. Solo el admin global edita admins.
+  const yo = this.liveUser;
+  const esOtroAdmin = user.rol === 'admin' && user.usuario !== yo?.usuario;
+  if (esAdminLimitado(yo) && esOtroAdmin) {
+    Swal.fire({
+      icon: 'warning',
+      title: 'Acción restringida',
+      text: 'Tu alcance está limitado a sucursales: no puedes editar a otros administradores.',
+      confirmButtonColor: '#0F172A'
+    });
+    return;
+  }
+
   this.usuarioEnEdicion = user;
 
   this.formNombre    = user.nombre;
@@ -254,6 +277,7 @@ export class PersonalComponent implements OnInit, OnDestroy {
   this.formCargo     = user.cargo    || 'Trabajador General';
   this.formSucursales = user.sucursales ? [...user.sucursales] : [];
   this.formAreas      = user.areas      ? [...user.areas]      : [];
+  this.formAlcance    = user.alcance === 'sucursales' ? 'sucursales' : 'global';
 
   this.formPuedeAdministrarAreas    = !!user.puedeAdministrarAreas;
   this.formPuedeCrearChecklists     = !!user.puedeCrearChecklists;
@@ -267,6 +291,21 @@ export class PersonalComponent implements OnInit, OnDestroy {
 
   this.isModalOpen = true;
 }
+
+  /**
+   * ¿Puedo cambiar el alcance/sucursales del usuario que estoy editando?
+   * Reglas:
+   *  - El admin global siempre puede.
+   *  - Un admin limitado NUNCA puede cambiar su propio alcance (anti-escalada).
+   *  - Un admin limitado tampoco puede cambiar alcance de otros admins.
+   *  - Por defecto los trabajadores los puede editar cualquier admin.
+   */
+  puedeEditarAlcanceActual(): boolean {
+    const yo = this.liveUser;
+    if (esAdminGlobal(yo)) return true;
+    if (this.formRol !== 'admin') return true; // editando un trabajador
+    return false; // admin limitado editando admin: no
+  }
 
   cerrarModal() { this.isModalOpen = false; this.usuarioEnEdicion = null; this.formTelefono = ''; }
 
@@ -295,9 +334,50 @@ export class PersonalComponent implements OnInit, OnDestroy {
       return;
     }
 
+    // 🔒 Anti-escalada: admin limitado editándose a sí mismo no puede subirse a global
+    const yo = this.liveUser;
+    const esYoMismo = this.usuarioEnEdicion?.usuario === yo?.usuario;
+    let alcanceFinal: 'global' | 'sucursales' = this.formAlcance;
+    if (this.formRol === 'admin' && esAdminLimitado(yo) && esYoMismo && alcanceFinal === 'global') {
+      Swal.fire({
+        icon: 'error',
+        title: 'Acción restringida',
+        text: 'No puedes cambiar tu propio alcance de "Por sucursales" a "Global". Pídelo al administrador principal.',
+        confirmButtonColor: '#0F172A'
+      });
+      return;
+    }
+
+    // Si el rol es trabajador, el alcance se ignora (siempre 'global' implícito en BD)
+    if (this.formRol !== 'admin') alcanceFinal = 'global';
+
+    // Para admin: definir sucursales y áreas según alcance
+    const esAdminGlobalNuevo = this.formRol === 'admin' && alcanceFinal === 'global';
+    const esAdminLimitadoNuevo = this.formRol === 'admin' && alcanceFinal === 'sucursales';
+
+    // Validación: admin limitado debe tener al menos UNA sucursal
+    if (esAdminLimitadoNuevo && this.formSucursales.length === 0) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Asigna al menos una sucursal',
+        text: 'Un administrador con alcance limitado necesita tener al menos una sucursal asignada.',
+        confirmButtonColor: '#0F172A'
+      });
+      return;
+    }
+
+    const sucursalesFinal = esAdminGlobalNuevo
+      ? ['General (Acceso Total)']
+      : this.formSucursales;
+
+    const areasFinal = esAdminGlobalNuevo
+      ? ['Todas las áreas']
+      : this.formAreas;
+
     const payload = {
       nombre: this.formNombre, usuario: this.formUsuario, correo: this.formCorreo, password: this.formPassword,
       rol: this.formRol, cargo: this.formCargo, telefono: this.formTelefono,
+      alcance: alcanceFinal,
       puedeCrearChecklists: this.formRol === 'admin' ? true : this.formPuedeCrearChecklists,
       puedeCrearRutinas: this.formRol === 'admin' ? true : this.formPuedeCrearRutinas,
       puedeCrearTareasUnicas: this.formRol === 'admin' ? true : this.formPuedeCrearTareasUnicas,
@@ -306,8 +386,8 @@ export class PersonalComponent implements OnInit, OnDestroy {
       puedeVerHistorial: this.formRol === 'admin' ? true : this.formPuedeVerHistorial,
       puedeAdministrarPersonal: this.formRol === 'admin' ? true : this.formPuedeAdministrarPersonal,
       puedeVerCalendario: this.formRol === 'admin' ? true : this.formPuedeVerCalendario,
-      sucursales: this.formRol === 'admin' ? ['General (Acceso Total)'] : this.formSucursales,
-      areas: this.formRol === 'admin' ? ['Todas las áreas'] : this.formAreas,
+      sucursales: sucursalesFinal,
+      areas: areasFinal,
       puedeAdministrarAreas: this.formRol === 'admin' ? true : this.formPuedeAdministrarAreas,
     };
 

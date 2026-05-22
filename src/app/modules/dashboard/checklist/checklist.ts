@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { RouterModule, ActivatedRoute } from '@angular/router';
 import { Firestore, collection, doc, setDoc, getDoc, deleteDoc, onSnapshot, getDocs } from '@angular/fire/firestore';
 import * as localforage from 'localforage';
+import { esAdminGlobal, esAdminLimitado, sucursalesPermitidas } from '../../../shared/permisos.util';
 
 @Component({
   selector: 'app-checklist',
@@ -469,20 +470,27 @@ export class ChecklistComponent implements OnInit, OnDestroy {
         'CAJA GENERAL', 'COMPRAS', 'CONTABILIDAD', 'FINANZAS', 'SISTEMAS', 'RH', 'MKT', 'MANTENIMIENTO'
       ];
 
-      if (this.currentUser?.rol === 'admin') {
+      // 🔥 SUCURSALES DISPONIBLES
+      if (esAdminGlobal(this.currentUser)) {
         this.sucursalesDisponibles.set(todasLasSucursales);
-      } else if (this.currentUser?.puedeCrearChecklists) {
-        const misSucursales = this.currentUser.sucursales || [this.currentUser.sucursal || ''];
-        const sucursalesFiltradas = todasLasSucursales.filter(s => s !== 'ADMINISTRADORES DEL SISTEMA' && misSucursales.includes(s));
+      } else if (esAdminLimitado(this.currentUser) || this.currentUser?.puedeCrearChecklists) {
+        const permitidas = sucursalesPermitidas(this.currentUser);
+        const misSucursales = permitidas ?? [];
+        const sucursalesFiltradas = todasLasSucursales.filter(
+          s => s !== 'ADMINISTRADORES DEL SISTEMA' && misSucursales.includes(s)
+        );
         this.sucursalesDisponibles.set(sucursalesFiltradas);
       }
 
-      if (this.currentUser?.rol === 'admin') {
+      // 🔥 EMPLEADOS DISPONIBLES (a quién puedo asignarle tareas)
+      if (esAdminGlobal(this.currentUser)) {
         const personalActivo = todosLosUsuarios.filter((u: any) => u.rol === 'trabajador' || u.rol === 'admin');
         this.empleados.set(personalActivo);
-      } else if (this.currentUser?.puedeCrearChecklists) {
+      } else if (esAdminLimitado(this.currentUser) || this.currentUser?.puedeCrearChecklists) {
+        // Solo trabajadores (no otros admins) y solo los que comparten alguna sucursal conmigo
         const trabajadoresUnicamente = todosLosUsuarios.filter((u: any) => u.rol === 'trabajador');
-        const misSucursales = this.currentUser.sucursales || [this.currentUser.sucursal || ''];
+        const permitidas = sucursalesPermitidas(this.currentUser);
+        const misSucursales = permitidas ?? [];
         const empleadosFiltrados = trabajadoresUnicamente.filter((t: any) => {
           const susSucursales = t.sucursales || [t.sucursal || ''];
           return susSucursales.some((s: string) => misSucursales.includes(s));
@@ -533,9 +541,18 @@ export class ChecklistComponent implements OnInit, OnDestroy {
         return b.timestampCreacion - a.timestampCreacion;
       });
 
-      if (this.currentUser?.rol === 'admin') {
+      if (esAdminGlobal(this.currentUser)) {
+        // Admin global: ve TODOS los checklists
         this.checklists.set(listasFinales);
+      } else if (esAdminLimitado(this.currentUser)) {
+        // Admin limitado: ve checklists de sus sucursales asignadas
+        const permitidas = sucursalesPermitidas(this.currentUser) ?? [];
+        const listasDeMisSucursales = listasFinales.filter(
+          (c: any) => permitidas.includes(c.store)
+        );
+        this.checklists.set(listasDeMisSucursales);
       } else {
+        // Trabajador: solo sus propios checklists asignados
         const misListas = listasFinales.filter((c: any) => c.assigned === this.currentUser.nombre);
         this.checklists.set(misListas);
         const pendientesActuales = misListas.filter((c: any) => c.status !== 'completo' && c.enviado !== true).length;

@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, ActivatedRoute } from '@angular/router';
 import { Firestore, collection, getDocs, doc, deleteDoc, onSnapshot } from '@angular/fire/firestore';
+import { sucursalesPermitidas } from '../shared/permisos.util';
 
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -200,12 +201,18 @@ export class ReportesComponent implements OnInit, OnDestroy {
 
     const checklistsRef = collection(this.firestore, 'checklists');
 
+    // 🔥 Si soy admin limitado, calculamos las sucursales que SÍ puedo ver
+    const sucursalesPermitidasUsuario = sucursalesPermitidas(this.currentUser);
+
     this.busquedaSub = onSnapshot(checklistsRef, (snapshot) => {
       const listasSinClones = new Map();
 
       snapshot.forEach(docSnap => {
         const c = docSnap.data() as any;
         if (c.eliminado === true) return;
+
+        // 🔥 Admin limitado: descarta cualquier checklist que NO sea de sus sucursales
+        if (sucursalesPermitidasUsuario !== null && !sucursalesPermitidasUsuario.includes(c.store)) return;
 
         if (c.date >= this.fechaInicio && c.date <= this.fechaFin) {
 

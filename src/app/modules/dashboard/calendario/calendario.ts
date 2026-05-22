@@ -5,6 +5,7 @@ import { RouterModule, Router } from '@angular/router';
 // 🔥 Agregué getDocs y query para que pueda ir por la agenda personal
 import { Firestore, collection, onSnapshot, getDocs, query } from '@angular/fire/firestore';
 import Swal from 'sweetalert2';
+import { esAdminGlobal, sucursalesPermitidas } from '../../../shared/permisos.util';
 
 @Component({
   selector: 'app-calendario',
@@ -64,7 +65,19 @@ tareasAgendaMes: any[] = [];
   conectarDatos() {
     const usuariosRef = collection(this.firestore, 'usuarios');
     this.destructores.push(onSnapshot(usuariosRef, (snap) => {
-      const trabajadores = snap.docs.map(d => d.data()).filter((u: any) => u.rol === 'trabajador');
+      let trabajadores = snap.docs.map(d => d.data()).filter((u: any) => u.rol === 'trabajador');
+
+      // 🔥 Admin limitado: solo ve trabajadores cuyas sucursales se cruzan con las suyas
+      if (!esAdminGlobal(this.currentUser)) {
+        const permitidas = sucursalesPermitidas(this.currentUser);
+        if (permitidas !== null) {
+          trabajadores = trabajadores.filter((t: any) => {
+            const susSucursales = t.sucursales || [t.sucursal || ''];
+            return susSucursales.some((s: string) => permitidas.includes(s));
+          });
+        }
+      }
+
       this.empleados.set(trabajadores.sort((a: any, b: any) => (a.nombre || '').localeCompare(b.nombre || '')));
     }));
 
@@ -76,7 +89,17 @@ tareasAgendaMes: any[] = [];
 
     const checklistsRef = collection(this.firestore, 'checklists');
     this.destructores.push(onSnapshot(checklistsRef, (snap) => {
-      this.checklistsGlobales = snap.docs.map(d => d.data()).filter((c: any) => !c.eliminado);
+      let lista = snap.docs.map(d => d.data()).filter((c: any) => !c.eliminado);
+
+      // 🔥 Admin limitado: solo ve checklists de sus sucursales
+      if (!esAdminGlobal(this.currentUser)) {
+        const permitidas = sucursalesPermitidas(this.currentUser);
+        if (permitidas !== null) {
+          lista = lista.filter((c: any) => permitidas.includes(c.store));
+        }
+      }
+
+      this.checklistsGlobales = lista;
       this.generarCalendario();
     }));
   }

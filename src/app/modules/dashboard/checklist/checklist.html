@@ -1280,6 +1280,70 @@
         </div>
       </div>
 
+      <!-- ╔══════════════════════════════════════════════════╗ -->
+      <!-- ║   MODAL: JUSTIFICANTE DE RETRASO                 ║ -->
+      <!-- ╚══════════════════════════════════════════════════╝ -->
+      <div class="modal-overlay" *ngIf="isModalJustificanteOpen" style="z-index: 9999;">
+        <div class="modal" style="max-width: 520px; padding: 28px;">
+          <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 6px;">
+            <span style="font-size: 32px;">⏰</span>
+            <h3 style="margin: 0; color: #B45309; font-size: 22px; font-weight: 800;">
+              Entrega con retraso
+            </h3>
+          </div>
+          <p style="margin: 0 0 18px 0; color: #64748B; font-size: 14px; line-height: 1.4;">
+            Esta tarea pasó de su hora límite. Para enviarla necesitas justificar el retraso.
+            Tu gerente verá esta información en Auditoría.
+          </p>
+
+          <div class="form-group" style="margin-bottom: 14px;">
+            <label class="form-label" style="font-weight: 700; color: #1E293B;">
+              📌 Categoría del retraso
+            </label>
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 6px;">
+              <button type="button"
+                *ngFor="let c of categoriasJustificante"
+                (click)="seleccionarCategoriaJustificante(c)"
+                [style.background]="justificanteCategoria === c ? '#FEF3C7' : '#FFFFFF'"
+                [style.border]="justificanteCategoria === c ? '2px solid #F59E0B' : '2px solid #E2E8F0'"
+                [style.color]="justificanteCategoria === c ? '#92400E' : '#1E293B'"
+                style="padding: 12px; border-radius: 10px; cursor: pointer; font-family: inherit; font-size: 14px; font-weight: 700; text-align: left; transition: 0.15s;">
+                {{ c }}
+              </button>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" style="font-weight: 700; color: #1E293B;">
+              💬 Comentario (qué pasó)
+              <span style="font-weight: 500; color: #64748B; font-size: 12px;">
+                · mínimo 5 caracteres
+              </span>
+            </label>
+            <textarea class="form-input"
+              [(ngModel)]="justificanteComentario"
+              rows="4"
+              maxlength="500"
+              placeholder="Ej: La caja se trabó y tuve que esperar al técnico..."></textarea>
+            <small style="color: #94A3B8; font-size: 11px;">
+              {{ justificanteComentario.length }} / 500
+            </small>
+          </div>
+
+          <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+            <button class="btn-secondary" (click)="cerrarModalJustificante()">Cancelar</button>
+            <button class="btn-primary"
+              [disabled]="!puedeConfirmarJustificante()"
+              [style.background]="puedeConfirmarJustificante() ? '#F59E0B' : '#CBD5E1'"
+              [style.cursor]="puedeConfirmarJustificante() ? 'pointer' : 'not-allowed'"
+              style="border: none; color: white; font-weight: 800;"
+              (click)="confirmarJustificanteYEnviar()">
+              ✅ Enviar con justificante
+            </button>
+          </div>
+        </div>
+      </div>
+
       <div class="modal-overlay" *ngIf="notificacionesPendientes().length > 0"
         style="z-index: 10000; background: rgba(0,0,0,0.85);">
         <div class="modal"

@@ -50,6 +50,18 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   isModalNotificacionOpen = false;
   empleadoParaNotificar = '';
   mensajeNotificacion = '';
+
+  // ⏰ Modal de justificante de retraso (se abre al enviar si hay tareas vencidas)
+  isModalJustificanteOpen = false;
+  justificanteCategoria: 'Falla de equipo' | 'Falta de personal' | 'Cliente complicado' | 'Otro' | '' = '';
+  justificanteComentario = '';
+  readonly categoriasJustificante: string[] = [
+    'Falla de equipo',
+    'Falta de personal',
+    'Cliente complicado',
+    'Otro'
+  ];
+
   isModalOpen = false;
   formName = '';
   busquedaEmpleadoEquipo: string = '';
@@ -1161,6 +1173,12 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     this.guardarEnLaNube(actual);
   }
 
+  /** ¿El checklist se está enviando después de la hora límite de alguna de sus tareas? */
+  hayRetrasoEnChecklist(checklist: any): boolean {
+    if (!checklist?.items?.length || !checklist.date) return false;
+    return checklist.items.some((i: any) => this.isTareaVencida(i, checklist.date));
+  }
+
   enviarChecklist() {
     const actual = this.checklistSeleccionado(); if (!actual) return;
     // 🔒 Defensa: solo el dueño del checklist puede enviarlo
@@ -1179,11 +1197,63 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       const confirmar = confirm(' ⚠️ Faltan FOTOS obligatorias.\n¿Enviar así?');
       if (!confirmar) return;
     }
+
+    // ⏰ Si hay retraso, en vez de enviar directo abrimos el modal de justificante.
+    if (this.hayRetrasoEnChecklist(actual)) {
+      this.abrirModalJustificante();
+      return;
+    }
+
+    this.realizarEnvioFinal(actual, null);
+  }
+
+  // ============================================================================
+  // ⏰ MODAL DE JUSTIFICANTE DE RETRASO
+  // ============================================================================
+  abrirModalJustificante() {
+    this.justificanteCategoria = '';
+    this.justificanteComentario = '';
+    this.isModalJustificanteOpen = true;
+  }
+  cerrarModalJustificante() {
+    this.isModalJustificanteOpen = false;
+  }
+  seleccionarCategoriaJustificante(c: string) {
+    this.justificanteCategoria = c as any;
+  }
+  puedeConfirmarJustificante(): boolean {
+    return !!this.justificanteCategoria && this.justificanteComentario.trim().length >= 5;
+  }
+  confirmarJustificanteYEnviar() {
+    if (!this.puedeConfirmarJustificante()) {
+      alert(' ⚠️ Elige una categoría y escribe un comentario de al menos 5 caracteres.');
+      return;
+    }
+    const actual = this.checklistSeleccionado(); if (!actual) return;
+    const motivo = {
+      categoria: this.justificanteCategoria,
+      comentario: this.justificanteComentario.trim(),
+      reportadoPor: this.currentUser?.nombre || 'desconocido',
+      timestamp: Date.now()
+    };
+    this.cerrarModalJustificante();
+    this.realizarEnvioFinal(actual, motivo);
+  }
+
+  /** Envío real al cloud. Si `motivo` viene, marca el checklist como retraso justificado. */
+  private realizarEnvioFinal(actual: any, motivo: any | null) {
     actual.enviado = true;
     const ahora = new Date();
     actual.horaEnvio = ahora.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+    if (motivo) {
+      actual.entregaConRetraso = true;
+      actual.motivoRetraso = motivo;
+    }
     this.guardarEnLaNube(actual);
-    this.mostrarToast(' ✅ ¡Checklist enviado correctamente!');
+    const txt = motivo
+      ? ' ✅ ¡Enviado con justificante de retraso!'
+      : ' ✅ ¡Checklist enviado correctamente!';
+    this.mostrarToast(txt);
     this.volverALista();
   }
 

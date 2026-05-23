@@ -189,8 +189,11 @@ export class PersonalComponent implements OnInit, OnDestroy {
         const yoSoyGlobalArea = misAreas.includes('Todas las áreas') || misAreas.includes('Todas');
 
         const coincideSucursal = yoSoyGlobalSucursal || empSucursales.some((s: string) => misSucursales.includes(s));
-        // Admin limitado: si no le asignaste áreas, filtra solo por sucursal (no exige coincidencia de área)
-        const exigeArea = misAreas.length > 0;
+
+        // Filtro de área: solo se aplica cuando AMBOS lados declaran áreas.
+        // Si el trabajador no tiene áreas declaradas, la sucursal manda — antes
+        // se les ocultaban a admins con áreas asignadas. Bug reportado por el cliente.
+        const exigeArea = misAreas.length > 0 && empAreas.length > 0;
         const coincideArea = !exigeArea || yoSoyGlobalArea || empAreas.some((a: string) => misAreas.includes(a));
 
         return coincideSucursal && coincideArea;

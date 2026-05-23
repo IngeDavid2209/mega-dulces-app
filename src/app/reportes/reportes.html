@@ -365,6 +365,17 @@
                     </path>
                   </svg> TIENE NOTAS
                 </span>
+
+                <span *ngIf="checklist.entregaConRetraso"
+                  [title]="(checklist.motivoRetraso?.categoria || '') + ' — ' + (checklist.motivoRetraso?.comentario || '')"
+                  style="display: flex; align-items: center; color: #B45309; font-weight: 700; background: #FED7AA; padding: 2px 8px; border-radius: 4px; border: 1px solid #FB923C; font-size: 11px; margin-top: 4px;">
+                  <svg width="12" height="12" style="margin-right: 4px;" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2.5">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polyline points="12 6 12 12 16 14"></polyline>
+                  </svg>
+                  ⏰ RETRASO JUSTIFICADO
+                </span>
               </div>
 
               <div class="checklist-progress">
@@ -462,6 +473,29 @@
             <strong style="color: #D97706; font-size: 13px; display: block; margin-bottom: 4px;">Comentarios del Colaborador:</strong>
             <p style="margin: 0; font-size: 14px; color: #1E293B; white-space: pre-wrap;">{{
               checklistSeleccionado().notaEmpleado }}</p>
+          </div>
+
+          <div *ngIf="checklistSeleccionado().entregaConRetraso"
+            style="margin-top: 14px; background: linear-gradient(135deg, #FFEDD5, #FED7AA); border-left: 4px solid #EA580C; padding: 16px; border-radius: 8px;">
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+              <span style="font-size: 22px;">⏰</span>
+              <strong style="color: #9A3412; font-size: 14px; letter-spacing: 0.3px;">
+                ENTREGADO CON RETRASO JUSTIFICADO
+              </strong>
+            </div>
+            <div style="font-size: 13px; color: #7C2D12; line-height: 1.5;">
+              <div *ngIf="checklistSeleccionado().motivoRetraso?.categoria" style="margin-bottom: 6px;">
+                <strong>Categoría:</strong> {{ checklistSeleccionado().motivoRetraso.categoria }}
+              </div>
+              <div *ngIf="checklistSeleccionado().motivoRetraso?.comentario" style="margin-bottom: 6px;">
+                <strong>Motivo:</strong>
+                <span style="white-space: pre-wrap;">{{ checklistSeleccionado().motivoRetraso.comentario }}</span>
+              </div>
+              <div *ngIf="checklistSeleccionado().motivoRetraso?.reportadoPor"
+                style="font-size: 11px; color: #9A3412; opacity: 0.85;">
+                Reportado por {{ checklistSeleccionado().motivoRetraso.reportadoPor }}
+              </div>
+            </div>
           </div>
         </div>
       </div>

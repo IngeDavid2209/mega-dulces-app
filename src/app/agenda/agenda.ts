@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, Router } from '@angular/router';
@@ -15,7 +15,15 @@ import { esAdminGlobal, sucursalesPermitidas } from '../shared/permisos.util';
   templateUrl: './agenda.html',
   styleUrls: ['./agenda.css']
 })
-export class AgendaComponent implements OnInit {
+export class AgendaComponent implements OnInit, OnDestroy {
+  /** Unsubscribe del snapshot activo (se reemplaza cada vez que se cambia de usuario). */
+  private radarAgenda: (() => void) | null = null;
+
+  ngOnDestroy() {
+    // 🔥 Cierra el snapshot al salir para evitar memory leak
+    if (this.radarAgenda) { this.radarAgenda(); this.radarAgenda = null; }
+  }
+
   isMenuOpen = false;
   currentUser: any = null;
   
@@ -87,12 +95,16 @@ export class AgendaComponent implements OnInit {
   }
 
   cargarAgenda() {
-    const userId = this.usuarioSeleccionado; 
+    const userId = this.usuarioSeleccionado;
     if (!userId) return;
 
+    // 🔥 FIX MEMORY LEAK: cerrar el snapshot anterior antes de abrir uno nuevo.
+    // Antes cada cambio de usuario creaba un listener nuevo SIN cerrar el viejo.
+    if (this.radarAgenda) { this.radarAgenda(); this.radarAgenda = null; }
+
     const agendaRef = collection(this.firestore, `usuarios/${userId}/agenda`);
-    
-    onSnapshot(query(agendaRef), (snapshot) => {
+
+    this.radarAgenda = onSnapshot(query(agendaRef), (snapshot) => {
       this.tareasPersonales = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data() as any

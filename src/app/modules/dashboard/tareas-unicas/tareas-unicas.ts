@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, Router } from '@angular/router';
@@ -15,7 +15,14 @@ import { esAdminGlobal, sucursalesPermitidas } from '../../../shared/permisos.ut
   templateUrl: './tareas-unicas.html', // ⚠️ Verifica si tu archivo se llama así o solo tareas-unicas.html
   styleUrls: ['./tareas-unicas.css'] // ⚠️ Igual aquí
 })
-export class TareasUnicasComponent implements OnInit {
+export class TareasUnicasComponent implements OnInit, OnDestroy {
+  /** Unsubscribe del snapshot activo (se reemplaza al cambiar de usuario). */
+  private radarProyectos: (() => void) | null = null;
+
+  ngOnDestroy() {
+    if (this.radarProyectos) { this.radarProyectos(); this.radarProyectos = null; }
+  }
+
   isMenuOpen = false;
   currentUser: any = null;
     wizardStep: number = 1;
@@ -124,10 +131,13 @@ export class TareasUnicasComponent implements OnInit {
     const userId = this.usuarioSeleccionado; 
     if (!userId) return;
     
+    // 🔥 FIX MEMORY LEAK: cerrar snapshot anterior antes de abrir uno nuevo
+    if (this.radarProyectos) { this.radarProyectos(); this.radarProyectos = null; }
+
     // 🔥 MAGIA: Nueva colección en Firebase exclusiva para proyectos/fases
     const proyectosRef = collection(this.firestore, `usuarios/${userId}/tareas_unicas`);
-    
-    onSnapshot(query(proyectosRef), (snapshot) => {
+
+    this.radarProyectos = onSnapshot(query(proyectosRef), (snapshot) => {
       this.proyectosUnicos = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data() as any

@@ -10,7 +10,7 @@ import { getStorage, provideStorage } from '@angular/fire/storage';
 import { getMessaging, provideMessaging } from '@angular/fire/messaging';
 import { provideServiceWorker } from '@angular/service-worker';
 
-const firebaseConfig = {
+export const firebaseConfig = {
   apiKey: "AIzaSyAoVz9oTcSQrgvUeqBTTDLYEilEkRFvsug",
   authDomain: "mega-dulces-96c57.firebaseapp.com",
   projectId: "mega-dulces-96c57",

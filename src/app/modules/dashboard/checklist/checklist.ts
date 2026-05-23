@@ -474,12 +474,18 @@ export class ChecklistComponent implements OnInit, OnDestroy {
         }, 500);
       }
     });
-    this.intervalId = setInterval(() => {}, 1000);
+    // (Nota: this.intervalId se setea en iniciarRobotNotificador())
   }
 
   ngOnDestroy() {
+    // 🔥 Cierra todos los listeners de Firestore para evitar memory leaks
     this.destructoresRadares.forEach(apagarRadar => apagarRadar());
-    if (this.intervalId) clearInterval(this.intervalId);
+    this.destructoresRadares = [];
+    // 🔥 Detiene el robot notificador (setInterval de 30s)
+    if (this.intervalId) {
+      clearInterval(this.intervalId);
+      this.intervalId = null;
+    }
   }
 
   /** ¿El usuario actual es el dueño del checklist actualmente abierto (tolerante a tildes/espacios)? */
@@ -552,7 +558,11 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     if ('Notification' in window && Notification.permission !== 'granted' && Notification.permission !== 'denied') {
       Notification.requestPermission();
     }
-    setInterval(() => {
+    // 🔥 FIX MEMORY LEAK: guardamos la referencia para limpiar en ngOnDestroy.
+    // Antes este setInterval quedaba huérfano. Cada vez que el admin entraba
+    // a Checklist se acumulaba uno nuevo → 20 entradas = 20 intervals corriendo.
+    if (this.intervalId) clearInterval(this.intervalId);
+    this.intervalId = setInterval(() => {
       const ahora = new Date();
       if (ahora.getMinutes() === 0 && this.ultimaHoraNotificada !== ahora.getHours()) {
         this.ultimaHoraNotificada = ahora.getHours();

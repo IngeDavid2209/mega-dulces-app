@@ -3,20 +3,21 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, Router } from '@angular/router';
 import { Firestore, collection, doc, setDoc, deleteDoc, onSnapshot } from '@angular/fire/firestore';
-import { 
-  Auth, 
-  createUserWithEmailAndPassword, 
-  getAuth, 
-  verifyBeforeUpdateEmail, 
-  updatePassword, 
-  EmailAuthProvider, 
-  reauthenticateWithCredential,
-  sendPasswordResetEmail 
+import {
+  getAuth,
+  verifyBeforeUpdateEmail,
+  updatePassword,
+  EmailAuthProvider,
+  reauthenticateWithCredential
 } from '@angular/fire/auth';
 
 import * as ExcelJS from 'exceljs';
 import Swal from 'sweetalert2';
 import { esAdminGlobal, esAdminLimitado } from '../../../shared/permisos.util';
+// 🔥 Para crear usuarios sin desloguear al admin (segunda app Firebase temporal)
+import { initializeApp, deleteApp } from 'firebase/app';
+import { getAuth as getAuthSecondary, createUserWithEmailAndPassword as createUserSecondary, signOut as signOutSecondary } from 'firebase/auth';
+import { firebaseConfig } from '../../../app.config';
 
 
 
@@ -91,7 +92,6 @@ export class PersonalComponent implements OnInit, OnDestroy {
     return todas.filter(area => yo.areas?.includes(area));
   }
 
-  private auth = inject(Auth);
   private firestore = inject(Firestore);
   private router = inject(Router);
   private destructoresRadares: (() => void)[] = [];
@@ -500,9 +500,22 @@ export class PersonalComponent implements OnInit, OnDestroy {
         await setDoc(doc(this.firestore, 'usuarios', docId), payload, { merge: true });
 
       } else {
-        // Creando usuario nuevo — esto ya funcionaba bien
-        const creds = await createUserWithEmailAndPassword(this.auth, this.formCorreo, this.formPassword);
-        await setDoc(doc(this.firestore, 'usuarios', creds.user.uid), { ...payload, uid: creds.user.uid });
+        // 🔥 FIX CRÍTICO: createUserWithEmailAndPassword desloguea al admin actual
+        // (cambia auth.currentUser al nuevo usuario). Eso rompe los listeners,
+        // hace que el Swal de "Guardado" no salga y la UI se queda colgada.
+        // Solución: crear una segunda app Firebase TEMPORAL solo para esta acción,
+        // así NO tocamos la sesión del admin principal.
+        const tempAppName = 'AdminCreateUser_' + Date.now();
+        const tempApp = initializeApp(firebaseConfig, tempAppName);
+        try {
+          const tempAuth = getAuthSecondary(tempApp);
+          const creds = await createUserSecondary(tempAuth, this.formCorreo, this.formPassword);
+          await setDoc(doc(this.firestore, 'usuarios', creds.user.uid), { ...payload, uid: creds.user.uid });
+          // Cerramos sesión y limpiamos la app temporal — el admin sigue logueado normal.
+          await signOutSecondary(tempAuth);
+        } finally {
+          await deleteApp(tempApp);
+        }
       }
 
       this.cerrarModal();
@@ -510,7 +523,7 @@ export class PersonalComponent implements OnInit, OnDestroy {
 
     }
     catch (error: any) {
-      Swal.fire({ icon: 'error', title: 'Error', text: error.message, confirmButtonColor: '#0F172A' });
+      Swal.fire({ icon: 'error', title: 'Error', text: error.message || 'Error desconocido', confirmButtonColor: '#0F172A' });
     }
   }
 // 🔥 FUNCIÓN PARA ELIMINAR USUARIO 🔥

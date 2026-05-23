@@ -1,0 +1,481 @@
+<div class="app-layout">
+  <header class="header">
+    <div class="header-left">
+      <button class="btn-menu-mobile" (click)="toggleMenu()">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="3" y1="12" x2="21" y2="12"></line>
+          <line x1="3" y1="6" x2="21" y2="6"></line>
+          <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+      </button>
+      <div class="header-logo-wrap" style="background: transparent !important; width: auto; padding: 0 4px;">
+        <img src="https://static.wixstatic.com/media/fd397e_0fd82a1ecec84a118ceeb603b493f25a~mv2.png"
+             style="height: 36px; object-fit: contain;">
+      </div>
+      <div class="header-brand">Mega Dulces<small>Panel Enterprise</small></div>
+    </div>
+  </header>
+
+  <div class="main-wrapper">
+    <div class="mobile-overlay" *ngIf="isMenuOpen" (click)="toggleMenu()"></div>
+    <app-sidebar [currentUser]="currentUser" [isMenuOpen]="isMenuOpen" (closeMenu)="isMenuOpen = false"></app-sidebar>
+
+    <div class="content">
+
+      <!-- ╔══════════════════════════════════════════════════╗ -->
+      <!-- ║   HEADER PRO                                     ║ -->
+      <!-- ╚══════════════════════════════════════════════════╝ -->
+      <div class="cat-header">
+        <div class="cat-header-icon" aria-hidden="true">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 11l3 3L22 4"></path>
+            <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"></path>
+          </svg>
+        </div>
+        <div class="cat-header-text">
+          <h1 class="cat-header-title">Asignación de Rutinas</h1>
+          <p class="cat-header-sub">Toma una rutina del catálogo y dile a quién, dónde y cuándo aplica. El robot generará automáticamente los checklists del día.</p>
+        </div>
+        <button type="button" class="cat-btn-nueva" (click)="abrirWizardNueva()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+          Nueva Asignación
+        </button>
+      </div>
+
+      <!-- ╔══════════════════════════════════════════════════╗ -->
+      <!-- ║   FILTROS                                        ║ -->
+      <!-- ╚══════════════════════════════════════════════════╝ -->
+      <div class="cat-filters">
+        <div class="cat-filter-field cat-filter-field--wide">
+          <label class="cat-filter-label" for="asig-buscar">🔍 Buscar</label>
+          <input id="asig-buscar" type="text" class="cat-input"
+                 [(ngModel)]="terminoBusqueda"
+                 (input)="onCambioFiltro()"
+                 placeholder="Por nombre de rutina...">
+        </div>
+
+        <div class="cat-filter-field">
+          <label class="cat-filter-label" for="asig-suc">Sucursal</label>
+          <select id="asig-suc" class="cat-input cat-select"
+                  [(ngModel)]="sucursalFiltro" (change)="onCambioFiltro()">
+            <option value="todas">Todas las sucursales</option>
+            <option *ngFor="let s of sucursalesDisponibles()" [value]="s">{{ s }}</option>
+          </select>
+        </div>
+
+        <div class="cat-filter-field cat-filter-toggle">
+          <label class="cat-filter-label">Estado</label>
+          <label class="cat-toggle">
+            <input type="checkbox" [(ngModel)]="mostrarInactivas" (change)="onCambioFiltro()">
+            <span class="cat-toggle-track"></span>
+            <span class="cat-toggle-text">{{ mostrarInactivas ? '⏸ Pausadas' : '▶ Activas' }}</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- ╔══════════════════════════════════════════════════╗ -->
+      <!-- ║   GRID DE ASIGNACIONES                           ║ -->
+      <!-- ╚══════════════════════════════════════════════════╝ -->
+      <div class="cat-grid">
+        <article class="cat-card"
+                 *ngFor="let a of asignacionesFiltradas(); trackBy: trackById"
+                 [class.cat-card--archivada]="!a.activa"
+                 (click)="abrirWizardEditar(a)">
+
+          <header class="cat-card-header">
+            <div class="cat-card-title-wrap">
+              <h3 class="cat-card-title">{{ a.nombreRutina }}</h3>
+              <span class="cat-card-tipo">
+                {{ a.modoAsignacion === 'porRol' ? ('👤 Rol: ' + a.rolObjetivo) : ('👥 ' + (a.empleadosNombres?.length || 0) + ' personas') }}
+              </span>
+            </div>
+            <span class="cat-card-nivel"
+                  [class.cat-card-nivel--obligatorio]="!a.activa"
+                  [class.cat-card-nivel--informativo]="a.activa">
+              {{ a.activa ? 'Activa' : 'Pausada' }}
+            </span>
+          </header>
+
+          <div class="cat-card-info">
+            <div class="cat-card-info-row">
+              <span class="cat-card-info-label">🏪 Sucursales</span>
+              <span class="cat-card-info-valor">
+                <strong>{{ a.sucursales.length }}</strong>
+                {{ a.sucursales.length === 1 ? 'sucursal' : 'sucursales' }}
+              </span>
+            </div>
+
+            <div class="cat-card-info-row">
+              <span class="cat-card-info-label">🔁 Frecuencia</span>
+              <span class="cat-card-info-valor">
+                {{ etiquetasFrecuencia[a.frecuencia] }}
+                <span *ngIf="(a.frecuencia === 'Semanal' || a.frecuencia === 'Catorcenal') && a.diaSemana"> · {{ a.diaSemana }}</span>
+                <span *ngIf="(a.frecuencia === 'Mensual' || a.frecuencia === 'Trimestral') && a.diaMes"> · día {{ a.diaMes }}</span>
+              </span>
+            </div>
+
+            <div class="cat-card-info-row" *ngIf="a.horaInicio || a.horaLimite">
+              <span class="cat-card-info-label">🕒 Horario</span>
+              <span class="cat-card-info-valor">{{ a.horaInicio || '--' }} a {{ a.horaLimite || '--' }}</span>
+            </div>
+
+            <div class="cat-card-info-row">
+              <span class="cat-card-info-label">📅 Desde</span>
+              <span class="cat-card-info-valor">
+                {{ a.fechaInicio }}<span *ngIf="a.fechaFin"> → {{ a.fechaFin }}</span>
+              </span>
+            </div>
+          </div>
+
+          <p class="cat-card-desc" *ngIf="a.sucursales.length > 0" style="font-size: 12px;">
+            <strong style="color:#115E59;">📍</strong>
+            <ng-container *ngIf="a.sucursales.length <= 3">{{ a.sucursales.join(', ') }}</ng-container>
+            <ng-container *ngIf="a.sucursales.length > 3">
+              {{ a.sucursales[0] }}, {{ a.sucursales[1] }} y {{ a.sucursales.length - 2 }} más
+            </ng-container>
+          </p>
+
+          <footer class="cat-card-footer">
+            <button type="button" class="cat-card-action" (click)="abrirWizardEditar(a); $event.stopPropagation()" title="Editar">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M12 20h9"></path>
+                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"></path>
+              </svg>
+              Editar
+            </button>
+            <button type="button" class="cat-card-action" (click)="pausarReanudar(a, $event)"
+                    [title]="a.activa ? 'Pausar' : 'Reanudar'">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                   *ngIf="a.activa">
+                <rect x="6" y="4" width="4" height="16"></rect>
+                <rect x="14" y="4" width="4" height="16"></rect>
+              </svg>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                   *ngIf="!a.activa">
+                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+              </svg>
+              {{ a.activa ? 'Pausar' : 'Reanudar' }}
+            </button>
+            <button type="button" class="cat-card-action cat-card-action--danger" (click)="eliminar(a, $event)" title="Eliminar">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"></path>
+              </svg>
+              Eliminar
+            </button>
+          </footer>
+        </article>
+
+        <!-- Estado vacío -->
+        <div class="cat-empty" *ngIf="asignacionesFiltradas().length === 0">
+          <div class="cat-empty-icon">📌</div>
+          <h3 *ngIf="!mostrarInactivas">Aún no tienes asignaciones</h3>
+          <h3 *ngIf="mostrarInactivas">No hay asignaciones pausadas</h3>
+          <p *ngIf="!mostrarInactivas && catalogo().length === 0">
+            Primero necesitas crear una rutina en el catálogo. <a routerLink="/rutinas" style="color:#0F766E; font-weight:700;">Ir al catálogo →</a>
+          </p>
+          <p *ngIf="!mostrarInactivas && catalogo().length > 0">
+            Crea tu primera asignación: elige una rutina del catálogo y dile a quién, dónde y cuándo aplica.
+          </p>
+          <p *ngIf="mostrarInactivas">Las asignaciones que pauses aparecerán aquí. Puedes reanudarlas en cualquier momento.</p>
+          <button type="button" class="cat-btn-nueva" (click)="abrirWizardNueva()"
+                  *ngIf="!mostrarInactivas && catalogo().length > 0">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            Crear primera asignación
+          </button>
+        </div>
+      </div>
+
+
+      <!-- ╔══════════════════════════════════════════════════╗ -->
+      <!-- ║   WIZARD DE ASIGNACIÓN                           ║ -->
+      <!-- ╚══════════════════════════════════════════════════╝ -->
+      <div class="wizard-overlay" *ngIf="isWizardOpen">
+        <div class="wizard-modal">
+
+          <div class="wizard-header">
+            <div class="wizard-title">{{ editandoId ? 'Editar Asignación' : 'Nueva Asignación' }}</div>
+            <button class="wizard-close" (click)="cerrarWizard()" aria-label="Cerrar">&times;</button>
+          </div>
+          <div class="wizard-progress-bar">
+            <div class="wizard-progress-fill" [style.width.%]="(wizardStep / wizardTotalSteps) * 100"></div>
+          </div>
+          <div class="wizard-step-counter">
+            Paso <strong>{{ wizardStep }}</strong> de {{ wizardTotalSteps }}
+          </div>
+
+          <!-- PASO 1 — ELEGIR RUTINA DEL CATÁLOGO -->
+          <div class="wizard-step" *ngIf="wizardStep === 1">
+            <h2 class="wizard-question">¿Qué rutina quieres asignar?</h2>
+            <p class="wizard-hint">Elige una rutina del catálogo. Si no la encuentras, primero créala en <a routerLink="/rutinas" style="color:#0F766E; font-weight:700;">Catálogo de Rutinas</a>.</p>
+
+            <input type="text" class="wizard-input"
+                   [(ngModel)]="terminoBusquedaRutina"
+                   placeholder="🔍 Buscar rutina por nombre...">
+
+            <div class="asig-rutina-grid" style="margin-top: 14px;">
+              <button type="button" class="asig-rutina-card"
+                      *ngFor="let r of catalogoFiltrado()"
+                      [class.selected]="formCatalogoRutinaId === r.id"
+                      (click)="seleccionarRutinaCatalogo(r)">
+                <div class="asig-rutina-card-title">{{ r.nombre }}</div>
+                <div class="asig-rutina-card-meta">
+                  <span class="cat-card-tipo">{{ etiquetasTipo[r.tipo] }}</span>
+                  <span class="asig-rutina-card-frec">🔁 {{ etiquetasFrecuencia[r.frecuencia] }}</span>
+                </div>
+                <div class="asig-rutina-card-tareas">
+                  ✅ {{ r.tareas.length }} {{ r.tareas.length === 1 ? 'tarea' : 'tareas' }}
+                  · 👤 {{ r.responsableSugerido }}
+                </div>
+              </button>
+
+              <div class="cat-tareas-vacio" *ngIf="catalogoFiltrado().length === 0">
+                😕 No hay rutinas que coincidan. Prueba con otro término o crea una nueva.
+              </div>
+            </div>
+          </div>
+
+          <!-- PASO 2 — SUCURSALES -->
+          <div class="wizard-step" *ngIf="wizardStep === 2">
+            <h2 class="wizard-question">¿En qué sucursales aplica?</h2>
+            <p class="wizard-hint">Marca las sucursales donde se ejecutará esta rutina. Puedes elegir varias.</p>
+
+            <!-- Botón clave del jefe: todas las sucursales -->
+            <div class="asig-actions-row">
+              <button type="button" class="asig-mega-btn"
+                      [class.active]="todasSucursalesMarcadas()"
+                      (click)="todasSucursalesMarcadas() ? limpiarSucursales() : marcarTodasLasSucursales()">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"></path>
+                  <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                </svg>
+                {{ todasSucursalesMarcadas() ? '✅ Aplicará a TODAS las sucursales' : '🚀 Aplicar a TODAS las sucursales' }}
+              </button>
+              <span class="asig-counter">
+                {{ formSucursales.length }} / {{ sucursalesDisponibles().length }} marcadas
+              </span>
+            </div>
+
+            <div class="asig-suc-grid">
+              <button type="button" class="asig-suc-chip"
+                      *ngFor="let s of sucursalesDisponibles()"
+                      [class.selected]="esSucursalSeleccionada(s)"
+                      (click)="toggleSucursal(s)">
+                <span class="asig-suc-check" aria-hidden="true">{{ esSucursalSeleccionada(s) ? '✓' : '+' }}</span>
+                {{ s }}
+              </button>
+            </div>
+          </div>
+
+          <!-- PASO 3 — A QUIÉN (rol vs personas) -->
+          <div class="wizard-step" *ngIf="wizardStep === 3">
+            <h2 class="wizard-question">¿A quién le toca esta rutina?</h2>
+            <p class="wizard-hint">Puedes elegir por <strong>rol</strong> (más flexible: si rota personal, el reemplazo hereda) o por <strong>personas específicas</strong>.</p>
+
+            <div class="asig-modo-toggle">
+              <button type="button" class="asig-modo-btn"
+                      [class.selected]="formModo === 'porRol'"
+                      (click)="formModo = 'porRol'">
+                <strong>👤 Por rol</strong>
+                <small>Todos los del cargo en esas sucursales</small>
+              </button>
+              <button type="button" class="asig-modo-btn"
+                      [class.selected]="formModo === 'porPersonas'"
+                      (click)="formModo = 'porPersonas'">
+                <strong>👥 Por personas</strong>
+                <small>Yo elijo nombre por nombre</small>
+              </button>
+            </div>
+
+            <!-- Por rol -->
+            <div *ngIf="formModo === 'porRol'" style="margin-top: 18px;">
+              <label class="wizard-time-label">Rol objetivo:</label>
+              <div class="cat-tipo-grid">
+                <button type="button" class="cat-tipo-card"
+                        *ngFor="let rol of roles"
+                        [class.selected]="formRol === rol"
+                        (click)="formRol = rol">
+                  👤 {{ rol }}
+                </button>
+              </div>
+
+              <div class="asig-estimacion" *ngIf="formRol && formSucursales.length > 0">
+                <span class="asig-estimacion-icon">🔍</span>
+                <div>
+                  <strong>{{ estimacionPersonasPorRol() }}</strong>
+                  {{ estimacionPersonasPorRol() === 1 ? 'persona coincide' : 'personas coinciden' }}
+                  con el rol <em>{{ formRol }}</em> en las sucursales elegidas.
+                  <div *ngIf="estimacionPersonasPorRol() === 0" style="color: #B91C1C; font-size: 12px; margin-top: 4px;">
+                    ⚠ Nadie en esas sucursales tiene ese cargo. Tal vez quieras usar "Por personas".
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Por personas -->
+            <div *ngIf="formModo === 'porPersonas'" style="margin-top: 18px;">
+              <input type="text" class="wizard-input"
+                     [(ngModel)]="terminoBusquedaEmpleado"
+                     placeholder="🔍 Buscar empleado por nombre...">
+
+              <div class="asig-personas-counter">
+                <strong>{{ formEmpleados.length }}</strong> {{ formEmpleados.length === 1 ? 'persona seleccionada' : 'personas seleccionadas' }}
+                <span *ngIf="formSucursales.length === 0" style="color:#B45309;"> · ⚠ marca primero las sucursales para ver empleados</span>
+              </div>
+
+              <div class="asig-personas-lista">
+                <button type="button" class="asig-persona-row"
+                        *ngFor="let u of empleadosVisibles()"
+                        [class.selected]="esEmpleadoSeleccionado(u.nombre)"
+                        (click)="toggleEmpleado(u.nombre)">
+                  <span class="asig-persona-avatar">{{ (u.nombre || '?').charAt(0).toUpperCase() }}</span>
+                  <div class="asig-persona-info">
+                    <span class="asig-persona-nombre">{{ u.nombre }}</span>
+                    <span class="asig-persona-meta">
+                      {{ u.cargo || 'Sin cargo' }} · {{ (u.sucursales || (u.sucursal ? [u.sucursal] : []))?.join(', ') || 'Sin sucursal' }}
+                    </span>
+                  </div>
+                  <span class="asig-persona-check">{{ esEmpleadoSeleccionado(u.nombre) ? '✓' : '+' }}</span>
+                </button>
+
+                <div class="cat-tareas-vacio" *ngIf="empleadosVisibles().length === 0">
+                  😕 {{ formSucursales.length === 0 ? 'Primero marca sucursales en el paso anterior.' : 'No hay trabajadores en esas sucursales.' }}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- PASO 4 — FRECUENCIA -->
+          <div class="wizard-step" *ngIf="wizardStep === 4">
+            <h2 class="wizard-question">¿Cada cuánto se ejecuta?</h2>
+            <p class="wizard-hint">Heredamos la frecuencia sugerida del catálogo, pero puedes ajustarla aquí.</p>
+
+            <label class="wizard-time-label">Frecuencia:</label>
+            <div class="cat-tipo-grid">
+              <button type="button" class="cat-tipo-card"
+                      *ngFor="let f of frecuencias"
+                      [class.selected]="formFrecuencia === f"
+                      (click)="seleccionarFrecuencia(f)">
+                {{ etiquetasFrecuencia[f] }}
+              </button>
+            </div>
+
+            <div class="wizard-time-block" *ngIf="formFrecuencia === 'Semanal' || formFrecuencia === 'Catorcenal'">
+              <label class="wizard-time-label">¿Qué día de la semana?</label>
+              <select class="wizard-input" [(ngModel)]="formDiaSemana">
+                <option *ngFor="let d of diasSemana" [value]="d">{{ d }}</option>
+              </select>
+            </div>
+
+            <div class="wizard-time-block" *ngIf="formFrecuencia === 'Mensual' || formFrecuencia === 'Trimestral'">
+              <label class="wizard-time-label">¿Qué día del mes?</label>
+              <select class="wizard-input" [(ngModel)]="formDiaMes">
+                <option *ngFor="let d of diasDelMes" [value]="d">Día {{ d }}</option>
+              </select>
+            </div>
+
+            <div class="wizard-time-block">
+              <label class="wizard-time-label">🕒 Hora de inicio (opcional)</label>
+              <input type="time" class="wizard-input wizard-time-input" [(ngModel)]="formHoraInicio">
+            </div>
+            <div class="wizard-time-block">
+              <label class="wizard-time-label">⏰ Hora límite (opcional)</label>
+              <input type="time" class="wizard-input wizard-time-input" [(ngModel)]="formHoraLimite">
+            </div>
+          </div>
+
+          <!-- PASO 5 — VIGENCIA -->
+          <div class="wizard-step" *ngIf="wizardStep === 5">
+            <h2 class="wizard-question">¿Desde cuándo y hasta cuándo aplica?</h2>
+            <p class="wizard-hint">Define la vigencia. Si no pones fecha fin, se queda activa indefinidamente.</p>
+
+            <div class="wizard-time-block">
+              <label class="wizard-time-label">📅 Fecha de inicio</label>
+              <input type="date" class="wizard-input wizard-time-input"
+                     [(ngModel)]="formFechaInicio">
+            </div>
+
+            <div class="wizard-time-block">
+              <label class="wizard-time-label">🏁 Fecha de fin (opcional)</label>
+              <input type="date" class="wizard-input wizard-time-input"
+                     [(ngModel)]="formFechaFin"
+                     [min]="formFechaInicio || hoyIsoStr">
+              <small style="color: var(--text-muted); font-size: 12px; display: block; margin-top: 4px;">
+                Déjala vacía si la asignación es <strong>permanente</strong>.
+              </small>
+            </div>
+          </div>
+
+          <!-- PASO 6 — RESUMEN -->
+          <div class="wizard-step" *ngIf="wizardStep === 6">
+            <h2 class="wizard-question">¿Todo correcto?</h2>
+            <p class="wizard-hint">Revisa antes de {{ editandoId ? 'guardar los cambios' : 'crear la asignación' }}. Toca cualquier fila para editar ese paso.</p>
+
+            <div class="wizard-resumen">
+              <div class="wizard-resumen-row" (click)="irAPaso(1)">
+                <span class="wizard-resumen-label">📋 Rutina</span>
+                <span class="wizard-resumen-valor">{{ rutinaSeleccionada()?.nombre || 'Ninguna' }}</span>
+                <span class="wizard-resumen-editar">Cambiar</span>
+              </div>
+              <div class="wizard-resumen-row" (click)="irAPaso(2)">
+                <span class="wizard-resumen-label">🏪 Sucursales</span>
+                <span class="wizard-resumen-valor">{{ textoSucursalesResumen() }}</span>
+                <span class="wizard-resumen-editar">Cambiar</span>
+              </div>
+              <div class="wizard-resumen-row" (click)="irAPaso(3)">
+                <span class="wizard-resumen-label">{{ formModo === 'porRol' ? '👤 Rol' : '👥 Personas' }}</span>
+                <span class="wizard-resumen-valor">{{ textoDestinatariosResumen() }}</span>
+                <span class="wizard-resumen-editar">Cambiar</span>
+              </div>
+              <div class="wizard-resumen-row" (click)="irAPaso(4)">
+                <span class="wizard-resumen-label">🔁 Frecuencia</span>
+                <span class="wizard-resumen-valor">{{ textoFrecuenciaResumen() }}</span>
+                <span class="wizard-resumen-editar">Cambiar</span>
+              </div>
+              <div class="wizard-resumen-row" (click)="irAPaso(4)" *ngIf="formHoraInicio || formHoraLimite">
+                <span class="wizard-resumen-label">🕒 Horario</span>
+                <span class="wizard-resumen-valor">{{ formHoraInicio || '--' }} a {{ formHoraLimite || '--' }}</span>
+                <span class="wizard-resumen-editar">Cambiar</span>
+              </div>
+              <div class="wizard-resumen-row" (click)="irAPaso(5)">
+                <span class="wizard-resumen-label">📅 Vigencia</span>
+                <span class="wizard-resumen-valor">
+                  Desde {{ formFechaInicio }}<span *ngIf="formFechaFin"> · hasta {{ formFechaFin }}</span><span *ngIf="!formFechaFin"> · permanente</span>
+                </span>
+                <span class="wizard-resumen-editar">Cambiar</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- FOOTER -->
+          <div class="wizard-footer">
+            <button type="button" class="wizard-btn wizard-btn-back"
+                    *ngIf="wizardStep > 1" (click)="retrocederPaso()">← Atrás</button>
+            <div *ngIf="wizardStep === 1" style="flex:1"></div>
+
+            <button type="button" class="wizard-btn wizard-btn-next"
+                    *ngIf="wizardStep < wizardTotalSteps"
+                    [disabled]="!puedeAvanzar()"
+                    (click)="avanzarPaso()">Siguiente →</button>
+
+            <button type="button" class="wizard-btn wizard-btn-finish"
+                    *ngIf="wizardStep === wizardTotalSteps"
+                    [disabled]="isGuardando"
+                    (click)="guardar()">
+              <ng-container *ngIf="!isGuardando">{{ editandoId ? '✅ Guardar Cambios' : '✅ Crear Asignación' }}</ng-container>
+              <ng-container *ngIf="isGuardando">⏳ Guardando...</ng-container>
+            </button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>

@@ -1,0 +1,402 @@
+import { Component, signal, OnInit, OnDestroy, inject, computed } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { RouterModule, Router } from '@angular/router';
+import { Firestore, collection, onSnapshot, doc, setDoc, deleteDoc } from '@angular/fire/firestore';
+import Swal from 'sweetalert2';
+
+import { SidebarComponent } from '../../../shared/sidebar/sidebar';
+import {
+  RutinaMaestra,
+  TareaRutinaMaestra,
+  TipoRutina,
+  FrecuenciaRutina,
+  NivelCritico,
+  ROLES_RUTINA,
+  ETIQUETAS_TIPO,
+  ETIQUETAS_NIVEL,
+  ETIQUETAS_FRECUENCIA
+} from '../../../shared/rutinas.types';
+
+@Component({
+  selector: 'app-rutinas-catalogo',
+  standalone: true,
+  imports: [CommonModule, FormsModule, RouterModule, SidebarComponent],
+  templateUrl: './rutinas-catalogo.html',
+  styleUrls: ['./rutinas-catalogo.css']
+})
+export class RutinasCatalogoComponent implements OnInit, OnDestroy {
+  // -------- Estado UI --------
+  isMenuOpen = false;
+  toggleMenu() { this.isMenuOpen = !this.isMenuOpen; }
+  currentUser: any = null;
+
+  // -------- Datos --------
+  rutinas = signal<RutinaMaestra[]>([]);
+
+  // Filtros
+  terminoBusqueda = '';
+  tipoFiltro: TipoRutina | 'todos' = 'todos';
+  mostrarArchivadas = false;
+
+  // Modal detalle
+  rutinaDetalle = signal<RutinaMaestra | null>(null);
+  isModalDetalleOpen = false;
+
+  // -------- Wizard de creación / edición --------
+  isWizardOpen = false;
+  wizardStep = 1;
+  readonly wizardTotalSteps = 5;
+  isGuardando = false;
+
+  // Si editandoId !== '', es edición; si es '', es creación.
+  editandoId = '';
+
+  // Form (todos los campos del wizard)
+  formNombre = '';
+  formTipo: TipoRutina = 'operacion';
+  formDescripcion = '';
+  formFrecuencia: FrecuenciaRutina = 'Diaria';
+  formDiaSemana = 'Lunes';
+  formDiaMes = 1;
+  formHoraInicio = '';
+  formHoraLimite = '';
+  formResponsable: string = 'Encargado';
+  formNivelCritico: NivelCritico = 'importante';
+  formTareas: TareaRutinaMaestra[] = [];
+  nuevaTareaTexto = '';
+
+  // Constantes accesibles desde el HTML
+  readonly tipos: TipoRutina[] = ['apertura', 'cierre', 'administracion', 'contabilidad', 'operacion'];
+  readonly frecuencias: FrecuenciaRutina[] = ['Diaria', 'Semanal', 'Catorcenal', 'Mensual', 'Trimestral', 'PorEvento'];
+  readonly nivelesCriticos: NivelCritico[] = ['obligatorio', 'importante', 'informativo'];
+  readonly roles = ROLES_RUTINA;
+  readonly diasSemana = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+  readonly diasDelMes = Array.from({ length: 31 }, (_, i) => i + 1);
+  readonly etiquetasTipo = ETIQUETAS_TIPO;
+  readonly etiquetasNivel = ETIQUETAS_NIVEL;
+  readonly etiquetasFrecuencia = ETIQUETAS_FRECUENCIA;
+
+  private firestore = inject(Firestore);
+  private router = inject(Router);
+  private radarRutinas: (() => void) | null = null;
+
+  // ============================================================================
+  // CICLO DE VIDA
+  // ============================================================================
+  ngOnInit() {
+    const sesion = localStorage.getItem('md_sesion_actual');
+    if (sesion) this.currentUser = JSON.parse(sesion);
+    if (this.currentUser?.rol !== 'admin' && !this.currentUser?.puedeCrearRutinas) {
+      this.router.navigate(['/home']);
+      return;
+    }
+    this.conectarConLaNube();
+  }
+
+  ngOnDestroy() {
+    if (this.radarRutinas) { this.radarRutinas(); this.radarRutinas = null; }
+  }
+
+  conectarConLaNube() {
+    const ref = collection(this.firestore, 'catalogo_rutinas');
+    this.radarRutinas = onSnapshot(ref, snap => {
+      const arr: RutinaMaestra[] = [];
+      snap.forEach(d => arr.push({ ...(d.data() as any), id: d.id }));
+      arr.sort((a, b) => a.nombre.localeCompare(b.nombre));
+      this.rutinas.set(arr);
+    });
+  }
+
+  // ============================================================================
+  // FILTRADO
+  // ============================================================================
+  rutinasFiltradas = computed(() => {
+    let lista = this.rutinas();
+    // Estado activa/archivada
+    lista = lista.filter(r => this.mostrarArchivadas ? !r.activa : r.activa);
+    // Tipo
+    if (this.tipoFiltro !== 'todos') {
+      lista = lista.filter(r => r.tipo === this.tipoFiltro);
+    }
+    // Búsqueda
+    const t = this.terminoBusqueda.toLowerCase().trim();
+    if (t) {
+      lista = lista.filter(r =>
+        r.nombre.toLowerCase().includes(t) ||
+        (r.descripcion || '').toLowerCase().includes(t)
+      );
+    }
+    return lista;
+  });
+
+  // Recompute manual cuando cambien filtros (signals no reaccionan a primitivos)
+  onCambioFiltro() {
+    // Forzamos recálculo asignando el mismo signal (truco)
+    this.rutinas.set([...this.rutinas()]);
+  }
+
+  // ============================================================================
+  // ABRIR / CERRAR MODALES
+  // ============================================================================
+  abrirWizardNueva() {
+    this.editandoId = '';
+    this.resetForm();
+    this.wizardStep = 1;
+    this.isWizardOpen = true;
+  }
+
+  abrirWizardEditar(r: RutinaMaestra) {
+    this.editandoId = r.id;
+    this.formNombre = r.nombre;
+    this.formTipo = r.tipo;
+    this.formDescripcion = r.descripcion || '';
+    this.formFrecuencia = r.frecuencia;
+    this.formDiaSemana = r.diaSemana || 'Lunes';
+    this.formDiaMes = r.diaMes || 1;
+    this.formHoraInicio = r.horaInicio || '';
+    this.formHoraLimite = r.horaLimite || '';
+    this.formResponsable = r.responsableSugerido;
+    this.formNivelCritico = r.nivelCritico;
+    this.formTareas = JSON.parse(JSON.stringify(r.tareas || []));
+    this.wizardStep = 1;
+    this.isWizardOpen = true;
+  }
+
+  cerrarWizard() {
+    this.isWizardOpen = false;
+    this.editandoId = '';
+  }
+
+  abrirDetalle(r: RutinaMaestra) {
+    this.rutinaDetalle.set(r);
+    this.isModalDetalleOpen = true;
+  }
+
+  cerrarDetalle() {
+    this.isModalDetalleOpen = false;
+    this.rutinaDetalle.set(null);
+  }
+
+  /** Salta a la pantalla de asignaciones con la rutina pre-seleccionada. */
+  irAAsignar(rutinaId: string) {
+    this.cerrarDetalle();
+    this.router.navigate(['/asignaciones-rutinas'], { queryParams: { rutina: rutinaId } });
+  }
+
+  resetForm() {
+    this.formNombre = '';
+    this.formTipo = 'operacion';
+    this.formDescripcion = '';
+    this.formFrecuencia = 'Diaria';
+    this.formDiaSemana = 'Lunes';
+    this.formDiaMes = 1;
+    this.formHoraInicio = '';
+    this.formHoraLimite = '';
+    this.formResponsable = 'Encargado';
+    this.formNivelCritico = 'importante';
+    this.formTareas = [];
+    this.nuevaTareaTexto = '';
+  }
+
+  // ============================================================================
+  // WIZARD: NAVEGACIÓN
+  // ============================================================================
+  avanzarPaso() {
+    if (!this.puedeAvanzar()) return;
+    if (this.wizardStep < this.wizardTotalSteps) this.wizardStep++;
+  }
+
+  retrocederPaso() {
+    if (this.wizardStep > 1) this.wizardStep--;
+  }
+
+  irAPaso(p: number) {
+    if (p >= 1 && p <= this.wizardTotalSteps) this.wizardStep = p;
+  }
+
+  puedeAvanzar(): boolean {
+    switch (this.wizardStep) {
+      case 1: return !!this.formNombre.trim() && !!this.formTipo;
+      case 2: return !!this.formFrecuencia;
+      case 3: return this.formTareas.length > 0;
+      case 4: return !!this.formResponsable && !!this.formNivelCritico;
+      case 5: return true;
+      default: return false;
+    }
+  }
+
+  // ============================================================================
+  // EDICIÓN DE TAREAS DENTRO DEL WIZARD
+  // ============================================================================
+  agregarTarea() {
+    const txt = this.nuevaTareaTexto.trim();
+    if (!txt) return;
+    this.formTareas.push({
+      id: 'tarea_' + Date.now() + '_' + this.formTareas.length,
+      text: txt,
+      requiresPhoto: false,
+      requiresAntesDespues: false,
+      requiresVariasFotos: false,
+      permiteGaleria: false,
+      permiteDocumentos: false
+    });
+    this.nuevaTareaTexto = '';
+  }
+
+  eliminarTarea(i: number) {
+    this.formTareas.splice(i, 1);
+  }
+
+  /** Mutuamente excluyentes: solo un tipo de evidencia visual a la vez. */
+  alCambiarEvidencia(t: TareaRutinaMaestra, campo: 'requiresPhoto' | 'requiresAntesDespues' | 'requiresVariasFotos') {
+    if (t[campo]) {
+      // Apaga los otros dos
+      if (campo !== 'requiresPhoto') t.requiresPhoto = false;
+      if (campo !== 'requiresAntesDespues') t.requiresAntesDespues = false;
+      if (campo !== 'requiresVariasFotos') t.requiresVariasFotos = false;
+    }
+  }
+
+  // ============================================================================
+  // GUARDAR
+  // ============================================================================
+  async guardar() {
+    if (this.isGuardando) return;
+    if (!this.puedeAvanzar() && this.wizardStep < this.wizardTotalSteps) return;
+    if (!this.formNombre.trim() || this.formTareas.length === 0) {
+      Swal.fire('Faltan datos', 'La rutina necesita un nombre y al menos una tarea.', 'warning');
+      return;
+    }
+
+    this.isGuardando = true;
+    const ahora = Date.now();
+    const id = this.editandoId || ('rutina_' + ahora);
+    const yo = this.currentUser?.nombre || this.currentUser?.usuario || 'desconocido';
+
+    const payload: any = {
+      id,
+      nombre: this.formNombre.trim(),
+      tipo: this.formTipo,
+      descripcion: this.formDescripcion.trim(),
+      frecuencia: this.formFrecuencia,
+      horaInicio: this.formHoraInicio || '',
+      horaLimite: this.formHoraLimite || '',
+      responsableSugerido: this.formResponsable,
+      nivelCritico: this.formNivelCritico,
+      tareas: this.formTareas,
+      activa: true
+    };
+
+    if (this.formFrecuencia === 'Semanal' || this.formFrecuencia === 'Catorcenal') {
+      payload.diaSemana = this.formDiaSemana;
+    }
+    if (this.formFrecuencia === 'Mensual' || this.formFrecuencia === 'Trimestral') {
+      payload.diaMes = this.formDiaMes;
+    }
+
+    if (this.editandoId) {
+      payload.actualizadoPor = yo;
+      payload.actualizadoEn = ahora;
+    } else {
+      payload.creadoPor = yo;
+      payload.creadoEn = ahora;
+    }
+
+    try {
+      await setDoc(doc(this.firestore, 'catalogo_rutinas', id), payload, { merge: true });
+      this.cerrarWizard();
+      Swal.fire({
+        toast: true, position: 'top-end', showConfirmButton: false, timer: 2500,
+        icon: 'success',
+        title: this.editandoId ? 'Rutina actualizada ✏️' : 'Rutina creada en el catálogo ✅'
+      });
+    } catch (e: any) {
+      console.error('Error guardando rutina:', e);
+      Swal.fire('Error', e.message || 'No se pudo guardar la rutina.', 'error');
+    } finally {
+      this.isGuardando = false;
+    }
+  }
+
+  // ============================================================================
+  // ACCIONES DE LA TARJETA
+  // ============================================================================
+  async duplicar(r: RutinaMaestra, event: Event) {
+    event.stopPropagation();
+    const ahora = Date.now();
+    const id = 'rutina_' + ahora;
+    const yo = this.currentUser?.nombre || this.currentUser?.usuario || 'desconocido';
+    const copia: any = {
+      ...r,
+      id,
+      nombre: r.nombre + ' (copia)',
+      creadoPor: yo,
+      creadoEn: ahora,
+      actualizadoPor: undefined,
+      actualizadoEn: undefined
+    };
+    try {
+      await setDoc(doc(this.firestore, 'catalogo_rutinas', id), copia);
+      Swal.fire({
+        toast: true, position: 'top-end', showConfirmButton: false, timer: 2500,
+        icon: 'success', title: 'Rutina duplicada'
+      });
+    } catch (e: any) {
+      Swal.fire('Error', e.message || 'No se pudo duplicar.', 'error');
+    }
+  }
+
+  async archivar(r: RutinaMaestra, event: Event) {
+    event.stopPropagation();
+    const confirma = await Swal.fire({
+      title: '¿Archivar esta rutina?',
+      text: `"${r.nombre}" dejará de aparecer en el catálogo activo, pero NO se borrará. Puedes restaurarla después.`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: 'Sí, archivar',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#0F172A'
+    });
+    if (!confirma.isConfirmed) return;
+    try {
+      await setDoc(doc(this.firestore, 'catalogo_rutinas', r.id), { activa: false }, { merge: true });
+    } catch (e: any) {
+      Swal.fire('Error', e.message || 'No se pudo archivar.', 'error');
+    }
+  }
+
+  async restaurar(r: RutinaMaestra, event: Event) {
+    event.stopPropagation();
+    try {
+      await setDoc(doc(this.firestore, 'catalogo_rutinas', r.id), { activa: true }, { merge: true });
+      Swal.fire({
+        toast: true, position: 'top-end', showConfirmButton: false, timer: 2000,
+        icon: 'success', title: 'Rutina restaurada'
+      });
+    } catch (e: any) {
+      Swal.fire('Error', e.message || 'No se pudo restaurar.', 'error');
+    }
+  }
+
+  async eliminarDefinitivo(r: RutinaMaestra, event: Event) {
+    event.stopPropagation();
+    const confirma = await Swal.fire({
+      title: '¿Eliminar definitivamente?',
+      text: `"${r.nombre}" se borrará para siempre. Esta acción no se puede deshacer.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Sí, eliminar',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#EF4444'
+    });
+    if (!confirma.isConfirmed) return;
+    try {
+      await deleteDoc(doc(this.firestore, 'catalogo_rutinas', r.id));
+    } catch (e: any) {
+      Swal.fire('Error', e.message || 'No se pudo eliminar.', 'error');
+    }
+  }
+
+  trackById(_i: number, r: RutinaMaestra) { return r.id; }
+}

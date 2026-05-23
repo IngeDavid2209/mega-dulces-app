@@ -59,7 +59,35 @@ export const routes: Routes = [
     canActivate: [authGuard],
     loadComponent: () => import('./modules/dashboard/descansos/descansos').then(m => m.DescansosComponent)
   },
-  
+
+  // 📋 CATÁLOGO DE RUTINAS MAESTRAS (Fase 1 de la refactorización)
+  {
+    path: 'rutinas',
+    canActivate: [authGuard],
+    loadComponent: () => import('./modules/dashboard/rutinas-catalogo/rutinas-catalogo').then(m => m.RutinasCatalogoComponent)
+  },
+
+  // 📌 ASIGNACIÓN DE RUTINAS (Fase 2)
+  {
+    path: 'asignaciones-rutinas',
+    canActivate: [authGuard],
+    loadComponent: () => import('./modules/dashboard/asignaciones-rutinas/asignaciones-rutinas').then(m => m.AsignacionesRutinasComponent)
+  },
+
+  // 📅 PROGRAMACIÓN DE RUTINAS (Fase 3) — vista previa de próximos días
+  {
+    path: 'programacion-rutinas',
+    canActivate: [authGuard],
+    loadComponent: () => import('./modules/dashboard/programacion-rutinas/programacion-rutinas').then(m => m.ProgramacionRutinasComponent)
+  },
+
+  // 🚚 MIGRACIÓN DEL SISTEMA LEGACY (Fase 5) — solo admin global
+  {
+    path: 'migracion-rutinas',
+    canActivate: [authGuard],
+    loadComponent: () => import('./modules/dashboard/migracion-rutinas/migracion-rutinas').then(m => m.MigracionRutinasComponent)
+  },
+
   // 🔥 NUEVA RUTA: PERFIL DEL USUARIO 🔥
   {
     path: 'perfil',

@@ -67,6 +67,52 @@
         Calendario
       </a>
 
+      <a class="nav-item" routerLink="/rutinas" routerLinkActive="active"
+         *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeCrearRutinas"
+         (click)="onNavClick()">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="4"></circle>
+          <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"></path>
+        </svg>
+        Catálogo de Rutinas
+      </a>
+
+      <a class="nav-item" routerLink="/asignaciones-rutinas" routerLinkActive="active"
+         *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeCrearRutinas"
+         (click)="onNavClick()">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="9 11 12 14 22 4"></polyline>
+          <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+        </svg>
+        Asignación de Rutinas
+      </a>
+
+      <a class="nav-item" routerLink="/programacion-rutinas" routerLinkActive="active"
+         *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeCrearRutinas"
+         (click)="onNavClick()">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+          <line x1="16" y1="2" x2="16" y2="6"></line>
+          <line x1="8" y1="2" x2="8" y2="6"></line>
+          <line x1="3" y1="10" x2="21" y2="10"></line>
+          <circle cx="12" cy="16" r="1.5" fill="currentColor" stroke="none"></circle>
+        </svg>
+        Programación de Rutinas
+      </a>
+
+      <a class="nav-item" routerLink="/migracion-rutinas" routerLinkActive="active"
+         *ngIf="currentUser?.rol === 'admin' && (currentUser?.alcance === 'global' || !currentUser?.alcance)"
+         (click)="onNavClick()"
+         title="Migración del sistema legacy (solo admin global)">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="17 1 21 5 17 9"></polyline>
+          <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
+          <polyline points="7 23 3 19 7 15"></polyline>
+          <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
+        </svg>
+        Migración Legacy
+      </a>
+
       <a class="nav-item" routerLink="/reportes" routerLinkActive="active"
          *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeVerHistorial"
          (click)="onNavClick()">

@@ -1,0 +1,499 @@
+<div class="app-layout">
+  <header class="header">
+    <div class="header-left">
+      <button class="btn-menu-mobile" (click)="toggleMenu()">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="3" y1="12" x2="21" y2="12"></line>
+          <line x1="3" y1="6" x2="21" y2="6"></line>
+          <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+      </button>
+      <div class="header-logo-wrap" style="background: transparent !important; width: auto; padding: 0 4px;">
+        <img src="https://static.wixstatic.com/media/fd397e_0fd82a1ecec84a118ceeb603b493f25a~mv2.png"
+             style="height: 36px; object-fit: contain;">
+      </div>
+      <div class="header-brand">Mega Dulces<small>Panel Enterprise</small></div>
+    </div>
+  </header>
+
+  <div class="main-wrapper">
+    <div class="mobile-overlay" *ngIf="isMenuOpen" (click)="toggleMenu()"></div>
+    <app-sidebar [currentUser]="currentUser" [isMenuOpen]="isMenuOpen" (closeMenu)="isMenuOpen = false"></app-sidebar>
+
+    <div class="content">
+
+      <!-- ╔══════════════════════════════════════════════════╗ -->
+      <!-- ║   HEADER PRO                                     ║ -->
+      <!-- ╚══════════════════════════════════════════════════╝ -->
+      <div class="cat-header">
+        <div class="cat-header-icon" aria-hidden="true">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+            <circle cx="12" cy="12" r="4"/>
+          </svg>
+        </div>
+        <div class="cat-header-text">
+          <h1 class="cat-header-title">Catálogo de Rutinas</h1>
+          <p class="cat-header-sub">Crea y administra las rutinas maestras del sistema. Aquí defines el "qué"; en otra pantalla decides el "quién" y el "cuándo".</p>
+        </div>
+        <button type="button" class="cat-btn-nueva" (click)="abrirWizardNueva()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+          Nueva Rutina Maestra
+        </button>
+      </div>
+
+      <!-- ╔══════════════════════════════════════════════════╗ -->
+      <!-- ║   FILTROS                                        ║ -->
+      <!-- ╚══════════════════════════════════════════════════╝ -->
+      <div class="cat-filters">
+        <div class="cat-filter-field cat-filter-field--wide">
+          <label class="cat-filter-label" for="cat-buscar">🔍 Buscar</label>
+          <input id="cat-buscar" type="text" class="cat-input"
+                 [(ngModel)]="terminoBusqueda"
+                 (input)="onCambioFiltro()"
+                 placeholder="Por nombre o descripción...">
+        </div>
+
+        <div class="cat-filter-field">
+          <label class="cat-filter-label" for="cat-tipo">Tipo</label>
+          <select id="cat-tipo" class="cat-input cat-select"
+                  [(ngModel)]="tipoFiltro" (change)="onCambioFiltro()">
+            <option value="todos">Todos los tipos</option>
+            <option *ngFor="let t of tipos" [value]="t">{{ etiquetasTipo[t] }}</option>
+          </select>
+        </div>
+
+        <div class="cat-filter-field cat-filter-toggle">
+          <label class="cat-filter-label">Estado</label>
+          <label class="cat-toggle">
+            <input type="checkbox" [(ngModel)]="mostrarArchivadas" (change)="onCambioFiltro()">
+            <span class="cat-toggle-track"></span>
+            <span class="cat-toggle-text">{{ mostrarArchivadas ? '📦 Archivadas' : '✅ Activas' }}</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- ╔══════════════════════════════════════════════════╗ -->
+      <!-- ║   GRID DE RUTINAS                                ║ -->
+      <!-- ╚══════════════════════════════════════════════════╝ -->
+      <div class="cat-grid">
+        <article class="cat-card"
+                 *ngFor="let r of rutinasFiltradas(); trackBy: trackById"
+                 [class.cat-card--archivada]="!r.activa"
+                 (click)="abrirDetalle(r)">
+
+          <header class="cat-card-header">
+            <div class="cat-card-title-wrap">
+              <h3 class="cat-card-title">{{ r.nombre }}</h3>
+              <span class="cat-card-tipo">{{ etiquetasTipo[r.tipo] }}</span>
+            </div>
+            <span class="cat-card-nivel"
+                  [class.cat-card-nivel--obligatorio]="r.nivelCritico === 'obligatorio'"
+                  [class.cat-card-nivel--importante]="r.nivelCritico === 'importante'"
+                  [class.cat-card-nivel--informativo]="r.nivelCritico === 'informativo'">
+              {{ etiquetasNivel[r.nivelCritico] }}
+            </span>
+          </header>
+
+          <p class="cat-card-desc" *ngIf="r.descripcion">{{ r.descripcion }}</p>
+
+          <div class="cat-card-info">
+            <div class="cat-card-info-row">
+              <span class="cat-card-info-label">🔁 Frecuencia</span>
+              <span class="cat-card-info-valor">
+                {{ etiquetasFrecuencia[r.frecuencia] }}
+                <span *ngIf="(r.frecuencia === 'Semanal' || r.frecuencia === 'Catorcenal') && r.diaSemana">
+                  · {{ r.diaSemana }}
+                </span>
+                <span *ngIf="(r.frecuencia === 'Mensual' || r.frecuencia === 'Trimestral') && r.diaMes">
+                  · día {{ r.diaMes }}
+                </span>
+              </span>
+            </div>
+
+            <div class="cat-card-info-row" *ngIf="r.horaInicio || r.horaLimite">
+              <span class="cat-card-info-label">🕒 Horario</span>
+              <span class="cat-card-info-valor">
+                {{ r.horaInicio || '--' }} a {{ r.horaLimite || '--' }}
+              </span>
+            </div>
+
+            <div class="cat-card-info-row">
+              <span class="cat-card-info-label">👤 Responsable</span>
+              <span class="cat-card-info-valor">{{ r.responsableSugerido }}</span>
+            </div>
+
+            <div class="cat-card-info-row">
+              <span class="cat-card-info-label">✅ Tareas</span>
+              <span class="cat-card-info-valor"><strong>{{ r.tareas.length }}</strong> {{ r.tareas.length === 1 ? 'tarea' : 'tareas' }}</span>
+            </div>
+          </div>
+
+          <footer class="cat-card-footer">
+            <button type="button" class="cat-card-action" (click)="abrirWizardEditar(r); $event.stopPropagation()"
+                    *ngIf="r.activa" title="Editar">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M12 20h9"></path>
+                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"></path>
+              </svg>
+              Editar
+            </button>
+            <button type="button" class="cat-card-action" (click)="duplicar(r, $event)"
+                    *ngIf="r.activa" title="Duplicar">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+              </svg>
+              Duplicar
+            </button>
+            <button type="button" class="cat-card-action cat-card-action--danger" (click)="archivar(r, $event)"
+                    *ngIf="r.activa" title="Archivar">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <polyline points="21 8 21 21 3 21 3 8"></polyline>
+                <rect x="1" y="3" width="22" height="5"></rect>
+                <line x1="10" y1="12" x2="14" y2="12"></line>
+              </svg>
+              Archivar
+            </button>
+            <button type="button" class="cat-card-action" (click)="restaurar(r, $event)"
+                    *ngIf="!r.activa" title="Restaurar">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <polyline points="1 4 1 10 7 10"></polyline>
+                <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+              </svg>
+              Restaurar
+            </button>
+            <button type="button" class="cat-card-action cat-card-action--danger" (click)="eliminarDefinitivo(r, $event)"
+                    *ngIf="!r.activa" title="Eliminar para siempre">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"></path>
+              </svg>
+              Eliminar
+            </button>
+          </footer>
+        </article>
+
+        <!-- Estado vacío -->
+        <div class="cat-empty" *ngIf="rutinasFiltradas().length === 0">
+          <div class="cat-empty-icon">📋</div>
+          <h3 *ngIf="!mostrarArchivadas">Aún no tienes rutinas en el catálogo</h3>
+          <h3 *ngIf="mostrarArchivadas">No hay rutinas archivadas</h3>
+          <p *ngIf="!mostrarArchivadas">Crea tu primera rutina maestra. Aquí defines la plantilla; en otra pantalla la asignas a sucursales y personas.</p>
+          <p *ngIf="mostrarArchivadas">Las rutinas que archives aparecerán aquí. Puedes restaurarlas en cualquier momento.</p>
+          <button type="button" class="cat-btn-nueva" (click)="abrirWizardNueva()" *ngIf="!mostrarArchivadas">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            Crear primera rutina
+          </button>
+        </div>
+      </div>
+
+
+      <!-- ╔══════════════════════════════════════════════════╗ -->
+      <!-- ║   MODAL DETALLE                                  ║ -->
+      <!-- ╚══════════════════════════════════════════════════╝ -->
+      <div class="cat-modal-overlay" *ngIf="isModalDetalleOpen && rutinaDetalle()" (click)="cerrarDetalle()">
+        <div class="cat-modal" (click)="$event.stopPropagation()">
+          <div class="cat-modal-header">
+            <div>
+              <h2 class="cat-modal-title">{{ rutinaDetalle()!.nombre }}</h2>
+              <span class="cat-card-tipo">{{ etiquetasTipo[rutinaDetalle()!.tipo] }}</span>
+            </div>
+            <button type="button" class="cat-modal-close" (click)="cerrarDetalle()">&times;</button>
+          </div>
+          <div class="cat-modal-body">
+            <p class="cat-modal-desc" *ngIf="rutinaDetalle()!.descripcion">{{ rutinaDetalle()!.descripcion }}</p>
+
+            <div class="cat-modal-stats">
+              <div class="cat-modal-stat">
+                <span class="cat-modal-stat-label">Frecuencia</span>
+                <span class="cat-modal-stat-valor">{{ etiquetasFrecuencia[rutinaDetalle()!.frecuencia] }}</span>
+              </div>
+              <div class="cat-modal-stat" *ngIf="rutinaDetalle()!.horaInicio || rutinaDetalle()!.horaLimite">
+                <span class="cat-modal-stat-label">Horario</span>
+                <span class="cat-modal-stat-valor">{{ rutinaDetalle()!.horaInicio || '--' }} a {{ rutinaDetalle()!.horaLimite || '--' }}</span>
+              </div>
+              <div class="cat-modal-stat">
+                <span class="cat-modal-stat-label">Responsable</span>
+                <span class="cat-modal-stat-valor">{{ rutinaDetalle()!.responsableSugerido }}</span>
+              </div>
+              <div class="cat-modal-stat">
+                <span class="cat-modal-stat-label">Nivel</span>
+                <span class="cat-modal-stat-valor">{{ etiquetasNivel[rutinaDetalle()!.nivelCritico] }}</span>
+              </div>
+            </div>
+
+            <h3 class="cat-modal-subtitle">📋 Tareas de la rutina ({{ rutinaDetalle()!.tareas.length }})</h3>
+            <ol class="cat-modal-tareas">
+              <li *ngFor="let t of rutinaDetalle()!.tareas">
+                <span class="cat-modal-tarea-text">{{ t.text }}</span>
+                <div class="cat-modal-tarea-flags">
+                  <span class="cat-flag" *ngIf="t.requiresPhoto">📷 1 foto</span>
+                  <span class="cat-flag" *ngIf="t.requiresAntesDespues">📸📸 Antes/Después</span>
+                  <span class="cat-flag" *ngIf="t.requiresVariasFotos">🖼 Varias fotos</span>
+                  <span class="cat-flag" *ngIf="t.requiereMonto">💵 Monto</span>
+                  <span class="cat-flag" *ngIf="t.requiereFolio">🧾 Folio</span>
+                  <span class="cat-flag" *ngIf="t.requiereComentario">💬 Comentario</span>
+                </div>
+              </li>
+            </ol>
+          </div>
+          <div class="cat-modal-footer">
+            <button type="button" class="cat-btn cat-btn--secondary" (click)="cerrarDetalle()">Cerrar</button>
+            <button type="button" class="cat-btn cat-btn--primary"
+                    *ngIf="rutinaDetalle()!.activa"
+                    (click)="abrirWizardEditar(rutinaDetalle()!); cerrarDetalle()">
+              ✏️ Editar
+            </button>
+            <button type="button" class="cat-btn cat-btn--primary"
+                    *ngIf="rutinaDetalle()!.activa"
+                    (click)="irAAsignar(rutinaDetalle()!.id)"
+                    title="Asignar esta rutina a sucursales y personas">
+              🏪 Asignar a sucursal
+            </button>
+          </div>
+        </div>
+      </div>
+
+
+      <!-- ╔══════════════════════════════════════════════════╗ -->
+      <!-- ║   WIZARD DE NUEVA / EDITAR RUTINA                ║ -->
+      <!-- ╚══════════════════════════════════════════════════╝ -->
+      <div class="wizard-overlay" *ngIf="isWizardOpen">
+        <div class="wizard-modal">
+
+          <div class="wizard-header">
+            <div class="wizard-title">{{ editandoId ? 'Editar Rutina Maestra' : 'Nueva Rutina Maestra' }}</div>
+            <button class="wizard-close" (click)="cerrarWizard()" aria-label="Cerrar">&times;</button>
+          </div>
+          <div class="wizard-progress-bar">
+            <div class="wizard-progress-fill" [style.width.%]="(wizardStep / wizardTotalSteps) * 100"></div>
+          </div>
+          <div class="wizard-step-counter">
+            Paso <strong>{{ wizardStep }}</strong> de {{ wizardTotalSteps }}
+          </div>
+
+          <!-- PASO 1 — NOMBRE + TIPO -->
+          <div class="wizard-step" *ngIf="wizardStep === 1">
+            <h2 class="wizard-question">¿Cómo se llama y qué tipo de rutina es?</h2>
+            <p class="wizard-hint">Dale un nombre claro y elige el tipo más cercano.</p>
+
+            <input class="wizard-input wizard-input-big" type="text"
+                   [(ngModel)]="formNombre" placeholder="Ej: Cierre de caja" autofocus>
+
+            <textarea class="wizard-input" rows="2" style="margin-top: 12px;"
+                      [(ngModel)]="formDescripcion"
+                      placeholder="Descripción corta (opcional): ¿para qué sirve esta rutina?"></textarea>
+
+            <label class="wizard-time-label" style="margin-top: 20px;">Tipo de rutina:</label>
+            <div class="cat-tipo-grid">
+              <button type="button" class="cat-tipo-card"
+                      *ngFor="let t of tipos"
+                      [class.selected]="formTipo === t"
+                      (click)="formTipo = t">
+                {{ etiquetasTipo[t] }}
+              </button>
+            </div>
+          </div>
+
+          <!-- PASO 2 — FRECUENCIA + HORARIO -->
+          <div class="wizard-step" *ngIf="wizardStep === 2">
+            <h2 class="wizard-question">¿Cuándo se ejecuta?</h2>
+            <p class="wizard-hint">Define la frecuencia y horario sugerido. (Se podrá ajustar al asignarla.)</p>
+
+            <label class="wizard-time-label">Frecuencia:</label>
+            <div class="cat-tipo-grid">
+              <button type="button" class="cat-tipo-card"
+                      *ngFor="let f of frecuencias"
+                      [class.selected]="formFrecuencia === f"
+                      (click)="formFrecuencia = f">
+                {{ etiquetasFrecuencia[f] }}
+              </button>
+            </div>
+
+            <div class="wizard-time-block" *ngIf="formFrecuencia === 'Semanal' || formFrecuencia === 'Catorcenal'">
+              <label class="wizard-time-label">¿Qué día de la semana?</label>
+              <select class="wizard-input" [(ngModel)]="formDiaSemana">
+                <option *ngFor="let d of diasSemana" [value]="d">{{ d }}</option>
+              </select>
+            </div>
+
+            <div class="wizard-time-block" *ngIf="formFrecuencia === 'Mensual' || formFrecuencia === 'Trimestral'">
+              <label class="wizard-time-label">¿Qué día del mes?</label>
+              <select class="wizard-input" [(ngModel)]="formDiaMes">
+                <option *ngFor="let d of diasDelMes" [value]="d">Día {{ d }}</option>
+              </select>
+            </div>
+
+            <div class="wizard-time-block">
+              <label class="wizard-time-label">🕒 Hora sugerida de inicio (opcional)</label>
+              <input type="time" class="wizard-input wizard-time-input" [(ngModel)]="formHoraInicio">
+            </div>
+            <div class="wizard-time-block">
+              <label class="wizard-time-label">⏰ Hora sugerida límite (opcional)</label>
+              <input type="time" class="wizard-input wizard-time-input" [(ngModel)]="formHoraLimite">
+            </div>
+          </div>
+
+          <!-- PASO 3 — TAREAS -->
+          <div class="wizard-step" *ngIf="wizardStep === 3">
+            <h2 class="wizard-question">¿Qué tareas tiene esta rutina?</h2>
+            <p class="wizard-hint">Lista todo lo que se debe hacer. Por cada tarea puedes pedir foto, antes/después, monto, folio, etc.</p>
+
+            <div class="cat-tareas-add">
+              <input type="text" class="wizard-input"
+                     [(ngModel)]="nuevaTareaTexto"
+                     (keyup.enter)="agregarTarea()"
+                     placeholder="Escribe una tarea y dale Enter o + Agregar">
+              <button type="button" class="wizard-btn wizard-btn-back" (click)="agregarTarea()">+ Agregar</button>
+            </div>
+
+            <ul class="cat-tareas-lista">
+              <li *ngFor="let t of formTareas; let i = index">
+                <div class="cat-tarea-row">
+                  <span class="cat-tarea-num">{{ i + 1 }}.</span>
+                  <input type="text" class="cat-tarea-input" [(ngModel)]="t.text">
+                  <button type="button" class="cat-tarea-del" (click)="eliminarTarea(i)" title="Eliminar">&times;</button>
+                </div>
+                <div class="cat-tarea-flags">
+                  <label class="cat-flag-check">
+                    <input type="checkbox" [(ngModel)]="t.requiresPhoto"
+                           (change)="alCambiarEvidencia(t, 'requiresPhoto')">
+                    📷 1 foto
+                  </label>
+                  <label class="cat-flag-check">
+                    <input type="checkbox" [(ngModel)]="t.requiresAntesDespues"
+                           (change)="alCambiarEvidencia(t, 'requiresAntesDespues')">
+                    📸📸 Antes/Después
+                  </label>
+                  <label class="cat-flag-check">
+                    <input type="checkbox" [(ngModel)]="t.requiresVariasFotos"
+                           (change)="alCambiarEvidencia(t, 'requiresVariasFotos')">
+                    🖼 Varias fotos
+                  </label>
+                  <label class="cat-flag-check">
+                    <input type="checkbox" [(ngModel)]="t.requiereMonto">
+                    💵 Pedir monto
+                  </label>
+                  <label class="cat-flag-check">
+                    <input type="checkbox" [(ngModel)]="t.requiereFolio">
+                    🧾 Pedir folio
+                  </label>
+                  <label class="cat-flag-check">
+                    <input type="checkbox" [(ngModel)]="t.requiereComentario">
+                    💬 Pedir comentario
+                  </label>
+                </div>
+              </li>
+              <li class="cat-tareas-vacio" *ngIf="formTareas.length === 0">
+                😕 Aún no has agregado tareas. Escribe una arriba y dale + Agregar.
+              </li>
+            </ul>
+          </div>
+
+          <!-- PASO 4 — RESPONSABLE + NIVEL CRÍTICO -->
+          <div class="wizard-step" *ngIf="wizardStep === 4">
+            <h2 class="wizard-question">¿Quién la hace y qué tan importante es?</h2>
+            <p class="wizard-hint">El responsable sugerido es un <strong>rol</strong>, no una persona. Así si Juan se va, su reemplazo hereda la rutina automáticamente.</p>
+
+            <label class="wizard-time-label">Responsable sugerido (rol):</label>
+            <div class="cat-tipo-grid">
+              <button type="button" class="cat-tipo-card"
+                      *ngFor="let rol of roles"
+                      [class.selected]="formResponsable === rol"
+                      (click)="formResponsable = rol">
+                👤 {{ rol }}
+              </button>
+            </div>
+
+            <label class="wizard-time-label" style="margin-top: 20px;">Nivel crítico:</label>
+            <div class="cat-tipo-grid">
+              <button type="button" class="cat-tipo-card"
+                      *ngFor="let n of nivelesCriticos"
+                      [class.selected]="formNivelCritico === n"
+                      (click)="formNivelCritico = n">
+                {{ etiquetasNivel[n] }}
+              </button>
+            </div>
+          </div>
+
+          <!-- PASO 5 — RESUMEN -->
+          <div class="wizard-step" *ngIf="wizardStep === 5">
+            <h2 class="wizard-question">¿Todo correcto?</h2>
+            <p class="wizard-hint">Revisa antes de {{ editandoId ? 'guardar los cambios' : 'crear la rutina maestra' }}.</p>
+
+            <div class="wizard-resumen">
+              <div class="wizard-resumen-row" (click)="irAPaso(1)">
+                <span class="wizard-resumen-label">📝 Nombre</span>
+                <span class="wizard-resumen-valor">{{ formNombre || 'Sin nombre' }}</span>
+                <span class="wizard-resumen-editar">Cambiar</span>
+              </div>
+              <div class="wizard-resumen-row" (click)="irAPaso(1)">
+                <span class="wizard-resumen-label">🏷 Tipo</span>
+                <span class="wizard-resumen-valor">{{ etiquetasTipo[formTipo] }}</span>
+                <span class="wizard-resumen-editar">Cambiar</span>
+              </div>
+              <div class="wizard-resumen-row" (click)="irAPaso(2)">
+                <span class="wizard-resumen-label">🔁 Frecuencia</span>
+                <span class="wizard-resumen-valor">
+                  {{ etiquetasFrecuencia[formFrecuencia] }}
+                  <span *ngIf="formFrecuencia === 'Semanal' || formFrecuencia === 'Catorcenal'"> · {{ formDiaSemana }}</span>
+                  <span *ngIf="formFrecuencia === 'Mensual' || formFrecuencia === 'Trimestral'"> · día {{ formDiaMes }}</span>
+                </span>
+                <span class="wizard-resumen-editar">Cambiar</span>
+              </div>
+              <div class="wizard-resumen-row" (click)="irAPaso(2)" *ngIf="formHoraInicio || formHoraLimite">
+                <span class="wizard-resumen-label">🕒 Horario</span>
+                <span class="wizard-resumen-valor">{{ formHoraInicio || '--' }} a {{ formHoraLimite || '--' }}</span>
+                <span class="wizard-resumen-editar">Cambiar</span>
+              </div>
+              <div class="wizard-resumen-row" (click)="irAPaso(3)">
+                <span class="wizard-resumen-label">✅ Tareas</span>
+                <span class="wizard-resumen-valor"><strong>{{ formTareas.length }}</strong> {{ formTareas.length === 1 ? 'tarea' : 'tareas' }}</span>
+                <span class="wizard-resumen-editar">Cambiar</span>
+              </div>
+              <div class="wizard-resumen-row" (click)="irAPaso(4)">
+                <span class="wizard-resumen-label">👤 Responsable</span>
+                <span class="wizard-resumen-valor">{{ formResponsable }}</span>
+                <span class="wizard-resumen-editar">Cambiar</span>
+              </div>
+              <div class="wizard-resumen-row" (click)="irAPaso(4)">
+                <span class="wizard-resumen-label">⚠ Nivel</span>
+                <span class="wizard-resumen-valor">{{ etiquetasNivel[formNivelCritico] }}</span>
+                <span class="wizard-resumen-editar">Cambiar</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- FOOTER -->
+          <div class="wizard-footer">
+            <button type="button" class="wizard-btn wizard-btn-back"
+                    *ngIf="wizardStep > 1" (click)="retrocederPaso()">← Atrás</button>
+            <div *ngIf="wizardStep === 1" style="flex:1"></div>
+
+            <button type="button" class="wizard-btn wizard-btn-next"
+                    *ngIf="wizardStep < wizardTotalSteps"
+                    [disabled]="!puedeAvanzar()"
+                    (click)="avanzarPaso()">Siguiente →</button>
+
+            <button type="button" class="wizard-btn wizard-btn-finish"
+                    *ngIf="wizardStep === wizardTotalSteps"
+                    [disabled]="isGuardando"
+                    (click)="guardar()">
+              <ng-container *ngIf="!isGuardando">{{ editandoId ? '✅ Guardar Cambios' : '✅ Crear Rutina' }}</ng-container>
+              <ng-container *ngIf="isGuardando">⏳ Guardando...</ng-container>
+            </button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>

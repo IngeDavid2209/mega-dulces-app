@@ -420,28 +420,20 @@
                     </div>
                   </div>
 
-                  <!-- TIEMPO RESTANTE (solo si hay photoAntes pero no photoDespues Y hay límite) -->
-                  <div *ngIf="item.photoAntes && !item.photoDespues && item.tiempoEstimado > 0"
+                  <!-- AVISO ENTRE ANTES Y DESPUÉS:
+                       Sin cuenta regresiva. El límite es la hora asignada a la tarea. -->
+                  <div *ngIf="item.photoAntes && !item.photoDespues"
                     style="text-align: center; padding: 10px 14px; border-radius: 8px;"
-                    [style.background]="isDespuesExpirado(item) ? '#FEE2E2' : '#DBEAFE'"
-                    [style.color]="isDespuesExpirado(item) ? '#B91C1C' : '#1E40AF'"
-                    [style.border]="isDespuesExpirado(item) ? '1px solid #FCA5A5' : '1px solid #93C5FD'">
-                    <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; opacity: 0.85; margin-bottom: 4px;">
-                      ⏱ Tiempo para tomar la foto "DESPUÉS"
-                    </div>
-                    <strong style="font-size: 16px;">
-                      {{ getTiempoRestanteTexto(item) }}
-                    </strong>
-                    <div style="font-size: 11px; margin-top: 4px; opacity: 0.75;">
-                      (no es el deadline de la tarea — solo el tiempo entre ambas fotos)
-                    </div>
-                  </div>
-
-                  <!-- AVISO "Sin límite" cuando hay photoAntes pero tiempoEstimado=0 -->
-                  <div *ngIf="item.photoAntes && !item.photoDespues && (!item.tiempoEstimado || item.tiempoEstimado === 0)"
-                    style="text-align: center; padding: 10px 14px; border-radius: 8px; background: #ECFDF5; color: #047857; border: 1px solid #A7F3D0;">
-                    <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px;">
-                      ♾ Puedes tomar la foto "DESPUÉS" cuando termines
+                    [style.background]="isDespuesExpirado(item) ? '#FEE2E2' : '#ECFDF5'"
+                    [style.color]="isDespuesExpirado(item) ? '#B91C1C' : '#047857'"
+                    [style.border]="isDespuesExpirado(item) ? '1px solid #FCA5A5' : '1px solid #A7F3D0'">
+                    <div style="font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.4px;">
+                      <ng-container *ngIf="!isDespuesExpirado(item)">
+                        ✅ Toma la foto "DESPUÉS" antes de las {{ horaLimiteItem(item) }}
+                      </ng-container>
+                      <ng-container *ngIf="isDespuesExpirado(item)">
+                        ⏰ Ya pasó la hora límite ({{ horaLimiteItem(item) }})
+                      </ng-container>
                     </div>
                   </div>
 
@@ -927,8 +919,8 @@
             </p>
           </div>
 
-          <!-- PASO 3 — RESPONSABLES (filtrados por sucursal) -->
-          <div class="wizard-step" *ngIf="wizardStepRutina === 3">
+          <!-- PASO 7 — RESPONSABLES (filtrados por sucursal) - movido al final por petición -->
+          <div class="wizard-step" *ngIf="wizardStepRutina === 7">
             <h2 class="wizard-question">¿Quién la va a hacer?</h2>
             <p class="wizard-hint">Personas que trabajan en <strong>{{ formStoreRutina }}</strong></p>
 
@@ -969,8 +961,8 @@
             </div>
           </div>
 
-          <!-- PASO 4 — FRECUENCIA -->
-          <div class="wizard-step" *ngIf="wizardStepRutina === 4">
+          <!-- PASO 3 — FRECUENCIA (subió al inicio por petición) -->
+          <div class="wizard-step" *ngIf="wizardStepRutina === 3">
             <h2 class="wizard-question">¿Cada cuándo se hace?</h2>
             <p class="wizard-hint">Selecciona cada cuánto se debe repetir</p>
 
@@ -1039,8 +1031,8 @@
             </div>
           </div>
 
-          <!-- PASO 5 — HORARIO -->
-          <div class="wizard-step" *ngIf="wizardStepRutina === 5">
+          <!-- PASO 4 — HORARIO -->
+          <div class="wizard-step" *ngIf="wizardStepRutina === 4">
             <h2 class="wizard-question">¿A qué hora?</h2>
             <p class="wizard-hint">Pon a qué hora empieza y a qué hora debe terminar</p>
 
@@ -1073,8 +1065,8 @@
             </div>
           </div>
 
-          <!-- PASO 6 — ¿DESDE Y HASTA CUÁNDO? 📅 -->
-          <div class="wizard-step" *ngIf="wizardStepRutina === 6">
+          <!-- PASO 5 — ¿DESDE Y HASTA CUÁNDO? 📅 -->
+          <div class="wizard-step" *ngIf="wizardStepRutina === 5">
             <h2 class="wizard-question">¿Desde y hasta cuándo?</h2>
             <p class="wizard-hint">La rutina solo se generará dentro de estas fechas. "Hasta" es opcional — déjalo vacío si la rutina dura para siempre.</p>
 
@@ -1115,8 +1107,8 @@
             </div>
           </div>
 
-          <!-- PASO 7 — TIPO DE EVIDENCIA -->
-          <div class="wizard-step" *ngIf="wizardStepRutina === 7">
+          <!-- PASO 6 — TIPO DE EVIDENCIA -->
+          <div class="wizard-step" *ngIf="wizardStepRutina === 6">
             <h2 class="wizard-question">¿Necesita foto?</h2>
             <p class="wizard-hint">¿Pediremos foto para comprobar que se hizo?</p>
 
@@ -1191,18 +1183,12 @@
               </div>
 
               <div class="wizard-resumen-row" (click)="irAPasoWizardRutina(3)">
-                <span class="wizard-resumen-label">👤 Para</span>
-                <span class="wizard-resumen-valor">{{ getEmpleadosResumenRutina() }}</span>
-                <span class="wizard-resumen-editar">Cambiar</span>
-              </div>
-
-              <div class="wizard-resumen-row" (click)="irAPasoWizardRutina(4)">
                 <span class="wizard-resumen-label">🔁 Repetir</span>
                 <span class="wizard-resumen-valor">{{ getResumenFrecuenciaRutina() }}</span>
                 <span class="wizard-resumen-editar">Cambiar</span>
               </div>
 
-              <div class="wizard-resumen-row" (click)="irAPasoWizardRutina(5)">
+              <div class="wizard-resumen-row" (click)="irAPasoWizardRutina(4)">
                 <span class="wizard-resumen-label">🕒 Horario</span>
                 <span class="wizard-resumen-valor">
                   {{ formRutinas[0]?.horaInicio || '--' }} a {{ formRutinas[0]?.horaLimite || '--' }}
@@ -1210,15 +1196,21 @@
                 <span class="wizard-resumen-editar">Cambiar</span>
               </div>
 
-              <div class="wizard-resumen-row" (click)="irAPasoWizardRutina(6)">
+              <div class="wizard-resumen-row" (click)="irAPasoWizardRutina(5)">
                 <span class="wizard-resumen-label">📅 Vigencia</span>
                 <span class="wizard-resumen-valor">{{ getResumenVigenciaRutina() }}</span>
                 <span class="wizard-resumen-editar">Cambiar</span>
               </div>
 
-              <div class="wizard-resumen-row" (click)="irAPasoWizardRutina(7)">
+              <div class="wizard-resumen-row" (click)="irAPasoWizardRutina(6)">
                 <span class="wizard-resumen-label">📷 Evidencia</span>
                 <span class="wizard-resumen-valor">{{ getResumenEvidenciaRutina() }}</span>
+                <span class="wizard-resumen-editar">Cambiar</span>
+              </div>
+
+              <div class="wizard-resumen-row" (click)="irAPasoWizardRutina(7)">
+                <span class="wizard-resumen-label">👤 Para</span>
+                <span class="wizard-resumen-valor">{{ getEmpleadosResumenRutina() }}</span>
                 <span class="wizard-resumen-editar">Cambiar</span>
               </div>
             </div>

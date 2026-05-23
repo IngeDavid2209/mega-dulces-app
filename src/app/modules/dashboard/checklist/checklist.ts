@@ -7,6 +7,9 @@ import * as localforage from 'localforage';
 import Swal from 'sweetalert2';
 import { esAdminGlobal, esAdminLimitado, sucursalesPermitidas, normalizarNombre } from '../../../shared/permisos.util';
 import { obtenerSemanaISO, obtenerNombreDia } from '../../../shared/descansos.util';
+import { RobotRutinasV2Service } from '../../../shared/robot-rutinas-v2.service';
+import { RutinaMaestra } from '../../../shared/rutinas.types';
+import { AsignacionRutina } from '../../../shared/asignaciones.types';
 
 import { SidebarComponent } from '../../../shared/sidebar/sidebar';
 
@@ -113,8 +116,18 @@ export class ChecklistComponent implements OnInit, OnDestroy {
 
   private firestore = inject(Firestore);
   private route = inject(ActivatedRoute);
+  private robotV2 = inject(RobotRutinasV2Service);
   private destructoresRadares: (() => void)[] = [];
   private intervalId: any;
+
+  // 🤖 Robot V2 (Fase 4): cache local del catálogo y las asignaciones.
+  // Cuando cualquiera de los dos cambia (o cuando cargamos por primera vez),
+  // se dispara `correrRobotV2()` para generar checklists del día desde el
+  // nuevo modelo (catálogo + asignaciones). Convive con el V1 (moldes).
+  private catalogoV2: RutinaMaestra[] = [];
+  private asignacionesV2: AsignacionRutina[] = [];
+  private usuariosV2: any[] = [];
+  private robotV2Corriendo = false;
 
   private sucursalesAdministrativas = [
     'ADMINISTRADORES DEL SISTEMA',
@@ -304,17 +317,16 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     switch (this.wizardStepRutina) {
       case 1: return !!this.formNameRutina && this.formNameRutina.trim().length > 0;
       case 2: return !!this.formStoreRutina;
-      case 3: return this.formAssignedRutina.length > 0;
-      case 4: return !!regla?.frecuencia;
-      case 5: return !!regla?.horaInicio && !!regla?.horaLimite;
-      case 6: {
-        // 📅 Vigencia: fechaInicio es obligatoria. Si hay fechaFin, debe ser >= fechaInicio.
+      case 3: return !!regla?.frecuencia;                                   // 🔁 Frecuencia (era paso 4)
+      case 4: return !!regla?.horaInicio && !!regla?.horaLimite;            // 🕒 Horario
+      case 5: {                                                              // 📅 Vigencia
         if (!regla?.fechaInicio) return false;
         if (regla?.fechaFin && regla.fechaFin < regla.fechaInicio) return false;
         return true;
       }
-      case 7: return true; // evidencia
-      case 8: return true; // resumen
+      case 6: return true;                                                   // 📷 Evidencia
+      case 7: return this.formAssignedRutina.length > 0;                     // 👤 Empleados (movido al final)
+      case 8: return true;                                                   // ✅ Resumen
       default: return false;
     }
   }
@@ -534,24 +546,16 @@ export class ChecklistComponent implements OnInit, OnDestroy {
 
   isDespuesExpirado(item: any): boolean {
     if (!item.requiresAntesDespues || !item.photoAntesTimestamp) return false;
-    // 🔥 Si tiempoEstimado es 0/null = "Sin límite": nunca expira
-    if (!item.tiempoEstimado || item.tiempoEstimado <= 0) return false;
-    const limite = item.photoAntesTimestamp + (item.tiempoEstimado * 60000);
-    return Date.now() > limite;
+    // El "Después" expira cuando expira la TAREA (su horaLimite/time del día).
+    // Antes esto se basaba en un contador entre fotos — quitado a petición.
+    const fecha = this.checklistSeleccionado()?.date;
+    if (!fecha) return false;
+    return this.isTareaVencida(item, fecha);
   }
 
-  getTiempoRestanteTexto(item: any): string {
-    if (!item.requiresAntesDespues || !item.photoAntesTimestamp) return '';
-    if (item.photoDespues) return 'Completado';
-    // 🔥 Sin límite: no mostramos cuenta regresiva
-    if (!item.tiempoEstimado || item.tiempoEstimado <= 0) return 'Sin límite de tiempo';
-    const limite = item.photoAntesTimestamp + (item.tiempoEstimado * 60000);
-    const ahora = Date.now();
-    if (ahora > limite) return 'Agotado';
-    const faltanMs = limite - ahora;
-    const minutos = Math.floor(faltanMs / 60000);
-    const segundos = Math.floor((faltanMs % 60000) / 1000);
-    return `${minutos}m ${segundos}s`;
+  /** Hora límite efectiva del item (HH:mm), o fallback a la del checklist. */
+  horaLimiteItem(item: any): string {
+    return item?.horaLimite || item?.time || this.checklistSeleccionado()?.time || '23:59';
   }
 
   iniciarRobotNotificador() {
@@ -594,6 +598,10 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     const radarUsuarios = onSnapshot(usuariosRef, (snapshot) => {
       const todosLosUsuarios: any[] = [];
       snapshot.forEach(docSnap => todosLosUsuarios.push(docSnap.data()));
+
+      // 🤖 Cache para el Robot V2 (necesita expandir roles → personas)
+      this.usuariosV2 = todosLosUsuarios;
+      this.dispararRobotV2();
 
       const todasLasSucursales = [
         'ADMINISTRADORES DEL SISTEMA', 'Canindo', 'La Piedad Abastos', '8 Esquinas', 'Padre Hidalgo',
@@ -638,6 +646,32 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       this.ejecutarRobotRutinas(moldesActivos);
     });
     this.destructoresRadares.push(radarMoldes);
+
+    // 🤖 ROBOT V2 (Fase 4): escucha catalogo_rutinas + asignaciones_rutinas
+    // y genera checklists desde el modelo nuevo. Convive con el V1.
+    const catalogoRef = collection(this.firestore, 'catalogo_rutinas');
+    const radarCatalogo = onSnapshot(catalogoRef, (snapshot) => {
+      const arr: RutinaMaestra[] = [];
+      snapshot.forEach(d => {
+        const data = d.data() as any;
+        if (data.activa !== false) arr.push({ ...data, id: d.id });
+      });
+      this.catalogoV2 = arr;
+      this.dispararRobotV2();
+    });
+    this.destructoresRadares.push(radarCatalogo);
+
+    const asignacionesRef = collection(this.firestore, 'asignaciones_rutinas');
+    const radarAsignaciones = onSnapshot(asignacionesRef, (snapshot) => {
+      const arr: AsignacionRutina[] = [];
+      snapshot.forEach(d => {
+        const data = d.data() as any;
+        if (data.activa !== false) arr.push({ ...data, id: d.id });
+      });
+      this.asignacionesV2 = arr;
+      this.dispararRobotV2();
+    });
+    this.destructoresRadares.push(radarAsignaciones);
 
     // 💸 OPTIMIZACIÓN: pedimos solo checklists de hoy en adelante.
     // Antes traíamos TODA la historia y filtrábamos en cliente → reads masivos.
@@ -826,6 +860,38 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     return `${y}-${m}-${d}`;
   }
 
+  /**
+   * 🤖 Robot V2 (Fase 4): genera checklists del día desde catálogo + asignaciones.
+   *
+   * Se llama cada vez que cambian los caches (catálogo, asignaciones o usuarios).
+   * Es idempotente: el service no recrea checklists que ya existen.
+   *
+   * Convive con el V1 (moldes). Cuando la migración termine (Fase 5) se podrá
+   * apagar el V1 quitando el `radarMoldes` y este método se quedará solo.
+   */
+  private dispararRobotV2() {
+    // Necesitamos al menos algo del catálogo y de asignaciones; usuarios puede
+    // estar vacío si la asignación es 'porPersonas' (el robot no lo necesita).
+    if (this.robotV2Corriendo) return;
+    if (!this.catalogoV2.length || !this.asignacionesV2.length) return;
+
+    this.robotV2Corriendo = true;
+    this.robotV2.generarChecklistsDeFecha(
+      this.catalogoV2,
+      this.asignacionesV2,
+      this.usuariosV2,
+      new Date(),
+      {
+        esDiaCerrado: (suc, f) => this.esDiaCerrado(suc, f),
+        esSucursalAdministrativa: (suc) => this.esSucursalAdministrativa(suc)
+      }
+    ).catch(err => {
+      console.error('[Robot V2] Error al generar checklists:', err);
+    }).finally(() => {
+      this.robotV2Corriendo = false;
+    });
+  }
+
   async ejecutarRobotRutinas(moldes: any[]) {
     const fechaActual = new Date();
     const offset = fechaActual.getTimezoneOffset() * 60000;
@@ -837,6 +903,10 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     const esDomingo = fechaLocal.getDay() === 0;
 
     for (const molde of moldes) {
+      // 🚚 Fase 5: si el molde ya fue migrado al nuevo modelo, lo skipeamos
+      // para que el Robot V2 sea el único que genere checklists.
+      if (molde._pausadoPorMigracion === true || molde._migradoA) continue;
+
       if (this.esDiaCerrado(molde.store, fechaActual)) continue;
       if (esDomingo && this.esSucursalAdministrativa(molde.store) && molde.frecuencia === 'Diaria') continue;
 

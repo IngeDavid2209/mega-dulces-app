@@ -346,29 +346,29 @@
         <div *ngFor="let tarea of diaSeleccionado()?.tareas"
           style="background: white; border: 1px solid #E2E8F0; padding: 20px; border-radius: 12px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); transition: all 0.3s ease;">
           <div style="cursor: pointer; user-select: none;" (click)="toggleTareaExpandida(tarea)">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-              <div style="display: flex; align-items: center; gap: 10px;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 8px;">
+              <div style="display: flex; align-items: flex-start; gap: 10px; flex: 1; min-width: 0;">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                   [style.transform]="tarea.expandido ? 'rotate(180deg)' : 'rotate(0deg)'"
-                  style="transition: transform 0.3s ease; color: #64748B;">
+                  style="transition: transform 0.3s ease; color: #64748B; flex-shrink: 0; margin-top: 2px;">
                   <polyline points="6 9 12 15 18 9"></polyline>
                 </svg>
-                <div style="font-weight: 800; color: #0F172A; font-size: 18px; text-transform: uppercase;">{{ tarea.name
+                <div style="font-weight: 800; color: #0F172A; font-size: 18px; text-transform: uppercase; line-height: 1.3; word-break: break-word;">{{ tarea.name
                   }}</div>
               </div>
               <div [ngSwitch]="tarea.status"
-                style="font-size: 12px; font-weight: 800; padding: 6px 12px; border-radius: 8px;">
+                style="font-size: 12px; font-weight: 800; flex-shrink: 0;">
                 <span *ngSwitchCase="'completo'"
-                  style="background: #D1FAE5; color: #047857; padding: 6px 12px; border-radius: 8px; border: 1px solid #A7F3D0;">
+                  style="background: #D1FAE5; color: #047857; padding: 6px 12px; border-radius: 8px; border: 1px solid #A7F3D0; white-space: nowrap; display: inline-block;">
                   ✅ COMPLETADO</span>
                 <span *ngSwitchCase="'en-progreso'"
-                  style="background: #FEF3C7; color: #D97706; padding: 6px 12px; border-radius: 8px; border: 1px solid #FDE68A;">
+                  style="background: #FEF3C7; color: #D97706; padding: 6px 12px; border-radius: 8px; border: 1px solid #FDE68A; white-space: nowrap; display: inline-block;">
                   ⏳ EN PROGRESO</span>
                 <span *ngSwitchCase="'pendiente'"
                   [style.color]="diaSeleccionado().fechaStr < fechaActual.toISOString().split('T')[0] ? '#B91C1C' : '#475569'"
                   [style.background]="diaSeleccionado().fechaStr < fechaActual.toISOString().split('T')[0] ? '#FEE2E2' : '#F1F5F9'"
                   [style.border]="diaSeleccionado().fechaStr < fechaActual.toISOString().split('T')[0] ? '1px solid #FECACA' : '1px solid #E2E8F0'"
-                  style="padding: 6px 12px; border-radius: 8px;">
+                  style="padding: 6px 12px; border-radius: 8px; white-space: nowrap; display: inline-block;">
                   {{ diaSeleccionado().fechaStr < fechaActual.toISOString().split('T')[0] ? '  ❌  VENCIDO'
                     : '  🕒  PENDIENTE' }} </span>
               </div>

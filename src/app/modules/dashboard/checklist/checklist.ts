@@ -10,6 +10,7 @@ import { obtenerSemanaISO, obtenerNombreDia } from '../../../shared/descansos.ut
 import { RobotRutinasV2Service } from '../../../shared/robot-rutinas-v2.service';
 import { RutinaMaestra } from '../../../shared/rutinas.types';
 import { AsignacionRutina } from '../../../shared/asignaciones.types';
+import { comprimirImagenSiAplica } from '../../../shared/imagen.util';
 
 import { SidebarComponent } from '../../../shared/sidebar/sidebar';
 
@@ -544,6 +545,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     await this.onFileSelected(event, tempItem, 'photo');
     if (tempItem.photo && tempItem.photo !== 'subiendo...') {
       item.photos.push({ url: tempItem.photo, time: tempItem.photoTime || '' });
+      this.autoSincronizarPaloma(item);
       this.actualizarEstado();
     }
   }
@@ -552,6 +554,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   removerFotoDeArray(item: any, index: number) {
     if (item.photos && index >= 0 && index < item.photos.length) {
       item.photos.splice(index, 1);
+      this.autoSincronizarPaloma(item);
       this.actualizarEstado();
     }
   }
@@ -1060,10 +1063,15 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   toggleItem(item: any) { item.checked = !item.checked; this.actualizarEstado(); }
 
   async onFileSelected(event: any, item: any, tipoFoto: string = 'photo') {
-    const file = event.target.files[0];
-    if (!file) return;
+    const fileOriginal = event.target.files[0];
+    if (!fileOriginal) return;
     const checklistActual = this.checklistSeleccionado();
     if (!checklistActual) return;
+
+    // 📸 Compresión cliente: bajamos JPGs de 4-6 MB a ~300 KB antes de subir.
+    // Si no es imagen (PDF, etc.) o ya es pequeña, devuelve el original sin tocar.
+    const file = await comprimirImagenSiAplica(fileOriginal);
+
     if (!navigator.onLine) {
       item[tipoFoto] = 'offline_syncing';
       item.pendienteDeSync = true;
@@ -1079,6 +1087,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
         const colaActual: any[] = await localforage.getItem('md_fotos_offline') || [];
         colaActual.push(fotoEstancada);
         await localforage.setItem('md_fotos_offline', colaActual);
+        this.autoSincronizarPaloma(item);
         this.actualizarEstado();
         this.mostrarToast(' 📡 Guardado sin conexión.');
       };
@@ -1100,6 +1109,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
         const ahora = new Date();
         item[tipoFoto + 'Time'] = ahora.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
         if (tipoFoto === 'photoAntes') item.photoAntesTimestamp = Date.now();
+        this.autoSincronizarPaloma(item);
         this.actualizarEstado();
       } else {
         item[tipoFoto] = null; this.actualizarEstado(); alert(' ❌ Error de Cloudinary.');
@@ -1112,8 +1122,10 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   }
 
   async adjuntarDocumentoInstruccion(event: any, item: any) {
-    const file = event.target.files[0];
-    if (!file) return;
+    const fileOriginal = event.target.files[0];
+    if (!fileOriginal) return;
+    // Si es imagen, la comprimimos; PDFs y otros formatos pasan sin tocar.
+    const file = await comprimirImagenSiAplica(fileOriginal);
     item.archivoInstruccion = 'subiendo...';
     item.nombreArchivo = file.name;
     const cloudName = 'duherjgyg';
@@ -1146,6 +1158,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   removeImage(item: any, tipoFoto: string = 'photo') {
     item[tipoFoto] = null; item[tipoFoto + 'Time'] = null;
     if (tipoFoto === 'photoAntes') item.photoAntesTimestamp = null;
+    this.autoSincronizarPaloma(item);
     this.actualizarEstado();
   }
 
@@ -1160,6 +1173,57 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     }
     if (item.requiresPhoto) return (item.photo !== null && item.photo !== undefined && item.photo !== 'subiendo...');
     return true;
+  }
+
+  /**
+   * Auto-palomeado inteligente.
+   *
+   * Si la tarea pide evidencia (foto / antes-después / varias fotos), sincroniza
+   * el checkbox con esa evidencia: subió todo → palomeado; faltó algo → despalomeado.
+   *
+   * Si la tarea NO pide evidencia, no se toca: el palomeado queda como control manual.
+   *
+   * Motivación: se les estaba pasando palomear antes de enviar y las tareas
+   * quedaban con foto subida pero sin marcar. Con esto, la paloma refleja la realidad.
+   */
+  private autoSincronizarPaloma(item: any) {
+    const pideEvidencia = !!(item.requiresPhoto || item.requiresAntesDespues || item.requiresVariasFotos);
+    if (!pideEvidencia) return;
+
+    let completa = true;
+    if (item.requiresPhoto) {
+      if (!item.photo || item.photo === 'subiendo...') completa = false;
+    }
+    if (item.requiresAntesDespues) {
+      if (!item.photoAntes || item.photoAntes === 'subiendo...') completa = false;
+      if (!item.photoDespues || item.photoDespues === 'subiendo...') completa = false;
+    }
+    if (item.requiresVariasFotos) {
+      if (!Array.isArray(item.photos) || item.photos.length === 0) completa = false;
+    }
+    item.checked = completa;
+  }
+
+  /**
+   * Devuelve un texto corto explicando QUÉ le falta a un item para considerarse completo.
+   * Se usa en el confirm() al enviar el checklist para que el trabajador sepa exactamente
+   * qué tiene que volver a revisar.
+   */
+  motivoIncompleto(item: any): string {
+    if (item.requiresAntesDespues) {
+      const falta: string[] = [];
+      if (!item.photoAntes || item.photoAntes === 'subiendo...') falta.push('foto ANTES');
+      if (!item.photoDespues || item.photoDespues === 'subiendo...') falta.push('foto DESPUÉS');
+      if (falta.length) return 'falta ' + falta.join(' y ');
+    }
+    if (item.requiresVariasFotos && (!Array.isArray(item.photos) || item.photos.length === 0)) {
+      return 'falta subir fotos';
+    }
+    if (item.requiresPhoto && (!item.photo || item.photo === 'subiendo...')) {
+      return 'falta la foto';
+    }
+    if (!item.checked) return 'falta palomear';
+    return 'incompleta';
   }
 
   actualizarEstado() {
@@ -1192,9 +1256,19 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     }
     const fotosPendientes = actual.items.some((i: any) => i.photo === 'subiendo...' || i.photoAntes === 'subiendo...' || i.photoDespues === 'subiendo...');
     if (fotosPendientes) { alert(' ⚠️ Espera, una foto se está subiendo.'); return; }
-    const tareas100Porciento = actual.items.filter((i: any) => this.esItemCompleto(i)).length;
-    if (tareas100Porciento < actual.items.length) {
-      const confirmar = confirm(' ⚠️ Faltan FOTOS obligatorias.\n¿Enviar así?');
+
+    // 🔍 Detallamos QUÉ falta para que el trabajador pueda regresar a arreglarlo.
+    // Antes el mensaje era genérico ("Faltan FOTOS obligatorias") y se les pasaba.
+    const incompletas = actual.items.filter((i: any) => !this.esItemCompleto(i));
+    if (incompletas.length > 0) {
+      const lista = incompletas.slice(0, 5).map((i: any, idx: number) => {
+        const motivo = this.motivoIncompleto(i);
+        return `  ${idx + 1}. ${this.limpiarEmojis(i.text || '(sin nombre)')}  →  ${motivo}`;
+      }).join('\n');
+      const extra = incompletas.length > 5 ? `\n  ...y ${incompletas.length - 5} más` : '';
+      const confirmar = confirm(
+        ` ⚠️ Tienes ${incompletas.length} ${incompletas.length === 1 ? 'tarea incompleta' : 'tareas incompletas'}:\n\n${lista}${extra}\n\n¿Enviar así de todos modos?`
+      );
       if (!confirmar) return;
     }
 

@@ -128,6 +128,85 @@
             departamento en el sistema.</div>
         </div>
       </div>
+
+      <!-- ╔══════════════════════════════════════════════════╗ -->
+      <!-- ║   ⏰ RETRASOS JUSTIFICADOS                       ║ -->
+      <!-- ╚══════════════════════════════════════════════════╝ -->
+      <div class="retrasos-section">
+        <div class="retrasos-header">
+          <div>
+            <h2 class="retrasos-title">⏰ Retrasos Justificados</h2>
+            <p class="retrasos-sub">Análisis histórico de checklists enviados después de su hora límite.</p>
+          </div>
+          <div class="retrasos-tabs">
+            <button type="button"
+              *ngFor="let op of opcionesRangoRetraso"
+              class="retrasos-tab"
+              [class.active]="rangoRetrasoDias() === op.dias"
+              (click)="cambiarRangoRetraso(op.dias)">
+              {{ op.label }}
+            </button>
+          </div>
+        </div>
+
+        <!-- KPI principal -->
+        <div class="retrasos-kpi">
+          <span class="retrasos-kpi-icon">⏱</span>
+          <div>
+            <div class="retrasos-kpi-valor">{{ totalRetrasos() }}</div>
+            <div class="retrasos-kpi-label">
+              {{ totalRetrasos() === 1 ? 'retraso justificado' : 'retrasos justificados' }}
+              en este periodo
+            </div>
+          </div>
+        </div>
+
+        <div *ngIf="totalRetrasos() === 0" class="retrasos-vacio">
+          <span style="font-size: 38px;">🎉</span>
+          <p>¡Sin retrasos en este periodo! Todos los checklists se entregaron a tiempo.</p>
+        </div>
+
+        <div *ngIf="totalRetrasos() > 0" class="retrasos-grid">
+          <!-- Por categoría -->
+          <div class="stat-card">
+            <div class="stat-card-title">Por Categoría</div>
+            <div class="stat-bar-row" *ngFor="let f of rankingCategorias()">
+              <div class="stat-bar-label"><strong>{{ f.nombre }}</strong></div>
+              <div class="stat-bar-track">
+                <div class="stat-bar-fill" [style.width.%]="f.porcentaje" style="background: #F59E0B;"></div>
+              </div>
+              <div class="stat-bar-pct">{{ f.total }} · {{ f.porcentaje }}%</div>
+            </div>
+          </div>
+
+          <!-- Por sucursal -->
+          <div class="stat-card">
+            <div class="stat-card-title">Por Sucursal</div>
+            <div class="stat-bar-row" *ngFor="let f of rankingSucursales()">
+              <div class="stat-bar-label"><strong>{{ f.nombre }}</strong></div>
+              <div class="stat-bar-track">
+                <div class="stat-bar-fill" [style.width.%]="f.porcentaje" style="background: #EA580C;"></div>
+              </div>
+              <div class="stat-bar-pct">{{ f.total }} · {{ f.porcentaje }}%</div>
+            </div>
+          </div>
+
+          <!-- Top personas -->
+          <div class="stat-card stat-card-full">
+            <div class="stat-card-title">Top 10 Personas con más retrasos</div>
+            <div class="stat-bar-row" *ngFor="let f of rankingPersonas(); let i = index">
+              <div class="stat-bar-label employee-label">
+                <strong>#{{ i + 1 }} · {{ f.nombre }}</strong>
+                <div class="employee-subtext">{{ f.total }} {{ f.total === 1 ? 'retraso' : 'retrasos' }}</div>
+              </div>
+              <div class="stat-bar-track">
+                <div class="stat-bar-fill" [style.width.%]="f.porcentaje" style="background: #DC2626;"></div>
+              </div>
+              <div class="stat-bar-pct">{{ f.porcentaje }}%</div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </div>

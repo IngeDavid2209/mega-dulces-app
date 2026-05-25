@@ -1,9 +1,16 @@
-import { Component, signal, OnInit, OnDestroy, inject } from '@angular/core';
+import { Component, signal, computed, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule } from '@angular/router'; 
+import { RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { Firestore, collection, onSnapshot } from '@angular/fire/firestore';
+import { Firestore, collection, onSnapshot, query, where } from '@angular/fire/firestore';
 import { esAdminGlobal, sucursalesPermitidas, normalizarNombre } from '../../../shared/permisos.util';
+
+/** Una fila agregada para los rankings de retrasos. */
+interface FilaRanking {
+  nombre: string;
+  total: number;
+  porcentaje: number;
+}
 
 import { SidebarComponent } from '../../../shared/sidebar/sidebar';
 
@@ -41,9 +48,19 @@ export class EstadisticasComponent implements OnInit, OnDestroy {
   storeStats = signal<any[]>([]);
   sucursalSeleccionadaParaEmpleados = signal('');
   empleadosStats = signal<any[]>([]);
-  
-  todosLosChecklists: any[] = []; 
-  todosLosUsuariosNube: any[] = []; 
+
+  todosLosChecklists: any[] = [];
+  todosLosUsuariosNube: any[] = [];
+
+  // ⏰ RETRASOS JUSTIFICADOS — datos crudos y filtros
+  retrasosCrudos = signal<any[]>([]);
+  rangoRetrasoDias = signal<number>(30); // 7 | 30 | 90 | 0 (todo)
+  readonly opcionesRangoRetraso = [
+    { dias: 7,  label: '7 días' },
+    { dias: 30, label: '30 días' },
+    { dias: 90, label: '90 días' },
+    { dias: 0,  label: 'Todo' }
+  ];
 
   private firestore = inject(Firestore);
   private destructoresRadares: (() => void)[] = [];
@@ -89,9 +106,27 @@ export class EstadisticasComponent implements OnInit, OnDestroy {
   conectarRadarNube() {
     const radarUsuarios = onSnapshot(collection(this.firestore, 'usuarios'), (snapshot) => {
       this.todosLosUsuariosNube = snapshot.docs.map(doc => doc.data());
-      this.calcularEstadisticasEmpleados(); 
+      this.calcularEstadisticasEmpleados();
     });
     this.destructoresRadares.push(radarUsuarios);
+
+    // ⏰ Radar específico para retrasos: query filtrada → solo trae docs con
+    // entregaConRetraso === true. Reduce muchísimo reads vs traer TODO el histórico.
+    const queryRetrasos = query(
+      collection(this.firestore, 'checklists'),
+      where('entregaConRetraso', '==', true)
+    );
+    const radarRetrasos = onSnapshot(queryRetrasos, (snapshot) => {
+      const arr: any[] = [];
+      snapshot.forEach(d => {
+        const data: any = d.data();
+        if (data.eliminado === true) return;
+        if (!this.sucursalesPermitidas.includes(data.store)) return; // respeta scope del admin
+        arr.push(data);
+      });
+      this.retrasosCrudos.set(arr);
+    });
+    this.destructoresRadares.push(radarRetrasos);
 
     const checklistsRef = collection(this.firestore, 'checklists');
     const radarChecklists = onSnapshot(checklistsRef, (snapshot) => {
@@ -229,5 +264,60 @@ export class EstadisticasComponent implements OnInit, OnDestroy {
   alCambiarSucursalEmpleados(event: any) {
     this.sucursalSeleccionadaParaEmpleados.set(event.target.value);
     this.calcularEstadisticasEmpleados();
+  }
+
+  // ============================================================================
+  // ⏰ RETRASOS JUSTIFICADOS — agregados
+  // ============================================================================
+
+  /** Filtra los retrasos al rango elegido (7/30/90 días, o todo). */
+  retrasosEnRango = computed<any[]>(() => {
+    const dias = this.rangoRetrasoDias();
+    if (dias === 0) return this.retrasosCrudos();
+    const corte = Date.now() - dias * 24 * 60 * 60 * 1000;
+    return this.retrasosCrudos().filter(r => (r.motivoRetraso?.timestamp || 0) >= corte);
+  });
+
+  /** Total de retrasos en el rango. */
+  totalRetrasos = computed<number>(() => this.retrasosEnRango().length);
+
+  /** Ranking por categoría del motivo (Falla equipo, etc.). */
+  rankingCategorias = computed<FilaRanking[]>(() => {
+    return this.contarPor(c => c.motivoRetraso?.categoria || 'Sin categoría');
+  });
+
+  /** Ranking por sucursal. */
+  rankingSucursales = computed<FilaRanking[]>(() => {
+    return this.contarPor(c => c.store || 'Sin sucursal');
+  });
+
+  /** Ranking por persona (top 10). */
+  rankingPersonas = computed<FilaRanking[]>(() => {
+    return this.contarPor(c => c.assigned || 'Sin asignar').slice(0, 10);
+  });
+
+  /** Helper: cuenta retrasos agrupando por una key y devuelve ranking ordenado. */
+  private contarPor(keyFn: (c: any) => string): FilaRanking[] {
+    const lista = this.retrasosEnRango();
+    const total = lista.length;
+    if (total === 0) return [];
+
+    const conteo = new Map<string, number>();
+    lista.forEach(r => {
+      const k = keyFn(r);
+      conteo.set(k, (conteo.get(k) || 0) + 1);
+    });
+
+    return Array.from(conteo.entries())
+      .map(([nombre, n]) => ({
+        nombre,
+        total: n,
+        porcentaje: Math.round((n / total) * 100)
+      }))
+      .sort((a, b) => b.total - a.total);
+  }
+
+  cambiarRangoRetraso(dias: number) {
+    this.rangoRetrasoDias.set(dias);
   }
 }

@@ -746,6 +746,14 @@
                 <div class="wizard-evidencia-titulo">Antes y Después</div>
                 <div class="wizard-evidencia-desc">Dos fotos comparativas</div>
               </button>
+
+              <button type="button" class="wizard-evidencia-card"
+                      [class.selected]="wizardTipoEvidencia === 'variasFotos'"
+                      (click)="seleccionarTipoEvidencia('variasFotos')">
+                <div class="wizard-evidencia-icon">🖼️</div>
+                <div class="wizard-evidencia-titulo">Varias fotos</div>
+                <div class="wizard-evidencia-desc">Varias fotos al terminar</div>
+              </button>
             </div>
 
             <!-- ⏱ Selector de tiempo (solo si eligió Antes y Después) -->
@@ -1135,6 +1143,14 @@
                 <div class="wizard-evidencia-icon">📸📸</div>
                 <div class="wizard-evidencia-titulo">Antes y Después</div>
                 <div class="wizard-evidencia-desc">Dos fotos comparativas</div>
+              </button>
+
+              <button type="button" class="wizard-evidencia-card"
+                      [class.selected]="wizardTipoEvidenciaRutina === 'variasFotos'"
+                      (click)="seleccionarTipoEvidenciaRutina('variasFotos')">
+                <div class="wizard-evidencia-icon">🖼️</div>
+                <div class="wizard-evidencia-titulo">Varias fotos</div>
+                <div class="wizard-evidencia-desc">Varias fotos al terminar</div>
               </button>
             </div>
 

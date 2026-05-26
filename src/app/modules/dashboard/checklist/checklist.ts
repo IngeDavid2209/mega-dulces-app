@@ -107,7 +107,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   // ============================================================================
   wizardStep: number = 1;
   wizardTotalSteps: number = 7;
-  wizardTipoEvidencia: 'ninguna' | 'foto' | 'antesDespues' = 'ninguna';
+  wizardTipoEvidencia: 'ninguna' | 'foto' | 'antesDespues' | 'variasFotos' = 'ninguna';
   terminoBusquedaEmpleadoWizard: string = '';
   // 📅 NUEVO: preset y valor de la fecha en que se ejecuta la tarea
   presetFechaTarea: 'hoy' | 'manana' | 'custom' | '' = '';
@@ -124,7 +124,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   // ============================================================================
   wizardStepRutina: number = 1;
   wizardTotalStepsRutina: number = 8;
-  wizardTipoEvidenciaRutina: 'ninguna' | 'foto' | 'antesDespues' = 'ninguna';
+  wizardTipoEvidenciaRutina: 'ninguna' | 'foto' | 'antesDespues' | 'variasFotos' = 'ninguna';
   terminoBusquedaEmpleadoWizardRutina: string = '';
 
   private firestore = inject(Firestore);
@@ -211,7 +211,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     }
   }
 
-  seleccionarTipoEvidencia(tipo: 'ninguna' | 'foto' | 'antesDespues') {
+  seleccionarTipoEvidencia(tipo: 'ninguna' | 'foto' | 'antesDespues' | 'variasFotos') {
     this.wizardTipoEvidencia = tipo;
     if (!this.formItems[0]) return;
     this.formItems[0].requiresPhoto = false;
@@ -219,6 +219,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     this.formItems[0].requiresVariasFotos = false;
     if (tipo === 'foto') this.formItems[0].requiresPhoto = true;
     else if (tipo === 'antesDespues') this.formItems[0].requiresAntesDespues = true;
+    else if (tipo === 'variasFotos') this.formItems[0].requiresVariasFotos = true;
   }
 
   /** Cambia el tiempo (en minutos) entre la foto "Antes" y la foto "Después". 0 = sin límite. */
@@ -352,7 +353,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     return `Desde ${r.fechaInicio} (sin fecha de fin)`;
   }
 
-  seleccionarTipoEvidenciaRutina(tipo: 'ninguna' | 'foto' | 'antesDespues') {
+  seleccionarTipoEvidenciaRutina(tipo: 'ninguna' | 'foto' | 'antesDespues' | 'variasFotos') {
     this.wizardTipoEvidenciaRutina = tipo;
     if (!this.formRutinas[0]) return;
     this.formRutinas[0].requiresPhoto = false;
@@ -360,6 +361,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     this.formRutinas[0].requiresVariasFotos = false;
     if (tipo === 'foto') this.formRutinas[0].requiresPhoto = true;
     else if (tipo === 'antesDespues') this.formRutinas[0].requiresAntesDespues = true;
+    else if (tipo === 'variasFotos') this.formRutinas[0].requiresVariasFotos = true;
   }
 
   seleccionarFrecuenciaRutina(frecuencia: string) {
@@ -1053,6 +1055,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     this.terminoBusquedaEmpleadoWizardRutina = '';
     const primeraRutina = this.formRutinas[0];
     if (primeraRutina?.requiresAntesDespues) this.wizardTipoEvidenciaRutina = 'antesDespues';
+    else if (primeraRutina?.requiresVariasFotos) this.wizardTipoEvidenciaRutina = 'variasFotos';
     else if (primeraRutina?.requiresPhoto) this.wizardTipoEvidenciaRutina = 'foto';
     else this.wizardTipoEvidenciaRutina = 'ninguna';
     this.isModalRutinasOpen = true;

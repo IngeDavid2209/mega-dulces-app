@@ -1,8 +1,11 @@
 import { Component, OnInit, inject } from '@angular/core';
-import { RouterOutlet } from '@angular/router'; 
+import { RouterOutlet } from '@angular/router';
 import { Firestore, doc, setDoc, updateDoc, getDoc } from '@angular/fire/firestore'; // 🔥 Agregamos getDoc
 import { Storage, ref, uploadString, getDownloadURL } from '@angular/fire/storage';
+import { SwUpdate, VersionReadyEvent } from '@angular/service-worker';
+import { filter } from 'rxjs/operators';
 import * as localforage from 'localforage';
+import Swal from 'sweetalert2';
 
 @Component({
   selector: 'app-root',
@@ -16,8 +19,12 @@ export class AppComponent implements OnInit {
   
   private firestore = inject(Firestore);
   private storage = inject(Storage);
+  private swUpdate = inject(SwUpdate);
 
   ngOnInit() {
+    // 🔄 AUTO-ACTUALIZACIÓN DE LA PWA INSTALADA 🔄
+    this.vigilarActualizaciones();
+
     // 🔥 FUNCIÓN DEL LATIDO (SE MANTIENE INTACTA) 🔥
     const enviarLatido = () => {
       const sesion = localStorage.getItem('md_sesion_actual');
@@ -45,6 +52,65 @@ export class AppComponent implements OnInit {
     if (navigator.onLine) {
       this.sincronizarFotosOffline();
     }
+  }
+
+  /**
+   * 🔄 Mantiene actualizada la PWA aunque esté instalada en la pantalla de inicio.
+   *
+   * Problema que resuelve: cuando publicas una versión nueva, las apps instaladas
+   * se quedan "pegadas" en la versión vieja del caché del Service Worker hasta que
+   * el usuario la cierra y reabre varias veces.
+   *
+   * Esto:
+   *  1) Detecta cuando una versión nueva quedó descargada (VERSION_READY) y avisa
+   *     al usuario para reiniciar y aplicarla.
+   *  2) Busca actualizaciones al arrancar, cada 30 min, y CADA VEZ que el usuario
+   *     reabre la app (visibilitychange) — clave en celulares donde la PWA queda
+   *     en segundo plano por días.
+   *  3) Si el caché se corrompe (estado irrecuperable), recarga desde el servidor.
+   *
+   * Nota: solo corre en producción. En `ng serve` / build dev el Service Worker
+   * está deshabilitado, así que swUpdate.isEnabled es false y esto no hace nada.
+   */
+  private vigilarActualizaciones() {
+    if (!this.swUpdate.isEnabled) return;
+
+    // 1) Una versión nueva ya quedó lista en caché → avisar y aplicar.
+    this.swUpdate.versionUpdates
+      .pipe(filter((e): e is VersionReadyEvent => e.type === 'VERSION_READY'))
+      .subscribe(() => {
+        Swal.fire({
+          title: '¡Nueva versión disponible! 🎉',
+          text: 'Mejoramos la app. Toca "Actualizar" para reiniciar y obtener la última versión.',
+          icon: 'info',
+          confirmButtonText: '🔄 Actualizar ahora',
+          confirmButtonColor: '#0F766E',
+          allowOutsideClick: false,
+          allowEscapeKey: false
+        }).then(() => {
+          this.swUpdate.activateUpdate().then(() => document.location.reload());
+        });
+      });
+
+    // 2) Buscar actualizaciones: al arrancar, periódicamente y al reabrir la app.
+    const buscar = () => this.swUpdate.checkForUpdate().catch(() => {});
+    buscar();
+    setInterval(buscar, 30 * 60 * 1000); // cada 30 min
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') buscar();
+    });
+
+    // 3) Caché corrupto / irrecuperable → recargar limpio desde el servidor.
+    this.swUpdate.unrecoverable.subscribe(() => {
+      Swal.fire({
+        title: 'Necesitamos recargar',
+        text: 'Hubo un problema con los datos guardados. La app se recargará para repararse.',
+        icon: 'warning',
+        confirmButtonText: 'Recargar',
+        confirmButtonColor: '#0F766E',
+        allowOutsideClick: false
+      }).then(() => document.location.reload());
+    });
   }
 
   // 🔥 FUNCIÓN DE SINCRONIZACIÓN CORREGIDA PARA ARREGLOS 🔥

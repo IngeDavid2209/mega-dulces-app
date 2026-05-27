@@ -536,11 +536,16 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     return this.esElDueno();
   }
 
-  /** ¿Puede editar este item específico? (no enviado, es dueño, no vencido). */
-  puedoEditarItem(item: any): boolean {
-    if (!this.puedoEditarChecklistActivo()) return false;
-    const cs = this.checklistSeleccionado();
-    return !this.isTareaVencida(item, cs.date);
+  /**
+   * ¿Puede editar/subir evidencia en este item?
+   *
+   * Ya NO se bloquea por vencimiento: aunque la tarea pase de su hora límite,
+   * el trabajador puede seguir completándola y subir evidencia. Al enviar el
+   * checklist se le pedirá el justificante de retraso (ver enviarChecklist).
+   * Solo se bloquea si el checklist ya fue enviado o no es el dueño.
+   */
+  puedoEditarItem(_item: any): boolean {
+    return this.puedoEditarChecklistActivo();
   }
 
   /** Agrega una foto al array item.photos[] (para tareas con `requiresVariasFotos`). */

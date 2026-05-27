@@ -319,14 +319,13 @@
                 </span>
               </div>
             </div>
-            <div class="alert-box alert-danger"
-              *ngIf="isTareaVencida(item, checklistSeleccionado().date) && !esItemCompleto(item)">
+            <div class="alert-box"
+              *ngIf="isTareaVencida(item, checklistSeleccionado().date) && !esItemCompleto(item)"
+              style="background: #FEF3C7; color: #92400E; border: 1px solid #FCD34D;">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z">
-                </path>
-                <line x1="12" y1="9" x2="12" y2="13"></line>
-                <line x1="12" y1="17" x2="12.01" y2="17"></line>
-              </svg> Tiempo límite agotado. Tarea bloqueada.
+                <circle cx="12" cy="12" r="10"></circle>
+                <polyline points="12 6 12 12 16 14"></polyline>
+              </svg> Vencida — aún puedes completarla. Al enviar se registrará con justificante de retraso.
             </div>
             <div class="item-photo-section"
               *ngIf="item.requiresPhoto || item.requiresAntesDespues || item.requiresVariasFotos"
@@ -451,7 +450,7 @@
                     </div>
 
                     <label class="btn-upload-mini"
-                      *ngIf="item.photoAntes && !item.photoDespues && puedoEditarItem(item) && !isDespuesExpirado(item)">
+                      *ngIf="item.photoAntes && !item.photoDespues && puedoEditarItem(item)">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
                         <circle cx="12" cy="13" r="4"></circle>
@@ -461,11 +460,6 @@
                         [attr.capture]="item.permiteGaleria ? null : 'environment'"
                         (change)="onFileSelected($event, item, 'photoDespues')" style="display: none;">
                     </label>
-
-                    <div *ngIf="item.photoAntes && !item.photoDespues && isDespuesExpirado(item)"
-                      style="font-size: 12px; color: #B91C1C; font-weight: 600; padding: 8px;">
-                      ⚠ Se acabó el tiempo para tomar la foto "Después".
-                    </div>
 
                     <div *ngIf="item.photoDespues" style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
                       <img *ngIf="esImagen(item.photoDespues)" [src]="item.photoDespues" alt="Después"

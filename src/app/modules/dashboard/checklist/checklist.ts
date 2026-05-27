@@ -721,9 +721,12 @@ export class ChecklistComponent implements OnInit, OnDestroy {
         const c = docSnap.data() as any;
         if (c.eliminado === true || c.enviado === true) return;
         // El filtro de fecha ya viene aplicado en el query, no hace falta repetirlo.
-        const tareasMarcadas = c.items.filter((i: any) => i.checked).length;
+        // 🔢 Progreso real: una tarea cuenta como completa solo si TIENE su evidencia
+        // (foto / antes+después / varias fotos) o, si no pide evidencia, si está palomeada.
+        // Antes se contaba con i.checked y daba 100% sin haber subido nada.
+        const tareasMarcadas = (c.items || []).filter((i: any) => this.esItemCompleto(i)).length;
         c.calcCompletados = tareasMarcadas;
-        c.calcProgreso = Math.round((tareasMarcadas / c.items.length) * 100) || 0;
+        c.calcProgreso = Math.round((tareasMarcadas / (c.items?.length || 1)) * 100) || 0;
         todasLasListas.push(c);
       });
 

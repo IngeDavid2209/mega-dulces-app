@@ -554,7 +554,6 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     await this.onFileSelected(event, tempItem, 'photo');
     if (tempItem.photo && tempItem.photo !== 'subiendo...') {
       item.photos.push({ url: tempItem.photo, time: tempItem.photoTime || '' });
-      this.autoSincronizarPaloma(item);
       this.actualizarEstado();
     }
   }
@@ -563,7 +562,6 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   removerFotoDeArray(item: any, index: number) {
     if (item.photos && index >= 0 && index < item.photos.length) {
       item.photos.splice(index, 1);
-      this.autoSincronizarPaloma(item);
       this.actualizarEstado();
     }
   }
@@ -1079,6 +1077,26 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   volverALista() { this.checklistSeleccionado.set(null); this.vistaActual.set('lista'); }
   toggleItem(item: any) { item.checked = !item.checked; this.actualizarEstado(); }
 
+  /** ¿Esta tarea pide alguna evidencia (foto / antes-después / varias fotos)? */
+  pideEvidencia(item: any): boolean {
+    return !!(item.requiresPhoto || item.requiresAntesDespues || item.requiresVariasFotos);
+  }
+
+  /**
+   * Toque sobre el indicador de la tarea.
+   *
+   * - Tareas CON evidencia: NO se palomean a mano. Se completan solas al subir
+   *   la foto, así que el toque no hace nada (el círculo es solo indicador visual).
+   * - Tareas SIN evidencia: se marcan/desmarcan con el toque (única forma de
+   *   indicar que se hicieron).
+   */
+  onClickCheck(item: any) {
+    if (!this.puedoEditarItem(item)) return;
+    if (this.pideEvidencia(item)) return; // las de foto se completan subiendo evidencia
+    item.checked = !item.checked;
+    this.actualizarEstado();
+  }
+
   async onFileSelected(event: any, item: any, tipoFoto: string = 'photo') {
     const fileOriginal = event.target.files[0];
     if (!fileOriginal) return;
@@ -1104,7 +1122,6 @@ export class ChecklistComponent implements OnInit, OnDestroy {
         const colaActual: any[] = await localforage.getItem('md_fotos_offline') || [];
         colaActual.push(fotoEstancada);
         await localforage.setItem('md_fotos_offline', colaActual);
-        this.autoSincronizarPaloma(item);
         this.actualizarEstado();
         this.mostrarToast(' 📡 Guardado sin conexión.');
       };
@@ -1126,7 +1143,6 @@ export class ChecklistComponent implements OnInit, OnDestroy {
         const ahora = new Date();
         item[tipoFoto + 'Time'] = ahora.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
         if (tipoFoto === 'photoAntes') item.photoAntesTimestamp = Date.now();
-        this.autoSincronizarPaloma(item);
         this.actualizarEstado();
       } else {
         item[tipoFoto] = null; this.actualizarEstado(); alert(' ❌ Error de Cloudinary.');
@@ -1175,12 +1191,17 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   removeImage(item: any, tipoFoto: string = 'photo') {
     item[tipoFoto] = null; item[tipoFoto + 'Time'] = null;
     if (tipoFoto === 'photoAntes') item.photoAntesTimestamp = null;
-    this.autoSincronizarPaloma(item);
     this.actualizarEstado();
   }
 
+  /**
+   * ¿La tarea está completa?
+   *
+   * - Tareas CON evidencia: completas cuando la evidencia está subida.
+   *   Ya NO requieren palomear — subir la foto basta.
+   * - Tareas SIN evidencia: completas con el toque manual (item.checked).
+   */
   esItemCompleto(item: any): boolean {
-    if (!item.checked) return false;
     if (item.requiresAntesDespues) {
       return (item.photoAntes !== null && item.photoAntes !== undefined && item.photoAntes !== 'subiendo...') &&
              (item.photoDespues !== null && item.photoDespues !== undefined && item.photoDespues !== 'subiendo...');
@@ -1188,37 +1209,10 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     if (item.requiresVariasFotos) {
       return Array.isArray(item.photos) && item.photos.length > 0;
     }
-    if (item.requiresPhoto) return (item.photo !== null && item.photo !== undefined && item.photo !== 'subiendo...');
-    return true;
-  }
-
-  /**
-   * Auto-palomeado inteligente.
-   *
-   * Si la tarea pide evidencia (foto / antes-después / varias fotos), sincroniza
-   * el checkbox con esa evidencia: subió todo → palomeado; faltó algo → despalomeado.
-   *
-   * Si la tarea NO pide evidencia, no se toca: el palomeado queda como control manual.
-   *
-   * Motivación: se les estaba pasando palomear antes de enviar y las tareas
-   * quedaban con foto subida pero sin marcar. Con esto, la paloma refleja la realidad.
-   */
-  private autoSincronizarPaloma(item: any) {
-    const pideEvidencia = !!(item.requiresPhoto || item.requiresAntesDespues || item.requiresVariasFotos);
-    if (!pideEvidencia) return;
-
-    let completa = true;
     if (item.requiresPhoto) {
-      if (!item.photo || item.photo === 'subiendo...') completa = false;
+      return (item.photo !== null && item.photo !== undefined && item.photo !== 'subiendo...');
     }
-    if (item.requiresAntesDespues) {
-      if (!item.photoAntes || item.photoAntes === 'subiendo...') completa = false;
-      if (!item.photoDespues || item.photoDespues === 'subiendo...') completa = false;
-    }
-    if (item.requiresVariasFotos) {
-      if (!Array.isArray(item.photos) || item.photos.length === 0) completa = false;
-    }
-    item.checked = completa;
+    return item.checked === true;
   }
 
   /**
@@ -1239,17 +1233,18 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     if (item.requiresPhoto && (!item.photo || item.photo === 'subiendo...')) {
       return 'falta la foto';
     }
-    if (!item.checked) return 'falta palomear';
+    if (!this.pideEvidencia(item) && !item.checked) return 'falta marcar como hecha';
     return 'incompleta';
   }
 
   actualizarEstado() {
     const actual = this.checklistSeleccionado(); if (!actual) return;
-    const checkboxesMarcados = actual.items.filter((i: any) => i.checked).length;
-    actual.calcCompletados = checkboxesMarcados;
-    actual.calcProgreso = Math.round((checkboxesMarcados / actual.items.length) * 100) || 0;
-    if (checkboxesMarcados === 0) actual.status = 'pendiente';
-    else if (checkboxesMarcados === actual.items.length) actual.status = 'completo';
+    // Completado = evidencia subida (tareas con foto) o toque manual (tareas sin foto).
+    const completados = actual.items.filter((i: any) => this.esItemCompleto(i)).length;
+    actual.calcCompletados = completados;
+    actual.calcProgreso = Math.round((completados / actual.items.length) * 100) || 0;
+    if (completados === 0) actual.status = 'pendiente';
+    else if (completados === actual.items.length) actual.status = 'completo';
     else actual.status = 'en-progreso';
     this.guardarEnLaNube(actual);
   }

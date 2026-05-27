@@ -448,24 +448,31 @@ export class ChecklistComponent implements OnInit, OnDestroy {
 
   get empleadosFiltrados() {
     if (!this.formStore) return this.empleados();
-    return this.empleados().filter(emp => {
-      if (this.formStore === 'ADMINISTRADORES DEL SISTEMA') return emp.rol === 'admin';
-      if (emp.rol === 'admin') return false;
-      if (emp.sucursales && emp.sucursales.includes('General (Acceso Total)')) return true;
-      const susSucursales = emp.sucursales || [emp.sucursal || ''];
-      return susSucursales.includes(this.formStore);
-    });
+    return this.empleados().filter(emp => this.empleadoPerteneceASucursal(emp, this.formStore));
   }
 
   get empleadosFiltradosRutina() {
     if (!this.formStoreRutina) return this.empleados();
-    return this.empleados().filter(emp => {
-      if (this.formStoreRutina === 'ADMINISTRADORES DEL SISTEMA') return emp.rol === 'admin';
-      if (emp.rol === 'admin') return false;
-      if (emp.sucursales && emp.sucursales.includes('General (Acceso Total)')) return true;
-      const susSucursales = emp.sucursales || [emp.sucursal || ''];
-      return susSucursales.includes(this.formStoreRutina);
-    });
+    return this.empleados().filter(emp => this.empleadoPerteneceASucursal(emp, this.formStoreRutina));
+  }
+
+  /**
+   * ¿Este empleado se puede asignar en `store`?
+   *
+   * - Sucursal "ADMINISTRADORES DEL SISTEMA": solo admins.
+   * - Admins: aparecen SOLO si tienen esa sucursal explícitamente en su lista.
+   *   No usamos el atajo 'General (Acceso Total)' para ellos, para no saturar
+   *   cada sucursal con la gerencia general. (Petición del cliente.)
+   * - Trabajadores: lógica original — 'General (Acceso Total)' los pone en todas.
+   */
+  private empleadoPerteneceASucursal(emp: any, store: string): boolean {
+    if (store === 'ADMINISTRADORES DEL SISTEMA') return emp.rol === 'admin';
+    const susSucursales = emp.sucursales || [emp.sucursal || ''];
+    if (emp.rol === 'admin') {
+      return susSucursales.includes(store);
+    }
+    if (emp.sucursales && emp.sucursales.includes('General (Acceso Total)')) return true;
+    return susSucursales.includes(store);
   }
 
   get checklistsFiltrados() {
@@ -643,11 +650,18 @@ export class ChecklistComponent implements OnInit, OnDestroy {
         const personalActivo = todosLosUsuarios.filter((u: any) => u.rol === 'trabajador' || u.rol === 'admin');
         this.empleados.set(personalActivo);
       } else if (esAdminLimitado(this.currentUser) || this.currentUser?.puedeCrearChecklists) {
-        // Solo trabajadores (no otros admins) y solo los que comparten alguna sucursal conmigo
-        const trabajadoresUnicamente = todosLosUsuarios.filter((u: any) => u.rol === 'trabajador');
         const permitidas = sucursalesPermitidas(this.currentUser);
         const misSucursales = permitidas ?? [];
-        const empleadosFiltrados = trabajadoresUnicamente.filter((t: any) => {
+        // Trabajadores + admins NO globales que compartan alguna sucursal conmigo.
+        // Excluimos admins globales (gerencia general) para no exponerlos en el selector.
+        const candidatos = todosLosUsuarios.filter((u: any) => {
+          if (u.rol === 'trabajador') return true;
+          if (u.rol === 'admin'
+              && u.alcance !== 'global'
+              && !(u.sucursales || []).includes('General (Acceso Total)')) return true;
+          return false;
+        });
+        const empleadosFiltrados = candidatos.filter((t: any) => {
           const susSucursales = t.sucursales || [t.sucursal || ''];
           return susSucursales.some((s: string) => misSucursales.includes(s));
         });

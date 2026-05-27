@@ -156,13 +156,26 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
   });
  
   // ------- Alertas críticas -------
+  /** ¿Esta tarea ya está hecha? (evidencia subida o, si no pide, palomeada). */
+  private itemHecho(it: any): boolean {
+    if (it.requiresAntesDespues) {
+      return !!it.photoAntes && it.photoAntes !== 'subiendo...' &&
+             !!it.photoDespues && it.photoDespues !== 'subiendo...';
+    }
+    if (it.requiresVariasFotos) return Array.isArray(it.photos) && it.photos.length > 0;
+    if (it.requiresPhoto) return !!it.photo && it.photo !== 'subiendo...';
+    return it.checked === true;
+  }
+
   alertasCriticas = computed(() => {
     const ahora = this.horaActual();
     const alertas: any[] = [];
- 
+
     this.checklistsHoy().forEach(c => {
+      // No alertamos sobre checklists ya enviados o eliminados (eran tareas fantasma).
+      if (c.eliminado === true || c.enviado === true) return;
       (c.items || []).forEach((it: any) => {
-        if (it.checked) return;
+        if (this.itemHecho(it)) return;
         const hl = it.horaLimite || it.time;
         if (!hl) return;
         const [h, m] = hl.split(':').map(Number);

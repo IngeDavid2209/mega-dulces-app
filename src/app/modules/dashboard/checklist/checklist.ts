@@ -707,13 +707,18 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     });
     this.destructoresRadares.push(radarAsignaciones);
 
-    // 💸 OPTIMIZACIÓN: pedimos solo checklists de hoy en adelante.
-    // Antes traíamos TODA la historia y filtrábamos en cliente → reads masivos.
+    // 🔁 ARRASTRE DE PENDIENTES: traemos los últimos 7 días (no solo hoy) para que
+    // las tareas vencidas y NO enviadas SIGAN apareciendo hasta que se completen y
+    // envíen (con justificante de retraso). Antes el filtro `>= hoy` las hacía
+    // desaparecer al día siguiente. Las enviadas/eliminadas se filtran abajo, así
+    // que solo se arrastra lo realmente pendiente.
     const offset = new Date().getTimezoneOffset() * 60000;
-    const fechaHoyLocal = new Date(Date.now() - offset).toISOString().split('T')[0];
+    const arrastre = new Date(Date.now() - offset);
+    arrastre.setDate(arrastre.getDate() - 7);
+    const desdeISO = arrastre.toISOString().split('T')[0];
 
     const checklistsRef = collection(this.firestore, 'checklists');
-    const checklistsQuery = query(checklistsRef, where('date', '>=', fechaHoyLocal));
+    const checklistsQuery = query(checklistsRef, where('date', '>=', desdeISO));
     const radarChecklists = onSnapshot(checklistsQuery, (snapshot) => {
       const todasLasListas: any[] = [];
 

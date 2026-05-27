@@ -5,7 +5,6 @@ import { Storage, ref, uploadString, getDownloadURL } from '@angular/fire/storag
 import { SwUpdate, VersionReadyEvent } from '@angular/service-worker';
 import { filter } from 'rxjs/operators';
 import * as localforage from 'localforage';
-import Swal from 'sweetalert2';
 
 @Component({
   selector: 'app-root',
@@ -75,21 +74,14 @@ export class AppComponent implements OnInit {
   private vigilarActualizaciones() {
     if (!this.swUpdate.isEnabled) return;
 
-    // 1) Una versión nueva ya quedó lista en caché → avisar y aplicar.
+    // 1) Una versión nueva ya quedó lista en caché → aplicarla SOLA, sin avisar.
+    //    No perdemos trabajo: los checklists/notas viven en Firestore (con cache
+    //    offline) y las fotos a medio subir quedan en la cola de localforage,
+    //    así que un reload no borra nada pendiente.
     this.swUpdate.versionUpdates
       .pipe(filter((e): e is VersionReadyEvent => e.type === 'VERSION_READY'))
       .subscribe(() => {
-        Swal.fire({
-          title: '¡Nueva versión disponible! 🎉',
-          text: 'Mejoramos la app. Toca "Actualizar" para reiniciar y obtener la última versión.',
-          icon: 'info',
-          confirmButtonText: '🔄 Actualizar ahora',
-          confirmButtonColor: '#0F766E',
-          allowOutsideClick: false,
-          allowEscapeKey: false
-        }).then(() => {
-          this.swUpdate.activateUpdate().then(() => document.location.reload());
-        });
+        this.swUpdate.activateUpdate().then(() => document.location.reload());
       });
 
     // 2) Buscar actualizaciones: al arrancar, periódicamente y al reabrir la app.
@@ -100,17 +92,8 @@ export class AppComponent implements OnInit {
       if (document.visibilityState === 'visible') buscar();
     });
 
-    // 3) Caché corrupto / irrecuperable → recargar limpio desde el servidor.
-    this.swUpdate.unrecoverable.subscribe(() => {
-      Swal.fire({
-        title: 'Necesitamos recargar',
-        text: 'Hubo un problema con los datos guardados. La app se recargará para repararse.',
-        icon: 'warning',
-        confirmButtonText: 'Recargar',
-        confirmButtonColor: '#0F766E',
-        allowOutsideClick: false
-      }).then(() => document.location.reload());
-    });
+    // 3) Caché corrupto / irrecuperable → recargar limpio desde el servidor (sin avisar).
+    this.swUpdate.unrecoverable.subscribe(() => document.location.reload());
   }
 
   // 🔥 FUNCIÓN DE SINCRONIZACIÓN CORREGIDA PARA ARREGLOS 🔥

@@ -278,18 +278,13 @@
           </div>
         </div>
         <div class="checklist-detail-items">
-          <div class="checklist-detail-item" *ngFor="let item of checklistSeleccionado().items">
+          <div class="checklist-detail-item" *ngFor="let item of checklistSeleccionado().items"
+            [class.item-done]="esItemCompleto(item)">
             <div class="item-main-row">
-              <div class="item-check" [class.checked]="esItemCompleto(item)"
-                [class.disabled-check]="!puedoEditarItem(item) || pideEvidencia(item)"
-                [style.cursor]="pideEvidencia(item) ? 'default' : 'pointer'"
-                [title]="pideEvidencia(item) ? 'Se completa al subir la evidencia' : 'Toca para marcar como hecha'"
-                (click)="onClickCheck(item)">
-                <svg *ngIf="esItemCompleto(item)" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                  stroke-width="3">
-                  <polyline points="20 6 9 17 4 12"></polyline>
-                </svg>
-              </div>
+              <svg *ngIf="esItemCompleto(item)" class="item-done-check" width="20" height="20" viewBox="0 0 24 24"
+                fill="none" stroke="#10B981" stroke-width="3">
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
               <div class="item-text" [class.done]="esItemCompleto(item)">
                 {{ item.text }}
                 <span class="item-tag tag-routine" *ngIf="item.tipo === 'rutina'">
@@ -529,6 +524,20 @@
                   </label>
                 </div>
               </ng-container>
+            </div>
+
+            <!-- ═════════ TAREA SIN EVIDENCIA: botón "Marcar como hecha" ═════════ -->
+            <div *ngIf="!pideEvidencia(item)" class="item-sin-evidencia">
+              <button type="button"
+                class="btn-marcar-hecha"
+                [class.hecha]="item.checked"
+                [disabled]="!puedoEditarItem(item)"
+                (click)="onClickCheck(item)">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+                {{ item.checked ? 'Hecha (tocar para deshacer)' : 'Marcar como hecha' }}
+              </button>
             </div>
           </div>
         </div>

@@ -5,6 +5,7 @@ import { Router } from '@angular/router';
 import { Auth, signInWithEmailAndPassword } from '@angular/fire/auth';
 import { Firestore, collection, getDocs } from '@angular/fire/firestore';
 import Swal from 'sweetalert2';
+import { APP_BUILD_SELLO } from '../../shared/version';
 
 @Component({
   selector: 'app-login',
@@ -17,6 +18,9 @@ export class LoginComponent {
   usuario = '';
   password = '';
   ingresando = false; // Variable para evitar doble clic en el botón
+
+  /** Sello de versión del build (fecha + hora). Se muestra al pie del login. */
+  readonly buildSello = APP_BUILD_SELLO;
 
   private auth = inject(Auth);
   private firestore = inject(Firestore);

@@ -707,25 +707,23 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     });
     this.destructoresRadares.push(radarAsignaciones);
 
-    // 🔁 ARRASTRE DE PENDIENTES: traemos los últimos 7 días (no solo hoy) para que
-    // las tareas vencidas y NO enviadas SIGAN apareciendo hasta que se completen y
-    // envíen (con justificante de retraso). Antes el filtro `>= hoy` las hacía
-    // desaparecer al día siguiente. Las enviadas/eliminadas se filtran abajo, así
-    // que solo se arrastra lo realmente pendiente.
+    // 📅 SOLO HOY: el trabajador ve únicamente las tareas del día de hoy.
+    // Las que vencieron su HORA siguen siendo de hoy, así que siguen apareciendo
+    // y se pueden enviar con retardo (con justificante). NO se arrastran días
+    // anteriores: las de ayer ya son historia.
     const offset = new Date().getTimezoneOffset() * 60000;
-    const arrastre = new Date(Date.now() - offset);
-    arrastre.setDate(arrastre.getDate() - 7);
-    const desdeISO = arrastre.toISOString().split('T')[0];
+    const fechaHoyLocal = new Date(Date.now() - offset).toISOString().split('T')[0];
 
     const checklistsRef = collection(this.firestore, 'checklists');
-    const checklistsQuery = query(checklistsRef, where('date', '>=', desdeISO));
+    const checklistsQuery = query(checklistsRef, where('date', '>=', fechaHoyLocal));
     const radarChecklists = onSnapshot(checklistsQuery, (snapshot) => {
       const todasLasListas: any[] = [];
 
       snapshot.forEach(docSnap => {
         const c = docSnap.data() as any;
         if (c.eliminado === true || c.enviado === true) return;
-        // El filtro de fecha ya viene aplicado en el query, no hace falta repetirlo.
+        // Solo HOY: el query trae hoy en adelante; aquí excluimos cualquier fecha futura.
+        if (c.date !== fechaHoyLocal) return;
         // 🔢 Progreso real: una tarea cuenta como completa solo si TIENE su evidencia
         // (foto / antes+después / varias fotos) o, si no pide evidencia, si está palomeada.
         // Antes se contaba con i.checked y daba 100% sin haber subido nada.

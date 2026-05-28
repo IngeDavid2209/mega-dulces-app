@@ -67,7 +67,14 @@ export function filtrarPorSucursalPermitida<T>(
  */
 export function normalizarNombre(n: string | undefined | null): string {
   if (!n) return '';
-  return n.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ');
+  return n
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')                          // quita tildes
+    .replace(/[​-‍﻿  ]/g, ' ') // espacios "invisibles" (NBSP, ZWSP, BOM, etc.) → espacio normal
+    .replace(/[^\p{L}\p{N}\s]/gu, '')                // quita puntuación y símbolos
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, ' ');                           // colapsa espacios múltiples
 }
 
 /** ¿Es el mismo trabajador? Compara `currentUser.nombre` contra otro nombre con normalización. */

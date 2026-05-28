@@ -267,14 +267,15 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
   conectarConLaNube() {
     // 🔥 Filtro de alcance: admin global ve todo; admin limitado solo sus sucursales;
     //    trabajador solo sus propias tareas (sin importar la sucursal).
-    const permitidas = sucursalesPermitidas(this.currentUser);
-    const esGlobal = esAdminGlobal(this.currentUser);
-    const esTrabajador = this.currentUser?.rol === 'trabajador';
-    const miNombreNorm = normalizarNombre(this.currentUser?.nombre);
+    // 🔒 IMPORTANTE: los permisos se calculan DENTRO de cada snapshot (no aquí
+    // afuera), para que tomen el currentUser FRESCO cada vez que cambie (gracias
+    // a la sincronización en vivo de app.ts). Antes se "congelaban" al inicio.
+    const leerSesion = (): any => {
+      try { return JSON.parse(localStorage.getItem('md_sesion_actual') || 'null'); }
+      catch { return null; }
+    };
 
     // 💸 OPTIMIZACIÓN: solo traemos los últimos 7 días, no toda la historia.
-    // El Dashboard solo usa: KPIs de HOY + gráfica de tendencia de últimos 7 días.
-    // Antes leíamos TODA la colección checklists en cada admin → reads masivos.
     const hace7Dias = new Date();
     hace7Dias.setDate(hace7Dias.getDate() - 7);
     const offsetDays = hace7Dias.getTimezoneOffset() * 60000;
@@ -284,23 +285,34 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
     const checklistsQuery = query(checklistsRef, where('date', '>=', desdeISO));
     this.destructoresRadares.push(
       onSnapshot(checklistsQuery, snap => {
+        // Recalculamos permisos cada vez (currentUser podría haberse actualizado).
+        const sesion = leerSesion() || this.currentUser;
+        const permitidas = sucursalesPermitidas(sesion);
+        const esGlobal = esAdminGlobal(sesion);
+        const esTrabajador = sesion?.rol === 'trabajador';
+        const miNombreNorm = normalizarNombre(sesion?.nombre);
+
         let arr: any[] = [];
-        // 🗑️ Las tareas BORRADAS no deben contar en ningún KPI del Dashboard.
-        // Antes se incluían y "se quedaban estancadas" bajando el % de cumplimiento.
         snap.forEach(d => {
           const data = d.data() as any;
           if (data.eliminado === true) return;
           arr.push({ ...data, id: d.id });
         });
+        const totalCrudo = arr.length;
 
         if (esTrabajador) {
-          // 🔥 Trabajador: solo sus propias tareas (comparación tolerante a tildes/espacios)
           arr = arr.filter(c => normalizarNombre(c.assigned) === miNombreNorm);
         } else if (!esGlobal && permitidas !== null) {
-          // 🔥 Admin limitado: solo checklists de sus sucursales
           arr = arr.filter(c => permitidas.includes(c.store));
         }
-        // Admin global: ve todo (de los últimos 7 días)
+
+        // 🐛 DEBUG temporal: ver en consola por qué un admin ve 0 checklists.
+        console.log('[DBG dashboard]', {
+          usuario: sesion?.usuario, rol: sesion?.rol, alcance: sesion?.alcance,
+          sucursales: sesion?.sucursales, esGlobal, permitidas,
+          checklistsCrudos: totalCrudo, despuesFiltro: arr.length,
+          sucursalesUnicasEnDatos: Array.from(new Set(arr.map(c => c.store)))
+        });
 
         this.checklists.set(arr);
         setTimeout(() => this.actualizarGrafica(), 100);
@@ -319,9 +331,12 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
     const usuariosRef = collection(this.firestore, 'usuarios');
     this.destructoresRadares.push(
       onSnapshot(usuariosRef, snap => {
+        const sesion = leerSesion() || this.currentUser;
+        const permitidas = sucursalesPermitidas(sesion);
+        const esGlobal = esAdminGlobal(sesion);
+
         let arr: any[] = [];
         snap.forEach(d => arr.push({ ...d.data(), idFirestore: d.id }));
-        // Admin limitado: solo trabajadores de sus sucursales (excluye otros admins)
         if (!esGlobal && permitidas !== null) {
           arr = arr.filter(u => {
             if (u.rol === 'admin') return false;

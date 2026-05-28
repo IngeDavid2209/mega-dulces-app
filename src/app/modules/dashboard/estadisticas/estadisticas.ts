@@ -98,9 +98,22 @@ export class EstadisticasComponent implements OnInit, OnDestroy {
     }
   }
 
-  // 🔥 FIX UX: Cuenta como completado con el simple hecho de tener la palomita
+  /**
+   * ¿La tarea está hecha? Cuenta evidencia REAL, no el palomeo:
+   *  - Antes/Después: ambas fotos subidas.
+   *  - Varias fotos: al menos una.
+   *  - Una foto: subida.
+   *  - Sin evidencia: requiere palomeado manual.
+   * Antes solo miraba item.checked y daba 0% aunque hubiera fotos subidas.
+   */
   esItemMarcado(item: any): boolean {
-    return item.checked === true;
+    if (item?.requiresAntesDespues) {
+      return !!item.photoAntes && item.photoAntes !== 'subiendo...' &&
+             !!item.photoDespues && item.photoDespues !== 'subiendo...';
+    }
+    if (item?.requiresVariasFotos) return Array.isArray(item.photos) && item.photos.length > 0;
+    if (item?.requiresPhoto) return !!item.photo && item.photo !== 'subiendo...';
+    return item?.checked === true;
   }
 
   conectarRadarNube() {
@@ -150,7 +163,7 @@ export class EstadisticasComponent implements OnInit, OnDestroy {
       // 🔥 ESCUDO ANTI-CLONES EN ESTADÍSTICAS 🔥
       const listasSinClones = new Map();
       listasCrudas.forEach(c => {
-        const marcados = c.items ? c.items.filter((i:any) => i.checked).length : 0;
+        const marcados = c.items ? c.items.filter((i:any) => this.esItemMarcado(i)).length : 0;
         c.calcProgreso = c.items && c.items.length > 0 ? Math.round((marcados / c.items.length) * 100) : 0;
 
         const firma = `${c.name}_${c.assigned}_${c.store}_${c.date}`;

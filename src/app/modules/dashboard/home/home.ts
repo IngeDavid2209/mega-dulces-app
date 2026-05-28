@@ -90,7 +90,10 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
  
   tareasCompletadasHoy = computed(() =>
     this.checklistsHoy().reduce(
-      (acc, c) => acc + (c.items?.filter((it: any) => it.checked).length || 0), 0
+      // ✅ Una tarea cuenta como completa si tiene su EVIDENCIA (foto/antes-después/
+      // varias fotos) o, si no pide evidencia, si está palomeada. Antes contaba solo
+      // i.checked y daba 0% aunque la persona hubiera subido todas sus fotos.
+      (acc, c) => acc + (c.items?.filter((it: any) => this.itemHecho(it)).length || 0), 0
     )
   );
  

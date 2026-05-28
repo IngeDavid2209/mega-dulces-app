@@ -84,13 +84,18 @@ export class AppComponent implements OnInit {
         this.swUpdate.activateUpdate().then(() => document.location.reload());
       });
 
-    // 2) Buscar actualizaciones: al arrancar, periódicamente y al reabrir la app.
+    // 2) Buscar actualizaciones en TODOS los momentos donde la PWA "despierta":
+    //    - al arrancar, cada 15 min, al volver del background (visibilitychange),
+    //      al recuperar internet (online), y al obtener el foco (focus).
+    //    Antes era cada 30 min; bajado a 15 para detectar más rápido en la PWA.
     const buscar = () => this.swUpdate.checkForUpdate().catch(() => {});
     buscar();
-    setInterval(buscar, 30 * 60 * 1000); // cada 30 min
+    setInterval(buscar, 15 * 60 * 1000); // cada 15 min (era 30)
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') buscar();
     });
+    window.addEventListener('focus', buscar);
+    window.addEventListener('online', buscar);
 
     // 3) Caché corrupto / irrecuperable → recargar limpio desde el servidor (sin avisar).
     this.swUpdate.unrecoverable.subscribe(() => document.location.reload());

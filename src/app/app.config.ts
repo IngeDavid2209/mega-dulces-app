@@ -61,7 +61,10 @@ export const appConfig: ApplicationConfig = {
     
     provideServiceWorker('ngsw-worker.js', {
       enabled: !isDevMode(),
-      registrationStrategy: 'registerWhenStable:30000'
+      // 🚀 Antes esperaba 30s a que la app "se estabilizara" para registrar el SW.
+      // Ahora registra al instante: detecta y aplica actualizaciones MÁS rápido,
+      // sobre todo en la PWA instalada de la pantalla de inicio.
+      registrationStrategy: 'registerImmediately'
     }),
   ]
 };

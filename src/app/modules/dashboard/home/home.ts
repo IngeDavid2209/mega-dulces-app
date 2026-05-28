@@ -124,7 +124,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
       }
       (c.items || []).forEach((it: any) => {
         stats[c.assigned].total++;
-        if (it.checked) stats[c.assigned].completadas++;
+        if (this.itemHecho(it)) stats[c.assigned].completadas++;
       });
     });
     return Object.values(stats)
@@ -135,7 +135,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
       .sort((a: any, b: any) => b.porcentaje - a.porcentaje || b.completadas - a.completadas)
       .slice(0, 5);
   });
- 
+
   // ------- Top sucursales (hoy) -------
   topSucursales = computed(() => {
     const stats: Record<string, any> = {};
@@ -146,7 +146,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
       stats[key].checklists++;
       (c.items || []).forEach((it: any) => {
         stats[key].total++;
-        if (it.checked) stats[key].completadas++;
+        if (this.itemHecho(it)) stats[key].completadas++;
       });
     });
     return Object.values(stats)
@@ -204,7 +204,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
     const acts: any[] = [];
     this.checklistsHoy().forEach(c => {
       (c.items || []).forEach((it: any) => {
-        if (it.checked && it.photoTime) {
+        if (this.itemHecho(it) && it.photoTime) {
           acts.push({
             empleado: c.assigned,
             tarea: it.text,
@@ -233,7 +233,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
       let total = 0, completadas = 0;
       checks.forEach(c => (c.items || []).forEach((it: any) => {
         total++;
-        if (it.checked) completadas++;
+        if (this.itemHecho(it)) completadas++;
       }));
  
       dias.push({

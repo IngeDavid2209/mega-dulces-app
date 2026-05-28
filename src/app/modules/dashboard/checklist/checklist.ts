@@ -5,7 +5,7 @@ import { RouterModule, ActivatedRoute } from '@angular/router';
 import { Firestore, collection, doc, setDoc, getDoc, deleteDoc, onSnapshot, getDocs, query, where } from '@angular/fire/firestore';
 import * as localforage from 'localforage';
 import Swal from 'sweetalert2';
-import { esAdminGlobal, esAdminLimitado, sucursalesPermitidas, normalizarNombre } from '../../../shared/permisos.util';
+import { esAdminGlobal, esAdminLimitado, sucursalesPermitidas, normalizarNombre, esSupervisor } from '../../../shared/permisos.util';
 import { obtenerSemanaISO, obtenerNombreDia } from '../../../shared/descansos.util';
 import { RobotRutinasV2Service } from '../../../shared/robot-rutinas-v2.service';
 import { RutinaMaestra } from '../../../shared/rutinas.types';
@@ -759,9 +759,19 @@ export class ChecklistComponent implements OnInit, OnDestroy {
           (c: any) => permitidas.includes(c.store)
         );
         this.checklists.set(listasDeMisSucursales);
+      } else if (esSupervisor(this.currentUser)) {
+        // 👷‍♀️ Encargada/supervisora (trabajador con sucursales): ve TODAS las
+        // tareas de sus sucursales (las suyas + las de su equipo), no solo las
+        // suyas personales. Antes solo veía las que el nombre empataba exacto,
+        // y muchas veces no empataba → no veía nada.
+        const permitidas = sucursalesPermitidas(this.currentUser) ?? [];
+        const listasDeMisSucursales = listasFinales.filter(
+          (c: any) => permitidas.includes(c.store)
+        );
+        this.checklists.set(listasDeMisSucursales);
       } else {
-        // Trabajador: solo sus propios checklists asignados
-        // 🔥 Comparación tolerante a tildes/espacios/casing (mismo bug que en home)
+        // Trabajador puro (sin sucursales): solo sus propios checklists asignados
+        // 🔥 Comparación tolerante a tildes/espacios/casing
         const miNombreNorm = normalizarNombre(this.currentUser?.nombre);
         const misListas = listasFinales.filter((c: any) => normalizarNombre(c.assigned) === miNombreNorm);
         this.checklists.set(misListas);

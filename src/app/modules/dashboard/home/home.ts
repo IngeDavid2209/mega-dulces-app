@@ -9,7 +9,7 @@ import { RouterModule, Router } from '@angular/router';
 import { Firestore, collection, onSnapshot, query, where } from '@angular/fire/firestore';
 
 import { SidebarComponent } from '../../../shared/sidebar/sidebar';
-import { esAdminGlobal, sucursalesPermitidas, normalizarNombre } from '../../../shared/permisos.util';
+import { esAdminGlobal, sucursalesPermitidas, normalizarNombre, esSupervisor } from '../../../shared/permisos.util';
 
 @Component({
   selector: 'app-home',
@@ -289,7 +289,11 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
         const sesion = leerSesion() || this.currentUser;
         const permitidas = sucursalesPermitidas(sesion);
         const esGlobal = esAdminGlobal(sesion);
-        const esTrabajador = sesion?.rol === 'trabajador';
+        // Supervisor = trabajador con flags de admin + sucursales asignadas.
+        // En el dashboard se comporta como admin limitado (ve su sucursal completa),
+        // no como trabajador puro (que solo ve sus propias tareas).
+        const supervisor = esSupervisor(sesion);
+        const esTrabajadorPuro = sesion?.rol === 'trabajador' && !supervisor;
         const miNombreNorm = normalizarNombre(sesion?.nombre);
 
         let arr: any[] = [];
@@ -300,16 +304,17 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
         });
         const totalCrudo = arr.length;
 
-        if (esTrabajador) {
+        if (esTrabajadorPuro) {
           arr = arr.filter(c => normalizarNombre(c.assigned) === miNombreNorm);
         } else if (!esGlobal && permitidas !== null) {
+          // admin limitado O supervisor → filtra por sucursales
           arr = arr.filter(c => permitidas.includes(c.store));
         }
 
-        // 🐛 DEBUG temporal: ver en consola por qué un admin ve 0 checklists.
+        // 🐛 DEBUG temporal: ver en consola por qué un admin/supervisor ve 0.
         console.log('[DBG dashboard]', {
           usuario: sesion?.usuario, rol: sesion?.rol, alcance: sesion?.alcance,
-          sucursales: sesion?.sucursales, esGlobal, permitidas,
+          sucursales: sesion?.sucursales, esGlobal, supervisor, permitidas,
           checklistsCrudos: totalCrudo, despuesFiltro: arr.length,
           sucursalesUnicasEnDatos: Array.from(new Set(arr.map(c => c.store)))
         });
@@ -334,14 +339,16 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
         const sesion = leerSesion() || this.currentUser;
         const permitidas = sucursalesPermitidas(sesion);
         const esGlobal = esAdminGlobal(sesion);
+        const supervisor = esSupervisor(sesion);
 
         let arr: any[] = [];
         snap.forEach(d => arr.push({ ...d.data(), idFirestore: d.id }));
-        if (!esGlobal && permitidas !== null) {
+        // Admin limitado o supervisor: solo cuenta colaboradores de sus sucursales.
+        if ((!esGlobal && permitidas !== null) || supervisor) {
           arr = arr.filter(u => {
             if (u.rol === 'admin') return false;
             const susSuc: string[] = u.sucursales || (u.sucursal ? [u.sucursal] : []);
-            return susSuc.some((s: string) => permitidas.includes(s));
+            return susSuc.some((s: string) => permitidas!.includes(s));
           });
         }
         this.usuarios.set(arr);

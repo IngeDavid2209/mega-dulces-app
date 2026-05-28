@@ -30,6 +30,28 @@ export function esAdminLimitado(user: any): boolean {
 }
 
 /**
+ * Es "supervisor / encargado": trabajador con privilegios de admin
+ * (puede crear checklists, ver estadísticas, etc.) Y con sucursales asignadas.
+ * En el dashboard ve el avance de SUS sucursales, no solo sus tareas personales.
+ */
+export function esSupervisor(user: any): boolean {
+  if (!user || user.rol !== 'trabajador') return false;
+  const tieneSucursales = Array.isArray(user.sucursales) && user.sucursales.length > 0;
+  if (!tieneSucursales) return false;
+  return !!(
+    user.puedeAdministrarPersonal || user.puedeVerEstadisticas ||
+    user.puedeVerCheckstore || user.puedeVerCalendario || user.puedeVerHistorial ||
+    user.puedeCrearChecklists || user.puedeCrearRutinas || user.puedeCrearTareasUnicas ||
+    user.puedeAdministrarAreas
+  );
+}
+
+/** ¿Debe ver el panel como gestor de sucursales? (admin global, admin limitado o supervisor). */
+export function tieneVistaDeGestion(user: any): boolean {
+  return esAdmin(user) || esSupervisor(user);
+}
+
+/**
  * Sucursales en las que el usuario tiene permiso de operar.
  * Devuelve null para "todas" (admin global), o un array de nombres.
  * Para no-admin devuelve sus sucursales asignadas.

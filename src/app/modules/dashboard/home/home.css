@@ -615,3 +615,39 @@
   .panel-body { padding: 12px; }
   .chart-wrapper { height: 220px; }
 }
+
+/* 📱 Celulares pequeños (≤480px): apretar más para que NADA se corte. */
+@media screen and (max-width: 480px) {
+  .content { padding: 10px !important; }
+
+  .hero-card { padding: 14px; }
+  .hero-greeting { font-size: 17px; line-height: 1.2; }
+  .hero-sub, .hero-meta { font-size: 12px; }
+
+  .hero-stats { gap: 6px; flex-wrap: wrap; }
+  .hero-stat { padding: 8px 6px; min-width: 0; }
+  .hero-stat-value { font-size: 20px; }
+  .hero-stat-label { font-size: 9px; letter-spacing: 0.3px; }
+
+  .kpi-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .kpi-card { padding: 10px; gap: 8px; }
+  .kpi-icon { width: 34px; height: 34px; }
+  .kpi-value { font-size: 18px; }
+  .kpi-label {
+    font-size: 10px;
+    line-height: 1.2;
+    /* Permitir que el label se corte en 2 líneas en vez de truncar palabras */
+    white-space: normal;
+    word-break: break-word;
+  }
+
+  .panel-title { font-size: 14px; }
+  .panel-body { padding: 10px; }
+  .chart-wrapper { height: 180px; }
+
+  /* Rankings (Top empleados, Sucursales) más compactos */
+  .rank-row { padding: 8px 10px; gap: 8px; }
+  .rank-name { font-size: 13px; }
+  .rank-sub  { font-size: 11px; }
+  .rank-pct  { font-size: 13px; min-width: 42px; }
+}

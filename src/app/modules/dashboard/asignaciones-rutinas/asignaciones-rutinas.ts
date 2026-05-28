@@ -2,7 +2,7 @@ import { Component, signal, computed, OnInit, OnDestroy, inject } from '@angular
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, Router, ActivatedRoute } from '@angular/router';
-import { Firestore, collection, onSnapshot, doc, setDoc, deleteDoc } from '@angular/fire/firestore';
+import { Firestore, collection, onSnapshot, doc, setDoc, deleteDoc, getDocs, query, where } from '@angular/fire/firestore';
 import Swal from 'sweetalert2';
 
 import { SidebarComponent } from '../../../shared/sidebar/sidebar';
@@ -518,8 +518,31 @@ export class AsignacionesRutinasComponent implements OnInit, OnDestroy {
     if (!confirma.isConfirmed) return;
     try {
       await deleteDoc(doc(this.firestore, 'asignaciones_rutinas', a.id));
+      // 🗑️ Cancelar las tareas que esta asignación ya había generado y siguen
+      // pendientes, para que no queden estancadas contando como sin hacer.
+      await this.cancelarChecklistsPendientes(a.id);
     } catch (e: any) {
       Swal.fire('Error', e.message || 'No se pudo eliminar.', 'error');
+    }
+  }
+
+  /**
+   * Marca como eliminados los checklists que generó una asignación y que siguen
+   * pendientes (no enviados). Respeta los ya enviados — esos son historial.
+   */
+  private async cancelarChecklistsPendientes(asignacionId: string) {
+    try {
+      const q = query(collection(this.firestore, 'checklists'), where('_asignacionId', '==', asignacionId));
+      const snap = await getDocs(q);
+      const ops: Promise<any>[] = [];
+      snap.forEach(d => {
+        const c = d.data() as any;
+        if (c.enviado === true || c.eliminado === true) return; // no tocar enviados ni ya borrados
+        ops.push(setDoc(doc(this.firestore, 'checklists', d.id), { eliminado: true }, { merge: true }));
+      });
+      await Promise.all(ops);
+    } catch (e) {
+      console.error('[cancelarChecklistsPendientes]', e);
     }
   }
 

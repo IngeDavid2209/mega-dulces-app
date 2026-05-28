@@ -282,7 +282,13 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
     this.destructoresRadares.push(
       onSnapshot(checklistsQuery, snap => {
         let arr: any[] = [];
-        snap.forEach(d => arr.push({ ...d.data(), id: d.id }));
+        // 🗑️ Las tareas BORRADAS no deben contar en ningún KPI del Dashboard.
+        // Antes se incluían y "se quedaban estancadas" bajando el % de cumplimiento.
+        snap.forEach(d => {
+          const data = d.data() as any;
+          if (data.eliminado === true) return;
+          arr.push({ ...data, id: d.id });
+        });
 
         if (esTrabajador) {
           // 🔥 Trabajador: solo sus propias tareas (comparación tolerante a tildes/espacios)

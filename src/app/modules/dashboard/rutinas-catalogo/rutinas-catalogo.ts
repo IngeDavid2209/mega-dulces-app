@@ -2,7 +2,7 @@ import { Component, signal, OnInit, OnDestroy, inject, computed } from '@angular
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, Router } from '@angular/router';
-import { Firestore, collection, onSnapshot, doc, setDoc, deleteDoc } from '@angular/fire/firestore';
+import { Firestore, collection, onSnapshot, doc, setDoc, deleteDoc, getDocs, query, where } from '@angular/fire/firestore';
 import Swal from 'sweetalert2';
 
 import { SidebarComponent } from '../../../shared/sidebar/sidebar';
@@ -361,6 +361,7 @@ export class RutinasCatalogoComponent implements OnInit, OnDestroy {
     if (!confirma.isConfirmed) return;
     try {
       await setDoc(doc(this.firestore, 'catalogo_rutinas', r.id), { activa: false }, { merge: true });
+      await this.cancelarChecklistsDeRutina(r.id);
     } catch (e: any) {
       Swal.fire('Error', e.message || 'No se pudo archivar.', 'error');
     }
@@ -393,8 +394,30 @@ export class RutinasCatalogoComponent implements OnInit, OnDestroy {
     if (!confirma.isConfirmed) return;
     try {
       await deleteDoc(doc(this.firestore, 'catalogo_rutinas', r.id));
+      await this.cancelarChecklistsDeRutina(r.id);
     } catch (e: any) {
       Swal.fire('Error', e.message || 'No se pudo eliminar.', 'error');
+    }
+  }
+
+  /**
+   * Cancela (marca como eliminados) los checklists pendientes generados por esta
+   * rutina del catálogo, para que no queden estancados contando. Respeta los ya
+   * enviados (historial).
+   */
+  private async cancelarChecklistsDeRutina(catalogoRutinaId: string) {
+    try {
+      const q = query(collection(this.firestore, 'checklists'), where('_catalogoRutinaId', '==', catalogoRutinaId));
+      const snap = await getDocs(q);
+      const ops: Promise<any>[] = [];
+      snap.forEach(d => {
+        const c = d.data() as any;
+        if (c.enviado === true || c.eliminado === true) return;
+        ops.push(setDoc(doc(this.firestore, 'checklists', d.id), { eliminado: true }, { merge: true }));
+      });
+      await Promise.all(ops);
+    } catch (e) {
+      console.error('[cancelarChecklistsDeRutina]', e);
     }
   }
 

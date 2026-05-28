@@ -238,7 +238,7 @@ export class CheckstoreComponent implements OnInit, OnDestroy {
       // Escudo anti-clones
       const listasSinClones = new Map<string, any>();
       checklistsTemp.forEach(c => {
-        const marcados = c.items ? c.items.filter((i: any) => i.checked).length : 0;
+        const marcados = c.items ? c.items.filter((i: any) => this.itemHecho(i)).length : 0;
         c.calcProgreso = c.items && c.items.length > 0
           ? Math.round((marcados / c.items.length) * 100) : 0;
         const firma = `${c.name}_${c.assigned}_${c.store}_${c.date}`;
@@ -258,6 +258,24 @@ export class CheckstoreComponent implements OnInit, OnDestroy {
     this.destructoresRadares.push(radarChecklists);
   }
  
+  /**
+   * ¿Esta tarea está hecha? Cuenta por EVIDENCIA real, no por palomeo:
+   *  - Antes/Después: ambas fotos subidas.
+   *  - Varias fotos: al menos una.
+   *  - Una foto: subida.
+   *  - Sin evidencia: requiere palomeado manual.
+   * Antes solo miraba item.checked → daba 0% aunque hubiera fotos.
+   */
+  private itemHecho(it: any): boolean {
+    if (it?.requiresAntesDespues) {
+      return !!it.photoAntes && it.photoAntes !== 'subiendo...' &&
+             !!it.photoDespues && it.photoDespues !== 'subiendo...';
+    }
+    if (it?.requiresVariasFotos) return Array.isArray(it.photos) && it.photos.length > 0;
+    if (it?.requiresPhoto) return !!it.photo && it.photo !== 'subiendo...';
+    return it?.checked === true;
+  }
+
   // ============================================================================
   //  MATEMÁTICAS — calcula progress, alertas y stats por sucursal
   // ============================================================================
@@ -277,9 +295,10 @@ export class CheckstoreComponent implements OnInit, OnDestroy {
           if (c.items && Array.isArray(c.items)) {
             c.items.forEach((item: any) => {
               totalItems++;
-              if (item.checked === true) completedItems++;
-              // contar vencidas: no marcadas + horaLimite/time < ahora
-              if (!item.checked) {
+              const hecha = this.itemHecho(item);
+              if (hecha) completedItems++;
+              // contar vencidas: no hechas + horaLimite/time < ahora
+              if (!hecha) {
                 const hl = item.horaLimite || item.time;
                 if (hl && hl.includes(':')) {
                   const [h, m] = hl.split(':').map(Number);

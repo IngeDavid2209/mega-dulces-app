@@ -30,19 +30,23 @@ export function esAdminLimitado(user: any): boolean {
 }
 
 /**
- * Es "supervisor / encargado": trabajador con sucursales asignadas.
- * En el dashboard ve el avance de SUS sucursales (igual que un admin limitado),
- * no solo sus tareas personales. En el checklist personal sigue viendo sus
- * propias tareas para completarlas.
+ * Es "supervisor / encargado": trabajador con sucursales asignadas Y al menos
+ * un permiso de gestión (puedeAdministrarPersonal, puedeVerEstadisticas, etc.).
+ * En el dashboard y checklist ve TODO lo de su sucursal (igual que admin limitado).
  *
- * Nota: antes se exigían flags de admin (puedeVerEstadisticas, etc.) además de
- * sucursales. Se simplificó a solo sucursales porque las "encargadas" muchas
- * veces no tienen flags configurados pero sí su sucursal.
+ * Una trabajadora SIN ningún flag de gestión es trabajadora pura: solo ve sus
+ * propias tareas (filtro por nombre).
  */
 export function esSupervisor(user: any): boolean {
   if (!user || user.rol !== 'trabajador') return false;
   const sucursales: string[] = user.sucursales || (user.sucursal ? [user.sucursal] : []);
-  return sucursales.length > 0;
+  if (sucursales.length === 0) return false;
+  return !!(
+    user.puedeAdministrarPersonal || user.puedeVerEstadisticas ||
+    user.puedeVerCheckstore || user.puedeVerCalendario || user.puedeVerHistorial ||
+    user.puedeCrearChecklists || user.puedeCrearRutinas || user.puedeCrearTareasUnicas ||
+    user.puedeAdministrarAreas
+  );
 }
 
 /** ¿Debe ver el panel como gestor de sucursales? (admin global, admin limitado o supervisor). */

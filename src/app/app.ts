@@ -1,6 +1,6 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
-import { Firestore, doc, setDoc, updateDoc, getDoc } from '@angular/fire/firestore'; // 🔥 Agregamos getDoc
+import { Firestore, doc, setDoc, updateDoc, getDoc, onSnapshot } from '@angular/fire/firestore'; // 🔥 Agregamos getDoc
 import { Storage, ref, uploadString, getDownloadURL } from '@angular/fire/storage';
 import { SwUpdate, VersionReadyEvent } from '@angular/service-worker';
 import { filter } from 'rxjs/operators';
@@ -23,6 +23,11 @@ export class AppComponent implements OnInit {
   ngOnInit() {
     // 🔄 AUTO-ACTUALIZACIÓN DE LA PWA INSTALADA 🔄
     this.vigilarActualizaciones();
+
+    // 🔄 SINCRONIZAR SESIÓN EN VIVO con el doc real del usuario en Firestore.
+    // Si un admin cambia nombre/sucursales/permisos del usuario, se reflejan al
+    // instante sin tener que cerrar sesión.
+    this.sincronizarSesion();
 
     // 🔥 FUNCIÓN DEL LATIDO (SE MANTIENE INTACTA) 🔥
     const enviarLatido = () => {
@@ -51,6 +56,60 @@ export class AppComponent implements OnInit {
     if (navigator.onLine) {
       this.sincronizarFotosOffline();
     }
+  }
+
+  /**
+   * 🔄 Sincroniza la sesión local (md_sesion_actual) con el doc real del usuario
+   * en Firestore. Si un admin edita el perfil del usuario (nombre, sucursales,
+   * permisos, rol), los cambios se reflejan al instante:
+   *
+   *  - Cambios menores (teléfono, cargo, áreas) → solo actualiza localStorage,
+   *    los componentes los toman en la siguiente navegación.
+   *  - Cambios CRÍTICOS (rol, alcance, sucursales, nombre) → recarga la app
+   *    para que toda la UI se reconstruya con los nuevos permisos. Eso resuelve:
+   *      • trabajadores que no veían tareas asignadas (su nombre cambió),
+   *      • admins limitados que no veían el avance de sucursales nuevas,
+   *      • usuarios bloqueados al enviar porque sus permisos estaban viejos.
+   */
+  private sincronizarSesion() {
+    const raw = localStorage.getItem('md_sesion_actual');
+    if (!raw) return;
+    let sesion: any;
+    try { sesion = JSON.parse(raw); } catch { return; }
+    const uid = sesion?.uid || sesion?.idFirestore;
+    if (!uid) return;
+
+    onSnapshot(doc(this.firestore, 'usuarios', uid), snap => {
+      if (!snap.exists()) return;
+      const fresco: any = { ...snap.data(), uid };
+
+      const anteriorRaw = localStorage.getItem('md_sesion_actual') || '{}';
+      let anterior: any = {};
+      try { anterior = JSON.parse(anteriorRaw); } catch {}
+
+      if (JSON.stringify(fresco) === JSON.stringify(anterior)) return;
+
+      // Guardamos los datos frescos en localStorage.
+      localStorage.setItem('md_sesion_actual', JSON.stringify(fresco));
+
+      // ¿Cambió algo crítico para los permisos/visibilidad? → recarga.
+      const camposCriticos = ['nombre', 'rol', 'alcance', 'cargo'];
+      const sucCambio = JSON.stringify(anterior.sucursales || []) !== JSON.stringify(fresco.sucursales || []);
+      const areasCambio = JSON.stringify(anterior.areas || []) !== JSON.stringify(fresco.areas || []);
+      const campoCriticoCambio = camposCriticos.some(c => (anterior[c] || '') !== (fresco[c] || ''));
+      const permisos = [
+        'puedeCrearChecklists', 'puedeCrearRutinas', 'puedeCrearTareasUnicas',
+        'puedeVerCheckstore', 'puedeVerEstadisticas', 'puedeVerHistorial',
+        'puedeAdministrarPersonal', 'puedeVerCalendario', 'puedeAdministrarAreas'
+      ];
+      const permisoCambio = permisos.some(p => !!anterior[p] !== !!fresco[p]);
+
+      if (campoCriticoCambio || sucCambio || areasCambio || permisoCambio) {
+        // Recargamos para que TODAS las pantallas tomen los nuevos permisos.
+        console.log('[sesion] perfil cambió en Firestore — recargando…');
+        setTimeout(() => window.location.reload(), 300);
+      }
+    });
   }
 
   /**

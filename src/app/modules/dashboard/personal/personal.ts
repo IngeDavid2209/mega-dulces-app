@@ -276,9 +276,10 @@ export class PersonalComponent implements OnInit, OnDestroy {
   this.formNombre    = user.nombre;
   this.formUsuario   = user.usuario;
   this.formCorreo    = user.correo   || '';
-  // 🔒 Ya no precargamos la contraseña (no se guarda en Firestore). Al editar, el
-  // campo arranca vacío: si el admin escribe algo, se cambia; si lo deja vacío, no.
-  this.formPassword  = '';
+  // Precargamos la contraseña actual (por petición: admin global la ve para soporte).
+  // ⚠️ Recordatorio de seguridad: se guarda en texto plano en Firestore. Si la base
+  // se filtra, las contraseñas quedan expuestas. Las Firestore Rules limitan ese riesgo.
+  this.formPassword  = user.password || '';
   this.formTelefono  = user.telefono || ''; // 🔥 FIX: cargaba vacío antes
   this.formRol       = user.rol;
   this.formCargo     = user.cargo    || 'Trabajador General';
@@ -382,9 +383,11 @@ export class PersonalComponent implements OnInit, OnDestroy {
       : this.formAreas;
 
     const payload = {
-      // 🔒 SEGURIDAD: NO guardamos la contraseña en Firestore (antes iba en texto plano).
-      // La credencial la custodia Firebase Auth (hasheada). Aquí solo datos de perfil.
-      nombre: this.formNombre, usuario: this.formUsuario, correo: this.formCorreo,
+      // ⚠️ Por decisión del cliente, guardamos también la contraseña como "espejo"
+      // visible para el admin global desde el panel de Usuarios. La autenticación
+      // real sigue siendo Firebase Auth (hasheada). Riesgo asumido: si la base se
+      // filtra, las contraseñas quedan expuestas. Mitigado por Firestore Rules.
+      nombre: this.formNombre, usuario: this.formUsuario, correo: this.formCorreo, password: this.formPassword,
       rol: this.formRol, cargo: this.formCargo, telefono: this.formTelefono,
       alcance: alcanceFinal,
       puedeCrearChecklists: this.formRol === 'admin' ? true : this.formPuedeCrearChecklists,
@@ -407,9 +410,9 @@ export class PersonalComponent implements OnInit, OnDestroy {
         const userAuth = auth.currentUser;
         const esElMismoUsuario = this.usuarioEnEdicion.usuario === this.currentUser.usuario;
         const correoDistinto = this.formCorreo !== this.usuarioEnEdicion.correo;
-        // Si el admin escribió algo en el campo de contraseña, quiere cambiarla.
-        // Si lo dejó vacío, no se toca la contraseña actual.
-        const passwordDistinta = !!this.formPassword && this.formPassword.trim().length > 0;
+        // Detectamos cambio comparando con la contraseña guardada en Firestore.
+        // (El campo password se mantiene como "espejo" visible para el admin global.)
+        const passwordDistinta = this.formPassword !== (this.usuarioEnEdicion.password || '');
 
         // -------------------------------------------------------
         // 🔥 FIX 1: CAMBIO DE CORREO (solo si es el mismo usuario)

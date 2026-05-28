@@ -158,7 +158,7 @@
                 }}</span></div>
             <div class="cred-row">
               <span class="cred-label">Password:</span>
-              <span class="cred-val">••••••••</span>
+              <span class="cred-val">{{ (currentUser?.rol === 'admin' && (currentUser?.alcance === 'global' || !currentUser?.alcance)) ? (user.password || '••••••••') : '••••••••' }}</span>
             </div>
           </div>
         </div>
@@ -251,7 +251,7 @@
                     user.usuario }}</span></div>
                 <div class="cred-row">
                   <span class="cred-label">Password:</span>
-                  <span class="cred-val">••••••••</span>
+                  <span class="cred-val">{{ (currentUser?.rol === 'admin' && (currentUser?.alcance === 'global' || !currentUser?.alcance)) ? (user.password || '••••••••') : '••••••••' }}</span>
                 </div>
               </div>
             </div>

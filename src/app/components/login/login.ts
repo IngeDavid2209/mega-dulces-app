@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Auth, signInWithEmailAndPassword } from '@angular/fire/auth';
-import { Firestore, collection, getDocs } from '@angular/fire/firestore';
+import { Firestore, collection, getDocs, getDoc, doc, query, where } from '@angular/fire/firestore';
 import Swal from 'sweetalert2';
 import { APP_BUILD_SELLO } from '../../shared/version';
 
@@ -40,51 +40,68 @@ export class LoginComponent {
     this.ingresando = true;
 
     try {
-      // 1. Buscamos al usuario en la base de datos sin importar su rol
-      const usuariosRef = collection(this.firestore, 'usuarios');
-      const snapshot = await getDocs(usuariosRef);
-      let usuarioEncontrado: any = null;
+      const entrada = this.usuario.trim();
 
-      snapshot.forEach(doc => {
-        const data = doc.data();
-        if (data['usuario'] === this.usuario || data['correo'] === this.usuario) {
-          usuarioEncontrado = { uid: doc.id, ...data }; // 👈 agrega uid: doc.id
-        }
-      });
+      // 1. Resolver el CORREO sin descargar toda la base de usuarios.
+      //    - Si escribió un correo (contiene @), se usa directo.
+      //    - Si escribió su usuario, se consulta SOLO su entrada en el índice
+      //      público mínimo `indice_login/{usuario}` → { correo }.
+      let correoParaFirebase = '';
+      if (entrada.includes('@')) {
+        correoParaFirebase = entrada;
+      } else {
+        const idxSnap = await getDoc(doc(this.firestore, 'indice_login', entrada.toLowerCase()));
+        if (idxSnap.exists()) correoParaFirebase = (idxSnap.data() as any).correo || '';
+      }
 
-      // Si no existe en la base de datos...
-      if (!usuarioEncontrado) {
+      if (!correoParaFirebase) {
         Swal.fire({
           icon: 'error',
           title: 'Usuario no encontrado',
-          text: 'No existe ningún colaborador o administrador con ese nombre de usuario.',
+          text: 'Revisa tu usuario, o intenta con tu correo completo.',
           confirmButtonColor: '#0F172A'
         });
         this.ingresando = false;
         return;
       }
 
-      // 2. Si lo encontramos, extraemos su correo real y procedemos a loguear con Firebase Auth
-      const correoParaFirebase = usuarioEncontrado.correo;
+      // 2. Autenticar con Firebase Auth (aquí se valida la contraseña real).
+      const creds = await signInWithEmailAndPassword(this.auth, correoParaFirebase, this.password);
 
-      // Intentamos iniciar sesión con la contraseña que puso
-      await signInWithEmailAndPassword(this.auth, correoParaFirebase, this.password);
+      // 3. Ya autenticados, leemos el perfil del usuario (rol/permisos).
+      //    Primero por uid (docs nuevos). Fallback por correo (docs antiguos).
+      let perfil: any = null;
+      const porUid = await getDoc(doc(this.firestore, 'usuarios', creds.user.uid));
+      if (porUid.exists()) {
+        perfil = { uid: creds.user.uid, ...(porUid.data() as any) };
+      } else {
+        const q = query(collection(this.firestore, 'usuarios'), where('correo', '==', correoParaFirebase));
+        const qs = await getDocs(q);
+        qs.forEach(d => { if (!perfil) perfil = { uid: d.id, ...(d.data() as any) }; });
+      }
 
-      // 3. Si la contraseña fue correcta, Firebase nos deja pasar. 
-      // Guardamos la sesión (el rol se guarda aquí automáticamente)
-      localStorage.setItem('md_sesion_actual', JSON.stringify(usuarioEncontrado));
+      if (!perfil) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Perfil incompleto',
+          text: 'Tu cuenta existe pero falta su perfil. Contacta a un administrador.',
+          confirmButtonColor: '#0F172A'
+        });
+        this.ingresando = false;
+        return;
+      }
 
-      // Limpiamos los campos y redirigimos
+      localStorage.setItem('md_sesion_actual', JSON.stringify(perfil));
       this.usuario = '';
       this.password = '';
       this.router.navigate(['/home']);
 
     } catch (error: any) {
-      console.error("Error de Firebase:", error);
+      console.error('Error de login:', error?.code || error);
       Swal.fire({
         icon: 'error',
         title: 'Acceso Denegado',
-        text: 'La contraseña es incorrecta. Intenta de nuevo.',
+        text: 'Usuario o contraseña incorrectos. Intenta de nuevo.',
         confirmButtonColor: '#0F172A'
       });
     } finally {

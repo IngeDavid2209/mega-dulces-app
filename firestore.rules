@@ -1,0 +1,83 @@
+rules_version = '2';
+
+// ============================================================================
+//  Reglas de seguridad de Firestore — Mega Dulces Task
+//
+//  Objetivo:
+//   - Cerrar el acceso ANÓNIMO (antes cualquiera leía/escribía toda la base).
+//   - Proteger la IDENTIDAD: solo administradores crean/editan usuarios.
+//   - Permitir la operación normal a usuarios autenticados (completar checklists,
+//     generar rutinas, etc.).
+//
+//  IMPORTANTE: `esAdmin()` lee el rol desde el documento del usuario en Firestore
+//  cuyo ID debe ser el UID de Firebase Auth. Por eso, antes de publicar estas
+//  reglas, asegúrate de que los docs de los administradores usen su UID como ID
+//  (los creados desde la app ya lo hacen). Ver DESPLIEGUE-SEGURIDAD.md.
+// ============================================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ¿Hay una sesión de Firebase Auth válida?
+    function autenticado() {
+      return request.auth != null;
+    }
+
+    // ¿El usuario autenticado es administrador? (rol leído de su doc real,
+    // NO del cliente — por eso editar localStorage no sirve para escalar.)
+    function esAdmin() {
+      return autenticado()
+        && exists(/databases/$(database)/documents/usuarios/$(request.auth.uid))
+        && get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol == 'admin';
+    }
+
+    // --- ÍNDICE DE LOGIN (usuario → correo) ---
+    // Único dato legible sin sesión: permite que el login resuelva el correo a
+    // partir del usuario. Solo contiene { correo, uid } — nada sensible.
+    match /indice_login/{id} {
+      allow read: if true;
+      allow write: if esAdmin();
+    }
+
+    // --- USUARIOS (identidad y permisos) ---
+    // Lectura para cualquier sesión válida; solo admin crea/edita/borra.
+    match /usuarios/{id} {
+      allow read: if autenticado();
+      allow create, update, delete: if esAdmin();
+    }
+    // Colección legacy 'users' (si existe).
+    match /users/{id} {
+      allow read: if autenticado();
+      allow write: if esAdmin();
+    }
+
+    // --- CHECKLISTS (operación diaria) ---
+    // Cualquier usuario autenticado lee, crea (robot) y actualiza (sube evidencia).
+    // Solo admin puede borrar/limpiar historial.
+    match /checklists/{id} {
+      allow read, create, update: if autenticado();
+      allow delete: if esAdmin();
+    }
+
+    // --- RUTINAS Y MOLDES (catálogo / asignaciones / legacy) ---
+    // Lectura y escritura para autenticados (la UI controla quién ve los botones;
+    // aquí lo importante es bloquear el acceso anónimo). El robot también escribe.
+    match /catalogo_rutinas/{id}    { allow read, write: if autenticado(); }
+    match /asignaciones_rutinas/{id}{ allow read, write: if autenticado(); }
+    match /moldes_checklists/{id}   { allow read, write: if autenticado(); }
+
+    // --- CONFIGURACIÓN OPERATIVA (gestionada por administradores) ---
+    match /areas_operativas/{id}    { allow read: if autenticado(); allow write: if esAdmin(); }
+    match /areas/{id}               { allow read: if autenticado(); allow write: if esAdmin(); }
+    match /descansos_semanales/{id} { allow read: if autenticado(); allow write: if esAdmin(); }
+
+    // --- NOTIFICACIONES Y TOKENS PUSH ---
+    match /notificaciones/{id}  { allow read, write: if autenticado(); }
+    match /usuarios_tokens/{id} { allow read, write: if autenticado(); }
+
+    // --- TODO LO DEMÁS: DENEGADO ---
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -56,6 +56,14 @@
               placeholder="Buscar por nombre, cargo o sucursal...">
           </div>
           <div class="header-buttons">
+            <button class="btn-secondary" *ngIf="currentUser?.rol === 'admin'"
+              (click)="sincronizarIndiceLogin()" title="Genera el índice de login para las nuevas reglas de seguridad (ejecutar una vez)">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                style="margin-right: 6px;">
+                <polyline points="23 4 23 10 17 10"></polyline>
+                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+              </svg> Sincronizar índice login
+            </button>
             <button class="btn-secondary" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeAdministrarPersonal"
               (click)="descargarExcel()">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"

@@ -507,6 +507,7 @@ export class PersonalComponent implements OnInit, OnDestroy {
 
         // Guardamos en Firestore (siempre)
         await setDoc(doc(this.firestore, 'usuarios', docId), payload, { merge: true });
+        await this.guardarIndiceLogin(payload.usuario, payload.correo, docId, this.usuarioEnEdicion?.usuario);
 
       } else {
         // 🔥 FIX CRÍTICO: createUserWithEmailAndPassword desloguea al admin actual
@@ -520,6 +521,7 @@ export class PersonalComponent implements OnInit, OnDestroy {
           const tempAuth = getAuthSecondary(tempApp);
           const creds = await createUserSecondary(tempAuth, this.formCorreo, this.formPassword);
           await setDoc(doc(this.firestore, 'usuarios', creds.user.uid), { ...payload, uid: creds.user.uid });
+          await this.guardarIndiceLogin(payload.usuario, payload.correo, creds.user.uid);
           // Cerramos sesión y limpiamos la app temporal — el admin sigue logueado normal.
           await signOutSecondary(tempAuth);
         } finally {
@@ -535,6 +537,58 @@ export class PersonalComponent implements OnInit, OnDestroy {
       Swal.fire({ icon: 'error', title: 'Error', text: error.message || 'Error desconocido', confirmButtonColor: '#0F172A' });
     }
   }
+
+  /**
+   * Mantiene el índice público mínimo `indice_login/{usuario}` → { correo, uid }.
+   * Es lo único legible sin autenticación: permite que el login resuelva el correo
+   * a partir del usuario SIN exponer la colección `usuarios` completa.
+   */
+  private async guardarIndiceLogin(usuario: string, correo: string, uid: string, usuarioAnterior?: string) {
+    if (!usuario || !correo) return;
+    const key = usuario.trim().toLowerCase();
+    await setDoc(doc(this.firestore, 'indice_login', key), { correo, uid });
+    // Si cambió el nombre de usuario, borramos la entrada vieja del índice.
+    if (usuarioAnterior && usuarioAnterior.trim().toLowerCase() !== key) {
+      try { await deleteDoc(doc(this.firestore, 'indice_login', usuarioAnterior.trim().toLowerCase())); } catch {}
+    }
+  }
+
+  /**
+   * Genera el índice de login para TODOS los usuarios existentes.
+   * El admin lo ejecuta UNA vez (mientras las reglas aún permiten leer usuarios)
+   * antes de activar las reglas estrictas. Después, cada guardado lo mantiene solo.
+   */
+  async sincronizarIndiceLogin() {
+    if (this.currentUser?.rol !== 'admin') {
+      Swal.fire({ icon: 'error', title: 'Solo administradores', text: 'No tienes permiso para esta acción.', confirmButtonColor: '#0F172A' });
+      return;
+    }
+    const confirma = await Swal.fire({
+      title: 'Sincronizar índice de login',
+      text: 'Generará el índice usuario→correo para que todos puedan iniciar sesión con las nuevas reglas de seguridad. Ejecútalo una vez.',
+      icon: 'question', showCancelButton: true,
+      confirmButtonText: 'Sincronizar', cancelButtonText: 'Cancelar', confirmButtonColor: '#0F172A'
+    });
+    if (!confirma.isConfirmed) return;
+
+    let ok = 0, sin = 0;
+    for (const u of this.usuarios()) {
+      const usuario = (u.usuario || '').trim();
+      const correo = (u.correo || '').trim();
+      const uid = u.uid || u.idFirestore || '';
+      if (!usuario || !correo) { sin++; continue; }
+      try {
+        await setDoc(doc(this.firestore, 'indice_login', usuario.toLowerCase()), { correo, uid });
+        ok++;
+      } catch { sin++; }
+    }
+    Swal.fire({
+      icon: 'success', title: 'Índice sincronizado',
+      html: `Listos: <strong>${ok}</strong><br>Omitidos (sin usuario/correo): <strong>${sin}</strong>`,
+      confirmButtonColor: '#0F172A'
+    });
+  }
+
 // 🔥 FUNCIÓN PARA ELIMINAR USUARIO 🔥
   async eliminarUsuario(usuarioParaBorrar: any) {
     // 1. Verificamos que tengas los permisos

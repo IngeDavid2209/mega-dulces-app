@@ -52,6 +52,24 @@ export class LoginComponent {
       } else {
         const idxSnap = await getDoc(doc(this.firestore, 'indice_login', entrada.toLowerCase()));
         if (idxSnap.exists()) correoParaFirebase = (idxSnap.data() as any).correo || '';
+
+        // 🛟 Fallback de compatibilidad: si el índice aún no está poblado,
+        // resolvemos el correo buscando en la colección usuarios (como antes).
+        // Funciona mientras las reglas lo permitan; una vez poblado el índice y
+        // activadas las reglas estrictas, esta rama deja de usarse.
+        if (!correoParaFirebase) {
+          try {
+            const qs = await getDocs(collection(this.firestore, 'usuarios'));
+            qs.forEach(d => {
+              if (correoParaFirebase) return;
+              const u = d.data() as any;
+              const usr = (u.usuario || '').toLowerCase();
+              if (usr === entrada.toLowerCase() || (u.correo || '').toLowerCase() === entrada.toLowerCase()) {
+                correoParaFirebase = u.correo || '';
+              }
+            });
+          } catch (_) { /* reglas estrictas activas: usar el índice */ }
+        }
       }
 
       if (!correoParaFirebase) {

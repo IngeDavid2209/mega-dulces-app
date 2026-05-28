@@ -57,6 +57,14 @@
           </div>
           <div class="header-buttons">
             <button class="btn-secondary" *ngIf="currentUser?.rol === 'admin'"
+              (click)="notificarActualizacion()" title="Empuja la versión nueva a todos los dispositivos vía push (después de cada deploy)">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                style="margin-right: 6px;">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+              </svg> 📡 Notificar actualización
+            </button>
+            <button class="btn-secondary" *ngIf="currentUser?.rol === 'admin'"
               (click)="sincronizarIndiceLogin()" title="Genera el índice de login para las nuevas reglas de seguridad (ejecutar una vez)">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                 style="margin-right: 6px;">

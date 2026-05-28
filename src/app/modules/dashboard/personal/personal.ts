@@ -589,6 +589,51 @@ export class PersonalComponent implements OnInit, OnDestroy {
     });
   }
 
+  /**
+   * 📡 Envía un push silencioso a todos los dispositivos registrados para que
+   * fuercen la activación de la versión nueva (PWA en pantalla de inicio incluida).
+   * Llama al endpoint serverless /api/notify-update con el ID Token del admin.
+   */
+  async notificarActualizacion() {
+    if (this.currentUser?.rol !== 'admin') {
+      Swal.fire({ icon: 'error', title: 'Solo administradores', text: 'No tienes permiso para enviar el push.', confirmButtonColor: '#0F172A' });
+      return;
+    }
+    const confirma = await Swal.fire({
+      title: 'Notificar actualización a todos',
+      text: 'Se mandará un push silencioso a todos los dispositivos para que apliquen la versión nueva. Hazlo después de publicar.',
+      icon: 'question', showCancelButton: true,
+      confirmButtonText: '📡 Notificar', cancelButtonText: 'Cancelar', confirmButtonColor: '#0F172A'
+    });
+    if (!confirma.isConfirmed) return;
+
+    Swal.fire({ title: 'Enviando…', text: 'Empujando actualización a los dispositivos', allowOutsideClick: false, didOpen: () => Swal.showLoading(null) });
+    try {
+      const auth = getAuth();
+      const user = auth.currentUser;
+      if (!user) throw new Error('Sesión no encontrada. Vuelve a iniciar sesión.');
+      const idToken = await user.getIdToken();
+
+      const resp = await fetch('/api/notify-update', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + idToken, 'Content-Type': 'application/json' },
+        body: '{}'
+      });
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok) throw new Error(data?.error || ('HTTP ' + resp.status));
+
+      Swal.fire({
+        icon: 'success', title: '¡Listo!',
+        html: `Push enviado a <strong>${data.enviados ?? 0}</strong> dispositivos.` +
+              (data.fallidos ? `<br>Fallidos: ${data.fallidos}` : '') +
+              (data.tokensLimpiados ? `<br>Tokens obsoletos limpiados: ${data.tokensLimpiados}` : ''),
+        confirmButtonColor: '#0F172A'
+      });
+    } catch (e: any) {
+      Swal.fire({ icon: 'error', title: 'No se pudo enviar', text: e?.message || 'Error desconocido', confirmButtonColor: '#0F172A' });
+    }
+  }
+
 // 🔥 FUNCIÓN PARA ELIMINAR USUARIO 🔥
   async eliminarUsuario(usuarioParaBorrar: any) {
     // 1. Verificamos que tengas los permisos

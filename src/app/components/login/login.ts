@@ -6,6 +6,7 @@ import { Auth, signInWithEmailAndPassword } from '@angular/fire/auth';
 import { Firestore, collection, getDocs, getDoc, doc, query, where } from '@angular/fire/firestore';
 import Swal from 'sweetalert2';
 import { APP_BUILD_SELLO } from '../../shared/version';
+import { NotificacionesService } from '../../services/notificaciones';
 
 @Component({
   selector: 'app-login',
@@ -25,6 +26,7 @@ export class LoginComponent {
   private auth = inject(Auth);
   private firestore = inject(Firestore);
   private router = inject(Router);
+  private notificaciones = inject(NotificacionesService);
 
   async ingresar() {
     if (!this.usuario || !this.password) {
@@ -112,6 +114,11 @@ export class LoginComponent {
       localStorage.setItem('md_sesion_actual', JSON.stringify(perfil));
       this.usuario = '';
       this.password = '';
+
+      // 🔔 Registrar el token FCM de este dispositivo (sin bloquear el login si
+      // el usuario rechaza permisos o el navegador no soporta push).
+      this.notificaciones.solicitarPermisos(perfil.nombre, creds.user.uid).catch(() => {});
+
       this.router.navigate(['/home']);
 
     } catch (error: any) {

@@ -34,7 +34,7 @@ export class AppComponent implements OnInit {
         if (docId) {
           const userRef = doc(this.firestore, 'usuarios', docId);
           setDoc(userRef, { ultimoLatido: Date.now() }, { merge: true })
-            .catch(e => console.log('Sin red para latido'));
+            .catch(() => console.log('Sin red para latido'));
         }
       }
     };
@@ -96,6 +96,24 @@ export class AppComponent implements OnInit {
     });
     window.addEventListener('focus', buscar);
     window.addEventListener('online', buscar);
+
+    // 4) 🔔 PUSH desde FCM: cuando el admin pulsa "Notificar actualización",
+    //    el SW de FCM (firebase-messaging-sw.js) recibe el push y reenvía un
+    //    postMessage al cliente. Aquí lo escuchamos y forzamos un check + reload.
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('message', (event: MessageEvent) => {
+        const data: any = event?.data;
+        if (data?.source === 'fcm' && data?.tipo === 'actualizacion') {
+          buscar();
+        }
+      });
+    }
+    // Y también cuando la app está EN PRIMER PLANO recibe el push vía onMessage,
+    // que disparamos como CustomEvent('fcm-message') desde notificaciones.ts.
+    window.addEventListener('fcm-message', (e: any) => {
+      const tipo = e?.detail?.data?.tipo;
+      if (tipo === 'actualizacion') buscar();
+    });
 
     // 3) Caché corrupto / irrecuperable → recargar limpio desde el servidor (sin avisar).
     this.swUpdate.unrecoverable.subscribe(() => document.location.reload());

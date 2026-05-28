@@ -1013,7 +1013,10 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   cerrarPasswordModal() { this.isPasswordModalOpen = false; this.checklistToDelete = null; this.passwordInput = ''; }
 
   async confirmarEliminacion() {
-    if (this.passwordInput !== 'Mega2323') { alert(' ❌ Contraseña maestra incorrecta.'); return; }
+    // 🔒 Antes pedía una contraseña maestra hardcodeada ('Mega2323') visible en el
+    // bundle. Ahora exige rol de administrador. La protección real vive en las
+    // Firestore Security Rules (Fase 2).
+    if (this.currentUser?.rol !== 'admin') { alert(' ⚠️ Solo un administrador puede eliminar checklists.'); return; }
     const confirmar = confirm(` ⚠️ ¿Borrar "${this.checklistToDelete.name}" y sus duplicados?`);
     if (confirmar) {
       try {

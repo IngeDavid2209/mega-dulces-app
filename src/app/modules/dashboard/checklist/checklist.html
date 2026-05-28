@@ -1271,10 +1271,8 @@
 
       <div class="modal-overlay" *ngIf="isPasswordModalOpen" style="z-index: 9999;">
         <div class="modal" style="max-width: 400px; text-align: center; padding: 30px;">
-          <h3 style="color: var(--text-main); font-weight: 600; margin-bottom: 10px; font-size: 20px;">Autenticación Requerida</h3>
-          <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 25px;">Ingresa la contraseña maestra para confirmar la eliminación.</p>
-          <input type="password" [(ngModel)]="passwordInput" class="form-input" placeholder="••••••••"
-            style="text-align: center; font-size: 20px; letter-spacing: 4px; margin-bottom: 25px;">
+          <h3 style="color: var(--text-main); font-weight: 600; margin-bottom: 10px; font-size: 20px;">Confirmar eliminación</h3>
+          <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 25px;">Se eliminará este checklist y sus duplicados. Esta acción no se puede deshacer.</p>
           <div style="display: flex; gap: 10px; justify-content: center;">
             <button class="btn-secondary" (click)="cerrarPasswordModal()" style="flex: 1;">Cancelar</button>
             <button class="btn-primary" style="background-color: var(--red); flex: 1;"

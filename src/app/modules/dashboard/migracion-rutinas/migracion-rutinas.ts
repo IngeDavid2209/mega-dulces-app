@@ -142,8 +142,8 @@ export class MigracionRutinasComponent implements OnInit, OnDestroy {
       title: '¿Migrar este molde?',
       html: `
         <div style="text-align:left">
-          <p><strong>${molde.name}</strong></p>
-          <p>📍 ${molde.store} · 👤 ${molde.assigned}</p>
+          <p><strong>${this.escHtml(molde.name)}</strong></p>
+          <p>📍 ${this.escHtml(molde.store)} · 👤 ${this.escHtml(molde.assigned)}</p>
           <p>Se creará 1 rutina en el catálogo y 1 asignación. El molde quedará pausado para evitar duplicados.</p>
         </div>`,
       icon: 'question',
@@ -327,8 +327,8 @@ export class MigracionRutinasComponent implements OnInit, OnDestroy {
         <div style="text-align:left">
           <p>Esto:</p>
           <ul>
-            <li>Elimina la rutina <code>${molde._migradoA.rutinaId}</code> del catálogo</li>
-            <li>Elimina la asignación <code>${molde._migradoA.asignacionId}</code></li>
+            <li>Elimina la rutina <code>${this.escHtml(molde._migradoA.rutinaId)}</code> del catálogo</li>
+            <li>Elimina la asignación <code>${this.escHtml(molde._migradoA.asignacionId)}</code></li>
             <li>Reactiva el molde legacy (Robot V1 lo volverá a usar)</li>
           </ul>
         </div>`,
@@ -363,6 +363,19 @@ export class MigracionRutinasComponent implements OnInit, OnDestroy {
   // ============================================================================
   // HELPERS
   // ============================================================================
+  /**
+   * Escapa HTML para interpolar datos de usuario dentro de un Swal `html:`.
+   * Evita XSS si un nombre de molde/rutina trae algo como `<img onerror=...>`.
+   */
+  private escHtml(s: any): string {
+    return String(s ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
   private limpiarUndefined(obj: any) {
     Object.keys(obj).forEach(k => {
       if (obj[k] === undefined) delete obj[k];

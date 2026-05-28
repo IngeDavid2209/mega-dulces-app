@@ -276,7 +276,9 @@ export class PersonalComponent implements OnInit, OnDestroy {
   this.formNombre    = user.nombre;
   this.formUsuario   = user.usuario;
   this.formCorreo    = user.correo   || '';
-  this.formPassword  = user.password || '';
+  // 🔒 Ya no precargamos la contraseña (no se guarda en Firestore). Al editar, el
+  // campo arranca vacío: si el admin escribe algo, se cambia; si lo deja vacío, no.
+  this.formPassword  = '';
   this.formTelefono  = user.telefono || ''; // 🔥 FIX: cargaba vacío antes
   this.formRol       = user.rol;
   this.formCargo     = user.cargo    || 'Trabajador General';
@@ -380,7 +382,9 @@ export class PersonalComponent implements OnInit, OnDestroy {
       : this.formAreas;
 
     const payload = {
-      nombre: this.formNombre, usuario: this.formUsuario, correo: this.formCorreo, password: this.formPassword,
+      // 🔒 SEGURIDAD: NO guardamos la contraseña en Firestore (antes iba en texto plano).
+      // La credencial la custodia Firebase Auth (hasheada). Aquí solo datos de perfil.
+      nombre: this.formNombre, usuario: this.formUsuario, correo: this.formCorreo,
       rol: this.formRol, cargo: this.formCargo, telefono: this.formTelefono,
       alcance: alcanceFinal,
       puedeCrearChecklists: this.formRol === 'admin' ? true : this.formPuedeCrearChecklists,
@@ -403,7 +407,9 @@ export class PersonalComponent implements OnInit, OnDestroy {
         const userAuth = auth.currentUser;
         const esElMismoUsuario = this.usuarioEnEdicion.usuario === this.currentUser.usuario;
         const correoDistinto = this.formCorreo !== this.usuarioEnEdicion.correo;
-        const passwordDistinta = this.formPassword !== this.usuarioEnEdicion.password;
+        // Si el admin escribió algo en el campo de contraseña, quiere cambiarla.
+        // Si lo dejó vacío, no se toca la contraseña actual.
+        const passwordDistinta = !!this.formPassword && this.formPassword.trim().length > 0;
 
         // -------------------------------------------------------
         // 🔥 FIX 1: CAMBIO DE CORREO (solo si es el mismo usuario)

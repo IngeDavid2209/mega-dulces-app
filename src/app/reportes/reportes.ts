@@ -274,8 +274,11 @@ export class ReportesComponent implements OnInit, OnDestroy {
   cerrarPasswordModal() { this.isPasswordModalOpen = false; this.passwordInput = ''; }
 
   async confirmarEliminacionTodo() {
-    if (this.passwordInput !== 'Mega2323') {
-      Swal.fire({ icon: 'error', title: 'Clave Incorrecta', text: 'La contraseña maestra no es válida.', confirmButtonColor: '#0F172A' });
+    // 🔒 Antes se validaba una contraseña maestra hardcodeada ('Mega2323') visible
+    // en el bundle. Ahora se exige rol de administrador. (La protección real vive
+    // en las Firestore Security Rules — Fase 2.)
+    if (this.currentUser?.rol !== 'admin') {
+      Swal.fire({ icon: 'error', title: 'Sin permiso', text: 'Solo un administrador puede borrar el historial.', confirmButtonColor: '#0F172A' });
       return;
     }
 

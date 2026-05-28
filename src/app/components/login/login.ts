@@ -39,22 +39,6 @@ export class LoginComponent {
 
     this.ingresando = true;
 
-    // 🛡️ PARACAÍDAS DE SEGURIDAD PARA EL ADMIN PRINCIPAL 🛡️
-    // Este es un bypass manual solo para emergencias si Firebase falla.
-    if (this.usuario === 'admin' && this.password === '123456') {
-      const adminSeguridad = {
-        uid: 'admin-local',
-        nombre: 'Administrador Supremo', usuario: 'admin', rol: 'admin',
-        puedeCrearChecklists: true, puedeCrearRutinas: true, puedeCrearTareasUnicas: true,
-        puedeVerCheckstore: true, puedeVerEstadisticas: true, puedeVerHistorial: true,
-        puedeAdministrarPersonal: true
-      };
-      localStorage.setItem('md_sesion_actual', JSON.stringify(adminSeguridad));
-      this.router.navigate(['/home']);
-      this.ingresando = false;
-      return;
-    }
-
     try {
       // 1. Buscamos al usuario en la base de datos sin importar su rol
       const usuariosRef = collection(this.firestore, 'usuarios');

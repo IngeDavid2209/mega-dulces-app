@@ -714,6 +714,154 @@ export class PersonalComponent implements OnInit, OnDestroy {
   }
 
   /**
+   * 🔄 Auto-corrige los nombres de perfil para que coincidan con el `assigned`
+   * de las tareas (que ya están guardadas). Solo aplica casos SEGUROS:
+   * cuando el nombre actual del perfil es prefijo exacto del `assigned` de
+   * alguna tarea Y hay solo UN perfil candidato (sin ambigüedad).
+   *
+   * Ejemplos resueltos automáticamente:
+   *   "Carolina Guzman"       →  "Carolina Guzman Ruiz"      (faltaba apellido)
+   *   "Anna Paola Frausto"    →  "Anna Paola Frausto Nava"
+   *   "Maria Isabel Vera"     →  "Maria Isabel Vera Ribera"
+   *
+   * Los typos (ej. "Benda" → "Brenda") NO se tocan: quedan para revisión manual.
+   */
+  async autoCorregirCoherenciaNombres() {
+    if (this.currentUser?.rol !== 'admin' && !this.currentUser?.puedeAdministrarPersonal) {
+      Swal.fire({ icon: 'error', title: 'Sin permiso', confirmButtonColor: '#0F172A' });
+      return;
+    }
+    Swal.fire({ title: 'Analizando…', allowOutsideClick: false, didOpen: () => Swal.showLoading(null) });
+
+    try {
+      const offset = new Date().getTimezoneOffset() * 60000;
+      const hace7 = new Date(Date.now() - offset);
+      hace7.setDate(hace7.getDate() - 7);
+      const desdeISO = hace7.toISOString().split('T')[0];
+      const q = query(collection(this.firestore, 'checklists'), where('date', '>=', desdeISO));
+      const snap = await getDocs(q);
+
+      const permitidasUser = sucursalesPermitidas(this.currentUser);
+      const usuariosVisibles = this.usuarios().filter(u => u.rol === 'trabajador' && (
+        permitidasUser === null ||
+        (u.sucursales || []).some((s: string) => permitidasUser.includes(s))
+      ));
+
+      // Mapa: nombreNormalizado → perfil (para verificar si ya existe)
+      const perfilesPorNombreNorm = new Map<string, any>();
+      for (const u of usuariosVisibles) {
+        perfilesPorNombreNorm.set(normalizarNombre(u.nombre), u);
+      }
+
+      // Recolectar assigned únicos de checklists activos
+      const assignedsHuerfanos = new Set<string>();
+      snap.forEach(d => {
+        const c = d.data() as any;
+        if (c.eliminado === true || c.enviado === true) return;
+        if (permitidasUser !== null && !permitidasUser.includes(c.store)) return;
+        const a = (c.assigned || '').trim();
+        if (!a) return;
+        if (!perfilesPorNombreNorm.has(normalizarNombre(a))) {
+          assignedsHuerfanos.add(a);
+        }
+      });
+
+      // Buscar matches únicos por PREFIJO
+      const sugerencias: { perfil: any, nombreActual: string, nombreNuevo: string }[] = [];
+      const ambiguos: string[] = [];
+      const sinMatch: string[] = [];
+
+      for (const assigned of assignedsHuerfanos) {
+        const assignedNorm = normalizarNombre(assigned);
+        const candidatos = usuariosVisibles.filter(u => {
+          const n = normalizarNombre(u.nombre);
+          if (n.length < 6) return false; // muy corto = riesgo de falsos positivos
+          return assignedNorm.startsWith(n + ' '); // el nombre actual es prefijo del completo
+        });
+
+        if (candidatos.length === 1) {
+          // Verificar que el perfil candidato no esté ya "tomado" por otra sugerencia
+          const yaSugerido = sugerencias.some(s => s.perfil.idFirestore === candidatos[0].idFirestore);
+          if (!yaSugerido) {
+            sugerencias.push({
+              perfil: candidatos[0],
+              nombreActual: candidatos[0].nombre,
+              nombreNuevo: assigned
+            });
+          } else {
+            ambiguos.push(assigned);
+          }
+        } else if (candidatos.length > 1) {
+          ambiguos.push(assigned);
+        } else {
+          sinMatch.push(assigned);
+        }
+      }
+
+      Swal.close();
+
+      if (sugerencias.length === 0) {
+        Swal.fire({
+          icon: 'info', title: 'Sin matches automáticos',
+          html: `No se encontraron prefijos exactos.<br>` +
+                `<strong>${sinMatch.length}</strong> nombre(s) sin coincidencia, ` +
+                `<strong>${ambiguos.length}</strong> ambiguo(s). Revisa manualmente con 🔍 Verificar nombres.`,
+          confirmButtonColor: '#0F172A'
+        });
+        return;
+      }
+
+      const escHtml = (s: any) => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      let html = '<div style="text-align:left; font-size: 13px; max-height: 380px; overflow-y: auto;">';
+      html += `<p>Se actualizarán <strong>${sugerencias.length}</strong> perfiles para que sus nombres coincidan con sus tareas:</p>`;
+      html += '<table style="width:100%; border-collapse:collapse;">';
+      html += '<tr style="background:#F0FDF4;"><th style="padding:6px; border:1px solid #86EFAC;">Antes</th><th style="padding:6px; border:1px solid #86EFAC;">Después</th></tr>';
+      for (const s of sugerencias) {
+        html += `<tr><td style="padding:6px; border:1px solid #86EFAC;">${escHtml(s.nombreActual)}</td>`;
+        html += `<td style="padding:6px; border:1px solid #86EFAC;"><strong>${escHtml(s.nombreNuevo)}</strong></td></tr>`;
+      }
+      html += '</table>';
+      if (sinMatch.length > 0 || ambiguos.length > 0) {
+        html += `<p style="margin-top:10px; font-size:12px; color:#92400E;">⚠ Quedarán <strong>${sinMatch.length + ambiguos.length}</strong> casos para revisión manual (typos, ambiguos, sin perfil).</p>`;
+      }
+      html += '</div>';
+
+      const ok = await Swal.fire({
+        icon: 'question', title: '¿Aplicar correcciones?', html,
+        width: 720, showCancelButton: true,
+        confirmButtonText: `✅ Aplicar ${sugerencias.length} correcciones`,
+        cancelButtonText: 'Cancelar', confirmButtonColor: '#0F172A'
+      });
+      if (!ok.isConfirmed) return;
+
+      // Aplicar cambios
+      Swal.fire({ title: 'Aplicando…', allowOutsideClick: false, didOpen: () => Swal.showLoading(null) });
+      let exitosos = 0;
+      let fallidos = 0;
+      for (const s of sugerencias) {
+        try {
+          const docId = s.perfil.idFirestore || s.perfil.uid || s.perfil.usuario;
+          await setDoc(doc(this.firestore, 'usuarios', docId), { nombre: s.nombreNuevo }, { merge: true });
+          exitosos++;
+        } catch (e) {
+          console.error('[autoCorregir]', s.nombreActual, e);
+          fallidos++;
+        }
+      }
+
+      Swal.fire({
+        icon: 'success', title: '¡Listo!',
+        html: `Corregidos: <strong>${exitosos}</strong>` +
+              (fallidos ? `<br>Fallidos: ${fallidos}` : '') +
+              (sinMatch.length + ambiguos.length > 0 ? `<br>Para revisar manualmente: ${sinMatch.length + ambiguos.length}` : ''),
+        confirmButtonColor: '#0F172A'
+      });
+    } catch (e: any) {
+      Swal.fire({ icon: 'error', title: 'Error', text: e?.message || 'No se pudo procesar.', confirmButtonColor: '#0F172A' });
+    }
+  }
+
+  /**
    * 📡 Envía un push silencioso a todos los dispositivos registrados para que
    * fuercen la activación de la versión nueva (PWA en pantalla de inicio incluida).
    * Llama al endpoint serverless /api/notify-update con el ID Token del admin.

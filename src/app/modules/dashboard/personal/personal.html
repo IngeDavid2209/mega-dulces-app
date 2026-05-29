@@ -64,6 +64,15 @@
                 <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
               </svg> 🔍 Verificar nombres
             </button>
+            <button class="btn-secondary" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeAdministrarPersonal"
+              (click)="autoCorregirCoherenciaNombres()" title="Sincroniza automáticamente los nombres de los perfiles al nombre completo de sus tareas (cuando hay match único)">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                style="margin-right: 6px;">
+                <polyline points="23 4 23 10 17 10"></polyline>
+                <polyline points="1 20 1 14 7 14"></polyline>
+                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+              </svg> 🔄 Auto-corregir nombres
+            </button>
             <button class="btn-secondary" *ngIf="currentUser?.rol === 'admin'"
               (click)="notificarActualizacion()" title="Empuja la versión nueva a todos los dispositivos vía push (después de cada deploy)">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -340,6 +349,8 @@
             <div class="form-group form-full" *ngIf="formRol === 'admin'"
                  style="padding-top: 16px; border-top: 1px solid var(--border);">
               <label class="form-label" style="margin-bottom: 12px;">
+
+                
                 Alcance del Administrador
               </label>
               <div class="alcance-toggle">

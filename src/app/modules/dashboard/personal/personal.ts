@@ -2,7 +2,7 @@ import { Component, signal, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, Router } from '@angular/router';
-import { Firestore, collection, doc, setDoc, deleteDoc, onSnapshot } from '@angular/fire/firestore';
+import { Firestore, collection, doc, setDoc, deleteDoc, onSnapshot, getDocs, query, where } from '@angular/fire/firestore';
 import {
   getAuth,
   verifyBeforeUpdateEmail,
@@ -13,7 +13,7 @@ import {
 
 import * as ExcelJS from 'exceljs';
 import Swal from 'sweetalert2';
-import { esAdminGlobal, esAdminLimitado } from '../../../shared/permisos.util';
+import { esAdminGlobal, esAdminLimitado, normalizarNombre, sucursalesPermitidas } from '../../../shared/permisos.util';
 // 🔥 Para crear usuarios sin desloguear al admin (segunda app Firebase temporal)
 import { initializeApp, deleteApp } from 'firebase/app';
 import { getAuth as getAuthSecondary, createUserWithEmailAndPassword as createUserSecondary, signOut as signOutSecondary } from 'firebase/auth';
@@ -590,6 +590,127 @@ export class PersonalComponent implements OnInit, OnDestroy {
       html: `Listos: <strong>${ok}</strong><br>Omitidos (sin usuario/correo): <strong>${sin}</strong>`,
       confirmButtonColor: '#0F172A'
     });
+  }
+
+  /**
+   * 🔍 Verifica coherencia entre los nombres de los usuarios y los nombres
+   * que aparecen en el campo `assigned` de los checklists activos.
+   *
+   * Si el `nombre` del perfil no coincide con el `assigned` de las tareas,
+   * el trabajador no ve sus tareas (porque el filtro compara por nombre).
+   * Aquí mostramos los desajustes para que el admin pueda corregir.
+   */
+  async verificarCoherenciaNombres() {
+    if (this.currentUser?.rol !== 'admin' && !this.currentUser?.puedeAdministrarPersonal) {
+      Swal.fire({ icon: 'error', title: 'Sin permiso', confirmButtonColor: '#0F172A' });
+      return;
+    }
+    Swal.fire({ title: 'Verificando…', allowOutsideClick: false, didOpen: () => Swal.showLoading(null) });
+
+    try {
+      // Últimos 7 días, no eliminados, no enviados (lo realmente "vivo")
+      const offset = new Date().getTimezoneOffset() * 60000;
+      const hace7 = new Date(Date.now() - offset);
+      hace7.setDate(hace7.getDate() - 7);
+      const desdeISO = hace7.toISOString().split('T')[0];
+      const q = query(collection(this.firestore, 'checklists'), where('date', '>=', desdeISO));
+      const snap = await getDocs(q);
+
+      // Sucursales del admin actual (si es limitado/global)
+      const permitidasUser = sucursalesPermitidas(this.currentUser);
+
+      // Indexar usuarios por nombre normalizado (solo trabajadores y supervisores)
+      const usuariosVisibles = this.usuarios().filter(u => u.rol === 'trabajador' && (
+        permitidasUser === null ||
+        (u.sucursales || []).some((s: string) => permitidasUser.includes(s))
+      ));
+      const nombresPerfil = new Map<string, any>(); // nombreNorm → user
+      for (const u of usuariosVisibles) {
+        nombresPerfil.set(normalizarNombre(u.nombre), u);
+      }
+
+      // Recolectar assigned únicos de los checklists relevantes
+      const tareasPorAssigned = new Map<string, { sucursales: Set<string>, total: number }>();
+      snap.forEach(d => {
+        const c = d.data() as any;
+        if (c.eliminado === true || c.enviado === true) return;
+        if (permitidasUser !== null && !permitidasUser.includes(c.store)) return;
+        const a = (c.assigned || '').trim();
+        if (!a) return;
+        const entrada = tareasPorAssigned.get(a) || { sucursales: new Set<string>(), total: 0 };
+        entrada.sucursales.add(c.store);
+        entrada.total++;
+        tareasPorAssigned.set(a, entrada);
+      });
+
+      // Detectar mismatches: assigned que no coincide con ningún nombre del perfil
+      const huerfanos: { assigned: string, sucursales: string[], total: number }[] = [];
+      for (const [assigned, info] of tareasPorAssigned.entries()) {
+        if (!nombresPerfil.has(normalizarNombre(assigned))) {
+          huerfanos.push({ assigned, sucursales: Array.from(info.sucursales), total: info.total });
+        }
+      }
+      huerfanos.sort((a, b) => b.total - a.total);
+
+      // Detectar usuarios sin tareas (su nombre no aparece en ningún assigned)
+      const sinTareas: any[] = [];
+      for (const u of usuariosVisibles) {
+        const norm = normalizarNombre(u.nombre);
+        const tieneAlguna = Array.from(tareasPorAssigned.keys())
+          .some(a => normalizarNombre(a) === norm);
+        if (!tieneAlguna) sinTareas.push(u);
+      }
+
+      Swal.close();
+
+      if (huerfanos.length === 0 && sinTareas.length === 0) {
+        Swal.fire({
+          icon: 'success', title: '✅ Todo coherente',
+          text: `Los nombres de ${usuariosVisibles.length} trabajadores coinciden con sus tareas.`,
+          confirmButtonColor: '#0F172A'
+        });
+        return;
+      }
+
+      // Armar HTML con la tabla de problemas
+      const escHtml = (s: any) => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      let html = '<div style="text-align:left; font-size: 13px; max-height: 400px; overflow-y: auto;">';
+
+      if (huerfanos.length > 0) {
+        html += `<h4 style="color:#B91C1C; margin: 8px 0;">⚠️ ${huerfanos.length} nombre(s) en tareas SIN perfil que coincida:</h4>`;
+        html += '<table style="width:100%; border-collapse:collapse;">';
+        html += '<tr style="background:#FEE2E2;"><th style="padding:6px; border:1px solid #FCA5A5;">Assigned</th><th style="padding:6px; border:1px solid #FCA5A5;">Tareas</th><th style="padding:6px; border:1px solid #FCA5A5;">Sucursal</th></tr>';
+        for (const h of huerfanos) {
+          html += `<tr><td style="padding:6px; border:1px solid #FCA5A5;"><strong>${escHtml(h.assigned)}</strong></td>`;
+          html += `<td style="padding:6px; border:1px solid #FCA5A5; text-align:center;">${h.total}</td>`;
+          html += `<td style="padding:6px; border:1px solid #FCA5A5;">${escHtml(h.sucursales.join(', '))}</td></tr>`;
+        }
+        html += '</table>';
+      }
+
+      if (sinTareas.length > 0) {
+        html += `<h4 style="color:#92400E; margin: 12px 0 8px;">⏸ ${sinTareas.length} usuario(s) SIN tareas asignadas:</h4>`;
+        html += '<ul style="margin: 0; padding-left: 20px;">';
+        for (const u of sinTareas) {
+          html += `<li><strong>${escHtml(u.nombre)}</strong> <small style="color:#64748B;">(${escHtml(u.usuario || '')})</small></li>`;
+        }
+        html += '</ul>';
+      }
+
+      html += '<p style="margin-top: 12px; padding: 8px; background:#F0F9FF; border-left:3px solid #0EA5E9; font-size:12px;">';
+      html += '💡 <strong>Cómo arreglar:</strong> edita cada usuario en este panel y pon su <em>nombre</em> exactamente igual al <em>assigned</em> de sus tareas. O al revés: vuelve a generar las tareas con el nombre correcto.';
+      html += '</p></div>';
+
+      Swal.fire({
+        icon: huerfanos.length > 0 ? 'warning' : 'info',
+        title: 'Coherencia nombres ↔ tareas',
+        html,
+        width: 720,
+        confirmButtonColor: '#0F172A'
+      });
+    } catch (e: any) {
+      Swal.fire({ icon: 'error', title: 'Error', text: e?.message || 'No se pudo verificar.', confirmButtonColor: '#0F172A' });
+    }
   }
 
   /**

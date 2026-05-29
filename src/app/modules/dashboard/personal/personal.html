@@ -56,6 +56,14 @@
               placeholder="Buscar por nombre, cargo o sucursal...">
           </div>
           <div class="header-buttons">
+            <button class="btn-secondary" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeAdministrarPersonal"
+              (click)="verificarCoherenciaNombres()" title="Verifica que los nombres de los perfiles coincidan con los de las tareas asignadas">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                style="margin-right: 6px;">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg> 🔍 Verificar nombres
+            </button>
             <button class="btn-secondary" *ngIf="currentUser?.rol === 'admin'"
               (click)="notificarActualizacion()" title="Empuja la versión nueva a todos los dispositivos vía push (después de cada deploy)">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"

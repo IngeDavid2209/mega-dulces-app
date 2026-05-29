@@ -9,7 +9,7 @@ import { RouterModule, Router } from '@angular/router';
 import { Firestore, collection, onSnapshot, query, where } from '@angular/fire/firestore';
 
 import { SidebarComponent } from '../../../shared/sidebar/sidebar';
-import { esAdminGlobal, sucursalesPermitidas, normalizarNombre, esSupervisor } from '../../../shared/permisos.util';
+import { esAdminGlobal, sucursalesPermitidas, esSupervisor, mismoEmpleadoNombre } from '../../../shared/permisos.util';
 
 @Component({
   selector: 'app-home',
@@ -97,14 +97,15 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
     return esSupervisor(u);
   });
 
-  /** Contadores para los tabs (referencia siempre al universo sin filtrar). */
+  /** Contadores para los tabs (referencia siempre al universo sin filtrar).
+   *  Match tolerante: el perfil puede tener apellido extra o de menos respecto a `assigned`. */
   contadorMis = computed(() => {
-    const mi = normalizarNombre(this.currentUser?.nombre);
-    return this.checklistsHoyTodos().filter(c => normalizarNombre(c.assigned) === mi).length;
+    const mi = this.currentUser?.nombre;
+    return this.checklistsHoyTodos().filter(c => mismoEmpleadoNombre(c.assigned, mi)).length;
   });
   contadorEquipo = computed(() => {
-    const mi = normalizarNombre(this.currentUser?.nombre);
-    return this.checklistsHoyTodos().filter(c => normalizarNombre(c.assigned) !== mi).length;
+    const mi = this.currentUser?.nombre;
+    return this.checklistsHoyTodos().filter(c => !mismoEmpleadoNombre(c.assigned, mi)).length;
   });
   contadorTodas = computed(() => this.checklistsHoyTodos().length);
 
@@ -118,9 +119,9 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
     if (!this.puedeFiltrarVista()) return todos;
     const vista = this.vistaTareas();
     if (vista === 'todas') return todos;
-    const mi = normalizarNombre(this.currentUser?.nombre);
-    if (vista === 'mis') return todos.filter(c => normalizarNombre(c.assigned) === mi);
-    return todos.filter(c => normalizarNombre(c.assigned) !== mi);
+    const mi = this.currentUser?.nombre;
+    if (vista === 'mis') return todos.filter(c => mismoEmpleadoNombre(c.assigned, mi));
+    return todos.filter(c => !mismoEmpleadoNombre(c.assigned, mi));
   });
 
   cambiarVistaTareas(v: 'mis' | 'equipo' | 'todas') {
@@ -337,7 +338,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
         // no como trabajador puro (que solo ve sus propias tareas).
         const supervisor = esSupervisor(sesion);
         const esTrabajadorPuro = sesion?.rol === 'trabajador' && !supervisor;
-        const miNombreNorm = normalizarNombre(sesion?.nombre);
+        const miNombre = sesion?.nombre;
 
         let arr: any[] = [];
         snap.forEach(d => {
@@ -348,7 +349,8 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
         const totalCrudo = arr.length;
 
         if (esTrabajadorPuro) {
-          arr = arr.filter(c => normalizarNombre(c.assigned) === miNombreNorm);
+          // Match tolerante: cubre perfiles con apellido extra/de menos vs assigned.
+          arr = arr.filter(c => mismoEmpleadoNombre(c.assigned, miNombre));
         } else if (!esGlobal && permitidas !== null) {
           // admin limitado O supervisor → filtra por sucursales
           arr = arr.filter(c => permitidas.includes(c.store));

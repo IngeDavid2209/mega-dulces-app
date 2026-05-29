@@ -5,7 +5,7 @@ import { RouterModule, ActivatedRoute } from '@angular/router';
 import { Firestore, collection, doc, setDoc, getDoc, deleteDoc, onSnapshot, getDocs, query, where } from '@angular/fire/firestore';
 import * as localforage from 'localforage';
 import Swal from 'sweetalert2';
-import { esAdminGlobal, esAdminLimitado, sucursalesPermitidas, normalizarNombre, esSupervisor } from '../../../shared/permisos.util';
+import { esAdminGlobal, esAdminLimitado, sucursalesPermitidas, esSupervisor, mismoEmpleadoNombre } from '../../../shared/permisos.util';
 import { obtenerSemanaISO, obtenerNombreDia } from '../../../shared/descansos.util';
 import { RobotRutinasV2Service } from '../../../shared/robot-rutinas-v2.service';
 import { RutinaMaestra } from '../../../shared/rutinas.types';
@@ -114,12 +114,12 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     return esSupervisor(u);
   }
   get contadorMisChecklists(): number {
-    const mi = normalizarNombre(this.currentUser?.nombre);
-    return this.checklists().filter(c => normalizarNombre(c.assigned) === mi).length;
+    const mi = this.currentUser?.nombre;
+    return this.checklists().filter(c => mismoEmpleadoNombre(c.assigned, mi)).length;
   }
   get contadorEquipoChecklists(): number {
-    const mi = normalizarNombre(this.currentUser?.nombre);
-    return this.checklists().filter(c => normalizarNombre(c.assigned) !== mi).length;
+    const mi = this.currentUser?.nombre;
+    return this.checklists().filter(c => !mismoEmpleadoNombre(c.assigned, mi)).length;
   }
   get contadorTodasChecklists(): number {
     return this.checklists().length;
@@ -503,11 +503,11 @@ export class ChecklistComponent implements OnInit, OnDestroy {
 
     // 🎯 Filtro por pestaña (Mis / Equipo / Todas). Solo aplica si el usuario
     // puede alternar — para trabajadores puros, la lista ya viene filtrada por
-    // su nombre desde el snapshot.
+    // su nombre desde el snapshot. Match tolerante a apellido extra/de menos.
     if (this.puedeFiltrarVista && this.vistaTareas !== 'todas') {
-      const mi = normalizarNombre(this.currentUser?.nombre);
+      const mi = this.currentUser?.nombre;
       lista = lista.filter(c => {
-        const esMia = normalizarNombre(c.assigned) === mi;
+        const esMia = mismoEmpleadoNombre(c.assigned, mi);
         return this.vistaTareas === 'mis' ? esMia : !esMia;
       });
     }
@@ -561,11 +561,13 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     }
   }
 
-  /** ¿El usuario actual es el dueño del checklist actualmente abierto (tolerante a tildes/espacios)? */
+  /** ¿El usuario actual es el dueño del checklist actualmente abierto?
+   *  Match tolerante a tildes/espacios/apellido extra (para que Jorge Alberto
+   *  Duarte Vazquez pueda editar tareas asignadas a Jorge Alberto Duarte). */
   esElDueno(): boolean {
     const cs = this.checklistSeleccionado();
     if (!cs) return false;
-    return normalizarNombre(this.currentUser?.nombre) === normalizarNombre(cs.assigned);
+    return mismoEmpleadoNombre(this.currentUser?.nombre, cs.assigned);
   }
 
   /** ¿Puede editar el checklist actual? (es el dueño y no se ha enviado). */
@@ -809,10 +811,11 @@ export class ChecklistComponent implements OnInit, OnDestroy {
         );
         this.checklists.set(listasDeMisSucursales);
       } else {
-        // Trabajador puro (sin sucursales): solo sus propios checklists asignados
-        // 🔥 Comparación tolerante a tildes/espacios/casing
-        const miNombreNorm = normalizarNombre(this.currentUser?.nombre);
-        const misListas = listasFinales.filter((c: any) => normalizarNombre(c.assigned) === miNombreNorm);
+        // Trabajador puro (sin sucursales): solo sus propios checklists asignados.
+        // 🔥 Match tolerante: tildes/espacios/casing + apellido extra/de menos
+        // (perfil "Jorge Alberto Duarte Vazquez" matchea assigned "Jorge Alberto Duarte").
+        const miNombre = this.currentUser?.nombre;
+        const misListas = listasFinales.filter((c: any) => mismoEmpleadoNombre(c.assigned, miNombre));
         this.checklists.set(misListas);
         const pendientesActuales = misListas.filter((c: any) => c.status !== 'completo' && c.enviado !== true).length;
         if (this.cantidadPendientesAnterior !== -1 && pendientesActuales > this.cantidadPendientesAnterior) {

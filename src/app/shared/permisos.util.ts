@@ -107,3 +107,29 @@ export function esMismoTrabajador(currentUser: any, otroNombre: string | undefin
   if (!currentUser?.nombre || !otroNombre) return false;
   return normalizarNombre(currentUser.nombre) === normalizarNombre(otroNombre);
 }
+
+/**
+ * Comparación tolerante de nombres: considera "la misma persona" si:
+ *   - Son idénticos tras normalizar, O
+ *   - Uno es prefijo exacto del otro (terminando en frontera de palabra) y
+ *     comparten al menos 2 palabras (nombre + apellido).
+ *
+ * Esto cubre los casos de perfiles desincronizados con las tareas:
+ *   - Perfil "Carolina Guzman"        vs assigned "Carolina Guzman Ruiz"     → match
+ *   - Perfil "Jorge Alberto Duarte V" vs assigned "Jorge Alberto Duarte"     → match
+ *   - Perfil "Carolina Lopez"         vs assigned "Carolina Guzman"          → NO match
+ *   - Perfil "Brenda Oceguera"        vs assigned "Benda Margarita"          → NO match
+ *
+ * Úsalo solo para FILTRADO/CONTEO (Mis tareas, lista del trabajador puro).
+ * Para guardar/asignar usa siempre el `nombre` exacto del perfil.
+ */
+export function mismoEmpleadoNombre(a: string | undefined | null, b: string | undefined | null): boolean {
+  const na = normalizarNombre(a);
+  const nb = normalizarNombre(b);
+  if (!na || !nb) return false;
+  if (na === nb) return true;
+  const corto = na.length < nb.length ? na : nb;
+  const largo = na.length < nb.length ? nb : na;
+  if (!largo.startsWith(corto + ' ')) return false;
+  return corto.split(' ').filter(Boolean).length >= 2;
+}

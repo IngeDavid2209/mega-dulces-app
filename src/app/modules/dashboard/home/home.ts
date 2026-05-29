@@ -28,6 +28,10 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
   areas      = signal<any[]>([]);
   usuarios   = signal<any[]>([]);
   horaActual = signal<Date>(new Date());
+
+  // 🎯 Tabs: separa tareas propias del admin/supervisor de las del equipo.
+  // Para trabajador puro siempre es 'mis' (ya no ve nada más).
+  vistaTareas = signal<'mis' | 'equipo' | 'todas'>('todas');
  
   private firestore = inject(Firestore);
   private router    = inject(Router);
@@ -80,9 +84,48 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
   totalEmpleados       = computed(() => this.usuarios().filter(u => u.rol !== 'admin').length);
   totalChecklistsHoy   = computed(() => this.checklistsHoy().length);
  
-  checklistsHoy = computed(() =>
+  /** Todos los checklists de hoy (sin filtro de tabs). Base para contadores. */
+  checklistsHoyTodos = computed(() =>
     this.checklists().filter(c => c.date === this.hoyISO())
   );
+
+  /** ¿Puede el usuario alternar entre Mis/Equipo/Todas? Admins y supervisores sí. */
+  puedeFiltrarVista = computed(() => {
+    const u = this.currentUser;
+    if (!u) return false;
+    if (u.rol === 'admin') return true;
+    return esSupervisor(u);
+  });
+
+  /** Contadores para los tabs (referencia siempre al universo sin filtrar). */
+  contadorMis = computed(() => {
+    const mi = normalizarNombre(this.currentUser?.nombre);
+    return this.checklistsHoyTodos().filter(c => normalizarNombre(c.assigned) === mi).length;
+  });
+  contadorEquipo = computed(() => {
+    const mi = normalizarNombre(this.currentUser?.nombre);
+    return this.checklistsHoyTodos().filter(c => normalizarNombre(c.assigned) !== mi).length;
+  });
+  contadorTodas = computed(() => this.checklistsHoyTodos().length);
+
+  /**
+   * Checklists de hoy filtrados por la pestaña activa.
+   * Los KPI y rankings consumen este computed, así que el toggle afecta TODO
+   * el dashboard (pendientes, completadas, cumplimiento, top empleados, etc.).
+   */
+  checklistsHoy = computed(() => {
+    const todos = this.checklistsHoyTodos();
+    if (!this.puedeFiltrarVista()) return todos;
+    const vista = this.vistaTareas();
+    if (vista === 'todas') return todos;
+    const mi = normalizarNombre(this.currentUser?.nombre);
+    if (vista === 'mis') return todos.filter(c => normalizarNombre(c.assigned) === mi);
+    return todos.filter(c => normalizarNombre(c.assigned) !== mi);
+  });
+
+  cambiarVistaTareas(v: 'mis' | 'equipo' | 'todas') {
+    this.vistaTareas.set(v);
+  }
  
   totalTareasHoy = computed(() =>
     this.checklistsHoy().reduce((acc, c) => acc + (c.items?.length || 0), 0)

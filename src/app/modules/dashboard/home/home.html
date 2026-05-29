@@ -58,7 +58,32 @@
           </div>
         </div>
       </section>
- 
+
+      <!-- 🎯 Tabs: Mis tareas / Equipo / Todas (solo admin o supervisor) -->
+      <section class="vista-tabs" *ngIf="puedeFiltrarVista()">
+        <button class="vista-tab"
+                [class.vista-tab-active]="vistaTareas() === 'mis'"
+                (click)="cambiarVistaTareas('mis')">
+          <span class="vista-tab-icon">👤</span>
+          Mis tareas
+          <span class="vista-tab-badge">{{ contadorMis() }}</span>
+        </button>
+        <button class="vista-tab"
+                [class.vista-tab-active]="vistaTareas() === 'equipo'"
+                (click)="cambiarVistaTareas('equipo')">
+          <span class="vista-tab-icon">👥</span>
+          Equipo
+          <span class="vista-tab-badge">{{ contadorEquipo() }}</span>
+        </button>
+        <button class="vista-tab"
+                [class.vista-tab-active]="vistaTareas() === 'todas'"
+                (click)="cambiarVistaTareas('todas')">
+          <span class="vista-tab-icon">📋</span>
+          Todas
+          <span class="vista-tab-badge">{{ contadorTodas() }}</span>
+        </button>
+      </section>
+
       <!-- KPIs detallados -->
       <section class="kpi-grid">
         <div class="kpi-card">

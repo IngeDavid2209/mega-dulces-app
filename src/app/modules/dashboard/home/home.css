@@ -651,3 +651,58 @@
   .rank-sub  { font-size: 11px; }
   .rank-pct  { font-size: 13px; min-width: 42px; }
 }
+/* ===================== TABS Mis / Equipo / Todas ===================== */
+.vista-tabs {
+  display: flex;
+  gap: 8px;
+  margin: 0 0 18px 0;
+  flex-wrap: wrap;
+}
+.vista-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border: 1.5px solid #E2E8F0;
+  background: #FFFFFF;
+  border-radius: 999px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+  color: #475569;
+  transition: all 0.18s ease;
+}
+.vista-tab:hover {
+  border-color: #1E3A8A;
+  color: #1E3A8A;
+  transform: translateY(-1px);
+}
+.vista-tab-active {
+  background: linear-gradient(135deg, #1E3A8A, #3B82F6);
+  border-color: #1E3A8A;
+  color: #FFFFFF;
+  box-shadow: 0 4px 12px rgba(30, 58, 138, 0.25);
+}
+.vista-tab-icon { font-size: 16px; line-height: 1; }
+.vista-tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 7px;
+  background: rgba(0, 0, 0, 0.08);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  color: inherit;
+}
+.vista-tab-active .vista-tab-badge {
+  background: rgba(255, 255, 255, 0.25);
+  color: #FFFFFF;
+}
+@media (max-width: 600px) {
+  .vista-tab { padding: 8px 12px; font-size: 13px; gap: 6px; }
+  .vista-tab-icon { font-size: 14px; }
+  .vista-tab-badge { min-width: 20px; height: 20px; font-size: 11px; }
+}

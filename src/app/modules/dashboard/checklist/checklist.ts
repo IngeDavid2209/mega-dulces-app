@@ -102,6 +102,29 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   empleados = signal<any[]>([]);
   sucursalesDisponibles = signal<string[]>([]);
 
+  // 🎯 Tab activo (Mis / Equipo / Todas). Solo aplica a admin o supervisor;
+  // un trabajador puro ya ve solo lo suyo.
+  vistaTareas: 'mis' | 'equipo' | 'todas' = 'todas';
+  cambiarVistaTareas(v: 'mis' | 'equipo' | 'todas') { this.vistaTareas = v; }
+
+  get puedeFiltrarVista(): boolean {
+    const u = this.currentUser;
+    if (!u) return false;
+    if (u.rol === 'admin') return true;
+    return esSupervisor(u);
+  }
+  get contadorMisChecklists(): number {
+    const mi = normalizarNombre(this.currentUser?.nombre);
+    return this.checklists().filter(c => normalizarNombre(c.assigned) === mi).length;
+  }
+  get contadorEquipoChecklists(): number {
+    const mi = normalizarNombre(this.currentUser?.nombre);
+    return this.checklists().filter(c => normalizarNombre(c.assigned) !== mi).length;
+  }
+  get contadorTodasChecklists(): number {
+    return this.checklists().length;
+  }
+
   // ============================================================================
   //  🧙 WIZARD DE TAREAS ÚNICAS (Modo Asistido para adultos mayores)
   // ============================================================================
@@ -476,13 +499,29 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   }
 
   get checklistsFiltrados() {
-    if (!this.terminoBusquedaChecklist.trim()) return this.checklists();
-    const termino = this.terminoBusquedaChecklist.toLowerCase();
-    return this.checklists().filter(c =>
-      c.name?.toLowerCase().includes(termino) ||
-      c.assigned?.toLowerCase().includes(termino) ||
-      c.store?.toLowerCase().includes(termino)
-    );
+    let lista = this.checklists();
+
+    // 🎯 Filtro por pestaña (Mis / Equipo / Todas). Solo aplica si el usuario
+    // puede alternar — para trabajadores puros, la lista ya viene filtrada por
+    // su nombre desde el snapshot.
+    if (this.puedeFiltrarVista && this.vistaTareas !== 'todas') {
+      const mi = normalizarNombre(this.currentUser?.nombre);
+      lista = lista.filter(c => {
+        const esMia = normalizarNombre(c.assigned) === mi;
+        return this.vistaTareas === 'mis' ? esMia : !esMia;
+      });
+    }
+
+    // 🔍 Filtro por búsqueda libre (texto en nombre/empleado/sucursal).
+    const termino = this.terminoBusquedaChecklist.trim().toLowerCase();
+    if (termino) {
+      lista = lista.filter(c =>
+        c.name?.toLowerCase().includes(termino) ||
+        c.assigned?.toLowerCase().includes(termino) ||
+        c.store?.toLowerCase().includes(termino)
+      );
+    }
+    return lista;
   }
 
   mostrarToast(mensaje: string) {

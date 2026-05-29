@@ -69,13 +69,6 @@
           <span class="vista-tab-badge">{{ contadorMis() }}</span>
         </button>
         <button class="vista-tab"
-                [class.vista-tab-active]="vistaTareas() === 'equipo'"
-                (click)="cambiarVistaTareas('equipo')">
-          <span class="vista-tab-icon">👥</span>
-          Equipo
-          <span class="vista-tab-badge">{{ contadorEquipo() }}</span>
-        </button>
-        <button class="vista-tab"
                 [class.vista-tab-active]="vistaTareas() === 'todas'"
                 (click)="cambiarVistaTareas('todas')">
           <span class="vista-tab-icon">📋</span>

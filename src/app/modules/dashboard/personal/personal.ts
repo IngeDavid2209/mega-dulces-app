@@ -593,6 +593,53 @@ export class PersonalComponent implements OnInit, OnDestroy {
   }
 
   /**
+   * Migración de cargos de Prevención: renombra "Auxiliar Prevención" →
+   * "Auxiliar de Prevención" y "Coordinador Prevención" → "Coordinador de Prevención"
+   * en los perfiles que aún tengan el valor antiguo. Para correr una sola vez.
+   */
+  async migrarCargosPrevencion() {
+    if (this.currentUser?.rol !== 'admin') {
+      Swal.fire({ icon: 'error', title: 'Solo administradores', text: 'No tienes permiso para esta acción.', confirmButtonColor: '#0F172A' });
+      return;
+    }
+    const mapa: Record<string, string> = {
+      'Auxiliar Prevención': 'Auxiliar de Prevención',
+      'Coordinador Prevención': 'Coordinador de Prevención'
+    };
+    const pendientes = this.usuarios().filter(u => mapa[u.cargo]);
+    if (pendientes.length === 0) {
+      Swal.fire({ icon: 'success', title: 'Nada que migrar', text: 'Todos los cargos de Prevención ya están actualizados.', confirmButtonColor: '#0F172A' });
+      return;
+    }
+    const listaHtml = pendientes.map(u =>
+      `<tr><td style="padding:4px 8px;text-align:left">${u.nombre}</td><td style="padding:4px 8px;color:#94a3b8">${u.cargo}</td><td style="padding:4px 8px;color:#10B981">→ ${mapa[u.cargo]}</td></tr>`
+    ).join('');
+    const confirma = await Swal.fire({
+      title: `Migrar ${pendientes.length} cargo(s)`,
+      html: `<table style="margin:0 auto;font-size:13px">${listaHtml}</table>`,
+      icon: 'question', showCancelButton: true,
+      confirmButtonText: 'Migrar', cancelButtonText: 'Cancelar', confirmButtonColor: '#0F172A',
+      width: 600
+    });
+    if (!confirma.isConfirmed) return;
+
+    let ok = 0, fail = 0;
+    for (const u of pendientes) {
+      const docId = u.uid || u.idFirestore;
+      if (!docId) { fail++; continue; }
+      try {
+        await setDoc(doc(this.firestore, 'usuarios', docId), { cargo: mapa[u.cargo] }, { merge: true });
+        ok++;
+      } catch { fail++; }
+    }
+    Swal.fire({
+      icon: 'success', title: 'Migración completada',
+      html: `Actualizados: <strong>${ok}</strong>${fail > 0 ? `<br>Errores: <strong style="color:#EF4444">${fail}</strong>` : ''}`,
+      confirmButtonColor: '#0F172A'
+    });
+  }
+
+  /**
    * 🔍 Verifica coherencia entre los nombres de los usuarios y los nombres
    * que aparecen en el campo `assigned` de los checklists activos.
    *

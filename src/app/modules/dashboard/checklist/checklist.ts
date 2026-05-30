@@ -761,16 +761,29 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     const offset = new Date().getTimezoneOffset() * 60000;
     const fechaHoyLocal = new Date(Date.now() - offset).toISOString().split('T')[0];
 
+    // 🔒 Lee la sesión actualizada desde localStorage en CADA snapshot. Si solo
+    // usamos `this.currentUser` (que se setea una vez en ngOnInit), una persona
+    // que cambió permisos vería el filtro viejo hasta que cierre sesión y vuelva.
+    // Mismo patrón que home.ts.
+    const leerSesion = (): any => {
+      try { return JSON.parse(localStorage.getItem('md_sesion_actual') || 'null'); }
+      catch { return null; }
+    };
+
     const checklistsRef = collection(this.firestore, 'checklists');
     const checklistsQuery = query(checklistsRef, where('date', '>=', fechaHoyLocal));
     const radarChecklists = onSnapshot(checklistsQuery, (snapshot) => {
       const todasLasListas: any[] = [];
+      let descartadosEnviados = 0;
+      let descartadosEliminados = 0;
+      let descartadosFecha = 0;
 
       snapshot.forEach(docSnap => {
         const c = docSnap.data() as any;
-        if (c.eliminado === true || c.enviado === true) return;
+        if (c.eliminado === true) { descartadosEliminados++; return; }
+        if (c.enviado === true)   { descartadosEnviados++; return; }
         // Solo HOY: el query trae hoy en adelante; aquí excluimos cualquier fecha futura.
-        if (c.date !== fechaHoyLocal) return;
+        if (c.date !== fechaHoyLocal) { descartadosFecha++; return; }
         // 🔢 Progreso real: una tarea cuenta como completa solo si TIENE su evidencia
         // (foto / antes+después / varias fotos) o, si no pide evidencia, si está palomeada.
         // Antes se contaba con i.checked y daba 100% sin haber subido nada.
@@ -796,34 +809,48 @@ export class ChecklistComponent implements OnInit, OnDestroy {
         return b.timestampCreacion - a.timestampCreacion;
       });
 
-      if (esAdminGlobal(this.currentUser)) {
-        // Admin global: ve TODOS los checklists
-        this.checklists.set(listasFinales);
-      } else if (esAdminLimitado(this.currentUser)) {
-        // Admin limitado: ve checklists de sus sucursales asignadas
-        const permitidas = sucursalesPermitidas(this.currentUser) ?? [];
-        const listasDeMisSucursales = listasFinales.filter(
-          (c: any) => permitidas.includes(c.store)
-        );
-        this.checklists.set(listasDeMisSucursales);
-      } else if (esSupervisor(this.currentUser)) {
-        // 👷‍♀️ Encargada/supervisora (trabajador con sucursales): ve TODAS las
-        // tareas de sus sucursales (las suyas + las de su equipo), no solo las
-        // suyas personales. Antes solo veía las que el nombre empataba exacto,
-        // y muchas veces no empataba → no veía nada.
-        const permitidas = sucursalesPermitidas(this.currentUser) ?? [];
-        const listasDeMisSucursales = listasFinales.filter(
-          (c: any) => permitidas.includes(c.store)
-        );
-        this.checklists.set(listasDeMisSucursales);
+      // Recalculamos permisos cada vez desde la sesión FRESCA en localStorage
+      // (currentUser podría estar viejo si el admin le cambió permisos).
+      const sesion = leerSesion() || this.currentUser;
+      const esGlobal = esAdminGlobal(sesion);
+      const esLimitado = esAdminLimitado(sesion);
+      const supervisor = esSupervisor(sesion);
+      const permitidas = sucursalesPermitidas(sesion);
+      const esTrabajadorPuro = sesion?.rol === 'trabajador' && !supervisor;
+
+      let resultado: any[];
+      let rama: string;
+      if (esGlobal) {
+        rama = 'admin-global';
+        resultado = listasFinales;
+      } else if (esLimitado) {
+        rama = 'admin-limitado';
+        resultado = listasFinales.filter((c: any) => (permitidas ?? []).includes(c.store));
+      } else if (supervisor) {
+        rama = 'supervisor';
+        resultado = listasFinales.filter((c: any) => (permitidas ?? []).includes(c.store));
       } else {
-        // Trabajador puro (sin sucursales): solo sus propios checklists asignados.
+        rama = 'trabajador-puro';
         // 🔥 Match tolerante: tildes/espacios/casing + apellido extra/de menos
         // (perfil "Jorge Alberto Duarte Vazquez" matchea assigned "Jorge Alberto Duarte").
-        const miNombre = this.currentUser?.nombre;
-        const misListas = listasFinales.filter((c: any) => mismoEmpleadoNombre(c.assigned, miNombre));
-        this.checklists.set(misListas);
-        const pendientesActuales = misListas.filter((c: any) => c.status !== 'completo' && c.enviado !== true).length;
+        const miNombre = sesion?.nombre;
+        resultado = listasFinales.filter((c: any) => mismoEmpleadoNombre(c.assigned, miNombre));
+      }
+
+      this.checklists.set(resultado);
+
+      // 🐛 DEBUG para diagnosticar por qué un usuario ve 0 tareas.
+      console.log('[DBG checklist]', {
+        usuario: sesion?.usuario, nombre: sesion?.nombre, rol: sesion?.rol,
+        alcance: sesion?.alcance, sucursales: sesion?.sucursales,
+        rama, descartadosEliminados, descartadosEnviados, descartadosFecha,
+        crudoTrasFiltro: listasFinales.length, resultadoFinal: resultado.length,
+        primerosAssigned: resultado.slice(0, 3).map((c: any) => c.assigned),
+        crudoAssigned: listasFinales.slice(0, 5).map((c: any) => `${c.assigned}@${c.store}`)
+      });
+
+      if (esTrabajadorPuro) {
+        const pendientesActuales = resultado.filter((c: any) => c.status !== 'completo' && c.enviado !== true).length;
         if (this.cantidadPendientesAnterior !== -1 && pendientesActuales > this.cantidadPendientesAnterior) {
           this.lanzarNotificacionInmediata();
         }

@@ -784,21 +784,22 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       // 🩺 Diagnóstico: guarda los assigned de TODO lo que existe hoy (incluye
       // enviados/eliminados), separado por motivo. Permite ver si el checklist
       // del usuario existe pero quedó marcado como enviado/eliminado.
-      const muestraEnviados: string[] = [];
-      const muestraEliminados: string[] = [];
+      const muestraEnviados: { id: string; assigned: string; name: string }[] = [];
+      const muestraEliminados: { id: string; assigned: string; name: string }[] = [];
       const todosAssignedHoy = new Set<string>();
 
       snapshot.forEach(docSnap => {
         const c = docSnap.data() as any;
+        const docId = docSnap.id;
         if (c.date === fechaHoyLocal && c.assigned) todosAssignedHoy.add(c.assigned);
         if (c.eliminado === true) {
           descartadosEliminados++;
-          if (c.assigned) muestraEliminados.push(`${c.assigned}: ${c.name}`);
+          if (c.assigned) muestraEliminados.push({ id: docId, assigned: c.assigned, name: c.name });
           return;
         }
         if (c.enviado === true) {
           descartadosEnviados++;
-          if (c.assigned) muestraEnviados.push(`${c.assigned}: ${c.name}`);
+          if (c.assigned) muestraEnviados.push({ id: docId, assigned: c.assigned, name: c.name });
           return;
         }
         // Solo HOY: el query trae hoy en adelante; aquí excluimos cualquier fecha futura.
@@ -873,8 +874,8 @@ export class ChecklistComponent implements OnInit, OnDestroy {
         // Lista única de empleados con tareas hoy (en cualquier estado)
         empleadosConTareasHoy: Array.from(todosAssignedHoy).sort(),
         // ¿Existen tareas para este usuario en otros estados?
-        misEnviadosHoy: muestraEnviados.filter(s => matcheaUsuario(s.split(':')[0])),
-        misEliminadosHoy: muestraEliminados.filter(s => matcheaUsuario(s.split(':')[0])),
+        misEnviadosHoy: muestraEnviados.filter(x => matcheaUsuario(x.assigned)),
+        misEliminadosHoy: muestraEliminados.filter(x => matcheaUsuario(x.assigned)),
         primerosAssigned: resultado.slice(0, 3).map((c: any) => c.assigned),
         crudoAssignedMuestra: listasFinales.slice(0, 10).map((c: any) => `${c.assigned}@${c.store} [${c.date}]`)
       };
@@ -1216,11 +1217,19 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       ? d.empleadosConTareasHoy.map((s: string) => `<li style="font-size:11px;color:#475569">${s}</li>`).join('')
       : '<li style="color:#94a3b8">(no se encontraron empleados con tareas hoy)</li>';
     const misEnviados = (d.misEnviadosHoy && d.misEnviadosHoy.length)
-      ? `<ul style="padding-left:18px;margin:4px 0">${d.misEnviadosHoy.map((s: string) => `<li style="font-size:11px;color:#F59E0B">${s}</li>`).join('')}</ul>`
+      ? `<ul style="padding-left:18px;margin:4px 0">${d.misEnviadosHoy.map((x: any) => `<li style="font-size:11px;color:#F59E0B">${x.assigned}: ${x.name}</li>`).join('')}</ul>`
       : '<div style="color:#94a3b8;font-size:12px;padding-left:8px">— ninguno —</div>';
     const misEliminados = (d.misEliminadosHoy && d.misEliminadosHoy.length)
-      ? `<ul style="padding-left:18px;margin:4px 0">${d.misEliminadosHoy.map((s: string) => `<li style="font-size:11px;color:#EF4444">${s}</li>`).join('')}</ul>`
+      ? `<ul style="padding-left:18px;margin:4px 0">${d.misEliminadosHoy.map((x: any) => `<li style="font-size:11px;color:#EF4444">${x.assigned}: ${x.name}</li>`).join('')}</ul>`
       : '<div style="color:#94a3b8;font-size:12px;padding-left:8px">— ninguno —</div>';
+    // Botón "Reabrir" solo si hay mis tareas marcadas como enviadas y el usuario
+    // es admin o es el propio dueño de las tareas.
+    const puedeReabrir = (d.misEnviadosHoy && d.misEnviadosHoy.length > 0) &&
+      (this.currentUser?.rol === 'admin' ||
+       mismoEmpleadoNombre(this.currentUser?.nombre, d.misEnviadosHoy[0].assigned));
+    const botonReabrir = puedeReabrir
+      ? `<button id="btn-reabrir-misenviados" style="margin-top:10px;background:#F59E0B;color:white;border:none;padding:10px 18px;border-radius:8px;font-weight:600;cursor:pointer">🔓 Reabrir mis ${d.misEnviadosHoy.length} tarea(s) marcadas como enviadas</button>`
+      : '';
     const html = `
       <div style="text-align:left;font-size:13px;line-height:1.55">
         <div><strong>Usuario:</strong> ${d.usuario || '(vacío)'}</div>
@@ -1242,6 +1251,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
         <hr style="margin:10px 0">
         <div style="color:#F59E0B"><strong>🚨 Mis tareas marcadas como ENVIADAS hoy:</strong></div>
         ${misEnviados}
+        ${botonReabrir}
         <div style="color:#EF4444;margin-top:6px"><strong>🚨 Mis tareas marcadas como ELIMINADAS hoy:</strong></div>
         ${misEliminados}
         <hr style="margin:10px 0">
@@ -1254,7 +1264,49 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     `;
     Swal.fire({
       title: '🩺 Diagnóstico del filtro',
-      html, width: 560, confirmButtonText: 'Cerrar', confirmButtonColor: '#0F172A'
+      html, width: 560, confirmButtonText: 'Cerrar', confirmButtonColor: '#0F172A',
+      didOpen: () => {
+        const btn = document.getElementById('btn-reabrir-misenviados');
+        if (btn) {
+          btn.addEventListener('click', () => {
+            Swal.close();
+            this.reabrirMisTareasEnviadas();
+          });
+        }
+      }
+    });
+  }
+
+  /**
+   * Pone `enviado: false` en los checklists de hoy que están marcados como
+   * enviados Y son del usuario actual (o de cualquiera si es admin). Resuelve
+   * el caso en que se envió un checklist sin completar todas las tareas y el
+   * trabajador queda sin poder verlas.
+   */
+  async reabrirMisTareasEnviadas() {
+    const d = this.ultimoDiagnostico;
+    if (!d || !Array.isArray(d.misEnviadosHoy) || d.misEnviadosHoy.length === 0) return;
+    const lista = d.misEnviadosHoy as { id: string; assigned: string; name: string }[];
+    const itemsHtml = lista.map(x => `<li style="text-align:left;font-size:13px">${x.name}</li>`).join('');
+    const confirma = await Swal.fire({
+      title: `¿Reabrir ${lista.length} tarea(s)?`,
+      html: `<div>Se desmarcarán como enviadas y volverán a aparecer en el Checklist del día:</div><ul style="padding-left:18px;margin:8px 0">${itemsHtml}</ul>`,
+      icon: 'question', showCancelButton: true,
+      confirmButtonText: 'Sí, reabrir', cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#F59E0B'
+    });
+    if (!confirma.isConfirmed) return;
+    let ok = 0, fail = 0;
+    for (const item of lista) {
+      try {
+        await setDoc(doc(this.firestore, 'checklists', item.id), { enviado: false }, { merge: true });
+        ok++;
+      } catch (e) { console.error('[reabrirMisTareasEnviadas]', e); fail++; }
+    }
+    Swal.fire({
+      icon: 'success', title: 'Tareas reabiertas',
+      html: `Reabiertas: <strong>${ok}</strong>${fail > 0 ? `<br>Errores: <strong style="color:#EF4444">${fail}</strong>` : ''}<br><br>Recarga la pantalla para verlas.`,
+      confirmButtonColor: '#0F172A'
     });
   }
 

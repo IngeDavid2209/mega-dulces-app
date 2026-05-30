@@ -109,7 +109,7 @@
 
                 <button class="btn-delete-icon"
                   *ngIf="currentUser?.rol === 'admin' || checklist.createdBy === currentUser?.nombre"
-                  (click)="editarBloqueRutinas(checklist, $event)" title="Editar Rutinas"
+                  (click)="editarChecklist(checklist, $event)" title="Editar"
                   style="color: #3B82F6; background: #EFF6FF;">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
@@ -939,11 +939,7 @@
             <input class="wizard-input wizard-input-big" type="text"
                    [(ngModel)]="formNameRutina"
                    placeholder="Escribe el nombre aquí..."
-                   [disabled]="isEditMode"
                    autofocus>
-            <p class="wizard-hint" *ngIf="isEditMode" style="margin-top:8px; color:#94A3B8;">
-              El nombre no se puede cambiar en modo edición.
-            </p>
           </div>
 
           <!-- PASO 2 — SUCURSAL -->
@@ -955,7 +951,7 @@
               <button type="button" class="wizard-sucursal-card"
                       *ngFor="let suc of sucursalesDisponibles()"
                       [class.selected]="formStoreRutina === suc"
-                      (click)="!isEditMode && (formStoreRutina = suc); !isEditMode && (formAssignedRutina = [])">
+                      (click)="formStoreRutina = suc; formAssignedRutina = []">
                 <div class="wizard-sucursal-icon">🏪</div>
                 <div class="wizard-sucursal-nombre">{{ suc }}</div>
                 <svg *ngIf="formStoreRutina === suc" class="wizard-sucursal-check" width="22" height="22" viewBox="0 0 24 24"
@@ -985,7 +981,6 @@
               <button type="button" class="wizard-empleado-card"
                       *ngFor="let emp of empleadosFiltradosWizardRutina"
                       [class.selected]="formAssignedRutina.includes(emp.nombre)"
-                      [disabled]="isEditMode"
                       (click)="toggleEmpleadoRutina(emp.nombre)">
                 <div class="wizard-empleado-avatar">{{ emp.nombre.charAt(0) | uppercase }}</div>
                 <div class="wizard-empleado-nombre">{{ emp.nombre }}</div>
@@ -1002,7 +997,7 @@
               😕 No hay personas asignadas a esta sucursal.
             </div>
 
-            <div class="wizard-helper-row" *ngIf="empleadosFiltradosWizardRutina.length > 0 && !isEditMode">
+            <div class="wizard-helper-row" *ngIf="empleadosFiltradosWizardRutina.length > 0">
               <button type="button" class="wizard-link" (click)="asignarATodoMiPersonalRutina()">
                 🚀 Seleccionar a todos
               </button>

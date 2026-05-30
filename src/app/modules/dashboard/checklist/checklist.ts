@@ -33,6 +33,8 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   nuevaFaseIntegranteTexto: string = '';
   isMenuOpen = false;
   isEditandoTarea = false;
+  // ID del doc de checklist que se está editando (modo edición de Tarea Única).
+  editandoChecklistId: string | null = null;
   toggleMenu() { this.isMenuOpen = !this.isMenuOpen; }
   pasoEquipo = 1;
   nombreTareaEquipo = '';
@@ -78,6 +80,10 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   }];
   isModalRutinasOpen = false;
   isEditMode = false;
+  // 📝 Originales antes de editar — para poder borrar el molde viejo aunque
+  // el admin cambie el nombre o el asignado en el modal de edición.
+  formNameRutinaOriginal = '';
+  formAssignedRutinaOriginal = '';
   formNameRutina = '';
   formAssignedRutina: string[] = [];
   formStoreRutina = '';
@@ -1069,37 +1075,80 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     // bundle. Ahora exige rol de administrador. La protección real vive en las
     // Firestore Security Rules (Fase 2).
     if (this.currentUser?.rol !== 'admin') { alert(' ⚠️ Solo un administrador puede eliminar checklists.'); return; }
-    const confirmar = confirm(` ⚠️ ¿Borrar "${this.checklistToDelete.name}" y sus duplicados?`);
+    const confirmar = confirm(` ⚠️ ¿Borrar "${this.checklistToDelete.name}" definitivamente?\n\nLa rutina dejará de generarse en días futuros.`);
     if (confirmar) {
       try {
-        const targetName = this.checklistToDelete.name.replace(/ \( (Diaria|Semanal|Catorcenal|Mensual|Trimestral) \) $/, "");
-        const targetAssigned = this.checklistToDelete.assigned;
+        const checklist = this.checklistToDelete;
+        const targetName = checklist.name.replace(/ \((Diaria|Semanal|Catorcenal|Mensual|Trimestral)\)$/, '').trim();
+        const targetAssigned = checklist.assigned;
+
+        // 1) Soft-delete de TODOS los checklists ya generados con este nombre+assigned.
         const checklistsRef = collection(this.firestore, 'checklists');
         const chkSnap = await getDocs(checklistsRef);
-        chkSnap.forEach(async (cDoc) => {
-          const cData = cDoc.data();
-          if (cData['name'].startsWith(targetName) && cData['assigned'] === targetAssigned) {
+        for (const cDoc of chkSnap.docs) {
+          const cData = cDoc.data() as any;
+          if ((cData.name || '').startsWith(targetName) && cData.assigned === targetAssigned) {
             await setDoc(doc(this.firestore, 'checklists', cDoc.id), { eliminado: true }, { merge: true });
           }
-        });
+        }
+
+        // 2) Borrado físico del molde V1.
         const moldesRef = collection(this.firestore, 'moldes_checklists');
         const moldesSnap = await getDocs(moldesRef);
-        moldesSnap.forEach(async (mDoc) => {
-          const mData = mDoc.data();
-          if (targetName.includes(mData['name']) && mData['assigned'] === targetAssigned) {
+        for (const mDoc of moldesSnap.docs) {
+          const mData = mDoc.data() as any;
+          if (targetName.includes(mData.name) && mData.assigned === targetAssigned) {
             await deleteDoc(doc(this.firestore, 'moldes_checklists', mDoc.id));
           }
-        });
-        alert(' 🗑️ Checklist eliminado.');
-      } catch (error) { alert(' ❌ Error al eliminar.'); }
+        }
+
+        // 3) 🔥 Desactivar la asignación V2 para que el Robot V2 deje de regenerar.
+        // Antes este paso faltaba: por eso al día siguiente reaparecía la rutina.
+        // - Si la asignación es porPersonas con varios empleados, sacamos SOLO a
+        //   este empleado (no rompemos las tareas de los demás).
+        // - Si queda con 0 empleados, o es porRol, marcamos `activa: false`.
+        if (checklist._v2 && checklist._asignacionId) {
+          const asigRef = doc(this.firestore, 'asignaciones_rutinas', checklist._asignacionId);
+          const asigSnap = await getDoc(asigRef);
+          if (asigSnap.exists()) {
+            const a = asigSnap.data() as any;
+            if (a.modoAsignacion === 'porPersonas' && Array.isArray(a.empleadosNombres)) {
+              const sinEste = a.empleadosNombres.filter((n: string) => n !== targetAssigned);
+              if (sinEste.length > 0) {
+                await setDoc(asigRef, { empleadosNombres: sinEste }, { merge: true });
+              } else {
+                await setDoc(asigRef, { activa: false, empleadosNombres: [] }, { merge: true });
+              }
+            } else {
+              await setDoc(asigRef, { activa: false }, { merge: true });
+            }
+          }
+        }
+
+        alert(' 🗑️ Tarea/rutina eliminada definitivamente.');
+      } catch (error) {
+        console.error('[confirmarEliminacion]', error);
+        alert(' ❌ Error al eliminar.');
+      }
     }
     this.cerrarPasswordModal();
+  }
+
+  /**
+   * Decide qué flujo de edición abrir según el tipo de checklist.
+   * - Si el nombre termina en `(Diaria)`, `(Semanal)`, etc. → es rutina → editor de rutinas.
+   * - En cualquier otro caso → editor de Tarea Única.
+   */
+  editarChecklist(checklist: any, event: Event) {
+    const esRutina = /\((Diaria|Semanal|Catorcenal|Mensual|Trimestral)\)$/.test(checklist?.name || '');
+    if (esRutina) this.editarBloqueRutinas(checklist, event);
+    else this.editarTareaUnica(checklist, event);
   }
 
   async editarBloqueRutinas(checklist: any, event: Event) {
     event.stopPropagation();
     this.isEditMode = true;
-    const targetName = checklist.name.replace(/ \( (Diaria|Semanal|Catorcenal|Mensual|Trimestral) \) $/, "");
+    const targetName = checklist.name.replace(/ \((Diaria|Semanal|Catorcenal|Mensual|Trimestral)\)$/, '').trim();
     const targetAssigned = checklist.assigned;
     const moldesRef = collection(this.firestore, 'moldes_checklists');
     const moldesSnap = await getDocs(moldesRef);
@@ -1118,6 +1167,10 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       alert('Esta es una "Tarea Única" o no tiene rutinas registradas en la Bóveda.');
       return;
     }
+    // 📝 Guarda originales para que `guardarBloqueRutinas` pueda limpiar el
+    // molde viejo aunque cambies nombre/sucursal/asignado.
+    this.formNameRutinaOriginal = targetName;
+    this.formAssignedRutinaOriginal = targetAssigned;
     this.formNameRutina = targetName;
     this.formAssignedRutina = [targetAssigned];
     this.formStoreRutina = sucursalOriginal;
@@ -1418,6 +1471,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   // 🧙 abrirModal() resetea el wizard al paso 1
   abrirModal() {
     this.isEditandoTarea = false;
+    this.editandoChecklistId = null;
     this.formName = '';
     this.formAssigned = [];
     this.formStore = this.sucursalesDisponibles().length > 0 ? this.sucursalesDisponibles()[0] : '';
@@ -1457,13 +1511,44 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   abrirEditarChecklistActual() {
     const actual = this.checklistSeleccionado();
     if (!actual) return;
+    this.cargarChecklistEnFormParaEditar(actual);
+  }
+
+  /**
+   * Abre el modal de Tarea Única en modo edición desde una tarjeta del listado.
+   * Solo admin (o el creador de la tarea) puede hacerlo.
+   */
+  editarTareaUnica(checklist: any, event: Event) {
+    event.stopPropagation();
+    const esAdmin = this.currentUser?.rol === 'admin';
+    const esCreador = checklist.createdBy === this.currentUser?.nombre;
+    if (!esAdmin && !esCreador) {
+      Swal.fire({ icon: 'error', title: 'Sin permiso', text: 'Solo el creador o un administrador pueden editar.', confirmButtonColor: '#0F172A' });
+      return;
+    }
+    this.cargarChecklistEnFormParaEditar(checklist);
+  }
+
+  /** Carga un checklist en el formulario de Tarea Única para editarlo. */
+  private cargarChecklistEnFormParaEditar(actual: any) {
     this.isEditandoTarea = true;
-    this.formName = actual.name;
-    this.formAssigned = [actual.assigned];
-    this.formStore = actual.store;
-    this.formItems = JSON.parse(JSON.stringify(actual.items));
+    this.editandoChecklistId = (actual.id ?? '').toString();
+    this.formName = actual.name || '';
+    this.formAssigned = actual.assigned ? [actual.assigned] : [];
+    this.formStore = actual.store || '';
+    this.formItems = actual.items ? JSON.parse(JSON.stringify(actual.items)) : [];
     this.fasesTemporales = actual.subtareas ? JSON.parse(JSON.stringify(actual.subtareas)) : [];
+    // Preset de fecha: arranca en custom con la fecha actual del checklist.
+    this.formFechaTarea = actual.date || this.hoyIsoStr;
+    this.presetFechaTarea = 'custom';
+    // Tipo de evidencia derivado del primer item para que el wizard lo refleje.
+    const it = this.formItems[0];
+    if (it?.requiresAntesDespues) this.wizardTipoEvidencia = 'antesDespues';
+    else if (it?.requiresVariasFotos) this.wizardTipoEvidencia = 'variasFotos';
+    else if (it?.requiresPhoto) this.wizardTipoEvidencia = 'foto';
+    else this.wizardTipoEvidencia = 'ninguna';
     this.wizardStep = 1;
+    this.terminoBusquedaEmpleadoWizard = '';
     this.isModalOpen = true;
   }
 
@@ -1532,7 +1617,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     const tareasValidas = this.formItems
       .filter(item => item.text.trim() !== '')
       .map((item, i) => ({
-        id: Date.now() + i,
+        id: item.id || (Date.now() + i),
         text: item.text,
         requiresPhoto: item.requiresPhoto,
         requiresAntesDespues: item.requiresAntesDespues,
@@ -1548,8 +1633,17 @@ export class ChecklistComponent implements OnInit, OnDestroy {
         horaLimite:  item.horaLimite  || null,
         date: item.fechaLimite || item.date || null,
         time: item.horaLimite  || item.time || null,
-        checked: false,
-        photo: null, photoTime: null, photoAntes: null, photoAntesTime: null, photoAntesTimestamp: null, photoDespues: null, photoDespuesTime: null,
+        // 🔁 En edición preservamos lo que el trabajador ya haya hecho (evidencia,
+        // checks). En creación normal item.* es undefined → quedan vacíos.
+        checked: item.checked || false,
+        photo: item.photo || null,
+        photoTime: item.photoTime || null,
+        photoAntes: item.photoAntes || null,
+        photoAntesTime: item.photoAntesTime || null,
+        photoAntesTimestamp: item.photoAntesTimestamp || null,
+        photoDespues: item.photoDespues || null,
+        photoDespuesTime: item.photoDespuesTime || null,
+        photos: item.photos || [],
         tipo: 'tarea'
       }));
 
@@ -1581,11 +1675,34 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     }
 
     const urlsWhatsApp: string[] = [];
+    const offsetGlobal = new Date().getTimezoneOffset() * 60000;
+    const hoyGlobal = new Date(Date.now() - offsetGlobal).toISOString().split('T')[0];
+
+    // 🔧 Modo edición: sobreescribe el doc existente conservando id, timestamp
+    // y createdBy. NO crea uno nuevo, NO itera por formAssigned (en edición se
+    // edita un solo checklist a la vez).
+    if (this.isEditandoTarea && this.editandoChecklistId) {
+      const payload: any = {
+        id: this.editandoChecklistId,
+        name: this.formName,
+        assigned: this.formAssigned[0],
+        store: this.formStore,
+        date: tareasValidas[0].date || hoyGlobal,
+        time: tareasValidas[0].time || '23:59',
+        items: JSON.parse(JSON.stringify(tareasValidas)),
+        subtareas: JSON.parse(JSON.stringify(this.fasesTemporales))
+      };
+      await setDoc(doc(this.firestore, 'checklists', this.editandoChecklistId), payload, { merge: true });
+      this.mostrarToast(' ✅ Tarea actualizada');
+      this.cerrarModal();
+      this.isEditandoTarea = false;
+      this.editandoChecklistId = null;
+      return;
+    }
 
     this.formAssigned.forEach((empleadoNombre, index) => {
       const uniqueId = Date.now() + index;
-      const offset = new Date().getTimezoneOffset() * 60000;
-      const hoy = new Date(Date.now() - offset).toISOString().split('T')[0];
+      const hoy = hoyGlobal;
 
       const checklistTareas = {
         id: uniqueId,
@@ -1706,6 +1823,8 @@ export class ChecklistComponent implements OnInit, OnDestroy {
 
   abrirModalRutinas() {
     this.isEditMode = false;
+    this.formNameRutinaOriginal = '';
+    this.formAssignedRutinaOriginal = '';
     this.formNameRutina = '';
     this.formAssignedRutina = [];
     this.formStoreRutina = this.sucursalesDisponibles().length > 0 ? this.sucursalesDisponibles()[0] : '';
@@ -1764,14 +1883,29 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     }));
     if (rutinasValidas.length === 0) { alert('Agrega rutinas.'); return; }
     if (this.isEditMode) {
+      // 🔄 Edición libre: el admin pudo cambiar nombre, sucursal o asignados.
+      // Borramos el molde VIEJO usando el nombre+assigned ORIGINAL (no el nuevo),
+      // y también soft-delete los checklists ya generados del original para que
+      // no queden duplicados con datos obsoletos.
+      const nombreViejo = this.formNameRutinaOriginal || this.formNameRutina;
+      const assignedViejo = this.formAssignedRutinaOriginal || this.formAssignedRutina[0];
+
       const moldesRef = collection(this.firestore, 'moldes_checklists');
       const moldesSnap = await getDocs(moldesRef);
-      moldesSnap.forEach(async (mDoc) => {
-        const mData = mDoc.data();
-        if (mData['name'] === this.formNameRutina && mData['assigned'] === this.formAssignedRutina[0]) {
+      for (const mDoc of moldesSnap.docs) {
+        const mData = mDoc.data() as any;
+        if (mData.name === nombreViejo && mData.assigned === assignedViejo) {
           await deleteDoc(doc(this.firestore, 'moldes_checklists', mDoc.id));
         }
-      });
+      }
+      const chkRef = collection(this.firestore, 'checklists');
+      const chkSnap = await getDocs(chkRef);
+      for (const cDoc of chkSnap.docs) {
+        const cData = cDoc.data() as any;
+        if ((cData.name || '').startsWith(nombreViejo) && cData.assigned === assignedViejo && !cData.enviado) {
+          await setDoc(doc(this.firestore, 'checklists', cDoc.id), { eliminado: true }, { merge: true });
+        }
+      }
     }
     this.formAssignedRutina.forEach((empleadoNombre) => {
       const rutinasPorFrecuencia: { [key: string]: any[] } = {};

@@ -781,11 +781,26 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       let descartadosEnviados = 0;
       let descartadosEliminados = 0;
       let descartadosFecha = 0;
+      // 🩺 Diagnóstico: guarda los assigned de TODO lo que existe hoy (incluye
+      // enviados/eliminados), separado por motivo. Permite ver si el checklist
+      // del usuario existe pero quedó marcado como enviado/eliminado.
+      const muestraEnviados: string[] = [];
+      const muestraEliminados: string[] = [];
+      const todosAssignedHoy = new Set<string>();
 
       snapshot.forEach(docSnap => {
         const c = docSnap.data() as any;
-        if (c.eliminado === true) { descartadosEliminados++; return; }
-        if (c.enviado === true)   { descartadosEnviados++; return; }
+        if (c.date === fechaHoyLocal && c.assigned) todosAssignedHoy.add(c.assigned);
+        if (c.eliminado === true) {
+          descartadosEliminados++;
+          if (c.assigned) muestraEliminados.push(`${c.assigned}: ${c.name}`);
+          return;
+        }
+        if (c.enviado === true) {
+          descartadosEnviados++;
+          if (c.assigned) muestraEnviados.push(`${c.assigned}: ${c.name}`);
+          return;
+        }
         // Solo HOY: el query trae hoy en adelante; aquí excluimos cualquier fecha futura.
         if (c.date !== fechaHoyLocal) { descartadosFecha++; return; }
         // 🔢 Progreso real: una tarea cuenta como completa solo si TIENE su evidencia
@@ -845,12 +860,21 @@ export class ChecklistComponent implements OnInit, OnDestroy {
 
       // 🐛 DEBUG para diagnosticar por qué un usuario ve 0 tareas.
       // Guardamos en `ultimoDiagnostico` para mostrar inline (móvil sin consola).
+      // Resaltamos los checklists que matchearían contra el nombre del usuario,
+      // separando los que están vivos vs los marcados como enviados/eliminados.
+      const miNombre = sesion?.nombre || '';
+      const matcheaUsuario = (assigned: string) => mismoEmpleadoNombre(assigned, miNombre);
       this.ultimoDiagnostico = {
         usuario: sesion?.usuario, nombre: sesion?.nombre, rol: sesion?.rol,
         alcance: sesion?.alcance, sucursales: sesion?.sucursales,
         rama, descartadosEliminados, descartadosEnviados, descartadosFecha,
         crudoTrasFiltro: listasFinales.length, resultadoFinal: resultado.length,
         fechaHoyLocal,
+        // Lista única de empleados con tareas hoy (en cualquier estado)
+        empleadosConTareasHoy: Array.from(todosAssignedHoy).sort(),
+        // ¿Existen tareas para este usuario en otros estados?
+        misEnviadosHoy: muestraEnviados.filter(s => matcheaUsuario(s.split(':')[0])),
+        misEliminadosHoy: muestraEliminados.filter(s => matcheaUsuario(s.split(':')[0])),
         primerosAssigned: resultado.slice(0, 3).map((c: any) => c.assigned),
         crudoAssignedMuestra: listasFinales.slice(0, 10).map((c: any) => `${c.assigned}@${c.store} [${c.date}]`)
       };
@@ -1188,6 +1212,15 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     const crudo = (d.crudoAssignedMuestra && d.crudoAssignedMuestra.length)
       ? d.crudoAssignedMuestra.map((s: string) => `<li style="font-size:11px;color:#475569">${s}</li>`).join('')
       : '<li style="color:#94a3b8">(0 checklists pasaron el filtro de fecha/estado)</li>';
+    const empleadosUnicos = (d.empleadosConTareasHoy && d.empleadosConTareasHoy.length)
+      ? d.empleadosConTareasHoy.map((s: string) => `<li style="font-size:11px;color:#475569">${s}</li>`).join('')
+      : '<li style="color:#94a3b8">(no se encontraron empleados con tareas hoy)</li>';
+    const misEnviados = (d.misEnviadosHoy && d.misEnviadosHoy.length)
+      ? `<ul style="padding-left:18px;margin:4px 0">${d.misEnviadosHoy.map((s: string) => `<li style="font-size:11px;color:#F59E0B">${s}</li>`).join('')}</ul>`
+      : '<div style="color:#94a3b8;font-size:12px;padding-left:8px">— ninguno —</div>';
+    const misEliminados = (d.misEliminadosHoy && d.misEliminadosHoy.length)
+      ? `<ul style="padding-left:18px;margin:4px 0">${d.misEliminadosHoy.map((s: string) => `<li style="font-size:11px;color:#EF4444">${s}</li>`).join('')}</ul>`
+      : '<div style="color:#94a3b8;font-size:12px;padding-left:8px">— ninguno —</div>';
     const html = `
       <div style="text-align:left;font-size:13px;line-height:1.55">
         <div><strong>Usuario:</strong> ${d.usuario || '(vacío)'}</div>
@@ -1207,7 +1240,15 @@ export class ChecklistComponent implements OnInit, OnDestroy {
         <div style="margin-top:8px"><strong>Tras filtros de estado/fecha:</strong> ${d.crudoTrasFiltro}</div>
         <div><strong>Tras filtro de permisos:</strong> ${d.resultadoFinal}</div>
         <hr style="margin:10px 0">
-        <div><strong>Muestra del universo crudo:</strong></div>
+        <div style="color:#F59E0B"><strong>🚨 Mis tareas marcadas como ENVIADAS hoy:</strong></div>
+        ${misEnviados}
+        <div style="color:#EF4444;margin-top:6px"><strong>🚨 Mis tareas marcadas como ELIMINADAS hoy:</strong></div>
+        ${misEliminados}
+        <hr style="margin:10px 0">
+        <div><strong>Empleados con tareas creadas hoy (cualquier estado):</strong></div>
+        <ul style="padding-left:18px;margin:4px 0;max-height:160px;overflow:auto">${empleadosUnicos}</ul>
+        <hr style="margin:10px 0">
+        <div><strong>Muestra del universo crudo (no enviadas, no eliminadas):</strong></div>
         <ul style="padding-left:18px;margin:4px 0">${crudo}</ul>
       </div>
     `;

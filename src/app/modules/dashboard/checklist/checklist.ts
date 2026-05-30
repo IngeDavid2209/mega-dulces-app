@@ -108,6 +108,10 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   empleados = signal<any[]>([]);
   sucursalesDisponibles = signal<string[]>([]);
 
+  // 🩺 Diagnóstico del último snapshot — alimenta el botón "¿Por qué no veo tareas?"
+  // en el estado vacío para inspeccionar el filtrado desde el propio móvil.
+  ultimoDiagnostico: any = null;
+
   // 🎯 Tab activo (Mis / Equipo / Todas). Solo aplica a admin o supervisor;
   // un trabajador puro ya ve solo lo suyo.
   vistaTareas: 'mis' | 'equipo' | 'todas' = 'todas';
@@ -840,14 +844,17 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       this.checklists.set(resultado);
 
       // 🐛 DEBUG para diagnosticar por qué un usuario ve 0 tareas.
-      console.log('[DBG checklist]', {
+      // Guardamos en `ultimoDiagnostico` para mostrar inline (móvil sin consola).
+      this.ultimoDiagnostico = {
         usuario: sesion?.usuario, nombre: sesion?.nombre, rol: sesion?.rol,
         alcance: sesion?.alcance, sucursales: sesion?.sucursales,
         rama, descartadosEliminados, descartadosEnviados, descartadosFecha,
         crudoTrasFiltro: listasFinales.length, resultadoFinal: resultado.length,
+        fechaHoyLocal,
         primerosAssigned: resultado.slice(0, 3).map((c: any) => c.assigned),
-        crudoAssigned: listasFinales.slice(0, 5).map((c: any) => `${c.assigned}@${c.store}`)
-      });
+        crudoAssignedMuestra: listasFinales.slice(0, 10).map((c: any) => `${c.assigned}@${c.store} [${c.date}]`)
+      };
+      console.log('[DBG checklist]', this.ultimoDiagnostico);
 
       if (esTrabajadorPuro) {
         const pendientesActuales = resultado.filter((c: any) => c.status !== 'completo' && c.enviado !== true).length;
@@ -1159,6 +1166,55 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       }
     }
     this.cerrarPasswordModal();
+  }
+
+  /**
+   * Muestra el diagnóstico del último snapshot en un modal visible en pantalla,
+   * útil cuando un usuario ve "No hay tareas asignadas" y queremos saber por qué
+   * sin tener que abrir la consola del navegador (típico en móviles).
+   */
+  mostrarDiagnostico() {
+    const d = this.ultimoDiagnostico;
+    if (!d) {
+      Swal.fire({
+        icon: 'info', title: 'Sin diagnóstico todavía',
+        text: 'Aún no se ha cargado ningún snapshot. Espera unos segundos.',
+        confirmButtonColor: '#0F172A'
+      });
+      return;
+    }
+    const sucursales = (d.sucursales && d.sucursales.length)
+      ? d.sucursales.join(', ') : '(ninguna)';
+    const crudo = (d.crudoAssignedMuestra && d.crudoAssignedMuestra.length)
+      ? d.crudoAssignedMuestra.map((s: string) => `<li style="font-size:11px;color:#475569">${s}</li>`).join('')
+      : '<li style="color:#94a3b8">(0 checklists pasaron el filtro de fecha/estado)</li>';
+    const html = `
+      <div style="text-align:left;font-size:13px;line-height:1.55">
+        <div><strong>Usuario:</strong> ${d.usuario || '(vacío)'}</div>
+        <div><strong>Nombre:</strong> ${d.nombre || '(vacío)'}</div>
+        <div><strong>Rol:</strong> ${d.rol || '(vacío)'}</div>
+        <div><strong>Alcance:</strong> ${d.alcance || '(vacío)'}</div>
+        <div><strong>Sucursales:</strong> ${sucursales}</div>
+        <div><strong>Rama de filtrado:</strong> <code>${d.rama}</code></div>
+        <div><strong>Fecha hoy local:</strong> <code>${d.fechaHoyLocal}</code></div>
+        <hr style="margin:10px 0">
+        <div><strong>Descartados:</strong></div>
+        <div style="padding-left:12px;color:#64748b">
+          • Por eliminado: ${d.descartadosEliminados}<br>
+          • Por enviado: ${d.descartadosEnviados}<br>
+          • Por fecha distinta a hoy: ${d.descartadosFecha}
+        </div>
+        <div style="margin-top:8px"><strong>Tras filtros de estado/fecha:</strong> ${d.crudoTrasFiltro}</div>
+        <div><strong>Tras filtro de permisos:</strong> ${d.resultadoFinal}</div>
+        <hr style="margin:10px 0">
+        <div><strong>Muestra del universo crudo:</strong></div>
+        <ul style="padding-left:18px;margin:4px 0">${crudo}</ul>
+      </div>
+    `;
+    Swal.fire({
+      title: '🩺 Diagnóstico del filtro',
+      html, width: 560, confirmButtonText: 'Cerrar', confirmButtonColor: '#0F172A'
+    });
   }
 
   /**

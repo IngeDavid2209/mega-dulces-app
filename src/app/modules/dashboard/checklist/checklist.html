@@ -256,6 +256,12 @@
               *ngIf="checklists().length === 0 && currentUser?.rol === 'trabajador' && !currentUser?.puedeCrearChecklists">
               Actualmente no tienes checklists pendientes.</p>
             <p *ngIf="checklists().length > 0">Intenta buscar con otro nombre, empleado o sucursal.</p>
+            <button type="button" class="btn-secondary"
+                    *ngIf="checklists().length === 0"
+                    (click)="mostrarDiagnostico()"
+                    style="margin-top: 14px; font-size: 13px;">
+              🩺 ¿Por qué no veo tareas?
+            </button>
           </div>
         </div>
       </div>

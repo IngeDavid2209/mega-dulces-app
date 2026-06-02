@@ -4,6 +4,7 @@ import { RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { Firestore, collection, onSnapshot, query, where } from '@angular/fire/firestore';
 import { esAdminGlobal, sucursalesPermitidas, normalizarNombre } from '../../../shared/permisos.util';
+import { nivelDeCargo } from '../../../shared/nivel-jerarquico.util';
 
 /** Una fila agregada para los rankings de retrasos. */
 interface FilaRanking {
@@ -48,6 +49,9 @@ export class EstadisticasComponent implements OnInit, OnDestroy {
   storeStats = signal<any[]>([]);
   sucursalSeleccionadaParaEmpleados = signal('');
   empleadosStats = signal<any[]>([]);
+  /** Sub-listas separadas por nivel jerárquico, ordenadas por progreso descendente. */
+  empleadosStatsMandos = computed(() => this.empleadosStats().filter(e => e.nivel === 'mando'));
+  empleadosStatsOperativos = computed(() => this.empleadosStats().filter(e => e.nivel === 'operativo'));
 
   todosLosChecklists: any[] = [];
   todosLosUsuariosNube: any[] = [];
@@ -264,6 +268,8 @@ export class EstadisticasComponent implements OnInit, OnDestroy {
       const pct = eTotal > 0 ? Math.round((eOk / eTotal) * 100) : 0;
       return {
         nombre: emp.nombre,
+        cargo: emp.cargo || '',
+        nivel: nivelDeCargo(emp.cargo),
         progress: pct,
         color: pct >= 90 ? '#2ecc71' : pct >= 50 ? '#f1c40f' : '#e74c3c',
         completados: eOk,

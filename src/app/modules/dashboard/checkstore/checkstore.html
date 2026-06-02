@@ -178,9 +178,21 @@
             <span class="store-mini-stat">✅ {{ store.completedItems }}/{{ store.totalItems }}</span>
             <span class="alert-badge" *ngIf="store.alertas > 0">🚨 {{ store.alertas }}</span>
           </div>
+          <div class="store-nivel-breakdown"
+               *ngIf="store.checklistsMandos > 0 || store.checklistsOperativos > 0"
+               style="display:flex; gap:10px; margin-top:8px; padding-top:8px; border-top:1px dashed #E2E8F0; font-size:11px; color:#475569; font-weight:600;">
+            <span title="Mandos de sucursal" style="display:inline-flex; align-items:center; gap:4px;">
+              <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#F59E0B;"></span>
+              Mandos: {{ store.checklistsMandos }}<span *ngIf="store.personasMandos > 0"> ({{ store.personasMandos }} pers.)</span>
+            </span>
+            <span title="Operativos" style="display:inline-flex; align-items:center; gap:4px;">
+              <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#64748B;"></span>
+              Operativos: {{ store.checklistsOperativos }}<span *ngIf="store.personasOperativos > 0"> ({{ store.personasOperativos }} pers.)</span>
+            </span>
+          </div>
         </div>
       </div>
- 
+
       <div class="empty-state-section" *ngIf="comerciales().length === 0">
         Sin sucursales comerciales que coincidan con el filtro.
       </div>
@@ -226,9 +238,21 @@
             <span class="store-mini-stat">✅ {{ store.completedItems }}/{{ store.totalItems }}</span>
             <span class="alert-badge" *ngIf="store.alertas > 0">🚨 {{ store.alertas }}</span>
           </div>
+          <div class="store-nivel-breakdown"
+               *ngIf="store.checklistsMandos > 0 || store.checklistsOperativos > 0"
+               style="display:flex; gap:10px; margin-top:8px; padding-top:8px; border-top:1px dashed #E2E8F0; font-size:11px; color:#475569; font-weight:600;">
+            <span title="Mandos" style="display:inline-flex; align-items:center; gap:4px;">
+              <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#F59E0B;"></span>
+              Mandos: {{ store.checklistsMandos }}<span *ngIf="store.personasMandos > 0"> ({{ store.personasMandos }} pers.)</span>
+            </span>
+            <span title="Operativos" style="display:inline-flex; align-items:center; gap:4px;">
+              <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#64748B;"></span>
+              Operativos: {{ store.checklistsOperativos }}<span *ngIf="store.personasOperativos > 0"> ({{ store.personasOperativos }} pers.)</span>
+            </span>
+          </div>
         </div>
       </div>
- 
+
       <!-- ============== ÁREAS DE OPERACIÓN ============== -->
       <div class="zone-header zone-spacer" *ngIf="areasTrabajo().length > 0">
         <div class="zone-icon" style="background:#FFFBEB; color:#D97706;">
@@ -267,9 +291,21 @@
             <span class="store-mini-stat">✅ {{ area.completedItems }}/{{ area.totalItems }}</span>
             <span class="alert-badge" *ngIf="area.alertas > 0">🚨 {{ area.alertas }}</span>
           </div>
+          <div class="store-nivel-breakdown"
+               *ngIf="area.checklistsMandos > 0 || area.checklistsOperativos > 0"
+               style="display:flex; gap:10px; margin-top:8px; padding-top:8px; border-top:1px dashed #E2E8F0; font-size:11px; color:#475569; font-weight:600;">
+            <span title="Mandos" style="display:inline-flex; align-items:center; gap:4px;">
+              <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#F59E0B;"></span>
+              Mandos: {{ area.checklistsMandos }}<span *ngIf="area.personasMandos > 0"> ({{ area.personasMandos }} pers.)</span>
+            </span>
+            <span title="Operativos" style="display:inline-flex; align-items:center; gap:4px;">
+              <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#64748B;"></span>
+              Operativos: {{ area.checklistsOperativos }}<span *ngIf="area.personasOperativos > 0"> ({{ area.personasOperativos }} pers.)</span>
+            </span>
+          </div>
         </div>
       </div>
- 
+
       <div class="empty-state-section"
            *ngIf="comerciales().length === 0 && administrativas().length === 0 && areasTrabajo().length === 0">
         🔍 Sin resultados. Prueba con otro filtro o búsqueda.

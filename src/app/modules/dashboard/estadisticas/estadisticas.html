@@ -110,7 +110,12 @@
               <option *ngFor="let suc of sucursalesPermitidas" [value]="suc">{{ suc }}</option>
             </select>
           </div>
-          <div class="stat-bar-row" *ngFor="let emp of empleadosStats()">
+          <ng-container *ngIf="empleadosStatsMandos().length > 0 && empleadosStatsOperativos().length > 0">
+            <div style="font-size:12px; font-weight:700; color:#1E3A8A; letter-spacing:.5px; text-transform:uppercase; margin: 8px 0 6px 0;">
+              Mandos de sucursal ({{ empleadosStatsMandos().length }})
+            </div>
+          </ng-container>
+          <div class="stat-bar-row" *ngFor="let emp of empleadosStatsMandos()">
             <div class="stat-bar-label employee-label">
               <strong>{{ emp.nombre }}</strong>
               <div class="employee-subtext">
@@ -124,6 +129,27 @@
             </div>
             <div class="stat-bar-pct" [style.color]="emp.total === 0 ? '#94A3B8' : 'inherit'">{{ emp.progress }}%</div>
           </div>
+
+          <ng-container *ngIf="empleadosStatsMandos().length > 0 && empleadosStatsOperativos().length > 0">
+            <div style="font-size:12px; font-weight:700; color:#475569; letter-spacing:.5px; text-transform:uppercase; margin: 18px 0 6px 0; border-top: 1px dashed #E2E8F0; padding-top: 10px;">
+              Operativos ({{ empleadosStatsOperativos().length }})
+            </div>
+          </ng-container>
+          <div class="stat-bar-row" *ngFor="let emp of empleadosStatsOperativos()">
+            <div class="stat-bar-label employee-label">
+              <strong>{{ emp.nombre }}</strong>
+              <div class="employee-subtext">
+                <span *ngIf="emp.total > 0">{{ emp.completados }} / {{ emp.total }} tareas</span>
+                <span *ngIf="emp.total === 0" style="color: #94A3B8; font-style: italic;">Sin asignaciones</span>
+              </div>
+            </div>
+            <div class="stat-bar-track" [style.background]="emp.total === 0 ? '#F8FAFC' : '#F1F5F9'">
+              <div class="stat-bar-fill" [style.width.%]="emp.progress"
+                [style.background]="emp.total === 0 ? 'transparent' : emp.color"></div>
+            </div>
+            <div class="stat-bar-pct" [style.color]="emp.total === 0 ? '#94A3B8' : 'inherit'">{{ emp.progress }}%</div>
+          </div>
+
           <div class="empty-state-text" *ngIf="empleadosStats().length === 0">No hay empleados asignados a este
             departamento en el sistema.</div>
         </div>

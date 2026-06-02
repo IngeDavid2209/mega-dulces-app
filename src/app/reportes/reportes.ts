@@ -3,7 +3,8 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, ActivatedRoute } from '@angular/router';
 import { Firestore, collection, getDocs, doc, deleteDoc, query, where } from '@angular/fire/firestore';
-import { sucursalesPermitidas } from '../shared/permisos.util';
+import { sucursalesPermitidas, mismoEmpleadoNombre } from '../shared/permisos.util';
+import { nivelDeCargo } from '../shared/nivel-jerarquico.util';
 
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -114,6 +115,33 @@ export class ReportesComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy() { if (this.busquedaSub) { this.busquedaSub(); } }
+
+  /**
+   * Devuelve el nivel jerárquico del empleado al que está asignado un checklist.
+   * Cruza `assigned` contra `empleados()` (que ya carga el `cargo`). Si no
+   * encuentra match, asume operativo para no esconder filas por error de datos.
+   */
+  nivelDelAssigned(assigned: string | undefined | null): 'mando' | 'operativo' {
+    if (!assigned) return 'operativo';
+    const nom = assigned.trim().toLowerCase();
+    const emp = this.empleados().find(e =>
+      (e.nombre || '').trim().toLowerCase() === nom ||
+      mismoEmpleadoNombre(e.nombre, assigned)
+    );
+    return nivelDeCargo(emp?.cargo);
+  }
+
+  /** Resultados filtrados separados en dos listas (mandos / operativos). */
+  get resultadosMandos() {
+    return this.resultados().filter(c => this.nivelDelAssigned(c.assigned) === 'mando');
+  }
+  get resultadosOperativos() {
+    return this.resultados().filter(c => this.nivelDelAssigned(c.assigned) === 'operativo');
+  }
+  /** Lista ordenada: mandos primero, después operativos — para el *ngFor del HTML. */
+  get resultadosOrdenadosPorNivel() {
+    return [...this.resultadosMandos, ...this.resultadosOperativos];
+  }
 
   async cargarEmpleados() {
     const usuariosRef = collection(this.firestore, 'usuarios');

@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { Firestore, collection, onSnapshot } from '@angular/fire/firestore';
 import { esAdminGlobal, sucursalesPermitidas } from '../../../shared/permisos.util';
+import { nivelDeCargo } from '../../../shared/nivel-jerarquico.util';
  
 import { SidebarComponent } from '../../../shared/sidebar/sidebar';
 
@@ -64,6 +65,9 @@ export class CheckstoreComponent implements OnInit, OnDestroy {
   // Bufer de datos de Firebase
   areasDesdeFirebase: any[] = [];
   checklistsDesdeFirebase: any[] = [];
+  // Map nombreNormalizado -> nivel ('mando' | 'operativo'). Se llena con el snapshot de usuarios
+  // y nos permite clasificar los `assigned` de cada checklist sin recargar usuarios.
+  private nivelPorNombre = new Map<string, 'mando' | 'operativo'>();
  
   private firestore = inject(Firestore);
   private destructoresRadares: (() => void)[] = [];
@@ -254,8 +258,36 @@ export class CheckstoreComponent implements OnInit, OnDestroy {
       this.procesarMatematicas();
     });
  
+    // Radar 3: usuarios → carga el cargo de cada empleado para clasificar
+    // cada checklist por nivel jerárquico (mando / operativo) del asignado.
+    const usuariosRef = collection(this.firestore, 'usuarios');
+    const radarUsuarios = onSnapshot(usuariosRef, snap => {
+      const mapa = new Map<string, 'mando' | 'operativo'>();
+      snap.forEach(docSnap => {
+        const u: any = docSnap.data();
+        if (!u?.nombre) return;
+        const nivel = nivelDeCargo(u.cargo);
+        mapa.set(this.normalizarNombreParaMatch(u.nombre), nivel);
+      });
+      this.nivelPorNombre = mapa;
+      this.procesarMatematicas();
+    });
+
     this.destructoresRadares.push(radarAreas);
     this.destructoresRadares.push(radarChecklists);
+    this.destructoresRadares.push(radarUsuarios);
+  }
+
+  /** Versión ligera de normalización: lowercase + sin tildes + colapsa espacios.
+   *  Suficiente para el lookup del cargo desde el `assigned` de un checklist. */
+  private normalizarNombreParaMatch(n: string): string {
+    return (n || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim().replace(/\s+/g, ' ');
+  }
+
+  /** Devuelve el nivel del empleado dueño del assigned, según el cargo cargado. */
+  nivelDelAssigned(assigned: string | undefined | null): 'mando' | 'operativo' {
+    if (!assigned) return 'operativo';
+    return this.nivelPorNombre.get(this.normalizarNombreParaMatch(assigned)) || 'operativo';
   }
  
   /**
@@ -290,8 +322,21 @@ export class CheckstoreComponent implements OnInit, OnDestroy {
         let totalItems = 0;
         let completedItems = 0;
         let alertas = 0;
- 
+        // Desglose por nivel jerárquico del asignado de cada checklist.
+        const personasMandos = new Set<string>();
+        const personasOperativos = new Set<string>();
+        let checklistsMandos = 0;
+        let checklistsOperativos = 0;
+
         storeChecklists.forEach(c => {
+          const nivel = this.nivelDelAssigned(c.assigned);
+          if (nivel === 'mando') {
+            checklistsMandos++;
+            if (c.assigned) personasMandos.add(c.assigned);
+          } else {
+            checklistsOperativos++;
+            if (c.assigned) personasOperativos.add(c.assigned);
+          }
           if (c.items && Array.isArray(c.items)) {
             c.items.forEach((item: any) => {
               totalItems++;
@@ -310,9 +355,9 @@ export class CheckstoreComponent implements OnInit, OnDestroy {
             });
           }
         });
- 
+
         const progress = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
- 
+
         // Color semáforo
         let finalColor = colorDefault;
         if (colorDefault === 'semaforo') {
@@ -321,7 +366,7 @@ export class CheckstoreComponent implements OnInit, OnDestroy {
           else if (totalItems > 0) finalColor = '#EF4444';
           else                     finalColor = '#94A3B8'; // gris para sin actividad
         }
- 
+
         return {
           ...sucursal,
           totalChecklists: storeChecklists.length,
@@ -329,7 +374,12 @@ export class CheckstoreComponent implements OnInit, OnDestroy {
           totalItems,
           progress,
           alertas,
-          color: finalColor
+          color: finalColor,
+          // Desglose de personas y checklists por nivel — para mostrar en la tarjeta.
+          personasMandos: personasMandos.size,
+          personasOperativos: personasOperativos.size,
+          checklistsMandos,
+          checklistsOperativos
         };
       });
     };

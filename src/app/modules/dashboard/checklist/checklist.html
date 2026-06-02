@@ -93,7 +93,20 @@
 
         <div class="checklist-grid">
 
-          <div class="checklist-card" *ngFor="let checklist of checklistsFiltrados" (click)="verDetalle(checklist)">
+          <ng-container *ngFor="let checklist of checklistsOrdenadosPorNivel; let i = index">
+            <!-- Encabezado de la sección Mandos cuando arranca con un mando y hay operativos detrás -->
+            <div *ngIf="i === 0 && nivelDelAssigned(checklist.assigned) === 'mando' && checklistsDeOperativos.length > 0"
+                 style="grid-column: 1 / -1; font-size: 12px; font-weight: 700; color: #1E3A8A; letter-spacing: .5px; text-transform: uppercase; margin: 4px 0 2px 4px;">
+              Mandos de sucursal ({{ checklistsDeMandos.length }})
+            </div>
+            <!-- Separador cuando cambia de mando a operativo -->
+            <div *ngIf="i > 0
+                       && nivelDelAssigned(checklistsOrdenadosPorNivel[i-1].assigned) === 'mando'
+                       && nivelDelAssigned(checklist.assigned) === 'operativo'"
+                 style="grid-column: 1 / -1; border-top: 1px dashed #E2E8F0; margin: 14px 0 6px 0; padding-top: 10px; font-size: 12px; font-weight: 700; color: #475569; letter-spacing: .5px; text-transform: uppercase;">
+              Operativos ({{ checklistsDeOperativos.length }})
+            </div>
+          <div class="checklist-card" (click)="verDetalle(checklist)">
 
             <div class="checklist-card-header">
               <div class="checklist-card-title">{{ checklist.name }}</div>
@@ -242,6 +255,7 @@
             </div>
 
           </div>
+          </ng-container>
           <div class="empty-state" *ngIf="checklistsFiltrados.length === 0">
             <div class="empty-state-icon"><svg width="48" height="48" viewBox="0 0 24 24" fill="none"
                 stroke="currentColor" stroke-width="2">

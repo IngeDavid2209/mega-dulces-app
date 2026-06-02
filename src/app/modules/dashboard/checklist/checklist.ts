@@ -6,6 +6,7 @@ import { Firestore, collection, doc, setDoc, getDoc, deleteDoc, onSnapshot, getD
 import * as localforage from 'localforage';
 import Swal from 'sweetalert2';
 import { esAdminGlobal, esAdminLimitado, sucursalesPermitidas, esSupervisor, mismoEmpleadoNombre } from '../../../shared/permisos.util';
+import { nivelDeCargo } from '../../../shared/nivel-jerarquico.util';
 import { obtenerSemanaISO, obtenerNombreDia } from '../../../shared/descansos.util';
 import { RobotRutinasV2Service } from '../../../shared/robot-rutinas-v2.service';
 import { RutinaMaestra } from '../../../shared/rutinas.types';
@@ -506,6 +507,42 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     }
     if (emp.sucursales && emp.sucursales.includes('General (Acceso Total)')) return true;
     return susSucursales.includes(store);
+  }
+
+  /**
+   * Devuelve el nivel jerárquico ('mando' | 'operativo') de la persona a la
+   * que está asignado un checklist. Cruza el `assigned` contra la lista de
+   * empleados cargados para encontrar su cargo. Si no encuentra match, asume
+   * operativo (la mayoría) para no esconder tareas por error de datos.
+   */
+  nivelDelAssigned(assigned: string | undefined | null): 'mando' | 'operativo' {
+    if (!assigned) return 'operativo';
+    const nom = (assigned || '').trim().toLowerCase();
+    const emp = this.empleados().find(e =>
+      (e.nombre || '').trim().toLowerCase() === nom ||
+      mismoEmpleadoNombre(e.nombre, assigned)
+    );
+    return nivelDeCargo(emp?.cargo);
+  }
+
+  /** Sublista de mandos del set filtrado actual. Alimenta la sub-sección "Mandos de sucursal". */
+  get checklistsDeMandos() {
+    return this.checklistsFiltrados.filter((c: any) => this.nivelDelAssigned(c.assigned) === 'mando');
+  }
+  /** Sublista de operativos del set filtrado actual. Alimenta la sub-sección "Operativos". */
+  get checklistsDeOperativos() {
+    return this.checklistsFiltrados.filter((c: any) => this.nivelDelAssigned(c.assigned) === 'operativo');
+  }
+
+  /**
+   * Lista filtrada ordenada por nivel: mandos primero, después operativos.
+   * Lo usa el template con un *ngFor único + separadores cuando cambia el
+   * nivel, en vez de duplicar el grid de tarjetas (que tiene ~150 líneas).
+   */
+  get checklistsOrdenadosPorNivel() {
+    const mandos = this.checklistsDeMandos;
+    const operativos = this.checklistsDeOperativos;
+    return [...mandos, ...operativos];
   }
 
   get checklistsFiltrados() {

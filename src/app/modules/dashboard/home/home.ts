@@ -10,6 +10,7 @@ import { Firestore, collection, onSnapshot, query, where } from '@angular/fire/f
 
 import { SidebarComponent } from '../../../shared/sidebar/sidebar';
 import { esAdminGlobal, sucursalesPermitidas, esSupervisor, mismoEmpleadoNombre } from '../../../shared/permisos.util';
+import { nivelDeUsuario } from '../../../shared/nivel-jerarquico.util';
 
 @Component({
   selector: 'app-home',
@@ -82,6 +83,12 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
 
   totalSucursales      = computed(() => this.areasVisibles().length);
   totalEmpleados       = computed(() => this.usuarios().filter(u => u.rol !== 'admin').length);
+  totalMandos          = computed(() =>
+    this.usuarios().filter(u => u.rol !== 'admin' && nivelDeUsuario(u) === 'mando').length
+  );
+  totalOperativos      = computed(() =>
+    this.usuarios().filter(u => u.rol !== 'admin' && nivelDeUsuario(u) === 'operativo').length
+  );
   totalChecklistsHoy   = computed(() => this.checklistsHoy().length);
  
   /** Todos los checklists de hoy (sin filtro de tabs). Base para contadores. */

@@ -14,6 +14,7 @@ import {
 import * as ExcelJS from 'exceljs';
 import Swal from 'sweetalert2';
 import { esAdminGlobal, esAdminLimitado, normalizarNombre, sucursalesPermitidas } from '../../../shared/permisos.util';
+import { nivelDeUsuario, NivelJerarquico } from '../../../shared/nivel-jerarquico.util';
 // 🔥 Para crear usuarios sin desloguear al admin (segunda app Firebase temporal)
 import { initializeApp, deleteApp } from 'firebase/app';
 import { getAuth as getAuthSecondary, createUserWithEmailAndPassword as createUserSecondary, signOut as signOutSecondary } from 'firebase/auth';
@@ -37,6 +38,10 @@ export class PersonalComponent implements OnInit, OnDestroy {
   usuarios = signal<any[]>([]);
   usuarioEnEdicion: any = null;
   terminoBusqueda = '';
+
+  // 🏷️ Tabs por nivel jerárquico. 'todos' es default para no romper a nadie.
+  vistaNivel: 'todos' | 'mando' | 'operativo' = 'todos';
+  cambiarVistaNivel(v: 'todos' | 'mando' | 'operativo') { this.vistaNivel = v; }
   isModalOpen = false;
   mostrarPassword = false;
   formPuedeAdministrarAreas = false;
@@ -210,9 +215,35 @@ export class PersonalComponent implements OnInit, OnDestroy {
         (u.areas && u.areas.join(' ').toLowerCase().includes(t))
       );
     }
+
+    // 🏷️ Filtro por tab de nivel (Mandos / Operativos). 'todos' no toca nada.
+    if (this.vistaNivel !== 'todos') {
+      lista = lista.filter(u => nivelDeUsuario(u) === this.vistaNivel);
+    }
     return lista;
   }
 
+  /** Cuenta total (sin aplicar el filtro de tab) — alimenta el badge de "Todos". */
+  contadorTrabajadoresTodos(): number {
+    const vista = this.vistaNivel;
+    this.vistaNivel = 'todos';
+    const n = this.getTrabajadores().length;
+    this.vistaNivel = vista;
+    return n;
+  }
+  contadorTrabajadoresNivel(nivel: NivelJerarquico): number {
+    const vista = this.vistaNivel;
+    this.vistaNivel = 'todos';
+    const n = this.getTrabajadores().filter(u => nivelDeUsuario(u) === nivel).length;
+    this.vistaNivel = vista;
+    return n;
+  }
+
+  /**
+   * Sub-agrupa por sucursal y, dentro de cada sucursal, separa mandos y
+   * operativos en dos sub-bloques. Si el tab actual filtra por nivel, solo
+   * aparece ese sub-bloque (con header limpio).
+   */
   getTrabajadoresAgrupados() {
     const trabajadores = this.getTrabajadores();
     const gruposMap = new Map<string, any[]>();
@@ -223,8 +254,21 @@ export class PersonalComponent implements OnInit, OnDestroy {
       gruposMap.get(nombreGrupo)!.push(user);
     });
 
-    return Array.from(gruposMap.keys()).map(key => ({ nombre: key, usuarios: gruposMap.get(key)! }));
+    return Array.from(gruposMap.keys()).map(key => {
+      const todos = gruposMap.get(key)!;
+      const mandos = todos.filter(u => nivelDeUsuario(u) === 'mando');
+      const operativos = todos.filter(u => nivelDeUsuario(u) === 'operativo');
+      // Mandos primero (ordenados por cargo y nombre), luego operativos.
+      const orden = (a: any, b: any) =>
+        (a.cargo || '').localeCompare(b.cargo || '') ||
+        (a.nombre || '').localeCompare(b.nombre || '');
+      const usuarios = [...mandos.sort(orden), ...operativos.sort(orden)];
+      return { nombre: key, usuarios, mandos, operativos };
+    });
   }
+
+  /** Helper para el template — saber si una tarjeta es de mando, para el badge. */
+  esMando(user: any): boolean { return nivelDeUsuario(user) === 'mando'; }
 
   verHistorial(nombreEmpleado: string) {
     this.router.navigate(['/reportes'], { queryParams: { empleado: nombreEmpleado } });

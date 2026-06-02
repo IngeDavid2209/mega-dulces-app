@@ -113,6 +113,10 @@
           <div>
             <div class="kpi-value">{{ totalEmpleados() }}</div>
             <div class="kpi-label">Colaboradores</div>
+            <div *ngIf="totalMandos() > 0 || totalOperativos() > 0"
+                 style="font-size:11px; color:#94A3B8; margin-top:2px; font-weight:600;">
+              ⭐ {{ totalMandos() }} · 🛠️ {{ totalOperativos() }}
+            </div>
           </div>
         </div>
         <div class="kpi-card">

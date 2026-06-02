@@ -116,6 +116,31 @@
           </div>
         </div>
       </div>
+      <!-- 🏷️ Tabs por nivel jerárquico -->
+      <section class="vista-tabs" style="display:flex; gap:8px; margin:0 0 18px 0; flex-wrap:wrap;">
+        <button type="button" class="vista-tab"
+                [class.vista-tab-active]="vistaNivel === 'todos'"
+                (click)="cambiarVistaNivel('todos')">
+          <span class="vista-tab-icon">👥</span>
+          Todos
+          <span class="vista-tab-badge">{{ contadorTrabajadoresTodos() }}</span>
+        </button>
+        <button type="button" class="vista-tab"
+                [class.vista-tab-active]="vistaNivel === 'mando'"
+                (click)="cambiarVistaNivel('mando')">
+          <span class="vista-tab-icon">⭐</span>
+          Mandos
+          <span class="vista-tab-badge">{{ contadorTrabajadoresNivel('mando') }}</span>
+        </button>
+        <button type="button" class="vista-tab"
+                [class.vista-tab-active]="vistaNivel === 'operativo'"
+                (click)="cambiarVistaNivel('operativo')">
+          <span class="vista-tab-icon">🛠️</span>
+          Operativos
+          <span class="vista-tab-badge">{{ contadorTrabajadoresNivel('operativo') }}</span>
+        </button>
+      </section>
+
       <h2 class="category-title" *ngIf="getAdmins().length > 0">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
           style="margin-right: 8px; vertical-align: bottom;">
@@ -197,10 +222,27 @@
                 <circle cx="12" cy="10" r="3"></circle>
               </svg> {{ grupo.nombre }}
             </h2>
-            <div class="category-count">{{ grupo.usuarios.length }} empleados</div>
+            <div class="category-count">
+              {{ grupo.usuarios.length }} empleados
+              <span *ngIf="grupo.mandos.length > 0 && grupo.operativos.length > 0"
+                    style="color:#94A3B8; font-weight:500; margin-left:6px;">
+                · ⭐ {{ grupo.mandos.length }} mando<span *ngIf="grupo.mandos.length !== 1">s</span>
+                · 🛠️ {{ grupo.operativos.length }} operativo<span *ngIf="grupo.operativos.length !== 1">s</span>
+              </span>
+            </div>
           </div>
           <div class="user-grid">
-            <div class="user-card" *ngFor="let user of grupo.usuarios" style="width: 100%; box-sizing: border-box;">
+            <ng-container *ngFor="let user of grupo.usuarios; let i = index">
+              <!-- Separador visual entre la última tarjeta de mandos y la primera de operativos -->
+              <div *ngIf="i > 0 && esMando(grupo.usuarios[i-1]) && !esMando(user)"
+                   style="grid-column: 1 / -1; border-top: 1px dashed #E2E8F0; margin: 6px 0 2px 0; padding-top: 8px; font-size:12px; font-weight:600; color:#94A3B8; letter-spacing:.5px; text-transform:uppercase;">
+                🛠️ Operativos
+              </div>
+              <div *ngIf="i === 0 && esMando(user) && grupo.operativos.length > 0"
+                   style="grid-column: 1 / -1; font-size:12px; font-weight:600; color:#1E3A8A; letter-spacing:.5px; text-transform:uppercase; margin-bottom:2px;">
+                ⭐ Mandos de sucursal
+              </div>
+            <div class="user-card" [class.mando-card]="esMando(user)" style="width: 100%; box-sizing: border-box;">
               <div class="user-card-header"
                 style="display: flex; flex-wrap: wrap; gap: 15px; align-items: center; justify-content: space-between;">
                 <div style="display: flex; align-items: center; gap: 12px; flex: 1 1 200px; min-width: 0;">
@@ -211,7 +253,12 @@
                       {{ user.nombre }}</div>
 
                     <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-                      <div class="user-badge" style="display: inline-flex;"><svg width="12" height="12"
+                      <div class="user-badge" style="display: inline-flex;"
+                           [style.background]="esMando(user) ? '#FEF3C7' : null"
+                           [style.color]="esMando(user) ? '#92400E' : null"
+                           [style.border]="esMando(user) ? '1px solid #FBBF24' : null">
+                        <span *ngIf="esMando(user)" style="margin-right:4px;">⭐</span>
+                        <svg *ngIf="!esMando(user)" width="12" height="12"
                           viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                           style="margin-right: 4px;">
                           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
@@ -279,6 +326,7 @@
                 </div>
               </div>
             </div>
+            </ng-container>
           </div>
         </div>
       </div>

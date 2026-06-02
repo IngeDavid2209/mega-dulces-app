@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, ActivatedRoute } from '@angular/router';
 import { Firestore, collection, getDocs, doc, deleteDoc, query, where } from '@angular/fire/firestore';
-import { sucursalesPermitidas, mismoEmpleadoNombre } from '../shared/permisos.util';
+import { sucursalesPermitidas } from '../shared/permisos.util';
 import { nivelDeCargo } from '../shared/nivel-jerarquico.util';
 
 import jsPDF from 'jspdf';
@@ -116,31 +116,66 @@ export class ReportesComponent implements OnInit, OnDestroy {
 
   ngOnDestroy() { if (this.busquedaSub) { this.busquedaSub(); } }
 
+  /** Cache nombre normalizado → nivel, evita .find() en cada llamada. */
+  private _nivelPorNombre = new Map<string, 'mando' | 'operativo'>();
+  private _empleadosVersion = -1;
+  private actualizarMapaNivelSiCambio() {
+    const empleados = this.empleados();
+    if (empleados.length === this._empleadosVersion) return;
+    this._empleadosVersion = empleados.length;
+    const mapa = new Map<string, 'mando' | 'operativo'>();
+    for (const e of empleados) {
+      if (!e?.nombre) continue;
+      mapa.set((e.nombre || '').trim().toLowerCase(), nivelDeCargo(e.cargo));
+    }
+    this._nivelPorNombre = mapa;
+  }
+
   /**
    * Devuelve el nivel jerárquico del empleado al que está asignado un checklist.
-   * Cruza `assigned` contra `empleados()` (que ya carga el `cargo`). Si no
-   * encuentra match, asume operativo para no esconder filas por error de datos.
+   * Usa cache Map para evitar `.find()` en cada llamada.
    */
   nivelDelAssigned(assigned: string | undefined | null): 'mando' | 'operativo' {
     if (!assigned) return 'operativo';
-    const nom = assigned.trim().toLowerCase();
-    const emp = this.empleados().find(e =>
-      (e.nombre || '').trim().toLowerCase() === nom ||
-      mismoEmpleadoNombre(e.nombre, assigned)
-    );
-    return nivelDeCargo(emp?.cargo);
+    this.actualizarMapaNivelSiCambio();
+    return this._nivelPorNombre.get(assigned.trim().toLowerCase()) || 'operativo';
   }
 
-  /** Resultados filtrados separados en dos listas (mandos / operativos). */
+  /**
+   * Cache de los 3 derivados, recalculado solo si cambia el length de resultados
+   * o la versión de empleados (para mapeo de cargo). Evita filtrar la lista
+   * entera 3 veces por cada change detection.
+   */
+  private _cacheResultadosHuella = '';
+  private _cacheResultadosMandos: any[] = [];
+  private _cacheResultadosOperativos: any[] = [];
+  private _cacheResultadosOrdenados: any[] = [];
+  private actualizarCacheResultadosSiCambio() {
+    const lista = this.resultados();
+    const huella = `${lista.length}-${this._empleadosVersion}`;
+    if (huella === this._cacheResultadosHuella) return;
+    this._cacheResultadosHuella = huella;
+    const mandos: any[] = [];
+    const operativos: any[] = [];
+    for (const c of lista) {
+      if (this.nivelDelAssigned(c.assigned) === 'mando') mandos.push(c);
+      else operativos.push(c);
+    }
+    this._cacheResultadosMandos = mandos;
+    this._cacheResultadosOperativos = operativos;
+    this._cacheResultadosOrdenados = [...mandos, ...operativos];
+  }
   get resultadosMandos() {
-    return this.resultados().filter(c => this.nivelDelAssigned(c.assigned) === 'mando');
+    this.actualizarCacheResultadosSiCambio();
+    return this._cacheResultadosMandos;
   }
   get resultadosOperativos() {
-    return this.resultados().filter(c => this.nivelDelAssigned(c.assigned) === 'operativo');
+    this.actualizarCacheResultadosSiCambio();
+    return this._cacheResultadosOperativos;
   }
-  /** Lista ordenada: mandos primero, después operativos — para el *ngFor del HTML. */
   get resultadosOrdenadosPorNivel() {
-    return [...this.resultadosMandos, ...this.resultadosOperativos];
+    this.actualizarCacheResultadosSiCambio();
+    return this._cacheResultadosOrdenados;
   }
 
   async cargarEmpleados() {

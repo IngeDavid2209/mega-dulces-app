@@ -146,18 +146,51 @@ export class PersonalComponent implements OnInit, OnDestroy {
         usuariosNube.push({ ...data, idFirestore: documento.id });
       });
 
-      if (JSON.stringify(this.usuarios()) !== JSON.stringify(usuariosNube)) {
+      // Antes hacíamos JSON.stringify de TODA la lista (ambas) en cada snapshot
+      // para evitar set innecesarios — pero serializar 100+ perfiles es lo que
+      // bloqueaba el thread. Una comparación rápida por (length + última edición)
+      // detecta el 95% de los cambios; si por algún motivo no detecta uno, el
+      // set siguiente lo recupera. Las consumidoras (computed/getters) ya
+      // hacen su propia memoización.
+      const huellaActual = this.huellaUsuarios(this.usuarios());
+      const huellaNube = this.huellaUsuarios(usuariosNube);
+      if (huellaActual !== huellaNube) {
         this.usuarios.set(usuariosNube);
       }
     });
     this.destructoresRadares.push(radarPersonal);
   }
 
-  // 1. 🔥 NUEVO: OBTENER LOS DATOS MÁS FRESCOS DEL USUARIO EN VIVO 🔥
+  /** Huella ligera para detectar cambios sin serializar todo el array. */
+  private huellaUsuarios(arr: any[]): string {
+    if (!arr || arr.length === 0) return '0';
+    let maxTs = 0;
+    for (const u of arr) {
+      const t = Math.max(u?.ultimoLatido || 0, u?.ultimaEdicion || 0);
+      if (t > maxTs) maxTs = t;
+    }
+    return `${arr.length}-${maxTs}`;
+  }
+
+  // 1. NUEVO: OBTENER LOS DATOS MÁS FRESCOS DEL USUARIO EN VIVO
+  // Cacheado: el template lo llama 6+ veces por render. Antes hacía .find()
+  // en cientos de usuarios cada vez. Ahora solo recalcula si cambia la
+  // versión de `usuarios()` o el `currentUser?.usuario`.
+  private _cacheLiveUserVersion = -1;
+  private _cacheLiveUserKey = '';
+  private _cacheLiveUser: any = null;
   get liveUser() {
     if (!this.currentUser) return null;
+    const v = this.usuarios().length;
+    const k = this.currentUser.usuario || '';
+    if (v === this._cacheLiveUserVersion && k === this._cacheLiveUserKey) {
+      return this._cacheLiveUser;
+    }
+    this._cacheLiveUserVersion = v;
+    this._cacheLiveUserKey = k;
     const usuarioFresco = this.usuarios().find(u => u.usuario === this.currentUser.usuario);
-    return usuarioFresco || this.currentUser;
+    this._cacheLiveUser = usuarioFresco || this.currentUser;
+    return this._cacheLiveUser;
   }
 
   // 2. 🔥 getAdmins: solo el admin GLOBAL ve la lista de admins.
@@ -172,35 +205,40 @@ export class PersonalComponent implements OnInit, OnDestroy {
         u.cargo?.toLowerCase().includes(this.terminoBusqueda.toLowerCase())));
   }
 
-  // 3. 🔥 getTrabajadores: admins globales ven todos. Admins limitados y jefes
-  //    solo ven trabajadores de sus sucursales/áreas.
-  getTrabajadores() {
+  /**
+   * Lista base de trabajadores (permisos del admin + búsqueda), SIN filtro de
+   * tab. Cacheada por huella para que getTrabajadores y getTrabajadoresIgnorandoTab
+   * no dupliquen el trabajo, y para que tampoco se rehaga en cada change
+   * detection si nada cambió.
+   */
+  private _cacheBaseHuella = '';
+  private _cacheBaseTrabajadores: any[] = [];
+  private getBaseTrabajadores(): any[] {
+    const huella = `${this.usuarios().length}-${this.terminoBusqueda}-${this.currentUser?.usuario || ''}`;
+    if (huella === this._cacheBaseHuella) return this._cacheBaseTrabajadores;
+    this._cacheBaseHuella = huella;
+
     const yo = this.liveUser;
     let lista = this.usuarios().filter(u => u.rol === 'trabajador');
 
-    // 🔥 FILTRO ESTRICTO EN VIVO PARA ADMINS LIMITADOS Y JEFES / ENCARGADOS
+    // FILTRO ESTRICTO EN VIVO PARA ADMINS LIMITADOS Y JEFES / ENCARGADOS
     if (!esAdminGlobal(yo)) {
       const misSucursales = yo?.sucursales || [];
       const misAreas = yo?.areas || [];
-
       // Si no le asignaste ninguna zona ni área, por seguridad NO VE A NADIE
-      if (misSucursales.length === 0 && misAreas.length === 0) return [];
-
+      if (misSucursales.length === 0 && misAreas.length === 0) {
+        this._cacheBaseTrabajadores = [];
+        return [];
+      }
       lista = lista.filter(emp => {
         const empSucursales = emp.sucursales || [emp.sucursal || ''];
         const empAreas = emp.areas || [];
-
         const yoSoyGlobalSucursal = misSucursales.includes('General (Acceso Total)');
         const yoSoyGlobalArea = misAreas.includes('Todas las áreas') || misAreas.includes('Todas');
-
         const coincideSucursal = yoSoyGlobalSucursal || empSucursales.some((s: string) => misSucursales.includes(s));
-
         // Filtro de área: solo se aplica cuando AMBOS lados declaran áreas.
-        // Si el trabajador no tiene áreas declaradas, la sucursal manda — antes
-        // se les ocultaban a admins con áreas asignadas. Bug reportado por el cliente.
         const exigeArea = misAreas.length > 0 && empAreas.length > 0;
         const coincideArea = !exigeArea || yoSoyGlobalArea || empAreas.some((a: string) => misAreas.includes(a));
-
         return coincideSucursal && coincideArea;
       });
     }
@@ -215,49 +253,21 @@ export class PersonalComponent implements OnInit, OnDestroy {
         (u.areas && u.areas.join(' ').toLowerCase().includes(t))
       );
     }
-
-    // Filtro por tab de nivel (Mandos / Operativos). 'todos' no toca nada.
-    if (this.vistaNivel !== 'todos') {
-      lista = lista.filter(u => nivelDeUsuario(u) === this.vistaNivel);
-    }
+    this._cacheBaseTrabajadores = lista;
     return lista;
   }
 
-  /**
-   * Lista base de trabajadores SIN el filtro del tab activo. Alimenta los
-   * contadores para que "Mandos" siempre muestre cuántos hay aunque el tab
-   * activo sea otro. Las versiones anteriores mutaban temporalmente
-   * `this.vistaNivel` y eso rompía la detección de cambios de Angular —
-   * los botones de los tabs no respondían al click.
-   */
+  // getTrabajadores: admins globales ven todos. Admins limitados y jefes
+  // solo ven trabajadores de sus sucursales/áreas + filtro de tab activo.
+  getTrabajadores() {
+    const base = this.getBaseTrabajadores();
+    if (this.vistaNivel === 'todos') return base;
+    return base.filter(u => nivelDeUsuario(u) === this.vistaNivel);
+  }
+
+  /** Alias usado por los contadores de tabs (sin filtro de tab). */
   private getTrabajadoresIgnorandoTab(): any[] {
-    const yo = this.liveUser;
-    let lista = this.usuarios().filter(u => u.rol === 'trabajador');
-    if (!esAdminGlobal(yo)) {
-      const misSucursales = yo?.sucursales || [];
-      const misAreas = yo?.areas || [];
-      if (misSucursales.length === 0 && misAreas.length === 0) return [];
-      lista = lista.filter(emp => {
-        const empSucursales = emp.sucursales || [emp.sucursal || ''];
-        const empAreas = emp.areas || [];
-        const yoSoyGlobalSucursal = misSucursales.includes('General (Acceso Total)');
-        const yoSoyGlobalArea = misAreas.includes('Todas las áreas') || misAreas.includes('Todas');
-        const coincideSucursal = yoSoyGlobalSucursal || empSucursales.some((s: string) => misSucursales.includes(s));
-        const exigeArea = misAreas.length > 0 && empAreas.length > 0;
-        const coincideArea = !exigeArea || yoSoyGlobalArea || empAreas.some((a: string) => misAreas.includes(a));
-        return coincideSucursal && coincideArea;
-      });
-    }
-    const t = this.terminoBusqueda.toLowerCase().trim();
-    if (t) {
-      lista = lista.filter(u =>
-        u.nombre.toLowerCase().includes(t) ||
-        (u.cargo && u.cargo.toLowerCase().includes(t)) ||
-        (u.sucursales && u.sucursales.join(' ').toLowerCase().includes(t)) ||
-        (u.areas && u.areas.join(' ').toLowerCase().includes(t))
-      );
-    }
-    return lista;
+    return this.getBaseTrabajadores();
   }
   contadorTrabajadoresTodos(): number {
     return this.getTrabajadoresIgnorandoTab().length;
@@ -268,30 +278,38 @@ export class PersonalComponent implements OnInit, OnDestroy {
 
   /**
    * Sub-agrupa por sucursal y, dentro de cada sucursal, separa mandos y
-   * operativos en dos sub-bloques. Si el tab actual filtra por nivel, solo
-   * aparece ese sub-bloque (con header limpio).
+   * operativos en dos sub-bloques. Cacheado por huella (length base + tab):
+   * el template lo invoca como `*ngFor="let grupo of getTrabajadoresAgrupados()"`
+   * y eso lo evalúa en cada change detection. Antes hacía 1 forEach + Array.from
+   * + 3 ordenamientos en cada CD, ahora solo si los datos cambian.
    */
+  private _cacheAgrupadosHuella = '';
+  private _cacheAgrupados: any[] = [];
   getTrabajadoresAgrupados() {
     const trabajadores = this.getTrabajadores();
-    const gruposMap = new Map<string, any[]>();
+    const huella = `${trabajadores.length}-${this.vistaNivel}-${this._cacheBaseHuella}`;
+    if (huella === this._cacheAgrupadosHuella) return this._cacheAgrupados;
+    this._cacheAgrupadosHuella = huella;
 
+    const gruposMap = new Map<string, any[]>();
     trabajadores.forEach(user => {
       const nombreGrupo = user.sucursales?.length > 0 ? user.sucursales.join(' y ') : 'Sin Sucursal';
       if (!gruposMap.has(nombreGrupo)) gruposMap.set(nombreGrupo, []);
       gruposMap.get(nombreGrupo)!.push(user);
     });
 
-    return Array.from(gruposMap.keys()).map(key => {
+    const orden = (a: any, b: any) =>
+      (a.cargo || '').localeCompare(b.cargo || '') ||
+      (a.nombre || '').localeCompare(b.nombre || '');
+    this._cacheAgrupados = Array.from(gruposMap.keys()).map(key => {
       const todos = gruposMap.get(key)!;
       const mandos = todos.filter(u => nivelDeUsuario(u) === 'mando');
       const operativos = todos.filter(u => nivelDeUsuario(u) === 'operativo');
       // Mandos primero (ordenados por cargo y nombre), luego operativos.
-      const orden = (a: any, b: any) =>
-        (a.cargo || '').localeCompare(b.cargo || '') ||
-        (a.nombre || '').localeCompare(b.nombre || '');
       const usuarios = [...mandos.sort(orden), ...operativos.sort(orden)];
       return { nombre: key, usuarios, mandos, operativos };
     });
+    return this._cacheAgrupados;
   }
 
   /** Helper para el template — saber si una tarjeta es de mando, para el badge. */

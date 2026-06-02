@@ -510,45 +510,94 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   }
 
   /**
+   * Map cache (nombre normalizado → nivel) construido una sola vez cada vez
+   * que cambia `empleados()`. Antes hacíamos `.find()` en empleados por cada
+   * checklist en cada render → cientos de iteraciones por ciclo de change
+   * detection. Ahora es O(1).
+   */
+  private _nivelPorNombre = new Map<string, 'mando' | 'operativo'>();
+  private _empleadosVersion = -1;
+  private actualizarMapaNivelSiCambio() {
+    const empleados = this.empleados();
+    if (empleados.length === this._empleadosVersion) return;
+    this._empleadosVersion = empleados.length;
+    const mapa = new Map<string, 'mando' | 'operativo'>();
+    for (const e of empleados) {
+      if (!e?.nombre) continue;
+      mapa.set((e.nombre || '').trim().toLowerCase(), nivelDeCargo(e.cargo));
+    }
+    this._nivelPorNombre = mapa;
+  }
+
+  /**
    * Devuelve el nivel jerárquico ('mando' | 'operativo') de la persona a la
-   * que está asignado un checklist. Cruza el `assigned` contra la lista de
-   * empleados cargados para encontrar su cargo. Si no encuentra match, asume
-   * operativo (la mayoría) para no esconder tareas por error de datos.
+   * que está asignado un checklist. Usa el Map cacheado.
    */
   nivelDelAssigned(assigned: string | undefined | null): 'mando' | 'operativo' {
     if (!assigned) return 'operativo';
-    const nom = (assigned || '').trim().toLowerCase();
-    const emp = this.empleados().find(e =>
-      (e.nombre || '').trim().toLowerCase() === nom ||
-      mismoEmpleadoNombre(e.nombre, assigned)
-    );
-    return nivelDeCargo(emp?.cargo);
+    this.actualizarMapaNivelSiCambio();
+    return this._nivelPorNombre.get(assigned.trim().toLowerCase()) || 'operativo';
+  }
+
+  /**
+   * Cache de los 3 derivados (mandos, operativos, ordenados) recalculado solo
+   * cuando cambia la huella: length de checklists + tab + busqueda + version
+   * de empleados. Antes estos eran 3 getters separados que se invocaban en
+   * cada change detection y cada uno recorría toda la lista filtrada.
+   */
+  private _cacheChecklistsHuella = '';
+  private _cacheChecklistsMandos: any[] = [];
+  private _cacheChecklistsOperativos: any[] = [];
+  private _cacheChecklistsOrdenados: any[] = [];
+  private actualizarCacheChecklistsSiCambio() {
+    const filtrados = this.checklistsFiltrados;
+    const huella = `${filtrados.length}-${this.vistaTareas}-${this.terminoBusquedaChecklist}-${this._empleadosVersion}`;
+    if (huella === this._cacheChecklistsHuella) return;
+    this._cacheChecklistsHuella = huella;
+    const mandos: any[] = [];
+    const operativos: any[] = [];
+    for (const c of filtrados) {
+      if (this.nivelDelAssigned(c.assigned) === 'mando') mandos.push(c);
+      else operativos.push(c);
+    }
+    this._cacheChecklistsMandos = mandos;
+    this._cacheChecklistsOperativos = operativos;
+    this._cacheChecklistsOrdenados = [...mandos, ...operativos];
   }
 
   /** Sublista de mandos del set filtrado actual. Alimenta la sub-sección "Mandos de sucursal". */
   get checklistsDeMandos() {
-    return this.checklistsFiltrados.filter((c: any) => this.nivelDelAssigned(c.assigned) === 'mando');
+    this.actualizarCacheChecklistsSiCambio();
+    return this._cacheChecklistsMandos;
   }
   /** Sublista de operativos del set filtrado actual. Alimenta la sub-sección "Operativos". */
   get checklistsDeOperativos() {
-    return this.checklistsFiltrados.filter((c: any) => this.nivelDelAssigned(c.assigned) === 'operativo');
+    this.actualizarCacheChecklistsSiCambio();
+    return this._cacheChecklistsOperativos;
+  }
+  /**
+   * Lista filtrada ordenada por nivel: mandos primero, después operativos.
+   * El template itera con `*ngFor` único + separadores cuando cambia el nivel.
+   */
+  get checklistsOrdenadosPorNivel() {
+    this.actualizarCacheChecklistsSiCambio();
+    return this._cacheChecklistsOrdenados;
   }
 
   /**
-   * Lista filtrada ordenada por nivel: mandos primero, después operativos.
-   * Lo usa el template con un *ngFor único + separadores cuando cambia el
-   * nivel, en vez de duplicar el grid de tarjetas (que tiene ~150 líneas).
+   * Cache de `checklistsFiltrados`. Recalcula solo si cambian length de
+   * checklists, vistaTareas o el termino de búsqueda. Sin esto, los templates
+   * lo evaluaban en cada change detection y cada vez recorría toda la lista.
    */
-  get checklistsOrdenadosPorNivel() {
-    const mandos = this.checklistsDeMandos;
-    const operativos = this.checklistsDeOperativos;
-    return [...mandos, ...operativos];
-  }
-
+  private _cacheFiltradosHuella = '';
+  private _cacheFiltrados: any[] = [];
   get checklistsFiltrados() {
+    const huella = `${this.checklists().length}-${this.vistaTareas}-${this.terminoBusquedaChecklist}-${this.currentUser?.nombre || ''}`;
+    if (huella === this._cacheFiltradosHuella) return this._cacheFiltrados;
+    this._cacheFiltradosHuella = huella;
     let lista = this.checklists();
 
-    // 🎯 Filtro por pestaña (Mis / Equipo / Todas). Solo aplica si el usuario
+    // Filtro por pestaña (Mis / Equipo / Todas). Solo aplica si el usuario
     // puede alternar — para trabajadores puros, la lista ya viene filtrada por
     // su nombre desde el snapshot. Match tolerante a apellido extra/de menos.
     if (this.puedeFiltrarVista && this.vistaTareas !== 'todas') {
@@ -559,7 +608,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       });
     }
 
-    // 🔍 Filtro por búsqueda libre (texto en nombre/empleado/sucursal).
+    // Filtro por búsqueda libre (texto en nombre/empleado/sucursal).
     const termino = this.terminoBusquedaChecklist.trim().toLowerCase();
     if (termino) {
       lista = lista.filter(c =>
@@ -568,6 +617,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
         c.store?.toLowerCase().includes(termino)
       );
     }
+    this._cacheFiltrados = lista;
     return lista;
   }
 

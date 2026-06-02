@@ -216,27 +216,54 @@ export class PersonalComponent implements OnInit, OnDestroy {
       );
     }
 
-    // 🏷️ Filtro por tab de nivel (Mandos / Operativos). 'todos' no toca nada.
+    // Filtro por tab de nivel (Mandos / Operativos). 'todos' no toca nada.
     if (this.vistaNivel !== 'todos') {
       lista = lista.filter(u => nivelDeUsuario(u) === this.vistaNivel);
     }
     return lista;
   }
 
-  /** Cuenta total (sin aplicar el filtro de tab) — alimenta el badge de "Todos". */
+  /**
+   * Lista base de trabajadores SIN el filtro del tab activo. Alimenta los
+   * contadores para que "Mandos" siempre muestre cuántos hay aunque el tab
+   * activo sea otro. Las versiones anteriores mutaban temporalmente
+   * `this.vistaNivel` y eso rompía la detección de cambios de Angular —
+   * los botones de los tabs no respondían al click.
+   */
+  private getTrabajadoresIgnorandoTab(): any[] {
+    const yo = this.liveUser;
+    let lista = this.usuarios().filter(u => u.rol === 'trabajador');
+    if (!esAdminGlobal(yo)) {
+      const misSucursales = yo?.sucursales || [];
+      const misAreas = yo?.areas || [];
+      if (misSucursales.length === 0 && misAreas.length === 0) return [];
+      lista = lista.filter(emp => {
+        const empSucursales = emp.sucursales || [emp.sucursal || ''];
+        const empAreas = emp.areas || [];
+        const yoSoyGlobalSucursal = misSucursales.includes('General (Acceso Total)');
+        const yoSoyGlobalArea = misAreas.includes('Todas las áreas') || misAreas.includes('Todas');
+        const coincideSucursal = yoSoyGlobalSucursal || empSucursales.some((s: string) => misSucursales.includes(s));
+        const exigeArea = misAreas.length > 0 && empAreas.length > 0;
+        const coincideArea = !exigeArea || yoSoyGlobalArea || empAreas.some((a: string) => misAreas.includes(a));
+        return coincideSucursal && coincideArea;
+      });
+    }
+    const t = this.terminoBusqueda.toLowerCase().trim();
+    if (t) {
+      lista = lista.filter(u =>
+        u.nombre.toLowerCase().includes(t) ||
+        (u.cargo && u.cargo.toLowerCase().includes(t)) ||
+        (u.sucursales && u.sucursales.join(' ').toLowerCase().includes(t)) ||
+        (u.areas && u.areas.join(' ').toLowerCase().includes(t))
+      );
+    }
+    return lista;
+  }
   contadorTrabajadoresTodos(): number {
-    const vista = this.vistaNivel;
-    this.vistaNivel = 'todos';
-    const n = this.getTrabajadores().length;
-    this.vistaNivel = vista;
-    return n;
+    return this.getTrabajadoresIgnorandoTab().length;
   }
   contadorTrabajadoresNivel(nivel: NivelJerarquico): number {
-    const vista = this.vistaNivel;
-    this.vistaNivel = 'todos';
-    const n = this.getTrabajadores().filter(u => nivelDeUsuario(u) === nivel).length;
-    this.vistaNivel = vista;
-    return n;
+    return this.getTrabajadoresIgnorandoTab().filter(u => nivelDeUsuario(u) === nivel).length;
   }
 
   /**

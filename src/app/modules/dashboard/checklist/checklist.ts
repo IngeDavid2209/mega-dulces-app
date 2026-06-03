@@ -7,6 +7,7 @@ import * as localforage from 'localforage';
 import Swal from 'sweetalert2';
 import { esAdminGlobal, esAdminLimitado, sucursalesPermitidas, esSupervisor, mismoEmpleadoNombre } from '../../../shared/permisos.util';
 import { nivelDeCargo } from '../../../shared/nivel-jerarquico.util';
+import { TareaEquipo, FaseEquipo, ItemEquipo, SubtareaEquipo } from '../../../shared/tareas-equipo.types';
 import { obtenerSemanaISO, obtenerNombreDia } from '../../../shared/descansos.util';
 import { RobotRutinasV2Service } from '../../../shared/robot-rutinas-v2.service';
 import { RutinaMaestra } from '../../../shared/rutinas.types';
@@ -108,6 +109,31 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   checklists = signal<any[]>([]);
   empleados = signal<any[]>([]);
   sucursalesDisponibles = signal<string[]>([]);
+
+  // ===== Tareas de Equipo (proyectos colaborativos en fases) =====
+  tareasEquipo = signal<TareaEquipo[]>([]);
+  tareaEquipoSeleccionada = signal<TareaEquipo | null>(null);
+  vistaEquipo = signal<'lista' | 'detalle'>('lista');
+
+  // Wizard de creación de Tarea en Equipo (4 pasos)
+  pasoEquipoWizard: 1 | 2 | 3 | 4 = 1;
+  equipoFormName = '';
+  equipoFormStore = '';
+  equipoFormDate = '';
+  equipoFormIntegrantes: string[] = [];
+  equipoFormJefe = '';
+  /** Fases temporales mientras se crea — cada una con un array de items iniciales. */
+  equipoFormFases: { id: string; nombre: string; items: { id: string; asignado: string; texto: string; horaLimite?: string; requiresPhoto?: boolean; requiresAntesDespues?: boolean; }[] }[] = [];
+  equipoBusquedaIntegrante = '';
+
+  // Estado del agregar-en-vivo dentro de una fase activa (vista detalle)
+  agregandoEnFaseId: string | null = null;
+  nuevoItemAsignado = '';
+  nuevoItemTexto = '';
+  nuevoItemHoraLimite = '';
+  nuevoItemRequiresPhoto = false;
+  agregandoSubtareaItemId: string | null = null;
+  nuevaSubtareaTexto = '';
 
   // 🩺 Diagnóstico del último snapshot — alimenta el botón "¿Por qué no veo tareas?"
   // en el estado vacío para inspeccionar el filtrado desde el propio móvil.
@@ -978,6 +1004,42 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     });
     this.destructoresRadares.push(radarChecklists);
 
+    // Radar de Tareas de Equipo (colección separada `tareas_equipo`).
+    // Cada usuario solo ve las tareas donde es integrante, jefe o admin.
+    const tareasEquipoRef = collection(this.firestore, 'tareas_equipo');
+    const radarTareasEquipo = onSnapshot(tareasEquipoRef, (snapshot) => {
+      const sesion = leerSesion() || this.currentUser;
+      const esGlobal = esAdminGlobal(sesion);
+      const esLimitado = esAdminLimitado(sesion);
+      const permitidas = sucursalesPermitidas(sesion);
+      const miNombre = sesion?.nombre;
+
+      const arr: TareaEquipo[] = [];
+      snapshot.forEach(d => {
+        const data = d.data() as any;
+        const tarea: TareaEquipo = { ...data, id: d.id };
+        if (tarea.cerrado === true && esAdminGlobal(sesion) === false) {
+          // Trabajadores y admins limitados no ven proyectos cerrados (limpieza visual)
+          return;
+        }
+        // Filtro por sucursal / rol
+        if (esGlobal) {
+          arr.push(tarea);
+        } else if (esLimitado) {
+          if ((permitidas ?? []).includes(tarea.store)) arr.push(tarea);
+        } else {
+          // Trabajador: solo si está como integrante o jefe del proyecto
+          if (mismoEmpleadoNombre(tarea.jefeEquipo, miNombre) ||
+              (tarea.integrantes || []).some(n => mismoEmpleadoNombre(n, miNombre))) {
+            arr.push(tarea);
+          }
+        }
+      });
+      arr.sort((a, b) => (b.timestampCreacion || 0) - (a.timestampCreacion || 0));
+      this.tareasEquipo.set(arr);
+    });
+    this.destructoresRadares.push(radarTareasEquipo);
+
     const notiRef = collection(this.firestore, 'notificaciones');
     const radarNotificaciones = onSnapshot(notiRef, (snapshot) => {
       const misNotis: any[] = [];
@@ -1756,8 +1818,336 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     this.isModalOpen = true;
   }
 
-  abrirModalEquipo() { this.isModalEquipoOpen = true; }
+  // ==========================================================================
+  // TAREAS DE EQUIPO — wizard de creación
+  // ==========================================================================
+  abrirModalEquipo() {
+    this.pasoEquipoWizard = 1;
+    this.equipoFormName = '';
+    this.equipoFormStore = this.sucursalesDisponibles().length > 0 ? this.sucursalesDisponibles()[0] : '';
+    this.equipoFormDate = this.hoyIsoStr;
+    this.equipoFormIntegrantes = [];
+    this.equipoFormJefe = '';
+    this.equipoFormFases = [{ id: 'fase_' + Date.now(), nombre: 'Fase 1', items: [] }];
+    this.equipoBusquedaIntegrante = '';
+    this.isModalEquipoOpen = true;
+  }
   cerrarModalEquipo() { this.isModalEquipoOpen = false; }
+
+  /** Avance/retroceso del wizard de equipo. */
+  puedeAvanzarEquipoWizard(): boolean {
+    switch (this.pasoEquipoWizard) {
+      case 1: return !!this.equipoFormName.trim() && !!this.equipoFormStore && !!this.equipoFormDate;
+      case 2: return this.equipoFormIntegrantes.length >= 2;
+      case 3: return !!this.equipoFormJefe && this.equipoFormIntegrantes.includes(this.equipoFormJefe);
+      case 4: return this.equipoFormFases.length > 0 && this.equipoFormFases.every(f => f.nombre.trim().length > 0);
+      default: return false;
+    }
+  }
+  avanzarEquipoWizard() {
+    if (!this.puedeAvanzarEquipoWizard()) return;
+    if (this.pasoEquipoWizard < 4) this.pasoEquipoWizard = (this.pasoEquipoWizard + 1) as 1 | 2 | 3 | 4;
+  }
+  retrocederEquipoWizard() {
+    if (this.pasoEquipoWizard > 1) this.pasoEquipoWizard = (this.pasoEquipoWizard - 1) as 1 | 2 | 3 | 4;
+  }
+
+  /** Toggle de integrantes en el paso 2 del wizard. */
+  toggleIntegranteEquipoWizard(nombre: string) {
+    const i = this.equipoFormIntegrantes.indexOf(nombre);
+    if (i >= 0) {
+      this.equipoFormIntegrantes.splice(i, 1);
+      if (this.equipoFormJefe === nombre) this.equipoFormJefe = '';
+    } else {
+      this.equipoFormIntegrantes.push(nombre);
+    }
+  }
+
+  /** Empleados filtrados para el paso 2 (por sucursal del proyecto + búsqueda libre). */
+  get empleadosParaEquipoWizard(): any[] {
+    let lista = this.empleados();
+    if (this.equipoFormStore) {
+      lista = lista.filter(e => this.empleadoPerteneceASucursal(e, this.equipoFormStore));
+    }
+    const t = this.equipoBusquedaIntegrante.trim().toLowerCase();
+    if (t) lista = lista.filter(e => (e.nombre || '').toLowerCase().includes(t));
+    return lista;
+  }
+
+  /** Manejo de fases temporales en paso 4. */
+  agregarFaseEquipoTemp() {
+    const i = this.equipoFormFases.length + 1;
+    this.equipoFormFases.push({ id: 'fase_' + Date.now() + '_' + i, nombre: `Fase ${i}`, items: [] });
+  }
+  eliminarFaseEquipoTemp(idx: number) {
+    if (this.equipoFormFases.length === 1) return; // siempre al menos una
+    this.equipoFormFases.splice(idx, 1);
+  }
+  agregarItemFaseEquipoTemp(faseIdx: number) {
+    this.equipoFormFases[faseIdx].items.push({
+      id: 'item_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+      asignado: this.equipoFormIntegrantes[0] || '',
+      texto: '',
+      horaLimite: '',
+      requiresPhoto: false,
+      requiresAntesDespues: false
+    });
+  }
+  eliminarItemFaseEquipoTemp(faseIdx: number, itemIdx: number) {
+    this.equipoFormFases[faseIdx].items.splice(itemIdx, 1);
+  }
+
+  /** Guarda definitivamente la Tarea de Equipo en Firestore (colección tareas_equipo).
+   *  La primera fase queda 'activa'; las siguientes 'pendiente'. */
+  async guardarTareaEquipo() {
+    if (!this.puedeAvanzarEquipoWizard()) {
+      this.mostrarToast(' Faltan datos en el último paso.');
+      return;
+    }
+    const id = 'eq_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+    const ahora = Date.now();
+    const fases: FaseEquipo[] = this.equipoFormFases.map((f, idx) => ({
+      id: f.id,
+      nombre: f.nombre.trim(),
+      orden: idx,
+      estado: idx === 0 ? 'activa' : 'pendiente',
+      items: f.items.filter(it => it.texto.trim().length > 0 && it.asignado).map(it => ({
+        id: it.id,
+        asignado: it.asignado,
+        texto: it.texto.trim(),
+        horaLimite: it.horaLimite || undefined,
+        requiresPhoto: !!it.requiresPhoto && !it.requiresAntesDespues,
+        requiresAntesDespues: !!it.requiresAntesDespues,
+        completada: false,
+        subtareas: [],
+        agregadaPor: this.currentUser?.nombre || 'admin',
+        agregadaEn: ahora
+      })),
+      iniciadaEn: idx === 0 ? ahora : undefined
+    }));
+    const tarea: TareaEquipo = {
+      id,
+      name: this.equipoFormName.trim(),
+      store: this.equipoFormStore,
+      date: this.equipoFormDate,
+      createdBy: this.currentUser?.nombre || 'admin',
+      jefeEquipo: this.equipoFormJefe,
+      integrantes: [...this.equipoFormIntegrantes],
+      fases,
+      cerrado: false,
+      timestampCreacion: ahora,
+      _tipo: 'equipo'
+    };
+    try {
+      await setDoc(doc(this.firestore, 'tareas_equipo', id), tarea);
+      this.mostrarToast(' Proyecto en equipo creado.');
+      this.cerrarModalEquipo();
+    } catch (e) {
+      console.error('[guardarTareaEquipo]', e);
+      this.mostrarToast(' Error al crear el proyecto.');
+    }
+  }
+
+  // ==========================================================================
+  // TAREAS DE EQUIPO — operaciones en vivo (jefe + integrantes)
+  // ==========================================================================
+  /** ¿El usuario actual puede monitorear/agregar tareas? (admin global, admin
+   *  limitado con sucursal del proyecto, creador o jefe designado). */
+  puedeMonitorearEquipo(t: TareaEquipo | null): boolean {
+    if (!t) return false;
+    const u = this.currentUser;
+    if (esAdminGlobal(u)) return true;
+    if (esAdminLimitado(u) && (sucursalesPermitidas(u) ?? []).includes(t.store)) return true;
+    if (mismoEmpleadoNombre(u?.nombre, t.createdBy)) return true;
+    if (mismoEmpleadoNombre(u?.nombre, t.jefeEquipo)) return true;
+    return false;
+  }
+
+  /** ¿El usuario actual puede ver/completar este item? (su asignado o jefe). */
+  puedeOperarItemEquipo(t: TareaEquipo, item: ItemEquipo): boolean {
+    const u = this.currentUser;
+    if (mismoEmpleadoNombre(u?.nombre, item.asignado)) return true;
+    return this.puedeMonitorearEquipo(t);
+  }
+
+  /** Items que el usuario actual debe ver dentro de una fase. */
+  itemsVisiblesParaUsuario(t: TareaEquipo, fase: FaseEquipo): ItemEquipo[] {
+    if (this.puedeMonitorearEquipo(t)) return fase.items;
+    const mi = this.currentUser?.nombre;
+    return fase.items.filter(i => mismoEmpleadoNombre(i.asignado, mi));
+  }
+
+  /** Progreso de una fase (0..100) basado en items completados. */
+  progresoFase(fase: FaseEquipo): number {
+    if (!fase.items || fase.items.length === 0) return 0;
+    const ok = fase.items.filter(i => i.completada).length;
+    return Math.round((ok / fase.items.length) * 100);
+  }
+  /** Progreso global del proyecto (promedio de fases). */
+  progresoEquipo(t: TareaEquipo): number {
+    if (!t.fases || t.fases.length === 0) return 0;
+    const suma = t.fases.reduce((acc, f) => acc + this.progresoFase(f), 0);
+    return Math.round(suma / t.fases.length);
+  }
+
+  /** Marca/desmarca un item como completado. */
+  async toggleItemEquipoCompletado(t: TareaEquipo, faseId: string, itemId: string) {
+    if (t.cerrado) return;
+    const fresca = await this.obtenerTareaEquipoFresca(t.id);
+    if (!fresca) return;
+    const fase = fresca.fases.find(f => f.id === faseId);
+    if (!fase || fase.estado !== 'activa') {
+      this.mostrarToast(' Esta fase no está activa.');
+      return;
+    }
+    const item = fase.items.find(i => i.id === itemId);
+    if (!item) return;
+    if (!this.puedeOperarItemEquipo(fresca, item)) return;
+    item.completada = !item.completada;
+    item.completadaEn = item.completada ? Date.now() : undefined;
+    await setDoc(doc(this.firestore, 'tareas_equipo', t.id), { fases: fresca.fases }, { merge: true });
+  }
+
+  /** Marca/desmarca una subtarea de un item. */
+  async toggleSubtareaEquipo(t: TareaEquipo, faseId: string, itemId: string, subId: string) {
+    if (t.cerrado) return;
+    const fresca = await this.obtenerTareaEquipoFresca(t.id);
+    if (!fresca) return;
+    const fase = fresca.fases.find(f => f.id === faseId);
+    if (!fase || fase.estado !== 'activa') return;
+    const item = fase.items.find(i => i.id === itemId);
+    if (!item) return;
+    if (!this.puedeOperarItemEquipo(fresca, item)) return;
+    const sub = item.subtareas.find(s => s.id === subId);
+    if (!sub) return;
+    sub.completada = !sub.completada;
+    sub.completadaPor = sub.completada ? this.currentUser?.nombre : undefined;
+    sub.completadaEn = sub.completada ? Date.now() : undefined;
+    await setDoc(doc(this.firestore, 'tareas_equipo', t.id), { fases: fresca.fases }, { merge: true });
+  }
+
+  /** Jefe agrega una tarea nueva en la fase activa, asignada a un integrante. */
+  async agregarItemEnVivo(t: TareaEquipo, faseId: string) {
+    if (!this.puedeMonitorearEquipo(t) || t.cerrado) return;
+    if (!this.nuevoItemTexto.trim() || !this.nuevoItemAsignado) {
+      this.mostrarToast(' Falta texto o asignado.');
+      return;
+    }
+    const fresca = await this.obtenerTareaEquipoFresca(t.id);
+    if (!fresca) return;
+    const fase = fresca.fases.find(f => f.id === faseId);
+    if (!fase || fase.estado !== 'activa') return;
+    fase.items.push({
+      id: 'item_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+      asignado: this.nuevoItemAsignado,
+      texto: this.nuevoItemTexto.trim(),
+      horaLimite: this.nuevoItemHoraLimite || undefined,
+      requiresPhoto: this.nuevoItemRequiresPhoto,
+      completada: false,
+      subtareas: [],
+      agregadaPor: this.currentUser?.nombre,
+      agregadaEn: Date.now()
+    });
+    await setDoc(doc(this.firestore, 'tareas_equipo', t.id), { fases: fresca.fases }, { merge: true });
+    this.nuevoItemTexto = '';
+    this.nuevoItemHoraLimite = '';
+    this.nuevoItemRequiresPhoto = false;
+    this.agregandoEnFaseId = null;
+    this.mostrarToast(' Tarea agregada al equipo.');
+  }
+
+  /** Jefe agrega una subtarea dentro de un item existente. */
+  async agregarSubtareaEnVivo(t: TareaEquipo, faseId: string, itemId: string) {
+    if (!this.puedeMonitorearEquipo(t) || t.cerrado) return;
+    if (!this.nuevaSubtareaTexto.trim()) return;
+    const fresca = await this.obtenerTareaEquipoFresca(t.id);
+    if (!fresca) return;
+    const fase = fresca.fases.find(f => f.id === faseId);
+    const item = fase?.items.find(i => i.id === itemId);
+    if (!fase || !item || fase.estado !== 'activa') return;
+    const sub: SubtareaEquipo = {
+      id: 'sub_' + Date.now() + '_' + Math.random().toString(36).slice(2, 5),
+      texto: this.nuevaSubtareaTexto.trim(),
+      completada: false
+    };
+    item.subtareas.push(sub);
+    await setDoc(doc(this.firestore, 'tareas_equipo', t.id), { fases: fresca.fases }, { merge: true });
+    this.nuevaSubtareaTexto = '';
+    this.agregandoSubtareaItemId = null;
+  }
+
+  /** Jefe cierra la fase activa. Abre automáticamente la siguiente. */
+  async cerrarFaseEquipo(t: TareaEquipo, faseId: string) {
+    if (!this.puedeMonitorearEquipo(t) || t.cerrado) return;
+    const fresca = await this.obtenerTareaEquipoFresca(t.id);
+    if (!fresca) return;
+    const fase = fresca.fases.find(f => f.id === faseId);
+    if (!fase || fase.estado !== 'activa') return;
+    // Confirma que todos los items están completos antes de cerrar
+    const incompletos = fase.items.filter(i => !i.completada);
+    if (incompletos.length > 0) {
+      const r = await Swal.fire({
+        title: `Quedan ${incompletos.length} tarea(s) incompleta(s)`,
+        text: '¿Cerrar la fase de todas formas? Las tareas incompletas quedarán como vencidas.',
+        icon: 'warning', showCancelButton: true,
+        confirmButtonText: 'Sí, cerrar fase', cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#F59E0B'
+      });
+      if (!r.isConfirmed) return;
+    }
+    fase.estado = 'completa';
+    fase.cerradaEn = Date.now();
+    fase.cerradaPor = this.currentUser?.nombre;
+    // Abre la siguiente fase si existe
+    const siguiente = fresca.fases.find(f => f.orden === fase.orden + 1);
+    if (siguiente) {
+      siguiente.estado = 'activa';
+      siguiente.iniciadaEn = Date.now();
+    }
+    await setDoc(doc(this.firestore, 'tareas_equipo', t.id), { fases: fresca.fases }, { merge: true });
+    this.mostrarToast(siguiente ? ` Fase cerrada. Inicia: ${siguiente.nombre}` : ' Última fase cerrada.');
+  }
+
+  /** Jefe cierra el proyecto completo (solo si todas las fases están completas). */
+  async cerrarProyectoEquipo(t: TareaEquipo) {
+    if (!this.puedeMonitorearEquipo(t)) return;
+    const fresca = await this.obtenerTareaEquipoFresca(t.id);
+    if (!fresca) return;
+    const incompletas = fresca.fases.filter(f => f.estado !== 'completa').length;
+    if (incompletas > 0) {
+      this.mostrarToast(' Aún hay fases sin cerrar.');
+      return;
+    }
+    const r = await Swal.fire({
+      title: '¿Cerrar el proyecto?',
+      text: 'Quedará archivado y no aparecerá más en el listado.',
+      icon: 'question', showCancelButton: true,
+      confirmButtonText: 'Cerrar proyecto', cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#0F172A'
+    });
+    if (!r.isConfirmed) return;
+    await setDoc(doc(this.firestore, 'tareas_equipo', t.id),
+      { cerrado: true, cerradoEn: Date.now() }, { merge: true });
+    this.volverDeEquipoDetalle();
+  }
+
+  /** Lee el doc fresco antes de mutar (evita race conditions con el snapshot). */
+  private async obtenerTareaEquipoFresca(id: string): Promise<TareaEquipo | null> {
+    const ref = doc(this.firestore, 'tareas_equipo', id);
+    const snap = await getDoc(ref);
+    if (!snap.exists()) return null;
+    return { ...(snap.data() as any), id } as TareaEquipo;
+  }
+
+  /** Navegación vista detalle equipo. */
+  verDetalleEquipo(t: TareaEquipo) {
+    this.tareaEquipoSeleccionada.set(t);
+    this.vistaEquipo.set('detalle');
+  }
+  volverDeEquipoDetalle() {
+    this.tareaEquipoSeleccionada.set(null);
+    this.vistaEquipo.set('lista');
+  }
 
   cerrarModal() { this.isModalOpen = false; }
   agregarItem() {

@@ -73,8 +73,202 @@
           </div>
         </div>
 
+        <!-- ===================== PROYECTOS EN EQUIPO (lista) ===================== -->
+        <section class="eq-list-section"
+                 *ngIf="vistaEquipo() === 'lista' && tareasEquipo().length > 0">
+          <div class="eq-list-head">
+            <div>
+              <h3 class="eq-list-title">Proyectos en equipo</h3>
+              <div class="eq-list-sub">{{ tareasEquipo().length }} proyecto(s) activo(s)</div>
+            </div>
+          </div>
+          <div class="eq-list-grid">
+            <div class="eq-card" *ngFor="let proyecto of tareasEquipo()" (click)="verDetalleEquipo(proyecto)">
+              <div class="eq-card-head">
+                <div class="eq-card-titulo">{{ proyecto.name }}</div>
+                <span class="eq-card-progreso-pill"
+                      [class.pill-completo]="progresoEquipo(proyecto) >= 100"
+                      [class.pill-progreso]="progresoEquipo(proyecto) > 0 && progresoEquipo(proyecto) < 100"
+                      [class.pill-cero]="progresoEquipo(proyecto) === 0">
+                  {{ progresoEquipo(proyecto) }}%
+                </span>
+              </div>
+              <div class="eq-card-meta">
+                <span>{{ proyecto.store }}</span>
+                <span class="eq-meta-sep">·</span>
+                <span>{{ proyecto.date }}</span>
+                <span class="eq-meta-sep">·</span>
+                <span>Jefe: <strong>{{ proyecto.jefeEquipo }}</strong></span>
+              </div>
+              <div class="eq-card-fases">
+                <span class="eq-fase-chip" *ngFor="let f of proyecto.fases"
+                      [class.fase-completa]="f.estado === 'completa'"
+                      [class.fase-activa]="f.estado === 'activa'"
+                      [class.fase-pendiente]="f.estado === 'pendiente'"
+                      [title]="f.nombre + ' — ' + f.estado">
+                  <span class="eq-fase-dot"></span>{{ f.nombre }}
+                </span>
+              </div>
+              <div class="eq-card-foot">
+                <div class="eq-card-integrantes">
+                  <span class="eq-integrante-mini" *ngFor="let n of proyecto.integrantes" [title]="n">
+                    {{ (n || '?').charAt(0) | uppercase }}
+                  </span>
+                </div>
+                <span class="eq-card-cta">Ver →</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===================== DETALLE DE PROYECTO EN EQUIPO ===================== -->
+        <section class="eq-detalle" *ngIf="vistaEquipo() === 'detalle' && tareaEquipoSeleccionada() as proyecto">
+          <button class="btn-back" (click)="volverDeEquipoDetalle()">← Volver al listado</button>
+
+          <div class="eq-detalle-head">
+            <div>
+              <h2 class="eq-detalle-titulo">{{ proyecto.name }}</h2>
+              <div class="eq-detalle-meta">
+                <span><strong>Sucursal:</strong> {{ proyecto.store }}</span>
+                <span><strong>Fecha:</strong> {{ proyecto.date }}</span>
+                <span><strong>Creado por:</strong> {{ proyecto.createdBy }}</span>
+                <span class="eq-detalle-jefe-tag">Jefe: <strong>{{ proyecto.jefeEquipo }}</strong></span>
+              </div>
+            </div>
+            <div class="eq-detalle-progreso">
+              <div class="eq-detalle-progreso-num">{{ progresoEquipo(proyecto) }}%</div>
+              <div class="eq-detalle-progreso-label">Avance total</div>
+            </div>
+          </div>
+
+          <div class="eq-detalle-integrantes">
+            <span class="eq-detalle-int-pill" *ngFor="let n of proyecto.integrantes"
+                  [class.es-jefe]="n === proyecto.jefeEquipo">
+              <span class="eq-integrante-mini">{{ (n || '?').charAt(0) | uppercase }}</span>
+              {{ n }}
+              <span *ngIf="n === proyecto.jefeEquipo" class="eq-int-jefe-tag">Jefe</span>
+            </span>
+          </div>
+
+          <!-- Fases -->
+          <div class="eq-fases-lista">
+            <div class="eq-fase-card" *ngFor="let fase of proyecto.fases"
+                 [class.fase-activa]="fase.estado === 'activa'"
+                 [class.fase-completa]="fase.estado === 'completa'"
+                 [class.fase-pendiente]="fase.estado === 'pendiente'">
+              <div class="eq-fase-card-head">
+                <div class="eq-fase-card-left">
+                  <div class="eq-fase-card-orden">{{ fase.orden + 1 }}</div>
+                  <div>
+                    <div class="eq-fase-card-nombre">{{ fase.nombre }}</div>
+                    <div class="eq-fase-card-estado">
+                      <span *ngIf="fase.estado === 'completa'">Completada</span>
+                      <span *ngIf="fase.estado === 'activa'">En curso · {{ progresoFase(fase) }}%</span>
+                      <span *ngIf="fase.estado === 'pendiente'">Bloqueada (espera la anterior)</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="eq-fase-card-actions" *ngIf="fase.estado === 'activa' && puedeMonitorearEquipo(proyecto)">
+                  <button class="btn-secondary eq-btn-mini"
+                          (click)="agregandoEnFaseId = (agregandoEnFaseId === fase.id ? null : fase.id);
+                                   nuevoItemAsignado = proyecto.integrantes[0]; nuevoItemTexto = ''; nuevoItemHoraLimite = ''; nuevoItemRequiresPhoto = false;">
+                    + Tarea
+                  </button>
+                  <button class="btn-primary eq-btn-mini" (click)="cerrarFaseEquipo(proyecto, fase.id)">
+                    Cerrar fase
+                  </button>
+                </div>
+              </div>
+
+              <!-- Mini-form de agregar tarea en vivo (solo jefe) -->
+              <div class="eq-add-item-inline" *ngIf="agregandoEnFaseId === fase.id && puedeMonitorearEquipo(proyecto)">
+                <input type="text" class="form-input" [(ngModel)]="nuevoItemTexto" placeholder="¿Qué tarea agregar?">
+                <select class="form-input select-input" [(ngModel)]="nuevoItemAsignado">
+                  <option *ngFor="let n of proyecto.integrantes" [value]="n">{{ n }}</option>
+                </select>
+                <input type="time" class="form-input eq-add-item-hora" [(ngModel)]="nuevoItemHoraLimite" title="Hora límite (opcional)">
+                <label class="eq-add-item-foto-check">
+                  <input type="checkbox" [(ngModel)]="nuevoItemRequiresPhoto"> Foto
+                </label>
+                <button class="btn-primary eq-btn-mini" (click)="agregarItemEnVivo(proyecto, fase.id)">
+                  Agregar
+                </button>
+                <button class="btn-secondary eq-btn-mini" (click)="agregandoEnFaseId = null">
+                  Cancelar
+                </button>
+              </div>
+
+              <!-- Items visibles para el usuario -->
+              <div class="eq-items-lista">
+                <div class="eq-item" *ngFor="let item of itemsVisiblesParaUsuario(proyecto, fase)"
+                     [class.item-completado]="item.completada"
+                     [class.item-bloqueado]="fase.estado !== 'activa'">
+                  <div class="eq-item-head">
+                    <button class="eq-item-check"
+                            [class.checked]="item.completada"
+                            [disabled]="fase.estado !== 'activa' || !puedeOperarItemEquipo(proyecto, item)"
+                            (click)="toggleItemEquipoCompletado(proyecto, fase.id, item.id)"
+                            title="Marcar como completado">
+                    </button>
+                    <div class="eq-item-body">
+                      <div class="eq-item-texto">{{ item.texto }}</div>
+                      <div class="eq-item-meta">
+                        <span class="eq-item-asignado">Para <strong>{{ item.asignado }}</strong></span>
+                        <span *ngIf="item.horaLimite" class="eq-item-hora">· Límite {{ formatearHora(item.horaLimite) }}</span>
+                        <span *ngIf="item.requiresPhoto" class="eq-item-evi">· Requiere foto</span>
+                        <span *ngIf="item.requiresAntesDespues" class="eq-item-evi">· Requiere antes/después</span>
+                      </div>
+                    </div>
+                    <button class="eq-item-add-sub"
+                            *ngIf="fase.estado === 'activa' && puedeMonitorearEquipo(proyecto)"
+                            (click)="agregandoSubtareaItemId = (agregandoSubtareaItemId === item.id ? null : item.id);
+                                     nuevaSubtareaTexto = '';"
+                            title="Agregar subtarea">+ Sub</button>
+                  </div>
+
+                  <!-- Subtareas existentes -->
+                  <div class="eq-sub-lista" *ngIf="item.subtareas && item.subtareas.length > 0">
+                    <label class="eq-sub" *ngFor="let sub of item.subtareas" [class.sub-completed]="sub.completada">
+                      <input type="checkbox"
+                             [checked]="sub.completada"
+                             [disabled]="fase.estado !== 'activa' || !puedeOperarItemEquipo(proyecto, item)"
+                             (change)="toggleSubtareaEquipo(proyecto, fase.id, item.id, sub.id)">
+                      <span>{{ sub.texto }}</span>
+                    </label>
+                  </div>
+
+                  <!-- Mini-form de subtarea en vivo -->
+                  <div class="eq-add-sub-inline" *ngIf="agregandoSubtareaItemId === item.id && puedeMonitorearEquipo(proyecto)">
+                    <input type="text" class="form-input" [(ngModel)]="nuevaSubtareaTexto" placeholder="Texto de la subtarea">
+                    <button class="btn-primary eq-btn-mini" (click)="agregarSubtareaEnVivo(proyecto, fase.id, item.id)">
+                      Agregar
+                    </button>
+                    <button class="btn-secondary eq-btn-mini" (click)="agregandoSubtareaItemId = null">
+                      Cancelar
+                    </button>
+                  </div>
+                </div>
+
+                <div class="eq-items-vacio" *ngIf="itemsVisiblesParaUsuario(proyecto, fase).length === 0">
+                  <span *ngIf="puedeMonitorearEquipo(proyecto)">No hay tareas en esta fase. Agrega la primera.</span>
+                  <span *ngIf="!puedeMonitorearEquipo(proyecto)">No tienes tareas asignadas en esta fase.</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Botón cerrar proyecto cuando todas las fases están completas -->
+          <div class="eq-detalle-foot" *ngIf="puedeMonitorearEquipo(proyecto) && !proyecto.cerrado">
+            <button class="btn-primary"
+                    [disabled]="progresoEquipo(proyecto) < 100"
+                    (click)="cerrarProyectoEquipo(proyecto)">
+              Cerrar proyecto
+            </button>
+          </div>
+        </section>
+
         <!-- 🎯 Tabs: Mis tareas / Equipo / Todas (solo admin o supervisor) -->
-        <section class="vista-tabs" *ngIf="puedeFiltrarVista">
+        <section class="vista-tabs" *ngIf="puedeFiltrarVista && vistaEquipo() === 'lista'">
           <button class="vista-tab"
                   [class.vista-tab-active]="vistaTareas === 'mis'"
                   (click)="cambiarVistaTareas('mis')">
@@ -91,7 +285,7 @@
           </button>
         </section>
 
-        <div class="checklist-grid">
+        <div class="checklist-grid" *ngIf="vistaEquipo() === 'lista'">
 
           <ng-container *ngFor="let checklist of checklistsOrdenadosPorNivel; let i = index; trackBy: trackByChecklist">
             <!-- Encabezado de la sección Mandos cuando arranca con un mando y hay operativos detrás -->
@@ -1380,128 +1574,140 @@
       </div>
 
       <!-- MODAL DE TAREA EN EQUIPO (igual que tenías) -->
-      <div class="modal-overlay" *ngIf="isModalEquipoOpen"
-        style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15,23,42,0.8); z-index: 10000; display: flex; justify-content: center; align-items: center; padding: 20px;">
-        <div
-          style="background: white; width: 100%; max-width: 750px; max-height: 90vh; border-radius: 20px; display: flex; flex-direction: column; overflow: hidden;">
-          <div
-            style="padding: 20px 24px; border-bottom: 1px solid #E2E8F0; display: flex; justify-content: space-between; align-items: center; background: #F8FAFC;">
-            <h3 style="margin: 0; color: #1E293B; font-weight: 800;">Nueva Tarea de Equipo</h3>
-            <button (click)="cerrarModalEquipo()"
-              style="background: none; border: none; font-size: 28px; color: #94A3B8; cursor: pointer;">&times;</button>
+      <!-- ===================== MODAL TAREA DE EQUIPO (wizard 4 pasos) ===================== -->
+      <div class="modal-overlay" *ngIf="isModalEquipoOpen">
+        <div class="modal eq-modal">
+          <div class="eq-modal-head">
+            <div>
+              <div class="eq-modal-title">Nuevo Proyecto en Equipo</div>
+              <div class="eq-modal-step">Paso {{ pasoEquipoWizard }} de 4</div>
+            </div>
+            <button class="eq-modal-close" (click)="cerrarModalEquipo()">&times;</button>
           </div>
-          <div style="padding: 24px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 24px;">
-            <div style="background: #EEF2FF; border: 1px solid #C7D2FE; padding: 20px; border-radius: 12px;">
-              <label style="font-size: 11px; font-weight: 800; color: #4338CA; text-transform: uppercase;">🎯 Nombre de la Tarea en Equipo</label>
-              <input type="text" [(ngModel)]="nombreTareaEquipo"
-                placeholder="Ej: Cambiar diseño de MD, Limpieza general..."
-                style="width: 100%; padding: 12px; border: 1px solid #CBD5E1; border-radius: 8px; margin-top: 8px; font-weight: 700; font-size: 16px; outline: none; box-sizing: border-box;">
+
+          <!-- Barra de progreso del wizard -->
+          <div class="eq-wizard-bar">
+            <div class="eq-wizard-step" [class.active]="pasoEquipoWizard >= 1">1 · Datos</div>
+            <div class="eq-wizard-sep"></div>
+            <div class="eq-wizard-step" [class.active]="pasoEquipoWizard >= 2">2 · Equipo</div>
+            <div class="eq-wizard-sep"></div>
+            <div class="eq-wizard-step" [class.active]="pasoEquipoWizard >= 3">3 · Jefe</div>
+            <div class="eq-wizard-sep"></div>
+            <div class="eq-wizard-step" [class.active]="pasoEquipoWizard >= 4">4 · Fases</div>
+          </div>
+
+          <div class="modal-body eq-modal-body">
+            <!-- PASO 1: DATOS BÁSICOS -->
+            <div *ngIf="pasoEquipoWizard === 1" class="eq-step">
+              <h4 class="eq-step-title">Datos del proyecto</h4>
+              <div class="eq-field">
+                <label>Nombre del proyecto</label>
+                <input type="text" class="form-input" [(ngModel)]="equipoFormName"
+                       placeholder="Ej: Inventario fin de mes, Remodelación área de cajas...">
+              </div>
+              <div class="eq-field-row">
+                <div class="eq-field">
+                  <label>Sucursal</label>
+                  <select class="form-input select-input" [(ngModel)]="equipoFormStore">
+                    <option *ngFor="let s of sucursalesDisponibles()" [value]="s">{{ s }}</option>
+                  </select>
+                </div>
+                <div class="eq-field">
+                  <label>Fecha objetivo</label>
+                  <input type="date" class="form-input" [(ngModel)]="equipoFormDate" [min]="hoyIsoStr">
+                </div>
+              </div>
             </div>
 
-            <div>
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
-                <p style="font-size: 12px; font-weight: 800; color: #64748B; text-transform: uppercase; margin: 0;">👤 Asignación de Integrantes</p>
-                <div style="display: flex; gap: 10px; align-items: flex-start;">
-                  <div style="position: relative; width: 250px;">
-                    <input type="text" [(ngModel)]="busquedaEmpleadoEquipo" (focus)="mostrarDropdownEquipo = true"
-                      (blur)="ocultarDropdownEquipo()" placeholder="🔍 Buscar empleado..."
-                      style="width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid #CBD5E1; font-size: 12px; box-sizing: border-box;">
-                    <div *ngIf="mostrarDropdownEquipo && empleadosEquipoFiltrados.length > 0"
-                      style="position: absolute; top: 100%; left: 0; width: 100%; background: white; border: 1px solid #CBD5E1; border-radius: 6px; margin-top: 4px; max-height: 160px; overflow-y: auto; z-index: 50;">
-                      <div *ngFor="let emp of empleadosEquipoFiltrados"
-                        (mousedown)="$event.preventDefault(); seleccionarEmpleadoEquipo(emp)"
-                        style="padding: 10px 12px; cursor: pointer; font-size: 12px; border-bottom: 1px solid #F1F5F9;">
-                        {{ emp.nombre }}
-                      </div>
-                    </div>
+            <!-- PASO 2: INTEGRANTES -->
+            <div *ngIf="pasoEquipoWizard === 2" class="eq-step">
+              <h4 class="eq-step-title">¿Quiénes integran el equipo?</h4>
+              <p class="eq-step-hint">Selecciona al menos 2 personas de la sucursal <strong>{{ equipoFormStore }}</strong>.</p>
+              <div class="eq-field">
+                <input type="text" class="form-input" [(ngModel)]="equipoBusquedaIntegrante"
+                       placeholder="Buscar persona...">
+              </div>
+              <div class="eq-integrantes-grid">
+                <button type="button" class="eq-integrante-chip" *ngFor="let emp of empleadosParaEquipoWizard"
+                        [class.selected]="equipoFormIntegrantes.includes(emp.nombre)"
+                        (click)="toggleIntegranteEquipoWizard(emp.nombre)">
+                  <span class="eq-integrante-avatar">{{ (emp.nombre || '?').charAt(0) | uppercase }}</span>
+                  <span class="eq-integrante-nombre">{{ emp.nombre }}</span>
+                  <span class="eq-integrante-check" *ngIf="equipoFormIntegrantes.includes(emp.nombre)">✓</span>
+                </button>
+              </div>
+              <div class="eq-empty" *ngIf="empleadosParaEquipoWizard.length === 0">
+                No hay personal disponible en esta sucursal.
+              </div>
+              <div class="eq-resumen-count" *ngIf="equipoFormIntegrantes.length > 0">
+                {{ equipoFormIntegrantes.length }} integrante(s) seleccionado(s)
+              </div>
+            </div>
+
+            <!-- PASO 3: JEFE DEL EQUIPO -->
+            <div *ngIf="pasoEquipoWizard === 3" class="eq-step">
+              <h4 class="eq-step-title">¿Quién es el jefe del proyecto?</h4>
+              <p class="eq-step-hint">El jefe podrá agregar tareas y subtareas en vivo, y cerrar fases. Solo puede ser uno de los integrantes.</p>
+              <div class="eq-integrantes-grid">
+                <button type="button" class="eq-integrante-chip eq-integrante-jefe-opt"
+                        *ngFor="let nombre of equipoFormIntegrantes"
+                        [class.selected]="equipoFormJefe === nombre"
+                        (click)="equipoFormJefe = nombre">
+                  <span class="eq-integrante-avatar">{{ (nombre || '?').charAt(0) | uppercase }}</span>
+                  <span class="eq-integrante-nombre">{{ nombre }}</span>
+                  <span class="eq-integrante-jefe-badge" *ngIf="equipoFormJefe === nombre">Jefe</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- PASO 4: FASES -->
+            <div *ngIf="pasoEquipoWizard === 4" class="eq-step">
+              <h4 class="eq-step-title">Define las fases del proyecto</h4>
+              <p class="eq-step-hint">Las fases avanzan en orden. La Fase 2 se activa solo cuando el jefe cierra la Fase 1, y así sucesivamente. Puedes agregar tareas iniciales aquí; el jefe podrá agregar más en vivo.</p>
+
+              <div class="eq-fase-box" *ngFor="let fase of equipoFormFases; let fIdx = index">
+                <div class="eq-fase-head">
+                  <div class="eq-fase-num">{{ fIdx + 1 }}</div>
+                  <input type="text" class="form-input eq-fase-nombre" [(ngModel)]="fase.nombre" placeholder="Nombre de la fase">
+                  <button type="button" class="eq-fase-del" *ngIf="equipoFormFases.length > 1" (click)="eliminarFaseEquipoTemp(fIdx)" title="Quitar fase">&times;</button>
+                </div>
+
+                <div class="eq-fase-items">
+                  <div class="eq-fase-item" *ngFor="let it of fase.items; let iIdx = index">
+                    <input type="text" class="form-input eq-fase-item-texto" [(ngModel)]="it.texto" placeholder="Tarea a realizar">
+                    <select class="form-input select-input eq-fase-item-asignado" [(ngModel)]="it.asignado">
+                      <option *ngFor="let n of equipoFormIntegrantes" [value]="n">{{ n }}</option>
+                    </select>
+                    <input type="time" class="form-input eq-fase-item-hora" [(ngModel)]="it.horaLimite" title="Hora límite (opcional)">
+                    <label class="eq-fase-item-foto" title="Requiere foto">
+                      <input type="checkbox" [(ngModel)]="it.requiresPhoto"> Foto
+                    </label>
+                    <button type="button" class="eq-fase-item-del" (click)="eliminarItemFaseEquipoTemp(fIdx, iIdx)">&times;</button>
                   </div>
-                  <button (click)="agregarIntegranteEquipo()"
-                    style="background: #4338CA; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-size: 12px; font-weight: bold; cursor: pointer;">
-                    Agregar
+                  <button type="button" class="eq-fase-add-item" (click)="agregarItemFaseEquipoTemp(fIdx)">
+                    + Agregar tarea a esta fase
                   </button>
                 </div>
               </div>
 
-              <div *ngIf="integrantesEquipo.length === 0"
-                style="text-align: center; padding: 20px; color: #94A3B8; font-size: 13px; border: 1px dashed #CBD5E1; border-radius: 12px;">
-                Aún no has agregado a ningún integrante al equipo.
-              </div>
-
-              <div *ngFor="let integrante of integrantesEquipo; let i = index"
-                style="background: white; border: 1px solid #E2E8F0; border-radius: 12px; padding: 15px; margin-bottom: 10px;">
-                <div style="display: flex; align-items: center; justify-content: space-between;">
-                  <div style="display: flex; align-items: center; gap: 12px;">
-                    <div style="width: 40px; height: 40px; background: #DBEAFE; color: #2563EB; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: 900;">
-                      {{ integrante.iniciales }}</div>
-                    <div>
-                      <p style="margin: 0; font-weight: 800; font-size: 14px; color: #1E293B;">{{ integrante.nombre }}</p>
-                      <p style="margin: 0; font-size: 11px; color: #64748B;">{{ integrante.departamento }}</p>
-                    </div>
-                  </div>
-                  <div style="display: flex; align-items: center; gap: 10px;">
-                    <button (click)="abrirActividadIntegrante(i)"
-                      style="background: #F8FAFC; border: 1px solid #CBD5E1; color: #334155; padding: 8px 12px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer;">
-                      Actividad ({{ integrante.fases?.length || 0 }})
-                    </button>
-                    <button (click)="eliminarIntegranteEquipo(i)"
-                      style="background: #FEF2F2; color: #EF4444; border: 1px solid #FECACA; border-radius: 6px; width: 34px; height: 34px; cursor: pointer;">
-                      &times;
-                    </button>
-                  </div>
-                </div>
-              </div>
+              <button type="button" class="eq-add-fase" (click)="agregarFaseEquipoTemp()">+ Nueva fase</button>
             </div>
           </div>
-          <div style="padding: 16px 24px; background: #F8FAFC; border-top: 1px solid #E2E8F0; display: flex; justify-content: flex-end; gap: 12px;">
-            <button (click)="cerrarModalEquipo()"
-              style="padding: 10px 20px; border-radius: 8px; border: 1px solid #CBD5E1; background: white; font-weight: 700;">Cancelar</button>
-            <button (click)="cerrarModalEquipo()"
-              style="padding: 10px 25px; border-radius: 8px; background: #10B981; color: white; border: none; font-weight: 800;">Generar Tareas 🚀</button>
-          </div>
 
-          <div class="modal-overlay" *ngIf="isModalActividadIntegranteOpen"
-            style="z-index: 11000; background: rgba(0,0,0,0.6);">
-            <div class="modal" style="max-width: 700px; max-height: 85vh; overflow-y: auto;">
-              <div class="modal-body" style="padding-top: 15px;">
-                <p style="font-size: 12px; color: #64748B; margin-bottom: 15px;">Define las tareas específicas que este integrante debe realizar.</p>
-                <div class="checklist-items">
-                  <div class="checklist-item-wrap" *ngFor="let item of formItemsActividad; let i = index"
-                    style="background: #F8FAFC; border: 1px solid #E2E8F0; padding: 15px; border-radius: 10px; margin-bottom: 15px;">
-                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
-                      <input class="form-input" type="text" [(ngModel)]="item.text" placeholder="¿Qué debe hacer?" style="flex: 1;">
-                      <button (click)="eliminarActividadIntegrante(i)"
-                        style="background: none; border: none; color: #EF4444; cursor: pointer;">🗑</button>
-                    </div>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                      <div>
-                        <label style="font-size: 10px; color: #64748B;">📅 Inicio</label>
-                        <input type="date" class="form-input" [(ngModel)]="item.fechaInicio" style="font-size: 11px; padding: 5px;">
-                      </div>
-                      <div>
-                        <label style="font-size: 10px; color: #64748B;">⏰ Hora</label>
-                        <input type="time" class="form-input" [(ngModel)]="item.horaInicio" style="font-size: 11px; padding: 5px;">
-                      </div>
-                      <div>
-                        <label style="font-size: 10px; color: #64748B;">⏳ Límite</label>
-                        <input type="date" class="form-input" [(ngModel)]="item.fechaLimite" style="font-size: 11px; padding: 5px;">
-                      </div>
-                      <div>
-                        <label style="font-size: 10px; color: #64748B;">⏰ Hora</label>
-                        <input type="time" class="form-input" [(ngModel)]="item.horaLimite" style="font-size: 11px; padding: 5px;">
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <button (click)="agregarActividadIntegrante()" class="btn-secondary"
-                  style="width: 100%; border: 1px dashed #CBD5E1; margin-top: 10px;">
-                  + Añadir actividad
-                </button>
-              </div>
-              <div class="btn-group" style="margin-top: 20px; border-top: 1px solid #E2E8F0; padding-top: 15px; display: flex; gap: 10px; justify-content: flex-end;">
-                <button class="btn-secondary" (click)="cerrarModalActividadIntegrante()">Cancelar</button>
-                <button class="btn-primary" (click)="guardarActividadesIntegrante()">Confirmar Actividades</button>
-              </div>
-            </div>
+          <div class="eq-modal-foot">
+            <button class="btn-secondary" (click)="retrocederEquipoWizard()" [disabled]="pasoEquipoWizard === 1">
+              Atrás
+            </button>
+            <div style="flex: 1;"></div>
+            <button class="btn-secondary" (click)="cerrarModalEquipo()">Cancelar</button>
+            <button class="btn-primary" *ngIf="pasoEquipoWizard < 4"
+                    (click)="avanzarEquipoWizard()" [disabled]="!puedeAvanzarEquipoWizard()">
+              Siguiente
+            </button>
+            <button class="btn-primary" *ngIf="pasoEquipoWizard === 4"
+                    (click)="guardarTareaEquipo()" [disabled]="!puedeAvanzarEquipoWizard()">
+              Crear proyecto
+            </button>
           </div>
         </div>
       </div>

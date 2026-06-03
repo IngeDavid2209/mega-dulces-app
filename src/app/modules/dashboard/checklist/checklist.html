@@ -1660,33 +1660,21 @@
               </div>
             </div>
 
-            <!-- PASO 4: FASES -->
+            <!-- PASO 4: FASES (solo nombres — el jefe agrega las tareas después) -->
             <div *ngIf="pasoEquipoWizard === 4" class="eq-step">
               <h4 class="eq-step-title">Define las fases del proyecto</h4>
-              <p class="eq-step-hint">Las fases avanzan en orden. La Fase 2 se activa solo cuando el jefe cierra la Fase 1, y así sucesivamente. Puedes agregar tareas iniciales aquí; el jefe podrá agregar más en vivo.</p>
+              <p class="eq-step-hint">
+                Solo escribe el nombre de cada fase (ej: <em>Planeación</em>, <em>Ejecución</em>, <em>Cierre</em>).
+                Las fases avanzan en orden — la Fase 2 se activa cuando el jefe cierre la Fase 1.
+                <br>
+                <strong>El jefe</strong> entrará al proyecto después para agregar las tareas y subtareas a cada integrante.
+              </p>
 
-              <div class="eq-fase-box" *ngFor="let fase of equipoFormFases; let fIdx = index">
-                <div class="eq-fase-head">
+              <div class="eq-fase-box eq-fase-box-slim" *ngFor="let fase of equipoFormFases; let fIdx = index">
+                <div class="eq-fase-head" style="margin-bottom: 0;">
                   <div class="eq-fase-num">{{ fIdx + 1 }}</div>
                   <input type="text" class="form-input eq-fase-nombre" [(ngModel)]="fase.nombre" placeholder="Nombre de la fase">
                   <button type="button" class="eq-fase-del" *ngIf="equipoFormFases.length > 1" (click)="eliminarFaseEquipoTemp(fIdx)" title="Quitar fase">&times;</button>
-                </div>
-
-                <div class="eq-fase-items">
-                  <div class="eq-fase-item" *ngFor="let it of fase.items; let iIdx = index">
-                    <input type="text" class="form-input eq-fase-item-texto" [(ngModel)]="it.texto" placeholder="Tarea a realizar">
-                    <select class="form-input select-input eq-fase-item-asignado" [(ngModel)]="it.asignado">
-                      <option *ngFor="let n of equipoFormIntegrantes" [value]="n">{{ n }}</option>
-                    </select>
-                    <input type="time" class="form-input eq-fase-item-hora" [(ngModel)]="it.horaLimite" title="Hora límite (opcional)">
-                    <label class="eq-fase-item-foto" title="Requiere foto">
-                      <input type="checkbox" [(ngModel)]="it.requiresPhoto"> Foto
-                    </label>
-                    <button type="button" class="eq-fase-item-del" (click)="eliminarItemFaseEquipoTemp(fIdx, iIdx)">&times;</button>
-                  </div>
-                  <button type="button" class="eq-fase-add-item" (click)="agregarItemFaseEquipoTemp(fIdx)">
-                    + Agregar tarea a esta fase
-                  </button>
                 </div>
               </div>
 

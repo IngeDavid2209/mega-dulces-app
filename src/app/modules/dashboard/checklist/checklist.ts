@@ -108,6 +108,11 @@ export class ChecklistComponent implements OnInit, OnDestroy {
 
   checklists = signal<any[]>([]);
   empleados = signal<any[]>([]);
+  /** Admins globales SIEMPRE disponibles (no se filtran por sucursal). Lo usa
+   *  el wizard de Tareas de Equipo para que el admin que arma el proyecto pueda
+   *  incluir a la gerencia general como integrante o jefe. No se mezcla en
+   *  `empleados()` para no contaminar el wizard normal de checklists. */
+  adminsGlobales = signal<any[]>([]);
   sucursalesDisponibles = signal<string[]>([]);
 
   // ===== Tareas de Equipo (proyectos colaborativos en fases) =====
@@ -813,6 +818,15 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       }
 
       // 🔥 EMPLEADOS DISPONIBLES (a quién puedo asignarle tareas)
+      // Capturamos en paralelo a TODOS los admins globales (independiente del
+      // rol del usuario actual). Esto alimenta el wizard de Tareas en Equipo
+      // para que la gerencia general pueda ser integrante/jefe del proyecto.
+      const globales = todosLosUsuarios.filter((u: any) =>
+        u.rol === 'admin' && ((u.alcance ?? 'global') === 'global'
+                              || (u.sucursales || []).includes('General (Acceso Total)'))
+      );
+      this.adminsGlobales.set(globales);
+
       if (esAdminGlobal(this.currentUser)) {
         const personalActivo = todosLosUsuarios.filter((u: any) => u.rol === 'trabajador' || u.rol === 'admin');
         this.empleados.set(personalActivo);
@@ -1863,11 +1877,26 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     }
   }
 
-  /** Empleados filtrados para el paso 2 (por sucursal del proyecto + búsqueda libre). */
+  /**
+   * Empleados disponibles en el paso 2 del wizard de Equipo.
+   * Combina los empleados de la sucursal del proyecto + TODOS los admins
+   * globales (la gerencia general puede ser integrante/jefe en cualquier
+   * proyecto, sin importar su sucursal). Aplica búsqueda libre.
+   */
   get empleadosParaEquipoWizard(): any[] {
-    let lista = this.empleados();
-    if (this.equipoFormStore) {
-      lista = lista.filter(e => this.empleadoPerteneceASucursal(e, this.equipoFormStore));
+    const deSucursal = this.equipoFormStore
+      ? this.empleados().filter(e => this.empleadoPerteneceASucursal(e, this.equipoFormStore))
+      : this.empleados();
+    // Admins globales se agregan SIEMPRE, sin filtro de sucursal.
+    const globales = this.adminsGlobales();
+    // Dedup por nombre (un admin global podría también haber entrado por sucursal).
+    const vistos = new Set<string>();
+    let lista: any[] = [];
+    for (const u of [...deSucursal, ...globales]) {
+      const k = (u.nombre || '').trim().toLowerCase();
+      if (!k || vistos.has(k)) continue;
+      vistos.add(k);
+      lista.push(u);
     }
     const t = this.equipoBusquedaIntegrante.trim().toLowerCase();
     if (t) lista = lista.filter(e => (e.nombre || '').toLowerCase().includes(t));

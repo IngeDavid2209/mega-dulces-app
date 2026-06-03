@@ -1667,3 +1667,148 @@
   .audit-col-fecha { white-space: normal; font-size: 13px; color: var(--text-main); }
   .audit-progress-text { font-size: 12px; }
 }
+
+/* ========================================================================
+   DETALLE DE CHECKLIST EN AUDITORÍA
+   Items mostrados como fichas visuales (sin checkbox plano que parecía
+   un checklist genérico). Cada ficha tiene: titulo + chip de estado,
+   meta-pills (hora inicio/limite, tipo de evidencia), y bloque de
+   evidencias (foto, antes/después, varias fotos) o un mensaje cuando
+   faltan.
+   ======================================================================== */
+.audit-item-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.audit-item-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-left: 4px solid #94A3B8;
+  border-radius: 12px;
+  padding: 16px 18px;
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+.audit-item-card[data-estado="hecho"]    { border-left-color: #10B981; }
+.audit-item-card[data-estado="vencido"]  { border-left-color: #EF4444; }
+.audit-item-card[data-estado="pendiente"] { border-left-color: #94A3B8; }
+
+.audit-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.audit-item-titulo {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-main);
+  flex: 1;
+  line-height: 1.35;
+}
+
+.audit-item-chip {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.audit-item-chip.chip-hecho     { background: #D1FAE5; color: #065F46; border: 1px solid #6EE7B7; }
+.audit-item-chip.chip-vencido   { background: #FEE2E2; color: #991B1B; border: 1px solid #FCA5A5; }
+.audit-item-chip.chip-pendiente { background: #F1F5F9; color: #475569; border: 1px solid #CBD5E1; }
+
+/* Meta info en pills */
+.audit-item-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0 12px 0;
+}
+.audit-item-meta-pill {
+  display: inline-block;
+  padding: 3px 9px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: #F8FAFC;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.audit-item-meta-pill.audit-item-meta-evidence {
+  color: #1E40AF;
+  background: #EFF6FF;
+  border-color: #BFDBFE;
+}
+
+/* Evidencias */
+.audit-item-evidence {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 12px;
+}
+.audit-item-photo {
+  display: block;
+  position: relative;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: #F1F5F9;
+  flex: 0 1 auto;
+  text-decoration: none;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.audit-item-photo:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.12);
+}
+.audit-item-photo img {
+  display: block;
+  width: 100%;
+  max-width: 240px;
+  height: 180px;
+  object-fit: cover;
+}
+.audit-item-photo-pair img { max-width: 220px; }
+.audit-item-photo-tag {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  background: var(--primary-navy);
+  color: white;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+.audit-item-photo-tag-after { background: #10B981; }
+
+/* Sin evidencia subida cuando se requería */
+.audit-item-noevidence {
+  margin-top: 10px;
+  padding: 12px;
+  background: #FEF2F2;
+  border: 1px dashed #FCA5A5;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #991B1B;
+  text-align: center;
+}
+
+/* Mobile */
+@media (max-width: 640px) {
+  .audit-item-card { padding: 14px; border-radius: 10px; }
+  .audit-item-titulo { font-size: 14px; }
+  .audit-item-photo img { max-width: 100%; height: 160px; }
+  .audit-item-photo-pair { flex: 1 1 100%; }
+}

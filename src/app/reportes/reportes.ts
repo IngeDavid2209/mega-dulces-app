@@ -414,7 +414,7 @@ export class ReportesComponent implements OnInit, OnDestroy {
   /** ¿Item completo según evidencia REAL (foto/antes-después/varias fotos) o
    *  palomeo cuando no se pide evidencia? Antes solo miraba .checked y daba
    *  porcentajes engañosos cuando había fotos pero el checked era false. */
-  private esItemCompleto(it: any): boolean {
+  esItemCompleto(it: any): boolean {
     if (!it) return false;
     if (it.requiresAntesDespues) {
       return !!it.photoAntes && it.photoAntes !== 'subiendo...' &&
@@ -423,6 +423,34 @@ export class ReportesComponent implements OnInit, OnDestroy {
     if (it.requiresVariasFotos) return Array.isArray(it.photos) && it.photos.length > 0;
     if (it.requiresPhoto) return !!it.photo && it.photo !== 'subiendo...';
     return it.checked === true;
+  }
+
+  /** ¿La tarea está vencida? Compara la hora límite del item (o `time` legacy)
+   *  contra ahora, tomando como referencia la fecha del checklist. */
+  isTareaVencida(item: any, checklistDate: string | undefined | null): boolean {
+    if (!checklistDate) return false;
+    const horaUsar = item?.horaLimite || item?.time;
+    let hora = 23, minuto = 59;
+    if (horaUsar && typeof horaUsar === 'string' && horaUsar.includes(':')) {
+      const partes = horaUsar.split(':');
+      hora = Number(partes[0]) || 0;
+      minuto = Number(partes[1]) || 0;
+    }
+    const [y, m, d] = checklistDate.split('-').map(Number);
+    if (!y || !m || !d) return false;
+    const deadline = new Date(y, m - 1, d, hora, minuto, 59);
+    return new Date() > deadline;
+  }
+
+  /** Convierte "14:30" en "02:30 PM". Si el formato es inválido lo regresa tal cual. */
+  formatearHora(hora: string | undefined | null): string {
+    if (!hora || typeof hora !== 'string' || !hora.includes(':')) return hora || '';
+    const partes = hora.split(':');
+    let h = parseInt(partes[0], 10);
+    if (isNaN(h)) return hora;
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    h = h % 12 || 12;
+    return `${h.toString().padStart(2, '0')}:${partes[1]} ${ampm}`;
   }
 
   getProgreso(checklist: any): number {

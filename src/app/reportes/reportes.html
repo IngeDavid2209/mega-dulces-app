@@ -422,48 +422,74 @@
             </div>
           </div>
 
-          <div style="display: flex; flex-direction: column; gap: 12px;">
-            <div *ngFor="let item of checklistSeleccionado().items"
-              style="background: var(--bg-app); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 12px;">
-              <div style="display: flex; align-items: flex-start; gap: 16px;">
-                <div
-                  style="width: 22px; height: 22px; min-width: 22px; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: white;"
-                  [style.background]="item.checked ? 'var(--primary-navy)' : 'transparent'"
-                  [style.border]="item.checked ? 'none' : '2px solid #CBD5E1'">
-                  <svg *ngIf="item.checked" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                    stroke-width="3">
-                    <polyline points="20 6 9 17 4 12"></polyline>
-                  </svg>
-                </div>
+          <div class="audit-item-list">
+            <div class="audit-item-card" *ngFor="let item of checklistSeleccionado().items"
+                 [attr.data-estado]="esItemCompleto(item) ? 'hecho' : (isTareaVencida(item, checklistSeleccionado().date) ? 'vencido' : 'pendiente')">
+              <div class="audit-item-header">
+                <div class="audit-item-titulo">{{ item.text }}</div>
+                <span class="audit-item-chip"
+                      [class.chip-hecho]="esItemCompleto(item)"
+                      [class.chip-vencido]="!esItemCompleto(item) && isTareaVencida(item, checklistSeleccionado().date)"
+                      [class.chip-pendiente]="!esItemCompleto(item) && !isTareaVencida(item, checklistSeleccionado().date)">
+                  {{ esItemCompleto(item) ? 'Hecho'
+                     : (isTareaVencida(item, checklistSeleccionado().date) ? 'Vencido' : 'Pendiente') }}
+                </span>
+              </div>
 
-                <div style="flex: 1;">
-                  <div style="font-size: 15px; font-weight: 500; margin-bottom: 6px;"
-                    [style.text-decoration]="item.checked ? 'line-through' : 'none'"
-                    [style.opacity]="item.checked ? '0.6' : '1'">{{ item.text }}</div>
+              <!-- Meta: hora límite, hora de inicio, tipo de evidencia requerida -->
+              <div class="audit-item-meta" *ngIf="item.horaInicio || item.horaLimite || item.time || item.requiresPhoto || item.requiresAntesDespues || item.requiresVariasFotos">
+                <span class="audit-item-meta-pill" *ngIf="item.horaInicio">
+                  Inicio: {{ formatearHora(item.horaInicio) }}
+                </span>
+                <span class="audit-item-meta-pill" *ngIf="item.horaLimite || item.time">
+                  Límite: {{ formatearHora(item.horaLimite || item.time) }}
+                </span>
+                <span class="audit-item-meta-pill audit-item-meta-evidence" *ngIf="item.requiresAntesDespues">
+                  Requiere Antes/Después
+                </span>
+                <span class="audit-item-meta-pill audit-item-meta-evidence" *ngIf="item.requiresVariasFotos">
+                  Requiere varias fotos
+                </span>
+                <span class="audit-item-meta-pill audit-item-meta-evidence" *ngIf="item.requiresPhoto && !item.requiresAntesDespues && !item.requiresVariasFotos">
+                  Requiere una foto
+                </span>
+              </div>
 
-                  <div *ngIf="item.photo || item.requiresPhoto || item.requiresAntesDespues"
-                    style="margin-top: 10px; padding-top: 15px; border-top: 1px solid var(--border);">
+              <!-- Evidencias -->
+              <div class="audit-item-evidence"
+                   *ngIf="item.photo || item.photoAntes || item.photoDespues || (item.photos && item.photos.length > 0)">
+                <!-- Foto única -->
+                <a class="audit-item-photo" *ngIf="item.photo && !item.requiresAntesDespues && !item.requiresVariasFotos"
+                   [href]="item.photo" target="_blank" rel="noopener">
+                  <img [src]="item.photo" alt="Evidencia" loading="lazy">
+                </a>
+                <!-- Antes / Después -->
+                <ng-container *ngIf="item.requiresAntesDespues">
+                  <a class="audit-item-photo audit-item-photo-pair" *ngIf="item.photoAntes"
+                     [href]="item.photoAntes" target="_blank" rel="noopener">
+                    <span class="audit-item-photo-tag">Antes</span>
+                    <img [src]="item.photoAntes" alt="Antes" loading="lazy">
+                  </a>
+                  <a class="audit-item-photo audit-item-photo-pair" *ngIf="item.photoDespues"
+                     [href]="item.photoDespues" target="_blank" rel="noopener">
+                    <span class="audit-item-photo-tag audit-item-photo-tag-after">Después</span>
+                    <img [src]="item.photoDespues" alt="Después" loading="lazy">
+                  </a>
+                </ng-container>
+                <!-- Varias fotos -->
+                <ng-container *ngIf="item.photos && item.photos.length > 0">
+                  <a class="audit-item-photo" *ngFor="let p of item.photos"
+                     [href]="p.url || p" target="_blank" rel="noopener">
+                    <img [src]="p.url || p" alt="Evidencia" loading="lazy">
+                  </a>
+                </ng-container>
+              </div>
 
-                    <div *ngIf="item.photo && !item.requiresAntesDespues"
-                      style="display: inline-block; border: 1px solid var(--border); border-radius: 6px; padding: 4px; background: white;">
-                      <img [src]="item.photo" alt="Evidencia"
-                        style="display: block; max-width: 100%; max-height: 400px; object-fit: contain;">
-                    </div>
-
-                    <div *ngIf="item.requiresAntesDespues" style="display: flex; gap: 20px; flex-wrap: wrap;">
-                      <div style="flex: 1; min-width: 140px;" *ngIf="item.photoAntes">
-                        <span style="color: var(--primary-navy); font-weight: 700;">📸 ANTES:</span>
-                        <img [src]="item.photoAntes" alt="Antes"
-                          style="max-width: 100%; border-radius: 6px; border: 1px solid var(--border);">
-                      </div>
-                      <div style="flex: 1; min-width: 140px;" *ngIf="item.photoDespues">
-                        <span style="color: #10B981; font-weight: 700;">📸 DESPUÉS:</span>
-                        <img [src]="item.photoDespues" alt="Después"
-                          style="max-width: 100%; border-radius: 6px; border: 1px solid var(--border);">
-                      </div>
-                    </div>
-                  </div>
-                </div>
+              <!-- Sin evidencia (cuando se requería) -->
+              <div class="audit-item-noevidence"
+                   *ngIf="(item.requiresPhoto || item.requiresAntesDespues || item.requiresVariasFotos)
+                          && !item.photo && !item.photoAntes && !item.photoDespues && !(item.photos && item.photos.length > 0)">
+                Sin evidencia capturada
               </div>
             </div>
           </div>

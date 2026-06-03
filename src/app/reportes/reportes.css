@@ -1476,7 +1476,8 @@
 /* ----- Encabezado de columnas (solo desktop) ----- */
 .audit-table-head {
   display: grid;
-  grid-template-columns: 2.4fr 1.5fr 1.2fr 0.9fr 1.4fr 0.9fr;
+  /* Orden: Empleado · Tarea · Sucursal · Fecha · Avance · Estado */
+  grid-template-columns: 1.6fr 2.3fr 1.2fr 0.9fr 1.4fr 0.9fr;
   gap: 12px;
   padding: 12px 18px;
   background: linear-gradient(180deg, #F8FAFC 0%, #F1F5F9 100%);
@@ -1509,7 +1510,8 @@
 /* ----- Fila de checklist ----- */
 .audit-row {
   display: grid;
-  grid-template-columns: 2.4fr 1.5fr 1.2fr 0.9fr 1.4fr 0.9fr;
+  /* Orden: Empleado · Tarea · Sucursal · Fecha · Avance · Estado */
+  grid-template-columns: 1.6fr 2.3fr 1.2fr 0.9fr 1.4fr 0.9fr;
   gap: 12px;
   padding: 14px 18px;
   border-bottom: 1px solid var(--border);

@@ -331,8 +331,8 @@
           <div class="audit-table" *ngIf="resultados().length > 0">
             <!-- Encabezado de columnas (solo desktop) -->
             <div class="audit-table-head">
-              <div class="audit-col-tarea">Tarea</div>
               <div class="audit-col-empleado">Empleado</div>
+              <div class="audit-col-tarea">Tarea</div>
               <div class="audit-col-sucursal">Sucursal</div>
               <div class="audit-col-fecha">Fecha</div>
               <div class="audit-col-avance">Avance</div>
@@ -356,6 +356,7 @@
               <div class="audit-row" (click)="verDetalle(checklist)"
                    [attr.data-estado]="getDisplayStatus(checklist)"
                    [class.audit-row-mando]="nivelDelAssigned(checklist.assigned) === 'mando'">
+                <div class="audit-col-empleado" [attr.data-label]="'Empleado'">{{ checklist.assigned }}</div>
                 <div class="audit-col-tarea" [attr.data-label]="'Tarea'">
                   <div class="audit-tarea-nombre">{{ checklist.name }}</div>
                   <div class="audit-tarea-flags">
@@ -364,7 +365,6 @@
                           [title]="(checklist.motivoRetraso?.categoria || '') + ' — ' + (checklist.motivoRetraso?.comentario || '')">R</span>
                   </div>
                 </div>
-                <div class="audit-col-empleado" [attr.data-label]="'Empleado'">{{ checklist.assigned }}</div>
                 <div class="audit-col-sucursal" [attr.data-label]="'Sucursal'">{{ checklist.store }}</div>
                 <div class="audit-col-fecha" [attr.data-label]="'Fecha'">{{ checklist.date }}</div>
                 <div class="audit-col-avance" [attr.data-label]="'Avance'">

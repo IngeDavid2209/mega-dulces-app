@@ -325,7 +325,7 @@
 
         <div *ngIf="busquedaRealizada()">
           <div class="checklist-grid">
-            <ng-container *ngFor="let checklist of resultadosOrdenadosPorNivel; let i = index">
+            <ng-container *ngFor="let checklist of resultadosOrdenadosPorNivel; let i = index; trackBy: trackByChecklist">
               <!-- Encabezado de la sección Mandos cuando hay ambos niveles -->
               <div *ngIf="i === 0 && nivelDelAssigned(checklist.assigned) === 'mando' && resultadosOperativos.length > 0"
                    style="grid-column: 1 / -1; font-size: 12px; font-weight: 700; color: #1E3A8A; letter-spacing: .5px; text-transform: uppercase; margin: 4px 0 2px 4px;">

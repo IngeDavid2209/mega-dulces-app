@@ -152,7 +152,7 @@
       </div>
  
       <div class="store-grid" *ngIf="comerciales().length > 0">
-        <div class="store-card" *ngFor="let store of comerciales()"
+        <div class="store-card" *ngFor="let store of comerciales(); trackBy: trackByStore"
              [class.card-empty]="store.totalItems === 0"
              [style.border-left-color]="store.color">
  
@@ -212,7 +212,7 @@
       </div>
  
       <div class="store-grid" *ngIf="administrativas().length > 0">
-        <div class="store-card admin-card" *ngFor="let store of administrativas()"
+        <div class="store-card admin-card" *ngFor="let store of administrativas(); trackBy: trackByStore"
              [class.card-empty]="store.totalItems === 0"
              [style.border-left-color]="store.color">
  
@@ -268,7 +268,7 @@
       </div>
  
       <div class="store-grid" *ngIf="areasTrabajo().length > 0">
-        <div class="store-card area-card" *ngFor="let area of areasTrabajo()"
+        <div class="store-card area-card" *ngFor="let area of areasTrabajo(); trackBy: trackByStore"
              [class.card-empty]="area.totalItems === 0">
  
           <div class="store-card-top">

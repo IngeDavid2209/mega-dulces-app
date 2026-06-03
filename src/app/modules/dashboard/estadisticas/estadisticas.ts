@@ -53,6 +53,10 @@ export class EstadisticasComponent implements OnInit, OnDestroy {
   empleadosStatsMandos = computed(() => this.empleadosStats().filter(e => e.nivel === 'mando'));
   empleadosStatsOperativos = computed(() => this.empleadosStats().filter(e => e.nivel === 'operativo'));
 
+  /** trackBy para las barras del ranking individual — evita recrear todos los nodos
+   *  cuando solo cambia el progreso de uno. */
+  trackByEmpStat(_: number, e: any): any { return e?.nombre || _; }
+
   todosLosChecklists: any[] = [];
   todosLosUsuariosNube: any[] = [];
 

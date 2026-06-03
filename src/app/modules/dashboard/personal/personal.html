@@ -145,7 +145,7 @@
         </svg> Administradores del Sistema
       </h2>
       <div class="user-grid" *ngIf="getAdmins().length > 0">
-        <div class="user-card admin-card" *ngFor="let user of getAdmins()" style="width: 100%; box-sizing: border-box;">
+        <div class="user-card admin-card" *ngFor="let user of getAdmins(); trackBy: trackByUser" style="width: 100%; box-sizing: border-box;">
           <div class="user-card-header"
             style="display: flex; flex-wrap: wrap; gap: 15px; align-items: center; justify-content: space-between;">
             <div style="display: flex; align-items: center; gap: 12px; flex: 1 1 200px; min-width: 0;">
@@ -210,7 +210,7 @@
         </div>
       </div>
       <div *ngIf="getTrabajadores().length > 0">
-        <div *ngFor="let grupo of getTrabajadoresAgrupados()" style="margin-top: 40px;">
+        <div *ngFor="let grupo of getTrabajadoresAgrupados(); trackBy: trackByGrupo" style="margin-top: 40px;">
           <div class="category-header">
             <h2 class="category-title" style="border: none; margin: 0; padding: 0; display: flex; align-items: center;">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -229,7 +229,7 @@
             </div>
           </div>
           <div class="user-grid">
-            <ng-container *ngFor="let user of grupo.usuarios; let i = index">
+            <ng-container *ngFor="let user of grupo.usuarios; let i = index; trackBy: trackByUser">
               <!-- Separador visual entre la última tarjeta de mandos y la primera de operativos -->
               <div *ngIf="i > 0 && esMando(grupo.usuarios[i-1]) && !esMando(user)"
                    style="grid-column: 1 / -1; border-top: 1px dashed #E2E8F0; margin: 6px 0 2px 0; padding-top: 8px; font-size:12px; font-weight:600; color:#94A3B8; letter-spacing:.5px; text-transform:uppercase;">

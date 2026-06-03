@@ -6,10 +6,10 @@ import { Firestore, collection, getDocs, doc, deleteDoc, query, where } from '@a
 import { sucursalesPermitidas } from '../shared/permisos.util';
 import { nivelDeCargo } from '../shared/nivel-jerarquico.util';
 
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
-import * as ExcelJS from 'exceljs';
-import html2canvas from 'html2canvas';
+// jsPDF, jspdf-autotable, exceljs y html2canvas se cargan SOLO cuando el usuario
+// pide Exportar (PDF/Excel) o Reporte visual. Antes se importaban al inicio y
+// pesaban ~1.5 MB en el bundle, ralentizando el arranque en móvil aunque casi
+// nadie use estas funciones a diario.
 import Swal from 'sweetalert2';
 
 import { SidebarComponent } from '../shared/sidebar/sidebar';
@@ -115,6 +115,9 @@ export class ReportesComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy() { if (this.busquedaSub) { this.busquedaSub(); } }
+
+  /** trackBy para el listado de resultados: usa el id Firestore del checklist. */
+  trackByChecklist(_: number, c: any): any { return c?.id || c?.idDoc || _; }
 
   /** Cache nombre normalizado → nivel, evita .find() en cada llamada. */
   private _nivelPorNombre = new Map<string, 'mando' | 'operativo'>();
@@ -438,6 +441,7 @@ export class ReportesComponent implements OnInit, OnDestroy {
       return;
     }
 
+    const ExcelJS = await import('exceljs');
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Reporte Auditoría');
 
@@ -496,11 +500,14 @@ export class ReportesComponent implements OnInit, OnDestroy {
     }
   }
 
-  descargarReportePDF() {
+  async descargarReportePDF() {
     if (this.resultados().length === 0) {
       Swal.fire({ icon: 'info', title: 'Sin Datos', text: 'No hay datos para generar el PDF.', confirmButtonColor: '#0F172A' });
       return;
     }
+
+    const { default: jsPDF } = await import('jspdf');
+    const { default: autoTable } = await import('jspdf-autotable');
 
     const doc = new jsPDF({ orientation: 'landscape', format: 'a4' });
 
@@ -620,6 +627,8 @@ export class ReportesComponent implements OnInit, OnDestroy {
     this.generandoReporte.set(true);
 
     try {
+      const { default: jsPDF } = await import('jspdf');
+      const { default: autoTable } = await import('jspdf-autotable');
       const doc = new jsPDF('p', 'mm', 'a4');
       const pageWidth = doc.internal.pageSize.getWidth();
       const pageHeight = doc.internal.pageSize.getHeight();

@@ -11,7 +11,7 @@ import {
   reauthenticateWithCredential
 } from '@angular/fire/auth';
 
-import * as ExcelJS from 'exceljs';
+// ExcelJS pesa ~700 KB. Se carga dinámicamente cuando el admin pulsa "Exportar".
 import Swal from 'sweetalert2';
 import { esAdminGlobal, esAdminLimitado, normalizarNombre, sucursalesPermitidas } from '../../../shared/permisos.util';
 import { nivelDeUsuario, NivelJerarquico } from '../../../shared/nivel-jerarquico.util';
@@ -314,6 +314,11 @@ export class PersonalComponent implements OnInit, OnDestroy {
 
   /** Helper para el template — saber si una tarjeta es de mando, para el badge. */
   esMando(user: any): boolean { return nivelDeUsuario(user) === 'mando'; }
+
+  /** trackBy para los *ngFor largos — usa idFirestore/usuario/nombre. Evita
+   *  destruir y recrear todo el DOM cuando solo cambia un campo de un item. */
+  trackByUser(_: number, u: any): any { return u?.idFirestore || u?.usuario || u?.nombre || _; }
+  trackByGrupo(_: number, g: any): any { return g?.nombre || _; }
 
   verHistorial(nombreEmpleado: string) {
     this.router.navigate(['/reportes'], { queryParams: { empleado: nombreEmpleado } });
@@ -1088,6 +1093,7 @@ export class PersonalComponent implements OnInit, OnDestroy {
         return { ...u, zonaCalculada: zona };
       }).sort((a, b) => a.zonaCalculada.localeCompare(b.zonaCalculada));
 
+      const ExcelJS = await import('exceljs');
       const workbook = new ExcelJS.Workbook();
       const worksheet = workbook.addWorksheet('Personal MegaDulces');
 
@@ -1149,8 +1155,8 @@ export class PersonalComponent implements OnInit, OnDestroy {
         });
       });
 
-      worksheet.eachRow((row, rowNumber) => {
-        row.eachCell((cell, colNumber) => {
+      worksheet.eachRow((row: any, rowNumber: number) => {
+        row.eachCell((cell: any, colNumber: number) => {
           cell.border = {
             top: { style: 'thin', color: { argb: 'FFCBD5E1' } },
             left: { style: 'thin', color: { argb: 'FFCBD5E1' } },

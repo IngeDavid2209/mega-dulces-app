@@ -284,6 +284,9 @@ export class CheckstoreComponent implements OnInit, OnDestroy {
     return (n || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim().replace(/\s+/g, ' ');
   }
 
+  /** trackBy para los grids de sucursales — usa el nombre como clave estable. */
+  trackByStore(_: number, s: any): any { return s?.name || _; }
+
   /** Devuelve el nivel del empleado dueño del assigned, según el cargo cargado. */
   nivelDelAssigned(assigned: string | undefined | null): 'mando' | 'operativo' {
     if (!assigned) return 'operativo';

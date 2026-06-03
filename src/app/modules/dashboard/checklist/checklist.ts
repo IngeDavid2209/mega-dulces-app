@@ -1769,7 +1769,11 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     });
   }
   eliminarItem(index: number) { this.formItems.splice(index, 1); }
-  trackByIndex(index: number, obj: any): any { return index; }
+  trackByIndex(index: number, _obj: any): any { return index; }
+
+  /** trackBy para los *ngFor de checklists. Usa el id firestore para no
+   *  destruir/recrear las tarjetas cuando solo cambian campos internos. */
+  trackByChecklist(_: number, c: any): any { return c?.id || c?._asignacionId || _; }
 
   abrirEditarChecklistActual() {
     const actual = this.checklistSeleccionado();

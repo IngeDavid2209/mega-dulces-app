@@ -115,7 +115,7 @@
               Mandos de sucursal ({{ empleadosStatsMandos().length }})
             </div>
           </ng-container>
-          <div class="stat-bar-row" *ngFor="let emp of empleadosStatsMandos()">
+          <div class="stat-bar-row" *ngFor="let emp of empleadosStatsMandos(); trackBy: trackByEmpStat">
             <div class="stat-bar-label employee-label">
               <strong>{{ emp.nombre }}</strong>
               <div class="employee-subtext">
@@ -135,7 +135,7 @@
               Operativos ({{ empleadosStatsOperativos().length }})
             </div>
           </ng-container>
-          <div class="stat-bar-row" *ngFor="let emp of empleadosStatsOperativos()">
+          <div class="stat-bar-row" *ngFor="let emp of empleadosStatsOperativos(); trackBy: trackByEmpStat">
             <div class="stat-bar-label employee-label">
               <strong>{{ emp.nombre }}</strong>
               <div class="employee-subtext">

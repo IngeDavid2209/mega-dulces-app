@@ -1457,3 +1457,211 @@
     min-width: 0;
   }
 }
+/* ========================================================================
+   TABLA DENSA DE AUDITORÍA
+   - Desktop: filas alineadas en columnas (CSS Grid), 15-20 visibles sin scroll
+   - Mobile (<768px): cada fila se convierte en mini-card con etiquetas
+   ======================================================================== */
+
+.audit-table {
+  display: flex;
+  flex-direction: column;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+
+/* ----- Encabezado de columnas (solo desktop) ----- */
+.audit-table-head {
+  display: grid;
+  grid-template-columns: 2.4fr 1.5fr 1.2fr 0.9fr 1.4fr 0.9fr;
+  gap: 12px;
+  padding: 12px 18px;
+  background: linear-gradient(180deg, #F8FAFC 0%, #F1F5F9 100%);
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: #64748B;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+
+/* ----- Fila de sección Mandos/Operativos ----- */
+.audit-section-header {
+  padding: 10px 18px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  background: #F8FAFC;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.audit-section-header:first-child { border-top: none; }
+.audit-section-mandos    { color: #1E3A8A; background: #EFF6FF; }
+.audit-section-operativos { color: #475569; }
+
+/* ----- Fila de checklist ----- */
+.audit-row {
+  display: grid;
+  grid-template-columns: 2.4fr 1.5fr 1.2fr 0.9fr 1.4fr 0.9fr;
+  gap: 12px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  align-items: center;
+  cursor: pointer;
+  transition: background 0.12s ease, transform 0.12s ease;
+  font-size: 13px;
+  color: var(--text-main);
+}
+.audit-row:last-child { border-bottom: none; }
+.audit-row:hover { background: #F8FAFC; }
+.audit-row:active { transform: scale(0.998); }
+
+/* Marca visual lateral según el estado */
+.audit-row { border-left: 3px solid transparent; }
+.audit-row[data-estado="completo"]    { border-left-color: #10B981; }
+.audit-row[data-estado="parcial"]     { border-left-color: #F59E0B; }
+.audit-row[data-estado="en-progreso"] { border-left-color: #3B82F6; }
+.audit-row[data-estado="vencido"]     { border-left-color: #EF4444; }
+.audit-row[data-estado="pendiente"]   { border-left-color: #94A3B8; }
+
+.audit-row-mando {
+  background: linear-gradient(90deg, #FFFBEB 0%, transparent 40%);
+}
+
+/* ----- Columnas ----- */
+.audit-col-tarea {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.audit-tarea-nombre {
+  font-weight: 600;
+  color: var(--text-main);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.audit-tarea-flags {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.audit-flag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  font-size: 10px;
+  font-weight: 800;
+  cursor: help;
+}
+.audit-flag-nota    { background: #FEF3C7; color: #92400E; border: 1px solid #FDE68A; }
+.audit-flag-retraso { background: #FED7AA; color: #9A3412; border: 1px solid #FB923C; }
+
+.audit-col-empleado,
+.audit-col-sucursal,
+.audit-col-fecha {
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+}
+
+/* Mini barra de progreso */
+.audit-progress-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.audit-progress-bar {
+  height: 6px;
+  background: #F1F5F9;
+  border-radius: 999px;
+  overflow: hidden;
+}
+.audit-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #10B981 0%, #34D399 100%);
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+.audit-row[data-estado="vencido"]   .audit-progress-fill { background: linear-gradient(90deg, #EF4444, #FB7185); }
+.audit-row[data-estado="parcial"]   .audit-progress-fill { background: linear-gradient(90deg, #F59E0B, #FCD34D); }
+.audit-row[data-estado="en-progreso"] .audit-progress-fill { background: linear-gradient(90deg, #3B82F6, #60A5FA); }
+.audit-progress-text {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+/* Badges de estado */
+.audit-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.audit-badge-completo  { background: #D1FAE5; color: #065F46; border: 1px solid #6EE7B7; }
+.audit-badge-parcial   { background: #FEF3C7; color: #92400E; border: 1px solid #FBBF24; }
+.audit-badge-progreso  { background: #DBEAFE; color: #1E40AF; border: 1px solid #93C5FD; }
+.audit-badge-vencido   { background: #FEE2E2; color: #991B1B; border: 1px solid #FCA5A5; }
+.audit-badge-pendiente { background: #F1F5F9; color: #475569; border: 1px solid #CBD5E1; }
+
+/* ----- MOBILE: cada fila se convierte en mini-card ----- */
+@media (max-width: 768px) {
+  .audit-table-head { display: none; }
+  .audit-table { border-radius: 12px; }
+  .audit-section-header { padding: 8px 14px; font-size: 10px; }
+
+  .audit-row {
+    grid-template-columns: 1fr;
+    gap: 6px;
+    padding: 12px 14px 14px 14px;
+    border-left-width: 4px;
+  }
+  .audit-row > div[data-label] {
+    display: grid;
+    grid-template-columns: 80px 1fr;
+    align-items: center;
+    font-size: 13px;
+  }
+  .audit-row > div[data-label]::before {
+    content: attr(data-label);
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #94A3B8;
+    letter-spacing: 0.4px;
+  }
+  /* La tarea (título) sí ocupa toda la fila sin label, es el "encabezado" del card */
+  .audit-row > .audit-col-tarea {
+    grid-template-columns: 1fr auto;
+    margin-bottom: 6px;
+    padding-bottom: 8px;
+    border-bottom: 1px dashed #E2E8F0;
+  }
+  .audit-row > .audit-col-tarea::before { content: none; }
+  .audit-tarea-nombre {
+    white-space: normal;
+    font-size: 14px;
+  }
+  .audit-col-empleado,
+  .audit-col-sucursal,
+  .audit-col-fecha { white-space: normal; font-size: 13px; color: var(--text-main); }
+  .audit-progress-text { font-size: 12px; }
+}

@@ -377,26 +377,63 @@ export class ReportesComponent implements OnInit, OnDestroy {
     }
   }
 
-  getDisplayStatus(checklist: any): string {
-    const statusReal = (checklist.status || 'pendiente').toLowerCase();
-    if (statusReal === 'completo') return 'completo';
+  /**
+   * Estado visual real del checklist según progreso + envío + tiempo.
+   * Antes confiábamos en `checklist.status === 'completo'` que se ponía al
+   * enviar — esto producía el bug: badge COMPLETO con barra 0%. Ahora:
+   *   completo    -> 100% de items con evidencia
+   *   parcial     -> se envió pero <100% (lo que antes parecía "completo bug")
+   *   en-progreso -> no enviado, algún avance
+   *   vencido     -> no enviado y la fecha ya pasó
+   *   pendiente   -> no enviado, sin avance, fecha aún vigente
+   */
+  getDisplayStatus(checklist: any): 'completo' | 'parcial' | 'en-progreso' | 'vencido' | 'pendiente' {
+    const progreso = this.getProgreso(checklist);
+    const enviado = checklist.enviado === true || (checklist.status || '').toLowerCase() === 'completo';
+    if (progreso >= 100) return 'completo';
+    if (enviado) return 'parcial';
     const hoy = new Date();
     const offset = hoy.getTimezoneOffset() * 60000;
     const hoyStr = new Date(hoy.getTime() - offset).toISOString().split('T')[0];
-    if (checklist.date && checklist.date < hoyStr) { return 'vencido'; }
-    return statusReal;
+    if (checklist.date && checklist.date < hoyStr) return 'vencido';
+    if (progreso > 0) return 'en-progreso';
+    return 'pendiente';
+  }
+
+  /** Etiqueta humana del estado, para badges y reportes. */
+  getDisplayStatusLabel(checklist: any): string {
+    switch (this.getDisplayStatus(checklist)) {
+      case 'completo':    return 'Completo';
+      case 'parcial':     return 'Parcial';
+      case 'en-progreso': return 'En progreso';
+      case 'vencido':     return 'Vencido';
+      default:            return 'Pendiente';
+    }
+  }
+
+  /** ¿Item completo según evidencia REAL (foto/antes-después/varias fotos) o
+   *  palomeo cuando no se pide evidencia? Antes solo miraba .checked y daba
+   *  porcentajes engañosos cuando había fotos pero el checked era false. */
+  private esItemCompleto(it: any): boolean {
+    if (!it) return false;
+    if (it.requiresAntesDespues) {
+      return !!it.photoAntes && it.photoAntes !== 'subiendo...' &&
+             !!it.photoDespues && it.photoDespues !== 'subiendo...';
+    }
+    if (it.requiresVariasFotos) return Array.isArray(it.photos) && it.photos.length > 0;
+    if (it.requiresPhoto) return !!it.photo && it.photo !== 'subiendo...';
+    return it.checked === true;
   }
 
   getProgreso(checklist: any): number {
-    if (checklist.calcProgreso !== undefined) return checklist.calcProgreso;
     if (!checklist.items || checklist.items.length === 0) return 0;
-    const marcados = checklist.items.filter((i: any) => i.checked).length;
-    return Math.round((marcados / checklist.items.length) * 100) || 0;
+    const marcados = checklist.items.filter((i: any) => this.esItemCompleto(i)).length;
+    return Math.round((marcados / checklist.items.length) * 100);
   }
 
   getCompletados(checklist: any): number {
     if (!checklist.items) return 0;
-    return checklist.items.filter((i: any) => i.checked).length;
+    return checklist.items.filter((i: any) => this.esItemCompleto(i)).length;
   }
 
   // KPIs para el panel de Auditoría Operativa
@@ -406,6 +443,11 @@ export class ReportesComponent implements OnInit, OnDestroy {
 
   getKpiCompletos(): number {
     return this.resultados().filter(r => this.getDisplayStatus(r) === 'completo').length;
+  }
+
+  /** Enviados pero <100% — antes contaban como "completos" en este KPI. */
+  getKpiParciales(): number {
+    return this.resultados().filter(r => this.getDisplayStatus(r) === 'parcial').length;
   }
 
   getKpiEnProgreso(): number {

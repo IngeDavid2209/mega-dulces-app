@@ -324,94 +324,80 @@
         </div>
 
         <div *ngIf="busquedaRealizada()">
-          <div class="checklist-grid">
+          <!-- Tabla densa: en desktop muestra filas con columnas alineadas
+               (15-20 visibles sin scroll); en mobile cada fila se convierte
+               en mini-card. La separación Mandos/Operativos se mantiene con
+               filas-encabezado de sección. -->
+          <div class="audit-table" *ngIf="resultados().length > 0">
+            <!-- Encabezado de columnas (solo desktop) -->
+            <div class="audit-table-head">
+              <div class="audit-col-tarea">Tarea</div>
+              <div class="audit-col-empleado">Empleado</div>
+              <div class="audit-col-sucursal">Sucursal</div>
+              <div class="audit-col-fecha">Fecha</div>
+              <div class="audit-col-avance">Avance</div>
+              <div class="audit-col-estado">Estado</div>
+            </div>
+
             <ng-container *ngFor="let checklist of resultadosOrdenadosPorNivel; let i = index; trackBy: trackByChecklist">
-              <!-- Encabezado de la sección Mandos cuando hay ambos niveles -->
-              <div *ngIf="i === 0 && nivelDelAssigned(checklist.assigned) === 'mando' && resultadosOperativos.length > 0"
-                   style="grid-column: 1 / -1; font-size: 12px; font-weight: 700; color: #1E3A8A; letter-spacing: .5px; text-transform: uppercase; margin: 4px 0 2px 4px;">
-                Mandos de sucursal ({{ resultadosMandos.length }})
+              <!-- Fila encabezado de sección Mandos -->
+              <div class="audit-section-header audit-section-mandos"
+                   *ngIf="i === 0 && nivelDelAssigned(checklist.assigned) === 'mando' && resultadosOperativos.length > 0">
+                Mandos de sucursal · {{ resultadosMandos.length }}
               </div>
-              <!-- Separador entre mandos y operativos -->
-              <div *ngIf="i > 0
+              <!-- Fila encabezado de sección Operativos -->
+              <div class="audit-section-header audit-section-operativos"
+                   *ngIf="i > 0
                          && nivelDelAssigned(resultadosOrdenadosPorNivel[i-1].assigned) === 'mando'
-                         && nivelDelAssigned(checklist.assigned) === 'operativo'"
-                   style="grid-column: 1 / -1; border-top: 1px dashed #E2E8F0; margin: 14px 0 6px 0; padding-top: 10px; font-size: 12px; font-weight: 700; color: #475569; letter-spacing: .5px; text-transform: uppercase;">
-                Operativos ({{ resultadosOperativos.length }})
-              </div>
-            <div class="checklist-card" (click)="verDetalle(checklist)">
-              <div class="checklist-card-header">
-                <div class="checklist-card-title">{{ checklist.name }}</div>
-                <div class="checklist-card-badge" [ngClass]="{
-                  'badge-pendiente': getDisplayStatus(checklist) === 'pendiente',
-                  'badge-en-progreso': getDisplayStatus(checklist) === 'en-progreso',
-                  'badge-completo': getDisplayStatus(checklist) === 'completo',
-                  'badge-vencido': getDisplayStatus(checklist) === 'vencido'
-                }">{{ getDisplayStatus(checklist) | titlecase }}</div>
+                         && nivelDelAssigned(checklist.assigned) === 'operativo'">
+                Operativos · {{ resultadosOperativos.length }}
               </div>
 
-              <div class="checklist-card-info">
-                <span style="display: flex; align-items: center;"><svg width="14" height="14" viewBox="0 0 24 24"
-                    fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px;">
-                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                    <circle cx="12" cy="7" r="4"></circle>
-                  </svg> {{ checklist.assigned }}</span>
-                <span style="display: flex; align-items: center;"><svg width="14" height="14" viewBox="0 0 24 24"
-                    fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px;">
-                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                    <line x1="3" y1="9" x2="21" y2="9"></line>
-                    <line x1="9" y1="21" x2="9" y2="9"></line>
-                  </svg> {{ checklist.store }}</span>
-                <span style="display: flex; align-items: center;"><svg width="14" height="14" viewBox="0 0 24 24"
-                    fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px;">
-                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                    <line x1="16" y1="2" x2="16" y2="6"></line>
-                    <line x1="8" y1="2" x2="8" y2="6"></line>
-                    <line x1="3" y1="10" x2="21" y2="10"></line>
-                  </svg> {{ checklist.date }}</span>
-
-                <span *ngIf="checklist.notaEmpleado"
-                  style="display: flex; align-items: center; color: #D97706; font-weight: 600; background: #FEF3C7; padding: 2px 8px; border-radius: 4px; border: 1px solid #FDE68A; font-size: 11px; margin-top: 4px;">
-                  <svg width="12" height="12" style="margin-right: 4px;" viewBox="0 0 24 24" fill="none"
-                    stroke="currentColor" stroke-width="2">
-                    <path
-                      d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z">
-                    </path>
-                  </svg> TIENE NOTAS
-                </span>
-
-                <span *ngIf="checklist.entregaConRetraso"
-                  [title]="(checklist.motivoRetraso?.categoria || '') + ' — ' + (checklist.motivoRetraso?.comentario || '')"
-                  style="display: flex; align-items: center; color: #B45309; font-weight: 700; background: #FED7AA; padding: 2px 8px; border-radius: 4px; border: 1px solid #FB923C; font-size: 11px; margin-top: 4px;">
-                  <svg width="12" height="12" style="margin-right: 4px;" viewBox="0 0 24 24" fill="none"
-                    stroke="currentColor" stroke-width="2.5">
-                    <circle cx="12" cy="12" r="10"></circle>
-                    <polyline points="12 6 12 12 16 14"></polyline>
-                  </svg>
-                  ⏰ RETRASO JUSTIFICADO
-                </span>
-              </div>
-
-              <div class="checklist-progress">
-                <div class="progress-label">
-                  <span>{{ getCompletados(checklist) }} / {{ checklist.items?.length || 0 }} Tareas</span>
-                  <span>{{ getProgreso(checklist) }}%</span>
+              <div class="audit-row" (click)="verDetalle(checklist)"
+                   [attr.data-estado]="getDisplayStatus(checklist)"
+                   [class.audit-row-mando]="nivelDelAssigned(checklist.assigned) === 'mando'">
+                <div class="audit-col-tarea" [attr.data-label]="'Tarea'">
+                  <div class="audit-tarea-nombre">{{ checklist.name }}</div>
+                  <div class="audit-tarea-flags">
+                    <span *ngIf="checklist.notaEmpleado" class="audit-flag audit-flag-nota" title="Tiene notas del empleado">N</span>
+                    <span *ngIf="checklist.entregaConRetraso" class="audit-flag audit-flag-retraso"
+                          [title]="(checklist.motivoRetraso?.categoria || '') + ' — ' + (checklist.motivoRetraso?.comentario || '')">R</span>
+                  </div>
                 </div>
-                <div class="progress-bar-wrap">
-                  <div class="progress-bar-fill" [style.width.%]="getProgreso(checklist)"></div>
+                <div class="audit-col-empleado" [attr.data-label]="'Empleado'">{{ checklist.assigned }}</div>
+                <div class="audit-col-sucursal" [attr.data-label]="'Sucursal'">{{ checklist.store }}</div>
+                <div class="audit-col-fecha" [attr.data-label]="'Fecha'">{{ checklist.date }}</div>
+                <div class="audit-col-avance" [attr.data-label]="'Avance'">
+                  <div class="audit-progress-wrap">
+                    <div class="audit-progress-bar">
+                      <div class="audit-progress-fill" [style.width.%]="getProgreso(checklist)"></div>
+                    </div>
+                    <span class="audit-progress-text">{{ getCompletados(checklist) }}/{{ checklist.items?.length || 0 }} · {{ getProgreso(checklist) }}%</span>
+                  </div>
+                </div>
+                <div class="audit-col-estado" [attr.data-label]="'Estado'">
+                  <span class="audit-badge"
+                        [class.audit-badge-completo]="getDisplayStatus(checklist) === 'completo'"
+                        [class.audit-badge-parcial]="getDisplayStatus(checklist) === 'parcial'"
+                        [class.audit-badge-progreso]="getDisplayStatus(checklist) === 'en-progreso'"
+                        [class.audit-badge-vencido]="getDisplayStatus(checklist) === 'vencido'"
+                        [class.audit-badge-pendiente]="getDisplayStatus(checklist) === 'pendiente'">
+                    {{ getDisplayStatusLabel(checklist) }}
+                  </span>
                 </div>
               </div>
-            </div>
             </ng-container>
-            <div class="empty-state" *ngIf="resultados().length === 0 && !buscando()">
-              <div class="empty-state-icon"><svg width="48" height="48" viewBox="0 0 24 24" fill="none"
-                  stroke="currentColor" stroke-width="2">
-                  <polyline points="21 8 21 21 3 21 3 8"></polyline>
-                  <rect x="1" y="3" width="22" height="5"></rect>
-                  <line x1="10" y1="12" x2="14" y2="12"></line>
-                </svg></div>
-              <h3>No hay registros</h3>
-              <p>No se encontraron checklists con los filtros seleccionados.</p>
-            </div>
+          </div>
+
+          <div class="empty-state" *ngIf="resultados().length === 0 && !buscando()">
+            <div class="empty-state-icon"><svg width="48" height="48" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2">
+                <polyline points="21 8 21 21 3 21 3 8"></polyline>
+                <rect x="1" y="3" width="22" height="5"></rect>
+                <line x1="10" y1="12" x2="14" y2="12"></line>
+              </svg></div>
+            <h3>No hay registros</h3>
+            <p>No se encontraron checklists con los filtros seleccionados.</p>
           </div>
         </div>
       </div>

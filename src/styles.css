@@ -353,6 +353,88 @@ select.form-input, select.select-input {
 }
 
 /* ============================================
+   GRIDS RESPONSIVE GLOBALES
+   Los grids principales (.user-grid, .checklist-grid, .store-grid, etc.)
+   en pantallas chicas se reorganizan a 1 columna automáticamente. Cubre
+   los casos donde el grid local no tenía media query mobile.
+   ============================================ */
+@media (max-width: 640px) {
+  .user-grid,
+  .checklist-grid,
+  .store-grid,
+  .stat-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+  .kpi-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 10px !important;
+  }
+  /* En el header, el search ocupa toda la fila antes de los botones */
+  .action-bar-container,
+  .section-header {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+  }
+  .search-wrapper,
+  .search-input {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+}
+@media (max-width: 380px) {
+  .kpi-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ============================================
+   MODALES RESPONSIVE (cubre todos los componentes)
+   - <768px: 95% del viewport, max altura 92dvh, esquinas pequeñas
+   - <480px: ocupa toda la pantalla (fullscreen), sin redondeo
+   Esto evita que en celulares chicos el modal quede recortado o flotando
+   con scroll fantasma detrás.
+   ============================================ */
+@media (max-width: 768px) {
+  .modal-overlay {
+    padding: 12px !important;
+    align-items: flex-start !important;
+  }
+  .modal {
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: 92dvh !important;
+    margin: 0 auto !important;
+    border-radius: 12px !important;
+  }
+  .modal-body {
+    max-height: calc(92dvh - 110px) !important; /* deja espacio para header + footer */
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  /* Cuando hay un modal abierto, bloquea el scroll del body para que no se
+     "rebote" en background mientras el usuario scrollea dentro del modal. */
+  body:has(.modal-overlay) {
+    overflow: hidden !important;
+  }
+}
+@media (max-width: 480px) {
+  .modal-overlay {
+    padding: 0 !important;
+  }
+  .modal {
+    width: 100vw !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    border-radius: 0 !important;
+  }
+  .modal-body {
+    max-height: calc(100dvh - 110px) !important;
+  }
+}
+
+/* ============================================
    UTILIDAD: BARRA DE ACCIONES RESPONSIVE
    Para headers con varios botones. En desktop fluyen horizontal con wrap;
    en móvil cada botón ocupa toda la fila para que el texto no se trunque.

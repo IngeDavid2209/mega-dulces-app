@@ -291,16 +291,23 @@ select.form-input, select.select-input {
     top: 0 !important;
     bottom: 0 !important;
     left: -100% !important;
-    width: 280px !important;
+    /* Ancho adaptativo: no excede 85% del viewport en pantallas chicas */
+    width: min(280px, 85vw) !important;
     z-index: 2000 !important;
     box-sizing: border-box !important;
     background-color: var(--bg-sidebar) !important;
     transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
     padding: 0 !important;
+    /* dvh respeta la barra de URL/navegación en navegadores móviles que la
+       muestran/ocultan al scrollear (Chrome, Safari). Con vh fijo, el bottom-nav
+       a veces quedaba tapado por la barra de URL. */
+    height: 100dvh !important;
+    max-height: 100dvh !important;
   }
 
   .sidebar.mobile-open {
     left: 0 !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18) !important;
   }
 
   .sidebar > div {
@@ -313,7 +320,8 @@ select.form-input, select.select-input {
   }
 
   .sidebar-nav {
-    flex: 1 !important;
+    flex: 1 1 auto !important;
+    min-height: 0 !important;            /* permite que el flex item shrink */
     overflow-y: auto !important;
     padding: 10px !important;
     -webkit-overflow-scrolling: touch !important;
@@ -326,5 +334,52 @@ select.form-input, select.select-input {
     background-color: var(--bg-sidebar) !important;
     border-top: 1px solid var(--border) !important;
     margin-bottom: 0 !important;
+  }
+
+  /* Cuando el sidebar está abierto, bloquea el scroll del body para evitar el
+     "rebote" detrás del drawer (que se sentía como que el menú se desajustaba). */
+  body:has(.sidebar.mobile-open) {
+    overflow: hidden !important;
+  }
+
+  .mobile-overlay {
+    position: fixed !important;
+    inset: 0 !important;
+    background: rgba(15, 23, 42, 0.45) !important;
+    z-index: 1900 !important;
+    -webkit-backdrop-filter: blur(2px);
+    backdrop-filter: blur(2px);
+  }
+}
+
+/* ============================================
+   UTILIDAD: BARRA DE ACCIONES RESPONSIVE
+   Para headers con varios botones. En desktop fluyen horizontal con wrap;
+   en móvil cada botón ocupa toda la fila para que el texto no se trunque.
+   ============================================ */
+.action-bar-responsive {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.action-bar-responsive > * {
+  flex: 0 1 auto;
+}
+@media screen and (max-width: 640px) {
+  .action-bar-responsive {
+    gap: 8px;
+  }
+  .action-bar-responsive > .btn-primary,
+  .action-bar-responsive > .btn-secondary {
+    flex: 1 1 calc(50% - 8px);
+    justify-content: center !important;
+    min-width: 0;
+  }
+}
+@media screen and (max-width: 420px) {
+  .action-bar-responsive > .btn-primary,
+  .action-bar-responsive > .btn-secondary {
+    flex: 1 1 100%;
   }
 }

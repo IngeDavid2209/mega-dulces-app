@@ -1214,13 +1214,8 @@
 
   .action-buttons {
     width: 100%;
-    flex-direction: column;
-  }
-
-  .btn-primary,
-  .btn-secondary {
-    width: 100%;
-    justify-content: center;
+    /* La responsividad de los botones la maneja .action-bar-responsive (styles.css):
+       2 por fila <640px, 1 por fila <420px. No forzar columna aquí. */
   }
 
   .checklist-grid {
@@ -2582,4 +2577,18 @@
   .vista-tab { padding: 8px 12px; font-size: 13px; gap: 6px; }
   .vista-tab-icon { font-size: 14px; }
   .vista-tab-badge { min-width: 20px; height: 20px; font-size: 11px; }
+}
+
+/* ===================== Botón "Tareas en Equipo" =====================
+   Es un .btn-primary con color verde corporativo para diferenciarlo de los
+   otros botones de creación. Antes tenía inline styles rígidos que ignoraban
+   el ancho responsive del header. Ahora hereda el comportamiento de .btn-primary
+   (compatible con action-bar-responsive) y solo sobreescribe el color. */
+.btn-equipo.btn-primary {
+  background: #10B981;
+  border-color: #10B981;
+}
+.btn-equipo.btn-primary:hover {
+  background: #059669;
+  border-color: #059669;
 }

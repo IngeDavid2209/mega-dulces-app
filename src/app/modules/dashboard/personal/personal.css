@@ -782,14 +782,10 @@
 
   .header-buttons {
     width: 100% !important;
-    display: flex !important;
-    justify-content: space-between !important;
-  }
-
-  .btn-primary,
-  .btn-secondary {
-    flex: 1 !important;
-    justify-content: center !important;
+    /* El comportamiento responsive de los botones lo maneja .action-bar-responsive
+       (definida en src/styles.css): 2 por fila <640px, 1 por fila <420px.
+       Antes esta regla local los apilaba uno por uno con flex:1 incluso si cabian
+       más de dos, dejando texto encimado en pantallas chicas. */
   }
 
   .user-grid {

@@ -30,10 +30,16 @@ export const routes: Routes = [
     canActivate: [authGuard],
     loadComponent: () => import('./modules/dashboard/checkstore/checkstore').then(m => m.CheckstoreComponent) 
   },
-  { 
-    path: 'estadisticas', 
+  {
+    path: 'estadisticas',
     canActivate: [authGuard],
-    loadComponent: () => import('./modules/dashboard/estadisticas/estadisticas').then(m => m.EstadisticasComponent) 
+    loadComponent: () => import('./modules/dashboard/estadisticas/estadisticas').then(m => m.EstadisticasComponent)
+  },
+  // 🏆 RANKING SEMANAL DE SUCURSALES
+  {
+    path: 'ranking-sucursales',
+    canActivate: [authGuard],
+    loadComponent: () => import('./modules/dashboard/ranking-sucursales/ranking-sucursales').then(m => m.RankingSucursalesComponent)
   },
   { 
     path: 'reportes', 

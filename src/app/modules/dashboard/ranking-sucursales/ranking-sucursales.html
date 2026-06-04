@@ -1,0 +1,117 @@
+<div class="app-layout">
+  <header class="header">
+    <div class="header-left">
+      <button class="btn-menu-mobile" (click)="toggleMenu()">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="3" y1="12" x2="21" y2="12"></line>
+          <line x1="3" y1="6" x2="21" y2="6"></line>
+          <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+      </button>
+      <div class="header-logo-wrap" style="background: transparent !important;">
+        <img src="https://static.wixstatic.com/media/fd397e_0fd82a1ecec84a118ceeb603b493f25a~mv2.png" alt="Mega Dulces"
+             style="height: 36px; width: auto; object-fit: contain;">
+      </div>
+      <div class="header-brand">Mega Dulces<small>Ranking semanal</small></div>
+    </div>
+    <div class="header-right"></div>
+  </header>
+
+  <div class="main-wrapper">
+    <div class="mobile-overlay" *ngIf="isMenuOpen" (click)="toggleMenu()"></div>
+    <app-sidebar [currentUser]="currentUser" [isMenuOpen]="isMenuOpen" (closeMenu)="isMenuOpen = false"></app-sidebar>
+
+    <div class="content">
+      <!-- HEADER -->
+      <div class="rank-head">
+        <div>
+          <h1 class="rank-title">Ranking de sucursales</h1>
+          <p class="rank-sub">Mejor desempeño semanal por sucursal · {{ rangoSemanaTexto() }}</p>
+        </div>
+        <div class="rank-nav">
+          <button class="rank-nav-btn" (click)="semanaAnterior()" title="Semana anterior">&larr;</button>
+          <button class="rank-nav-btn rank-nav-hoy" (click)="semanaActual()" title="Volver a esta semana">Hoy</button>
+          <button class="rank-nav-btn" (click)="semanaSiguiente()" title="Semana siguiente">&rarr;</button>
+        </div>
+      </div>
+
+      <!-- KPIs RESUMEN -->
+      <section class="rank-kpis" *ngIf="!cargando()">
+        <div class="rank-kpi">
+          <div class="rank-kpi-num">{{ promedioGeneral() }}%</div>
+          <div class="rank-kpi-lbl">Promedio general</div>
+        </div>
+        <div class="rank-kpi rank-kpi-mejor" *ngIf="mejorSucursal() as mejor">
+          <div class="rank-kpi-num">{{ mejor.promedioSemana }}%</div>
+          <div class="rank-kpi-lbl">Líder: <strong>{{ mejor.sucursal }}</strong></div>
+        </div>
+        <div class="rank-kpi">
+          <div class="rank-kpi-num">{{ ranking().length }}</div>
+          <div class="rank-kpi-lbl">Sucursales activas</div>
+        </div>
+      </section>
+
+      <!-- LOADING -->
+      <div class="rank-loading" *ngIf="cargando()">
+        Cargando ranking de la semana...
+      </div>
+
+      <!-- TABLA DE RANKING -->
+      <section class="rank-table" *ngIf="!cargando() && ranking().length > 0">
+        <!-- Encabezado de columnas -->
+        <div class="rank-row rank-row-head">
+          <div class="rank-col-puesto">#</div>
+          <div class="rank-col-sucursal">Sucursal</div>
+          <div class="rank-col-dias">
+            <ng-container *ngFor="let d of ranking()[0].dias">
+              <div class="rank-dia-th" [class.dia-hoy]="d.esHoy" [class.dia-futuro]="d.esFuturo">
+                <div class="rank-dia-th-lbl">{{ d.etiqueta }}</div>
+                <div class="rank-dia-th-num">{{ d.diaNumero }}</div>
+              </div>
+            </ng-container>
+          </div>
+          <div class="rank-col-promedio">Promedio</div>
+        </div>
+
+        <!-- Filas del ranking -->
+        <div class="rank-row" *ngFor="let f of ranking(); let i = index"
+             [class.rank-row-top]="i < 3">
+          <div class="rank-col-puesto">
+            <div class="rank-puesto-badge" [ngClass]="claseTop(i)">{{ puesto(i) }}</div>
+          </div>
+          <div class="rank-col-sucursal">
+            <div class="rank-suc-nombre">{{ f.sucursal }}</div>
+            <div class="rank-suc-meta">{{ f.completadosSemana }} de {{ f.totalSemana }} tareas hechas</div>
+          </div>
+          <div class="rank-col-dias">
+            <div class="rank-dia-cell" *ngFor="let d of f.dias"
+                 [class.dia-vacio]="d.total === 0"
+                 [class.dia-futuro]="d.esFuturo"
+                 [class.dia-hoy]="d.esHoy"
+                 [title]="d.etiqueta + ' ' + d.diaNumero + ': ' + d.completados + '/' + d.total + ' (' + d.porcentaje + '%)'">
+              <div class="rank-dia-barra-wrap">
+                <div class="rank-dia-barra"
+                     [style.height.%]="d.porcentaje"
+                     [style.background]="colorPct(d.porcentaje, d.total)"></div>
+              </div>
+              <div class="rank-dia-pct" *ngIf="d.total > 0">{{ d.porcentaje }}%</div>
+              <div class="rank-dia-pct rank-dia-pct-vacio" *ngIf="d.total === 0">—</div>
+            </div>
+          </div>
+          <div class="rank-col-promedio">
+            <div class="rank-prom-circle"
+                 [style.background]="colorPct(f.promedioSemana, f.totalSemana)">
+              {{ f.promedioSemana }}%
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ESTADO VACÍO -->
+      <div class="rank-empty" *ngIf="!cargando() && ranking().length === 0">
+        <h3>Sin actividad esta semana</h3>
+        <p>Aún no hay checklists registrados entre {{ rangoSemanaTexto() }}.</p>
+      </div>
+    </div>
+  </div>
+</div>

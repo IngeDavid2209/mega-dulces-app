@@ -1,0 +1,296 @@
+:host {
+  --primary-navy: #0F172A;
+  --primary-blue: #1E40AF;
+  --text-main: #1E293B;
+  --text-muted: #64748B;
+  --bg-app: #F8FAFC;
+  --bg-sidebar: #FFFFFF;
+  --border: #E2E8F0;
+  --card: #FFFFFF;
+  --shadow: 0 1px 3px 0 rgba(0,0,0,0.08), 0 1px 2px -1px rgba(0,0,0,0.06);
+  --shadow-lg: 0 4px 6px -1px rgba(0,0,0,0.08), 0 2px 4px -2px rgba(0,0,0,0.05);
+}
+
+/* Layout base */
+.app-layout {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  background-color: var(--bg-app);
+}
+.header {
+  background-color: var(--bg-sidebar);
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  border-bottom: 1px solid var(--border);
+  z-index: 20;
+}
+.header-left { display: flex; align-items: center; gap: 12px; }
+.header-brand { font-size: 18px; font-weight: 700; color: var(--text-main); line-height: 1.2; margin-left: 8px; }
+.header-brand small { display: block; font-size: 11px; color: var(--text-muted); font-weight: 500; }
+.main-wrapper { display: flex; flex: 1; overflow: hidden; }
+.content {
+  flex: 1;
+  padding: 32px 40px;
+  overflow-y: auto;
+  background-color: var(--bg-app);
+}
+
+/* ============================================================
+   HEADER DEL RANKING
+   ============================================================ */
+.rank-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 22px;
+  flex-wrap: wrap;
+}
+.rank-title {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--text-main);
+  letter-spacing: -0.5px;
+}
+.rank-sub {
+  margin: 4px 0 0 0;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+.rank-nav { display: flex; gap: 6px; }
+.rank-nav-btn {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-main);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.rank-nav-btn:hover { border-color: var(--primary-navy); background: #F8FAFC; }
+.rank-nav-hoy { background: var(--primary-navy); color: white; border-color: var(--primary-navy); }
+.rank-nav-hoy:hover { background: #1E293B; color: white; }
+
+/* ============================================================
+   KPIs RESUMEN
+   ============================================================ */
+.rank-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+  margin-bottom: 24px;
+}
+.rank-kpi {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px 22px;
+  box-shadow: var(--shadow);
+}
+.rank-kpi-num {
+  font-size: 28px;
+  font-weight: 900;
+  color: var(--text-main);
+  line-height: 1.1;
+}
+.rank-kpi-lbl {
+  font-size: 12px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+  margin-top: 4px;
+}
+.rank-kpi-mejor {
+  background: linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 100%);
+  border-color: #FBBF24;
+}
+.rank-kpi-mejor .rank-kpi-num { color: #92400E; }
+.rank-kpi-mejor .rank-kpi-lbl strong { color: var(--text-main); font-weight: 700; }
+
+/* ============================================================
+   TABLA DEL RANKING
+   ============================================================ */
+.rank-table {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+.rank-row {
+  display: grid;
+  grid-template-columns: 60px 1.8fr 3fr 110px;
+  gap: 14px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  align-items: center;
+}
+.rank-row:last-child { border-bottom: none; }
+.rank-row-head {
+  background: linear-gradient(180deg, #F8FAFC 0%, #F1F5F9 100%);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+.rank-row-top { background: linear-gradient(90deg, #FFFBEB 0%, transparent 35%); }
+
+/* Columnas */
+.rank-col-puesto {
+  display: flex;
+  justify-content: center;
+}
+.rank-puesto-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px; height: 38px;
+  border-radius: 50%;
+  background: #F1F5F9;
+  color: var(--text-muted);
+  font-weight: 800;
+  font-size: 14px;
+}
+.rank-puesto-badge.top-oro    { background: linear-gradient(135deg, #FBBF24, #F59E0B); color: white; box-shadow: 0 4px 12px rgba(245,158,11,0.35); }
+.rank-puesto-badge.top-plata  { background: linear-gradient(135deg, #CBD5E1, #94A3B8); color: white; box-shadow: 0 3px 8px rgba(148,163,184,0.35); }
+.rank-puesto-badge.top-bronce { background: linear-gradient(135deg, #D97706, #B45309); color: white; box-shadow: 0 3px 8px rgba(180,83,9,0.30); }
+
+.rank-col-sucursal { min-width: 0; }
+.rank-suc-nombre {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rank-suc-meta {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* Días: grid de 7 columnas */
+.rank-col-dias {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+.rank-dia-th {
+  text-align: center;
+  font-size: 11px;
+  color: var(--text-muted);
+  padding: 4px 2px;
+}
+.rank-dia-th-lbl { font-weight: 700; text-transform: uppercase; }
+.rank-dia-th-num { font-size: 10px; opacity: 0.7; }
+.rank-dia-th.dia-hoy { color: var(--primary-blue); }
+.rank-dia-th.dia-hoy .rank-dia-th-num { background: var(--primary-blue); color: white; border-radius: 50%; display: inline-block; width: 16px; height: 16px; line-height: 16px; }
+
+/* Celda del día: barra vertical + % */
+.rank-dia-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 2px;
+}
+.rank-dia-barra-wrap {
+  width: 100%;
+  max-width: 28px;
+  height: 56px;
+  background: #F1F5F9;
+  border-radius: 4px;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: flex-end;
+}
+.rank-dia-barra {
+  width: 100%;
+  background: var(--primary-blue);
+  border-radius: 0 0 4px 4px;
+  transition: height 0.3s ease;
+  min-height: 2px;
+}
+.rank-dia-pct {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-main);
+}
+.rank-dia-cell.dia-vacio .rank-dia-barra-wrap { background: repeating-linear-gradient(45deg, #F1F5F9, #F1F5F9 4px, #E2E8F0 4px, #E2E8F0 8px); }
+.rank-dia-cell.dia-futuro { opacity: 0.35; }
+.rank-dia-cell.dia-hoy .rank-dia-barra-wrap {
+  border: 2px solid var(--primary-blue);
+}
+.rank-dia-pct-vacio { color: #94A3B8; font-weight: 600; }
+
+/* Promedio (círculo final) */
+.rank-col-promedio {
+  display: flex;
+  justify-content: center;
+}
+.rank-prom-circle {
+  width: 56px; height: 56px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 800;
+  font-size: 14px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+}
+
+/* ============================================================
+   ESTADOS
+   ============================================================ */
+.rank-loading, .rank-empty {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text-muted);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.rank-empty h3 { margin: 0 0 6px 0; font-size: 18px; color: var(--text-main); }
+.rank-empty p { margin: 0; font-size: 14px; }
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+@media (max-width: 900px) {
+  .content { padding: 22px 16px; }
+  .rank-row {
+    grid-template-columns: 50px 1fr 90px;
+    gap: 10px;
+  }
+  .rank-col-dias {
+    grid-column: 1 / -1;
+    margin-top: 8px;
+    grid-template-columns: repeat(7, 1fr);
+  }
+  .rank-row-head .rank-col-dias { display: none; }
+  .rank-dia-barra-wrap { height: 44px; }
+  .rank-prom-circle { width: 48px; height: 48px; font-size: 12px; }
+}
+@media (max-width: 480px) {
+  .rank-title { font-size: 22px; }
+  .rank-suc-nombre { font-size: 14px; white-space: normal; }
+  .rank-dia-barra-wrap { height: 38px; max-width: 22px; }
+  .rank-dia-pct { font-size: 9px; }
+  .rank-puesto-badge { width: 32px; height: 32px; font-size: 12px; }
+}

@@ -5,6 +5,7 @@ import { RouterModule, ActivatedRoute } from '@angular/router';
 import { Firestore, collection, getDocs, doc, deleteDoc, query, where } from '@angular/fire/firestore';
 import { sucursalesPermitidas } from '../shared/permisos.util';
 import { nivelDeCargo } from '../shared/nivel-jerarquico.util';
+import { esItemHecho } from '../shared/item-completado.util';
 
 // jsPDF, jspdf-autotable, exceljs y html2canvas se cargan SOLO cuando el usuario
 // pide Exportar (PDF/Excel) o Reporte visual. Antes se importaban al inicio y
@@ -411,18 +412,14 @@ export class ReportesComponent implements OnInit, OnDestroy {
     }
   }
 
-  /** ¿Item completo según evidencia REAL (foto/antes-después/varias fotos) o
-   *  palomeo cuando no se pide evidencia? Antes solo miraba .checked y daba
-   *  porcentajes engañosos cuando había fotos pero el checked era false. */
-  esItemCompleto(it: any): boolean {
-    if (!it) return false;
-    if (it.requiresAntesDespues) {
-      return !!it.photoAntes && it.photoAntes !== 'subiendo...' &&
-             !!it.photoDespues && it.photoDespues !== 'subiendo...';
-    }
-    if (it.requiresVariasFotos) return Array.isArray(it.photos) && it.photos.length > 0;
-    if (it.requiresPhoto) return !!it.photo && it.photo !== 'subiendo...';
-    return it.checked === true;
+  /**
+   * ¿Item considerado como hecho? Usa el criterio unificado:
+   * evidencia real (foto / antes+después / varias fotos / palomeo) O
+   * justificación a nivel del checklist (nota del colaborador o entrega
+   * con retraso justificado).
+   */
+  esItemCompleto(it: any, checklist?: any): boolean {
+    return esItemHecho(it, checklist);
   }
 
   /** ¿La tarea está vencida? Compara la hora límite del item (o `time` legacy)
@@ -455,13 +452,13 @@ export class ReportesComponent implements OnInit, OnDestroy {
 
   getProgreso(checklist: any): number {
     if (!checklist.items || checklist.items.length === 0) return 0;
-    const marcados = checklist.items.filter((i: any) => this.esItemCompleto(i)).length;
+    const marcados = checklist.items.filter((i: any) => esItemHecho(i, checklist)).length;
     return Math.round((marcados / checklist.items.length) * 100);
   }
 
   getCompletados(checklist: any): number {
     if (!checklist.items) return 0;
-    return checklist.items.filter((i: any) => this.esItemCompleto(i)).length;
+    return checklist.items.filter((i: any) => esItemHecho(i, checklist)).length;
   }
 
   // KPIs para el panel de Auditoría Operativa

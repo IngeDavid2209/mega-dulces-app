@@ -6,6 +6,7 @@ import { RouterModule } from '@angular/router';
 import { Firestore, collection, onSnapshot } from '@angular/fire/firestore';
 import { esAdminGlobal, sucursalesPermitidas } from '../../../shared/permisos.util';
 import { nivelDeCargo } from '../../../shared/nivel-jerarquico.util';
+import { esItemHecho } from '../../../shared/item-completado.util';
  
 import { SidebarComponent } from '../../../shared/sidebar/sidebar';
 
@@ -242,7 +243,7 @@ export class CheckstoreComponent implements OnInit, OnDestroy {
       // Escudo anti-clones
       const listasSinClones = new Map<string, any>();
       checklistsTemp.forEach(c => {
-        const marcados = c.items ? c.items.filter((i: any) => this.itemHecho(i)).length : 0;
+        const marcados = c.items ? c.items.filter((i: any) => this.itemHecho(i, c)).length : 0;
         c.calcProgreso = c.items && c.items.length > 0
           ? Math.round((marcados / c.items.length) * 100) : 0;
         const firma = `${c.name}_${c.assigned}_${c.store}_${c.date}`;
@@ -301,14 +302,10 @@ export class CheckstoreComponent implements OnInit, OnDestroy {
    *  - Sin evidencia: requiere palomeado manual.
    * Antes solo miraba item.checked → daba 0% aunque hubiera fotos.
    */
-  private itemHecho(it: any): boolean {
-    if (it?.requiresAntesDespues) {
-      return !!it.photoAntes && it.photoAntes !== 'subiendo...' &&
-             !!it.photoDespues && it.photoDespues !== 'subiendo...';
-    }
-    if (it?.requiresVariasFotos) return Array.isArray(it.photos) && it.photos.length > 0;
-    if (it?.requiresPhoto) return !!it.photo && it.photo !== 'subiendo...';
-    return it?.checked === true;
+  /** Delega al helper compartido: evidencia real O justificación del checklist
+   *  (nota del colaborador / entrega con retraso justificado). */
+  private itemHecho(it: any, c?: any): boolean {
+    return esItemHecho(it, c);
   }
 
   // ============================================================================
@@ -343,7 +340,7 @@ export class CheckstoreComponent implements OnInit, OnDestroy {
           if (c.items && Array.isArray(c.items)) {
             c.items.forEach((item: any) => {
               totalItems++;
-              const hecha = this.itemHecho(item);
+              const hecha = this.itemHecho(item, c);
               if (hecha) completedItems++;
               // contar vencidas: no hechas + horaLimite/time < ahora
               if (!hecha) {

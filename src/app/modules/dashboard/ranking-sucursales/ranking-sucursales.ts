@@ -6,6 +6,7 @@ import { Firestore, collection, onSnapshot, query, where } from '@angular/fire/f
 
 import { SidebarComponent } from '../../../shared/sidebar/sidebar';
 import { esAdminGlobal, sucursalesPermitidas } from '../../../shared/permisos.util';
+import { esItemHecho } from '../../../shared/item-completado.util';
 
 interface DiaStat {
   fechaISO: string;     // YYYY-MM-DD
@@ -130,16 +131,10 @@ export class RankingSucursalesComponent implements OnInit, OnDestroy {
   // ============================================================================
   // CÁLCULO DEL RANKING
   // ============================================================================
-  /** ¿Item completo según evidencia? Mismo criterio que el resto de la app. */
-  private itemHecho(it: any): boolean {
-    if (!it) return false;
-    if (it.requiresAntesDespues) {
-      return !!it.photoAntes && it.photoAntes !== 'subiendo...' &&
-             !!it.photoDespues && it.photoDespues !== 'subiendo...';
-    }
-    if (it.requiresVariasFotos) return Array.isArray(it.photos) && it.photos.length > 0;
-    if (it.requiresPhoto) return !!it.photo && it.photo !== 'subiendo...';
-    return it.checked === true;
+  /** Delega al helper compartido: evidencia real O justificación del checklist
+   *  (nota del colaborador / entrega con retraso justificado). */
+  private itemHecho(it: any, c?: any): boolean {
+    return esItemHecho(it, c);
   }
 
   /** Ranking ya calculado y ordenado por promedio descendente. */
@@ -168,7 +163,7 @@ export class RankingSucursalesComponent implements OnInit, OnDestroy {
       const acc = porDia.get(fechaISO)!;
       for (const it of c.items) {
         acc.total++;
-        if (this.itemHecho(it)) acc.ok++;
+        if (this.itemHecho(it, c)) acc.ok++;
       }
     }
 

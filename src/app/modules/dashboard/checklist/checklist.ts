@@ -8,6 +8,7 @@ import Swal from 'sweetalert2';
 import { esAdminGlobal, esAdminLimitado, sucursalesPermitidas, esSupervisor, mismoEmpleadoNombre } from '../../../shared/permisos.util';
 import { nivelDeCargo } from '../../../shared/nivel-jerarquico.util';
 import { TareaEquipo, FaseEquipo, ItemEquipo, SubtareaEquipo } from '../../../shared/tareas-equipo.types';
+import { esItemHecho, tieneEvidencia } from '../../../shared/item-completado.util';
 import { obtenerSemanaISO, obtenerNombreDia } from '../../../shared/descansos.util';
 import { RobotRutinasV2Service } from '../../../shared/robot-rutinas-v2.service';
 import { RutinaMaestra } from '../../../shared/rutinas.types';
@@ -931,10 +932,12 @@ export class ChecklistComponent implements OnInit, OnDestroy {
         }
         // Solo HOY: el query trae hoy en adelante; aquí excluimos cualquier fecha futura.
         if (c.date !== fechaHoyLocal) { descartadosFecha++; return; }
-        // 🔢 Progreso real: una tarea cuenta como completa solo si TIENE su evidencia
-        // (foto / antes+después / varias fotos) o, si no pide evidencia, si está palomeada.
-        // Antes se contaba con i.checked y daba 100% sin haber subido nada.
-        const tareasMarcadas = (c.items || []).filter((i: any) => this.esItemCompleto(i)).length;
+        // 🔢 Progreso visual: una tarea cuenta como completa si TIENE su evidencia
+        // (foto / antes+después / varias fotos / palomeo) O si el checklist trae
+        // una nota del colaborador o se entregó con retraso justificado. Usamos
+        // el helper unificado para mantener consistencia con Dashboard, Auditoría,
+        // Checkstore, Estadísticas y Ranking.
+        const tareasMarcadas = (c.items || []).filter((i: any) => esItemHecho(i, c)).length;
         c.calcCompletados = tareasMarcadas;
         c.calcProgreso = Math.round((tareasMarcadas / (c.items?.length || 1)) * 100) || 0;
         todasLasListas.push(c);
@@ -1659,18 +1662,18 @@ export class ChecklistComponent implements OnInit, OnDestroy {
    *   Ya NO requieren palomear — subir la foto basta.
    * - Tareas SIN evidencia: completas con el toque manual (item.checked).
    */
+  /**
+   * Para esta vista (modal de detalle del trabajador / verificación al ENVIAR),
+   * un item se considera completo SOLO con su evidencia real — no con la nota
+   * global del checklist. Esto evita que el trabajador pueda enviar sin nada
+   * hecho solo con un comentario.
+   *
+   * Para los KPIs visuales (Dashboard, Auditoría, Checkstore, Estadísticas,
+   * Ranking) se usa `esItemHecho(item, checklist)` que SÍ acepta la
+   * justificación del checklist completo.
+   */
   esItemCompleto(item: any): boolean {
-    if (item.requiresAntesDespues) {
-      return (item.photoAntes !== null && item.photoAntes !== undefined && item.photoAntes !== 'subiendo...') &&
-             (item.photoDespues !== null && item.photoDespues !== undefined && item.photoDespues !== 'subiendo...');
-    }
-    if (item.requiresVariasFotos) {
-      return Array.isArray(item.photos) && item.photos.length > 0;
-    }
-    if (item.requiresPhoto) {
-      return (item.photo !== null && item.photo !== undefined && item.photo !== 'subiendo...');
-    }
-    return item.checked === true;
+    return tieneEvidencia(item);
   }
 
   /**

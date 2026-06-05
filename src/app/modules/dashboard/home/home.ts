@@ -11,6 +11,7 @@ import { Firestore, collection, onSnapshot, query, where } from '@angular/fire/f
 import { SidebarComponent } from '../../../shared/sidebar/sidebar';
 import { esAdminGlobal, sucursalesPermitidas, esSupervisor, mismoEmpleadoNombre } from '../../../shared/permisos.util';
 import { nivelDeUsuario } from '../../../shared/nivel-jerarquico.util';
+import { esItemHecho } from '../../../shared/item-completado.util';
 
 @Component({
   selector: 'app-home',
@@ -144,7 +145,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
       // ✅ Una tarea cuenta como completa si tiene su EVIDENCIA (foto/antes-después/
       // varias fotos) o, si no pide evidencia, si está palomeada. Antes contaba solo
       // i.checked y daba 0% aunque la persona hubiera subido todas sus fotos.
-      (acc, c) => acc + (c.items?.filter((it: any) => this.itemHecho(it)).length || 0), 0
+      (acc, c) => acc + (c.items?.filter((it: any) => this.itemHecho(it, c)).length || 0), 0
     )
   );
  
@@ -175,7 +176,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
       }
       (c.items || []).forEach((it: any) => {
         stats[c.assigned].total++;
-        if (this.itemHecho(it)) stats[c.assigned].completadas++;
+        if (this.itemHecho(it, c)) stats[c.assigned].completadas++;
       });
     });
     return Object.values(stats)
@@ -197,7 +198,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
       stats[key].checklists++;
       (c.items || []).forEach((it: any) => {
         stats[key].total++;
-        if (this.itemHecho(it)) stats[key].completadas++;
+        if (this.itemHecho(it, c)) stats[key].completadas++;
       });
     });
     return Object.values(stats)
@@ -210,15 +211,10 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
   });
  
   // ------- Alertas críticas -------
-  /** ¿Esta tarea ya está hecha? (evidencia subida o, si no pide, palomeada). */
-  private itemHecho(it: any): boolean {
-    if (it.requiresAntesDespues) {
-      return !!it.photoAntes && it.photoAntes !== 'subiendo...' &&
-             !!it.photoDespues && it.photoDespues !== 'subiendo...';
-    }
-    if (it.requiresVariasFotos) return Array.isArray(it.photos) && it.photos.length > 0;
-    if (it.requiresPhoto) return !!it.photo && it.photo !== 'subiendo...';
-    return it.checked === true;
+  /** Wrapper que delega al helper unificado. Mantiene la firma con (it, c) para
+   *  que las llamadas existentes que pasan ambos parámetros sigan funcionando. */
+  private itemHecho(it: any, c?: any): boolean {
+    return esItemHecho(it, c);
   }
 
   alertasCriticas = computed(() => {
@@ -229,7 +225,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
       // No alertamos sobre checklists ya enviados o eliminados (eran tareas fantasma).
       if (c.eliminado === true || c.enviado === true) return;
       (c.items || []).forEach((it: any) => {
-        if (this.itemHecho(it)) return;
+        if (this.itemHecho(it, c)) return;
         const hl = it.horaLimite || it.time;
         if (!hl) return;
         const [h, m] = hl.split(':').map(Number);
@@ -255,7 +251,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
     const acts: any[] = [];
     this.checklistsHoy().forEach(c => {
       (c.items || []).forEach((it: any) => {
-        if (this.itemHecho(it) && it.photoTime) {
+        if (this.itemHecho(it, c) && it.photoTime) {
           acts.push({
             empleado: c.assigned,
             tarea: it.text,
@@ -284,7 +280,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
       let total = 0, completadas = 0;
       checks.forEach(c => (c.items || []).forEach((it: any) => {
         total++;
-        if (this.itemHecho(it)) completadas++;
+        if (this.itemHecho(it, c)) completadas++;
       }));
  
       dias.push({

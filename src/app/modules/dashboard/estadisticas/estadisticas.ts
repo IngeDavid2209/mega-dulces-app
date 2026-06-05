@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { Firestore, collection, onSnapshot, query, where } from '@angular/fire/firestore';
 import { esAdminGlobal, sucursalesPermitidas, normalizarNombre } from '../../../shared/permisos.util';
 import { nivelDeCargo } from '../../../shared/nivel-jerarquico.util';
+import { esItemHecho } from '../../../shared/item-completado.util';
 
 /** Una fila agregada para los rankings de retrasos. */
 interface FilaRanking {
@@ -114,14 +115,9 @@ export class EstadisticasComponent implements OnInit, OnDestroy {
    *  - Sin evidencia: requiere palomeado manual.
    * Antes solo miraba item.checked y daba 0% aunque hubiera fotos subidas.
    */
-  esItemMarcado(item: any): boolean {
-    if (item?.requiresAntesDespues) {
-      return !!item.photoAntes && item.photoAntes !== 'subiendo...' &&
-             !!item.photoDespues && item.photoDespues !== 'subiendo...';
-    }
-    if (item?.requiresVariasFotos) return Array.isArray(item.photos) && item.photos.length > 0;
-    if (item?.requiresPhoto) return !!item.photo && item.photo !== 'subiendo...';
-    return item?.checked === true;
+  /** Delega al helper compartido: evidencia real O justificación del checklist. */
+  esItemMarcado(item: any, c?: any): boolean {
+    return esItemHecho(item, c);
   }
 
   conectarRadarNube() {
@@ -171,7 +167,7 @@ export class EstadisticasComponent implements OnInit, OnDestroy {
       // 🔥 ESCUDO ANTI-CLONES EN ESTADÍSTICAS 🔥
       const listasSinClones = new Map();
       listasCrudas.forEach(c => {
-        const marcados = c.items ? c.items.filter((i:any) => this.esItemMarcado(i)).length : 0;
+        const marcados = c.items ? c.items.filter((i:any) => this.esItemMarcado(i, c)).length : 0;
         c.calcProgreso = c.items && c.items.length > 0 ? Math.round((marcados / c.items.length) * 100) : 0;
 
         const firma = `${c.name}_${c.assigned}_${c.store}_${c.date}`;
@@ -210,7 +206,7 @@ export class EstadisticasComponent implements OnInit, OnDestroy {
         c.items.forEach((item: any) => {
           totalGlobalItems++;
           // Sumamos progreso real
-          if (this.esItemMarcado(item)) totalGlobalCompletados++;
+          if (this.esItemMarcado(item, c)) totalGlobalCompletados++;
         });
       }
     });
@@ -232,9 +228,9 @@ export class EstadisticasComponent implements OnInit, OnDestroy {
       let sOk = 0;
       filtradas.forEach(c => {
         if (c.items && Array.isArray(c.items)) {
-          c.items.forEach((i: any) => { 
-            sTotal++; 
-            if (this.esItemMarcado(i)) sOk++; 
+          c.items.forEach((i: any) => {
+            sTotal++;
+            if (this.esItemMarcado(i, c)) sOk++;
           });
         }
       });
@@ -264,7 +260,7 @@ export class EstadisticasComponent implements OnInit, OnDestroy {
         if (c.items && Array.isArray(c.items)) {
           c.items.forEach((i: any) => {
             eTotal++;
-            if (this.esItemMarcado(i)) eOk++;
+            if (this.esItemMarcado(i, c)) eOk++;
           });
         }
       });

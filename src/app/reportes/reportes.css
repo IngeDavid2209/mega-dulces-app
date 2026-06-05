@@ -1812,3 +1812,31 @@
   .audit-item-photo img { max-width: 100%; height: 160px; }
   .audit-item-photo-pair { flex: 1 1 100%; }
 }
+
+/* Toolbar de la vista detalle: volver + borrar */
+.audit-detalle-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.btn-borrar-checklist {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 14px;
+  background: #FEF2F2;
+  color: #DC2626;
+  border: 1px solid #FECACA;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.btn-borrar-checklist:hover {
+  background: #FEE2E2;
+  border-color: #FCA5A5;
+  color: #991B1B;
+}

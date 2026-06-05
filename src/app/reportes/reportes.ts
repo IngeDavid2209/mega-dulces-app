@@ -2,7 +2,7 @@ import { Component, signal, OnInit, OnDestroy, inject, HostListener } from '@ang
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, ActivatedRoute } from '@angular/router';
-import { Firestore, collection, getDocs, doc, deleteDoc, query, where } from '@angular/fire/firestore';
+import { Firestore, collection, getDocs, doc, deleteDoc, setDoc, query, where } from '@angular/fire/firestore';
 import { sucursalesPermitidas } from '../shared/permisos.util';
 import { nivelDeCargo } from '../shared/nivel-jerarquico.util';
 import { esItemHecho } from '../shared/item-completado.util';
@@ -329,6 +329,54 @@ export class ReportesComponent implements OnInit, OnDestroy {
 
   verDetalle(checklist: any) { this.checklistSeleccionado.set(checklist); this.vistaActual.set('detalle'); }
   volverALista() { this.checklistSeleccionado.set(null); this.vistaActual.set('lista'); }
+
+  /**
+   * Borra (soft-delete) el checklist actualmente abierto en la vista detalle.
+   * Solo lo puede hacer un admin. Marca `eliminado: true` para que desaparezca
+   * de Auditoría, Dashboard, Checklist, Estadísticas y Ranking, pero el doc
+   * queda en Firestore por si se necesita auditoría posterior.
+   */
+  async borrarChecklistActual() {
+    if (this.currentUser?.rol !== 'admin') {
+      Swal.fire({ icon: 'error', title: 'Sin permiso', text: 'Solo un administrador puede borrar checklists.', confirmButtonColor: '#0F172A' });
+      return;
+    }
+    const c = this.checklistSeleccionado();
+    if (!c) return;
+    const r = await Swal.fire({
+      title: '¿Borrar este checklist?',
+      html: `<div style="text-align:left;font-size:13px;line-height:1.5">
+               <strong>${c.name}</strong><br>
+               Empleado: ${c.assigned || '(sin asignar)'}<br>
+               Sucursal: ${c.store || '(sin sucursal)'}<br>
+               Fecha: ${c.date}
+             </div>
+             <p style="margin-top:12px;color:#94A3B8;font-size:12px">El registro desaparecerá de Auditoría, Dashboard y Estadísticas. Esta acción no se puede deshacer fácilmente.</p>`,
+      icon: 'warning', showCancelButton: true,
+      confirmButtonText: 'Sí, borrar', cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#DC2626'
+    });
+    if (!r.isConfirmed) return;
+
+    // El doc id de los checklists viene en `c.id` (lo seteamos al cargar).
+    const docId = (c.id ?? c.idDoc ?? '').toString();
+    if (!docId) {
+      Swal.fire({ icon: 'error', title: 'Sin ID', text: 'No se pudo identificar el checklist.', confirmButtonColor: '#0F172A' });
+      return;
+    }
+    try {
+      await setDoc(doc(this.firestore, 'checklists', docId),
+                   { eliminado: true, eliminadoPor: this.currentUser?.nombre || 'admin', eliminadoEn: Date.now() },
+                   { merge: true });
+      this.volverALista();
+      // Refresca la búsqueda para que el listado refleje el borrado.
+      if (this.busquedaRealizada()) this.buscarReportes();
+      Swal.fire({ icon: 'success', title: 'Borrado', text: 'El checklist ya no aparecerá en los listados.', confirmButtonColor: '#0F172A', timer: 1800, showConfirmButton: false });
+    } catch (e) {
+      console.error('[borrarChecklistActual]', e);
+      Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo borrar el checklist.', confirmButtonColor: '#0F172A' });
+    }
+  }
 
   abrirModalEliminarTodo() {
     if (this.resultados().length === 0) {

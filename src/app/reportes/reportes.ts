@@ -2,7 +2,7 @@ import { Component, signal, OnInit, OnDestroy, inject, HostListener } from '@ang
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, ActivatedRoute } from '@angular/router';
-import { Firestore, collection, getDocs, doc, deleteDoc, setDoc, query, where } from '@angular/fire/firestore';
+import { Firestore, collection, getDocs, getDoc, doc, deleteDoc, setDoc, query, where } from '@angular/fire/firestore';
 import { sucursalesPermitidas } from '../shared/permisos.util';
 import { nivelDeCargo } from '../shared/nivel-jerarquico.util';
 import { esItemHecho } from '../shared/item-completado.util';
@@ -331,10 +331,17 @@ export class ReportesComponent implements OnInit, OnDestroy {
   volverALista() { this.checklistSeleccionado.set(null); this.vistaActual.set('lista'); }
 
   /**
-   * Borra (soft-delete) el checklist actualmente abierto en la vista detalle.
-   * Solo lo puede hacer un admin. Marca `eliminado: true` para que desaparezca
-   * de Auditoría, Dashboard, Checklist, Estadísticas y Ranking, pero el doc
-   * queda en Firestore por si se necesita auditoría posterior.
+   * Borra el checklist abierto en la vista detalle Y corta la fuente que lo
+   * regenera (molde V1 + asignación V2). Si no, al día siguiente el robot
+   * generaba uno nuevo y reaparecía. Solo admin.
+   *
+   * Pasos:
+   *   1. Soft-delete del checklist y de cualquier duplicado con mismo
+   *      nombre+assigned (limpia día actual y días anteriores zombies).
+   *   2. Borra los moldes V1 (`moldes_checklists`) con ese nombre+assigned.
+   *   3. Si es V2 (tiene `_asignacionId`), desactiva la asignación. Si la
+   *      asignación es por personas con varios, solo saca a este empleado;
+   *      si queda con 0 o es por rol, marca `activa: false`.
    */
   async borrarChecklistActual() {
     if (this.currentUser?.rol !== 'admin') {
@@ -344,34 +351,82 @@ export class ReportesComponent implements OnInit, OnDestroy {
     const c = this.checklistSeleccionado();
     if (!c) return;
     const r = await Swal.fire({
-      title: '¿Borrar este checklist?',
+      title: '¿Borrar este checklist definitivamente?',
       html: `<div style="text-align:left;font-size:13px;line-height:1.5">
                <strong>${c.name}</strong><br>
                Empleado: ${c.assigned || '(sin asignar)'}<br>
                Sucursal: ${c.store || '(sin sucursal)'}<br>
                Fecha: ${c.date}
              </div>
-             <p style="margin-top:12px;color:#94A3B8;font-size:12px">El registro desaparecerá de Auditoría, Dashboard y Estadísticas. Esta acción no se puede deshacer fácilmente.</p>`,
+             <p style="margin-top:12px;color:#475569;font-size:12px">
+               Borrará este registro Y evitará que se vuelva a generar en próximos días
+               (desactiva la asignación / molde de la rutina si aplica).
+             </p>`,
       icon: 'warning', showCancelButton: true,
       confirmButtonText: 'Sí, borrar', cancelButtonText: 'Cancelar',
       confirmButtonColor: '#DC2626'
     });
     if (!r.isConfirmed) return;
 
-    // El doc id de los checklists viene en `c.id` (lo seteamos al cargar).
-    const docId = (c.id ?? c.idDoc ?? '').toString();
-    if (!docId) {
-      Swal.fire({ icon: 'error', title: 'Sin ID', text: 'No se pudo identificar el checklist.', confirmButtonColor: '#0F172A' });
-      return;
-    }
     try {
-      await setDoc(doc(this.firestore, 'checklists', docId),
-                   { eliminado: true, eliminadoPor: this.currentUser?.nombre || 'admin', eliminadoEn: Date.now() },
-                   { merge: true });
+      const targetName = (c.name || '').replace(/ \((Diaria|Semanal|Catorcenal|Mensual|Trimestral)\)$/, '').trim();
+      const targetAssigned = c.assigned;
+      const meta = { eliminado: true, eliminadoPor: this.currentUser?.nombre || 'admin', eliminadoEn: Date.now() };
+
+      // 1) Soft-delete del checklist actual y duplicados con mismo nombre+assigned.
+      const chkRef = collection(this.firestore, 'checklists');
+      const chkSnap = await getDocs(chkRef);
+      let softDeleted = 0;
+      for (const cDoc of chkSnap.docs) {
+        const cData = cDoc.data() as any;
+        if ((cData.name || '').startsWith(targetName) && cData.assigned === targetAssigned) {
+          await setDoc(doc(this.firestore, 'checklists', cDoc.id), meta, { merge: true });
+          softDeleted++;
+        }
+      }
+
+      // 2) Borrado físico del molde V1.
+      const moldesRef = collection(this.firestore, 'moldes_checklists');
+      const moldesSnap = await getDocs(moldesRef);
+      let moldesBorrados = 0;
+      for (const mDoc of moldesSnap.docs) {
+        const mData = mDoc.data() as any;
+        if (targetName.includes(mData.name) && mData.assigned === targetAssigned) {
+          await deleteDoc(doc(this.firestore, 'moldes_checklists', mDoc.id));
+          moldesBorrados++;
+        }
+      }
+
+      // 3) Desactivar asignación V2 (si aplica).
+      let asignacionTocada = false;
+      if (c._v2 && c._asignacionId) {
+        const asigRef = doc(this.firestore, 'asignaciones_rutinas', c._asignacionId);
+        const asigSnap = await getDoc(asigRef);
+        if (asigSnap.exists()) {
+          const a = asigSnap.data() as any;
+          if (a.modoAsignacion === 'porPersonas' && Array.isArray(a.empleadosNombres)) {
+            const sinEste = a.empleadosNombres.filter((n: string) => n !== targetAssigned);
+            if (sinEste.length > 0) {
+              await setDoc(asigRef, { empleadosNombres: sinEste }, { merge: true });
+            } else {
+              await setDoc(asigRef, { activa: false, empleadosNombres: [] }, { merge: true });
+            }
+          } else {
+            await setDoc(asigRef, { activa: false }, { merge: true });
+          }
+          asignacionTocada = true;
+        }
+      }
+
       this.volverALista();
-      // Refresca la búsqueda para que el listado refleje el borrado.
       if (this.busquedaRealizada()) this.buscarReportes();
-      Swal.fire({ icon: 'success', title: 'Borrado', text: 'El checklist ya no aparecerá en los listados.', confirmButtonColor: '#0F172A', timer: 1800, showConfirmButton: false });
+      Swal.fire({
+        icon: 'success', title: 'Borrado definitivo',
+        html: `Soft-delete: <strong>${softDeleted}</strong> doc(s).<br>
+               Moldes V1 borrados: <strong>${moldesBorrados}</strong>.<br>
+               Asignación V2: <strong>${asignacionTocada ? 'desactivada' : 'no aplica'}</strong>.`,
+        confirmButtonColor: '#0F172A'
+      });
     } catch (e) {
       console.error('[borrarChecklistActual]', e);
       Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo borrar el checklist.', confirmButtonColor: '#0F172A' });

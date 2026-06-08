@@ -1083,11 +1083,20 @@ export class PersonalComponent implements OnInit, OnDestroy {
   }
   async descargarExcel() {
     const list = this.usuarios();
-      if (list.length === 0) {
-        Swal.fire({ icon: 'info', title: 'Lista Vacía', text: 'No hay personal para exportar.', confirmButtonColor: '#0F172A' });
-        return;
-      }
+    if (list.length === 0) {
+      Swal.fire({ icon: 'info', title: 'Lista Vacía', text: 'No hay personal para exportar.', confirmButtonColor: '#0F172A' });
+      return;
+    }
 
+    // Loading toast mientras se descarga el chunk de ExcelJS (~700 KB la primera vez).
+    Swal.fire({
+      title: 'Generando Excel...',
+      text: 'Descargando el módulo de exportación, espera un momento.',
+      allowOutsideClick: false,
+      didOpen: () => Swal.showLoading()
+    });
+
+    try {
       const listaOrdenada = list.map(u => {
         const zona = u.sucursales ? (Array.isArray(u.sucursales) ? u.sucursales.join(' - ') : u.sucursales) : 'General';
         return { ...u, zonaCalculada: zona };
@@ -1194,9 +1203,27 @@ export class PersonalComponent implements OnInit, OnDestroy {
         console.error("Error al exportar Personal:", error);
         Swal.fire({ icon: 'error', title: 'Error de Exportación', text: 'Hubo un error al generar el Excel de personal.', confirmButtonColor: '#0F172A' });
       }
+      Swal.close();
+    } catch (e: any) {
+      console.error('[descargarExcel] fallo cargar ExcelJS o generar el archivo:', e);
+      Swal.fire({
+        icon: 'error',
+        title: 'No se pudo generar el Excel',
+        html: `<div style="text-align:left;font-size:13px">
+                 <p>Probable causa: la librería de Excel no se descargó (red intermitente o caché del navegador).</p>
+                 <p style="font-size:11px;color:#64748B;margin-top:8px">
+                   <strong>Detalle:</strong> <code style="word-break:break-word">${(e?.message || e || '').toString().slice(0, 240)}</code>
+                 </p>
+                 <p style="font-size:12px;color:#475569;margin-top:8px">
+                   Intenta recargar la página (Ctrl+Shift+R) y vuelve a darle a Exportar.
+                 </p>
+               </div>`,
+        confirmButtonColor: '#0F172A'
+      });
     }
+  }
 
-    togglePassword() {
+  togglePassword() {
       this.mostrarPassword = !this.mostrarPassword;
     }
   }

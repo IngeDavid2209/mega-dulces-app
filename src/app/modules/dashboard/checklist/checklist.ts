@@ -1564,55 +1564,121 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     const checklistActual = this.checklistSeleccionado();
     if (!checklistActual) return;
 
-    // 📸 Compresión cliente: bajamos JPGs de 4-6 MB a ~300 KB antes de subir.
+    // Compresión cliente: bajamos JPGs de 4-6 MB a ~300 KB antes de subir.
     // Si no es imagen (PDF, etc.) o ya es pequeña, devuelve el original sin tocar.
-    const file = await comprimirImagenSiAplica(fileOriginal);
+    let file: File;
+    try {
+      file = await comprimirImagenSiAplica(fileOriginal);
+    } catch (e: any) {
+      console.error('[compresion]', e);
+      // Si la compresión falla, intentamos subir el archivo original tal cual
+      file = fileOriginal;
+    }
 
+    // Sin conexión → guardamos offline desde el inicio.
     if (!navigator.onLine) {
-      item[tipoFoto] = 'offline_syncing';
-      item.pendienteDeSync = true;
+      await this.guardarFotoOffline(item, tipoFoto, file, checklistActual);
+      event.target.value = '';
+      this.mostrarToast(' Guardado sin conexión. Se subirá cuando regrese la señal.');
+      return;
+    }
+
+    // Subida online con un reintento automático y fallback offline si falla.
+    item[tipoFoto] = 'subiendo...';
+    const resultado = await this.subirACloudinary(file);
+    if (resultado.ok && resultado.url) {
+      item[tipoFoto] = resultado.url;
+      item.pendienteDeSync = false;
       const ahora = new Date();
       item[tipoFoto + 'Time'] = ahora.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
       if (tipoFoto === 'photoAntes') item.photoAntesTimestamp = Date.now();
+      this.actualizarEstado();
+    } else {
+      // Fallback: si falla la subida online (cuota, red intermitente, etc.) la
+      // guardamos offline para que se reintente automáticamente. Antes se
+      // perdía la foto y el trabajador veía solo un alert genérico.
+      console.error('[Cloudinary error]', resultado.error);
+      await this.guardarFotoOffline(item, tipoFoto, file, checklistActual);
+      Swal.fire({
+        icon: 'warning',
+        title: 'No se pudo subir la foto',
+        html: `<div style="text-align:left">
+                 <p>Se guardó en tu dispositivo y se subirá cuando regrese la señal.</p>
+                 <p style="font-size:11px;color:#64748B;margin-top:8px">
+                   <strong>Detalle técnico:</strong>
+                   <code style="word-break:break-word">${(resultado.error || 'sin detalle').toString().slice(0, 240)}</code>
+                 </p>
+               </div>`,
+        confirmButtonColor: '#0F172A'
+      });
+    }
+    event.target.value = '';
+  }
+
+  /**
+   * Sube un archivo a Cloudinary con 2 intentos (espera 800ms entre intentos).
+   * Devuelve `{ok, url, error}` para que el llamador decida qué hacer.
+   */
+  private async subirACloudinary(file: File | Blob): Promise<{ ok: boolean; url?: string; error?: string }> {
+    const cloudName = 'duherjgyg';
+    const uploadPreset = 'fotos_mega';
+    const url = `https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`;
+    let ultimoError = '';
+    for (let intento = 1; intento <= 2; intento++) {
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('upload_preset', uploadPreset);
+        const response = await fetch(url, { method: 'POST', body: formData });
+        const data = await response.json();
+        if (data && data.secure_url) {
+          return { ok: true, url: data.secure_url };
+        }
+        // Cloudinary suele devolver `error.message` cuando rechaza algo (cuota,
+        // formato, tamaño). Lo guardamos para mostrarlo al usuario.
+        ultimoError = (data && data.error && data.error.message)
+          ? `Cloudinary: ${data.error.message}`
+          : `Cloudinary respondió sin URL (HTTP ${response.status})`;
+      } catch (e: any) {
+        ultimoError = e?.message || 'Error de red';
+      }
+      if (intento < 2) await new Promise(r => setTimeout(r, 800));
+    }
+    return { ok: false, error: ultimoError };
+  }
+
+  /**
+   * Guarda una foto en la cola offline (localforage). El robot de sincronización
+   * la subirá cuando regrese la conexión. Antes esta lógica estaba duplicada
+   * inline en `onFileSelected` y solo se usaba cuando `!navigator.onLine`;
+   * ahora también se usa como fallback cuando Cloudinary falla online.
+   */
+  private async guardarFotoOffline(item: any, tipoFoto: string, file: File | Blob, checklistActual: any): Promise<void> {
+    item[tipoFoto] = 'offline_syncing';
+    item.pendienteDeSync = true;
+    const ahora = new Date();
+    item[tipoFoto + 'Time'] = ahora.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+    if (tipoFoto === 'photoAntes') item.photoAntesTimestamp = Date.now();
+    await new Promise<void>((resolve) => {
       const reader = new FileReader();
       reader.readAsDataURL(file);
       reader.onload = async () => {
         const base64String = reader.result as string;
         const indexItem = checklistActual.items.findIndex((i: any) => i === item);
-        const fotoEstancada = { idTarea: checklistActual.id, indexItem: indexItem, tipoFoto: tipoFoto, base64: base64String };
-        const colaActual: any[] = await localforage.getItem('md_fotos_offline') || [];
+        const fotoEstancada = {
+          idTarea: checklistActual.id,
+          indexItem,
+          tipoFoto,
+          base64: base64String
+        };
+        const colaActual: any[] = (await localforage.getItem('md_fotos_offline')) || [];
         colaActual.push(fotoEstancada);
         await localforage.setItem('md_fotos_offline', colaActual);
         this.actualizarEstado();
-        this.mostrarToast(' 📡 Guardado sin conexión.');
+        resolve();
       };
-      event.target.value = '';
-      return;
-    }
-    const cloudName = 'duherjgyg';
-    const uploadPreset = 'fotos_mega';
-    item[tipoFoto] = 'subiendo...';
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('upload_preset', uploadPreset);
-    try {
-      const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`, { method: 'POST', body: formData });
-      const data = await response.json();
-      if (data.secure_url) {
-        item[tipoFoto] = data.secure_url;
-        item.pendienteDeSync = false;
-        const ahora = new Date();
-        item[tipoFoto + 'Time'] = ahora.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
-        if (tipoFoto === 'photoAntes') item.photoAntesTimestamp = Date.now();
-        this.actualizarEstado();
-      } else {
-        item[tipoFoto] = null; this.actualizarEstado(); alert(' ❌ Error de Cloudinary.');
-      }
-    } catch (error) {
-      item[tipoFoto] = null; this.actualizarEstado(); alert(' ❌ Error de conexión.');
-    } finally {
-      event.target.value = '';
-    }
+      reader.onerror = () => resolve();
+    });
   }
 
   async adjuntarDocumentoInstruccion(event: any, item: any) {

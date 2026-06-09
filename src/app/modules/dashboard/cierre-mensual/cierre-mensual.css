@@ -432,6 +432,48 @@
 .cm-archive-banner-title { font-size: 15px; font-weight: 700; color: #7C2D12; margin-bottom: 2px; }
 .cm-archive-banner-sub { font-size: 13px; color: #9A3412; line-height: 1.5; }
 
+/* Zona borrar fotos de Cloudinary (peligrosa, rojo) */
+.cm-cleanup-zone {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: linear-gradient(135deg, #FEF2F2 0%, #FEE2E2 100%);
+  border: 1px solid #FCA5A5;
+  border-radius: 14px;
+  padding: 16px 20px;
+  margin: 18px 0 22px;
+  flex-wrap: wrap;
+}
+.cm-cleanup-icon {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  background: #B91C1C;
+  color: #FFFFFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.cm-cleanup-info { flex: 1; min-width: 260px; }
+.cm-cleanup-title { font-size: 16px; font-weight: 700; color: #7F1D1D; margin-bottom: 4px; }
+.cm-cleanup-sub { font-size: 13px; color: #991B1B; line-height: 1.5; }
+.cm-btn-cleanup {
+  display: inline-flex;
+  align-items: center;
+  background: #B91C1C;
+  color: #FFFFFF;
+  border: 1px solid #B91C1C;
+  padding: 10px 20px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.05s ease;
+}
+.cm-btn-cleanup:hover:not(:disabled) { background: #991B1B; transform: translateY(-1px); }
+.cm-btn-cleanup:disabled { opacity: 0.6; cursor: not-allowed; }
+
 /* Zona archivar mes */
 .cm-archive-zone {
   display: flex;
@@ -475,4 +517,6 @@
   .cm-btn-pdf { width: 100%; justify-content: center; }
   .cm-archive-zone { flex-direction: column; align-items: stretch; }
   .cm-btn-archive { width: 100%; justify-content: center; }
+  .cm-cleanup-zone { flex-direction: column; align-items: stretch; }
+  .cm-btn-cleanup { width: 100%; justify-content: center; }
 }

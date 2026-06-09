@@ -188,6 +188,36 @@
         </div>
       </section>
 
+      <!-- LIMPIA CLOUDINARY (solo admin global, mes archivado y con fotos pendientes) -->
+      <section class="cm-cleanup-zone"
+               *ngIf="!cargando() && esAdminGlobal() && archivadosConFotos() > 0 && fotosABorrarCount() > 0">
+        <div class="cm-cleanup-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="3 6 5 6 21 6"></polyline>
+            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path>
+            <path d="M10 11v6M14 11v6"></path>
+            <path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"></path>
+          </svg>
+        </div>
+        <div class="cm-cleanup-info">
+          <div class="cm-cleanup-title">Borrar fotos de Cloudinary</div>
+          <div class="cm-cleanup-sub">
+            Hay <strong>{{ fotosABorrarCount() }} fotos</strong> en <strong>{{ archivadosConFotos() }}</strong>
+            checklists archivados de {{ mesEtiqueta() }} que aún ocupan espacio en Cloudinary. Esta acción es
+            <strong>definitiva</strong>: asegúrate de tener el PDF mensual respaldado.
+          </div>
+        </div>
+        <button class="cm-btn-cleanup" (click)="borrarFotosCloudinary()" [disabled]="borrandoFotos()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+               style="margin-right: 8px;">
+            <polyline points="3 6 5 6 21 6"></polyline>
+            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path>
+            <path d="M10 11v6M14 11v6"></path>
+          </svg>
+          {{ borrandoFotos() ? 'Borrando ' + borrarFotosProgreso() : 'Borrar fotos' }}
+        </button>
+      </section>
+
       <!-- ARCHIVAR MES (solo admin global, con checklists no archivados) -->
       <section class="cm-archive-zone" *ngIf="!cargando() && esAdminGlobal() && noArchivadosCount() > 0">
         <div class="cm-archive-info">

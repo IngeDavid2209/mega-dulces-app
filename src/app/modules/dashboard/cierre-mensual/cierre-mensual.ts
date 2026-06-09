@@ -72,6 +72,8 @@ export class CierreMensualComponent implements OnInit, OnDestroy {
   generandoPDF = signal<boolean>(false);
   archivandoMes = signal<boolean>(false);
   archivarProgreso = signal<string>('');
+  borrandoFotos = signal<boolean>(false);
+  borrarFotosProgreso = signal<string>('');
   /** 'TODAS' o el nombre exacto de la sucursal a incluir en el PDF. */
   sucursalParaPDF = signal<string>('TODAS');
   /** Visibilidad del dropdown custom de alcance. */
@@ -1204,6 +1206,252 @@ export class CierreMensualComponent implements OnInit, OnDestroy {
     } finally {
       this.archivandoMes.set(false);
       this.archivarProgreso.set('');
+    }
+  }
+
+  // ============================================================================
+  // BORRAR FOTOS DE CLOUDINARY (solo meses archivados)
+  // ============================================================================
+  /** Cuántos checklists del mes ya están archivados pero aún tienen fotos sin borrar. */
+  archivadosConFotos = computed(() => {
+    return this.checklistsDelMes().filter(c =>
+      c.archivado === true && c.fotosBorradas !== true
+    ).length;
+  });
+
+  /** Total de URLs de fotos a borrar en el mes (solo de checklists archivados sin limpiar). */
+  fotosABorrarCount = computed(() => {
+    let total = 0;
+    for (const c of this.checklistsDelMes()) {
+      if (c.archivado !== true) continue;
+      if (c.fotosBorradas === true) continue;
+      total += this.contarFotosDeChecklist(c);
+    }
+    return total;
+  });
+
+  /** Cuenta TODAS las URLs de fotos de un checklist (sin importar dónde estén). */
+  private contarFotosDeChecklist(c: any): number {
+    let n = 0;
+    if (Array.isArray(c.items)) {
+      for (const it of c.items) {
+        n += this.extraerFotos(it).length;
+      }
+    }
+    return n;
+  }
+
+  /** Extrae el public_id de Cloudinary a partir de una secure_url. Devuelve null si no parece de Cloudinary. */
+  private publicIdDeUrl(url: string): string | null {
+    if (!url || typeof url !== 'string') return null;
+    if (!url.includes('cloudinary.com')) return null;
+    const idx = url.indexOf('/upload/');
+    if (idx < 0) return null;
+    let rest = url.slice(idx + '/upload/'.length);
+    // Quitar transformaciones (todo lo que esté antes del /v\d+/)
+    const vIdx = rest.search(/v\d+\//);
+    if (vIdx >= 0) {
+      rest = rest.slice(vIdx);
+      rest = rest.replace(/^v\d+\//, '');
+    }
+    // Quitar query string si la hay
+    const qIdx = rest.indexOf('?');
+    if (qIdx >= 0) rest = rest.slice(0, qIdx);
+    // Quitar extensión
+    rest = rest.replace(/\.[a-z0-9]{2,5}$/i, '');
+    return rest || null;
+  }
+
+  /**
+   * Borra DEFINITIVAMENTE de Cloudinary todas las fotos de los checklists archivados
+   * del mes seleccionado (que aún no hayan sido borradas).
+   * Pasa por el endpoint serverless /api/cloudinary-cleanup que firma con el api_secret.
+   * Triple confirmación: aviso fuerte + escribir BORRAR FOTOS + confirmación de no retorno.
+   */
+  async borrarFotosCloudinary(): Promise<void> {
+    if (!this.esAdminGlobal()) return;
+    if (this.borrandoFotos()) return;
+
+    const candidatos = this.checklistsDelMes().filter(c =>
+      c.archivado === true && c.fotosBorradas !== true
+    );
+    if (candidatos.length === 0) {
+      await Swal.fire({
+        icon: 'info',
+        title: 'Nada por borrar',
+        text: 'No hay checklists archivados con fotos pendientes de limpiar en este mes.',
+        confirmButtonColor: '#831843'
+      });
+      return;
+    }
+
+    // Recolectar todos los public_ids
+    const tareas: { checklistId: string; publicIds: string[] }[] = [];
+    let totalFotos = 0;
+    for (const c of candidatos) {
+      const ids: string[] = [];
+      if (Array.isArray(c.items)) {
+        for (const it of c.items) {
+          for (const url of this.extraerFotos(it)) {
+            const pid = this.publicIdDeUrl(url);
+            if (pid) ids.push(pid);
+          }
+        }
+      }
+      if (ids.length > 0) {
+        tareas.push({ checklistId: c.id, publicIds: ids });
+        totalFotos += ids.length;
+      }
+    }
+
+    if (totalFotos === 0) {
+      await Swal.fire({
+        icon: 'info',
+        title: 'Sin fotos válidas',
+        text: 'No se encontraron URLs de Cloudinary válidas en los checklists archivados.',
+        confirmButtonColor: '#831843'
+      });
+      return;
+    }
+
+    const mes = this.mesEtiqueta();
+
+    // PASO 1: Aviso fuerte
+    const paso1 = await Swal.fire({
+      icon: 'warning',
+      title: `Borrar ${totalFotos} fotos de Cloudinary`,
+      html: `
+        <div style="text-align:left; font-size:14px; line-height:1.55;">
+          <p style="margin:0 0 10px 0;">Vas a borrar <strong>${totalFotos} fotos</strong> de <strong>${tareas.length} checklists</strong> archivados de <strong>${mes}</strong>.</p>
+          <p style="margin:0 0 10px 0; color:#B91C1C;"><strong>Esta acción es DEFINITIVA. Cloudinary no tiene papelera.</strong></p>
+          <p style="margin:0 0 10px 0;">Después de borrar:</p>
+          <ul style="margin:0 0 12px 18px; padding:0;">
+            <li>Las fotos del PDF que ya descargaste <strong>siguen ahí</strong> (van embebidas dentro del PDF).</li>
+            <li>Si regeneras el PDF de este mes, las fotos saldrán como <strong>huecos vacíos</strong>.</li>
+            <li>Liberarás espacio en tu cuenta de Cloudinary.</li>
+          </ul>
+          <p style="margin:0; color:#831843;"><strong>¿Confirmas que ya tienes el PDF mensual descargado y respaldado?</strong></p>
+        </div>
+      `,
+      showCancelButton: true,
+      confirmButtonText: 'Sí, tengo el PDF respaldado',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#B91C1C',
+      cancelButtonColor: '#64748b'
+    });
+    if (!paso1.isConfirmed) return;
+
+    // PASO 2: Input "BORRAR FOTOS"
+    const paso2 = await Swal.fire({
+      title: 'Confirmación final',
+      html: `<div style="text-align:left; font-size:14px;">Escribe <strong>BORRAR FOTOS</strong> en mayúsculas para confirmar.</div>`,
+      input: 'text',
+      inputPlaceholder: 'BORRAR FOTOS',
+      showCancelButton: true,
+      confirmButtonText: 'Borrar definitivamente',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#B91C1C',
+      cancelButtonColor: '#64748b',
+      inputValidator: (val) => {
+        if (val !== 'BORRAR FOTOS') return 'Debes escribir exactamente BORRAR FOTOS.';
+        return null;
+      }
+    });
+    if (!paso2.isConfirmed) return;
+
+    // EJECUCIÓN: enviar en lotes de 100 al endpoint
+    this.borrandoFotos.set(true);
+    this.borrarFotosProgreso.set(`0 / ${totalFotos}`);
+
+    try {
+      // Aplanar todos los publicIds + mapeo inverso a checklist
+      const todosLosIds: string[] = [];
+      const idsPorChecklist: Map<string, Set<string>> = new Map();
+      for (const t of tareas) {
+        idsPorChecklist.set(t.checklistId, new Set(t.publicIds));
+        for (const pid of t.publicIds) todosLosIds.push(pid);
+      }
+
+      const CHUNK = 100;
+      const borradosOk = new Set<string>();
+      const fallidos: string[] = [];
+
+      for (let i = 0; i < todosLosIds.length; i += CHUNK) {
+        const slice = todosLosIds.slice(i, i + CHUNK);
+        const resp = await fetch('/api/cloudinary-cleanup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ publicIds: slice })
+        });
+        const data = await resp.json().catch(() => ({}));
+        if (!resp.ok) {
+          throw new Error(data?.error || `Error HTTP ${resp.status} del endpoint cloudinary-cleanup.`);
+        }
+        const deleted = (data && data.deleted) || {};
+        for (const pid of slice) {
+          const estado = deleted[pid];
+          if (estado === 'deleted' || estado === 'not_found') {
+            borradosOk.add(pid);
+          } else {
+            fallidos.push(pid);
+          }
+        }
+        this.borrarFotosProgreso.set(`${borradosOk.size + fallidos.length} / ${totalFotos}`);
+      }
+
+      // Marcar como fotosBorradas SOLO los checklists cuyos public_ids quedaron TODOS limpios
+      const batch = writeBatch(this.firestore);
+      let checklistsMarcados = 0;
+      for (const t of tareas) {
+        const todosOk = t.publicIds.every(pid => borradosOk.has(pid));
+        if (todosOk) {
+          const ref = doc(this.firestore, 'checklists', t.checklistId);
+          batch.set(ref, {
+            fotosBorradas: true,
+            fotosBorradasEn: serverTimestamp(),
+            fotosBorradasCount: t.publicIds.length
+          }, { merge: true });
+          checklistsMarcados++;
+        }
+      }
+      if (checklistsMarcados > 0) await batch.commit();
+
+      // Refrescar memoria local
+      this.checklistsDelMes.update(arr => arr.map(c => {
+        if (c.archivado !== true) return c;
+        const tarea = tareas.find(t => t.checklistId === c.id);
+        if (!tarea) return c;
+        const todosOk = tarea.publicIds.every(pid => borradosOk.has(pid));
+        if (todosOk) return { ...c, fotosBorradas: true };
+        return c;
+      }));
+
+      if (fallidos.length === 0) {
+        await Swal.fire({
+          icon: 'success',
+          title: 'Fotos borradas',
+          html: `Se borraron <strong>${borradosOk.size}</strong> fotos de Cloudinary y se marcaron <strong>${checklistsMarcados}</strong> checklists como limpios.`,
+          confirmButtonColor: '#831843'
+        });
+      } else {
+        await Swal.fire({
+          icon: 'warning',
+          title: 'Borrado parcial',
+          html: `Se borraron <strong>${borradosOk.size}</strong> fotos correctamente y <strong>${fallidos.length}</strong> fallaron. Los checklists cuyas fotos no se borraron completamente quedan marcados para reintentar después.`,
+          confirmButtonColor: '#831843'
+        });
+      }
+    } catch (e: any) {
+      console.error('[borrarFotosCloudinary]', e);
+      await Swal.fire({
+        icon: 'error',
+        title: 'Error al borrar fotos',
+        html: `<p>${(e?.message || 'Error desconocido').toString().replace(/</g, '&lt;')}</p><p style="font-size:11px;color:#64748B">Revisa que las variables de entorno CLOUDINARY_API_KEY y CLOUDINARY_API_SECRET estén configuradas en Vercel.</p>`,
+        confirmButtonColor: '#831843'
+      });
+    } finally {
+      this.borrandoFotos.set(false);
+      this.borrarFotosProgreso.set('');
     }
   }
 }

@@ -4,6 +4,7 @@
   "private": true,
   "description": "Funciones serverless de Vercel para Mega Dulces Task",
   "dependencies": {
-    "firebase-admin": "^13.7.0"
+    "firebase-admin": "^13.7.0",
+    "cloudinary": "^2.5.1"
   }
 }

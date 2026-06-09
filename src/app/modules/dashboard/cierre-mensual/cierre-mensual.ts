@@ -26,6 +26,17 @@ interface ChecklistResumen {
   totalItems: number;
   itemsHechos: number;
   fotosTotales: number;
+  notaEmpleado?: string;             // comentario libre del colaborador
+  entregaConRetraso?: boolean;
+  motivoCategoria?: string;          // ej. "Falla de equipo"
+  motivoComentario?: string;
+}
+
+interface TopEmpleado {
+  nombre: string;
+  hechas: number;
+  totales: number;
+  porcentaje: number;
 }
 
 interface SucursalAgrupada {
@@ -36,6 +47,8 @@ interface SucursalAgrupada {
   totalHechas: number;
   totalFotos: number;
   porcentaje: number;
+  topEmpleados: TopEmpleado[];        // top 3
+  tendenciaDiaria: number[];          // % por día del mes (índice 0 = día 1)
 }
 
 @Component({
@@ -145,6 +158,9 @@ export class CierreMensualComponent implements OnInit, OnDestroy {
   /** Lista agrupada por sucursal, ordenada por % de cumplimiento descendente. */
   agrupadoPorSucursal = computed<SucursalAgrupada[]>(() => {
     const checklists = this.checklistsDelMes();
+    const [year, monthIdx0] = this.mesSeleccionado().split('-').map(Number);
+    const diasEnMes = new Date(year, monthIdx0, 0).getDate();
+
     const mapa = new Map<string, ChecklistResumen[]>();
     for (const c of checklists) {
       const store = c.store || 'Sin sucursal';
@@ -165,7 +181,11 @@ export class CierreMensualComponent implements OnInit, OnDestroy {
         date: c.date || '',
         enviado: c.enviado === true,
         itemsConFotos: items,
-        totalItems, itemsHechos, fotosTotales
+        totalItems, itemsHechos, fotosTotales,
+        notaEmpleado: c.notaEmpleado ? String(c.notaEmpleado).trim() : '',
+        entregaConRetraso: c.entregaConRetraso === true,
+        motivoCategoria: c.motivoRetraso?.categoria || '',
+        motivoComentario: c.motivoRetraso?.comentario || ''
       };
       if (!mapa.has(store)) mapa.set(store, []);
       mapa.get(store)!.push(resumen);
@@ -179,12 +199,53 @@ export class CierreMensualComponent implements OnInit, OnDestroy {
       const porcentaje = totalTareas > 0 ? Math.round((totalHechas / totalTareas) * 100) : 0;
       // Ordena los checklists dentro de la sucursal por fecha y luego por nombre
       lista.sort((a, b) => a.date.localeCompare(b.date) || a.name.localeCompare(b.name));
+
+      // Top 3 empleados de la sucursal según % de cumplimiento
+      const empMap = new Map<string, { hechas: number; totales: number }>();
+      for (const c of lista) {
+        if (!c.assigned) continue;
+        if (!empMap.has(c.assigned)) empMap.set(c.assigned, { hechas: 0, totales: 0 });
+        const e = empMap.get(c.assigned)!;
+        e.totales += c.totalItems;
+        e.hechas += c.itemsHechos;
+      }
+      const topEmpleados: TopEmpleado[] = Array.from(empMap.entries())
+        .map(([nombre, v]) => ({
+          nombre,
+          hechas: v.hechas,
+          totales: v.totales,
+          porcentaje: v.totales > 0 ? Math.round((v.hechas / v.totales) * 100) : 0
+        }))
+        .filter(e => e.totales > 0)
+        .sort((a, b) => b.porcentaje - a.porcentaje || b.hechas - a.hechas || a.nombre.localeCompare(b.nombre))
+        .slice(0, 3);
+
+      // Tendencia diaria: % de cumplimiento de los checklists con fecha == ese día
+      const tendenciaDiaria: number[] = new Array(diasEnMes).fill(0);
+      const tareasPorDia: number[] = new Array(diasEnMes).fill(0);
+      const hechasPorDia: number[] = new Array(diasEnMes).fill(0);
+      for (const c of lista) {
+        // c.date es YYYY-MM-DD
+        const diaStr = c.date?.split('-')?.[2];
+        const dia = parseInt(diaStr || '0', 10);
+        if (!dia || dia < 1 || dia > diasEnMes) continue;
+        tareasPorDia[dia - 1] += c.totalItems;
+        hechasPorDia[dia - 1] += c.itemsHechos;
+      }
+      for (let i = 0; i < diasEnMes; i++) {
+        tendenciaDiaria[i] = tareasPorDia[i] > 0
+          ? Math.round((hechasPorDia[i] / tareasPorDia[i]) * 100)
+          : 0;
+      }
+
       filas.push({
         sucursal,
         checklists: lista,
         totalChecklists: lista.length,
         totalTareas, totalHechas, totalFotos,
-        porcentaje
+        porcentaje,
+        topEmpleados,
+        tendenciaDiaria
       });
     }
     return filas.sort((a, b) => b.porcentaje - a.porcentaje || a.sucursal.localeCompare(b.sucursal));
@@ -255,138 +316,296 @@ export class CierreMensualComponent implements OnInit, OnDestroy {
       const doc = new jsPDF('p', 'mm', 'a4');
       const pageW = doc.internal.pageSize.getWidth();
       const pageH = doc.internal.pageSize.getHeight();
-      const margenX = 14;
+      const margenX = 12;
       const sucursales = this.agrupadoPorSucursal();
       const fechaGen = new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'long', year: 'numeric' });
 
-      // --- PORTADA ---
-      doc.setFillColor(15, 23, 42);
-      doc.rect(0, 0, pageW, 50, 'F');
-      doc.setTextColor(255, 255, 255);
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(26);
-      doc.text('MEGA DULCES', margenX, 22);
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(13);
-      doc.text('Cierre Mensual de Operaciones', margenX, 32);
-      doc.setFontSize(10); doc.setTextColor(200, 210, 230);
-      doc.text(`Generado el ${fechaGen}`, margenX, 42);
-
-      // Bloque de KPIs centrado
-      doc.setTextColor(15, 23, 42);
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(22);
-      doc.text(this.mesEtiqueta().toUpperCase(), pageW / 2, 78, { align: 'center' });
-
-      const startY = 95;
-      const kpiBoxes = [
-        { label: 'Checklists', val: totales.totalChecklists.toString() },
-        { label: 'Tareas hechas', val: `${totales.totalHechas} / ${totales.totalTareas}` },
-        { label: 'Cumplimiento', val: `${totales.porcentaje}%` },
-        { label: 'Fotos', val: totales.totalFotos.toString() }
-      ];
-      const boxW = (pageW - margenX * 2) / 4 - 4;
-      for (let i = 0; i < kpiBoxes.length; i++) {
-        const x = margenX + i * (boxW + 5);
-        doc.setFillColor(241, 245, 249);
-        doc.setDrawColor(226, 232, 240);
-        doc.roundedRect(x, startY, boxW, 26, 3, 3, 'FD');
-        doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.setTextColor(15, 23, 42);
-        doc.text(kpiBoxes[i].val, x + boxW / 2, startY + 12, { align: 'center' });
-        doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(100, 116, 139);
-        doc.text(kpiBoxes[i].label, x + boxW / 2, startY + 21, { align: 'center' });
-      }
-
-      // Tabla resumen por sucursal
-      autoTable(doc, {
-        startY: startY + 38,
-        head: [['Sucursal', 'Checklists', 'Tareas', 'Hechas', 'Cumplimiento']],
-        body: sucursales.map(s => [
-          s.sucursal,
-          s.totalChecklists.toString(),
-          s.totalTareas.toString(),
-          s.totalHechas.toString(),
-          `${s.porcentaje}%`
-        ]),
-        headStyles: { fillColor: [15, 23, 42], textColor: 255, fontSize: 10 },
-        bodyStyles: { fontSize: 10 },
-        margin: { left: margenX, right: margenX }
-      });
-
-      // --- UNA SECCIÓN POR SUCURSAL ---
+      // ========================================================================
+      // PRE-CARGA DE FOTOS: descargamos todos los thumbnails una sola vez antes
+      // de empezar a dibujar, para que el progreso sea visible y evitar reintentos
+      // dentro del loop de tablas.
+      // ========================================================================
       let totalFotosProcesadas = 0;
-      for (let sIdx = 0; sIdx < sucursales.length; sIdx++) {
-        const s = sucursales[sIdx];
-        doc.addPage();
-        // Encabezado de sucursal
-        doc.setFillColor(30, 58, 138);
-        doc.rect(0, 0, pageW, 24, 'F');
-        doc.setTextColor(255, 255, 255);
-        doc.setFont('helvetica', 'bold'); doc.setFontSize(16);
-        doc.text(s.sucursal, margenX, 16);
-        doc.setFont('helvetica', 'normal'); doc.setFontSize(10);
-        doc.text(`${s.totalChecklists} checklists · ${s.totalHechas}/${s.totalTareas} tareas · ${s.porcentaje}%`,
-                 pageW - margenX, 16, { align: 'right' });
-
-        let y = 32;
+      // Mapa: itemId -> array de base64
+      const fotosCache = new Map<string, string[]>();
+      const itemKey = (suc: string, chkId: string, idx: number) => `${suc}|${chkId}|${idx}`;
+      for (const s of sucursales) {
         for (const c of s.checklists) {
-          // Título del checklist + meta
-          if (y > pageH - 40) { doc.addPage(); y = 20; }
-          doc.setTextColor(15, 23, 42);
-          doc.setFont('helvetica', 'bold'); doc.setFontSize(11);
-          doc.text(c.name, margenX, y);
-          y += 5;
-          doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(100, 116, 139);
-          doc.text(`${c.assigned} · ${c.date} · ${c.itemsHechos}/${c.totalItems} hechas${c.enviado ? ' · Enviado' : ''}`, margenX, y);
-          y += 6;
-
-          // Items y fotos
-          for (const it of c.itemsConFotos) {
-            if (y > pageH - 50) { doc.addPage(); y = 20; }
-            // Texto del item
-            doc.setTextColor(30, 41, 59);
-            doc.setFont('helvetica', it.completado ? 'bold' : 'normal'); doc.setFontSize(10);
-            const marcador = it.completado ? '[X]' : '[ ]';
-            const txt = doc.splitTextToSize(`${marcador} ${it.texto}`, pageW - margenX * 2);
-            doc.text(txt, margenX, y);
-            y += txt.length * 5 + 2;
-            // Fotos del item: thumbnails 600px
-            if (it.fotos.length > 0) {
-              const thumbs: string[] = [];
-              for (const fotoUrl of it.fotos) {
-                const thumb = this.convertirAThumbnail(fotoUrl);
-                const data = await this.cargarComoBase64(thumb);
-                if (data) {
-                  thumbs.push(data);
-                  totalFotosProcesadas++;
-                  const elProgreso = document.getElementById('cm-progreso');
-                  if (elProgreso) elProgreso.textContent = `Foto ${totalFotosProcesadas} de ${totales.totalFotos}...`;
-                }
-              }
-              if (thumbs.length > 0) {
-                const fotoW = 55; const fotoH = 41;
-                let fx = margenX; let nFila = 0;
-                for (const thumb of thumbs) {
-                  if (fx + fotoW > pageW - margenX) { fx = margenX; y += fotoH + 4; nFila++; }
-                  if (y + fotoH > pageH - 12) { doc.addPage(); y = 20; fx = margenX; }
-                  try { doc.addImage(thumb, 'JPEG', fx, y, fotoW, fotoH); } catch { /* ignora si falla */ }
-                  fx += fotoW + 4;
-                }
-                y += fotoH + 6;
+          for (let i = 0; i < c.itemsConFotos.length; i++) {
+            const it = c.itemsConFotos[i];
+            if (it.fotos.length === 0) continue;
+            const thumbs: string[] = [];
+            for (const fotoUrl of it.fotos) {
+              const thumb = this.convertirAThumbnail(fotoUrl);
+              const data = await this.cargarComoBase64(thumb);
+              if (data) {
+                thumbs.push(data);
+                totalFotosProcesadas++;
+                const elProgreso = document.getElementById('cm-progreso');
+                if (elProgreso) elProgreso.textContent = `Cargando fotos: ${totalFotosProcesadas} de ${totales.totalFotos}...`;
               }
             }
+            if (thumbs.length > 0) fotosCache.set(itemKey(s.sucursal, c.id, i), thumbs);
           }
-          // Separador entre checklists
-          doc.setDrawColor(226, 232, 240);
-          doc.line(margenX, y, pageW - margenX, y);
-          y += 6;
         }
       }
 
-      // Pie de páginas con numeración
+      // ========================================================================
+      // PORTADA: header oscuro + tabla ejecutiva + tabla resumen por sucursal
+      // ========================================================================
+      // Banda oscura superior
+      doc.setFillColor(15, 23, 42);
+      doc.rect(0, 0, pageW, 22, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(11);
+      doc.text('MEGA DULCES · CIERRE MENSUAL', margenX, 9);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(180, 195, 220);
+      doc.text(`Generado el ${fechaGen}`, pageW - margenX, 9, { align: 'right' });
+      // Mes destacado
+      doc.setTextColor(255, 255, 255); doc.setFont('helvetica', 'bold'); doc.setFontSize(15);
+      doc.text(this.mesEtiqueta().toUpperCase(), margenX, 17);
+
+      // Tabla ejecutiva (4 KPIs)
+      autoTable(doc, {
+        startY: 30,
+        body: [[
+          { content: totales.totalChecklists.toString(),
+            styles: { halign: 'center', fontSize: 18, fontStyle: 'bold', textColor: [15, 23, 42] } },
+          { content: `${totales.totalHechas} / ${totales.totalTareas}`,
+            styles: { halign: 'center', fontSize: 18, fontStyle: 'bold', textColor: [15, 23, 42] } },
+          { content: `${totales.porcentaje}%`,
+            styles: { halign: 'center', fontSize: 22, fontStyle: 'bold', textColor: [16, 185, 129] } },
+          { content: totales.totalFotos.toString(),
+            styles: { halign: 'center', fontSize: 18, fontStyle: 'bold', textColor: [15, 23, 42] } }
+        ], [
+          { content: 'CHECKLISTS', styles: { halign: 'center', fontSize: 8, textColor: [100, 116, 139] } },
+          { content: 'TAREAS HECHAS', styles: { halign: 'center', fontSize: 8, textColor: [100, 116, 139] } },
+          { content: 'CUMPLIMIENTO', styles: { halign: 'center', fontSize: 8, textColor: [100, 116, 139] } },
+          { content: 'FOTOS', styles: { halign: 'center', fontSize: 8, textColor: [100, 116, 139] } }
+        ]],
+        theme: 'grid',
+        styles: { lineColor: [226, 232, 240], lineWidth: 0.3, cellPadding: { top: 4, bottom: 4 } },
+        margin: { left: margenX, right: margenX }
+      });
+
+      // Tabla resumen por sucursal con barra de progreso
+      const sucBody = sucursales.map(s => [
+        s.sucursal,
+        s.totalChecklists.toString(),
+        s.totalTareas.toString(),
+        s.totalHechas.toString(),
+        s.totalFotos.toString(),
+        `${s.porcentaje}%`
+      ]);
+      autoTable(doc, {
+        startY: (doc as any).lastAutoTable.finalY + 8,
+        head: [['SUCURSAL', 'CHK', 'TAREAS', 'HECHAS', 'FOTOS', 'CUMPL.']],
+        body: sucBody,
+        theme: 'striped',
+        headStyles: { fillColor: [15, 23, 42], textColor: 255, fontSize: 9, halign: 'center' },
+        bodyStyles: { fontSize: 9 },
+        columnStyles: {
+          0: { cellWidth: 'auto', halign: 'left' },
+          1: { halign: 'center' }, 2: { halign: 'center' }, 3: { halign: 'center' },
+          4: { halign: 'center' },
+          5: { halign: 'center', fontStyle: 'bold' }
+        },
+        margin: { left: margenX, right: margenX },
+        // Pinta de color la celda de cumplimiento según el porcentaje
+        didParseCell: (data: any) => {
+          if (data.section === 'body' && data.column.index === 5) {
+            const pct = parseInt((data.cell.text[0] || '0').replace('%', ''), 10) || 0;
+            if (pct >= 80) data.cell.styles.textColor = [16, 185, 129];
+            else if (pct >= 50) data.cell.styles.textColor = [245, 158, 11];
+            else data.cell.styles.textColor = [239, 68, 68];
+          }
+        }
+      });
+
+      // ========================================================================
+      // UNA PÁGINA POR SUCURSAL
+      // ========================================================================
+      for (let sIdx = 0; sIdx < sucursales.length; sIdx++) {
+        const s = sucursales[sIdx];
+        doc.addPage();
+
+        // ---- Header oscuro: nombre + % grande + mini-gráfica ----
+        doc.setFillColor(15, 23, 42);
+        doc.rect(0, 0, pageW, 38, 'F');
+        // Nombre de sucursal
+        doc.setTextColor(255, 255, 255);
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(16);
+        doc.text(s.sucursal.toUpperCase(), margenX, 14);
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(180, 195, 220);
+        doc.text(`${s.totalChecklists} checklists · ${s.totalHechas}/${s.totalTareas} tareas · ${s.totalFotos} fotos`, margenX, 21);
+
+        // Porcentaje grande
+        const pctColor: [number, number, number] = s.porcentaje >= 80 ? [110, 231, 183]
+                                                  : s.porcentaje >= 50 ? [253, 224, 71] : [252, 165, 165];
+        doc.setTextColor(...pctColor);
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(28);
+        doc.text(`${s.porcentaje}%`, pageW - margenX, 16, { align: 'right' });
+        doc.setFontSize(8); doc.setTextColor(180, 195, 220); doc.setFont('helvetica', 'normal');
+        doc.text('CUMPLIMIENTO', pageW - margenX, 21, { align: 'right' });
+
+        // Mini sparkline de tendencia diaria
+        this.dibujarSparkline(doc, s.tendenciaDiaria, margenX, 26, pageW - margenX * 2, 8);
+
+        let y = 44;
+
+        // ---- Top 3 empleados del mes (si existen) ----
+        if (s.topEmpleados.length > 0) {
+          doc.setTextColor(15, 23, 42);
+          doc.setFont('helvetica', 'bold'); doc.setFontSize(10);
+          doc.text('TOP 3 DEL MES', margenX, y);
+          y += 4;
+          // 3 cajitas oro / plata / bronce
+          const tw = (pageW - margenX * 2 - 8) / 3;
+          const medallas = [
+            { bg: [251, 191, 36], text: [120, 53, 15], label: 'Oro' },
+            { bg: [203, 213, 225], text: [30, 41, 59], label: 'Plata' },
+            { bg: [217, 119, 6], text: [255, 255, 255], label: 'Bronce' }
+          ];
+          for (let i = 0; i < 3; i++) {
+            if (!s.topEmpleados[i]) continue;
+            const emp = s.topEmpleados[i];
+            const med = medallas[i];
+            const x = margenX + i * (tw + 4);
+            doc.setFillColor(med.bg[0], med.bg[1], med.bg[2]);
+            doc.roundedRect(x, y, tw, 18, 2, 2, 'F');
+            doc.setTextColor(med.text[0], med.text[1], med.text[2]);
+            doc.setFont('helvetica', 'bold'); doc.setFontSize(9);
+            doc.text(`#${i + 1} ${med.label.toUpperCase()}`, x + 3, y + 5);
+            doc.setFontSize(11);
+            const nombreCorto = emp.nombre.length > 26 ? emp.nombre.slice(0, 24) + '..' : emp.nombre;
+            doc.text(nombreCorto, x + 3, y + 11);
+            doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
+            doc.text(`${emp.porcentaje}% · ${emp.hechas}/${emp.totales}`, x + 3, y + 16);
+          }
+          y += 24;
+        }
+
+        // ---- Tabla principal: una fila por item ----
+        // Aplanamos los items de todos los checklists con info de su parent
+        type FilaItem = {
+          numero: number;
+          tarea: string;
+          empleado: string;
+          fecha: string;
+          estado: string;
+          comentario: string;
+          fotosBase64: string[];
+        };
+        const filas: FilaItem[] = [];
+        let n = 1;
+        for (const c of s.checklists) {
+          // Comentario / motivo a nivel del checklist
+          let comentarioGlobal = '';
+          if (c.entregaConRetraso) {
+            const cat = c.motivoCategoria ? `[${c.motivoCategoria}] ` : '';
+            comentarioGlobal = `RETRASO JUSTIFICADO ${cat}${c.motivoComentario || ''}`.trim();
+          }
+          if (c.notaEmpleado) {
+            comentarioGlobal = (comentarioGlobal ? comentarioGlobal + '\n' : '') + `Nota: ${c.notaEmpleado}`;
+          }
+          for (let i = 0; i < c.itemsConFotos.length; i++) {
+            const it = c.itemsConFotos[i];
+            filas.push({
+              numero: n++,
+              tarea: `${c.name}\n${it.texto}`,
+              empleado: c.assigned,
+              fecha: c.date,
+              estado: it.completado ? 'HECHO' : (c.entregaConRetraso ? 'RETRASO' : 'NO'),
+              comentario: comentarioGlobal,
+              fotosBase64: fotosCache.get(itemKey(s.sucursal, c.id, i)) || []
+            });
+          }
+        }
+
+        // Anchos por columna
+        const colWidths = {
+          numero: 8,
+          tarea: 50,
+          empleado: 28,
+          fecha: 18,
+          estado: 16,
+          comentario: 32,
+          fotos: pageW - margenX * 2 - (8 + 50 + 28 + 18 + 16 + 32)
+        };
+
+        autoTable(doc, {
+          startY: y,
+          head: [['#', 'CHECKLIST · TAREA', 'EMPLEADO', 'FECHA', 'EST.', 'NOTAS / RETRASO', 'EVIDENCIA']],
+          body: filas.map(f => [f.numero, f.tarea, f.empleado, f.fecha, f.estado, f.comentario, '']),
+          theme: 'grid',
+          headStyles: {
+            fillColor: [30, 58, 138], textColor: 255, fontSize: 8, halign: 'center',
+            cellPadding: 2
+          },
+          bodyStyles: { fontSize: 8, cellPadding: 2, valign: 'top', lineColor: [226, 232, 240], lineWidth: 0.2 },
+          columnStyles: {
+            0: { cellWidth: colWidths.numero, halign: 'center' },
+            1: { cellWidth: colWidths.tarea },
+            2: { cellWidth: colWidths.empleado },
+            3: { cellWidth: colWidths.fecha, halign: 'center' },
+            4: { cellWidth: colWidths.estado, halign: 'center', fontStyle: 'bold' },
+            5: { cellWidth: colWidths.comentario, fontSize: 7 },
+            6: { cellWidth: colWidths.fotos }
+          },
+          margin: { left: margenX, right: margenX },
+          // Colorea celda de estado según el valor
+          didParseCell: (data: any) => {
+            if (data.section === 'body' && data.column.index === 4) {
+              const v = (data.cell.text[0] || '').toString();
+              if (v === 'HECHO') { data.cell.styles.fillColor = [220, 252, 231]; data.cell.styles.textColor = [22, 101, 52]; }
+              else if (v === 'RETRASO') { data.cell.styles.fillColor = [254, 215, 170]; data.cell.styles.textColor = [154, 52, 18]; }
+              else { data.cell.styles.fillColor = [254, 226, 226]; data.cell.styles.textColor = [153, 27, 27]; }
+            }
+          },
+          // Calcula la altura mínima de la fila según número de fotos (para que quepan)
+          willDrawCell: (data: any) => {
+            if (data.section === 'body' && data.column.index === 6) {
+              const fila = filas[data.row.index];
+              if (!fila) return;
+              const n = fila.fotosBase64.length;
+              if (n === 0) return;
+              const fotosPorFila = 3;
+              const filasFotos = Math.ceil(n / fotosPorFila);
+              const altoFoto = 11; // mm
+              const necesario = filasFotos * altoFoto + 2;
+              if (data.row.height < necesario) data.row.height = necesario;
+            }
+          },
+          // Dibuja las fotos dentro de la celda
+          didDrawCell: (data: any) => {
+            if (data.section !== 'body' || data.column.index !== 6) return;
+            const fila = filas[data.row.index];
+            if (!fila || fila.fotosBase64.length === 0) {
+              // Marca "sin fotos" en gris claro
+              doc.setFont('helvetica', 'italic'); doc.setFontSize(7); doc.setTextColor(148, 163, 184);
+              doc.text('—', data.cell.x + data.cell.width / 2, data.cell.y + data.cell.height / 2 + 1, { align: 'center' });
+              return;
+            }
+            const fotoW = (data.cell.width - 2) / 3 - 1;
+            const fotoH = 10;
+            let fx = data.cell.x + 1;
+            let fy = data.cell.y + 1;
+            for (let i = 0; i < fila.fotosBase64.length; i++) {
+              if (i > 0 && i % 3 === 0) { fx = data.cell.x + 1; fy += fotoH + 1; }
+              try { doc.addImage(fila.fotosBase64[i], 'JPEG', fx, fy, fotoW, fotoH); } catch { /* ignora */ }
+              fx += fotoW + 1;
+            }
+          }
+        });
+      }
+
+      // Pie de página con numeración
       const totalPag = doc.getNumberOfPages();
       for (let i = 1; i <= totalPag; i++) {
         doc.setPage(i);
-        doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(148, 163, 184);
-        doc.text(`Cierre Mensual ${this.mesEtiqueta()} · pág. ${i}/${totalPag}`,
-                 pageW / 2, pageH - 6, { align: 'center' });
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(148, 163, 184);
+        doc.text(`Cierre Mensual ${this.mesEtiqueta()}  ·  pág. ${i} de ${totalPag}`,
+                 pageW / 2, pageH - 5, { align: 'center' });
       }
 
       const nombreArchivo = `Cierre_Mensual_${this.mesSeleccionado()}.pdf`;
@@ -406,6 +625,39 @@ export class CierreMensualComponent implements OnInit, OnDestroy {
       });
     } finally {
       this.generandoPDF.set(false);
+    }
+  }
+
+  /**
+   * Dibuja una mini-gráfica de líneas (sparkline) con los valores de % por día.
+   * Se usa en el header de cada sucursal para mostrar la tendencia del mes.
+   *  - Los días sin actividad (valor 0) se dibujan como puntitos planos.
+   *  - Línea blanca delgada sobre fondo oscuro.
+   */
+  private dibujarSparkline(doc: any, valores: number[], x: number, y: number, ancho: number, alto: number): void {
+    if (!valores || valores.length === 0) return;
+    const n = valores.length;
+    // Línea base sutil
+    doc.setDrawColor(180, 195, 220);
+    doc.setLineWidth(0.1);
+    doc.line(x, y + alto, x + ancho, y + alto);
+    // Etiqueta "Tendencia"
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(180, 195, 220);
+    doc.text(`Tendencia diaria · ${n} días`, x, y - 1);
+    // Puntos
+    const dx = ancho / Math.max(1, n - 1);
+    doc.setDrawColor(110, 231, 183); // verde claro
+    doc.setLineWidth(0.4);
+    let prevX: number | null = null; let prevY: number | null = null;
+    for (let i = 0; i < n; i++) {
+      const v = valores[i] || 0;
+      const px = x + i * dx;
+      const py = y + alto - (v / 100) * alto;
+      if (prevX !== null && prevY !== null) doc.line(prevX, prevY, px, py);
+      // Pequeño círculo en cada punto
+      doc.setFillColor(110, 231, 183);
+      doc.circle(px, py, 0.5, 'F');
+      prevX = px; prevY = py;
     }
   }
 

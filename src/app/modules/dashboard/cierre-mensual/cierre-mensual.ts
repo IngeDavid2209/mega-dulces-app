@@ -72,6 +72,8 @@ export class CierreMensualComponent implements OnInit, OnDestroy {
   generandoPDF = signal<boolean>(false);
   archivandoMes = signal<boolean>(false);
   archivarProgreso = signal<string>('');
+  /** 'TODAS' o el nombre exacto de la sucursal a incluir en el PDF. */
+  sucursalParaPDF = signal<string>('TODAS');
 
   /** Texto humano del mes (Ej: "Junio 2026"). */
   mesEtiqueta = computed(() => {
@@ -284,7 +286,27 @@ export class CierreMensualComponent implements OnInit, OnDestroy {
   // ============================================================================
   async generarPDF() {
     if (this.generandoPDF()) return;
-    const totales = this.totalesGlobales();
+
+    // Filtro de sucursal (TODAS o una específica)
+    const filtroSuc = this.sucursalParaPDF();
+    const todasSucursales = this.agrupadoPorSucursal();
+    const sucursalesFiltradas = filtroSuc === 'TODAS'
+      ? todasSucursales
+      : todasSucursales.filter(s => s.sucursal === filtroSuc);
+
+    if (sucursalesFiltradas.length === 0) {
+      Swal.fire({ icon: 'info', title: 'Sin datos', text: 'No hay checklists para la selección actual.', confirmButtonColor: '#0F172A' });
+      return;
+    }
+
+    // Recalcular totales para el subset elegido
+    const totalChecklists = sucursalesFiltradas.reduce((a, f) => a + f.totalChecklists, 0);
+    const totalTareas = sucursalesFiltradas.reduce((a, f) => a + f.totalTareas, 0);
+    const totalHechas = sucursalesFiltradas.reduce((a, f) => a + f.totalHechas, 0);
+    const totalFotos = sucursalesFiltradas.reduce((a, f) => a + f.totalFotos, 0);
+    const porcentajeTot = totalTareas > 0 ? Math.round((totalHechas / totalTareas) * 100) : 0;
+    const totales = { totalChecklists, totalTareas, totalHechas, totalFotos, porcentaje: porcentajeTot };
+
     if (totales.totalChecklists === 0) {
       Swal.fire({ icon: 'info', title: 'Sin datos', text: 'No hay checklists en el mes seleccionado.', confirmButtonColor: '#0F172A' });
       return;
@@ -316,7 +338,7 @@ export class CierreMensualComponent implements OnInit, OnDestroy {
       const pageW = doc.internal.pageSize.getWidth();
       const pageH = doc.internal.pageSize.getHeight();
       const M = 18; // margen lateral generoso
-      const sucursales = this.agrupadoPorSucursal();
+      const sucursales = sucursalesFiltradas;
       const fechaGen = new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'long', year: 'numeric' });
 
       // Paleta corporativa unificada
@@ -402,10 +424,13 @@ export class CierreMensualComponent implements OnInit, OnDestroy {
       doc.circle(M + 24, ornY, 0.8, 'F');
       doc.line(M + 28, ornY, M + 48, ornY);
 
-      // Kicker pequeño arriba del título
+      // Kicker pequeño arriba del título — incluye sucursal si el reporte es de una sola
       const titY = fotoPortadaH + 26;
       doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(...C.accent);
-      doc.text('MEGA DULCES DE LOS ALTOS', M, titY, { charSpace: 1.4 });
+      const kickerPortada = filtroSuc === 'TODAS'
+        ? 'MEGA DULCES DE LOS ALTOS'
+        : `MEGA DULCES · ${filtroSuc.toUpperCase()}`;
+      doc.text(kickerPortada, M, titY, { charSpace: 1.4 });
 
       // Título grande a dos líneas: "INFORME / MENSUAL"
       doc.setTextColor(...C.navy);
@@ -456,7 +481,13 @@ export class CierreMensualComponent implements OnInit, OnDestroy {
 
       // Párrafo descriptivo con drop cap (primera letra grande)
       const lider = sucursales[0];
-      const desc = `Durante el mes de ${this.mesEtiqueta().toLowerCase()} se procesaron ${totales.totalChecklists} checklists operativos en ${sucursales.length} sucursales, con un cumplimiento general del ${totales.porcentaje}%. Se validaron ${totales.totalHechas} de ${totales.totalTareas} tareas asignadas y se documentaron ${totales.totalFotos} evidencias fotográficas.${lider ? ` La sucursal con mejor desempeño fue ${lider.sucursal} con ${lider.porcentaje}% de cumplimiento.` : ''}`;
+      const ambito = filtroSuc === 'TODAS'
+        ? `${sucursales.length} sucursales`
+        : `la sucursal ${filtroSuc}`;
+      const lineaLider = (filtroSuc === 'TODAS' && lider)
+        ? ` La sucursal con mejor desempeño fue ${lider.sucursal} con ${lider.porcentaje}% de cumplimiento.`
+        : '';
+      const desc = `Durante el mes de ${this.mesEtiqueta().toLowerCase()} se procesaron ${totales.totalChecklists} checklists operativos en ${ambito}, con un cumplimiento general del ${totales.porcentaje}%. Se validaron ${totales.totalHechas} de ${totales.totalTareas} tareas asignadas y se documentaron ${totales.totalFotos} evidencias fotográficas.${lineaLider}`;
 
       // Drop cap: primera letra grande en burdeos
       const primeraLetra = desc.charAt(0);
@@ -821,7 +852,10 @@ export class CierreMensualComponent implements OnInit, OnDestroy {
         doc.text(`${i} / ${totalPag}`, pageW - M, pageH - 7, { align: 'right' });
       }
 
-      const nombreArchivo = `Cierre_Mensual_${this.mesSeleccionado()}.pdf`;
+      const sufijoSuc = filtroSuc === 'TODAS'
+        ? ''
+        : '_' + filtroSuc.replace(/[^a-zA-Z0-9]+/g, '-');
+      const nombreArchivo = `Cierre_Mensual_${this.mesSeleccionado()}${sufijoSuc}.pdf`;
       doc.save(nombreArchivo);
       Swal.fire({
         icon: 'success', title: 'Reporte generado',

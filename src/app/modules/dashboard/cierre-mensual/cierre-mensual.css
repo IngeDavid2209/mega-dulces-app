@@ -152,6 +152,32 @@
 }
 .cm-btn-pdf:disabled { opacity: 0.6; cursor: not-allowed; }
 
+/* Selector de alcance del PDF (todas las sucursales o solo una) */
+.cm-cta-info { flex: 1; min-width: 260px; }
+.cm-cta-actions { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+.cm-select-label { display: flex; flex-direction: column; gap: 4px; }
+.cm-select-lbl-text {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: #78350F;
+  text-transform: uppercase;
+}
+.cm-select {
+  background: #FFFFFF;
+  border: 1px solid #FBBF24;
+  border-radius: 10px;
+  padding: 11px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #1E293B;
+  min-width: 240px;
+  max-width: 320px;
+  cursor: pointer;
+  outline: none;
+}
+.cm-select:focus { border-color: #B45309; box-shadow: 0 0 0 3px rgba(180, 83, 9, 0.15); }
+
 /* Grid de sucursales (preview) */
 .cm-suc-grid {
   display: grid;
@@ -265,6 +291,8 @@
   .content { padding: 20px 14px; }
   .cm-title { font-size: 22px; }
   .cm-cta { flex-direction: column; align-items: stretch; }
+  .cm-cta-actions { flex-direction: column; align-items: stretch; }
+  .cm-select { width: 100%; max-width: none; }
   .cm-btn-pdf { width: 100%; justify-content: center; }
   .cm-archive-zone { flex-direction: column; align-items: stretch; }
   .cm-btn-archive { width: 100%; justify-content: center; }

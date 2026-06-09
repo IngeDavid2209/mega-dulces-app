@@ -61,24 +61,36 @@
 
       <!-- CALL TO ACTION -->
       <section class="cm-cta" *ngIf="!cargando() && totalesGlobales().totalChecklists > 0">
-        <div>
+        <div class="cm-cta-info">
           <div class="cm-cta-title">Generar reporte de {{ mesEtiqueta() }}</div>
           <div class="cm-cta-sub">
             PDF con portada · resumen por sucursal · cada checklist con sus fotos thumbnail.
             <span *ngIf="totalesGlobales().totalFotos > 200" class="cm-warn">
-              · ⚠ Más de 200 fotos: la generación puede tardar 1-3 minutos
+              · Más de 200 fotos: la generación puede tardar 1-3 minutos
             </span>
           </div>
         </div>
-        <button class="cm-btn-pdf" (click)="generarPDF()" [disabled]="generandoPDF()">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-               style="margin-right: 8px;">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-            <polyline points="7 10 12 15 17 10"></polyline>
-            <line x1="12" y1="15" x2="12" y2="3"></line>
-          </svg>
-          {{ generandoPDF() ? 'Generando...' : 'Descargar PDF mensual' }}
-        </button>
+        <div class="cm-cta-actions">
+          <label class="cm-select-label">
+            <span class="cm-select-lbl-text">Alcance</span>
+            <select class="cm-select" [value]="sucursalParaPDF()"
+                    (change)="sucursalParaPDF.set($any($event.target).value)">
+              <option value="TODAS">Todas las sucursales (1 PDF)</option>
+              <option *ngFor="let s of agrupadoPorSucursal()" [value]="s.sucursal">
+                Solo {{ s.sucursal }} ({{ s.totalChecklists }} checklist · {{ s.totalFotos }} fotos)
+              </option>
+            </select>
+          </label>
+          <button class="cm-btn-pdf" (click)="generarPDF()" [disabled]="generandoPDF()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                 style="margin-right: 8px;">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            {{ generandoPDF() ? 'Generando...' : 'Descargar PDF' }}
+          </button>
+        </div>
       </section>
 
       <!-- BANNER: mes ya archivado -->

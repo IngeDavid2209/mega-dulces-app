@@ -137,7 +137,7 @@ export class EstadisticasComponent implements OnInit, OnDestroy {
       const arr: any[] = [];
       snapshot.forEach(d => {
         const data: any = d.data();
-        if (data.eliminado === true) return;
+        if (data.eliminado === true || data.archivado === true) return;
         if (!this.sucursalesPermitidas.includes(data.store)) return; // respeta scope del admin
         arr.push(data);
       });
@@ -156,7 +156,7 @@ export class EstadisticasComponent implements OnInit, OnDestroy {
       snapshot.forEach(docSnap => {
         const c: any = docSnap.data();
         
-        if (c.eliminado === true) return;
+        if (c.eliminado === true || c.archivado === true) return;
 
         // SOLO contamos las rutinas que estén etiquetadas con la fecha de HOY
         if (c.date === fechaHoyLocal && this.sucursalesPermitidas.includes(c.store)) {

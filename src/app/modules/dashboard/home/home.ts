@@ -222,8 +222,8 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
     const alertas: any[] = [];
 
     this.checklistsHoy().forEach(c => {
-      // No alertamos sobre checklists ya enviados o eliminados (eran tareas fantasma).
-      if (c.eliminado === true || c.enviado === true) return;
+      // No alertamos sobre checklists ya enviados, eliminados o archivados (eran tareas fantasma).
+      if (c.eliminado === true || c.enviado === true || c.archivado === true) return;
       (c.items || []).forEach((it: any) => {
         if (this.itemHecho(it, c)) return;
         const hl = it.horaLimite || it.time;
@@ -346,7 +346,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
         let arr: any[] = [];
         snap.forEach(d => {
           const data = d.data() as any;
-          if (data.eliminado === true) return;
+          if (data.eliminado === true || data.archivado === true) return;
           arr.push({ ...data, id: d.id });
         });
         const totalCrudo = arr.length;

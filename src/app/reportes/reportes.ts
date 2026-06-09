@@ -289,7 +289,7 @@ export class ReportesComponent implements OnInit, OnDestroy {
 
       snapshot.forEach(docSnap => {
         const c = docSnap.data() as any;
-        if (c.eliminado === true) return;
+        if (c.eliminado === true || c.archivado === true) return;
 
         // 🔥 Admin limitado: descarta cualquier checklist que NO sea de sus sucursales
         if (sucursalesPermitidasUsuario !== null && !sucursalesPermitidasUsuario.includes(c.store)) return;

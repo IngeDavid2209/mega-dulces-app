@@ -412,7 +412,7 @@ export class RutinasCatalogoComponent implements OnInit, OnDestroy {
       const ops: Promise<any>[] = [];
       snap.forEach(d => {
         const c = d.data() as any;
-        if (c.enviado === true || c.eliminado === true) return;
+        if (c.enviado === true || c.eliminado === true || c.archivado === true) return;
         ops.push(setDoc(doc(this.firestore, 'checklists', d.id), { eliminado: true }, { merge: true }));
       });
       await Promise.all(ops);

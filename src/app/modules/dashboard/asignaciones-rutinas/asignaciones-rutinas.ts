@@ -537,7 +537,7 @@ export class AsignacionesRutinasComponent implements OnInit, OnDestroy {
       const ops: Promise<any>[] = [];
       snap.forEach(d => {
         const c = d.data() as any;
-        if (c.enviado === true || c.eliminado === true) return; // no tocar enviados ni ya borrados
+        if (c.enviado === true || c.eliminado === true || c.archivado === true) return; // no tocar enviados, borrados ni archivados
         ops.push(setDoc(doc(this.firestore, 'checklists', d.id), { eliminado: true }, { merge: true }));
       });
       await Promise.all(ops);

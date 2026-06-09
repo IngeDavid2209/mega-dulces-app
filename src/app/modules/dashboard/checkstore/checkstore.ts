@@ -233,7 +233,7 @@ export class CheckstoreComponent implements OnInit, OnDestroy {
  
       snap.forEach(docSnap => {
         const c: any = docSnap.data();
-        if (c.eliminado === true) return;
+        if (c.eliminado === true || c.archivado === true) return;
         const tiempoCreacion = typeof c.id === 'number' ? c.id : (c.timestampCreacion || ahora);
         if (c.date === fechaHoyLocal || (ahora - tiempoCreacion) <= limite24h) {
           checklistsTemp.push(c);

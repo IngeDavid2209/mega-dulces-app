@@ -2,7 +2,7 @@ import { Component, signal, computed, OnInit, OnDestroy, inject } from '@angular
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
-import { Firestore, collection, getDocs, query, where } from '@angular/fire/firestore';
+import { Firestore, collection, getDocs, query, where, writeBatch, doc, serverTimestamp } from '@angular/fire/firestore';
 import Swal from 'sweetalert2';
 
 import { SidebarComponent } from '../../../shared/sidebar/sidebar';
@@ -70,6 +70,8 @@ export class CierreMensualComponent implements OnInit, OnDestroy {
   private checklistsDelMes = signal<any[]>([]);
   cargando = signal<boolean>(false);
   generandoPDF = signal<boolean>(false);
+  archivandoMes = signal<boolean>(false);
+  archivarProgreso = signal<string>('');
 
   /** Texto humano del mes (Ej: "Junio 2026"). */
   mesEtiqueta = computed(() => {
@@ -1001,4 +1003,143 @@ export class CierreMensualComponent implements OnInit, OnDestroy {
     return this.currentUser?.rol === 'admin';
   }
   esAdminGlobal = computed(() => esAdminGlobal(this.currentUser));
+
+  // ============================================================================
+  // ARCHIVAR MES
+  // ============================================================================
+  /** Cuántos checklists del mes aún NO están archivados. */
+  noArchivadosCount = computed(() => {
+    return this.checklistsDelMes().filter(c => c.archivado !== true).length;
+  });
+
+  /** Cuántos checklists del mes ya están archivados. */
+  archivadosCount = computed(() => {
+    return this.checklistsDelMes().filter(c => c.archivado === true).length;
+  });
+
+  /** True si todos los checklists del mes ya están archivados (no hay nada que archivar). */
+  mesYaArchivado = computed(() => {
+    const total = this.checklistsDelMes().length;
+    return total > 0 && this.noArchivadosCount() === 0;
+  });
+
+  /**
+   * Archiva todos los checklists del mes seleccionado.
+   * Soft-archive: marca archivado:true, archivadoEn, archivadoPor, archivadoMes.
+   * No borra fotos de Cloudinary (eso es la fase B).
+   * Requiere admin global + escribir "ARCHIVAR" como confirmación.
+   */
+  async archivarMes(): Promise<void> {
+    if (!this.esAdminGlobal()) return;
+    if (this.archivandoMes()) return;
+
+    const noArchivados = this.checklistsDelMes().filter(c => c.archivado !== true);
+    if (noArchivados.length === 0) {
+      await Swal.fire({
+        icon: 'info',
+        title: 'Nada por archivar',
+        text: 'Todos los checklists de este mes ya están archivados.',
+        confirmButtonColor: '#831843'
+      });
+      return;
+    }
+
+    const mes = this.mesEtiqueta();
+    const total = noArchivados.length;
+
+    // PASO 1: Aviso fuerte con resumen
+    const paso1 = await Swal.fire({
+      icon: 'warning',
+      title: `Archivar ${mes}`,
+      html: `
+        <div style="text-align:left; font-size:14px; line-height:1.55;">
+          <p style="margin:0 0 10px 0;"><strong>Vas a archivar ${total} checklist(s)</strong> del mes <strong>${mes}</strong>.</p>
+          <p style="margin:0 0 10px 0;">Después de archivar:</p>
+          <ul style="margin:0 0 12px 18px; padding:0;">
+            <li>Desaparecerán de <strong>Auditoría visual</strong>, <strong>Dashboard</strong>, <strong>Calendario</strong>, <strong>Estadísticas</strong>, <strong>Ranking</strong> y <strong>Checkstore</strong>.</li>
+            <li><strong>Seguirán visibles aquí en Cierre Mensual</strong> para poder regenerar el PDF cuando quieras.</li>
+            <li>Las fotos de Cloudinary <strong>NO se borran todavía</strong> (eso es un paso aparte).</li>
+          </ul>
+          <p style="margin:0 0 8px 0; color:#831843;"><strong>Antes de continuar, asegúrate de tener descargado el PDF mensual.</strong></p>
+        </div>
+      `,
+      showCancelButton: true,
+      confirmButtonText: 'Continuar',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#831843',
+      cancelButtonColor: '#64748b'
+    });
+    if (!paso1.isConfirmed) return;
+
+    // PASO 2: Confirmación doble con input
+    const paso2 = await Swal.fire({
+      title: 'Confirmación final',
+      html: `<div style="text-align:left; font-size:14px;">Escribe <strong>ARCHIVAR</strong> en mayúsculas para confirmar.</div>`,
+      input: 'text',
+      inputPlaceholder: 'ARCHIVAR',
+      showCancelButton: true,
+      confirmButtonText: 'Archivar mes',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#831843',
+      cancelButtonColor: '#64748b',
+      inputValidator: (val) => {
+        if (val !== 'ARCHIVAR') return 'Debes escribir exactamente ARCHIVAR.';
+        return null;
+      }
+    });
+    if (!paso2.isConfirmed) return;
+
+    // EJECUCIÓN: batch writes (Firestore tope 500 por batch)
+    this.archivandoMes.set(true);
+    this.archivarProgreso.set(`0 / ${total}`);
+    const yyyymm = this.mesSeleccionado();
+    const adminNombre = this.currentUser?.nombre || this.currentUser?.email || 'Administración';
+
+    try {
+      const CHUNK = 400;
+      let hechos = 0;
+      for (let i = 0; i < noArchivados.length; i += CHUNK) {
+        const batch = writeBatch(this.firestore);
+        const slice = noArchivados.slice(i, i + CHUNK);
+        for (const c of slice) {
+          const ref = doc(this.firestore, 'checklists', c.id);
+          batch.set(ref, {
+            archivado: true,
+            archivadoEn: serverTimestamp(),
+            archivadoPor: adminNombre,
+            archivadoMes: yyyymm
+          }, { merge: true });
+        }
+        await batch.commit();
+        hechos += slice.length;
+        this.archivarProgreso.set(`${hechos} / ${total}`);
+      }
+
+      // Refrescar lista en memoria
+      this.checklistsDelMes.update(arr => arr.map(c => ({
+        ...c,
+        archivado: true,
+        archivadoMes: yyyymm,
+        archivadoPor: adminNombre
+      })));
+
+      await Swal.fire({
+        icon: 'success',
+        title: 'Mes archivado',
+        html: `Se archivaron <strong>${hechos}</strong> checklists de <strong>${mes}</strong>.<br><br>Ya no aparecerán en Auditoría ni Dashboard, pero podrás regenerar el PDF aquí cuando quieras.`,
+        confirmButtonColor: '#831843'
+      });
+    } catch (e: any) {
+      console.error('[archivarMes]', e);
+      await Swal.fire({
+        icon: 'error',
+        title: 'Error al archivar',
+        text: e?.message || 'No se pudo completar el archivado. Revisa la conexión e intenta de nuevo.',
+        confirmButtonColor: '#831843'
+      });
+    } finally {
+      this.archivandoMes.set(false);
+      this.archivarProgreso.set('');
+    }
+  }
 }

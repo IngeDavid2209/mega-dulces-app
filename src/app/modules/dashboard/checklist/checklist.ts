@@ -920,7 +920,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
         const c = docSnap.data() as any;
         const docId = docSnap.id;
         if (c.date === fechaHoyLocal && c.assigned) todosAssignedHoy.add(c.assigned);
-        if (c.eliminado === true) {
+        if (c.eliminado === true || c.archivado === true) {
           descartadosEliminados++;
           if (c.assigned) muestraEliminados.push({ id: docId, assigned: c.assigned, name: c.name });
           return;

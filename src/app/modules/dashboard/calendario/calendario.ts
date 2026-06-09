@@ -125,7 +125,7 @@ tareasAgendaMes: any[] = [];
     );
 
     this.radarChecklistsActivo = onSnapshot(q, (snap) => {
-      let lista = snap.docs.map(d => d.data()).filter((c: any) => !c.eliminado);
+      let lista = snap.docs.map(d => d.data()).filter((c: any) => !c.eliminado && !c.archivado);
 
       // 🔥 Admin limitado: solo ve checklists de sus sucursales
       if (!esAdminGlobal(this.currentUser)) {

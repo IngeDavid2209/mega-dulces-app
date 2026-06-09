@@ -774,7 +774,7 @@ export class PersonalComponent implements OnInit, OnDestroy {
       const tareasPorAssigned = new Map<string, { sucursales: Set<string>, total: number }>();
       snap.forEach(d => {
         const c = d.data() as any;
-        if (c.eliminado === true || c.enviado === true) return;
+        if (c.eliminado === true || c.enviado === true || c.archivado === true) return;
         if (permitidasUser !== null && !permitidasUser.includes(c.store)) return;
         const a = (c.assigned || '').trim();
         if (!a) return;
@@ -898,7 +898,7 @@ export class PersonalComponent implements OnInit, OnDestroy {
       const assignedsHuerfanos = new Set<string>();
       snap.forEach(d => {
         const c = d.data() as any;
-        if (c.eliminado === true || c.enviado === true) return;
+        if (c.eliminado === true || c.enviado === true || c.archivado === true) return;
         if (permitidasUser !== null && !permitidasUser.includes(c.store)) return;
         const a = (c.assigned || '').trim();
         if (!a) return;

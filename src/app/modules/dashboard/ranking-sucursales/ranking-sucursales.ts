@@ -119,7 +119,7 @@ export class RankingSucursalesComponent implements OnInit, OnDestroy {
       const arr: any[] = [];
       snap.forEach(d => {
         const data = d.data() as any;
-        if (data.eliminado === true) return;
+        if (data.eliminado === true || data.archivado === true) return;
         arr.push({ ...data, id: d.id });
       });
       this.checklistsSemana.set(arr);

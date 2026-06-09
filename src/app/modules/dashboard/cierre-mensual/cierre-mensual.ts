@@ -355,136 +355,246 @@ export class CierreMensualComponent implements OnInit, OnDestroy {
       }
 
       // =====================================================================
-      // PÁGINA 1 — PORTADA (estilo libro / annual report)
+      // PÁGINA 1 — PORTADA EDITORIAL (estilo magazine)
+      // Foto grande arriba (60% de la página) + bloque blanco abajo con título.
+      // Si no hay foto disponible, fondo navy sólido.
       // =====================================================================
-      // Marca discreta arriba
-      doc.setDrawColor(...C.navy);
-      doc.setLineWidth(0.5);
-      doc.line(M, 30, M + 16, 30);
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(...C.gray);
-      doc.text('MEGA DULCES', M, 36);
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(8);
-      doc.text('Reporte ejecutivo', M, 41);
+      const fotoPortadaH = pageH * 0.60;
+      const fotoPortada = this.escogerFotoDestacada(sucursales, fotosCache, itemKey);
+      if (fotoPortada) {
+        try {
+          // Cubre con foto que abarca todo el ancho
+          doc.addImage(fotoPortada, 'JPEG', 0, 0, pageW, fotoPortadaH);
+          // Overlay sutil oscuro abajo para mejor legibilidad si quedara texto encima
+          doc.setFillColor(15, 23, 42);
+          doc.setGState(new (doc as any).GState({ opacity: 0.10 }));
+          doc.rect(0, 0, pageW, fotoPortadaH, 'F');
+          doc.setGState(new (doc as any).GState({ opacity: 1 }));
+        } catch { /* fallback abajo */ }
+      } else {
+        // Fallback: bloque navy
+        doc.setFillColor(...C.navy);
+        doc.rect(0, 0, pageW, fotoPortadaH, 'F');
+        // Patrón geométrico sutil
+        doc.setDrawColor(255, 255, 255);
+        doc.setLineWidth(0.2);
+        doc.setGState(new (doc as any).GState({ opacity: 0.15 }));
+        for (let i = 0; i < 20; i++) {
+          doc.line(M + i * 8, fotoPortadaH - 30, M + i * 8 + 4, fotoPortadaH);
+        }
+        doc.setGState(new (doc as any).GState({ opacity: 1 }));
+      }
 
-      // Título principal — mucho aire, tipografía dominante
-      doc.setTextColor(...C.navy);
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(56);
-      doc.text('Cierre', M, pageH * 0.42);
-      doc.text('Mensual', M, pageH * 0.42 + 22);
+      // Bloque blanco inferior (40% restante)
+      doc.setFillColor(255, 255, 255);
+      doc.rect(0, fotoPortadaH, pageW, pageH - fotoPortadaH, 'F');
 
-      // Subtítulo
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(16); doc.setTextColor(...C.gray);
-      doc.text(this.mesEtiqueta(), M, pageH * 0.42 + 36);
-
-      // Línea separadora
-      doc.setDrawColor(...C.navy); doc.setLineWidth(1);
-      doc.line(M, pageH * 0.42 + 44, M + 30, pageH * 0.42 + 44);
-
-      // Pie de portada
+      // Kicker pequeño arriba del título
+      const titY = fotoPortadaH + 28;
       doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...C.gray);
-      doc.text(`Generado el ${fechaGen}`, M, pageH - 30);
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(...C.navy);
-      doc.text('MEGA DULCES DE LOS ALTOS', M, pageH - 24);
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...C.soft);
-      doc.text(`Documento confidencial · uso interno`, M, pageH - 18);
+      doc.text('MEGA DULCES DE LOS ALTOS', M, titY, { charSpace: 1.2 });
+
+      // Título grande a dos líneas: "INFORME / MENSUAL"
+      doc.setTextColor(...C.navy);
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(40);
+      doc.text('INFORME', M, titY + 18, { charSpace: 0.5 });
+      // "MENSUAL" más light con subrayado decorativo
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(40);
+      doc.text('MENSUAL', M, titY + 34, { charSpace: 0.5 });
+      // Subrayado fino debajo de "MENSUAL" — visual signature
+      doc.setDrawColor(...C.navy); doc.setLineWidth(0.6);
+      doc.line(M, titY + 38, M + 32, titY + 38);
+
+      // Pie con fecha y "preparado por"
+      const pieY = titY + 50;
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(...C.gray);
+      const piePartes = [
+        this.mesEtiqueta().toUpperCase(),
+        `PREPARADO POR ${(this.currentUser?.nombre || 'Administración').toUpperCase()}`
+      ];
+      doc.text(piePartes.join('  //  '), M, pieY, { charSpace: 1 });
 
       // =====================================================================
-      // PÁGINA 2 — RESUMEN EJECUTIVO
+      // PÁGINA 2 — DESCRIPCIÓN (estilo editorial: kicker + título + descripción)
+      // Sin header gris arriba: el kicker "SECCIÓN 01" hace de orientación.
       // =====================================================================
       doc.addPage();
-      this.dibujarHeaderPagina(doc, pageW, M, this.mesEtiqueta(), 'Resumen ejecutivo', C);
 
-      // KPIs en 2x2 grandes, con tipografía generosa
-      const kpiY = 48;
-      const kpiW = (pageW - M * 2 - 8) / 2;
-      const kpiH = 30;
+      // Kicker
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...C.gray);
+      doc.text('SECCIÓN 01', M, 40, { charSpace: 1.5 });
+
+      // Título grande con subrayado
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(34); doc.setTextColor(...C.navy);
+      doc.text('Descripción', M, 60);
+      doc.setDrawColor(...C.navy); doc.setLineWidth(0.6);
+      doc.line(M, 64, M + 26, 64);
+
+      // Párrafo descriptivo
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(10.5); doc.setTextColor(...C.ink);
+      const lider = sucursales[0];
+      const desc = `Durante el mes de ${this.mesEtiqueta().toLowerCase()} se procesaron ${totales.totalChecklists} checklists operativos en ${sucursales.length} sucursales, con un cumplimiento general del ${totales.porcentaje}%. Se validaron ${totales.totalHechas} de ${totales.totalTareas} tareas asignadas y se documentaron ${totales.totalFotos} evidencias fotográficas.${lider ? ` La sucursal con mejor desempeño fue ${lider.sucursal} con ${lider.porcentaje}% de cumplimiento.` : ''}`;
+      const descLines = doc.splitTextToSize(desc, pageW - M * 2);
+      doc.text(descLines, M, 78, { lineHeightFactor: 1.45 });
+
+      // Línea separadora
+      let yResumen = 78 + descLines.length * 5 + 14;
+      doc.setDrawColor(...C.line); doc.setLineWidth(0.2);
+      doc.line(M, yResumen, pageW - M, yResumen);
+      yResumen += 12;
+
+      // KPIs grandes en cuadrícula editorial 2x2 (con kicker numérico)
+      const kpiW = (pageW - M * 2 - 12) / 2;
+      const kpiH = 32;
       const kpis = [
-        { num: `${totales.porcentaje}%`,  label: 'Cumplimiento general',     color: totales.porcentaje >= 80 ? C.ok : (totales.porcentaje >= 50 ? C.warn : C.bad) },
-        { num: totales.totalChecklists.toString(), label: 'Checklists procesados', color: C.navy },
-        { num: `${totales.totalHechas}`,  label: `Tareas validadas (de ${totales.totalTareas})`, color: C.navy },
-        { num: totales.totalFotos.toString(), label: 'Fotografías de evidencia', color: C.navy }
+        { num: `${totales.porcentaje}%`,  label: 'Cumplimiento general', kicker: '01',
+          color: totales.porcentaje >= 80 ? C.ok : (totales.porcentaje >= 50 ? C.warn : C.bad) },
+        { num: totales.totalChecklists.toString(), label: 'Checklists', kicker: '02', color: C.navy },
+        { num: `${totales.totalHechas}/${totales.totalTareas}`, label: 'Tareas validadas', kicker: '03', color: C.navy },
+        { num: totales.totalFotos.toString(), label: 'Fotografías', kicker: '04', color: C.navy }
       ];
       for (let i = 0; i < kpis.length; i++) {
         const k = kpis[i];
-        const x = M + (i % 2) * (kpiW + 8);
-        const y = kpiY + Math.floor(i / 2) * (kpiH + 8);
-        // Borde superior fino navy + número grande
-        doc.setDrawColor(...C.navy); doc.setLineWidth(0.8);
-        doc.line(x, y, x + kpiW, y);
+        const x = M + (i % 2) * (kpiW + 12);
+        const y = yResumen + Math.floor(i / 2) * (kpiH + 6);
+        // Kicker mini gris
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(...C.soft);
+        doc.text(k.kicker, x, y + 4, { charSpace: 1 });
+        // Número grande
         doc.setTextColor(...k.color);
-        doc.setFont('helvetica', 'bold'); doc.setFontSize(30);
-        doc.text(k.num, x, y + 14);
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(32);
+        doc.text(k.num, x, y + 18);
+        // Línea fina debajo
+        doc.setDrawColor(...C.line); doc.setLineWidth(0.2);
+        doc.line(x, y + 22, x + kpiW, y + 22);
+        // Etiqueta
         doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...C.gray);
-        doc.text(k.label.toUpperCase(), x, y + 22);
+        doc.text(k.label, x, y + 28);
       }
+      yResumen += 2 * (kpiH + 6) + 14;
 
-      // Sección "Por sucursal" con barras horizontales (sin tabla apretada)
-      let yResumen = kpiY + 2 * (kpiH + 8) + 10;
-      doc.setTextColor(...C.navy); doc.setFont('helvetica', 'bold'); doc.setFontSize(11);
-      doc.text('DESEMPEÑO POR SUCURSAL', M, yResumen);
-      doc.setDrawColor(...C.line); doc.setLineWidth(0.3);
-      doc.line(M, yResumen + 1.5, pageW - M, yResumen + 1.5);
-      yResumen += 8;
+      // =====================================================================
+      // SECCIÓN 02 — DESEMPEÑO POR SUCURSAL
+      // =====================================================================
+      if (yResumen > pageH - 60) {
+        doc.addPage();
+        this.dibujarHeaderPagina(doc, pageW, M, this.mesEtiqueta(), 'Desempeño', C);
+        yResumen = 40;
+      }
+      // Kicker
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...C.gray);
+      doc.text('SECCIÓN 02', M, yResumen, { charSpace: 1.5 });
+      yResumen += 16;
+      // Título
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(28); doc.setTextColor(...C.navy);
+      doc.text('Desempeño', M, yResumen);
+      doc.setDrawColor(...C.navy); doc.setLineWidth(0.6);
+      doc.line(M, yResumen + 3, M + 22, yResumen + 3);
+      yResumen += 14;
 
-      // Lista visual con barras grandes
-      const maxLabelW = 60; // mm
+      // Lista visual con barras grandes y aire entre filas
+      const maxLabelW = 60;
       const barX = M + maxLabelW + 4;
-      const barTotalW = pageW - M - barX - 18;
-      const rowH = 9;
+      const barTotalW = pageW - M - barX - 22;
+      const rowH = 13;
       for (const s of sucursales) {
-        if (yResumen + rowH > pageH - 20) { doc.addPage(); yResumen = 30; }
+        if (yResumen + rowH > pageH - 20) {
+          doc.addPage();
+          this.dibujarHeaderPagina(doc, pageW, M, this.mesEtiqueta(), 'Desempeño', C);
+          yResumen = 40;
+        }
         // Nombre
-        doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(...C.ink);
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5); doc.setTextColor(...C.ink);
         doc.text(s.sucursal.length > 32 ? s.sucursal.slice(0, 30) + '…' : s.sucursal, M, yResumen + 4);
         // Sub-meta
         doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(...C.soft);
-        doc.text(`${s.totalChecklists} chk · ${s.totalHechas}/${s.totalTareas} tareas`, M, yResumen + 8);
+        doc.text(`${s.totalChecklists} chk  ·  ${s.totalHechas}/${s.totalTareas} tareas`, M, yResumen + 9);
         // Barra fondo
         doc.setFillColor(...C.line);
-        doc.roundedRect(barX, yResumen + 2, barTotalW, 4, 1, 1, 'F');
+        doc.rect(barX, yResumen + 3, barTotalW, 3, 'F');
         // Barra fill
         const fillW = (s.porcentaje / 100) * barTotalW;
         const c = s.porcentaje >= 80 ? C.ok : (s.porcentaje >= 50 ? C.warn : C.bad);
         if (fillW > 0) {
           doc.setFillColor(...c);
-          doc.roundedRect(barX, yResumen + 2, Math.max(fillW, 1), 4, 1, 1, 'F');
+          doc.rect(barX, yResumen + 3, Math.max(fillW, 1), 3, 'F');
         }
         // %
-        doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(...c);
-        doc.text(`${s.porcentaje}%`, pageW - M, yResumen + 5, { align: 'right' });
-        yResumen += rowH + 2;
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(13); doc.setTextColor(...c);
+        doc.text(`${s.porcentaje}%`, pageW - M, yResumen + 6, { align: 'right' });
+        // Línea sutil divisoria
+        doc.setDrawColor(...C.line); doc.setLineWidth(0.1);
+        doc.line(M, yResumen + 13, pageW - M, yResumen + 13);
+        yResumen += rowH + 1;
       }
 
       // =====================================================================
-      // POR CADA SUCURSAL — portadilla + páginas de detalle
+      // POR CADA SUCURSAL — portadilla editorial + páginas de detalle
       // =====================================================================
+      let secNum = 3;
       for (const s of sucursales) {
 
-        // ----- PORTADILLA DE LA SUCURSAL -----
+        // ----- PORTADILLA EDITORIAL DE LA SUCURSAL -----
+        // Foto de sucursal arriba (50%) + bloque blanco abajo con info.
         doc.addPage();
-        this.dibujarHeaderPagina(doc, pageW, M, this.mesEtiqueta(), 'Sucursal · ' + s.sucursal, C);
+        const fotoSucH = pageH * 0.50;
+        const fotoSuc = this.escogerFotoSucursal(s, fotosCache, itemKey);
+        if (fotoSuc) {
+          try {
+            doc.addImage(fotoSuc, 'JPEG', 0, 0, pageW, fotoSucH);
+            // Overlay sutil para mejor contraste de "kicker" si lo pusiéramos
+            doc.setFillColor(15, 23, 42);
+            doc.setGState(new (doc as any).GState({ opacity: 0.12 }));
+            doc.rect(0, 0, pageW, fotoSucH, 'F');
+            doc.setGState(new (doc as any).GState({ opacity: 1 }));
+          } catch { /* fallback abajo */ }
+        } else {
+          doc.setFillColor(...C.navy);
+          doc.rect(0, 0, pageW, fotoSucH, 'F');
+        }
 
-        // Nombre de la sucursal gigante
-        doc.setTextColor(...C.navy); doc.setFont('helvetica', 'bold'); doc.setFontSize(36);
-        const nameLines = doc.splitTextToSize(s.sucursal, pageW - M * 2);
-        doc.text(nameLines, M, 70);
+        // Bloque blanco inferior
+        doc.setFillColor(255, 255, 255);
+        doc.rect(0, fotoSucH, pageW, pageH - fotoSucH, 'F');
 
-        // Porcentaje gigante a la derecha
-        const pctColor = s.porcentaje >= 80 ? C.ok : (s.porcentaje >= 50 ? C.warn : C.bad);
-        doc.setTextColor(...pctColor); doc.setFont('helvetica', 'bold'); doc.setFontSize(80);
-        doc.text(`${s.porcentaje}%`, pageW - M, 100, { align: 'right' });
+        // Kicker
+        const kY = fotoSucH + 22;
         doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...C.gray);
-        doc.text('CUMPLIMIENTO DEL MES', pageW - M, 108, { align: 'right' });
+        doc.text(`SECCIÓN ${String(secNum).padStart(2, '0')}  //  SUCURSAL`, M, kY, { charSpace: 1.5 });
+        secNum++;
 
-        // Sparkline tendencia diaria con etiqueta clara
-        const sparkY = 130;
-        doc.setTextColor(...C.gray); doc.setFont('helvetica', 'bold'); doc.setFontSize(8);
-        doc.text('TENDENCIA DIARIA', M, sparkY);
-        doc.setDrawColor(...C.line); doc.line(M, sparkY + 1, pageW - M, sparkY + 1);
-        this.dibujarSparklinePro(doc, s.tendenciaDiaria, M, sparkY + 5, pageW - M * 2, 14, C);
+        // Nombre de sucursal (grande)
+        doc.setTextColor(...C.navy); doc.setFont('helvetica', 'bold'); doc.setFontSize(30);
+        const nameLines = doc.splitTextToSize(s.sucursal.toUpperCase(), pageW - M * 2 - 60);
+        doc.text(nameLines, M, kY + 12);
 
-        // KPIs secundarios en línea
-        const kY = sparkY + 28;
+        // Porcentaje a la derecha (estilo magazine pull-quote)
+        const pctColor = s.porcentaje >= 80 ? C.ok : (s.porcentaje >= 50 ? C.warn : C.bad);
+        doc.setTextColor(...pctColor); doc.setFont('helvetica', 'bold'); doc.setFontSize(56);
+        doc.text(`${s.porcentaje}%`, pageW - M, kY + 18, { align: 'right' });
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...C.gray);
+        doc.text('CUMPLIMIENTO', pageW - M, kY + 25, { align: 'right', charSpace: 1.2 });
+
+        // Línea separadora bajo el título
+        const lineaY = kY + 14 + nameLines.length * 11;
+        doc.setDrawColor(...C.navy); doc.setLineWidth(0.6);
+        doc.line(M, lineaY, M + 22, lineaY);
+
+        // Mini descripción de la sucursal
+        const descY = lineaY + 10;
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(...C.ink);
+        const descSuc = `Durante ${this.mesEtiqueta().toLowerCase()} la sucursal ${s.sucursal} procesó ${s.totalChecklists} checklists con ${s.totalHechas} de ${s.totalTareas} tareas validadas y ${s.totalFotos} evidencias documentadas.`;
+        const descSucLines = doc.splitTextToSize(descSuc, pageW - M * 2 - 4);
+        doc.text(descSucLines, M, descY, { lineHeightFactor: 1.4 });
+
+        // Sparkline más abajo
+        const sparkY = descY + descSucLines.length * 5 + 10;
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...C.gray);
+        doc.text('TENDENCIA DIARIA', M, sparkY, { charSpace: 1.2 });
+        this.dibujarSparklinePro(doc, s.tendenciaDiaria, M, sparkY + 3, pageW - M * 2, 14, C);
+
+        // KPIs en línea (3 columnas)
+        const kpiY2 = sparkY + 28;
         const kpisSec = [
           { num: s.totalChecklists.toString(), label: 'Checklists' },
           { num: `${s.totalHechas}/${s.totalTareas}`, label: 'Tareas validadas' },
@@ -493,35 +603,35 @@ export class CierreMensualComponent implements OnInit, OnDestroy {
         const kSecW = (pageW - M * 2) / kpisSec.length;
         for (let i = 0; i < kpisSec.length; i++) {
           const x = M + i * kSecW;
-          doc.setDrawColor(...C.navy); doc.setLineWidth(0.6);
-          doc.line(x, kY, x + 22, kY);
-          doc.setFont('helvetica', 'bold'); doc.setFontSize(18); doc.setTextColor(...C.navy);
-          doc.text(kpisSec[i].num, x, kY + 10);
+          doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(...C.soft);
+          doc.text(`0${i + 1}`, x, kpiY2, { charSpace: 1 });
+          doc.setFont('helvetica', 'bold'); doc.setFontSize(20); doc.setTextColor(...C.navy);
+          doc.text(kpisSec[i].num, x, kpiY2 + 11);
+          doc.setDrawColor(...C.line); doc.setLineWidth(0.2);
+          doc.line(x, kpiY2 + 15, x + kSecW - 6, kpiY2 + 15);
           doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...C.gray);
-          doc.text(kpisSec[i].label.toUpperCase(), x, kY + 16);
+          doc.text(kpisSec[i].label, x, kpiY2 + 20);
         }
 
-        // Top 3 empleados con barras horizontales (no medallas chillonas)
+        // Top 3 empleados (estilo editorial limpio)
         if (s.topEmpleados.length > 0) {
-          const tY = kY + 30;
-          doc.setTextColor(...C.gray); doc.setFont('helvetica', 'bold'); doc.setFontSize(8);
-          doc.text('TOP 3 DEL MES', M, tY);
-          doc.setDrawColor(...C.line); doc.line(M, tY + 1, pageW - M, tY + 1);
-          let ty = tY + 8;
+          const tY = kpiY2 + 32;
+          doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...C.gray);
+          doc.text('TOP 3 DEL MES', M, tY, { charSpace: 1.2 });
+          doc.setDrawColor(...C.line); doc.setLineWidth(0.2);
+          doc.line(M, tY + 2, pageW - M, tY + 2);
+          let ty = tY + 9;
           for (let i = 0; i < Math.min(3, s.topEmpleados.length); i++) {
             const e = s.topEmpleados[i];
-            // Número grande gris
             doc.setFont('helvetica', 'bold'); doc.setFontSize(20); doc.setTextColor(...C.soft);
-            doc.text(`${i + 1}`, M, ty + 7);
-            // Nombre
+            doc.text(`0${i + 1}`, M, ty + 6);
             doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(...C.ink);
-            doc.text(e.nombre, M + 10, ty + 4);
+            doc.text(e.nombre, M + 12, ty + 3);
             doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...C.gray);
-            doc.text(`${e.hechas} de ${e.totales} tareas`, M + 10, ty + 9);
-            // %
+            doc.text(`${e.hechas} de ${e.totales} tareas`, M + 12, ty + 8);
             doc.setFont('helvetica', 'bold'); doc.setFontSize(14); doc.setTextColor(...C.navy);
-            doc.text(`${e.porcentaje}%`, pageW - M, ty + 7, { align: 'right' });
-            ty += 13;
+            doc.text(`${e.porcentaje}%`, pageW - M, ty + 6, { align: 'right' });
+            ty += 12;
           }
         }
 
@@ -669,6 +779,45 @@ export class CierreMensualComponent implements OnInit, OnDestroy {
     } finally {
       this.generandoPDF.set(false);
     }
+  }
+
+  /**
+   * Escoge la primera foto disponible del mes para usarla como portada.
+   * Recorre las sucursales y checklists hasta encontrar una. Si no hay
+   * ninguna, retorna null (la portada usa un fallback navy).
+   */
+  private escogerFotoDestacada(
+    sucursales: SucursalAgrupada[],
+    cache: Map<string, string[]>,
+    keyFn: (s: string, c: string, i: number) => string
+  ): string | null {
+    for (const s of sucursales) {
+      for (const c of s.checklists) {
+        for (let i = 0; i < c.itemsConFotos.length; i++) {
+          const fotos = cache.get(keyFn(s.sucursal, c.id, i));
+          if (fotos && fotos.length > 0) return fotos[0];
+        }
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Escoge una foto representativa para una sucursal específica.
+   * Usa la primera foto disponible de cualquier checklist de esa sucursal.
+   */
+  private escogerFotoSucursal(
+    sucursal: SucursalAgrupada,
+    cache: Map<string, string[]>,
+    keyFn: (s: string, c: string, i: number) => string
+  ): string | null {
+    for (const c of sucursal.checklists) {
+      for (let i = 0; i < c.itemsConFotos.length; i++) {
+        const fotos = cache.get(keyFn(sucursal.sucursal, c.id, i));
+        if (fotos && fotos.length > 0) return fotos[0];
+      }
+    }
+    return null;
   }
 
   /**

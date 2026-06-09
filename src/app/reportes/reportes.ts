@@ -798,10 +798,24 @@ export class ReportesComponent implements OnInit, OnDestroy {
 
     try {
       const { default: jsPDF } = await import('jspdf');
-      const { default: autoTable } = await import('jspdf-autotable');
+      await import('jspdf-autotable');
       const doc = new jsPDF('p', 'mm', 'a4');
-      const pageWidth = doc.internal.pageSize.getWidth();
-      const pageHeight = doc.internal.pageSize.getHeight();
+      const pageW = doc.internal.pageSize.getWidth();
+      const pageH = doc.internal.pageSize.getHeight();
+      const M = 18;
+
+      // Paleta unificada (igual al Cierre Mensual)
+      const C = {
+        navy:  [15, 23, 42] as [number, number, number],
+        ink:   [30, 41, 59] as [number, number, number],
+        gray:  [100, 116, 139] as [number, number, number],
+        soft:  [148, 163, 184] as [number, number, number],
+        line:  [226, 232, 240] as [number, number, number],
+        bg:    [248, 250, 252] as [number, number, number],
+        ok:    [16, 185, 129] as [number, number, number],
+        warn:  [245, 158, 11] as [number, number, number],
+        bad:   [239, 68, 68] as [number, number, number]
+      };
 
       const getBase64Image = (url: string): Promise<string | null> => {
         return new Promise((resolve) => {
@@ -809,219 +823,373 @@ export class ReportesComponent implements OnInit, OnDestroy {
           img.crossOrigin = 'Anonymous';
           img.onload = () => {
             const canvas = document.createElement('canvas');
-            const MAX_WIDTH = 600;
+            const MAX_WIDTH = 800;
             const scaleSize = MAX_WIDTH / img.width;
             canvas.width = MAX_WIDTH;
             canvas.height = img.height * scaleSize;
             const ctx = canvas.getContext('2d');
             ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
-            resolve(canvas.toDataURL('image/jpeg', 0.7));
+            resolve(canvas.toDataURL('image/jpeg', 0.75));
           };
           img.onerror = () => resolve(null);
           img.src = url;
         });
       };
 
-      const calculateFit = (imgW: number, imgH: number, maxW: number, maxH: number) => {
-        const imgRatio = imgW / imgH;
-        const maxRatio = maxW / maxH;
-        let finalW, finalH;
-        if (imgRatio > maxRatio) {
-          finalW = maxW;
-          finalH = finalW / imgRatio;
-        } else {
-          finalH = maxH;
-          finalW = finalH * imgRatio;
-        }
-        return { finalW, finalH };
+      const fitImage = (props: { width: number; height: number }, maxW: number, maxH: number) => {
+        const r = props.width / props.height;
+        if (r > maxW / maxH) return { w: maxW, h: maxW / r };
+        return { w: maxH * r, h: maxH };
       };
 
-      // PORTADA
-      doc.setFillColor(15, 23, 42);
-      doc.rect(0, 0, pageWidth, 28, 'F');
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(22);
-      doc.setTextColor(255, 255, 255);
-      doc.text('MEGA DULCES', 14, 15);
-      doc.setFontSize(11);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(200, 200, 200);
-      doc.text('REPORTE DE AUDITORÍA VISUAL', 14, 22);
+      const resultados = this.resultados();
+      const totalProgresos = resultados.reduce((sum, r) => sum + this.getProgreso(r), 0);
+      const promedio = resultados.length > 0 ? Math.round(totalProgresos / resultados.length) : 0;
+      const totalConFotos = resultados.reduce((sum, r) =>
+        sum + (r.items || []).reduce((s: number, i: any) =>
+          s + (i.photo ? 1 : 0) + (i.photoAntes ? 1 : 0) + (i.photoDespues ? 1 : 0) +
+              (Array.isArray(i.photos) ? i.photos.length : 0), 0), 0);
 
-      const totalProgresos = this.resultados().reduce((sum, r) => sum + this.getProgreso(r), 0);
-      const promedio = this.resultados().length > 0 ? Math.round(totalProgresos / this.resultados().length) : 0;
+      // Buscar primera foto para usarla en portada
+      let fotoPortada: string | null = null;
+      for (const r of resultados) {
+        for (const it of (r.items || [])) {
+          const candidatos = [it.photo, it.photoAntes, it.photoDespues].filter(Boolean);
+          if (Array.isArray(it.photos)) for (const p of it.photos) candidatos.push(p?.url || p);
+          for (const url of candidatos) {
+            if (url && url !== 'subiendo...') {
+              fotoPortada = await getBase64Image(url);
+              if (fotoPortada) break;
+            }
+          }
+          if (fotoPortada) break;
+        }
+        if (fotoPortada) break;
+      }
 
-      autoTable(doc, {
-        startY: 35,
-        head: [['Resumen Ejecutivo', '']],
-        body: [
-          ['Período analizado', `${this.fechaInicio} al ${this.fechaFin}`],
-          ['Filtro de empleado', this.empleadoSeleccionado || 'Todos los colaboradores'],
-          // 🆕 Mostrar filtro de sucursal en la portada
-          ['Filtro de sucursal', this.sucursalSeleccionada || 'Todas las sucursales'],
-          ['Total de registros', `${this.resultados().length} checklists validados`],
-          ['Cumplimiento general', `${promedio}% de efectividad`]
-        ],
-        theme: 'grid',
-        headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold', fontSize: 14, cellPadding: 8 },
-        bodyStyles: { textColor: [51, 65, 85], fontSize: 12, cellPadding: 8 },
-        columnStyles: { 0: { fontStyle: 'bold', cellWidth: 80 } }
-      });
+      // =====================================================================
+      // PÁGINA 1 — PORTADA EDITORIAL
+      // Foto grande arriba (60%) + bloque blanco abajo con título magazine.
+      // =====================================================================
+      const fotoH = pageH * 0.60;
+      if (fotoPortada) {
+        try {
+          doc.addImage(fotoPortada, 'JPEG', 0, 0, pageW, fotoH);
+          doc.setFillColor(15, 23, 42);
+          doc.setGState(new (doc as any).GState({ opacity: 0.10 }));
+          doc.rect(0, 0, pageW, fotoH, 'F');
+          doc.setGState(new (doc as any).GState({ opacity: 1 }));
+        } catch { /* fallback navy abajo */ }
+      } else {
+        doc.setFillColor(...C.navy);
+        doc.rect(0, 0, pageW, fotoH, 'F');
+      }
 
-      // RECORRIDO DE CHECKLISTS
-      for (let i = 0; i < this.resultados().length; i++) {
-        const checklist = this.resultados()[i];
+      // Bloque blanco abajo
+      doc.setFillColor(255, 255, 255);
+      doc.rect(0, fotoH, pageW, pageH - fotoH, 'F');
 
-        doc.addPage();
-        doc.setFillColor(15, 23, 42);
-        doc.rect(0, 0, pageWidth, 25, 'F');
-        doc.setTextColor(255, 255, 255);
-        doc.setFontSize(16);
-        doc.setFont('helvetica', 'bold');
-        doc.text(`AUDITORIA: ${cleanText(checklist.name).toUpperCase()}`, 14, 16);
+      // Kicker
+      const titY = fotoH + 28;
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...C.gray);
+      doc.text('MEGA DULCES DE LOS ALTOS', M, titY, { charSpace: 1.2 });
 
-        doc.setTextColor(15, 23, 42);
-        doc.setFontSize(14);
-        doc.text('DATOS DE LA EVALUACIÓN', 14, 40);
+      // Título a dos líneas
+      doc.setTextColor(...C.navy);
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(40);
+      doc.text('AUDITORIA', M, titY + 18, { charSpace: 0.5 });
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(40);
+      doc.text('VISUAL', M, titY + 34, { charSpace: 0.5 });
+      doc.setDrawColor(...C.navy); doc.setLineWidth(0.6);
+      doc.line(M, titY + 38, M + 32, titY + 38);
 
-        doc.setDrawColor(226, 232, 240);
-        doc.setLineWidth(0.5);
-        doc.line(14, 44, pageWidth - 14, 44);
+      // Pie
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(...C.gray);
+      const periodo = `${this.fechaInicio} al ${this.fechaFin}`;
+      doc.text(periodo.toUpperCase() + '  //  PREPARADO POR ' +
+               (this.currentUser?.nombre || 'Administracion').toUpperCase(),
+               M, titY + 50, { charSpace: 1 });
 
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(11);
-        doc.text('Responsable:', 14, 55);
-        doc.setFont('helvetica', 'normal');
-        doc.text(cleanText(checklist.assigned) || 'No asignado', 50, 55);
+      // =====================================================================
+      // PÁGINA 2 — DESCRIPCIÓN (kicker + título + párrafo + KPIs)
+      // =====================================================================
+      doc.addPage();
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...C.gray);
+      doc.text('SECCIÓN 01', M, 40, { charSpace: 1.5 });
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(34); doc.setTextColor(...C.navy);
+      doc.text('Descripción', M, 60);
+      doc.setDrawColor(...C.navy); doc.setLineWidth(0.6);
+      doc.line(M, 64, M + 26, 64);
 
-        doc.setFont('helvetica', 'bold');
-        doc.text('Sucursal/Zona:', 14, 65);
-        doc.setFont('helvetica', 'normal');
-        doc.text(checklist.store || 'General', 50, 65);
+      const empleadoFiltro = this.empleadoSeleccionado || 'todos los colaboradores';
+      const sucFiltro = this.sucursalSeleccionada || 'todas las sucursales';
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(10.5); doc.setTextColor(...C.ink);
+      const desc = `Reporte de auditoría visual para el periodo del ${this.fechaInicio} al ${this.fechaFin}. Se analizaron ${resultados.length} checklists de ${sucFiltro} asignados a ${empleadoFiltro}, con un cumplimiento general del ${promedio}% y ${totalConFotos} evidencias fotográficas documentadas.`;
+      const descLines = doc.splitTextToSize(desc, pageW - M * 2);
+      doc.text(descLines, M, 78, { lineHeightFactor: 1.45 });
 
-        doc.setFont('helvetica', 'bold');
-        doc.text('Fecha:', 14, 75);
-        doc.setFont('helvetica', 'normal');
-        doc.text(checklist.date || '--', 50, 75);
+      let yKpi = 78 + descLines.length * 5 + 14;
+      doc.setDrawColor(...C.line); doc.setLineWidth(0.2);
+      doc.line(M, yKpi, pageW - M, yKpi);
+      yKpi += 12;
 
+      const kpiW = (pageW - M * 2 - 12) / 2;
+      const kpiH = 32;
+      const kpis = [
+        { num: `${promedio}%`,         label: 'Cumplimiento general', kicker: '01',
+          color: promedio >= 80 ? C.ok : (promedio >= 50 ? C.warn : C.bad) },
+        { num: resultados.length.toString(), label: 'Checklists analizados', kicker: '02', color: C.navy },
+        { num: totalConFotos.toString(),     label: 'Evidencias fotograficas', kicker: '03', color: C.navy },
+        { num: this.fechaInicio + '/' + this.fechaFin, label: 'Periodo analizado', kicker: '04', color: C.navy, smallNum: true }
+      ];
+      for (let i = 0; i < kpis.length; i++) {
+        const k = kpis[i];
+        const x = M + (i % 2) * (kpiW + 12);
+        const y = yKpi + Math.floor(i / 2) * (kpiH + 6);
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(...C.soft);
+        doc.text(k.kicker, x, y + 4, { charSpace: 1 });
+        doc.setTextColor(...k.color);
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(k.smallNum ? 14 : 32);
+        doc.text(k.num, x, y + (k.smallNum ? 16 : 18));
+        doc.setDrawColor(...C.line); doc.setLineWidth(0.2);
+        doc.line(x, y + 22, x + kpiW, y + 22);
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...C.gray);
+        doc.text(k.label, x, y + 28);
+      }
+
+      // =====================================================================
+      // POR CADA CHECKLIST — portadilla editorial + páginas de items
+      // =====================================================================
+      let secNum = 2;
+      for (let idx = 0; idx < resultados.length; idx++) {
+        const checklist = resultados[idx];
         const progreso = this.getProgreso(checklist);
-        doc.setFont('helvetica', 'bold');
-        doc.text('Avance Global:', 14, 85);
-        doc.setTextColor(progreso === 100 ? 16 : 29, progreso === 100 ? 185 : 78, progreso === 100 ? 129 : 216);
-        doc.text(`${progreso}% COMPLETADO`, 50, 85);
+        const items = checklist.items || [];
 
-        if (checklist.notaEmpleado) {
-          doc.setTextColor(217, 119, 6);
-          doc.text('COMENTARIOS DEL COLABORADOR:', 14, 105);
-          doc.setFont('helvetica', 'normal');
-          doc.setTextColor(51, 65, 85);
-          const notes = doc.splitTextToSize(checklist.notaEmpleado, pageWidth - 28);
-          doc.text(notes, 14, 113);
+        // ----- PORTADILLA DEL CHECKLIST -----
+        doc.addPage();
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...C.gray);
+        doc.text(`SECCIÓN ${String(secNum).padStart(2, '0')}  //  CHECKLIST ${idx + 1} DE ${resultados.length}`, M, 40, { charSpace: 1.5 });
+        secNum++;
+
+        // Nombre del checklist (título grande)
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(28); doc.setTextColor(...C.navy);
+        const nameLines = doc.splitTextToSize(cleanText(checklist.name), pageW - M * 2 - 50);
+        doc.text(nameLines, M, 56);
+        doc.setDrawColor(...C.navy); doc.setLineWidth(0.6);
+        doc.line(M, 58 + nameLines.length * 11, M + 22, 58 + nameLines.length * 11);
+
+        // Porcentaje pull-quote a la derecha
+        const pctColor = progreso === 100 ? C.ok : (progreso >= 50 ? C.warn : C.bad);
+        doc.setTextColor(...pctColor); doc.setFont('helvetica', 'bold'); doc.setFontSize(48);
+        doc.text(`${progreso}%`, pageW - M, 70, { align: 'right' });
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...C.gray);
+        doc.text('AVANCE GLOBAL', pageW - M, 76, { align: 'right', charSpace: 1.2 });
+
+        // Datos en formato editorial (clave: valor, una por línea)
+        let yDatos = 58 + nameLines.length * 11 + 18;
+        const datos = [
+          { k: 'Responsable',  v: cleanText(checklist.assigned) || 'No asignado' },
+          { k: 'Sucursal',     v: checklist.store || 'General' },
+          { k: 'Fecha',        v: checklist.date || '—' },
+          { k: 'Estado',       v: this.getDisplayStatusLabel(checklist) }
+        ];
+        for (const d of datos) {
+          doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...C.gray);
+          doc.text(d.k.toUpperCase(), M, yDatos, { charSpace: 1.2 });
+          doc.setFont('helvetica', 'bold'); doc.setFontSize(13); doc.setTextColor(...C.ink);
+          doc.text(d.v, M, yDatos + 7);
+          doc.setDrawColor(...C.line); doc.setLineWidth(0.2);
+          doc.line(M, yDatos + 10, pageW - M, yDatos + 10);
+          yDatos += 16;
         }
 
-        if (checklist.items && checklist.items.length > 0) {
-          for (let j = 0; j < checklist.items.length; j++) {
-            const item = checklist.items[j];
+        // Comentario del colaborador (si existe) — bloque ámbar
+        if (checklist.notaEmpleado) {
+          yDatos += 4;
+          const notas = doc.splitTextToSize(cleanText(checklist.notaEmpleado), pageW - M * 2 - 6);
+          const h = notas.length * 5 + 14;
+          doc.setFillColor(255, 251, 235);
+          doc.setDrawColor(245, 158, 11); doc.setLineWidth(0.3);
+          doc.roundedRect(M, yDatos, pageW - M * 2, h, 1, 1, 'FD');
+          doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(180, 83, 9);
+          doc.text('COMENTARIO DEL COLABORADOR', M + 3, yDatos + 5, { charSpace: 1.2 });
+          doc.setFont('helvetica', 'italic'); doc.setFontSize(10); doc.setTextColor(146, 64, 14);
+          doc.text(notas, M + 3, yDatos + 10);
+          yDatos += h + 4;
+        }
 
+        // ----- ITEMS CON FOTO (estilo editorial limpio) -----
+        for (let j = 0; j < items.length; j++) {
+          const item = items[j];
+          const tieneFoto = item.photo || item.photoAntes || item.photoDespues ||
+                            (Array.isArray(item.photos) && item.photos.length > 0);
+
+          // Para items con foto: nueva página
+          // Para items sin foto: agrupamos varios en una sola página
+          if (tieneFoto) {
             doc.addPage();
+            // Kicker
+            doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...C.gray);
+            doc.text(`${cleanText(checklist.name).toUpperCase()}  ·  TAREA ${j + 1} / ${items.length}`,
+                     M, 22, { charSpace: 1.2 });
+            // Línea fina
+            doc.setDrawColor(...C.line); doc.line(M, 26, pageW - M, 26);
 
-            doc.setFillColor(241, 245, 249);
-            doc.rect(0, 0, pageWidth, 20, 'F');
-            doc.setTextColor(100, 116, 139);
-            doc.setFont('helvetica', 'bold');
-            doc.setFontSize(10);
-            doc.text(`${checklist.name.toUpperCase()}  |  TAREA ${j + 1} DE ${checklist.items.length}`, 14, 13);
+            // Texto de la tarea (título)
+            doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.setTextColor(...C.navy);
+            const txt = doc.splitTextToSize(cleanText(item.text || '(sin descripción)'), pageW - M * 2 - 40);
+            doc.text(txt, M, 38);
 
-            doc.setTextColor(15, 23, 42);
-            doc.setFontSize(14);
-            const checkIcon = item.checked ? '[ ✓ ] ' : '[ X ] ';
-            const taskText = doc.splitTextToSize(checkIcon + item.text, pageWidth - 28);
-            doc.text(taskText, 14, 35);
+            // Badge de estado a la derecha
+            const hechoBadge = item.checked || (item.photo && item.photo !== 'subiendo...') ||
+                              (item.photoAntes && item.photoDespues);
+            const bColor = hechoBadge ? C.ok : C.bad;
+            doc.setFillColor(...bColor);
+            const bTxt = hechoBadge ? 'HECHO' : 'FALTA EVIDENCIA';
+            const bw = doc.getStringUnitWidth(bTxt) * 7 / doc.internal.scaleFactor + 6;
+            doc.roundedRect(pageW - M - bw, 32, bw, 8, 1.5, 1.5, 'F');
+            doc.setFont('helvetica', 'bold'); doc.setFontSize(7); doc.setTextColor(255, 255, 255);
+            doc.text(bTxt, pageW - M - bw / 2, 37.5, { align: 'center' });
 
-            let currentY = 35 + (taskText.length * 7) + 5;
+            let yFoto = 38 + txt.length * 7 + 8;
 
-            doc.setFontSize(10);
-            if (!item.checked) {
-              doc.setTextColor(220, 38, 38);
-              doc.text('TAREA NO COMPLETADA', 14, currentY);
-              currentY += 12;
-            } else if (item.requiresPhoto && !item.photo && !item.requiresAntesDespues) {
-              doc.setTextColor(220, 38, 38);
-              doc.text('TAREA COMPLETADA SIN EVIDENCIA FOTOGRÁFICA', 14, currentY);
-              currentY += 12;
-            } else if (item.requiresAntesDespues && (!item.photoAntes || !item.photoDespues)) {
-              doc.setTextColor(220, 38, 38);
-              doc.text('FALTAN EVIDENCIAS DE ANTES Y/O DESPUES', 14, currentY);
-              currentY += 12;
-            }
-
-            const availableHeight = pageHeight - currentY - 20;
-
+            // Renderizado de fotos
             if (item.requiresAntesDespues) {
-              const photoWidth = (pageWidth - 42) / 2;
-              const maxPhotoHeight = availableHeight - 15;
+              // ANTES y DESPUÉS lado a lado
+              const halfW = (pageW - M * 2 - 8) / 2;
+              const maxH = pageH - yFoto - 25;
 
-              let imgAntes = item.photoAntes ? await getBase64Image(item.photoAntes) : null;
-              let imgDespues = item.photoDespues ? await getBase64Image(item.photoDespues) : null;
+              const imgA = item.photoAntes ? await getBase64Image(item.photoAntes) : null;
+              const imgD = item.photoDespues ? await getBase64Image(item.photoDespues) : null;
 
-              doc.setTextColor(15, 23, 42);
-              doc.setFont('helvetica', 'bold');
-              doc.text(`EVIDENCIA: ANTES ${item.photoAntesTime ? '(' + item.photoAntesTime + ')' : ''}`, 14, currentY + 5);
-              if (imgAntes) {
-                const imgProps = doc.getImageProperties(imgAntes);
-                const { finalW, finalH } = calculateFit(imgProps.width, imgProps.height, photoWidth, maxPhotoHeight);
-                const x = 14 + (photoWidth - finalW) / 2;
-                doc.addImage(imgAntes, 'JPEG', x, currentY + 10, finalW, finalH);
+              // ANTES
+              doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(...C.gray);
+              doc.text(`ANTES${item.photoAntesTime ? '  ·  ' + item.photoAntesTime : ''}`,
+                       M, yFoto, { charSpace: 1.2 });
+              if (imgA) {
+                const p = doc.getImageProperties(imgA);
+                const fit = fitImage(p, halfW, maxH);
+                doc.setDrawColor(...C.line); doc.setLineWidth(0.3);
+                doc.rect(M, yFoto + 3, fit.w, fit.h);
+                doc.addImage(imgA, 'JPEG', M, yFoto + 3, fit.w, fit.h);
               } else {
-                doc.setTextColor(220, 38, 38);
-                doc.setFont('helvetica', 'normal');
-                doc.text('Sin imagen de "Antes"', 14, currentY + 15);
+                doc.setFillColor(...C.bg);
+                doc.rect(M, yFoto + 3, halfW, maxH * 0.6, 'F');
+                doc.setFont('helvetica', 'italic'); doc.setFontSize(9); doc.setTextColor(...C.soft);
+                doc.text('Sin imagen de antes', M + halfW / 2, yFoto + 3 + maxH * 0.3, { align: 'center' });
               }
 
-              doc.setTextColor(16, 185, 129);
-              doc.setFont('helvetica', 'bold');
-              doc.text(`EVIDENCIA: DESPUÉS ${item.photoDespuesTime ? '(' + item.photoDespuesTime + ')' : ''}`, 14 + photoWidth + 14, currentY + 5);
-              if (imgDespues) {
-                const imgProps = doc.getImageProperties(imgDespues);
-                const { finalW, finalH } = calculateFit(imgProps.width, imgProps.height, photoWidth, maxPhotoHeight);
-                const x = 14 + photoWidth + 14 + (photoWidth - finalW) / 2;
-                doc.addImage(imgDespues, 'JPEG', x, currentY + 10, finalW, finalH);
+              // DESPUÉS
+              const xD = M + halfW + 8;
+              doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(...C.gray);
+              doc.text(`DESPUÉS${item.photoDespuesTime ? '  ·  ' + item.photoDespuesTime : ''}`,
+                       xD, yFoto, { charSpace: 1.2 });
+              if (imgD) {
+                const p = doc.getImageProperties(imgD);
+                const fit = fitImage(p, halfW, maxH);
+                doc.setDrawColor(...C.line); doc.setLineWidth(0.3);
+                doc.rect(xD, yFoto + 3, fit.w, fit.h);
+                doc.addImage(imgD, 'JPEG', xD, yFoto + 3, fit.w, fit.h);
               } else {
-                doc.setTextColor(220, 38, 38);
-                doc.setFont('helvetica', 'normal');
-                doc.text('Sin imagen de "Después"', 14 + photoWidth + 14, currentY + 15);
+                doc.setFillColor(...C.bg);
+                doc.rect(xD, yFoto + 3, halfW, maxH * 0.6, 'F');
+                doc.setFont('helvetica', 'italic'); doc.setFontSize(9); doc.setTextColor(...C.soft);
+                doc.text('Sin imagen de después', xD + halfW / 2, yFoto + 3 + maxH * 0.3, { align: 'center' });
               }
-
-            } else if (item.requiresPhoto || item.photo) {
-              const photoWidth = pageWidth - 28;
-              const maxPhotoHeight = availableHeight - 15;
-
-              let img = item.photo ? await getBase64Image(item.photo) : null;
+            } else if (Array.isArray(item.photos) && item.photos.length > 0) {
+              // Galería de varias fotos en grid 2 columnas
+              doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(...C.gray);
+              doc.text(`${item.photos.length} FOTOGRAFIAS`, M, yFoto, { charSpace: 1.2 });
+              const halfW = (pageW - M * 2 - 6) / 2;
+              const maxH = (pageH - yFoto - 25) / Math.ceil(item.photos.length / 2);
+              let fx = M; let fy = yFoto + 3;
+              for (let k = 0; k < item.photos.length; k++) {
+                const url = (item.photos[k] && item.photos[k].url) ? item.photos[k].url : item.photos[k];
+                const data = await getBase64Image(url);
+                if (data) {
+                  doc.setDrawColor(...C.line); doc.setLineWidth(0.3);
+                  doc.rect(fx, fy, halfW, maxH - 4);
+                  try {
+                    const p = doc.getImageProperties(data);
+                    const fit = fitImage(p, halfW, maxH - 4);
+                    doc.addImage(data, 'JPEG', fx, fy, fit.w, fit.h);
+                  } catch { /* ignora */ }
+                }
+                if (k % 2 === 0) { fx = M + halfW + 6; }
+                else { fx = M; fy += maxH; }
+              }
+            } else if (item.photo) {
+              // Foto única grande
+              doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(...C.gray);
+              doc.text(`EVIDENCIA FOTOGRAFICA${item.photoTime ? '  ·  ' + item.photoTime : ''}`,
+                       M, yFoto, { charSpace: 1.2 });
+              const img = await getBase64Image(item.photo);
               if (img) {
-                doc.setTextColor(15, 23, 42);
-                doc.setFont('helvetica', 'bold');
-                doc.text(`EVIDENCIA FOTOGRÁFICA ${item.photoTime ? '(' + item.photoTime + ')' : ''}`, 14, currentY + 5);
-
-                const imgProps = doc.getImageProperties(img);
-                const { finalW, finalH } = calculateFit(imgProps.width, imgProps.height, photoWidth, maxPhotoHeight);
-                const x = 14 + (photoWidth - finalW) / 2;
-                doc.addImage(img, 'JPEG', x, currentY + 10, finalW, finalH);
+                const p = doc.getImageProperties(img);
+                const fit = fitImage(p, pageW - M * 2, pageH - yFoto - 25);
+                const xC = M + ((pageW - M * 2) - fit.w) / 2;
+                doc.setDrawColor(...C.line); doc.setLineWidth(0.3);
+                doc.rect(xC, yFoto + 3, fit.w, fit.h);
+                doc.addImage(img, 'JPEG', xC, yFoto + 3, fit.w, fit.h);
               }
             }
           }
         }
+
+        // ----- LISTA DE ITEMS SIN FOTO (todos juntos al final) -----
+        const sinFoto = items.filter((it: any) =>
+          !it.photo && !it.photoAntes && !it.photoDespues &&
+          !(Array.isArray(it.photos) && it.photos.length > 0));
+        if (sinFoto.length > 0) {
+          doc.addPage();
+          doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...C.gray);
+          doc.text(`${cleanText(checklist.name).toUpperCase()}  ·  TAREAS SIN FOTO`,
+                   M, 22, { charSpace: 1.2 });
+          doc.setDrawColor(...C.line); doc.line(M, 26, pageW - M, 26);
+
+          doc.setFont('helvetica', 'bold'); doc.setFontSize(22); doc.setTextColor(...C.navy);
+          doc.text('Tareas sin evidencia', M, 42);
+          doc.setDrawColor(...C.navy); doc.setLineWidth(0.5);
+          doc.line(M, 46, M + 22, 46);
+
+          let yS = 58;
+          for (let k = 0; k < sinFoto.length; k++) {
+            const it = sinFoto[k];
+            if (yS > pageH - 20) {
+              doc.addPage();
+              doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...C.gray);
+              doc.text(`${cleanText(checklist.name).toUpperCase()}  ·  TAREAS SIN FOTO`,
+                       M, 22, { charSpace: 1.2 });
+              doc.setDrawColor(...C.line); doc.line(M, 26, pageW - M, 26);
+              yS = 38;
+            }
+            const c = it.checked ? C.ok : C.soft;
+            doc.setFillColor(...c); doc.circle(M + 2, yS + 3, 1.5, 'F');
+            doc.setFont('helvetica', 'normal'); doc.setFontSize(11); doc.setTextColor(...C.ink);
+            const tx = doc.splitTextToSize(cleanText(it.text || '(sin descripción)'), pageW - M * 2 - 35);
+            doc.text(tx, M + 8, yS + 4);
+            doc.setFont('helvetica', 'bold'); doc.setFontSize(7); doc.setTextColor(...c);
+            doc.text(it.checked ? 'HECHO' : 'PENDIENTE', pageW - M, yS + 4, { align: 'right' });
+            yS += Math.max(8, tx.length * 5 + 3);
+            doc.setDrawColor(...C.line); doc.setLineWidth(0.1);
+            doc.line(M + 8, yS, pageW - M, yS);
+            yS += 3;
+          }
+        }
       }
 
-      const pageCount = doc.getNumberOfPages();
-      for (let i = 1; i <= pageCount; i++) {
+      // FOOTER consistente
+      const totalPag = doc.getNumberOfPages();
+      for (let i = 2; i <= totalPag; i++) {
         doc.setPage(i);
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(8);
-        doc.setTextColor(148, 163, 184);
-        doc.text(`Mega Dulces App - Página ${i} de ${pageCount}`, pageWidth / 2, pageHeight - 8, { align: 'center' });
+        doc.setDrawColor(...C.line); doc.setLineWidth(0.2);
+        doc.line(M, pageH - 12, pageW - M, pageH - 12);
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(...C.soft);
+        doc.text(`MEGA DULCES  ·  Auditoría Visual  ·  ${this.fechaInicio} al ${this.fechaFin}`, M, pageH - 7);
+        doc.text(`${i} / ${totalPag}`, pageW - M, pageH - 7, { align: 'right' });
       }
 
-      // 🆕 Incluir sucursal en el nombre del archivo si está filtrado
       const sufijoSucursal = this.sucursalSeleccionada ? `_${this.sucursalSeleccionada.replace(/\s+/g, '_')}` : '';
       doc.save(`Auditoria_Visual${sufijoSucursal}_${this.fechaInicio}_al_${this.fechaFin}.pdf`);
     } catch (error) {

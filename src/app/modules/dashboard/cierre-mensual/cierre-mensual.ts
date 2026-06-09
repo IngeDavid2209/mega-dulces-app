@@ -613,17 +613,23 @@ export class CierreMensualComponent implements OnInit, OnDestroy {
         doc.text(`SECCIÓN ${String(secNum).padStart(2, '0')}  //  SUCURSAL`, M, kY, { charSpace: 1.5 });
         secNum++;
 
-        // Nombre de sucursal (grande)
+        // Nombre de sucursal (grande). Si tiene más de 2 líneas trunca.
         doc.setTextColor(...C.navy); doc.setFont('helvetica', 'bold'); doc.setFontSize(30);
-        const nameLines = doc.splitTextToSize(s.sucursal.toUpperCase(), pageW - M * 2 - 60);
+        let nameLines = doc.splitTextToSize(s.sucursal.toUpperCase(), pageW - M * 2 - 60);
+        if (nameLines.length > 2) {
+          const dos = nameLines.slice(0, 2);
+          dos[1] = dos[1].replace(/\s+\S*$/, '') + '...';
+          nameLines = dos;
+        }
         doc.text(nameLines, M, kY + 12);
 
-        // Porcentaje a la derecha (estilo magazine pull-quote)
+        // Porcentaje pull-quote — Y ajustada según número de líneas del título
+        const pctYBase = nameLines.length === 1 ? kY + 18 : kY + 28;
         const pctColor = s.porcentaje >= 80 ? C.ok : (s.porcentaje >= 50 ? C.warn : C.bad);
         doc.setTextColor(...pctColor); doc.setFont('helvetica', 'bold'); doc.setFontSize(56);
-        doc.text(`${s.porcentaje}%`, pageW - M, kY + 18, { align: 'right' });
+        doc.text(`${s.porcentaje}%`, pageW - M, pctYBase, { align: 'right' });
         doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...C.gray);
-        doc.text('CUMPLIMIENTO', pageW - M, kY + 25, { align: 'right', charSpace: 1.2 });
+        doc.text('CUMPLIMIENTO', pageW - M, pctYBase + 7, { align: 'right', charSpace: 1.2 });
 
         // Línea decorativa dorada bajo el título
         const lineaY = kY + 14 + nameLines.length * 11;

@@ -1017,19 +1017,26 @@ export class ReportesComponent implements OnInit, OnDestroy {
         doc.text(`SECCIÓN ${String(secNum).padStart(2, '0')}  //  CHECKLIST ${idx + 1} DE ${resultados.length}`, M, 40, { charSpace: 1.5 });
         secNum++;
 
-        // Nombre del checklist (título grande)
+        // Nombre del checklist (título grande). Si excede 2 líneas, trunca con "..."
         doc.setFont('helvetica', 'bold'); doc.setFontSize(28); doc.setTextColor(...C.navy);
-        const nameLines = doc.splitTextToSize(cleanText(checklist.name), pageW - M * 2 - 50);
+        let nameLines = doc.splitTextToSize(cleanText(checklist.name), pageW - M * 2 - 50);
+        if (nameLines.length > 2) {
+          const dos = nameLines.slice(0, 2);
+          dos[1] = dos[1].replace(/\s+\S*$/, '') + '...';
+          nameLines = dos;
+        }
         doc.text(nameLines, M, 56);
-        doc.setDrawColor(...C.navy); doc.setLineWidth(0.6);
-        doc.line(M, 58 + nameLines.length * 11, M + 22, 58 + nameLines.length * 11);
+        doc.setDrawColor(...C.gold); doc.setLineWidth(1);
+        const subY = 58 + nameLines.length * 11;
+        doc.line(M, subY, M + 30, subY);
 
-        // Porcentaje pull-quote a la derecha
+        // Porcentaje pull-quote a la derecha — su Y se ajusta según las líneas del título
+        const pctY = nameLines.length === 1 ? 70 : 82;
         const pctColor = progreso === 100 ? C.ok : (progreso >= 50 ? C.warn : C.bad);
         doc.setTextColor(...pctColor); doc.setFont('helvetica', 'bold'); doc.setFontSize(48);
-        doc.text(`${progreso}%`, pageW - M, 70, { align: 'right' });
+        doc.text(`${progreso}%`, pageW - M, pctY, { align: 'right' });
         doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...C.gray);
-        doc.text('AVANCE GLOBAL', pageW - M, 76, { align: 'right', charSpace: 1.2 });
+        doc.text('AVANCE GLOBAL', pageW - M, pctY + 6, { align: 'right', charSpace: 1.2 });
 
         // Datos en formato editorial (clave: valor, una por línea)
         let yDatos = 58 + nameLines.length * 11 + 18;
@@ -1043,10 +1050,13 @@ export class ReportesComponent implements OnInit, OnDestroy {
           doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...C.gray);
           doc.text(d.k.toUpperCase(), M, yDatos, { charSpace: 1.2 });
           doc.setFont('helvetica', 'bold'); doc.setFontSize(13); doc.setTextColor(...C.ink);
-          doc.text(d.v, M, yDatos + 7);
+          // Split en multilínea por si el valor es largo (responsable con apellido largo o sucursal compleja)
+          const valorLines = doc.splitTextToSize(d.v, pageW - M * 2);
+          doc.text(valorLines, M, yDatos + 7);
+          const extraH = (valorLines.length - 1) * 5;
           doc.setDrawColor(...C.line); doc.setLineWidth(0.2);
-          doc.line(M, yDatos + 10, pageW - M, yDatos + 10);
-          yDatos += 16;
+          doc.line(M, yDatos + 10 + extraH, pageW - M, yDatos + 10 + extraH);
+          yDatos += 16 + extraH;
         }
 
         // Comentario del colaborador (si existe) — bloque ámbar
@@ -1074,9 +1084,11 @@ export class ReportesComponent implements OnInit, OnDestroy {
           // Para items sin foto: agrupamos varios en una sola página
           if (tieneFoto) {
             doc.addPage();
-            // Kicker
+            // Kicker (con nombre truncado si es muy largo para que "TAREA X / Y" siempre se vea)
             doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...C.gray);
-            doc.text(`${cleanText(checklist.name).toUpperCase()}  ·  TAREA ${j + 1} / ${items.length}`,
+            const nombreCorto = cleanText(checklist.name).toUpperCase();
+            const nombreTrunc = nombreCorto.length > 48 ? nombreCorto.slice(0, 45) + '...' : nombreCorto;
+            doc.text(`${nombreTrunc}  ·  TAREA ${j + 1} / ${items.length}`,
                      M, 22, { charSpace: 1.2 });
             // Línea fina
             doc.setDrawColor(...C.line); doc.line(M, 26, pageW - M, 26);
@@ -1187,9 +1199,13 @@ export class ReportesComponent implements OnInit, OnDestroy {
           !it.photo && !it.photoAntes && !it.photoDespues &&
           !(Array.isArray(it.photos) && it.photos.length > 0));
         if (sinFoto.length > 0) {
+          // Helper de truncado para los kickers de esta sección
+          const nombreUpper = cleanText(checklist.name).toUpperCase();
+          const kickerNombre = nombreUpper.length > 52 ? nombreUpper.slice(0, 49) + '...' : nombreUpper;
+
           doc.addPage();
           doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...C.gray);
-          doc.text(`${cleanText(checklist.name).toUpperCase()}  ·  TAREAS SIN FOTO`,
+          doc.text(`${kickerNombre}  ·  TAREAS SIN FOTO`,
                    M, 22, { charSpace: 1.2 });
           doc.setDrawColor(...C.line); doc.line(M, 26, pageW - M, 26);
 
@@ -1204,7 +1220,7 @@ export class ReportesComponent implements OnInit, OnDestroy {
             if (yS > pageH - 20) {
               doc.addPage();
               doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...C.gray);
-              doc.text(`${cleanText(checklist.name).toUpperCase()}  ·  TAREAS SIN FOTO`,
+              doc.text(`${kickerNombre}  ·  TAREAS SIN FOTO`,
                        M, 22, { charSpace: 1.2 });
               doc.setDrawColor(...C.line); doc.line(M, 26, pageW - M, 26);
               yS = 38;

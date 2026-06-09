@@ -41,6 +41,12 @@ export const routes: Routes = [
     canActivate: [authGuard],
     loadComponent: () => import('./modules/dashboard/ranking-sucursales/ranking-sucursales').then(m => m.RankingSucursalesComponent)
   },
+  // 📄 CIERRE MENSUAL DE OPERACIONES (PDF con fotos por sucursal)
+  {
+    path: 'cierre-mensual',
+    canActivate: [authGuard],
+    loadComponent: () => import('./modules/dashboard/cierre-mensual/cierre-mensual').then(m => m.CierreMensualComponent)
+  },
   { 
     path: 'reportes', 
     canActivate: [authGuard],

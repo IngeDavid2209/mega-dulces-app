@@ -287,13 +287,10 @@ export class CierreMensualComponent implements OnInit, OnDestroy {
       Swal.fire({ icon: 'info', title: 'Sin datos', text: 'No hay checklists en el mes seleccionado.', confirmButtonColor: '#0F172A' });
       return;
     }
-    // Aviso explícito si hay muchas fotos (PDF pesado / tiempo)
     if (totales.totalFotos > 200) {
       const r = await Swal.fire({
         title: 'Reporte grande',
-        html: `Vas a generar un PDF con <strong>${totales.totalFotos}</strong> fotos.<br>
-               Puede pesar 30-80 MB y tardar 1-3 minutos.<br>
-               ¿Continuar?`,
+        html: `Vas a generar un PDF con <strong>${totales.totalFotos}</strong> fotos. Puede tardar 1-3 minutos. ¿Continuar?`,
         icon: 'warning', showCancelButton: true,
         confirmButtonText: 'Sí, generar', cancelButtonText: 'Cancelar',
         confirmButtonColor: '#0F172A'
@@ -303,8 +300,8 @@ export class CierreMensualComponent implements OnInit, OnDestroy {
 
     this.generandoPDF.set(true);
     Swal.fire({
-      title: 'Generando PDF mensual...',
-      html: '<p>Descargando librerías y comprimiendo fotos. No cierres la pestaña.</p><div id="cm-progreso" style="font-size:12px;color:#64748B;margin-top:8px"></div>',
+      title: 'Generando reporte...',
+      html: '<p style="font-size:13px;color:#475569">Preparando el documento, no cierres la pestaña.</p><div id="cm-progreso" style="font-size:12px;color:#64748B;margin-top:8px"></div>',
       allowOutsideClick: false,
       didOpen: () => Swal.showLoading()
     });
@@ -316,17 +313,25 @@ export class CierreMensualComponent implements OnInit, OnDestroy {
       const doc = new jsPDF('p', 'mm', 'a4');
       const pageW = doc.internal.pageSize.getWidth();
       const pageH = doc.internal.pageSize.getHeight();
-      const margenX = 12;
+      const M = 18; // margen lateral generoso
       const sucursales = this.agrupadoPorSucursal();
       const fechaGen = new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'long', year: 'numeric' });
 
-      // ========================================================================
-      // PRE-CARGA DE FOTOS: descargamos todos los thumbnails una sola vez antes
-      // de empezar a dibujar, para que el progreso sea visible y evitar reintentos
-      // dentro del loop de tablas.
-      // ========================================================================
+      // Paleta corporativa unificada
+      const C = {
+        navy:  [15, 23, 42] as [number, number, number],
+        ink:   [30, 41, 59] as [number, number, number],
+        gray:  [100, 116, 139] as [number, number, number],
+        soft:  [148, 163, 184] as [number, number, number],
+        line:  [226, 232, 240] as [number, number, number],
+        bg:    [248, 250, 252] as [number, number, number],
+        ok:    [16, 185, 129] as [number, number, number],
+        warn:  [245, 158, 11] as [number, number, number],
+        bad:   [239, 68, 68] as [number, number, number]
+      };
+
+      // ----- PRE-CARGA DE FOTOS -----
       let totalFotosProcesadas = 0;
-      // Mapa: itemId -> array de base64
       const fotosCache = new Map<string, string[]>();
       const itemKey = (suc: string, chkId: string, idx: number) => `${suc}|${chkId}|${idx}`;
       for (const s of sucursales) {
@@ -336,13 +341,12 @@ export class CierreMensualComponent implements OnInit, OnDestroy {
             if (it.fotos.length === 0) continue;
             const thumbs: string[] = [];
             for (const fotoUrl of it.fotos) {
-              const thumb = this.convertirAThumbnail(fotoUrl);
-              const data = await this.cargarComoBase64(thumb);
+              const data = await this.cargarComoBase64(this.convertirAThumbnail(fotoUrl));
               if (data) {
                 thumbs.push(data);
                 totalFotosProcesadas++;
                 const elProgreso = document.getElementById('cm-progreso');
-                if (elProgreso) elProgreso.textContent = `Cargando fotos: ${totalFotosProcesadas} de ${totales.totalFotos}...`;
+                if (elProgreso) elProgreso.textContent = `Procesando fotos: ${totalFotosProcesadas} de ${totales.totalFotos}`;
               }
             }
             if (thumbs.length > 0) fotosCache.set(itemKey(s.sucursal, c.id, i), thumbs);
@@ -350,268 +354,307 @@ export class CierreMensualComponent implements OnInit, OnDestroy {
         }
       }
 
-      // ========================================================================
-      // PORTADA: header oscuro + tabla ejecutiva + tabla resumen por sucursal
-      // ========================================================================
-      // Banda oscura superior
-      doc.setFillColor(15, 23, 42);
-      doc.rect(0, 0, pageW, 22, 'F');
-      doc.setTextColor(255, 255, 255);
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(11);
-      doc.text('MEGA DULCES · CIERRE MENSUAL', margenX, 9);
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(180, 195, 220);
-      doc.text(`Generado el ${fechaGen}`, pageW - margenX, 9, { align: 'right' });
-      // Mes destacado
-      doc.setTextColor(255, 255, 255); doc.setFont('helvetica', 'bold'); doc.setFontSize(15);
-      doc.text(this.mesEtiqueta().toUpperCase(), margenX, 17);
+      // =====================================================================
+      // PÁGINA 1 — PORTADA (estilo libro / annual report)
+      // =====================================================================
+      // Marca discreta arriba
+      doc.setDrawColor(...C.navy);
+      doc.setLineWidth(0.5);
+      doc.line(M, 30, M + 16, 30);
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(...C.gray);
+      doc.text('MEGA DULCES', M, 36);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(8);
+      doc.text('Reporte ejecutivo', M, 41);
 
-      // Tabla ejecutiva (4 KPIs)
-      autoTable(doc, {
-        startY: 30,
-        body: [[
-          { content: totales.totalChecklists.toString(),
-            styles: { halign: 'center', fontSize: 18, fontStyle: 'bold', textColor: [15, 23, 42] } },
-          { content: `${totales.totalHechas} / ${totales.totalTareas}`,
-            styles: { halign: 'center', fontSize: 18, fontStyle: 'bold', textColor: [15, 23, 42] } },
-          { content: `${totales.porcentaje}%`,
-            styles: { halign: 'center', fontSize: 22, fontStyle: 'bold', textColor: [16, 185, 129] } },
-          { content: totales.totalFotos.toString(),
-            styles: { halign: 'center', fontSize: 18, fontStyle: 'bold', textColor: [15, 23, 42] } }
-        ], [
-          { content: 'CHECKLISTS', styles: { halign: 'center', fontSize: 8, textColor: [100, 116, 139] } },
-          { content: 'TAREAS HECHAS', styles: { halign: 'center', fontSize: 8, textColor: [100, 116, 139] } },
-          { content: 'CUMPLIMIENTO', styles: { halign: 'center', fontSize: 8, textColor: [100, 116, 139] } },
-          { content: 'FOTOS', styles: { halign: 'center', fontSize: 8, textColor: [100, 116, 139] } }
-        ]],
-        theme: 'grid',
-        styles: { lineColor: [226, 232, 240], lineWidth: 0.3, cellPadding: { top: 4, bottom: 4 } },
-        margin: { left: margenX, right: margenX }
-      });
+      // Título principal — mucho aire, tipografía dominante
+      doc.setTextColor(...C.navy);
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(56);
+      doc.text('Cierre', M, pageH * 0.42);
+      doc.text('Mensual', M, pageH * 0.42 + 22);
 
-      // Tabla resumen por sucursal con barra de progreso
-      const sucBody = sucursales.map(s => [
-        s.sucursal,
-        s.totalChecklists.toString(),
-        s.totalTareas.toString(),
-        s.totalHechas.toString(),
-        s.totalFotos.toString(),
-        `${s.porcentaje}%`
-      ]);
-      autoTable(doc, {
-        startY: (doc as any).lastAutoTable.finalY + 8,
-        head: [['SUCURSAL', 'CHK', 'TAREAS', 'HECHAS', 'FOTOS', 'CUMPL.']],
-        body: sucBody,
-        theme: 'striped',
-        headStyles: { fillColor: [15, 23, 42], textColor: 255, fontSize: 9, halign: 'center' },
-        bodyStyles: { fontSize: 9 },
-        columnStyles: {
-          0: { cellWidth: 'auto', halign: 'left' },
-          1: { halign: 'center' }, 2: { halign: 'center' }, 3: { halign: 'center' },
-          4: { halign: 'center' },
-          5: { halign: 'center', fontStyle: 'bold' }
-        },
-        margin: { left: margenX, right: margenX },
-        // Pinta de color la celda de cumplimiento según el porcentaje
-        didParseCell: (data: any) => {
-          if (data.section === 'body' && data.column.index === 5) {
-            const pct = parseInt((data.cell.text[0] || '0').replace('%', ''), 10) || 0;
-            if (pct >= 80) data.cell.styles.textColor = [16, 185, 129];
-            else if (pct >= 50) data.cell.styles.textColor = [245, 158, 11];
-            else data.cell.styles.textColor = [239, 68, 68];
-          }
-        }
-      });
+      // Subtítulo
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(16); doc.setTextColor(...C.gray);
+      doc.text(this.mesEtiqueta(), M, pageH * 0.42 + 36);
 
-      // ========================================================================
-      // UNA PÁGINA POR SUCURSAL
-      // ========================================================================
-      for (let sIdx = 0; sIdx < sucursales.length; sIdx++) {
-        const s = sucursales[sIdx];
-        doc.addPage();
+      // Línea separadora
+      doc.setDrawColor(...C.navy); doc.setLineWidth(1);
+      doc.line(M, pageH * 0.42 + 44, M + 30, pageH * 0.42 + 44);
 
-        // ---- Header oscuro: nombre + % grande + mini-gráfica ----
-        doc.setFillColor(15, 23, 42);
-        doc.rect(0, 0, pageW, 38, 'F');
-        // Nombre de sucursal
-        doc.setTextColor(255, 255, 255);
-        doc.setFont('helvetica', 'bold'); doc.setFontSize(16);
-        doc.text(s.sucursal.toUpperCase(), margenX, 14);
-        doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(180, 195, 220);
-        doc.text(`${s.totalChecklists} checklists · ${s.totalHechas}/${s.totalTareas} tareas · ${s.totalFotos} fotos`, margenX, 21);
+      // Pie de portada
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...C.gray);
+      doc.text(`Generado el ${fechaGen}`, M, pageH - 30);
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(...C.navy);
+      doc.text('MEGA DULCES DE LOS ALTOS', M, pageH - 24);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...C.soft);
+      doc.text(`Documento confidencial · uso interno`, M, pageH - 18);
 
-        // Porcentaje grande
-        const pctColor: [number, number, number] = s.porcentaje >= 80 ? [110, 231, 183]
-                                                  : s.porcentaje >= 50 ? [253, 224, 71] : [252, 165, 165];
-        doc.setTextColor(...pctColor);
-        doc.setFont('helvetica', 'bold'); doc.setFontSize(28);
-        doc.text(`${s.porcentaje}%`, pageW - margenX, 16, { align: 'right' });
-        doc.setFontSize(8); doc.setTextColor(180, 195, 220); doc.setFont('helvetica', 'normal');
-        doc.text('CUMPLIMIENTO', pageW - margenX, 21, { align: 'right' });
+      // =====================================================================
+      // PÁGINA 2 — RESUMEN EJECUTIVO
+      // =====================================================================
+      doc.addPage();
+      this.dibujarHeaderPagina(doc, pageW, M, this.mesEtiqueta(), 'Resumen ejecutivo', C);
 
-        // Mini sparkline de tendencia diaria
-        this.dibujarSparkline(doc, s.tendenciaDiaria, margenX, 26, pageW - margenX * 2, 8);
-
-        let y = 44;
-
-        // ---- Top 3 empleados del mes (si existen) ----
-        if (s.topEmpleados.length > 0) {
-          doc.setTextColor(15, 23, 42);
-          doc.setFont('helvetica', 'bold'); doc.setFontSize(10);
-          doc.text('TOP 3 DEL MES', margenX, y);
-          y += 4;
-          // 3 cajitas oro / plata / bronce
-          const tw = (pageW - margenX * 2 - 8) / 3;
-          const medallas = [
-            { bg: [251, 191, 36], text: [120, 53, 15], label: 'Oro' },
-            { bg: [203, 213, 225], text: [30, 41, 59], label: 'Plata' },
-            { bg: [217, 119, 6], text: [255, 255, 255], label: 'Bronce' }
-          ];
-          for (let i = 0; i < 3; i++) {
-            if (!s.topEmpleados[i]) continue;
-            const emp = s.topEmpleados[i];
-            const med = medallas[i];
-            const x = margenX + i * (tw + 4);
-            doc.setFillColor(med.bg[0], med.bg[1], med.bg[2]);
-            doc.roundedRect(x, y, tw, 18, 2, 2, 'F');
-            doc.setTextColor(med.text[0], med.text[1], med.text[2]);
-            doc.setFont('helvetica', 'bold'); doc.setFontSize(9);
-            doc.text(`#${i + 1} ${med.label.toUpperCase()}`, x + 3, y + 5);
-            doc.setFontSize(11);
-            const nombreCorto = emp.nombre.length > 26 ? emp.nombre.slice(0, 24) + '..' : emp.nombre;
-            doc.text(nombreCorto, x + 3, y + 11);
-            doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
-            doc.text(`${emp.porcentaje}% · ${emp.hechas}/${emp.totales}`, x + 3, y + 16);
-          }
-          y += 24;
-        }
-
-        // ---- Tabla principal: una fila por item ----
-        // Aplanamos los items de todos los checklists con info de su parent
-        type FilaItem = {
-          numero: number;
-          tarea: string;
-          empleado: string;
-          fecha: string;
-          estado: string;
-          comentario: string;
-          fotosBase64: string[];
-        };
-        const filas: FilaItem[] = [];
-        let n = 1;
-        for (const c of s.checklists) {
-          // Comentario / motivo a nivel del checklist
-          let comentarioGlobal = '';
-          if (c.entregaConRetraso) {
-            const cat = c.motivoCategoria ? `[${c.motivoCategoria}] ` : '';
-            comentarioGlobal = `RETRASO JUSTIFICADO ${cat}${c.motivoComentario || ''}`.trim();
-          }
-          if (c.notaEmpleado) {
-            comentarioGlobal = (comentarioGlobal ? comentarioGlobal + '\n' : '') + `Nota: ${c.notaEmpleado}`;
-          }
-          for (let i = 0; i < c.itemsConFotos.length; i++) {
-            const it = c.itemsConFotos[i];
-            filas.push({
-              numero: n++,
-              tarea: `${c.name}\n${it.texto}`,
-              empleado: c.assigned,
-              fecha: c.date,
-              estado: it.completado ? 'HECHO' : (c.entregaConRetraso ? 'RETRASO' : 'NO'),
-              comentario: comentarioGlobal,
-              fotosBase64: fotosCache.get(itemKey(s.sucursal, c.id, i)) || []
-            });
-          }
-        }
-
-        // Anchos por columna
-        const colWidths = {
-          numero: 8,
-          tarea: 50,
-          empleado: 28,
-          fecha: 18,
-          estado: 16,
-          comentario: 32,
-          fotos: pageW - margenX * 2 - (8 + 50 + 28 + 18 + 16 + 32)
-        };
-
-        autoTable(doc, {
-          startY: y,
-          head: [['#', 'CHECKLIST · TAREA', 'EMPLEADO', 'FECHA', 'EST.', 'NOTAS / RETRASO', 'EVIDENCIA']],
-          body: filas.map(f => [f.numero, f.tarea, f.empleado, f.fecha, f.estado, f.comentario, '']),
-          theme: 'grid',
-          headStyles: {
-            fillColor: [30, 58, 138], textColor: 255, fontSize: 8, halign: 'center',
-            cellPadding: 2
-          },
-          bodyStyles: { fontSize: 8, cellPadding: 2, valign: 'top', lineColor: [226, 232, 240], lineWidth: 0.2 },
-          columnStyles: {
-            0: { cellWidth: colWidths.numero, halign: 'center' },
-            1: { cellWidth: colWidths.tarea },
-            2: { cellWidth: colWidths.empleado },
-            3: { cellWidth: colWidths.fecha, halign: 'center' },
-            4: { cellWidth: colWidths.estado, halign: 'center', fontStyle: 'bold' },
-            5: { cellWidth: colWidths.comentario, fontSize: 7 },
-            6: { cellWidth: colWidths.fotos }
-          },
-          margin: { left: margenX, right: margenX },
-          // Colorea celda de estado según el valor
-          didParseCell: (data: any) => {
-            if (data.section === 'body' && data.column.index === 4) {
-              const v = (data.cell.text[0] || '').toString();
-              if (v === 'HECHO') { data.cell.styles.fillColor = [220, 252, 231]; data.cell.styles.textColor = [22, 101, 52]; }
-              else if (v === 'RETRASO') { data.cell.styles.fillColor = [254, 215, 170]; data.cell.styles.textColor = [154, 52, 18]; }
-              else { data.cell.styles.fillColor = [254, 226, 226]; data.cell.styles.textColor = [153, 27, 27]; }
-            }
-          },
-          // Calcula la altura mínima de la fila según número de fotos (para que quepan)
-          willDrawCell: (data: any) => {
-            if (data.section === 'body' && data.column.index === 6) {
-              const fila = filas[data.row.index];
-              if (!fila) return;
-              const n = fila.fotosBase64.length;
-              if (n === 0) return;
-              const fotosPorFila = 3;
-              const filasFotos = Math.ceil(n / fotosPorFila);
-              const altoFoto = 11; // mm
-              const necesario = filasFotos * altoFoto + 2;
-              if (data.row.height < necesario) data.row.height = necesario;
-            }
-          },
-          // Dibuja las fotos dentro de la celda
-          didDrawCell: (data: any) => {
-            if (data.section !== 'body' || data.column.index !== 6) return;
-            const fila = filas[data.row.index];
-            if (!fila || fila.fotosBase64.length === 0) {
-              // Marca "sin fotos" en gris claro
-              doc.setFont('helvetica', 'italic'); doc.setFontSize(7); doc.setTextColor(148, 163, 184);
-              doc.text('—', data.cell.x + data.cell.width / 2, data.cell.y + data.cell.height / 2 + 1, { align: 'center' });
-              return;
-            }
-            const fotoW = (data.cell.width - 2) / 3 - 1;
-            const fotoH = 10;
-            let fx = data.cell.x + 1;
-            let fy = data.cell.y + 1;
-            for (let i = 0; i < fila.fotosBase64.length; i++) {
-              if (i > 0 && i % 3 === 0) { fx = data.cell.x + 1; fy += fotoH + 1; }
-              try { doc.addImage(fila.fotosBase64[i], 'JPEG', fx, fy, fotoW, fotoH); } catch { /* ignora */ }
-              fx += fotoW + 1;
-            }
-          }
-        });
+      // KPIs en 2x2 grandes, con tipografía generosa
+      const kpiY = 48;
+      const kpiW = (pageW - M * 2 - 8) / 2;
+      const kpiH = 30;
+      const kpis = [
+        { num: `${totales.porcentaje}%`,  label: 'Cumplimiento general',     color: totales.porcentaje >= 80 ? C.ok : (totales.porcentaje >= 50 ? C.warn : C.bad) },
+        { num: totales.totalChecklists.toString(), label: 'Checklists procesados', color: C.navy },
+        { num: `${totales.totalHechas}`,  label: `Tareas validadas (de ${totales.totalTareas})`, color: C.navy },
+        { num: totales.totalFotos.toString(), label: 'Fotografías de evidencia', color: C.navy }
+      ];
+      for (let i = 0; i < kpis.length; i++) {
+        const k = kpis[i];
+        const x = M + (i % 2) * (kpiW + 8);
+        const y = kpiY + Math.floor(i / 2) * (kpiH + 8);
+        // Borde superior fino navy + número grande
+        doc.setDrawColor(...C.navy); doc.setLineWidth(0.8);
+        doc.line(x, y, x + kpiW, y);
+        doc.setTextColor(...k.color);
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(30);
+        doc.text(k.num, x, y + 14);
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...C.gray);
+        doc.text(k.label.toUpperCase(), x, y + 22);
       }
 
-      // Pie de página con numeración
+      // Sección "Por sucursal" con barras horizontales (sin tabla apretada)
+      let yResumen = kpiY + 2 * (kpiH + 8) + 10;
+      doc.setTextColor(...C.navy); doc.setFont('helvetica', 'bold'); doc.setFontSize(11);
+      doc.text('DESEMPEÑO POR SUCURSAL', M, yResumen);
+      doc.setDrawColor(...C.line); doc.setLineWidth(0.3);
+      doc.line(M, yResumen + 1.5, pageW - M, yResumen + 1.5);
+      yResumen += 8;
+
+      // Lista visual con barras grandes
+      const maxLabelW = 60; // mm
+      const barX = M + maxLabelW + 4;
+      const barTotalW = pageW - M - barX - 18;
+      const rowH = 9;
+      for (const s of sucursales) {
+        if (yResumen + rowH > pageH - 20) { doc.addPage(); yResumen = 30; }
+        // Nombre
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(...C.ink);
+        doc.text(s.sucursal.length > 32 ? s.sucursal.slice(0, 30) + '…' : s.sucursal, M, yResumen + 4);
+        // Sub-meta
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(...C.soft);
+        doc.text(`${s.totalChecklists} chk · ${s.totalHechas}/${s.totalTareas} tareas`, M, yResumen + 8);
+        // Barra fondo
+        doc.setFillColor(...C.line);
+        doc.roundedRect(barX, yResumen + 2, barTotalW, 4, 1, 1, 'F');
+        // Barra fill
+        const fillW = (s.porcentaje / 100) * barTotalW;
+        const c = s.porcentaje >= 80 ? C.ok : (s.porcentaje >= 50 ? C.warn : C.bad);
+        if (fillW > 0) {
+          doc.setFillColor(...c);
+          doc.roundedRect(barX, yResumen + 2, Math.max(fillW, 1), 4, 1, 1, 'F');
+        }
+        // %
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(...c);
+        doc.text(`${s.porcentaje}%`, pageW - M, yResumen + 5, { align: 'right' });
+        yResumen += rowH + 2;
+      }
+
+      // =====================================================================
+      // POR CADA SUCURSAL — portadilla + páginas de detalle
+      // =====================================================================
+      for (const s of sucursales) {
+
+        // ----- PORTADILLA DE LA SUCURSAL -----
+        doc.addPage();
+        this.dibujarHeaderPagina(doc, pageW, M, this.mesEtiqueta(), 'Sucursal · ' + s.sucursal, C);
+
+        // Nombre de la sucursal gigante
+        doc.setTextColor(...C.navy); doc.setFont('helvetica', 'bold'); doc.setFontSize(36);
+        const nameLines = doc.splitTextToSize(s.sucursal, pageW - M * 2);
+        doc.text(nameLines, M, 70);
+
+        // Porcentaje gigante a la derecha
+        const pctColor = s.porcentaje >= 80 ? C.ok : (s.porcentaje >= 50 ? C.warn : C.bad);
+        doc.setTextColor(...pctColor); doc.setFont('helvetica', 'bold'); doc.setFontSize(80);
+        doc.text(`${s.porcentaje}%`, pageW - M, 100, { align: 'right' });
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...C.gray);
+        doc.text('CUMPLIMIENTO DEL MES', pageW - M, 108, { align: 'right' });
+
+        // Sparkline tendencia diaria con etiqueta clara
+        const sparkY = 130;
+        doc.setTextColor(...C.gray); doc.setFont('helvetica', 'bold'); doc.setFontSize(8);
+        doc.text('TENDENCIA DIARIA', M, sparkY);
+        doc.setDrawColor(...C.line); doc.line(M, sparkY + 1, pageW - M, sparkY + 1);
+        this.dibujarSparklinePro(doc, s.tendenciaDiaria, M, sparkY + 5, pageW - M * 2, 14, C);
+
+        // KPIs secundarios en línea
+        const kY = sparkY + 28;
+        const kpisSec = [
+          { num: s.totalChecklists.toString(), label: 'Checklists' },
+          { num: `${s.totalHechas}/${s.totalTareas}`, label: 'Tareas validadas' },
+          { num: s.totalFotos.toString(), label: 'Fotografías' }
+        ];
+        const kSecW = (pageW - M * 2) / kpisSec.length;
+        for (let i = 0; i < kpisSec.length; i++) {
+          const x = M + i * kSecW;
+          doc.setDrawColor(...C.navy); doc.setLineWidth(0.6);
+          doc.line(x, kY, x + 22, kY);
+          doc.setFont('helvetica', 'bold'); doc.setFontSize(18); doc.setTextColor(...C.navy);
+          doc.text(kpisSec[i].num, x, kY + 10);
+          doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...C.gray);
+          doc.text(kpisSec[i].label.toUpperCase(), x, kY + 16);
+        }
+
+        // Top 3 empleados con barras horizontales (no medallas chillonas)
+        if (s.topEmpleados.length > 0) {
+          const tY = kY + 30;
+          doc.setTextColor(...C.gray); doc.setFont('helvetica', 'bold'); doc.setFontSize(8);
+          doc.text('TOP 3 DEL MES', M, tY);
+          doc.setDrawColor(...C.line); doc.line(M, tY + 1, pageW - M, tY + 1);
+          let ty = tY + 8;
+          for (let i = 0; i < Math.min(3, s.topEmpleados.length); i++) {
+            const e = s.topEmpleados[i];
+            // Número grande gris
+            doc.setFont('helvetica', 'bold'); doc.setFontSize(20); doc.setTextColor(...C.soft);
+            doc.text(`${i + 1}`, M, ty + 7);
+            // Nombre
+            doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(...C.ink);
+            doc.text(e.nombre, M + 10, ty + 4);
+            doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...C.gray);
+            doc.text(`${e.hechas} de ${e.totales} tareas`, M + 10, ty + 9);
+            // %
+            doc.setFont('helvetica', 'bold'); doc.setFontSize(14); doc.setTextColor(...C.navy);
+            doc.text(`${e.porcentaje}%`, pageW - M, ty + 7, { align: 'right' });
+            ty += 13;
+          }
+        }
+
+        // ----- PÁGINAS DE DETALLE DE LA SUCURSAL -----
+        // Lista de checklists, uno por bloque, con sus tareas y fotos.
+        // Estilo de "tarjeta limpia": cada item es un bloque, sin tabla apretada.
+        doc.addPage();
+        this.dibujarHeaderPagina(doc, pageW, M, this.mesEtiqueta(), 'Detalle · ' + s.sucursal, C);
+        let y = 38;
+
+        for (const c of s.checklists) {
+          const altoEstimado = 22 + (c.itemsConFotos.length * 16);
+          if (y + 40 > pageH - 20) {
+            doc.addPage();
+            this.dibujarHeaderPagina(doc, pageW, M, this.mesEtiqueta(), 'Detalle · ' + s.sucursal, C);
+            y = 38;
+          }
+
+          // Encabezado del checklist
+          doc.setFillColor(...C.bg);
+          doc.rect(M, y, pageW - M * 2, 14, 'F');
+          doc.setDrawColor(...C.navy); doc.setLineWidth(1);
+          doc.line(M, y, M, y + 14);
+          doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(...C.navy);
+          doc.text(c.name.length > 70 ? c.name.slice(0, 68) + '…' : c.name, M + 3, y + 6);
+          doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...C.gray);
+          doc.text(`${c.assigned}  ·  ${c.date}  ·  ${c.itemsHechos}/${c.totalItems} tareas hechas`, M + 3, y + 11);
+          // Badge de estado a la derecha
+          let badgeTxt = 'ENVIADO';
+          let badgeColor = C.ok;
+          if (!c.enviado) { badgeTxt = 'SIN ENVIAR'; badgeColor = C.soft; }
+          else if (c.entregaConRetraso) { badgeTxt = 'RETRASO JUSTIFICADO'; badgeColor = C.warn; }
+          doc.setFillColor(...badgeColor);
+          const bw = doc.getStringUnitWidth(badgeTxt) * 7 / doc.internal.scaleFactor + 6;
+          doc.roundedRect(pageW - M - bw, y + 3, bw, 8, 1.5, 1.5, 'F');
+          doc.setFont('helvetica', 'bold'); doc.setFontSize(7); doc.setTextColor(255, 255, 255);
+          doc.text(badgeTxt, pageW - M - bw / 2, y + 8.5, { align: 'center' });
+          y += 16;
+
+          // Nota / motivo (si existe)
+          if (c.notaEmpleado || c.entregaConRetraso) {
+            const texto = [
+              c.entregaConRetraso ? `Motivo del retraso: ${c.motivoCategoria || '—'} — ${c.motivoComentario || '(sin detalle)'}` : '',
+              c.notaEmpleado ? `Comentario del colaborador: ${c.notaEmpleado}` : ''
+            ].filter(Boolean).join('\n');
+            const lines = doc.splitTextToSize(texto, pageW - M * 2 - 6);
+            const h = lines.length * 4 + 4;
+            if (y + h > pageH - 20) { doc.addPage(); this.dibujarHeaderPagina(doc, pageW, M, this.mesEtiqueta(), 'Detalle · ' + s.sucursal, C); y = 38; }
+            doc.setFillColor(255, 251, 235);
+            doc.setDrawColor(245, 158, 11); doc.setLineWidth(0.2);
+            doc.roundedRect(M, y, pageW - M * 2, h, 1, 1, 'FD');
+            doc.setFont('helvetica', 'italic'); doc.setFontSize(8); doc.setTextColor(146, 64, 14);
+            doc.text(lines, M + 3, y + 4);
+            y += h + 3;
+          }
+
+          // Items del checklist con sus fotos
+          for (let idx = 0; idx < c.itemsConFotos.length; idx++) {
+            const it = c.itemsConFotos[idx];
+            const fotos = fotosCache.get(itemKey(s.sucursal, c.id, idx)) || [];
+            // alto del bloque: depende de cuántas fotos
+            const fotosPorFila = 4;
+            const filasFotos = fotos.length > 0 ? Math.ceil(fotos.length / fotosPorFila) : 0;
+            const altoFila = filasFotos * 22; // 20mm alto + 2 separación
+            const altoBloque = 10 + altoFila;
+
+            if (y + altoBloque > pageH - 20) {
+              doc.addPage();
+              this.dibujarHeaderPagina(doc, pageW, M, this.mesEtiqueta(), 'Detalle · ' + s.sucursal, C);
+              y = 38;
+            }
+
+            // Punto de estado a la izquierda
+            doc.setFillColor(...(it.completado ? C.ok : C.soft));
+            doc.circle(M + 2, y + 3, 1.4, 'F');
+            // Texto del item
+            doc.setFont('helvetica', it.completado ? 'normal' : 'normal'); doc.setFontSize(9.5); doc.setTextColor(...C.ink);
+            const textoItem = doc.splitTextToSize(it.texto, pageW - M * 2 - 10);
+            doc.text(textoItem, M + 7, y + 4);
+            // Etiqueta lateral derecha del estado
+            doc.setFont('helvetica', 'bold'); doc.setFontSize(7); doc.setTextColor(...(it.completado ? C.ok : C.soft));
+            doc.text(it.completado ? 'HECHO' : 'PENDIENTE', pageW - M, y + 4, { align: 'right' });
+            y += Math.max(7, textoItem.length * 4 + 3);
+
+            // Fotos
+            if (fotos.length > 0) {
+              const fotoW = (pageW - M * 2 - (fotosPorFila - 1) * 3) / fotosPorFila;
+              const fotoH = 20;
+              let fx = M + 7;
+              let fy = y;
+              for (let i = 0; i < fotos.length; i++) {
+                if (i > 0 && i % fotosPorFila === 0) { fx = M + 7; fy += fotoH + 2; }
+                try {
+                  // Marco blanco sutil
+                  doc.setFillColor(255, 255, 255);
+                  doc.setDrawColor(...C.line);
+                  doc.setLineWidth(0.2);
+                  doc.roundedRect(fx - 0.5, fy - 0.5, fotoW + 1, fotoH + 1, 0.5, 0.5, 'FD');
+                  doc.addImage(fotos[i], 'JPEG', fx, fy, fotoW, fotoH);
+                } catch { /* ignora */ }
+                fx += fotoW + 3;
+              }
+              y = fy + fotoH + 3;
+            }
+
+            // Separador fino entre items
+            doc.setDrawColor(...C.line); doc.setLineWidth(0.1);
+            doc.line(M + 7, y, pageW - M, y);
+            y += 2;
+          }
+
+          // Espacio entre checklists
+          y += 6;
+        }
+      }
+
+      // =====================================================================
+      // FOOTERS — pie consistente en TODAS las páginas excepto portada
+      // =====================================================================
       const totalPag = doc.getNumberOfPages();
-      for (let i = 1; i <= totalPag; i++) {
+      for (let i = 2; i <= totalPag; i++) {
         doc.setPage(i);
-        doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(148, 163, 184);
-        doc.text(`Cierre Mensual ${this.mesEtiqueta()}  ·  pág. ${i} de ${totalPag}`,
-                 pageW / 2, pageH - 5, { align: 'center' });
+        doc.setDrawColor(...C.line); doc.setLineWidth(0.2);
+        doc.line(M, pageH - 12, pageW - M, pageH - 12);
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(...C.soft);
+        doc.text('MEGA DULCES · Cierre Mensual · ' + this.mesEtiqueta(), M, pageH - 7);
+        doc.text(`${i} / ${totalPag}`, pageW - M, pageH - 7, { align: 'right' });
       }
 
       const nombreArchivo = `Cierre_Mensual_${this.mesSeleccionado()}.pdf`;
       doc.save(nombreArchivo);
       Swal.fire({
-        icon: 'success', title: 'PDF generado',
+        icon: 'success', title: 'Reporte generado',
         html: `Se descargó <strong>${nombreArchivo}</strong> con <strong>${totalFotosProcesadas}</strong> fotos.`,
         confirmButtonColor: '#0F172A'
       });
@@ -629,10 +672,64 @@ export class CierreMensualComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Dibuja una mini-gráfica de líneas (sparkline) con los valores de % por día.
-   * Se usa en el header de cada sucursal para mostrar la tendencia del mes.
-   *  - Los días sin actividad (valor 0) se dibujan como puntitos planos.
-   *  - Línea blanca delgada sobre fondo oscuro.
+   * Header consistente de página interior (estilo libro): nombre del documento
+   * a la izquierda, sección a la derecha, línea inferior fina.
+   */
+  private dibujarHeaderPagina(doc: any, pageW: number, M: number, mes: string, seccion: string, C: any): void {
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(...C.soft);
+    doc.text(`MEGA DULCES  ·  Cierre Mensual  ·  ${mes}`, M, 14);
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(7); doc.setTextColor(...C.gray);
+    doc.text(seccion.toUpperCase(), pageW - M, 14, { align: 'right' });
+    doc.setDrawColor(...C.line); doc.setLineWidth(0.2);
+    doc.line(M, 18, pageW - M, 18);
+  }
+
+  /**
+   * Sparkline profesional: línea limpia navy sobre fondo claro, gradiente
+   * sutil bajo la línea (poligono relleno), etiquetas de inicio/fin del mes.
+   * Sin puntos chillones; los días sin actividad bajan a 0%.
+   */
+  private dibujarSparklinePro(doc: any, valores: number[], x: number, y: number, ancho: number, alto: number, C: any): void {
+    if (!valores || valores.length === 0) return;
+    const n = valores.length;
+    // Fondo plano gris muy claro
+    doc.setFillColor(248, 250, 252);
+    doc.rect(x, y, ancho, alto, 'F');
+    // Líneas guía 50% y 100%
+    doc.setDrawColor(...C.line); doc.setLineWidth(0.1);
+    doc.line(x, y + alto / 2, x + ancho, y + alto / 2);
+    doc.line(x, y, x + ancho, y);
+    // Construye puntos
+    const dx = ancho / Math.max(1, n - 1);
+    const pts: { x: number; y: number }[] = [];
+    for (let i = 0; i < n; i++) {
+      const v = Math.max(0, Math.min(100, valores[i] || 0));
+      pts.push({ x: x + i * dx, y: y + alto - (v / 100) * alto });
+    }
+    // Polígono relleno (área bajo la curva) — gris muy claro
+    doc.setFillColor(219, 234, 254);
+    const polyPath = pts.concat([{ x: x + ancho, y: y + alto }, { x: x, y: y + alto }]);
+    doc.lines(
+      polyPath.slice(1).map((p, i) => [p.x - polyPath[i].x, p.y - polyPath[i].y]),
+      polyPath[0].x, polyPath[0].y,
+      [1, 1], 'F'
+    );
+    // Línea sobre el polígono
+    doc.setDrawColor(...C.navy); doc.setLineWidth(0.6);
+    for (let i = 0; i < pts.length - 1; i++) {
+      doc.line(pts[i].x, pts[i].y, pts[i + 1].x, pts[i + 1].y);
+    }
+    // Labels
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(6); doc.setTextColor(...C.soft);
+    doc.text(`día 1`, x, y + alto + 4);
+    doc.text(`día ${n}`, x + ancho, y + alto + 4, { align: 'right' });
+    doc.text(`100%`, x + ancho + 1, y + 2);
+    doc.text(`0%`, x + ancho + 1, y + alto);
+  }
+
+  /**
+   * Sparkline legacy — se mantiene por compatibilidad con eventuales callers.
+   * (Versión más simple, no se usa en el PDF nuevo).
    */
   private dibujarSparkline(doc: any, valores: number[], x: number, y: number, ancho: number, alto: number): void {
     if (!valores || valores.length === 0) return;

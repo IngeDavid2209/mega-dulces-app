@@ -13,7 +13,7 @@ import {
 
 // ExcelJS pesa ~700 KB. Se carga dinámicamente cuando el admin pulsa "Exportar".
 import Swal from 'sweetalert2';
-import { esAdminGlobal, esAdminLimitado, normalizarNombre, sucursalesPermitidas } from '../../../shared/permisos.util';
+import { esAdmin, esAdminGlobal, esAdminLimitado, normalizarNombre, sucursalesPermitidas } from '../../../shared/permisos.util';
 import { nivelDeUsuario, NivelJerarquico } from '../../../shared/nivel-jerarquico.util';
 // 🔥 Para crear usuarios sin desloguear al admin (segunda app Firebase temporal)
 import { initializeApp, deleteApp } from 'firebase/app';
@@ -193,16 +193,40 @@ export class PersonalComponent implements OnInit, OnDestroy {
     return this._cacheLiveUser;
   }
 
-  // 2. 🔥 getAdmins: solo el admin GLOBAL ve la lista de admins.
-  //    Los admins limitados no ven ni gestionan otros admins (seguridad anti-escalada).
+  // 2. getAdmins: el admin global ve a TODOS los admins.
+  //    Un admin limitado ve:
+  //      - A si mismo (siempre, para poder editar su propio perfil).
+  //      - A los admins globales (porque cubren todas las sucursales, incluida la suya).
+  //      - A otros admins limitados con AL MENOS una sucursal en comun.
+  //    La seguridad de no poder EDITAR a otros admins ya esta en abrirEditarUsuario(),
+  //    asi que cambiar visibilidad aqui no rompe el anti-escalada.
   getAdmins() {
     const yo = this.liveUser;
-    if (!esAdminGlobal(yo)) {
-      return [];
-    }
-    return this.usuarios().filter(u => u.rol === 'admin' &&
-      (u.nombre.toLowerCase().includes(this.terminoBusqueda.toLowerCase()) ||
-        u.cargo?.toLowerCase().includes(this.terminoBusqueda.toLowerCase())));
+    const termino = this.terminoBusqueda.toLowerCase();
+    const matchTexto = (u: any) =>
+      u.nombre.toLowerCase().includes(termino) ||
+      (u.cargo && u.cargo.toLowerCase().includes(termino));
+
+    const admins = this.usuarios().filter(u => u.rol === 'admin' && matchTexto(u));
+
+    // Admin global: ve todos
+    if (esAdminGlobal(yo)) return admins;
+
+    // No-admin: no ve administradores (mismo comportamiento que antes para trabajadores/jefes)
+    if (!esAdmin(yo)) return [];
+
+    // Admin limitado: filtro por coincidencia de sucursales + siempre se ve a si mismo
+    const misSucursales: string[] = yo?.sucursales || [];
+    const yoSoyGeneral = misSucursales.includes('General (Acceso Total)');
+
+    return admins.filter(a => {
+      if (a.usuario === yo?.usuario) return true;           // yo mismo
+      if (esAdminGlobal(a)) return true;                    // admins globales cubren todo
+      if (yoSoyGeneral) return true;                        // si yo soy "General", veo a todos
+      const susSucursales: string[] = a.sucursales || [];
+      if (susSucursales.includes('General (Acceso Total)')) return true;
+      return susSucursales.some(s => misSucursales.includes(s));
+    });
   }
 
   /**

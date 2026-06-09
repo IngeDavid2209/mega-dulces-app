@@ -9,230 +9,232 @@
           <line x1="3" y1="18" x2="21" y2="18"></line>
         </svg>
       </button>
-
       <div class="header-logo-wrap"
         style="background: transparent !important; box-shadow: none; width: auto; padding: 0 4px;">
         <img src="https://static.wixstatic.com/media/fd397e_0fd82a1ecec84a118ceeb603b493f25a~mv2.png" alt="Mega Dulces"
           style="height: 36px; width: auto; object-fit: contain;">
       </div>
-
       <div class="header-brand">Mega Dulces<small>Panel Enterprise</small></div>
     </div>
     <div class="header-right"></div>
   </header>
+
   <div class="main-wrapper">
     <div class="mobile-overlay" *ngIf="isMenuOpen" (click)="toggleMenu()"></div>
-
     <app-sidebar [currentUser]="currentUser" [isMenuOpen]="isMenuOpen" (closeMenu)="isMenuOpen = false"></app-sidebar>
+
     <div class="content">
-      <div class="section-header">
-        <div>
-          <div class="section-title">Estadísticas de Rendimiento</div>
-          <div class="section-sub">Métricas de cumplimiento y avance operativo del equipo</div>
-        </div>
-      </div>
-      <div class="stats-grid">
-        <div class="stat-card">
-          <div class="stat-card-header-icon" style="color: var(--primary-blue);"><svg width="28" height="28"
-              viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
-              <polyline points="17 6 23 6 23 12"></polyline>
-            </svg></div>
-          <div class="stat-card-title">Cumplimiento Global</div>
-          <div class="stat-card-val" style="color: var(--primary-navy);">{{ globalProgress() }}%</div>
-          <div class="stat-card-sub">{{ completedItems() }} de {{ allItems() }} tareas operativas validadas</div>
-          <div class="progress-bar-wrap">
-            <div class="progress-bar-fill" [style.width.%]="globalProgress()" style="background: var(--primary-blue);">
-            </div>
-          </div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-card-header-icon" style="color: var(--primary-navy);"><svg width="28" height="28"
-              viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
-              <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
-            </svg></div>
-          <div class="stat-card-title">Estatus de Checklists</div>
 
-          <div class="stat-bar-row">
-            <div class="stat-bar-label" style="display:flex; align-items:center; gap:6px;"><svg width="14" height="14"
-                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                <polyline points="22 4 12 14.01 9 11.01"></polyline>
-              </svg> Completo</div>
-            <div class="stat-bar-track">
-              <div class="stat-bar-fill" [style.width.%]="checklistsByStatus().completo.percent"
-                [style.background]="checklistsByStatus().completo.color"></div>
+      <!-- ====================== HERO EJECUTIVO ====================== -->
+      <section class="exec-hero">
+        <div class="exec-hero-left">
+          <div class="exec-hero-eyebrow">Estadísticas de Rendimiento</div>
+          <h1 class="exec-hero-title">Panel ejecutivo</h1>
+          <p class="exec-hero-sub">Métricas de cumplimiento y avance operativo del equipo, en tiempo real.</p>
+
+          <div class="exec-hero-chips">
+            <div class="exec-chip exec-chip-completo">
+              <div class="exec-chip-num">{{ checklistsByStatus().completo.count }}</div>
+              <div class="exec-chip-lbl">Completos</div>
             </div>
-            <div class="stat-bar-pct">{{ checklistsByStatus().completo.count }}</div>
-          </div>
-          <div class="stat-bar-row">
-            <div class="stat-bar-label" style="display:flex; align-items:center; gap:6px;"><svg width="14" height="14"
-                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="23 4 23 10 17 10"></polyline>
-                <polyline points="1 20 1 14 7 14"></polyline>
-                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
-              </svg> En Progreso</div>
-            <div class="stat-bar-track">
-              <div class="stat-bar-fill" [style.width.%]="checklistsByStatus().enProgreso.percent"
-                [style.background]="checklistsByStatus().enProgreso.color"></div>
+            <div class="exec-chip exec-chip-progreso">
+              <div class="exec-chip-num">{{ checklistsByStatus().enProgreso.count }}</div>
+              <div class="exec-chip-lbl">En progreso</div>
             </div>
-            <div class="stat-bar-pct">{{ checklistsByStatus().enProgreso.count }}</div>
-          </div>
-          <div class="stat-bar-row">
-            <div class="stat-bar-label" style="display:flex; align-items:center; gap:6px;"><svg width="14" height="14"
-                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="12" cy="12" r="10"></circle>
-                <polyline points="12 6 12 12 16 14"></polyline>
-              </svg> Pendiente</div>
-            <div class="stat-bar-track">
-              <div class="stat-bar-fill" [style.width.%]="checklistsByStatus().pendiente.percent"
-                [style.background]="checklistsByStatus().pendiente.color"></div>
+            <div class="exec-chip exec-chip-pendiente">
+              <div class="exec-chip-num">{{ checklistsByStatus().pendiente.count }}</div>
+              <div class="exec-chip-lbl">Pendientes</div>
             </div>
-            <div class="stat-bar-pct">{{ checklistsByStatus().pendiente.count }}</div>
           </div>
         </div>
-        <div class="stat-card stat-card-full">
-          <div class="stat-card-title">Avance Operativo por Departamentos</div>
-          <div class="stat-bar-row" *ngFor="let s of storeStats()">
-            <div class="stat-bar-label store-label">{{ s.name }}</div>
-            <div class="stat-bar-track">
-              <div class="stat-bar-fill" [style.width.%]="s.progress" [style.background]="s.color"></div>
-            </div>
-            <div class="stat-bar-pct">{{ s.progress }}%</div>
+
+        <!-- Gauge circular del cumplimiento global -->
+        <div class="exec-gauge">
+          <svg viewBox="0 0 120 120" width="200" height="200">
+            <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="10"></circle>
+            <circle cx="60" cy="60" r="52" fill="none" stroke="#FFFFFF" stroke-width="10" stroke-linecap="round"
+                    [attr.stroke-dasharray]="326.7" [attr.stroke-dashoffset]="326.7 - (326.7 * globalProgress() / 100)"
+                    transform="rotate(-90 60 60)"></circle>
+          </svg>
+          <div class="exec-gauge-center">
+            <div class="exec-gauge-num">{{ globalProgress() }}%</div>
+            <div class="exec-gauge-lbl">Cumplimiento global</div>
           </div>
+          <div class="exec-gauge-foot">{{ completedItems() }} de {{ allItems() }} tareas validadas</div>
         </div>
-        <div class="stat-card stat-card-full">
-          <div class="employee-header-wrap">
-            <div class="stat-card-title" style="margin-bottom: 0;">Rendimiento Individual</div>
-            <select class="form-input select-input" [value]="sucursalSeleccionadaParaEmpleados()"
-              (change)="alCambiarSucursalEmpleados($event)">
-              <option *ngFor="let suc of sucursalesPermitidas" [value]="suc">{{ suc }}</option>
-            </select>
-          </div>
-          <ng-container *ngIf="empleadosStatsMandos().length > 0 && empleadosStatsOperativos().length > 0">
-            <div style="font-size:12px; font-weight:700; color:#1E3A8A; letter-spacing:.5px; text-transform:uppercase; margin: 8px 0 6px 0;">
-              Mandos de sucursal ({{ empleadosStatsMandos().length }})
+      </section>
+
+      <!-- ====================== AVANCE POR SUCURSAL (CARDS) ====================== -->
+      <section class="seccion">
+        <div class="seccion-head">
+          <h2 class="seccion-title">Avance por sucursal</h2>
+          <div class="seccion-sub">{{ storeStats().length }} sucursales monitoreadas</div>
+        </div>
+
+        <div class="suc-grid">
+          <div class="suc-card" *ngFor="let s of storeStats()"
+               [attr.data-rango]="s.progress >= 80 ? 'alto' : (s.progress >= 50 ? 'medio' : 'bajo')">
+            <div class="suc-card-donut">
+              <svg viewBox="0 0 42 42" width="72" height="72">
+                <circle cx="21" cy="21" r="15.9" fill="none" stroke="#F1F5F9" stroke-width="4"></circle>
+                <circle cx="21" cy="21" r="15.9" fill="none" stroke-width="4" stroke-linecap="round"
+                        [attr.stroke]="s.progress >= 80 ? '#10B981' : (s.progress >= 50 ? '#F59E0B' : (s.progress > 0 ? '#EF4444' : '#CBD5E1'))"
+                        [attr.stroke-dasharray]="100" [attr.stroke-dashoffset]="100 - s.progress"
+                        transform="rotate(-90 21 21)"></circle>
+              </svg>
+              <div class="suc-card-pct">{{ s.progress }}%</div>
             </div>
-          </ng-container>
-          <div class="stat-bar-row" *ngFor="let emp of empleadosStatsMandos(); trackBy: trackByEmpStat">
-            <div class="stat-bar-label employee-label">
-              <strong>{{ emp.nombre }}</strong>
-              <div class="employee-subtext">
-                <span *ngIf="emp.total > 0">{{ emp.completados }} / {{ emp.total }} tareas</span>
-                <span *ngIf="emp.total === 0" style="color: #94A3B8; font-style: italic;">Sin asignaciones</span>
+            <div class="suc-card-info">
+              <div class="suc-card-nombre">{{ s.name }}</div>
+              <div class="suc-card-estado">
+                <span *ngIf="s.progress >= 80" class="suc-estado-pill suc-estado-alto">Excelente</span>
+                <span *ngIf="s.progress >= 50 && s.progress < 80" class="suc-estado-pill suc-estado-medio">Regular</span>
+                <span *ngIf="s.progress > 0 && s.progress < 50" class="suc-estado-pill suc-estado-bajo">Bajo</span>
+                <span *ngIf="s.progress === 0" class="suc-estado-pill suc-estado-vacio">Sin actividad</span>
               </div>
             </div>
-            <div class="stat-bar-track" [style.background]="emp.total === 0 ? '#F8FAFC' : '#F1F5F9'">
-              <div class="stat-bar-fill" [style.width.%]="emp.progress"
-                [style.background]="emp.total === 0 ? 'transparent' : emp.color"></div>
-            </div>
-            <div class="stat-bar-pct" [style.color]="emp.total === 0 ? '#94A3B8' : 'inherit'">{{ emp.progress }}%</div>
           </div>
-
-          <ng-container *ngIf="empleadosStatsMandos().length > 0 && empleadosStatsOperativos().length > 0">
-            <div style="font-size:12px; font-weight:700; color:#475569; letter-spacing:.5px; text-transform:uppercase; margin: 18px 0 6px 0; border-top: 1px dashed #E2E8F0; padding-top: 10px;">
-              Operativos ({{ empleadosStatsOperativos().length }})
-            </div>
-          </ng-container>
-          <div class="stat-bar-row" *ngFor="let emp of empleadosStatsOperativos(); trackBy: trackByEmpStat">
-            <div class="stat-bar-label employee-label">
-              <strong>{{ emp.nombre }}</strong>
-              <div class="employee-subtext">
-                <span *ngIf="emp.total > 0">{{ emp.completados }} / {{ emp.total }} tareas</span>
-                <span *ngIf="emp.total === 0" style="color: #94A3B8; font-style: italic;">Sin asignaciones</span>
-              </div>
-            </div>
-            <div class="stat-bar-track" [style.background]="emp.total === 0 ? '#F8FAFC' : '#F1F5F9'">
-              <div class="stat-bar-fill" [style.width.%]="emp.progress"
-                [style.background]="emp.total === 0 ? 'transparent' : emp.color"></div>
-            </div>
-            <div class="stat-bar-pct" [style.color]="emp.total === 0 ? '#94A3B8' : 'inherit'">{{ emp.progress }}%</div>
-          </div>
-
-          <div class="empty-state-text" *ngIf="empleadosStats().length === 0">No hay empleados asignados a este
-            departamento en el sistema.</div>
         </div>
-      </div>
+      </section>
 
-      <!-- ╔══════════════════════════════════════════════════╗ -->
-      <!-- ║   ⏰ RETRASOS JUSTIFICADOS                       ║ -->
-      <!-- ╚══════════════════════════════════════════════════╝ -->
-      <div class="retrasos-section">
-        <div class="retrasos-header">
+      <!-- ====================== RENDIMIENTO INDIVIDUAL CON PODIO ====================== -->
+      <section class="seccion">
+        <div class="seccion-head">
           <div>
-            <h2 class="retrasos-title">⏰ Retrasos Justificados</h2>
-            <p class="retrasos-sub">Análisis histórico de checklists enviados después de su hora límite.</p>
+            <h2 class="seccion-title">Rendimiento individual</h2>
+            <div class="seccion-sub">Top desempeño por persona dentro de la sucursal seleccionada</div>
+          </div>
+          <select class="form-input select-input emp-sucursal-select" [value]="sucursalSeleccionadaParaEmpleados()"
+                  (change)="alCambiarSucursalEmpleados($event)">
+            <option *ngFor="let suc of sucursalesPermitidas" [value]="suc">{{ suc }}</option>
+          </select>
+        </div>
+
+        <!-- Podio top 3 (solo cuando hay al menos uno con asignaciones) -->
+        <div class="podio" *ngIf="empleadosStats().length > 0">
+          <ng-container *ngFor="let emp of empleadosStats() | slice:0:3; let i = index">
+            <div class="podio-spot"
+                 [class.podio-1]="i === 0"
+                 [class.podio-2]="i === 1"
+                 [class.podio-3]="i === 2">
+              <div class="podio-medalla">
+                <span *ngIf="i === 0">1</span>
+                <span *ngIf="i === 1">2</span>
+                <span *ngIf="i === 2">3</span>
+              </div>
+              <div class="podio-avatar">{{ (emp.nombre || '?').charAt(0) | uppercase }}</div>
+              <div class="podio-nombre">{{ emp.nombre }}</div>
+              <div class="podio-pct">{{ emp.progress }}%</div>
+              <div class="podio-meta" *ngIf="emp.total > 0">{{ emp.completados }} / {{ emp.total }} tareas</div>
+              <div class="podio-meta" *ngIf="emp.total === 0" style="color: #94A3B8; font-style: italic;">Sin asignaciones</div>
+              <div class="podio-pedestal" [style.background]="i === 0 ? 'linear-gradient(180deg,#FBBF24,#F59E0B)' : (i === 1 ? 'linear-gradient(180deg,#CBD5E1,#94A3B8)' : 'linear-gradient(180deg,#D97706,#B45309)')">
+                <span *ngIf="i === 0">PRIMER LUGAR</span>
+                <span *ngIf="i === 1">SEGUNDO LUGAR</span>
+                <span *ngIf="i === 2">TERCER LUGAR</span>
+              </div>
+            </div>
+          </ng-container>
+        </div>
+
+        <!-- Resto del ranking (a partir del puesto 4) -->
+        <div class="emp-resto" *ngIf="empleadosStats().length > 3">
+          <ng-container *ngFor="let emp of empleadosStats() | slice:3; let i = index; trackBy: trackByEmpStat">
+            <div class="emp-row"
+                 [class.emp-row-mando]="emp.nivel === 'mando'">
+              <div class="emp-row-puesto">{{ i + 4 }}</div>
+              <div class="emp-row-info">
+                <div class="emp-row-nombre">{{ emp.nombre }}
+                  <span class="emp-row-mando-tag" *ngIf="emp.nivel === 'mando'">Mando</span>
+                </div>
+                <div class="emp-row-meta">
+                  <span *ngIf="emp.total > 0">{{ emp.completados }} / {{ emp.total }} tareas</span>
+                  <span *ngIf="emp.total === 0" style="color: #94A3B8; font-style: italic;">Sin asignaciones</span>
+                </div>
+              </div>
+              <div class="emp-row-bar">
+                <div class="emp-row-bar-fill" [style.width.%]="emp.progress"
+                     [style.background]="emp.total === 0 ? 'transparent' : emp.color"></div>
+              </div>
+              <div class="emp-row-pct" [style.color]="emp.total === 0 ? '#94A3B8' : 'inherit'">{{ emp.progress }}%</div>
+            </div>
+          </ng-container>
+        </div>
+
+        <div class="empty-state-text" *ngIf="empleadosStats().length === 0">
+          No hay empleados asignados a este departamento en el sistema.
+        </div>
+      </section>
+
+      <!-- ====================== RETRASOS JUSTIFICADOS ====================== -->
+      <section class="seccion seccion-retrasos">
+        <div class="seccion-head">
+          <div>
+            <h2 class="seccion-title">Retrasos justificados</h2>
+            <div class="seccion-sub">Checklists enviados después de su hora límite</div>
           </div>
           <div class="retrasos-tabs">
             <button type="button"
-              *ngFor="let op of opcionesRangoRetraso"
-              class="retrasos-tab"
-              [class.active]="rangoRetrasoDias() === op.dias"
-              (click)="cambiarRangoRetraso(op.dias)">
+                    *ngFor="let op of opcionesRangoRetraso"
+                    class="retrasos-tab"
+                    [class.active]="rangoRetrasoDias() === op.dias"
+                    (click)="cambiarRangoRetraso(op.dias)">
               {{ op.label }}
             </button>
           </div>
         </div>
 
-        <!-- KPI principal -->
-        <div class="retrasos-kpi">
-          <span class="retrasos-kpi-icon">⏱</span>
-          <div>
-            <div class="retrasos-kpi-valor">{{ totalRetrasos() }}</div>
-            <div class="retrasos-kpi-label">
-              {{ totalRetrasos() === 1 ? 'retraso justificado' : 'retrasos justificados' }}
-              en este periodo
-            </div>
+        <!-- KPI grande -->
+        <div class="retrasos-kpi-card">
+          <div class="retrasos-kpi-num">{{ totalRetrasos() }}</div>
+          <div class="retrasos-kpi-txt">
+            {{ totalRetrasos() === 1 ? 'retraso justificado' : 'retrasos justificados' }} en este periodo
           </div>
         </div>
 
         <div *ngIf="totalRetrasos() === 0" class="retrasos-vacio">
-          <span style="font-size: 38px;">🎉</span>
-          <p>¡Sin retrasos en este periodo! Todos los checklists se entregaron a tiempo.</p>
+          ¡Sin retrasos en este periodo! Todos los checklists se entregaron a tiempo.
         </div>
 
         <div *ngIf="totalRetrasos() > 0" class="retrasos-grid">
           <!-- Por categoría -->
-          <div class="stat-card">
-            <div class="stat-card-title">Por Categoría</div>
-            <div class="stat-bar-row" *ngFor="let f of rankingCategorias()">
-              <div class="stat-bar-label"><strong>{{ f.nombre }}</strong></div>
-              <div class="stat-bar-track">
-                <div class="stat-bar-fill" [style.width.%]="f.porcentaje" style="background: #F59E0B;"></div>
-              </div>
-              <div class="stat-bar-pct">{{ f.total }} · {{ f.porcentaje }}%</div>
+          <div class="r-card">
+            <h3 class="r-card-title">Por categoría</h3>
+            <div class="r-row" *ngFor="let f of rankingCategorias()">
+              <div class="r-row-lbl">{{ f.nombre }}</div>
+              <div class="r-row-bar"><div class="r-row-bar-fill" [style.width.%]="f.porcentaje"
+                                          style="background: linear-gradient(90deg,#F59E0B,#FBBF24);"></div></div>
+              <div class="r-row-num">{{ f.total }}<span class="r-row-pct"> · {{ f.porcentaje }}%</span></div>
             </div>
           </div>
 
           <!-- Por sucursal -->
-          <div class="stat-card">
-            <div class="stat-card-title">Por Sucursal</div>
-            <div class="stat-bar-row" *ngFor="let f of rankingSucursales()">
-              <div class="stat-bar-label"><strong>{{ f.nombre }}</strong></div>
-              <div class="stat-bar-track">
-                <div class="stat-bar-fill" [style.width.%]="f.porcentaje" style="background: #EA580C;"></div>
-              </div>
-              <div class="stat-bar-pct">{{ f.total }} · {{ f.porcentaje }}%</div>
+          <div class="r-card">
+            <h3 class="r-card-title">Por sucursal</h3>
+            <div class="r-row" *ngFor="let f of rankingSucursales()">
+              <div class="r-row-lbl">{{ f.nombre }}</div>
+              <div class="r-row-bar"><div class="r-row-bar-fill" [style.width.%]="f.porcentaje"
+                                          style="background: linear-gradient(90deg,#EA580C,#FB923C);"></div></div>
+              <div class="r-row-num">{{ f.total }}<span class="r-row-pct"> · {{ f.porcentaje }}%</span></div>
             </div>
           </div>
 
           <!-- Top personas -->
-          <div class="stat-card stat-card-full">
-            <div class="stat-card-title">Top 10 Personas con más retrasos</div>
-            <div class="stat-bar-row" *ngFor="let f of rankingPersonas(); let i = index">
-              <div class="stat-bar-label employee-label">
-                <strong>#{{ i + 1 }} · {{ f.nombre }}</strong>
-                <div class="employee-subtext">{{ f.total }} {{ f.total === 1 ? 'retraso' : 'retrasos' }}</div>
+          <div class="r-card r-card-full">
+            <h3 class="r-card-title">Top 10 personas con más retrasos</h3>
+            <div class="r-row r-row-persona" *ngFor="let f of rankingPersonas(); let i = index">
+              <div class="r-row-puesto">{{ i + 1 }}</div>
+              <div class="r-row-lbl">
+                <div class="r-row-nombre">{{ f.nombre }}</div>
+                <div class="r-row-sub">{{ f.total }} {{ f.total === 1 ? 'retraso' : 'retrasos' }}</div>
               </div>
-              <div class="stat-bar-track">
-                <div class="stat-bar-fill" [style.width.%]="f.porcentaje" style="background: #DC2626;"></div>
-              </div>
-              <div class="stat-bar-pct">{{ f.porcentaje }}%</div>
+              <div class="r-row-bar"><div class="r-row-bar-fill" [style.width.%]="f.porcentaje"
+                                          style="background: linear-gradient(90deg,#DC2626,#EF4444);"></div></div>
+              <div class="r-row-num">{{ f.porcentaje }}%</div>
             </div>
           </div>
         </div>
-      </div>
+      </section>
+
     </div>
   </div>
 </div>

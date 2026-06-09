@@ -1,6 +1,6 @@
 // ⚠️ ARCHIVO GENERADO AUTOMÁTICAMENTE EN CADA BUILD — no editar a mano.
 // Lo escribe scripts/generar-version.js antes de compilar.
 export const APP_VERSION = '0.0.0';
-export const APP_BUILD_FECHA = '2026-06-08';
-export const APP_BUILD_HORA = '16:32';
-export const APP_BUILD_SELLO = '2026-06-08 16:32';
+export const APP_BUILD_FECHA = '2026-06-09';
+export const APP_BUILD_HORA = '09:36';
+export const APP_BUILD_SELLO = '2026-06-09 09:36';

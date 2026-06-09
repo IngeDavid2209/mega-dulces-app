@@ -71,16 +71,93 @@
           </div>
         </div>
         <div class="cm-cta-actions">
-          <label class="cm-select-label">
-            <span class="cm-select-lbl-text">Alcance</span>
-            <select class="cm-select" [value]="sucursalParaPDF()"
-                    (change)="sucursalParaPDF.set($any($event.target).value)">
-              <option value="TODAS">Todas las sucursales (1 PDF)</option>
-              <option *ngFor="let s of agrupadoPorSucursal()" [value]="s.sucursal">
-                Solo {{ s.sucursal }} ({{ s.totalChecklists }} checklist · {{ s.totalFotos }} fotos)
-              </option>
-            </select>
-          </label>
+          <!-- Dropdown custom de alcance -->
+          <div class="cm-dd" [class.cm-dd-open]="dropdownAlcanceAbierto()">
+            <span class="cm-dd-label">Alcance del reporte</span>
+            <button type="button" class="cm-dd-btn" (click)="toggleDropdownAlcance()">
+              <span class="cm-dd-icon" [attr.data-tipo]="sucursalParaPDF() === 'TODAS' ? 'todas' : 'una'">
+                <svg *ngIf="sucursalParaPDF() === 'TODAS'" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="3" width="7" height="9"></rect>
+                  <rect x="14" y="3" width="7" height="5"></rect>
+                  <rect x="14" y="12" width="7" height="9"></rect>
+                  <rect x="3" y="16" width="7" height="5"></rect>
+                </svg>
+                <svg *ngIf="sucursalParaPDF() !== 'TODAS'" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M3 21h18M5 21V7l7-4 7 4v14M9 9h.01M15 9h.01M9 13h.01M15 13h.01M9 17h.01M15 17h.01"></path>
+                </svg>
+              </span>
+              <span class="cm-dd-text">
+                <span class="cm-dd-titulo">{{ alcanceEtiqueta() }}</span>
+                <span class="cm-dd-meta">{{ alcanceResumen() }}</span>
+              </span>
+              <svg class="cm-dd-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </button>
+
+            <!-- Overlay para cerrar al click fuera -->
+            <div class="cm-dd-overlay" *ngIf="dropdownAlcanceAbierto()" (click)="dropdownAlcanceAbierto.set(false)"></div>
+
+            <!-- Panel de opciones -->
+            <div class="cm-dd-panel" *ngIf="dropdownAlcanceAbierto()">
+              <div class="cm-dd-section">
+                <div class="cm-dd-section-titulo">REPORTE GLOBAL</div>
+                <button type="button" class="cm-dd-opt cm-dd-opt-todas"
+                        [class.cm-dd-opt-activa]="sucursalParaPDF() === 'TODAS'"
+                        (click)="seleccionarAlcance('TODAS')">
+                  <span class="cm-dd-opt-icon">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <rect x="3" y="3" width="7" height="9"></rect>
+                      <rect x="14" y="3" width="7" height="5"></rect>
+                      <rect x="14" y="12" width="7" height="9"></rect>
+                      <rect x="3" y="16" width="7" height="5"></rect>
+                    </svg>
+                  </span>
+                  <span class="cm-dd-opt-info">
+                    <span class="cm-dd-opt-nombre">Todas las sucursales</span>
+                    <span class="cm-dd-opt-sub">Un solo PDF con todas las sucursales agrupadas y ranking comparativo</span>
+                  </span>
+                  <span class="cm-dd-opt-check" *ngIf="sucursalParaPDF() === 'TODAS'">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                      <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                  </span>
+                </button>
+              </div>
+
+              <div class="cm-dd-section">
+                <div class="cm-dd-section-titulo">SOLO UNA SUCURSAL</div>
+                <button type="button" class="cm-dd-opt"
+                        *ngFor="let s of agrupadoPorSucursal()"
+                        [class.cm-dd-opt-activa]="sucursalParaPDF() === s.sucursal"
+                        (click)="seleccionarAlcance(s.sucursal)">
+                  <span class="cm-dd-opt-icon">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M3 21h18M5 21V7l7-4 7 4v14"></path>
+                      <path d="M9 9h.01M15 9h.01M9 13h.01M15 13h.01M9 17h.01M15 17h.01"></path>
+                    </svg>
+                  </span>
+                  <span class="cm-dd-opt-info">
+                    <span class="cm-dd-opt-nombre">{{ s.sucursal }}</span>
+                    <span class="cm-dd-opt-badges">
+                      <span class="cm-dd-badge">{{ s.totalChecklists }} checklists</span>
+                      <span class="cm-dd-badge cm-dd-badge-foto">{{ s.totalFotos }} fotos</span>
+                      <span class="cm-dd-badge cm-dd-badge-pct"
+                            [attr.data-rango]="s.porcentaje >= 80 ? 'alto' : (s.porcentaje >= 50 ? 'medio' : 'bajo')">
+                        {{ s.porcentaje }}%
+                      </span>
+                    </span>
+                  </span>
+                  <span class="cm-dd-opt-check" *ngIf="sucursalParaPDF() === s.sucursal">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                      <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                  </span>
+                </button>
+              </div>
+            </div>
+          </div>
+
           <button class="cm-btn-pdf" (click)="generarPDF()" [disabled]="generandoPDF()">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                  style="margin-right: 8px;">

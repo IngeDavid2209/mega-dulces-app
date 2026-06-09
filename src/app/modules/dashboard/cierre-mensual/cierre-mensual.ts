@@ -74,6 +74,36 @@ export class CierreMensualComponent implements OnInit, OnDestroy {
   archivarProgreso = signal<string>('');
   /** 'TODAS' o el nombre exacto de la sucursal a incluir en el PDF. */
   sucursalParaPDF = signal<string>('TODAS');
+  /** Visibilidad del dropdown custom de alcance. */
+  dropdownAlcanceAbierto = signal<boolean>(false);
+
+  /** Etiqueta humana del alcance actual (para el botón). */
+  alcanceEtiqueta = computed(() => {
+    const sel = this.sucursalParaPDF();
+    if (sel === 'TODAS') return 'Todas las sucursales';
+    return sel;
+  });
+
+  /** Resumen "X checklists · Y fotos" del alcance actual. */
+  alcanceResumen = computed(() => {
+    const sel = this.sucursalParaPDF();
+    if (sel === 'TODAS') {
+      const t = this.totalesGlobales();
+      return `${t.totalChecklists} checklists · ${t.totalFotos} fotos · ${this.agrupadoPorSucursal().length} sucursales`;
+    }
+    const s = this.agrupadoPorSucursal().find(x => x.sucursal === sel);
+    if (!s) return '';
+    return `${s.totalChecklists} checklists · ${s.totalFotos} fotos · ${s.porcentaje}% cumplimiento`;
+  });
+
+  toggleDropdownAlcance() {
+    this.dropdownAlcanceAbierto.update(v => !v);
+  }
+
+  seleccionarAlcance(valor: string) {
+    this.sucursalParaPDF.set(valor);
+    this.dropdownAlcanceAbierto.set(false);
+  }
 
   /** Texto humano del mes (Ej: "Junio 2026"). */
   mesEtiqueta = computed(() => {

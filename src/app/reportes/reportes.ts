@@ -804,17 +804,19 @@ export class ReportesComponent implements OnInit, OnDestroy {
       const pageH = doc.internal.pageSize.getHeight();
       const M = 18;
 
-      // Paleta unificada (igual al Cierre Mensual)
+      // Paleta corporativa Mega Dulces — Burdeos + rosáceo premium
       const C = {
-        navy:  [15, 23, 42] as [number, number, number],
-        ink:   [30, 41, 59] as [number, number, number],
-        gray:  [100, 116, 139] as [number, number, number],
-        soft:  [148, 163, 184] as [number, number, number],
-        line:  [226, 232, 240] as [number, number, number],
-        bg:    [248, 250, 252] as [number, number, number],
+        navy:  [131, 24, 67]  as [number, number, number],  // #831843 burdeos principal
+        accent:[190, 24, 93]  as [number, number, number],  // #BE185D rosa antiguo
+        ink:   [76, 5, 43]    as [number, number, number],  // burdeos muy oscuro
+        gray:  [136, 86, 110] as [number, number, number],  // rosa-gris
+        soft:  [180, 144, 162] as [number, number, number], // rosa-gris claro
+        line:  [243, 218, 228] as [number, number, number], // rosa muy claro
+        bg:    [253, 242, 248] as [number, number, number], // crema rosada
+        gold:  [217, 119, 6]  as [number, number, number],  // dorado para acentos
         ok:    [16, 185, 129] as [number, number, number],
         warn:  [245, 158, 11] as [number, number, number],
-        bad:   [239, 68, 68] as [number, number, number]
+        bad:   [239, 68, 68]  as [number, number, number]
       };
 
       const getBase64Image = (url: string): Promise<string | null> => {
@@ -885,50 +887,93 @@ export class ReportesComponent implements OnInit, OnDestroy {
         doc.rect(0, 0, pageW, fotoH, 'F');
       }
 
-      // Bloque blanco abajo
-      doc.setFillColor(255, 255, 255);
+      // Bloque crema rosado inferior
+      doc.setFillColor(...C.bg);
       doc.rect(0, fotoH, pageW, pageH - fotoH, 'F');
 
-      // Kicker
-      const titY = fotoH + 28;
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...C.gray);
-      doc.text('MEGA DULCES DE LOS ALTOS', M, titY, { charSpace: 1.2 });
+      // Ornamento dorado: línea + punto + línea
+      const ornY = fotoH + 14;
+      doc.setDrawColor(...C.gold); doc.setLineWidth(0.4);
+      doc.line(M, ornY, M + 20, ornY);
+      doc.setFillColor(...C.gold);
+      doc.circle(M + 24, ornY, 0.8, 'F');
+      doc.line(M + 28, ornY, M + 48, ornY);
 
-      // Título a dos líneas
+      // Kicker (rosa antiguo, bold)
+      const titY = fotoH + 26;
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(...C.accent);
+      doc.text('MEGA DULCES DE LOS ALTOS', M, titY, { charSpace: 1.4 });
+
+      // Título a dos líneas: AUDITORIA (burdeos bold) / VISUAL (rosa antiguo light)
       doc.setTextColor(...C.navy);
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(40);
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(42);
       doc.text('AUDITORIA', M, titY + 18, { charSpace: 0.5 });
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(40);
-      doc.text('VISUAL', M, titY + 34, { charSpace: 0.5 });
-      doc.setDrawColor(...C.navy); doc.setLineWidth(0.6);
-      doc.line(M, titY + 38, M + 32, titY + 38);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(42); doc.setTextColor(...C.accent);
+      doc.text('VISUAL', M, titY + 35, { charSpace: 0.5 });
+      // Subrayado dorado decorativo doble
+      doc.setDrawColor(...C.gold); doc.setLineWidth(1.2);
+      doc.line(M, titY + 40, M + 36, titY + 40);
+      doc.setLineWidth(0.4);
+      doc.line(M, titY + 42, M + 18, titY + 42);
 
       // Pie
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(...C.gray);
       const periodo = `${this.fechaInicio} al ${this.fechaFin}`;
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(...C.gray);
       doc.text(periodo.toUpperCase() + '  //  PREPARADO POR ' +
                (this.currentUser?.nombre || 'Administracion').toUpperCase(),
-               M, titY + 50, { charSpace: 1 });
+               M, titY + 54, { charSpace: 1 });
+
+      // Watermark "MD" en esquina inferior derecha
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(48); doc.setTextColor(...C.line);
+      doc.text('MD', pageW - M - 16, pageH - M, { align: 'right' });
 
       // =====================================================================
       // PÁGINA 2 — DESCRIPCIÓN (kicker + título + párrafo + KPIs)
       // =====================================================================
       doc.addPage();
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...C.gray);
-      doc.text('SECCIÓN 01', M, 40, { charSpace: 1.5 });
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(34); doc.setTextColor(...C.navy);
-      doc.text('Descripción', M, 60);
-      doc.setDrawColor(...C.navy); doc.setLineWidth(0.6);
-      doc.line(M, 64, M + 26, 64);
 
+      // Ornamento dorado lateral
+      doc.setDrawColor(...C.gold); doc.setLineWidth(0.4);
+      doc.line(M, 36, M + 14, 36);
+      doc.setFillColor(...C.gold);
+      doc.circle(M + 18, 36, 0.8, 'F');
+
+      // Kicker
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(...C.accent);
+      doc.text('SECCIÓN 01', M, 44, { charSpace: 1.5 });
+
+      // Título grande
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(34); doc.setTextColor(...C.navy);
+      doc.text('Descripción', M, 64);
+      doc.setDrawColor(...C.gold); doc.setLineWidth(1);
+      doc.line(M, 68, M + 30, 68);
+
+      // Párrafo descriptivo con drop cap
       const empleadoFiltro = this.empleadoSeleccionado || 'todos los colaboradores';
       const sucFiltro = this.sucursalSeleccionada || 'todas las sucursales';
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(10.5); doc.setTextColor(...C.ink);
       const desc = `Reporte de auditoría visual para el periodo del ${this.fechaInicio} al ${this.fechaFin}. Se analizaron ${resultados.length} checklists de ${sucFiltro} asignados a ${empleadoFiltro}, con un cumplimiento general del ${promedio}% y ${totalConFotos} evidencias fotográficas documentadas.`;
-      const descLines = doc.splitTextToSize(desc, pageW - M * 2);
-      doc.text(descLines, M, 78, { lineHeightFactor: 1.45 });
 
-      let yKpi = 78 + descLines.length * 5 + 14;
+      // Drop cap: primera letra en burdeos grande
+      const primeraLetra = desc.charAt(0);
+      const restoTexto = desc.slice(1);
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(46); doc.setTextColor(...C.navy);
+      doc.text(primeraLetra, M, 92);
+
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(10.5); doc.setTextColor(...C.ink);
+      const dropCapWidth = 12;
+      const dropCapLines = 3;
+      const restoLineasCortas = doc.splitTextToSize(restoTexto, pageW - M * 2 - dropCapWidth - 2);
+      const primerasLineas = restoLineasCortas.slice(0, dropCapLines);
+      doc.text(primerasLineas, M + dropCapWidth + 2, 78, { lineHeightFactor: 1.45 });
+      let yPar = 78 + primerasLineas.length * 5;
+      if (restoLineasCortas.length > dropCapLines) {
+        const textoResto = restoLineasCortas.slice(dropCapLines).join(' ');
+        const restoFull = doc.splitTextToSize(textoResto, pageW - M * 2);
+        doc.text(restoFull, M, yPar, { lineHeightFactor: 1.45 });
+        yPar += restoFull.length * 5;
+      }
+
+      let yKpi = yPar + 14;
       doc.setDrawColor(...C.line); doc.setLineWidth(0.2);
       doc.line(M, yKpi, pageW - M, yKpi);
       yKpi += 12;

@@ -318,16 +318,19 @@ export class CierreMensualComponent implements OnInit, OnDestroy {
       const fechaGen = new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'long', year: 'numeric' });
 
       // Paleta corporativa unificada
+      // Paleta corporativa Mega Dulces — Burdeos + rosáceo premium
       const C = {
-        navy:  [15, 23, 42] as [number, number, number],
-        ink:   [30, 41, 59] as [number, number, number],
-        gray:  [100, 116, 139] as [number, number, number],
-        soft:  [148, 163, 184] as [number, number, number],
-        line:  [226, 232, 240] as [number, number, number],
-        bg:    [248, 250, 252] as [number, number, number],
+        navy:  [131, 24, 67]  as [number, number, number],  // #831843 burdeos principal
+        accent:[190, 24, 93]  as [number, number, number],  // #BE185D rosa antiguo
+        ink:   [76, 5, 43]    as [number, number, number],  // burdeos muy oscuro para texto
+        gray:  [136, 86, 110] as [number, number, number],  // rosa-gris para meta
+        soft:  [180, 144, 162] as [number, number, number], // rosa-gris claro
+        line:  [243, 218, 228] as [number, number, number], // rosa muy claro para líneas
+        bg:    [253, 242, 248] as [number, number, number], // crema rosada para fondos
+        gold:  [217, 119, 6]  as [number, number, number],  // dorado para acentos premium
         ok:    [16, 185, 129] as [number, number, number],
         warn:  [245, 158, 11] as [number, number, number],
-        bad:   [239, 68, 68] as [number, number, number]
+        bad:   [239, 68, 68]  as [number, number, number]
       };
 
       // ----- PRE-CARGA DE FOTOS -----
@@ -385,28 +388,38 @@ export class CierreMensualComponent implements OnInit, OnDestroy {
         doc.setGState(new (doc as any).GState({ opacity: 1 }));
       }
 
-      // Bloque blanco inferior (40% restante)
-      doc.setFillColor(255, 255, 255);
+      // Bloque crema rosado inferior (40% restante)
+      doc.setFillColor(...C.bg);
       doc.rect(0, fotoPortadaH, pageW, pageH - fotoPortadaH, 'F');
 
+      // Ornamento dorado superior: línea + diamante + línea (estilo premium)
+      const ornY = fotoPortadaH + 14;
+      doc.setDrawColor(...C.gold); doc.setLineWidth(0.4);
+      doc.line(M, ornY, M + 20, ornY);
+      doc.setFillColor(...C.gold);
+      doc.circle(M + 24, ornY, 0.8, 'F');
+      doc.line(M + 28, ornY, M + 48, ornY);
+
       // Kicker pequeño arriba del título
-      const titY = fotoPortadaH + 28;
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...C.gray);
-      doc.text('MEGA DULCES DE LOS ALTOS', M, titY, { charSpace: 1.2 });
+      const titY = fotoPortadaH + 26;
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(...C.accent);
+      doc.text('MEGA DULCES DE LOS ALTOS', M, titY, { charSpace: 1.4 });
 
       // Título grande a dos líneas: "INFORME / MENSUAL"
       doc.setTextColor(...C.navy);
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(40);
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(42);
       doc.text('INFORME', M, titY + 18, { charSpace: 0.5 });
-      // "MENSUAL" más light con subrayado decorativo
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(40);
-      doc.text('MENSUAL', M, titY + 34, { charSpace: 0.5 });
-      // Subrayado fino debajo de "MENSUAL" — visual signature
-      doc.setDrawColor(...C.navy); doc.setLineWidth(0.6);
-      doc.line(M, titY + 38, M + 32, titY + 38);
+      // "MENSUAL" en accent rosa antiguo con peso normal
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(42); doc.setTextColor(...C.accent);
+      doc.text('MENSUAL', M, titY + 35, { charSpace: 0.5 });
+      // Subrayado decorativo dorado debajo de "MENSUAL"
+      doc.setDrawColor(...C.gold); doc.setLineWidth(1.2);
+      doc.line(M, titY + 40, M + 36, titY + 40);
+      doc.setLineWidth(0.4);
+      doc.line(M, titY + 42, M + 18, titY + 42);
 
-      // Pie con fecha y "preparado por"
-      const pieY = titY + 50;
+      // Pie con mes y preparado por
+      const pieY = titY + 54;
       doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(...C.gray);
       const piePartes = [
         this.mesEtiqueta().toUpperCase(),
@@ -414,31 +427,60 @@ export class CierreMensualComponent implements OnInit, OnDestroy {
       ];
       doc.text(piePartes.join('  //  '), M, pieY, { charSpace: 1 });
 
+      // Mini watermark "MD" estilo monograma en esquina inferior derecha del bloque crema
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(48); doc.setTextColor(...C.line);
+      doc.text('MD', pageW - M - 16, pageH - M, { align: 'right' });
+
       // =====================================================================
-      // PÁGINA 2 — DESCRIPCIÓN (estilo editorial: kicker + título + descripción)
-      // Sin header gris arriba: el kicker "SECCIÓN 01" hace de orientación.
+      // PÁGINA 2 — DESCRIPCIÓN (estilo editorial premium con drop cap)
       // =====================================================================
       doc.addPage();
 
+      // Ornamento dorado lateral izquierdo
+      doc.setDrawColor(...C.gold); doc.setLineWidth(0.4);
+      doc.line(M, 36, M + 14, 36);
+      doc.setFillColor(...C.gold);
+      doc.circle(M + 18, 36, 0.8, 'F');
+
       // Kicker
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...C.gray);
-      doc.text('SECCIÓN 01', M, 40, { charSpace: 1.5 });
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(...C.accent);
+      doc.text('SECCIÓN 01', M, 44, { charSpace: 1.5 });
 
-      // Título grande con subrayado
+      // Título grande con subrayado dorado
       doc.setFont('helvetica', 'bold'); doc.setFontSize(34); doc.setTextColor(...C.navy);
-      doc.text('Descripción', M, 60);
-      doc.setDrawColor(...C.navy); doc.setLineWidth(0.6);
-      doc.line(M, 64, M + 26, 64);
+      doc.text('Descripción', M, 64);
+      doc.setDrawColor(...C.gold); doc.setLineWidth(1);
+      doc.line(M, 68, M + 30, 68);
 
-      // Párrafo descriptivo
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(10.5); doc.setTextColor(...C.ink);
+      // Párrafo descriptivo con drop cap (primera letra grande)
       const lider = sucursales[0];
       const desc = `Durante el mes de ${this.mesEtiqueta().toLowerCase()} se procesaron ${totales.totalChecklists} checklists operativos en ${sucursales.length} sucursales, con un cumplimiento general del ${totales.porcentaje}%. Se validaron ${totales.totalHechas} de ${totales.totalTareas} tareas asignadas y se documentaron ${totales.totalFotos} evidencias fotográficas.${lider ? ` La sucursal con mejor desempeño fue ${lider.sucursal} con ${lider.porcentaje}% de cumplimiento.` : ''}`;
-      const descLines = doc.splitTextToSize(desc, pageW - M * 2);
-      doc.text(descLines, M, 78, { lineHeightFactor: 1.45 });
 
-      // Línea separadora
-      let yResumen = 78 + descLines.length * 5 + 14;
+      // Drop cap: primera letra grande en burdeos
+      const primeraLetra = desc.charAt(0);
+      const restoTexto = desc.slice(1);
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(46); doc.setTextColor(...C.navy);
+      doc.text(primeraLetra, M, 92);
+
+      // Resto del párrafo, rodea el drop cap
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(10.5); doc.setTextColor(...C.ink);
+      const dropCapWidth = 12;   // ancho que ocupa la letra grande
+      const dropCapLines = 3;    // primeras N líneas se sangran
+      // Primeras líneas con sangría
+      const restoLineasCortas = doc.splitTextToSize(restoTexto, pageW - M * 2 - dropCapWidth - 2);
+      const primerasLineas = restoLineasCortas.slice(0, dropCapLines);
+      doc.text(primerasLineas, M + dropCapWidth + 2, 78, { lineHeightFactor: 1.45 });
+      // Resto sin sangría
+      let yPar = 78 + primerasLineas.length * 5;
+      if (restoLineasCortas.length > dropCapLines) {
+        // Re-medimos el resto con el ancho completo
+        const textoResto = restoLineasCortas.slice(dropCapLines).join(' ');
+        const restoFull = doc.splitTextToSize(textoResto, pageW - M * 2);
+        doc.text(restoFull, M, yPar, { lineHeightFactor: 1.45 });
+        yPar += restoFull.length * 5;
+      }
+
+      let yResumen = yPar + 14;
       doc.setDrawColor(...C.line); doc.setLineWidth(0.2);
       doc.line(M, yResumen, pageW - M, yResumen);
       yResumen += 12;
@@ -553,13 +595,21 @@ export class CierreMensualComponent implements OnInit, OnDestroy {
           doc.rect(0, 0, pageW, fotoSucH, 'F');
         }
 
-        // Bloque blanco inferior
-        doc.setFillColor(255, 255, 255);
+        // Bloque crema rosado inferior
+        doc.setFillColor(...C.bg);
         doc.rect(0, fotoSucH, pageW, pageH - fotoSucH, 'F');
+
+        // Ornamento dorado
+        const ornSY = fotoSucH + 10;
+        doc.setDrawColor(...C.gold); doc.setLineWidth(0.4);
+        doc.line(M, ornSY, M + 16, ornSY);
+        doc.setFillColor(...C.gold);
+        doc.circle(M + 20, ornSY, 0.7, 'F');
+        doc.line(M + 24, ornSY, M + 40, ornSY);
 
         // Kicker
         const kY = fotoSucH + 22;
-        doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...C.gray);
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(...C.accent);
         doc.text(`SECCIÓN ${String(secNum).padStart(2, '0')}  //  SUCURSAL`, M, kY, { charSpace: 1.5 });
         secNum++;
 
@@ -575,10 +625,12 @@ export class CierreMensualComponent implements OnInit, OnDestroy {
         doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...C.gray);
         doc.text('CUMPLIMIENTO', pageW - M, kY + 25, { align: 'right', charSpace: 1.2 });
 
-        // Línea separadora bajo el título
+        // Línea decorativa dorada bajo el título
         const lineaY = kY + 14 + nameLines.length * 11;
-        doc.setDrawColor(...C.navy); doc.setLineWidth(0.6);
-        doc.line(M, lineaY, M + 22, lineaY);
+        doc.setDrawColor(...C.gold); doc.setLineWidth(1);
+        doc.line(M, lineaY, M + 26, lineaY);
+        doc.setLineWidth(0.4);
+        doc.line(M, lineaY + 2, M + 14, lineaY + 2);
 
         // Mini descripción de la sucursal
         const descY = lineaY + 10;

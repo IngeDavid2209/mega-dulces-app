@@ -3298,3 +3298,207 @@
   .eq-fase-item { grid-template-columns: 1fr; }
   .eq-wizard-step { font-size: 10px; padding: 4px 6px; }
 }
+
+/* ============================================================================
+   ORDEN DE MANTENIMIENTO (bloque extra en Paso 2 del wizard cuando store=MANTENIMIENTO)
+   ============================================================================ */
+.mant-block {
+  margin-top: 24px;
+  background: linear-gradient(135deg, #FFF7ED 0%, #FFFBEB 100%);
+  border: 1px solid #FDBA74;
+  border-radius: 16px;
+  padding: 22px 24px;
+}
+.mant-block-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+.mant-block-icon {
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+  border-radius: 11px;
+  background: linear-gradient(135deg, #EA580C 0%, #C2410C 100%);
+  color: #FFFFFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.mant-block-title { font-size: 17px; font-weight: 700; color: #7C2D12; margin-bottom: 4px; }
+.mant-block-sub { font-size: 13px; color: #9A3412; line-height: 1.5; }
+.mant-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.mant-field { display: flex; flex-direction: column; gap: 6px; }
+.mant-field-full { grid-column: 1 / -1; }
+.mant-label { display: inline-flex; align-items: baseline; gap: 4px; }
+.mant-label-text { font-size: 12px; font-weight: 700; color: #7C2D12; letter-spacing: 0.3px; text-transform: uppercase; }
+.mant-required { color: #B91C1C; font-weight: 700; }
+.mant-input {
+  background: #FFFFFF;
+  border: 1.5px solid #FED7AA;
+  border-radius: 10px;
+  padding: 11px 13px;
+  font-size: 14px;
+  color: #1E293B;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.mant-input:focus { border-color: #EA580C; box-shadow: 0 0 0 3px rgba(234, 88, 12, 0.18); }
+.mant-input::placeholder { color: #9A8780; }
+
+/* Prioridad */
+.mant-prio-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+.mant-prio {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #FFFFFF;
+  border: 1.5px solid #FED7AA;
+  border-radius: 12px;
+  padding: 12px 14px;
+  cursor: pointer;
+  transition: border-color 0.12s ease, background 0.12s ease, transform 0.05s ease;
+  font-family: inherit;
+  text-align: left;
+}
+.mant-prio:hover { border-color: #EA580C; }
+.mant-prio span:last-child { display: flex; flex-direction: column; }
+.mant-prio strong { font-size: 13px; color: #1E293B; font-weight: 700; }
+.mant-prio small { font-size: 11px; color: #64748B; }
+.mant-prio-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.mant-prio[data-tono="urgente"] .mant-prio-dot   { background: #DC2626; }
+.mant-prio[data-tono="normal"] .mant-prio-dot    { background: #F59E0B; }
+.mant-prio[data-tono="noUrgente"] .mant-prio-dot { background: #10B981; }
+.mant-prio-activa[data-tono="urgente"]   { background: #FEF2F2; border-color: #DC2626; }
+.mant-prio-activa[data-tono="normal"]    { background: #FFFBEB; border-color: #F59E0B; }
+.mant-prio-activa[data-tono="noUrgente"] { background: #ECFDF5; border-color: #10B981; }
+
+/* Foto del problema */
+.mant-foto-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.mant-foto-btn {
+  display: inline-flex;
+  align-items: center;
+  background: #EA580C;
+  color: #FFFFFF;
+  border: none;
+  padding: 11px 18px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.mant-foto-btn:hover { background: #C2410C; }
+.mant-foto-hint { font-size: 12px; color: #9A3412; }
+.mant-foto-loading {
+  background: #FFFFFF;
+  border: 1px dashed #FDBA74;
+  border-radius: 10px;
+  padding: 16px 20px;
+  font-size: 13px;
+  color: #9A3412;
+}
+.mant-foto-preview {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: #FFFFFF;
+  border: 1px solid #FED7AA;
+  border-radius: 12px;
+  padding: 10px;
+}
+.mant-foto-preview img {
+  width: 110px;
+  height: 110px;
+  object-fit: cover;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+.mant-foto-quitar {
+  background: transparent;
+  border: 1px solid #DC2626;
+  color: #DC2626;
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.mant-foto-quitar:hover { background: #FEF2F2; }
+
+/* Vista de detalle: bloque destacado de mantenimiento */
+.mant-detalle {
+  margin: 16px 0 22px;
+  background: linear-gradient(135deg, #FFF7ED 0%, #FFFBEB 100%);
+  border-left: 6px solid #EA580C;
+  border-radius: 14px;
+  padding: 18px 22px;
+  box-shadow: 0 4px 12px rgba(234, 88, 12, 0.12);
+}
+.mant-detalle-titulo {
+  font-size: 14px;
+  font-weight: 800;
+  color: #7C2D12;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.mant-detalle-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 24px;
+  margin-bottom: 14px;
+}
+.mant-detalle-row { display: flex; flex-direction: column; gap: 2px; }
+.mant-detalle-label { font-size: 11px; font-weight: 700; color: #9A3412; text-transform: uppercase; letter-spacing: 0.4px; }
+.mant-detalle-valor { font-size: 14px; color: #1E293B; font-weight: 600; }
+.mant-detalle-prio {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  align-self: flex-start;
+}
+.mant-detalle-prio[data-tono="urgente"]   { background: #FEE2E2; color: #B91C1C; border: 1px solid #FCA5A5; }
+.mant-detalle-prio[data-tono="normal"]    { background: #FEF3C7; color: #B45309; border: 1px solid #FCD34D; }
+.mant-detalle-prio[data-tono="noUrgente"] { background: #D1FAE5; color: #047857; border: 1px solid #6EE7B7; }
+.mant-detalle-foto {
+  margin-top: 8px;
+}
+.mant-detalle-foto img {
+  max-width: 100%;
+  max-height: 240px;
+  border-radius: 10px;
+  cursor: pointer;
+  border: 1px solid #FED7AA;
+}
+
+@media (max-width: 640px) {
+  .mant-grid { grid-template-columns: 1fr; }
+  .mant-prio-row { grid-template-columns: 1fr; }
+  .mant-detalle-grid { grid-template-columns: 1fr; }
+  .mant-foto-preview { flex-direction: column; align-items: stretch; }
+  .mant-foto-preview img { width: 100%; height: 160px; }
+}

@@ -454,6 +454,48 @@
             </div>
           </div>
         </div>
+
+        <!-- ORDEN DE MANTENIMIENTO: solo si el checklist trae el sub-objeto mantenimiento -->
+        <div class="mant-detalle" *ngIf="checklistSeleccionado().mantenimiento">
+          <div class="mant-detalle-titulo">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#EA580C" stroke-width="2.5">
+              <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>
+            </svg>
+            Orden de Mantenimiento
+          </div>
+          <div class="mant-detalle-grid">
+            <div class="mant-detalle-row">
+              <span class="mant-detalle-label">Sucursal del problema</span>
+              <span class="mant-detalle-valor">{{ checklistSeleccionado().mantenimiento.sucursalOrigen || '—' }}</span>
+            </div>
+            <div class="mant-detalle-row">
+              <span class="mant-detalle-label">Tipo</span>
+              <span class="mant-detalle-valor">{{ checklistSeleccionado().mantenimiento.tipo || '—' }}</span>
+            </div>
+            <div class="mant-detalle-row" *ngIf="checklistSeleccionado().mantenimiento.ubicacion">
+              <span class="mant-detalle-label">Ubicación exacta</span>
+              <span class="mant-detalle-valor">{{ checklistSeleccionado().mantenimiento.ubicacion }}</span>
+            </div>
+            <div class="mant-detalle-row">
+              <span class="mant-detalle-label">Prioridad</span>
+              <span class="mant-detalle-prio" [attr.data-tono]="checklistSeleccionado().mantenimiento.prioridad || 'normal'">
+                <span class="mant-prio-dot"></span>
+                {{ prioridadLabel(checklistSeleccionado().mantenimiento.prioridad) }}
+              </span>
+            </div>
+            <div class="mant-detalle-row" *ngIf="checklistSeleccionado().mantenimiento.reportadoPor">
+              <span class="mant-detalle-label">Reportado por</span>
+              <span class="mant-detalle-valor">{{ checklistSeleccionado().mantenimiento.reportadoPor }}</span>
+            </div>
+          </div>
+          <div class="mant-detalle-foto" *ngIf="checklistSeleccionado().mantenimiento.fotoInicial">
+            <span class="mant-detalle-label" style="display:block; margin-bottom: 6px;">Foto del problema reportado</span>
+            <a [href]="checklistSeleccionado().mantenimiento.fotoInicial" target="_blank" rel="noopener">
+              <img [src]="checklistSeleccionado().mantenimiento.fotoInicial" alt="Problema reportado">
+            </a>
+          </div>
+        </div>
+
         <div class="checklist-detail-items">
           <div class="checklist-detail-item" *ngFor="let item of checklistSeleccionado().items"
             [class.item-done]="esItemCompleto(item)">
@@ -797,6 +839,118 @@
                   <polyline points="20 6 9 17 4 12"></polyline>
                 </svg>
               </button>
+            </div>
+
+            <!-- BLOQUE ESPECIAL: Orden de Mantenimiento (aparece solo si store=MANTENIMIENTO) -->
+            <div class="mant-block" *ngIf="esTareaMantenimiento">
+              <div class="mant-block-header">
+                <div class="mant-block-icon">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>
+                  </svg>
+                </div>
+                <div>
+                  <div class="mant-block-title">Orden de Mantenimiento</div>
+                  <div class="mant-block-sub">Para que el técnico llegue directo al problema, dinos exactamente dónde y qué pasa.</div>
+                </div>
+              </div>
+
+              <div class="mant-grid">
+                <!-- Sucursal donde está el problema -->
+                <div class="mant-field">
+                  <label class="mant-label">
+                    <span class="mant-label-text">¿En qué sucursal está el problema?</span>
+                    <span class="mant-required">*</span>
+                  </label>
+                  <select class="mant-input" [(ngModel)]="formMantSucursalOrigen" name="mantSucursalOrigen">
+                    <option value="">— Selecciona la sucursal —</option>
+                    <option *ngFor="let s of sucursalesParaMantenimientoOrigen" [value]="s">{{ s }}</option>
+                  </select>
+                </div>
+
+                <!-- Tipo de problema -->
+                <div class="mant-field">
+                  <label class="mant-label">
+                    <span class="mant-label-text">Tipo de problema</span>
+                    <span class="mant-required">*</span>
+                  </label>
+                  <select class="mant-input" [(ngModel)]="formMantTipo" name="mantTipo">
+                    <option value="">— Selecciona el tipo —</option>
+                    <option *ngFor="let t of tiposMantenimiento" [value]="t">{{ t }}</option>
+                  </select>
+                </div>
+
+                <!-- Ubicación exacta -->
+                <div class="mant-field mant-field-full">
+                  <label class="mant-label">
+                    <span class="mant-label-text">Ubicación exacta dentro del lugar</span>
+                  </label>
+                  <input type="text" class="mant-input" [(ngModel)]="formMantUbicacion" name="mantUbicacion"
+                         placeholder="Ej: pasillo 3, cuarto frío, baño hombres, cajero 2…" maxlength="120">
+                </div>
+
+                <!-- Prioridad -->
+                <div class="mant-field mant-field-full">
+                  <label class="mant-label">
+                    <span class="mant-label-text">Prioridad</span>
+                  </label>
+                  <div class="mant-prio-row">
+                    <button type="button" class="mant-prio" data-tono="urgente"
+                            [class.mant-prio-activa]="formMantPrioridad === 'urgente'"
+                            (click)="formMantPrioridad = 'urgente'">
+                      <span class="mant-prio-dot"></span>
+                      <span>
+                        <strong>Urgente</strong>
+                        <small>Hoy mismo</small>
+                      </span>
+                    </button>
+                    <button type="button" class="mant-prio" data-tono="normal"
+                            [class.mant-prio-activa]="formMantPrioridad === 'normal'"
+                            (click)="formMantPrioridad = 'normal'">
+                      <span class="mant-prio-dot"></span>
+                      <span>
+                        <strong>Normal</strong>
+                        <small>Esta semana</small>
+                      </span>
+                    </button>
+                    <button type="button" class="mant-prio" data-tono="noUrgente"
+                            [class.mant-prio-activa]="formMantPrioridad === 'noUrgente'"
+                            (click)="formMantPrioridad = 'noUrgente'">
+                      <span class="mant-prio-dot"></span>
+                      <span>
+                        <strong>No urgente</strong>
+                        <small>Cuando se pueda</small>
+                      </span>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Foto del problema -->
+                <div class="mant-field mant-field-full">
+                  <label class="mant-label">
+                    <span class="mant-label-text">Foto del problema (opcional)</span>
+                  </label>
+                  <div class="mant-foto-row" *ngIf="!formMantFoto && !formMantFotoSubiendo">
+                    <label class="mant-foto-btn">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                           style="margin-right: 8px;">
+                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                        <circle cx="12" cy="13" r="4"></circle>
+                      </svg>
+                      Subir foto del problema
+                      <input type="file" accept="image/*" (change)="onMantFotoChange($event)" hidden>
+                    </label>
+                    <span class="mant-foto-hint">El técnico la verá antes de salir.</span>
+                  </div>
+                  <div class="mant-foto-row" *ngIf="formMantFotoSubiendo">
+                    <div class="mant-foto-loading">Subiendo foto…</div>
+                  </div>
+                  <div class="mant-foto-preview" *ngIf="formMantFoto && !formMantFotoSubiendo">
+                    <img [src]="formMantFoto" alt="Problema reportado">
+                    <button type="button" class="mant-foto-quitar" (click)="quitarFotoMantenimiento()">Quitar foto</button>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 

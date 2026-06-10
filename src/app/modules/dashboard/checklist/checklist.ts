@@ -75,6 +75,30 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   fasesTemporales: any[] = [];
   formAssigned: string[] = [];
   formStore = '';
+
+  // ============================================================================
+  // Campos extra que aparecen SOLO cuando formStore === 'MANTENIMIENTO'.
+  // Permiten capturar orden de servicio: donde esta el problema, que tipo, ubicacion
+  // exacta dentro de la sucursal, prioridad y foto del problema antes de intervenir.
+  // Se guardan como sub-objeto `mantenimiento` en el doc del checklist.
+  // ============================================================================
+  formMantSucursalOrigen: string = '';
+  formMantTipo: string = '';
+  formMantUbicacion: string = '';
+  formMantPrioridad: 'urgente' | 'normal' | 'noUrgente' = 'normal';
+  formMantFoto: string = '';
+  formMantFotoSubiendo: boolean = false;
+  tiposMantenimiento: string[] = [
+    'Eléctrico', 'Plomería', 'Refrigeración', 'Aire acondicionado',
+    'Pintura', 'Carpintería', 'Limpieza profunda', 'Equipo de cómputo', 'Otro'
+  ];
+  /** Sucursales operativas donde puede ESTAR el problema (excluye Mantenimiento y "ADMINISTRADORES DEL SISTEMA"). */
+  sucursalesParaMantenimientoOrigen: string[] = [
+    'Canindo', 'La Piedad Abastos', '8 Esquinas', 'Padre Hidalgo',
+    'Morelia Madero', 'Morelia Abastos', 'Yurécuaro', 'Zamora Centro',
+    'OFICINAS CORPORATIVAS', 'CAJA GENERAL', 'COMPRAS', 'CONTABILIDAD',
+    'FINANZAS', 'SISTEMAS', 'RH', 'MKT'
+  ];
   formItems: any[] = [{
     text: '', requiresPhoto: false, requiresAntesDespues: false, requiresVariasFotos: false,
     permiteGaleria: false, permiteDocumentos: false, tiempoEstimado: 60,
@@ -264,10 +288,51 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     }
   }
 
+  /** True si la tarea actual del wizard es del area de Mantenimiento. */
+  get esTareaMantenimiento(): boolean {
+    return this.formStore === 'MANTENIMIENTO';
+  }
+
+  /** Campos obligatorios de mantenimiento llenos? (sucursal origen + tipo) */
+  private validarMantenimientoMinimo(): boolean {
+    if (!this.esTareaMantenimiento) return true;
+    return !!this.formMantSucursalOrigen && !!this.formMantTipo;
+  }
+
+  /** Sube la foto del problema inicial a Cloudinary. Se llama desde el input file. */
+  async onMantFotoChange(event: any) {
+    const file = event?.target?.files?.[0];
+    if (!file) return;
+    this.formMantFotoSubiendo = true;
+    try {
+      const r = await this.subirACloudinary(file);
+      if (r.ok && r.url) {
+        this.formMantFoto = r.url;
+        this.mostrarToast('Foto del problema subida');
+      } else {
+        this.mostrarToast('No se pudo subir: ' + (r.error || 'Error desconocido'));
+      }
+    } finally {
+      this.formMantFotoSubiendo = false;
+      if (event?.target) event.target.value = '';
+    }
+  }
+
+  quitarFotoMantenimiento() {
+    this.formMantFoto = '';
+  }
+
+  /** Labels humanos de la prioridad para el resumen / vista de detalle. */
+  prioridadLabel(p: string): string {
+    if (p === 'urgente') return 'Urgente';
+    if (p === 'noUrgente') return 'No urgente';
+    return 'Normal';
+  }
+
   puedeAvanzarWizard(): boolean {
     switch (this.wizardStep) {
       case 1: return !!this.formName && this.formName.trim().length > 0;
-      case 2: return !!this.formStore;
+      case 2: return !!this.formStore && this.validarMantenimientoMinimo();
       case 3: return this.formAssigned.length > 0;
       case 4: return !!this.presetFechaTarea && !!this.formFechaTarea; // 📅 fecha de ejecución
       case 5: return !!this.formItems[0]?.horaInicio && !!this.formItems[0]?.horaLimite;
@@ -1930,7 +1995,14 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       date: '', time: ''
     }];
     this.fasesTemporales = [];
-    // 🧙 Reset wizard
+    // Reset campos de mantenimiento
+    this.formMantSucursalOrigen = '';
+    this.formMantTipo = '';
+    this.formMantUbicacion = '';
+    this.formMantPrioridad = 'normal';
+    this.formMantFoto = '';
+    this.formMantFotoSubiendo = false;
+    // Reset wizard
     this.wizardStep = 1;
     this.wizardTipoEvidencia = 'ninguna';
     this.terminoBusquedaEmpleadoWizard = '';
@@ -2499,7 +2571,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       const uniqueId = Date.now() + index;
       const hoy = hoyGlobal;
 
-      const checklistTareas = {
+      const checklistTareas: any = {
         id: uniqueId,
         timestampCreacion: Date.now(),
         name: this.formName,
@@ -2514,6 +2586,20 @@ export class ChecklistComponent implements OnInit, OnDestroy {
         items: JSON.parse(JSON.stringify(tareasValidas)),
         subtareas: JSON.parse(JSON.stringify(this.fasesTemporales))
       };
+
+      // Orden de mantenimiento: solo se guarda si la tarea fue creada con store='MANTENIMIENTO'.
+      // Asi el detalle del checklist puede mostrar la info adicional y filtros pueden buscar
+      // por prioridad/tipo despues sin afectar a tareas normales.
+      if (this.formStore === 'MANTENIMIENTO') {
+        checklistTareas.mantenimiento = {
+          sucursalOrigen: this.formMantSucursalOrigen,
+          tipo: this.formMantTipo,
+          ubicacion: (this.formMantUbicacion || '').trim(),
+          prioridad: this.formMantPrioridad,
+          fotoInicial: this.formMantFoto || null,
+          reportadoPor: this.currentUser?.nombre || 'Desconocido'
+        };
+      }
 
       this.guardarEnLaNube(checklistTareas);
 

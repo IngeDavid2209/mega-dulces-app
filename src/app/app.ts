@@ -1,6 +1,6 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
-import { Firestore, doc, setDoc, updateDoc, getDoc, onSnapshot } from '@angular/fire/firestore'; // 🔥 Agregamos getDoc
+import { Firestore, doc, setDoc, updateDoc, getDoc, onSnapshot, collection, query, where, getDocs } from '@angular/fire/firestore';
 import { Storage, ref, uploadString, getDownloadURL } from '@angular/fire/storage';
 import { SwUpdate, VersionReadyEvent } from '@angular/service-worker';
 import { filter } from 'rxjs/operators';
@@ -71,17 +71,45 @@ export class AppComponent implements OnInit {
    *      • admins limitados que no veían el avance de sucursales nuevas,
    *      • usuarios bloqueados al enviar porque sus permisos estaban viejos.
    */
-  private sincronizarSesion() {
+  private async sincronizarSesion() {
     const raw = localStorage.getItem('md_sesion_actual');
     if (!raw) return;
     let sesion: any;
     try { sesion = JSON.parse(raw); } catch { return; }
-    const uid = sesion?.uid || sesion?.idFirestore;
-    if (!uid) return;
 
-    onSnapshot(doc(this.firestore, 'usuarios', uid), snap => {
+    // 1) Resolver el docId real del usuario en Firestore.
+    //    Primero por uid/idFirestore (lo habitual). Si no existe, fallback por
+    //    'usuario' login (cubre cuentas viejas o cuando el doc se renombro).
+    let docId: string | null = sesion?.uid || sesion?.idFirestore || null;
+    if (docId) {
+      const probe = await getDoc(doc(this.firestore, 'usuarios', docId));
+      if (!probe.exists()) docId = null;
+    }
+    if (!docId && sesion?.usuario) {
+      try {
+        const q = query(collection(this.firestore, 'usuarios'), where('usuario', '==', sesion.usuario));
+        const qs = await getDocs(q);
+        qs.forEach(d => { if (!docId) docId = d.id; });
+      } catch (e) { /* sin conexion: no podemos resolver */ }
+    }
+    if (!docId) {
+      console.warn('[sesion] no se pudo localizar el doc del usuario en Firestore. ' +
+        'Los permisos del localStorage podrian estar desactualizados. ' +
+        `usuario=${sesion?.usuario} uid=${sesion?.uid}`);
+      return;
+    }
+
+    // 2) Si el localStorage no tenia uid valido, lo guardamos ahora para que
+    //    el resto del flujo lo encuentre.
+    if (!sesion.uid && !sesion.idFirestore) {
+      sesion = { ...sesion, uid: docId };
+      localStorage.setItem('md_sesion_actual', JSON.stringify(sesion));
+    }
+
+    // 3) Subscribirse al doc real y sincronizar cualquier cambio.
+    onSnapshot(doc(this.firestore, 'usuarios', docId), snap => {
       if (!snap.exists()) return;
-      const fresco: any = { ...snap.data(), uid };
+      const fresco: any = { ...snap.data(), uid: docId };
 
       const anteriorRaw = localStorage.getItem('md_sesion_actual') || '{}';
       let anterior: any = {};
@@ -89,10 +117,9 @@ export class AppComponent implements OnInit {
 
       if (JSON.stringify(fresco) === JSON.stringify(anterior)) return;
 
-      // Guardamos los datos frescos en localStorage.
       localStorage.setItem('md_sesion_actual', JSON.stringify(fresco));
 
-      // ¿Cambió algo crítico para los permisos/visibilidad? → recarga.
+      // Cambio crítico → recarga para que todas las pantallas tomen los nuevos permisos.
       const camposCriticos = ['nombre', 'rol', 'alcance', 'cargo'];
       const sucCambio = JSON.stringify(anterior.sucursales || []) !== JSON.stringify(fresco.sucursales || []);
       const areasCambio = JSON.stringify(anterior.areas || []) !== JSON.stringify(fresco.areas || []);
@@ -105,8 +132,7 @@ export class AppComponent implements OnInit {
       const permisoCambio = permisos.some(p => !!anterior[p] !== !!fresco[p]);
 
       if (campoCriticoCambio || sucCambio || areasCambio || permisoCambio) {
-        // Recargamos para que TODAS las pantallas tomen los nuevos permisos.
-        console.log('[sesion] perfil cambió en Firestore — recargando…');
+        console.log('[sesion] perfil cambio en Firestore — recargando…');
         setTimeout(() => window.location.reload(), 300);
       }
     });

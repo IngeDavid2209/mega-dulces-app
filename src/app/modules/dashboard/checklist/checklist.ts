@@ -5,7 +5,7 @@ import { RouterModule, ActivatedRoute } from '@angular/router';
 import { Firestore, collection, doc, setDoc, getDoc, deleteDoc, onSnapshot, getDocs, query, where } from '@angular/fire/firestore';
 import * as localforage from 'localforage';
 import Swal from 'sweetalert2';
-import { esAdminGlobal, esAdminLimitado, sucursalesPermitidas, esSupervisor, mismoEmpleadoNombre } from '../../../shared/permisos.util';
+import { esAdminGlobal, esAdminLimitado, sucursalesPermitidas, esSupervisor, mismoEmpleadoNombre, normalizarNombre } from '../../../shared/permisos.util';
 import { nivelDeCargo } from '../../../shared/nivel-jerarquico.util';
 import { TareaEquipo, FaseEquipo, ItemEquipo, SubtareaEquipo } from '../../../shared/tareas-equipo.types';
 import { esItemHecho, tieneEvidencia } from '../../../shared/item-completado.util';
@@ -806,16 +806,27 @@ export class ChecklistComponent implements OnInit, OnDestroy {
         'CAJA GENERAL', 'COMPRAS', 'CONTABILIDAD', 'FINANZAS', 'SISTEMAS', 'RH', 'MKT', 'MANTENIMIENTO'
       ];
 
-      // 🔥 SUCURSALES DISPONIBLES
+      // SUCURSALES DISPONIBLES
       if (esAdminGlobal(this.currentUser)) {
         this.sucursalesDisponibles.set(todasLasSucursales);
       } else if (esAdminLimitado(this.currentUser) || this.currentUser?.puedeCrearChecklists) {
         const permitidas = sucursalesPermitidas(this.currentUser);
         const misSucursales = permitidas ?? [];
+        // Normalizamos para tolerar diferencias de tildes/mayusculas/espacios.
+        // Ej: si el perfil tiene 'Yurecuaro' (sin tilde) pero el catalogo dice
+        // 'Yurécuaro' (con tilde), igual debe matchear.
+        const misSucNorm = new Set(misSucursales.map(s => normalizarNombre(s)));
         const sucursalesFiltradas = todasLasSucursales.filter(
-          s => s !== 'ADMINISTRADORES DEL SISTEMA' && misSucursales.includes(s)
+          s => s !== 'ADMINISTRADORES DEL SISTEMA' && misSucNorm.has(normalizarNombre(s))
         );
         this.sucursalesDisponibles.set(sucursalesFiltradas);
+        // Diagnostico: si tiene sucursales asignadas pero NO matchearon ninguna del catalogo,
+        // lo logueamos para detectar nombres mal escritos en el perfil.
+        if (sucursalesFiltradas.length === 0 && misSucursales.length > 0) {
+          console.warn('[checklist] Ninguna de tus sucursales coincide con el catalogo. ' +
+            `Tus sucursales: ${JSON.stringify(misSucursales)}. ` +
+            'Revisa que esten escritas exactamente como en el catalogo (tildes, mayusculas).');
+        }
       }
 
       // 🔥 EMPLEADOS DISPONIBLES (a quién puedo asignarle tareas)

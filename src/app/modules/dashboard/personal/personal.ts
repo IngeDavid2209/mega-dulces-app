@@ -215,19 +215,20 @@ export class PersonalComponent implements OnInit, OnDestroy {
     // No-admin: no ve administradores (mismo comportamiento que antes para trabajadores/jefes)
     if (!esAdmin(yo)) return [];
 
-    // Admin limitado: filtro por coincidencia de sucursales + siempre se ve a si mismo.
-    // Normalizamos nombres para tolerar tildes/mayusculas/espacios.
+    // Admin limitado: solo veo otros admins con AL MENOS UNA sucursal literalmente
+    // coincidente con las mias. No incluyo a admins globales ni a "General (Acceso Total)"
+    // porque la idea es ver solo a pares de mi misma zona, no a "todos los que pueden todo".
+    // Excepcion: si yo mismo tengo "General (Acceso Total)" entonces si veo a todos.
     const misSucursales: string[] = yo?.sucursales || [];
     const misSucNorm = new Set(misSucursales.map(s => normalizarNombre(s)));
     const generalNorm = normalizarNombre('General (Acceso Total)');
     const yoSoyGeneral = misSucNorm.has(generalNorm);
 
+    if (yoSoyGeneral) return admins; // si mi acceso es a todas las sucursales, veo a todos
+
     return admins.filter(a => {
-      if (a.usuario === yo?.usuario) return true;           // yo mismo
-      if (esAdminGlobal(a)) return true;                    // admins globales cubren todo
-      if (yoSoyGeneral) return true;                        // si yo soy "General", veo a todos
+      if (a.usuario === yo?.usuario) return true;           // yo mismo siempre
       const susSucursales: string[] = a.sucursales || [];
-      if (susSucursales.some(s => normalizarNombre(s) === generalNorm)) return true;
       return susSucursales.some(s => misSucNorm.has(normalizarNombre(s)));
     });
   }

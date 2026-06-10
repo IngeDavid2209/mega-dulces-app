@@ -530,9 +530,16 @@ export class ChecklistComponent implements OnInit, OnDestroy {
    *   No usamos el atajo 'General (Acceso Total)' para ellos, para no saturar
    *   cada sucursal con la gerencia general. (Petición del cliente.)
    * - Trabajadores: lógica original — 'General (Acceso Total)' los pone en todas.
+   * - EXCEPCION: el creador (usuario actual) SIEMPRE se ve a si mismo, aunque
+   *   no tenga la sucursal explicita. Sin esto, un admin global no puede
+   *   asignarse las tareas que el mismo crea para sucursales especificas.
    */
   private empleadoPerteneceASucursal(emp: any, store: string): boolean {
     if (store === 'ADMINISTRADORES DEL SISTEMA') return emp.rol === 'admin';
+    // El creador siempre se ve a si mismo
+    if (emp.usuario && this.currentUser?.usuario && emp.usuario === this.currentUser.usuario) {
+      return true;
+    }
     const susSucursales = emp.sucursales || [emp.sucursal || ''];
     if (emp.rol === 'admin') {
       return susSucursales.includes(store);

@@ -215,17 +215,20 @@ export class PersonalComponent implements OnInit, OnDestroy {
     // No-admin: no ve administradores (mismo comportamiento que antes para trabajadores/jefes)
     if (!esAdmin(yo)) return [];
 
-    // Admin limitado: filtro por coincidencia de sucursales + siempre se ve a si mismo
+    // Admin limitado: filtro por coincidencia de sucursales + siempre se ve a si mismo.
+    // Normalizamos nombres para tolerar tildes/mayusculas/espacios.
     const misSucursales: string[] = yo?.sucursales || [];
-    const yoSoyGeneral = misSucursales.includes('General (Acceso Total)');
+    const misSucNorm = new Set(misSucursales.map(s => normalizarNombre(s)));
+    const generalNorm = normalizarNombre('General (Acceso Total)');
+    const yoSoyGeneral = misSucNorm.has(generalNorm);
 
     return admins.filter(a => {
       if (a.usuario === yo?.usuario) return true;           // yo mismo
       if (esAdminGlobal(a)) return true;                    // admins globales cubren todo
       if (yoSoyGeneral) return true;                        // si yo soy "General", veo a todos
       const susSucursales: string[] = a.sucursales || [];
-      if (susSucursales.includes('General (Acceso Total)')) return true;
-      return susSucursales.some(s => misSucursales.includes(s));
+      if (susSucursales.some(s => normalizarNombre(s) === generalNorm)) return true;
+      return susSucursales.some(s => misSucNorm.has(normalizarNombre(s)));
     });
   }
 
@@ -254,15 +257,23 @@ export class PersonalComponent implements OnInit, OnDestroy {
         this._cacheBaseTrabajadores = [];
         return [];
       }
+      // Normalizamos para tolerar diferencias de tildes/mayusculas/espacios
+      // entre el nombre de sucursal en el perfil del admin y en el del trabajador.
+      // Ej: 'Yurecuaro' vs 'Yurécuaro', 'Padre Hidalgo' vs 'padre hidalgo '.
+      const misSucNorm = new Set(misSucursales.map((s: string) => normalizarNombre(s)));
+      const misAreaNorm = new Set(misAreas.map((a: string) => normalizarNombre(a)));
+      const yoSoyGlobalSucursal = misSucNorm.has(normalizarNombre('General (Acceso Total)'));
+      const yoSoyGlobalArea = misAreaNorm.has(normalizarNombre('Todas las áreas')) || misAreaNorm.has(normalizarNombre('Todas'));
+
       lista = lista.filter(emp => {
         const empSucursales = emp.sucursales || [emp.sucursal || ''];
         const empAreas = emp.areas || [];
-        const yoSoyGlobalSucursal = misSucursales.includes('General (Acceso Total)');
-        const yoSoyGlobalArea = misAreas.includes('Todas las áreas') || misAreas.includes('Todas');
-        const coincideSucursal = yoSoyGlobalSucursal || empSucursales.some((s: string) => misSucursales.includes(s));
+        const coincideSucursal = yoSoyGlobalSucursal
+          || empSucursales.some((s: string) => misSucNorm.has(normalizarNombre(s)));
         // Filtro de área: solo se aplica cuando AMBOS lados declaran áreas.
         const exigeArea = misAreas.length > 0 && empAreas.length > 0;
-        const coincideArea = !exigeArea || yoSoyGlobalArea || empAreas.some((a: string) => misAreas.includes(a));
+        const coincideArea = !exigeArea || yoSoyGlobalArea
+          || empAreas.some((a: string) => misAreaNorm.has(normalizarNombre(a)));
         return coincideSucursal && coincideArea;
       });
     }
@@ -278,6 +289,17 @@ export class PersonalComponent implements OnInit, OnDestroy {
       );
     }
     this._cacheBaseTrabajadores = lista;
+
+    // Diagnostico: si soy admin limitado, tengo sucursales asignadas y aun asi
+    // termine con 0 trabajadores, dejamos rastro en consola para depurar nombres.
+    if (lista.length === 0 && !esAdminGlobal(yo) && (yo?.sucursales?.length || yo?.areas?.length)) {
+      const trabajadoresTotales = this.usuarios().filter(u => u.rol === 'trabajador').length;
+      console.warn('[personal] No se encontraron trabajadores en tus sucursales. ' +
+        `Total trabajadores en sistema: ${trabajadoresTotales}. ` +
+        `Tus sucursales: ${JSON.stringify(yo?.sucursales)}. ` +
+        'Verifica que los nombres de sucursales coincidan entre los perfiles (revisa tildes y mayusculas).');
+    }
+
     return lista;
   }
 

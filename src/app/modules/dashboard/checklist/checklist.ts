@@ -806,11 +806,25 @@ export class ChecklistComponent implements OnInit, OnDestroy {
         'CAJA GENERAL', 'COMPRAS', 'CONTABILIDAD', 'FINANZAS', 'SISTEMAS', 'RH', 'MKT', 'MANTENIMIENTO'
       ];
 
+      // Buscamos la version VIVA del usuario actual en Firestore (no la del localStorage
+      // que puede ser de hace horas o dias). Si Tania logueo antes de que le asignaran
+      // sucursales, su localStorage no las tiene; pero Firestore si.
+      const yoVivo = todosLosUsuarios.find((u: any) =>
+        (this.currentUser?.usuario && u.usuario === this.currentUser.usuario) ||
+        (this.currentUser?.uid && u.uid === this.currentUser.uid)
+      ) || this.currentUser;
+      // Sincronizamos cambios criticos a this.currentUser y localStorage para que el resto
+      // del componente vea los permisos actualizados sin tener que cerrar sesion.
+      if (yoVivo && yoVivo !== this.currentUser) {
+        this.currentUser = { ...this.currentUser, ...yoVivo };
+        try { localStorage.setItem('md_sesion_actual', JSON.stringify(this.currentUser)); } catch (e) { /* noop */ }
+      }
+
       // SUCURSALES DISPONIBLES
-      if (esAdminGlobal(this.currentUser)) {
+      if (esAdminGlobal(yoVivo)) {
         this.sucursalesDisponibles.set(todasLasSucursales);
-      } else if (esAdminLimitado(this.currentUser) || this.currentUser?.puedeCrearChecklists) {
-        const permitidas = sucursalesPermitidas(this.currentUser);
+      } else if (esAdminLimitado(yoVivo) || yoVivo?.puedeCrearChecklists) {
+        const permitidas = sucursalesPermitidas(yoVivo);
         const misSucursales = permitidas ?? [];
         // Normalizamos para tolerar diferencias de tildes/mayusculas/espacios.
         // Ej: si el perfil tiene 'Yurecuaro' (sin tilde) pero el catalogo dice
@@ -820,13 +834,21 @@ export class ChecklistComponent implements OnInit, OnDestroy {
           s => s !== 'ADMINISTRADORES DEL SISTEMA' && misSucNorm.has(normalizarNombre(s))
         );
         this.sucursalesDisponibles.set(sucursalesFiltradas);
-        // Diagnostico: si tiene sucursales asignadas pero NO matchearon ninguna del catalogo,
-        // lo logueamos para detectar nombres mal escritos en el perfil.
-        if (sucursalesFiltradas.length === 0 && misSucursales.length > 0) {
-          console.warn('[checklist] Ninguna de tus sucursales coincide con el catalogo. ' +
-            `Tus sucursales: ${JSON.stringify(misSucursales)}. ` +
-            'Revisa que esten escritas exactamente como en el catalogo (tildes, mayusculas).');
+        if (sucursalesFiltradas.length === 0) {
+          console.warn('[checklist] Lista de sucursales vacia para Nueva Tarea. ' +
+            `rol=${yoVivo?.rol} alcance=${yoVivo?.alcance} ` +
+            `sucursales=${JSON.stringify(yoVivo?.sucursales)} ` +
+            `puedeCrearChecklists=${!!yoVivo?.puedeCrearChecklists}. ` +
+            'Si tienes sucursales asignadas, verifica que esten escritas exactamente como en el catalogo (tildes, mayusculas).');
         }
+      } else {
+        // Ni admin global, ni admin limitado, ni trabajador con permiso de crear checklists.
+        // Vacio intencional, pero loggeamos para detectar configuraciones que el usuario no espera.
+        this.sucursalesDisponibles.set([]);
+        console.warn('[checklist] No tienes permisos para crear tareas. ' +
+          `rol=${yoVivo?.rol} alcance=${yoVivo?.alcance} ` +
+          `puedeCrearChecklists=${!!yoVivo?.puedeCrearChecklists}. ` +
+          'Si esto es un error, pidele al admin global que te active "Crear checklists" o te haga admin limitado.');
       }
 
       // 🔥 EMPLEADOS DISPONIBLES (a quién puedo asignarle tareas)

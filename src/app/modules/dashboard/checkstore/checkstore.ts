@@ -3,7 +3,7 @@ import { Component, signal, computed, OnInit, OnDestroy, inject, effect } from '
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
-import { Firestore, collection, onSnapshot } from '@angular/fire/firestore';
+import { Firestore, collection, onSnapshot, query, where } from '@angular/fire/firestore';
 import { esAdminGlobal, sucursalesPermitidas } from '../../../shared/permisos.util';
 import { nivelDeCargo } from '../../../shared/nivel-jerarquico.util';
 import { esItemHecho } from '../../../shared/item-completado.util';
@@ -240,9 +240,13 @@ export class CheckstoreComponent implements OnInit, OnDestroy {
       this.procesarMatematicas();
     });
  
-    // Radar 2: checklists
+    // Radar 2: checklists - limitado a los ultimos 7 dias para no traer historico.
+    // Checkstore muestra alertas/vencimientos del dia, no necesita meses atras.
+    const offsetCs = new Date().getTimezoneOffset() * 60000;
+    const hace7Cs = new Date(Date.now() - 7 * 86_400_000 - offsetCs).toISOString().split('T')[0];
     const checklistsRef = collection(this.firestore, 'checklists');
-    const radarChecklists = onSnapshot(checklistsRef, snap => {
+    const checklistsQuery = query(checklistsRef, where('date', '>=', hace7Cs));
+    const radarChecklists = onSnapshot(checklistsQuery, snap => {
       const checklistsTemp: any[] = [];
       const ahora = Date.now();
       const limite24h = 24 * 60 * 60 * 1000;

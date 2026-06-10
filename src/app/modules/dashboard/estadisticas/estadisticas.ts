@@ -155,10 +155,17 @@ export class EstadisticasComponent implements OnInit, OnDestroy {
     });
     this.destructoresRadares.push(radarRetrasos);
 
+    // Optimizacion de lecturas: limitamos la query a los ultimos 7 dias.
+    // Estadisticas usa todo lo de "hoy" para mostrar el resumen diario; no necesita
+    // arrastrar meses de historico (eso multiplica lecturas por miles). Si en
+    // algun momento queremos rango mas grande, pasamos el filtro como signal.
+    const offsetQuery = new Date().getTimezoneOffset() * 60000;
+    const hace7 = new Date(Date.now() - 7 * 86_400_000 - offsetQuery).toISOString().split('T')[0];
     const checklistsRef = collection(this.firestore, 'checklists');
-    const radarChecklists = onSnapshot(checklistsRef, (snapshot) => {
+    const checklistsQuery = query(checklistsRef, where('date', '>=', hace7));
+    const radarChecklists = onSnapshot(checklistsQuery, (snapshot) => {
       const listasCrudas: any[] = [];
-      
+
       // 🔥 REGLA ESTRICTA DE HOY: Para que las estadísticas no arrastren fantasmas de ayer
       const offset = new Date().getTimezoneOffset() * 60000;
       const fechaHoyLocal = new Date(Date.now() - offset).toISOString().split('T')[0];

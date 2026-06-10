@@ -1,7 +1,7 @@
 
 import {
   Component, signal, computed, OnInit, OnDestroy, AfterViewInit,
-  inject, ViewChild, ElementRef
+  inject, ViewChild, ElementRef, effect
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -12,6 +12,7 @@ import { SidebarComponent } from '../../../shared/sidebar/sidebar';
 import { esAdminGlobal, sucursalesPermitidas, esSupervisor, mismoEmpleadoNombre } from '../../../shared/permisos.util';
 import { nivelDeUsuario } from '../../../shared/nivel-jerarquico.util';
 import { esItemHecho } from '../../../shared/item-completado.util';
+import { UsuariosService } from '../../../shared/usuarios.service';
 
 @Component({
   selector: 'app-home',
@@ -37,8 +38,33 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
  
   private firestore = inject(Firestore);
   private router    = inject(Router);
+  private usuariosSvc = inject(UsuariosService);
   private destructoresRadares: (() => void)[] = [];
   private clockInterval: any = null;
+
+  // Effect que toma la lista cruda del UsuariosService (listener compartido) y
+  // aplica el filtro por sucursal/rol del usuario actual. Reemplaza al
+  // onSnapshot duplicado que antes vivía en conectarConLaNube().
+  private _usuariosEffect = effect(() => {
+    const raw = this.usuariosSvc.usuarios();
+    if (!raw) return;
+    const sesion = (() => {
+      try { return JSON.parse(localStorage.getItem('md_sesion_actual') || 'null'); }
+      catch { return null; }
+    })() || this.currentUser;
+    const permitidas = sucursalesPermitidas(sesion);
+    const esGlobal = esAdminGlobal(sesion);
+    const supervisor = esSupervisor(sesion);
+    let arr: any[] = raw.map((u: any) => ({ ...u, idFirestore: u.id || u.uid }));
+    if ((!esGlobal && permitidas !== null) || supervisor) {
+      arr = arr.filter(u => {
+        if (u.rol === 'admin') return false;
+        const susSuc: string[] = u.sucursales || (u.sucursal ? [u.sucursal] : []);
+        return susSuc.some((s: string) => permitidas!.includes(s));
+      });
+    }
+    this.usuarios.set(arr);
+  });
  
   @ViewChild('trendChartCanvas') trendChartCanvas?: ElementRef<HTMLCanvasElement>;
   private trendChart: any = null;
@@ -295,17 +321,22 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
   ngOnInit() {
     const sesion = localStorage.getItem('md_sesion_actual');
     if (sesion) this.currentUser = JSON.parse(sesion);
- 
+
+    // Levanta el listener compartido de usuarios (refcount); otros componentes que
+    // tambien lo usen comparten el mismo onSnapshot.
+    this.usuariosSvc.iniciar();
+
     this.conectarConLaNube();
- 
+
     // Reloj que refresca cada minuto
     this.clockInterval = setInterval(() => this.horaActual.set(new Date()), 60000);
   }
- 
+
   ngAfterViewInit() { this.cargarChartJS(); }
- 
+
   ngOnDestroy() {
     this.destructoresRadares.forEach(apagar => apagar());
+    this.usuariosSvc.detener();
     if (this.clockInterval) clearInterval(this.clockInterval);
     if (this.trendChart) this.trendChart.destroy();
   }
@@ -381,27 +412,9 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
       })
     );
 
-    const usuariosRef = collection(this.firestore, 'usuarios');
-    this.destructoresRadares.push(
-      onSnapshot(usuariosRef, snap => {
-        const sesion = leerSesion() || this.currentUser;
-        const permitidas = sucursalesPermitidas(sesion);
-        const esGlobal = esAdminGlobal(sesion);
-        const supervisor = esSupervisor(sesion);
-
-        let arr: any[] = [];
-        snap.forEach(d => arr.push({ ...d.data(), idFirestore: d.id }));
-        // Admin limitado o supervisor: solo cuenta colaboradores de sus sucursales.
-        if ((!esGlobal && permitidas !== null) || supervisor) {
-          arr = arr.filter(u => {
-            if (u.rol === 'admin') return false;
-            const susSuc: string[] = u.sucursales || (u.sucursal ? [u.sucursal] : []);
-            return susSuc.some((s: string) => permitidas!.includes(s));
-          });
-        }
-        this.usuarios.set(arr);
-      })
-    );
+    // La lista de usuarios ya la trae UsuariosService (listener compartido).
+    // Aquí ya no abrimos un onSnapshot duplicado — el _usuariosEffect arriba
+    // se encarga de filtrar por permisos y sucursales del currentUser.
   }
  
   // ================================== CHART.JS ==================================

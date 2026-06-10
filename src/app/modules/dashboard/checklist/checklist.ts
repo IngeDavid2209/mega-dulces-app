@@ -1,4 +1,5 @@
-import { Component, signal, OnInit, OnDestroy, inject } from '@angular/core';
+import { Component, signal, OnInit, OnDestroy, inject, effect } from '@angular/core';
+import { UsuariosService } from '../../../shared/usuarios.service';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, ActivatedRoute } from '@angular/router';
@@ -220,8 +221,19 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   private firestore = inject(Firestore);
   private route = inject(ActivatedRoute);
   private robotV2 = inject(RobotRutinasV2Service);
+  private usuariosSvc = inject(UsuariosService);
   private destructoresRadares: (() => void)[] = [];
   private intervalId: any;
+
+  // Effect que toma la lista cruda de UsuariosService (listener compartido) y
+  // delega a procesarUsuariosCompartidos() para calcular sucursalesDisponibles,
+  // adminsGlobales y empleados. Reemplaza el onSnapshot duplicado en
+  // conectarRadarNube() — antes este componente abria su propio listener sobre
+  // `usuarios` aunque varios otros tambien lo hacian.
+  private _usuariosEffect = effect(() => {
+    const raw = this.usuariosSvc.usuarios();
+    if (raw && raw.length > 0) this.procesarUsuariosCompartidos(raw);
+  });
 
   // 🤖 Robot V2 (Fase 4): cache local del catálogo y las asignaciones.
   // Cuando cualquiera de los dos cambia (o cuando cargamos por primera vez),
@@ -733,6 +745,8 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   ngOnInit() {
     const sesion = localStorage.getItem('md_sesion_actual');
     if (sesion) this.currentUser = JSON.parse(sesion);
+    // Listener compartido de usuarios (refcount; no abre uno duplicado si ya existe).
+    this.usuariosSvc.iniciar();
     this.conectarRadarNube();
     this.iniciarRobotNotificador();
     this.route.queryParams.subscribe(params => {
@@ -755,6 +769,8 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     // 🔥 Cierra todos los listeners de Firestore para evitar memory leaks
     this.destructoresRadares.forEach(apagarRadar => apagarRadar());
     this.destructoresRadares = [];
+    // Soltar el refcount del listener compartido de usuarios
+    this.usuariosSvc.detener();
     // 🔥 Detiene el robot notificador (setInterval de 30s)
     if (this.intervalId) {
       clearInterval(this.intervalId);
@@ -862,100 +878,92 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     this.mostrarToast('🔔 ¡Te acaban de asignar una nueva tarea!');
   }
 
-  conectarRadarNube() {
-    const usuariosRef = collection(this.firestore, 'usuarios');
-    const radarUsuarios = onSnapshot(usuariosRef, (snapshot) => {
-      const todosLosUsuarios: any[] = [];
-      snapshot.forEach(docSnap => todosLosUsuarios.push(docSnap.data()));
+  /**
+   * Calcula sucursalesDisponibles, adminsGlobales y empleados a partir de la
+   * lista cruda de usuarios. Se llama desde el effect _usuariosEffect cada
+   * vez que el UsuariosService publica una actualizacion del snapshot
+   * compartido. Antes vivia inline en el callback del onSnapshot dedicado.
+   */
+  procesarUsuariosCompartidos(todosLosUsuarios: any[]) {
+    // Cache para el Robot V2 (necesita expandir roles → personas)
+    this.usuariosV2 = todosLosUsuarios;
+    this.dispararRobotV2();
 
-      // 🤖 Cache para el Robot V2 (necesita expandir roles → personas)
-      this.usuariosV2 = todosLosUsuarios;
-      this.dispararRobotV2();
+    const todasLasSucursales = [
+      'ADMINISTRADORES DEL SISTEMA', 'Canindo', 'La Piedad Abastos', '8 Esquinas', 'Padre Hidalgo',
+      'Morelia Madero', 'Morelia Abastos', 'Yurécuaro', 'Zamora Centro', 'OFICINAS CORPORATIVAS',
+      'CAJA GENERAL', 'COMPRAS', 'CONTABILIDAD', 'FINANZAS', 'SISTEMAS', 'RH', 'MKT', 'MANTENIMIENTO'
+    ];
 
-      const todasLasSucursales = [
-        'ADMINISTRADORES DEL SISTEMA', 'Canindo', 'La Piedad Abastos', '8 Esquinas', 'Padre Hidalgo',
-        'Morelia Madero', 'Morelia Abastos', 'Yurécuaro', 'Zamora Centro', 'OFICINAS CORPORATIVAS',
-        'CAJA GENERAL', 'COMPRAS', 'CONTABILIDAD', 'FINANZAS', 'SISTEMAS', 'RH', 'MKT', 'MANTENIMIENTO'
-      ];
+    // Version VIVA del usuario actual (no la stale del localStorage).
+    const yoVivo = todosLosUsuarios.find((u: any) =>
+      (this.currentUser?.usuario && u.usuario === this.currentUser.usuario) ||
+      (this.currentUser?.uid && u.uid === this.currentUser.uid)
+    ) || this.currentUser;
+    if (yoVivo && yoVivo !== this.currentUser) {
+      this.currentUser = { ...this.currentUser, ...yoVivo };
+      try { localStorage.setItem('md_sesion_actual', JSON.stringify(this.currentUser)); } catch (e) { /* noop */ }
+    }
 
-      // Buscamos la version VIVA del usuario actual en Firestore (no la del localStorage
-      // que puede ser de hace horas o dias). Si Tania logueo antes de que le asignaran
-      // sucursales, su localStorage no las tiene; pero Firestore si.
-      const yoVivo = todosLosUsuarios.find((u: any) =>
-        (this.currentUser?.usuario && u.usuario === this.currentUser.usuario) ||
-        (this.currentUser?.uid && u.uid === this.currentUser.uid)
-      ) || this.currentUser;
-      // Sincronizamos cambios criticos a this.currentUser y localStorage para que el resto
-      // del componente vea los permisos actualizados sin tener que cerrar sesion.
-      if (yoVivo && yoVivo !== this.currentUser) {
-        this.currentUser = { ...this.currentUser, ...yoVivo };
-        try { localStorage.setItem('md_sesion_actual', JSON.stringify(this.currentUser)); } catch (e) { /* noop */ }
-      }
-
-      // SUCURSALES DISPONIBLES
-      if (esAdminGlobal(yoVivo)) {
-        this.sucursalesDisponibles.set(todasLasSucursales);
-      } else if (esAdminLimitado(yoVivo) || yoVivo?.puedeCrearChecklists) {
-        const permitidas = sucursalesPermitidas(yoVivo);
-        const misSucursales = permitidas ?? [];
-        // Normalizamos para tolerar diferencias de tildes/mayusculas/espacios.
-        // Ej: si el perfil tiene 'Yurecuaro' (sin tilde) pero el catalogo dice
-        // 'Yurécuaro' (con tilde), igual debe matchear.
-        const misSucNorm = new Set(misSucursales.map(s => normalizarNombre(s)));
-        const sucursalesFiltradas = todasLasSucursales.filter(
-          s => s !== 'ADMINISTRADORES DEL SISTEMA' && misSucNorm.has(normalizarNombre(s))
-        );
-        this.sucursalesDisponibles.set(sucursalesFiltradas);
-        if (sucursalesFiltradas.length === 0) {
-          console.warn('[checklist] Lista de sucursales vacia para Nueva Tarea. ' +
-            `rol=${yoVivo?.rol} alcance=${yoVivo?.alcance} ` +
-            `sucursales=${JSON.stringify(yoVivo?.sucursales)} ` +
-            `puedeCrearChecklists=${!!yoVivo?.puedeCrearChecklists}. ` +
-            'Si tienes sucursales asignadas, verifica que esten escritas exactamente como en el catalogo (tildes, mayusculas).');
-        }
-      } else {
-        // Ni admin global, ni admin limitado, ni trabajador con permiso de crear checklists.
-        // Vacio intencional, pero loggeamos para detectar configuraciones que el usuario no espera.
-        this.sucursalesDisponibles.set([]);
-        console.warn('[checklist] No tienes permisos para crear tareas. ' +
-          `rol=${yoVivo?.rol} alcance=${yoVivo?.alcance} ` +
-          `puedeCrearChecklists=${!!yoVivo?.puedeCrearChecklists}. ` +
-          'Si esto es un error, pidele al admin global que te active "Crear checklists" o te haga admin limitado.');
-      }
-
-      // 🔥 EMPLEADOS DISPONIBLES (a quién puedo asignarle tareas)
-      // Capturamos en paralelo a TODOS los admins globales (independiente del
-      // rol del usuario actual). Esto alimenta el wizard de Tareas en Equipo
-      // para que la gerencia general pueda ser integrante/jefe del proyecto.
-      const globales = todosLosUsuarios.filter((u: any) =>
-        u.rol === 'admin' && ((u.alcance ?? 'global') === 'global'
-                              || (u.sucursales || []).includes('General (Acceso Total)'))
+    // SUCURSALES DISPONIBLES
+    if (esAdminGlobal(yoVivo)) {
+      this.sucursalesDisponibles.set(todasLasSucursales);
+    } else if (esAdminLimitado(yoVivo) || yoVivo?.puedeCrearChecklists) {
+      const permitidas = sucursalesPermitidas(yoVivo);
+      const misSucursales = permitidas ?? [];
+      const misSucNorm = new Set(misSucursales.map(s => normalizarNombre(s)));
+      const sucursalesFiltradas = todasLasSucursales.filter(
+        s => s !== 'ADMINISTRADORES DEL SISTEMA' && misSucNorm.has(normalizarNombre(s))
       );
-      this.adminsGlobales.set(globales);
-
-      if (esAdminGlobal(this.currentUser)) {
-        const personalActivo = todosLosUsuarios.filter((u: any) => u.rol === 'trabajador' || u.rol === 'admin');
-        this.empleados.set(personalActivo);
-      } else if (esAdminLimitado(this.currentUser) || this.currentUser?.puedeCrearChecklists) {
-        const permitidas = sucursalesPermitidas(this.currentUser);
-        const misSucursales = permitidas ?? [];
-        // Trabajadores + admins NO globales que compartan alguna sucursal conmigo.
-        // Excluimos admins globales (gerencia general) para no exponerlos en el selector.
-        const candidatos = todosLosUsuarios.filter((u: any) => {
-          if (u.rol === 'trabajador') return true;
-          if (u.rol === 'admin'
-              && u.alcance !== 'global'
-              && !(u.sucursales || []).includes('General (Acceso Total)')) return true;
-          return false;
-        });
-        const empleadosFiltrados = candidatos.filter((t: any) => {
-          const susSucursales = t.sucursales || [t.sucursal || ''];
-          return susSucursales.some((s: string) => misSucursales.includes(s));
-        });
-        this.empleados.set(empleadosFiltrados);
+      this.sucursalesDisponibles.set(sucursalesFiltradas);
+      if (sucursalesFiltradas.length === 0) {
+        console.warn('[checklist] Lista de sucursales vacia para Nueva Tarea. ' +
+          `rol=${yoVivo?.rol} alcance=${yoVivo?.alcance} ` +
+          `sucursales=${JSON.stringify(yoVivo?.sucursales)} ` +
+          `puedeCrearChecklists=${!!yoVivo?.puedeCrearChecklists}. ` +
+          'Si tienes sucursales asignadas, verifica que esten escritas exactamente como en el catalogo (tildes, mayusculas).');
       }
-    });
-    this.destructoresRadares.push(radarUsuarios);
+    } else {
+      this.sucursalesDisponibles.set([]);
+      console.warn('[checklist] No tienes permisos para crear tareas. ' +
+        `rol=${yoVivo?.rol} alcance=${yoVivo?.alcance} ` +
+        `puedeCrearChecklists=${!!yoVivo?.puedeCrearChecklists}. ` +
+        'Si esto es un error, pidele al admin global que te active "Crear checklists" o te haga admin limitado.');
+    }
+
+    // Admins globales (para wizard de Tareas en Equipo)
+    const globales = todosLosUsuarios.filter((u: any) =>
+      u.rol === 'admin' && ((u.alcance ?? 'global') === 'global'
+                            || (u.sucursales || []).includes('General (Acceso Total)'))
+    );
+    this.adminsGlobales.set(globales);
+
+    // Empleados que el usuario actual puede asignar
+    if (esAdminGlobal(this.currentUser)) {
+      const personalActivo = todosLosUsuarios.filter((u: any) => u.rol === 'trabajador' || u.rol === 'admin');
+      this.empleados.set(personalActivo);
+    } else if (esAdminLimitado(this.currentUser) || this.currentUser?.puedeCrearChecklists) {
+      const permitidas = sucursalesPermitidas(this.currentUser);
+      const misSucursales = permitidas ?? [];
+      const candidatos = todosLosUsuarios.filter((u: any) => {
+        if (u.rol === 'trabajador') return true;
+        if (u.rol === 'admin'
+            && u.alcance !== 'global'
+            && !(u.sucursales || []).includes('General (Acceso Total)')) return true;
+        return false;
+      });
+      const empleadosFiltrados = candidatos.filter((t: any) => {
+        const susSucursales = t.sucursales || [t.sucursal || ''];
+        return susSucursales.some((s: string) => misSucursales.includes(s));
+      });
+      this.empleados.set(empleadosFiltrados);
+    }
+  }
+
+  conectarRadarNube() {
+    // La coleccion `usuarios` ya viene por UsuariosService (listener compartido).
+    // El effect _usuariosEffect llama procesarUsuariosCompartidos() cada vez que
+    // se actualiza. No abrimos onSnapshot duplicado aqui.
 
     const moldesRef = collection(this.firestore, 'moldes_checklists');
     const radarMoldes = onSnapshot(moldesRef, (snapshot) => {

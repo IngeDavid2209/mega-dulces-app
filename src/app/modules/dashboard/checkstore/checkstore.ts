@@ -1,5 +1,5 @@
 
-import { Component, signal, computed, OnInit, OnDestroy, inject } from '@angular/core';
+import { Component, signal, computed, OnInit, OnDestroy, inject, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
@@ -7,6 +7,7 @@ import { Firestore, collection, onSnapshot } from '@angular/fire/firestore';
 import { esAdminGlobal, sucursalesPermitidas } from '../../../shared/permisos.util';
 import { nivelDeCargo } from '../../../shared/nivel-jerarquico.util';
 import { esItemHecho } from '../../../shared/item-completado.util';
+import { UsuariosService } from '../../../shared/usuarios.service';
  
 import { SidebarComponent } from '../../../shared/sidebar/sidebar';
 
@@ -71,7 +72,22 @@ export class CheckstoreComponent implements OnInit, OnDestroy {
   private nivelPorNombre = new Map<string, 'mando' | 'operativo'>();
  
   private firestore = inject(Firestore);
+  private usuariosSvc = inject(UsuariosService);
   private destructoresRadares: (() => void)[] = [];
+
+  // Effect que toma usuarios del servicio compartido y construye el map nivelPorNombre.
+  // Antes este componente abria su propio onSnapshot sobre `usuarios`.
+  private _usuariosEffect = effect(() => {
+    const raw = this.usuariosSvc.usuarios();
+    if (!raw) return;
+    const mapa = new Map<string, 'mando' | 'operativo'>();
+    for (const u of raw) {
+      if (!u?.nombre) continue;
+      mapa.set(this.normalizarNombreParaMatch(u.nombre), nivelDeCargo(u.cargo));
+    }
+    this.nivelPorNombre = mapa;
+    this.procesarMatematicas();
+  });
  
   // ============================================================================
   //  COMPUTED: aplica filtros/búsqueda/orden a cada lista
@@ -152,17 +168,19 @@ export class CheckstoreComponent implements OnInit, OnDestroy {
       this.currentUser = JSON.parse(sesion);
       this.determinarSucursalesPermitidas();
     }
+    this.usuariosSvc.iniciar();
     this.conectarRadaresNube();
- 
+
     // Reloj cada minuto para refrescar alertas vencidas
     this.clockInterval = setInterval(() => {
       this.horaActual.set(new Date());
       this.procesarMatematicas();
     }, 60000);
   }
- 
+
   ngOnDestroy() {
     this.destructoresRadares.forEach(apagarRadar => apagarRadar());
+    this.usuariosSvc.detener();
     if (this.clockInterval) clearInterval(this.clockInterval);
   }
  
@@ -260,23 +278,11 @@ export class CheckstoreComponent implements OnInit, OnDestroy {
     });
  
     // Radar 3: usuarios → carga el cargo de cada empleado para clasificar
-    // cada checklist por nivel jerárquico (mando / operativo) del asignado.
-    const usuariosRef = collection(this.firestore, 'usuarios');
-    const radarUsuarios = onSnapshot(usuariosRef, snap => {
-      const mapa = new Map<string, 'mando' | 'operativo'>();
-      snap.forEach(docSnap => {
-        const u: any = docSnap.data();
-        if (!u?.nombre) return;
-        const nivel = nivelDeCargo(u.cargo);
-        mapa.set(this.normalizarNombreParaMatch(u.nombre), nivel);
-      });
-      this.nivelPorNombre = mapa;
-      this.procesarMatematicas();
-    });
+    // Usuarios ya los provee UsuariosService (listener compartido) + _usuariosEffect
+    // construye el mapa nivelPorNombre. No abrimos onSnapshot duplicado aqui.
 
     this.destructoresRadares.push(radarAreas);
     this.destructoresRadares.push(radarChecklists);
-    this.destructoresRadares.push(radarUsuarios);
   }
 
   /** Versión ligera de normalización: lowercase + sin tildes + colapsa espacios.

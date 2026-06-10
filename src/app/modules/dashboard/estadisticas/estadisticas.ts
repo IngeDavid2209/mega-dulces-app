@@ -1,4 +1,4 @@
-import { Component, signal, computed, OnInit, OnDestroy, inject } from '@angular/core';
+import { Component, signal, computed, OnInit, OnDestroy, inject, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -6,6 +6,7 @@ import { Firestore, collection, onSnapshot, query, where } from '@angular/fire/f
 import { esAdminGlobal, sucursalesPermitidas, normalizarNombre } from '../../../shared/permisos.util';
 import { nivelDeCargo } from '../../../shared/nivel-jerarquico.util';
 import { esItemHecho } from '../../../shared/item-completado.util';
+import { UsuariosService } from '../../../shared/usuarios.service';
 
 /** Una fila agregada para los rankings de retrasos. */
 interface FilaRanking {
@@ -72,7 +73,16 @@ export class EstadisticasComponent implements OnInit, OnDestroy {
   ];
 
   private firestore = inject(Firestore);
+  private usuariosSvc = inject(UsuariosService);
   private destructoresRadares: (() => void)[] = [];
+
+  // Effect que toma usuarios del servicio compartido y recalcula estadisticas.
+  private _usuariosEffect = effect(() => {
+    const raw = this.usuariosSvc.usuarios();
+    if (!raw) return;
+    this.todosLosUsuariosNube = raw;
+    this.calcularEstadisticasEmpleados();
+  });
 
   ngOnInit() {
     const sesion = localStorage.getItem('md_sesion_actual');
@@ -80,11 +90,13 @@ export class EstadisticasComponent implements OnInit, OnDestroy {
       this.currentUser = JSON.parse(sesion);
       this.determinarSucursalesPermitidas();
     }
-    this.conectarRadarNube(); 
+    this.usuariosSvc.iniciar();
+    this.conectarRadarNube();
   }
 
   ngOnDestroy() {
     this.destructoresRadares.forEach(apagarRadar => apagarRadar());
+    this.usuariosSvc.detener();
   }
 
   determinarSucursalesPermitidas() {
@@ -121,11 +133,9 @@ export class EstadisticasComponent implements OnInit, OnDestroy {
   }
 
   conectarRadarNube() {
-    const radarUsuarios = onSnapshot(collection(this.firestore, 'usuarios'), (snapshot) => {
-      this.todosLosUsuariosNube = snapshot.docs.map(doc => doc.data());
-      this.calcularEstadisticasEmpleados();
-    });
-    this.destructoresRadares.push(radarUsuarios);
+    // La lista de usuarios viene de UsuariosService (listener compartido) +
+    // _usuariosEffect recalcula estadisticas. Aqui solo abrimos retrasos y
+    // checklists.
 
     // ⏰ Radar específico para retrasos: query filtrada → solo trae docs con
     // entregaConRetraso === true. Reduce muchísimo reads vs traer TODO el histórico.

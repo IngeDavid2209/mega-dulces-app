@@ -1,4 +1,5 @@
-import { Component, signal, OnInit, OnDestroy, inject } from '@angular/core';
+import { Component, signal, OnInit, OnDestroy, inject, effect } from '@angular/core';
+import { UsuariosService } from '../../../shared/usuarios.service';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, Router } from '@angular/router';
@@ -47,9 +48,28 @@ tareasAgendaMes: any[] = [];
 
   private firestore = inject(Firestore);
   private router = inject(Router);
+  private usuariosSvc = inject(UsuariosService);
   /** Snapshot dinámico de checklists del mes visible (se recrea al cambiar de mes). */
   private radarChecklistsActivo: (() => void) | null = null;
   private destructores: (() => void)[] = [];
+
+  // Effect que toma usuarios del servicio compartido y filtra por permisos.
+  // Antes este componente abria su propio onSnapshot sobre `usuarios`.
+  private _usuariosEffect = effect(() => {
+    const raw = this.usuariosSvc.usuarios();
+    if (!raw) return;
+    let trabajadores: any[] = raw.filter((u: any) => u.rol === 'trabajador');
+    if (!esAdminGlobal(this.currentUser)) {
+      const permitidas = sucursalesPermitidas(this.currentUser);
+      if (permitidas !== null) {
+        trabajadores = trabajadores.filter((t: any) => {
+          const susSucursales = t.sucursales || [t.sucursal || ''];
+          return susSucursales.some((s: string) => permitidas.includes(s));
+        });
+      }
+    }
+    this.empleados.set(trabajadores.sort((a: any, b: any) => (a.nombre || '').localeCompare(b.nombre || '')));
+  });
 
   ngOnInit() {
     const sesion = localStorage.getItem('md_sesion_actual');
@@ -60,6 +80,7 @@ tareasAgendaMes: any[] = [];
       return;
     }
 
+    this.usuariosSvc.iniciar();
     this.conectarDatos();
     this.actualizarMes(0);
   }
@@ -67,26 +88,13 @@ tareasAgendaMes: any[] = [];
   ngOnDestroy() {
     this.destructores.forEach(d => d());
     if (this.radarChecklistsActivo) { this.radarChecklistsActivo(); this.radarChecklistsActivo = null; }
+    this.usuariosSvc.detener();
   }
 
   conectarDatos() {
-    const usuariosRef = collection(this.firestore, 'usuarios');
-    this.destructores.push(onSnapshot(usuariosRef, (snap) => {
-      let trabajadores = snap.docs.map(d => d.data()).filter((u: any) => u.rol === 'trabajador');
-
-      // 🔥 Admin limitado: solo ve trabajadores cuyas sucursales se cruzan con las suyas
-      if (!esAdminGlobal(this.currentUser)) {
-        const permitidas = sucursalesPermitidas(this.currentUser);
-        if (permitidas !== null) {
-          trabajadores = trabajadores.filter((t: any) => {
-            const susSucursales = t.sucursales || [t.sucursal || ''];
-            return susSucursales.some((s: string) => permitidas.includes(s));
-          });
-        }
-      }
-
-      this.empleados.set(trabajadores.sort((a: any, b: any) => (a.nombre || '').localeCompare(b.nombre || '')));
-    }));
+    // La lista de usuarios la trae UsuariosService (listener compartido) +
+    // _usuariosEffect aplica el filtro por sucursal. Aqui solo abrimos los
+    // listeners de las otras colecciones.
 
     const areasRef = collection(this.firestore, 'areas_operativas');
     this.destructores.push(onSnapshot(areasRef, (snap) => {

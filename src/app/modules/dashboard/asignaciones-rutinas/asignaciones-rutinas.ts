@@ -1,4 +1,5 @@
-import { Component, signal, computed, OnInit, OnDestroy, inject } from '@angular/core';
+import { Component, signal, computed, OnInit, OnDestroy, inject, effect } from '@angular/core';
+import { UsuariosService } from '../../../shared/usuarios.service';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, Router, ActivatedRoute } from '@angular/router';
@@ -79,9 +80,16 @@ export class AsignacionesRutinasComponent implements OnInit, OnDestroy {
   private firestore = inject(Firestore);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
+  private usuariosSvc = inject(UsuariosService);
   private radarCatalogo: (() => void) | null = null;
   private radarAsignaciones: (() => void) | null = null;
-  private radarUsuarios: (() => void) | null = null;
+
+  // Effect: replica la lista del UsuariosService a this.usuarios.
+  private _usuariosEffect = effect(() => {
+    const raw = this.usuariosSvc.usuarios();
+    if (!raw) return;
+    this.usuarios.set(raw.map((u: any) => ({ ...u, idFirestore: u.id || u.uid })));
+  });
 
   // ============================================================================
   // CICLO DE VIDA
@@ -95,6 +103,7 @@ export class AsignacionesRutinasComponent implements OnInit, OnDestroy {
     }
 
     this.calcularSucursalesDisponibles();
+    this.usuariosSvc.iniciar();
     this.conectarConLaNube();
 
     // Deep-links desde otras pantallas:
@@ -115,7 +124,7 @@ export class AsignacionesRutinasComponent implements OnInit, OnDestroy {
   ngOnDestroy() {
     if (this.radarCatalogo) { this.radarCatalogo(); this.radarCatalogo = null; }
     if (this.radarAsignaciones) { this.radarAsignaciones(); this.radarAsignaciones = null; }
-    if (this.radarUsuarios) { this.radarUsuarios(); this.radarUsuarios = null; }
+    this.usuariosSvc.detener();
   }
 
   conectarConLaNube() {
@@ -140,13 +149,7 @@ export class AsignacionesRutinasComponent implements OnInit, OnDestroy {
       this.asignaciones.set(arr);
     });
 
-    // Usuarios (para selección por persona)
-    const refUsr = collection(this.firestore, 'usuarios');
-    this.radarUsuarios = onSnapshot(refUsr, snap => {
-      const arr: any[] = [];
-      snap.forEach(d => arr.push({ ...(d.data() as any), idFirestore: d.id }));
-      this.usuarios.set(arr);
-    });
+    // Usuarios viene de UsuariosService (listener compartido) + _usuariosEffect.
   }
 
   calcularSucursalesDisponibles() {

@@ -1,4 +1,5 @@
-import { Component, signal, OnInit, OnDestroy, inject } from '@angular/core';
+import { Component, signal, OnInit, OnDestroy, inject, effect } from '@angular/core';
+import { UsuariosService } from '../../../shared/usuarios.service';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, Router } from '@angular/router';
@@ -99,16 +100,31 @@ export class PersonalComponent implements OnInit, OnDestroy {
 
   private firestore = inject(Firestore);
   private router = inject(Router);
+  private usuariosSvc = inject(UsuariosService);
   private destructoresRadares: (() => void)[] = [];
+
+  // Effect: replica la lista del UsuariosService compartido en el signal local
+  // de este componente. Antes este componente abria su propio onSnapshot sobre
+  // `usuarios`, ahora consume el listener unico.
+  private _usuariosEffect = effect(() => {
+    const raw = this.usuariosSvc.usuarios();
+    if (!raw) return;
+    const usuariosNube = raw.map((u: any) => ({ ...u, idFirestore: u.id || u.uid }));
+    const huellaActual = this.huellaUsuarios(this.usuarios());
+    const huellaNube = this.huellaUsuarios(usuariosNube);
+    if (huellaActual !== huellaNube) this.usuarios.set(usuariosNube);
+  });
 
   ngOnInit() {
     const sesion = localStorage.getItem('md_sesion_actual');
     if (sesion) { this.currentUser = JSON.parse(sesion); }
+    this.usuariosSvc.iniciar();
     this.conectarConLaNube();
   }
 
   ngOnDestroy() {
     this.destructoresRadares.forEach(apagarRadar => apagarRadar());
+    this.usuariosSvc.detener();
   }
 
   // =========================================================
@@ -136,29 +152,9 @@ export class PersonalComponent implements OnInit, OnDestroy {
   // =========================================================
 
   conectarConLaNube() {
-    const usuariosRef = collection(this.firestore, 'usuarios');
-    const radarPersonal = onSnapshot(usuariosRef, (snapshot) => {
-      if (snapshot.metadata.hasPendingWrites) return;
-
-      const usuariosNube: any[] = [];
-      snapshot.forEach((documento) => {
-        const data = documento.data();
-        usuariosNube.push({ ...data, idFirestore: documento.id });
-      });
-
-      // Antes hacíamos JSON.stringify de TODA la lista (ambas) en cada snapshot
-      // para evitar set innecesarios — pero serializar 100+ perfiles es lo que
-      // bloqueaba el thread. Una comparación rápida por (length + última edición)
-      // detecta el 95% de los cambios; si por algún motivo no detecta uno, el
-      // set siguiente lo recupera. Las consumidoras (computed/getters) ya
-      // hacen su propia memoización.
-      const huellaActual = this.huellaUsuarios(this.usuarios());
-      const huellaNube = this.huellaUsuarios(usuariosNube);
-      if (huellaActual !== huellaNube) {
-        this.usuarios.set(usuariosNube);
-      }
-    });
-    this.destructoresRadares.push(radarPersonal);
+    // La lista de usuarios viene de UsuariosService (listener compartido).
+    // El _usuariosEffect arriba ya replica los datos en this.usuarios con
+    // deduplicacion por huella. Aqui no abrimos onSnapshot duplicado.
   }
 
   /** Huella ligera para detectar cambios sin serializar todo el array. */

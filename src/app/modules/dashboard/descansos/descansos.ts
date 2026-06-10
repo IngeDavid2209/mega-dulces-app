@@ -1,4 +1,5 @@
-import { Component, signal, OnInit, OnDestroy, inject } from '@angular/core';
+import { Component, signal, OnInit, OnDestroy, inject, effect } from '@angular/core';
+import { UsuariosService } from '../../../shared/usuarios.service';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, Router } from '@angular/router';
@@ -45,9 +46,19 @@ export class DescansosComponent implements OnInit, OnDestroy {
 
   private firestore = inject(Firestore);
   private router = inject(Router);
+  private usuariosSvc = inject(UsuariosService);
   private destructores: (() => void)[] = [];
   private semanasYaCargadas = new Set<string>();
   private guardadoTimers = new Map<string, any>();
+
+  // Effect: lista de usuarios viene del servicio compartido. Recalculamos
+  // sucursales disponibles cuando cambia.
+  private _usuariosEffect = effect(() => {
+    const raw = this.usuariosSvc.usuarios();
+    if (!raw) return;
+    this.usuarios.set(raw.map((u: any) => ({ ...u, idFirestore: u.id || u.uid })));
+    this.recalcularSucursalesDisponibles();
+  });
 
   ngOnInit() {
     const sesion = localStorage.getItem('md_sesion_actual');
@@ -58,24 +69,19 @@ export class DescansosComponent implements OnInit, OnDestroy {
       this.router.navigate(['/home']);
       return;
     }
+    this.usuariosSvc.iniciar();
     this.conectarConLaNube();
   }
 
   ngOnDestroy() {
     this.destructores.forEach(d => d());
+    this.usuariosSvc.detener();
     // Limpiamos timers de guardado pendiente
     this.guardadoTimers.forEach(t => clearTimeout(t));
   }
 
   conectarConLaNube() {
-    const usuariosRef = collection(this.firestore, 'usuarios');
-    const radarUsr = onSnapshot(usuariosRef, snap => {
-      const lista: any[] = [];
-      snap.forEach(d => lista.push({ ...d.data(), idFirestore: d.id }));
-      this.usuarios.set(lista);
-      this.recalcularSucursalesDisponibles();
-    });
-    this.destructores.push(radarUsr);
+    // Usuarios viene de UsuariosService (listener compartido) + _usuariosEffect.
 
     const descansosRef = collection(this.firestore, 'descansos_semanales');
     const radarDesc = onSnapshot(descansosRef, snap => {

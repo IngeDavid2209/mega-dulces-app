@@ -1,4 +1,5 @@
-import { Component, signal, OnInit, OnDestroy, inject } from '@angular/core';
+import { Component, signal, OnInit, OnDestroy, inject, effect } from '@angular/core';
+import { UsuariosService } from '../../../shared/usuarios.service';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, Router } from '@angular/router';
@@ -69,7 +70,15 @@ isGuardando = false;
 
   private firestore = inject(Firestore);
   private router = inject(Router);
+  private usuariosSvc = inject(UsuariosService);
   private destructoresRadares: (() => void)[] = [];
+
+  // Effect: copia la lista del UsuariosService compartido a this.usuarios.
+  private _usuariosEffect = effect(() => {
+    const raw = this.usuariosSvc.usuarios();
+    if (!raw) return;
+    this.usuarios.set(raw.map((u: any) => ({ ...u, idFirestore: u.id || u.uid })));
+  });
 
   get liveUser() {
     if (!this.currentUser) return null;
@@ -84,10 +93,14 @@ isGuardando = false;
       this.router.navigate(['/home']);
       return;
     }
+    this.usuariosSvc.iniciar();
     this.conectarConLaNube();
   }
 
-  ngOnDestroy() { this.destructoresRadares.forEach(apagarRadar => apagarRadar()); }
+  ngOnDestroy() {
+    this.destructoresRadares.forEach(apagarRadar => apagarRadar());
+    this.usuariosSvc.detener();
+  }
 
   conectarConLaNube() {
     const areasRef = collection(this.firestore, 'areas_operativas');
@@ -98,13 +111,8 @@ isGuardando = false;
     });
     this.destructoresRadares.push(radarAreas);
 
-    const usuariosRef = collection(this.firestore, 'usuarios');
-    const radarUsuarios = onSnapshot(usuariosRef, (snapshot) => {
-      const usuariosNube: any[] = [];
-      snapshot.forEach((doc) => usuariosNube.push({ ...doc.data(), idFirestore: doc.id }));
-      this.usuarios.set(usuariosNube);
-    });
-    this.destructoresRadares.push(radarUsuarios);
+    // Usuarios viene de UsuariosService (listener compartido) + _usuariosEffect
+    // los copia en this.usuarios. No abrimos onSnapshot duplicado aqui.
   }
 
   // 🔥 RELOJ BIOLÓGICO: BLOQUEO INTELIGENTE DIARIO O POR FECHA 🔥

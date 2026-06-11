@@ -4,9 +4,12 @@ import { FormsModule } from '@angular/forms';
 import { RouterModule, Router } from '@angular/router';
 import { Firestore, collection, query, onSnapshot, addDoc, doc, updateDoc, deleteDoc, getDocs } from '@angular/fire/firestore';
 import { Auth } from '@angular/fire/auth';
+import { firstValueFrom } from 'rxjs';
 
 import { SidebarComponent } from '../../../shared/sidebar/sidebar';
 import { esAdminGlobal, sucursalesPermitidas } from '../../../shared/permisos.util';
+import { environment } from '../../../../environments/environment';
+import { UsuariosApi } from '../../../api/usuarios.api';
 
 @Component({
   selector: 'app-tareas-unicas',
@@ -21,6 +24,7 @@ export class TareasUnicasComponent implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     if (this.radarProyectos) { this.radarProyectos(); this.radarProyectos = null; }
+    if (this.pollProyectos)  { clearInterval(this.pollProyectos); this.pollProyectos = null; }
   }
 
   isMenuOpen = false;
@@ -43,6 +47,9 @@ export class TareasUnicasComponent implements OnInit, OnDestroy {
   private auth = inject(Auth);
   private firestore = inject(Firestore);
   private router = inject(Router);
+  private usuariosApi = inject(UsuariosApi);
+  /** Timer del polling al backend (sustituye al onSnapshot Firestore en modo backend). */
+  private pollProyectos: any = null;
 
   ngOnInit() {
     const sesion = localStorage.getItem('md_sesion_actual');
@@ -65,22 +72,34 @@ export class TareasUnicasComponent implements OnInit, OnDestroy {
 
   async cargarListaPersonal() {
     try {
-      const usersRef = collection(this.firestore, 'usuarios');
-      const snapshot = await getDocs(query(usersRef));
-      let lista = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as any }));
+      let lista: any[];
+      if (environment.useBackend) {
+        const res = await firstValueFrom(this.usuariosApi.list());
+        // Normalizamos al shape esperado por la UI (id, ...resto). El backend ya
+        // aplica filtros de visibilidad por permisos, asi que aqui solo necesitamos
+        // excluir admins cuando el actual es admin limitado.
+        // u ya trae `id` (uuid Postgres) desde el modelo Usuario.
+        lista = res.usuarios as any[];
+        if (!esAdminGlobal(this.currentUser)) {
+          lista = lista.filter((u: any) => u.rol !== 'admin');
+        }
+      } else {
+        const usersRef = collection(this.firestore, 'usuarios');
+        const snapshot = await getDocs(query(usersRef));
+        lista = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as any }));
 
-      // 🔥 Admin LIMITADO: solo trabajadores de sus sucursales (excluye otros admins)
-      if (!esAdminGlobal(this.currentUser)) {
-        const permitidas = sucursalesPermitidas(this.currentUser);
-        if (permitidas !== null) {
-          lista = lista.filter((u: any) => {
-            if (u.rol === 'admin') return false;
-            const susSuc: string[] = u.sucursales || (u.sucursal ? [u.sucursal] : []);
-            return susSuc.some((s: string) => permitidas.includes(s));
-          });
+        // 🔥 Admin LIMITADO: solo trabajadores de sus sucursales (excluye otros admins)
+        if (!esAdminGlobal(this.currentUser)) {
+          const permitidas = sucursalesPermitidas(this.currentUser);
+          if (permitidas !== null) {
+            lista = lista.filter((u: any) => {
+              if (u.rol === 'admin') return false;
+              const susSuc: string[] = u.sucursales || (u.sucursal ? [u.sucursal] : []);
+              return susSuc.some((s: string) => permitidas.includes(s));
+            });
+          }
         }
       }
-
       this.listaUsuarios = lista;
     } catch (error) {
       console.error('Error al cargar lista de personal:', error);
@@ -128,15 +147,30 @@ export class TareasUnicasComponent implements OnInit, OnDestroy {
   }
 
   cargarProyectos() {
-    const userId = this.usuarioSeleccionado; 
+    const userId = this.usuarioSeleccionado;
     if (!userId) return;
-    
-    // 🔥 FIX MEMORY LEAK: cerrar snapshot anterior antes de abrir uno nuevo
+
+    // Cerrar listeners anteriores antes de abrir uno nuevo.
     if (this.radarProyectos) { this.radarProyectos(); this.radarProyectos = null; }
+    if (this.pollProyectos)  { clearInterval(this.pollProyectos); this.pollProyectos = null; }
 
-    // 🔥 MAGIA: Nueva colección en Firebase exclusiva para proyectos/fases
+    if (environment.useBackend) {
+      const refresh = async () => {
+        try {
+          const res = await firstValueFrom(this.usuariosApi.listTareasUnicas(userId));
+          this.proyectosUnicos = (res.tareas as any[])
+            .sort((a, b) => Number(b.fechaCreacion) - Number(a.fechaCreacion));
+        } catch (e) {
+          console.error('[tareas-unicas/backend] error al cargar', e);
+        }
+      };
+      refresh();
+      this.pollProyectos = setInterval(refresh, 30_000);   // 30s polling
+      return;
+    }
+
+    // Firestore legacy: onSnapshot sobre la sub-coleccion del usuario.
     const proyectosRef = collection(this.firestore, `usuarios/${userId}/tareas_unicas`);
-
     this.radarProyectos = onSnapshot(query(proyectosRef), (snapshot) => {
       this.proyectosUnicos = snapshot.docs.map(doc => ({
         id: doc.id,
@@ -171,8 +205,13 @@ export class TareasUnicasComponent implements OnInit, OnDestroy {
     }
 
     try {
-      const docRef = doc(this.firestore, `usuarios/${userId}/tareas_unicas/${tarea.id}`);
-      await updateDoc(docRef, { completada: !tarea.completada });
+      if (environment.useBackend) {
+        await firstValueFrom(this.usuariosApi.actualizarTareaUnica(userId, tarea.id, { completada: !tarea.completada } as any));
+        tarea.completada = !tarea.completada;
+      } else {
+        const docRef = doc(this.firestore, `usuarios/${userId}/tareas_unicas/${tarea.id}`);
+        await updateDoc(docRef, { completada: !tarea.completada });
+      }
     } catch (error) {
       console.error("Error al actualizar estado", error);
     }
@@ -213,22 +252,38 @@ export class TareasUnicasComponent implements OnInit, OnDestroy {
     if (!userId) return;
 
     try {
-      if (this.tareaActiva.esNueva) {
-        const { esNueva, ...data } = this.tareaActiva;
-        await addDoc(collection(this.firestore, `usuarios/${userId}/tareas_unicas`), data);
-        this.nuevaTareaTexto = ''; 
+      const { esNueva, id, ...data } = this.tareaActiva;
+      if (environment.useBackend) {
+        if (esNueva) {
+          await firstValueFrom(this.usuariosApi.crearTareaUnica(userId, data as any));
+        } else {
+          await firstValueFrom(this.usuariosApi.actualizarTareaUnica(userId, id, {
+            texto: data.texto,
+            completada: data.completada,
+            instrucciones: data.instrucciones || '',
+            subtareas: data.subtareas || [],
+          } as any));
+        }
+        if (esNueva) this.nuevaTareaTexto = '';
+        // Refrescamos lista para reflejar el cambio (no esperamos al polling).
+        this.cargarProyectos();
       } else {
-        const docRef = doc(this.firestore, `usuarios/${userId}/tareas_unicas/${this.tareaActiva.id}`);
-        await updateDoc(docRef, {
-          texto: this.tareaActiva.texto,
-          completada: this.tareaActiva.completada,
-          instrucciones: this.tareaActiva.instrucciones || '',
-          subtareas: this.tareaActiva.subtareas || []
-        });
+        if (esNueva) {
+          await addDoc(collection(this.firestore, `usuarios/${userId}/tareas_unicas`), data);
+          this.nuevaTareaTexto = '';
+        } else {
+          const docRef = doc(this.firestore, `usuarios/${userId}/tareas_unicas/${id}`);
+          await updateDoc(docRef, {
+            texto: data.texto,
+            completada: data.completada,
+            instrucciones: data.instrucciones || '',
+            subtareas: data.subtareas || []
+          });
+        }
       }
       this.cerrarDetalle();
     } catch (error) {
-      console.error('Error al guardar en Firebase', error);
+      console.error('Error al guardar tarea unica', error);
     }
   }
 
@@ -245,8 +300,16 @@ export class TareasUnicasComponent implements OnInit, OnDestroy {
   async eliminarTarea(id: string, event: Event) {
     event.stopPropagation();
     const userId = this.usuarioSeleccionado || this.miPropioId();
-    if(confirm('¿Eliminar este proyecto y todas sus fases?')) {
-      await deleteDoc(doc(this.firestore, `usuarios/${userId}/tareas_unicas/${id}`));
+    if (!confirm('¿Eliminar este proyecto y todas sus fases?')) return;
+    try {
+      if (environment.useBackend) {
+        await firstValueFrom(this.usuariosApi.borrarTareaUnica(userId, id));
+        this.cargarProyectos();
+      } else {
+        await deleteDoc(doc(this.firestore, `usuarios/${userId}/tareas_unicas/${id}`));
+      }
+    } catch (e) {
+      console.error('[tareas-unicas] error al eliminar', e);
     }
   }
 

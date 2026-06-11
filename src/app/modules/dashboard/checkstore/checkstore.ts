@@ -4,6 +4,10 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { Firestore, collection, onSnapshot, query, where } from '@angular/fire/firestore';
+import { firstValueFrom } from 'rxjs';
+import { environment } from '../../../../environments/environment';
+import { AreasApi } from '../../../api/areas.api';
+import { ChecklistsApi } from '../../../api/checklists.api';
 import { esAdminGlobal, sucursalesPermitidas } from '../../../shared/permisos.util';
 import { nivelDeCargo } from '../../../shared/nivel-jerarquico.util';
 import { esItemHecho } from '../../../shared/item-completado.util';
@@ -73,6 +77,10 @@ export class CheckstoreComponent implements OnInit, OnDestroy {
  
   private firestore = inject(Firestore);
   private usuariosSvc = inject(UsuariosService);
+  private areasApi = inject(AreasApi);
+  private checklistsApi = inject(ChecklistsApi);
+  private pollAreas: any = null;
+  private pollChecklists: any = null;
   private destructoresRadares: (() => void)[] = [];
 
   // Effect que toma usuarios del servicio compartido y construye el map nivelPorNombre.
@@ -208,85 +216,88 @@ export class CheckstoreComponent implements OnInit, OnDestroy {
   //  FIRESTORE
   // ============================================================================
   conectarRadaresNube() {
-    // Radar 1: áreas dinámicas
-    const areasRef = collection(this.firestore, 'areas');
-    const radarAreas = onSnapshot(areasRef, snap => {
-      const areasTemp: any[] = [];
-      snap.forEach(docSnap => {
-        const data = docSnap.data();
-        const nombreArea = (data as any)['nombre'] || (data as any)['name'] || 'Área Desconocida';
-        areasTemp.push({
-          name: nombreArea,
-          location: 'Área Interna',
-          icon: '📍',
-          color: '#D97706',
-          progress: 0, totalChecklists: 0, completedItems: 0, totalItems: 0, alertas: 0
-        });
-      });
+    // Procesador comun de areas (ambos modos producen el mismo shape de salida).
+    const procesarAreas = (raw: any[]) => {
+      const areasTemp = raw.map(data => ({
+        name: data['nombre'] || data['name'] || 'Área Desconocida',
+        location: 'Área Interna',
+        icon: '📍',
+        color: '#D97706',
+        progress: 0, totalChecklists: 0, completedItems: 0, totalItems: 0, alertas: 0,
+      }));
       this.areasDesdeFirebase = areasTemp;
- 
-      // Admin global o trabajador con acceso total: agrega TODAS las áreas dinámicas.
-      // Admin limitado y trabajador normal: solo las áreas que coincidan con sus sucursales asignadas.
       if (
         esAdminGlobal(this.currentUser) ||
         (this.currentUser?.sucursales && this.currentUser?.sucursales.includes('Todas las sucursales'))
       ) {
         areasTemp.forEach(a => {
-          if (!this.sucursalesPermitidas.includes(a.name)) {
-            this.sucursalesPermitidas.push(a.name);
-          }
+          if (!this.sucursalesPermitidas.includes(a.name)) this.sucursalesPermitidas.push(a.name);
         });
       }
       this.procesarMatematicas();
-    });
- 
-    // Radar 2: checklists - limitado a los ultimos 7 dias para no traer historico.
-    // Checkstore muestra alertas/vencimientos del dia, no necesita meses atras.
-    const offsetCs = new Date().getTimezoneOffset() * 60000;
-    const hace7Cs = new Date(Date.now() - 7 * 86_400_000 - offsetCs).toISOString().split('T')[0];
-    const checklistsRef = collection(this.firestore, 'checklists');
-    const checklistsQuery = query(checklistsRef, where('date', '>=', hace7Cs));
-    const radarChecklists = onSnapshot(checklistsQuery, snap => {
-      const checklistsTemp: any[] = [];
+    };
+
+    // Procesador comun de checklists: filtra a las relevantes (hoy o creadas
+    // en las ultimas 24h) + dedup por firma, conservando el de mayor progreso.
+    const procesarChecklists = (raw: any[]) => {
       const ahora = Date.now();
       const limite24h = 24 * 60 * 60 * 1000;
       const offset = new Date().getTimezoneOffset() * 60000;
       const fechaHoyLocal = new Date(Date.now() - offset).toISOString().split('T')[0];
- 
-      snap.forEach(docSnap => {
-        const c: any = docSnap.data();
-        if (c.eliminado === true || c.archivado === true) return;
+      const checklistsTemp: any[] = [];
+      for (const c of raw) {
+        if (c.eliminado === true || c.archivado === true) continue;
         const tiempoCreacion = typeof c.id === 'number' ? c.id : (c.timestampCreacion || ahora);
-        if (c.date === fechaHoyLocal || (ahora - tiempoCreacion) <= limite24h) {
-          checklistsTemp.push(c);
-        }
-      });
- 
-      // Escudo anti-clones
+        if (c.date === fechaHoyLocal || (ahora - tiempoCreacion) <= limite24h) checklistsTemp.push(c);
+      }
       const listasSinClones = new Map<string, any>();
       checklistsTemp.forEach(c => {
         const marcados = c.items ? c.items.filter((i: any) => this.itemHecho(i, c)).length : 0;
         c.calcProgreso = c.items && c.items.length > 0
           ? Math.round((marcados / c.items.length) * 100) : 0;
         const firma = `${c.name}_${c.assigned}_${c.store}_${c.date}`;
-        if (!listasSinClones.has(firma)) {
-          listasSinClones.set(firma, c);
-        } else {
-          const existente = listasSinClones.get(firma);
-          if (c.calcProgreso > existente.calcProgreso) listasSinClones.set(firma, c);
-        }
+        if (!listasSinClones.has(firma)) listasSinClones.set(firma, c);
+        else if (c.calcProgreso > listasSinClones.get(firma).calcProgreso) listasSinClones.set(firma, c);
       });
- 
       this.checklistsDesdeFirebase = Array.from(listasSinClones.values());
       this.procesarMatematicas();
-    });
- 
-    // Radar 3: usuarios → carga el cargo de cada empleado para clasificar
-    // Usuarios ya los provee UsuariosService (listener compartido) + _usuariosEffect
-    // construye el mapa nivelPorNombre. No abrimos onSnapshot duplicado aqui.
+    };
 
-    this.destructoresRadares.push(radarAreas);
-    this.destructoresRadares.push(radarChecklists);
+    const offsetCs = new Date().getTimezoneOffset() * 60000;
+    const hace7Cs = new Date(Date.now() - 7 * 86_400_000 - offsetCs).toISOString().split('T')[0];
+
+    if (environment.useBackend) {
+      const refrescarAreas = async () => {
+        try { const res = await firstValueFrom(this.areasApi.list()); procesarAreas(res.areas as any[]); }
+        catch (e) { console.error('[checkstore/areas backend]', e); }
+      };
+      const refrescarChecklists = async () => {
+        try {
+          const res = await firstValueFrom(this.checklistsApi.list({
+            fechaDesde: hace7Cs, archivado: false, eliminado: false, limit: 2000,
+          }));
+          procesarChecklists(res.checklists as any[]);
+        } catch (e) { console.error('[checkstore/checklists backend]', e); }
+      };
+      refrescarAreas();
+      refrescarChecklists();
+      this.pollAreas      = setInterval(refrescarAreas,      60_000);
+      this.pollChecklists = setInterval(refrescarChecklists, 30_000);
+      this.destructoresRadares.push(() => { if (this.pollAreas) { clearInterval(this.pollAreas); this.pollAreas = null; } });
+      this.destructoresRadares.push(() => { if (this.pollChecklists) { clearInterval(this.pollChecklists); this.pollChecklists = null; } });
+    } else {
+      const areasRef = collection(this.firestore, 'areas');
+      const radarAreas = onSnapshot(areasRef, snap => {
+        procesarAreas(snap.docs.map(d => d.data() as any));
+      });
+      const checklistsRef = collection(this.firestore, 'checklists');
+      const checklistsQuery = query(checklistsRef, where('date', '>=', hace7Cs));
+      const radarChecklists = onSnapshot(checklistsQuery, snap => {
+        procesarChecklists(snap.docs.map(d => d.data() as any));
+      });
+      this.destructoresRadares.push(radarAreas);
+      this.destructoresRadares.push(radarChecklists);
+    }
   }
 
   /** Versión ligera de normalización: lowercase + sin tildes + colapsa espacios.

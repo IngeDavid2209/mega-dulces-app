@@ -4,7 +4,11 @@ import { Firestore, doc, setDoc, updateDoc, getDoc, onSnapshot, collection, quer
 import { Storage, ref, uploadString, getDownloadURL } from '@angular/fire/storage';
 import { SwUpdate, VersionReadyEvent } from '@angular/service-worker';
 import { filter } from 'rxjs/operators';
+import { firstValueFrom } from 'rxjs';
 import * as localforage from 'localforage';
+
+import { environment } from '../environments/environment';
+import { AuthApi } from './api/auth.api';
 
 @Component({
   selector: 'app-root',
@@ -19,6 +23,9 @@ export class AppComponent implements OnInit {
   private firestore = inject(Firestore);
   private storage = inject(Storage);
   private swUpdate = inject(SwUpdate);
+  private authApi = inject(AuthApi);
+  /** Timer del polling de sesion en modo backend. */
+  private sesionPollTimer: any = null;
 
   ngOnInit() {
     // 🔄 AUTO-ACTUALIZACIÓN DE LA PWA INSTALADA 🔄
@@ -76,6 +83,49 @@ export class AppComponent implements OnInit {
     if (!raw) return;
     let sesion: any;
     try { sesion = JSON.parse(raw); } catch { return; }
+
+    // En modo backend, el equivalente a onSnapshot es polling cada 2 min a
+    // /api/auth/me. Si detecta cambio critico recarga la app. Si /me devuelve
+    // 401 el interceptor JWT ya hace el logout.
+    if (environment.useBackend) {
+      const refrescar = async () => {
+        try {
+          const res = await firstValueFrom(this.authApi.me());
+          const fresco: any = res.user;
+
+          const anteriorRaw = localStorage.getItem('md_sesion_actual') || '{}';
+          let anterior: any = {};
+          try { anterior = JSON.parse(anteriorRaw); } catch {}
+
+          if (JSON.stringify(fresco) === JSON.stringify(anterior)) return;
+          localStorage.setItem('md_sesion_actual', JSON.stringify(fresco));
+
+          const camposCriticos = ['nombre', 'rol', 'alcance', 'cargo'];
+          const sucCambio = JSON.stringify(anterior.sucursales || []) !== JSON.stringify(fresco.sucursales || []);
+          const areasCambio = JSON.stringify(anterior.areas || []) !== JSON.stringify(fresco.areas || []);
+          const campoCriticoCambio = camposCriticos.some(c => (anterior[c] || '') !== (fresco[c] || ''));
+          const permisos = [
+            'puedeCrearChecklists', 'puedeCrearRutinas', 'puedeCrearTareasUnicas',
+            'puedeVerCheckstore', 'puedeVerEstadisticas', 'puedeVerHistorial',
+            'puedeAdministrarPersonal', 'puedeVerCalendario', 'puedeAdministrarAreas'
+          ];
+          const permisoCambio = permisos.some(p => !!anterior[p] !== !!fresco[p]);
+          if (campoCriticoCambio || sucCambio || areasCambio || permisoCambio) {
+            console.log('[sesion/backend] perfil cambio en backend — recargando…');
+            setTimeout(() => window.location.reload(), 300);
+          }
+        } catch (e: any) {
+          // 401 ya lo manejo el interceptor (limpia y redirige). Otros errores
+          // (red, 5xx) los ignoramos para no spamear logs en ciclos offline.
+          if (e?.status && e.status !== 0) console.warn('[sesion/backend] /me fallo', e);
+        }
+      };
+      refrescar();
+      // 2 min: lo suficientemente seguido para reflejar cambios de un admin,
+      // sin saturar requests cuando hay sesion estable.
+      this.sesionPollTimer = setInterval(refrescar, 120_000);
+      return;
+    }
 
     // 1) Resolver el docId real del usuario en Firestore.
     //    Primero por uid/idFirestore (lo habitual). Si no existe, fallback por

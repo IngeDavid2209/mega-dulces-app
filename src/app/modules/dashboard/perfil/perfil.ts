@@ -1,11 +1,14 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterModule } from '@angular/router'; 
-import { Auth, updateEmail,verifyBeforeUpdateEmail, updatePassword, reauthenticateWithCredential, EmailAuthProvider } from '@angular/fire/auth';
+import { RouterModule } from '@angular/router';
+import { Auth, updateEmail, verifyBeforeUpdateEmail, updatePassword, reauthenticateWithCredential, EmailAuthProvider } from '@angular/fire/auth';
 import { Firestore, doc, updateDoc } from '@angular/fire/firestore';
+import { firstValueFrom } from 'rxjs';
 import Swal from 'sweetalert2';
 import { SidebarComponent } from '../../../shared/sidebar/sidebar';
+import { environment } from '../../../../environments/environment';
+import { UsuariosApi } from '../../../api/usuarios.api';
 
 @Component({
   selector: 'app-perfil',
@@ -17,6 +20,7 @@ import { SidebarComponent } from '../../../shared/sidebar/sidebar';
 export class PerfilComponent implements OnInit {
   private auth = inject(Auth);
   private firestore = inject(Firestore);
+  private usuariosApi = inject(UsuariosApi);
 
   isMenuOpen = false;
   currentUser: any = null;
@@ -39,6 +43,12 @@ export class PerfilComponent implements OnInit {
 // import { Auth, updatePassword, reauthenticateWithCredential, EmailAuthProvider, verifyBeforeUpdateEmail } from '@angular/fire/auth';
 
   async actualizarMisDatos() {
+    // En modo backend la auth ya no pasa por Firebase Auth. Se delega todo al
+    // endpoint PUT /api/usuarios/:id, que rehashea el password si viene.
+    if (environment.useBackend) {
+      return this.actualizarMisDatosBackend();
+    }
+
     const user = this.auth.currentUser;
     if (!user) {
       Swal.fire('Error', 'No hay sesión activa con Firebase Auth.', 'error');
@@ -115,6 +125,45 @@ export class PerfilComponent implements OnInit {
       } else {
         Swal.fire('❌ Error', 'Hubo un problema al actualizar: ' + error.message, 'error');
       }
+    }
+  }
+
+  /**
+   * Actualizacion de datos en modo backend: PUT /api/usuarios/:id.
+   * El backend rehashea el password si viene; no requiere re-auth por
+   * password actual porque el JWT ya prueba la sesion.
+   */
+  private async actualizarMisDatosBackend(): Promise<void> {
+    const userId = this.currentUser?.id;
+    if (!userId) {
+      Swal.fire('Error', 'No se pudo identificar al usuario actual.', 'error');
+      return;
+    }
+
+    if (this.formPassword && this.formPassword.length < 6) {
+      Swal.fire('Atención', 'La nueva contraseña debe tener al menos 6 caracteres.', 'warning');
+      return;
+    }
+
+    try {
+      const payload: any = {
+        correo: this.formCorreo || undefined,
+        telefono: this.formTelefono || undefined,
+      };
+      if (this.formPassword) payload.password = this.formPassword;
+
+      const res = await firstValueFrom(this.usuariosApi.update(userId, payload));
+
+      // Sincronizamos sesion local con los datos devueltos.
+      this.currentUser = { ...this.currentUser, ...res.user };
+      try { localStorage.setItem('md_sesion_actual', JSON.stringify(this.currentUser)); } catch {}
+      this.formPassword = '';
+
+      Swal.fire('✅ ¡Éxito!', 'Tus datos han sido actualizados correctamente.', 'success');
+    } catch (e: any) {
+      console.error('[perfil/backend] error', e);
+      const msg = e?.error || e?.message || 'Error desconocido';
+      Swal.fire('❌ Error', `Hubo un problema al actualizar: ${msg}`, 'error');
     }
   }
 }

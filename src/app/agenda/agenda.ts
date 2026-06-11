@@ -4,9 +4,12 @@ import { FormsModule } from '@angular/forms';
 import { RouterModule, Router } from '@angular/router';
 import { Firestore, collection, query, onSnapshot, addDoc, doc, updateDoc, deleteDoc, getDocs } from '@angular/fire/firestore';
 import { Auth } from '@angular/fire/auth';
+import { firstValueFrom } from 'rxjs';
 
 import { SidebarComponent } from '../shared/sidebar/sidebar';
 import { esAdminGlobal, sucursalesPermitidas } from '../shared/permisos.util';
+import { environment } from '../../environments/environment';
+import { UsuariosApi } from '../api/usuarios.api';
 
 @Component({
   selector: 'app-agenda',
@@ -40,6 +43,8 @@ export class AgendaComponent implements OnInit, OnDestroy {
   // Inyecciones
   private auth = inject(Auth);
   private firestore = inject(Firestore);
+  private usuariosApi = inject(UsuariosApi);
+  private pollAgenda: any = null;
   private router = inject(Router);
 
   ngOnInit() {
@@ -98,12 +103,25 @@ export class AgendaComponent implements OnInit, OnDestroy {
     const userId = this.usuarioSeleccionado;
     if (!userId) return;
 
-    // 🔥 FIX MEMORY LEAK: cerrar el snapshot anterior antes de abrir uno nuevo.
-    // Antes cada cambio de usuario creaba un listener nuevo SIN cerrar el viejo.
     if (this.radarAgenda) { this.radarAgenda(); this.radarAgenda = null; }
+    if (this.pollAgenda)  { clearInterval(this.pollAgenda); this.pollAgenda = null; }
+
+    if (environment.useBackend) {
+      const refresh = async () => {
+        try {
+          const res = await firstValueFrom(this.usuariosApi.listAgenda(userId));
+          this.tareasPersonales = (res.items as any[])
+            .sort((a, b) => Number(b.fechaCreacion) - Number(a.fechaCreacion));
+        } catch (e) {
+          console.error('[agenda/backend] error', e);
+        }
+      };
+      refresh();
+      this.pollAgenda = setInterval(refresh, 30_000);
+      return;
+    }
 
     const agendaRef = collection(this.firestore, `usuarios/${userId}/agenda`);
-
     this.radarAgenda = onSnapshot(query(agendaRef), (snapshot) => {
       this.tareasPersonales = snapshot.docs.map(doc => ({
         id: doc.id,
@@ -132,8 +150,13 @@ export class AgendaComponent implements OnInit, OnDestroy {
     if (!userId) return;
 
     try {
-      const docRef = doc(this.firestore, `usuarios/${userId}/agenda/${tarea.id}`);
-      await updateDoc(docRef, { completada: !tarea.completada });
+      if (environment.useBackend) {
+        await firstValueFrom(this.usuariosApi.actualizarAgenda(userId, tarea.id, { completada: !tarea.completada } as any));
+        tarea.completada = !tarea.completada;
+      } else {
+        const docRef = doc(this.firestore, `usuarios/${userId}/agenda/${tarea.id}`);
+        await updateDoc(docRef, { completada: !tarea.completada });
+      }
     } catch (error) {
       console.error("Error actualizando tarea", error);
     }
@@ -147,8 +170,13 @@ export class AgendaComponent implements OnInit, OnDestroy {
 
     if(confirm('¿Estás seguro de eliminar esta tarea?')) {
       try {
-        const docRef = doc(this.firestore, `usuarios/${userId}/agenda/${tareaId}`);
-        await deleteDoc(docRef);
+        if (environment.useBackend) {
+          await firstValueFrom(this.usuariosApi.borrarAgenda(userId, tareaId));
+          this.cargarAgenda();
+        } else {
+          const docRef = doc(this.firestore, `usuarios/${userId}/agenda/${tareaId}`);
+          await deleteDoc(docRef);
+        }
       } catch (error) {
         console.error("Error eliminando tarea", error);
       }
@@ -170,19 +198,31 @@ export class AgendaComponent implements OnInit, OnDestroy {
     if (!userId) return;
 
     try {
-      if (this.tareaActiva.esNueva) {
-        // CREACIÓN: Guardar nueva tarea en Firebase
-        const { esNueva, ...tareaParaGuardar } = this.tareaActiva;
-        await addDoc(collection(this.firestore, `usuarios/${userId}/agenda`), tareaParaGuardar);
-        this.nuevaTareaTexto = ''; 
+      const { esNueva, id, ...data } = this.tareaActiva;
+      if (environment.useBackend) {
+        if (esNueva) {
+          await firstValueFrom(this.usuariosApi.crearAgenda(userId, data as any));
+        } else {
+          await firstValueFrom(this.usuariosApi.actualizarAgenda(userId, id, {
+            texto: data.texto,
+            instrucciones: data.instrucciones || '',
+            comentarios: data.comentarios || '',
+          } as any));
+        }
+        if (esNueva) this.nuevaTareaTexto = '';
+        this.cargarAgenda();
       } else {
-        // ACTUALIZACIÓN: Guardar cambios en tarea existente
-        const docRef = doc(this.firestore, `usuarios/${userId}/agenda/${this.tareaActiva.id}`);
-        await updateDoc(docRef, {
-          texto: this.tareaActiva.texto,
-          instrucciones: this.tareaActiva.instrucciones || '',
-          comentarios: this.tareaActiva.comentarios || ''
-        });
+        if (esNueva) {
+          await addDoc(collection(this.firestore, `usuarios/${userId}/agenda`), data);
+          this.nuevaTareaTexto = '';
+        } else {
+          const docRef = doc(this.firestore, `usuarios/${userId}/agenda/${id}`);
+          await updateDoc(docRef, {
+            texto: data.texto,
+            instrucciones: data.instrucciones || '',
+            comentarios: data.comentarios || ''
+          });
+        }
       }
       this.cerrarDetalle();
     } catch (error) {

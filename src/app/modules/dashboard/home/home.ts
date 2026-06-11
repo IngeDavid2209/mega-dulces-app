@@ -7,6 +7,10 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, Router } from '@angular/router';
 import { Firestore, collection, onSnapshot, query, where } from '@angular/fire/firestore';
+import { firstValueFrom } from 'rxjs';
+import { environment } from '../../../../environments/environment';
+import { ChecklistsApi } from '../../../api/checklists.api';
+import { AreasApi } from '../../../api/areas.api';
 
 import { SidebarComponent } from '../../../shared/sidebar/sidebar';
 import { esAdminGlobal, sucursalesPermitidas, esSupervisor, mismoEmpleadoNombre } from '../../../shared/permisos.util';
@@ -39,6 +43,10 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
   private firestore = inject(Firestore);
   private router    = inject(Router);
   private usuariosSvc = inject(UsuariosService);
+  private checklistsApi = inject(ChecklistsApi);
+  private areasApi = inject(AreasApi);
+  private pollChecklists: any = null;
+  private pollAreas: any = null;
   private destructoresRadares: (() => void)[] = [];
   private clockInterval: any = null;
 
@@ -359,58 +367,75 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
     const offsetDays = hace7Dias.getTimezoneOffset() * 60000;
     const desdeISO = new Date(hace7Dias.getTime() - offsetDays).toISOString().split('T')[0];
 
-    const checklistsRef = collection(this.firestore, 'checklists');
-    const checklistsQuery = query(checklistsRef, where('date', '>=', desdeISO));
-    this.destructoresRadares.push(
-      onSnapshot(checklistsQuery, snap => {
-        // Recalculamos permisos cada vez (currentUser podría haberse actualizado).
-        const sesion = leerSesion() || this.currentUser;
-        const permitidas = sucursalesPermitidas(sesion);
-        const esGlobal = esAdminGlobal(sesion);
-        // Supervisor = trabajador con flags de admin + sucursales asignadas.
-        // En el dashboard se comporta como admin limitado (ve su sucursal completa),
-        // no como trabajador puro (que solo ve sus propias tareas).
-        const supervisor = esSupervisor(sesion);
-        const esTrabajadorPuro = sesion?.rol === 'trabajador' && !supervisor;
-        const miNombre = sesion?.nombre;
+    // Filtro comun de visibilidad: admin global ve todo; admin limitado/supervisor
+    // por sus sucursales; trabajador puro solo lo asignado a su nombre.
+    const aplicarFiltroSesion = (arrCrudo: any[]) => {
+      const sesion = leerSesion() || this.currentUser;
+      const permitidas = sucursalesPermitidas(sesion);
+      const esGlobal = esAdminGlobal(sesion);
+      const supervisor = esSupervisor(sesion);
+      const esTrabajadorPuro = sesion?.rol === 'trabajador' && !supervisor;
+      const miNombre = sesion?.nombre;
+      let arr = arrCrudo.filter(c => !c.eliminado && !c.archivado);
+      if (esTrabajadorPuro) {
+        arr = arr.filter(c => mismoEmpleadoNombre(c.assigned, miNombre));
+      } else if (!esGlobal && permitidas !== null) {
+        arr = arr.filter(c => permitidas.includes(c.store));
+      }
+      return arr;
+    };
 
-        let arr: any[] = [];
-        snap.forEach(d => {
-          const data = d.data() as any;
-          if (data.eliminado === true || data.archivado === true) return;
-          arr.push({ ...data, id: d.id });
-        });
-        const totalCrudo = arr.length;
+    if (environment.useBackend) {
+      const refresh = async () => {
+        try {
+          // El backend ya filtra archivado/eliminado por default; aqui pedimos
+          // explicito para mantenerlo claro y dejamos el filtro de rol al cliente
+          // (es el mismo helper que ya se usa).
+          const res = await firstValueFrom(this.checklistsApi.list({
+            fechaDesde: desdeISO, archivado: false, eliminado: false, limit: 2000,
+          }));
+          const arr = aplicarFiltroSesion(res.checklists as any[]);
+          this.checklists.set(arr);
+          setTimeout(() => this.actualizarGrafica(), 100);
+        } catch (e) { console.error('[home/checklists backend]', e); }
+      };
+      refresh();
+      this.pollChecklists = setInterval(refresh, 30_000);   // dashboard operativo → 30s
+      this.destructoresRadares.push(() => { if (this.pollChecklists) { clearInterval(this.pollChecklists); this.pollChecklists = null; } });
+    } else {
+      const checklistsRef = collection(this.firestore, 'checklists');
+      const checklistsQuery = query(checklistsRef, where('date', '>=', desdeISO));
+      this.destructoresRadares.push(
+        onSnapshot(checklistsQuery, snap => {
+          const crudo: any[] = [];
+          snap.forEach(d => crudo.push({ ...(d.data() as any), id: d.id }));
+          const arr = aplicarFiltroSesion(crudo);
+          this.checklists.set(arr);
+          setTimeout(() => this.actualizarGrafica(), 100);
+        })
+      );
+    }
 
-        if (esTrabajadorPuro) {
-          // Match tolerante: cubre perfiles con apellido extra/de menos vs assigned.
-          arr = arr.filter(c => mismoEmpleadoNombre(c.assigned, miNombre));
-        } else if (!esGlobal && permitidas !== null) {
-          // admin limitado O supervisor → filtra por sucursales
-          arr = arr.filter(c => permitidas.includes(c.store));
-        }
-
-        // 🐛 DEBUG temporal: ver en consola por qué un admin/supervisor ve 0.
-        console.log('[DBG dashboard]', {
-          usuario: sesion?.usuario, rol: sesion?.rol, alcance: sesion?.alcance,
-          sucursales: sesion?.sucursales, esGlobal, supervisor, permitidas,
-          checklistsCrudos: totalCrudo, despuesFiltro: arr.length,
-          sucursalesUnicasEnDatos: Array.from(new Set(arr.map(c => c.store)))
-        });
-
-        this.checklists.set(arr);
-        setTimeout(() => this.actualizarGrafica(), 100);
-      })
-    );
-
-    const areasRef = collection(this.firestore, 'areas_operativas');
-    this.destructoresRadares.push(
-      onSnapshot(areasRef, snap => {
-        const arr: any[] = [];
-        snap.forEach(d => arr.push({ ...d.data(), id: d.id }));
-        this.areas.set(arr);
-      })
-    );
+    if (environment.useBackend) {
+      const refreshAreas = async () => {
+        try {
+          const res = await firstValueFrom(this.areasApi.list());
+          this.areas.set(res.areas as any[]);
+        } catch (e) { console.error('[home/areas backend]', e); }
+      };
+      refreshAreas();
+      this.pollAreas = setInterval(refreshAreas, 60_000);
+      this.destructoresRadares.push(() => { if (this.pollAreas) { clearInterval(this.pollAreas); this.pollAreas = null; } });
+    } else {
+      const areasRef = collection(this.firestore, 'areas_operativas');
+      this.destructoresRadares.push(
+        onSnapshot(areasRef, snap => {
+          const arr: any[] = [];
+          snap.forEach(d => arr.push({ ...d.data(), id: d.id }));
+          this.areas.set(arr);
+        })
+      );
+    }
 
     // La lista de usuarios ya la trae UsuariosService (listener compartido).
     // Aquí ya no abrimos un onSnapshot duplicado — el _usuariosEffect arriba

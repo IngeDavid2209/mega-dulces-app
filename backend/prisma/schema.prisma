@@ -1,0 +1,414 @@
+// =============================================================================
+// Mega Dulces Task - Schema Prisma (Postgres)
+// =============================================================================
+// Mapeo de las colecciones de Firestore detectadas en Fase 0 a tablas
+// relacionales. Decisiones:
+//   - `usuarios` + `users` (legacy) consolidados en `Usuario`.
+//   - `areas` + `areas_operativas` consolidados en `Area`.
+//   - `usuarios_tokens` (FCM) NO se migra: queda en Firestore.
+//   - `indice_login` no se migra: el unique en `Usuario.usuario` ya cumple esa funcion.
+//   - Subcollection `usuarios/{uid}/tareas_unicas` → tabla `TareaUnica` con FK a Usuario.
+//   - Items / fotos / subtareas anidadas se guardan como Json en el doc raiz
+//     porque son estructuras dinamicas y el front las consume completas.
+// =============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// -----------------------------------------------------------------------------
+//  USUARIOS
+// -----------------------------------------------------------------------------
+// Tabla principal de identidad. El uid_firebase se preserva durante la
+// migracion para que las relaciones por nombre/uid sigan resolviendo.
+// El password_hash es bcrypt — Firebase Auth se reemplaza por JWT propio.
+model Usuario {
+  id              String   @id @default(uuid())
+  uidFirebase     String?  @unique @map("uid_firebase")
+  usuario         String   @unique
+  nombre          String
+  correo          String?  @unique
+  passwordHash    String?  @map("password_hash")
+  cargo           String?
+  rol             Rol      @default(trabajador)
+  alcance         Alcance?
+  sucursales      String[] @default([])
+  areas           String[] @default([])
+  telefono        String?
+
+  // Permisos granulares (flags booleanos)
+  puedeCrearChecklists      Boolean @default(false) @map("puede_crear_checklists")
+  puedeCrearRutinas         Boolean @default(false) @map("puede_crear_rutinas")
+  puedeCrearTareasUnicas    Boolean @default(false) @map("puede_crear_tareas_unicas")
+  puedeVerCheckstore        Boolean @default(false) @map("puede_ver_checkstore")
+  puedeVerEstadisticas      Boolean @default(false) @map("puede_ver_estadisticas")
+  puedeVerHistorial         Boolean @default(false) @map("puede_ver_historial")
+  puedeAdministrarPersonal  Boolean @default(false) @map("puede_administrar_personal")
+  puedeVerCalendario        Boolean @default(false) @map("puede_ver_calendario")
+  puedeAdministrarAreas     Boolean @default(false) @map("puede_administrar_areas")
+
+  // Heartbeat (timestamp ms para indicador "en linea")
+  ultimoLatido    BigInt?  @map("ultimo_latido")
+  ultimaEdicion   BigInt?  @map("ultima_edicion")
+
+  // Raw del doc Firestore original (preserva campos no normalizados).
+  raw             Json?
+
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt      @map("updated_at")
+
+  // Relaciones
+  tareasUnicas    TareaUnica[]
+  agenda          AgendaItem[] @relation("UsuarioAgenda")
+  checklistsCreados Checklist[] @relation("ChecklistCreador")
+
+  @@index([rol])
+  @@index([alcance])
+  @@map("usuarios")
+}
+
+enum Rol {
+  admin
+  trabajador
+}
+
+enum Alcance {
+  global
+  sucursales
+}
+
+// -----------------------------------------------------------------------------
+//  CHECKLISTS (tareas operativas diarias)
+// -----------------------------------------------------------------------------
+// Cada checklist es 1 tarea/dia/persona. Los items (con foto, antes/despues,
+// palomeo) y subtareas se guardan como Json porque son arrays heterogeneos.
+// El campo `assigned` es el NOMBRE del responsable (no uid) — se preserva por
+// compatibilidad con la logica actual (mismoEmpleadoNombre con tolerancia).
+model Checklist {
+  id                  String   @id @default(uuid())
+  docIdFirebase       String?  @unique @map("doc_id_firebase")
+
+  name                String
+  assigned            String
+  store               String
+  fecha               DateTime @db.Date                                  // 'date' YYYY-MM-DD
+  horaLimite          String?  @map("hora_limite")                       // 'time' HH:mm
+  status              String   @default("pendiente")
+  enviado             Boolean  @default(false)
+  eliminado           Boolean  @default(false)
+  archivado           Boolean  @default(false)
+  archivadoMes        String?  @map("archivado_mes")                     // YYYY-MM
+  archivadoEn         DateTime? @map("archivado_en")
+  archivadoPor        String?   @map("archivado_por")
+  fotosBorradas       Boolean  @default(false) @map("fotos_borradas")
+  fotosBorradasEn     DateTime? @map("fotos_borradas_en")
+  fotosBorradasCount  Int?     @map("fotos_borradas_count")
+
+  // Comentarios del colaborador y motivos de retraso
+  notaEmpleado        String?  @map("nota_empleado")
+  entregaConRetraso   Boolean  @default(false) @map("entrega_con_retraso")
+  motivoCategoria     String?  @map("motivo_categoria")
+  motivoComentario    String?  @map("motivo_comentario")
+
+  // Trazabilidad
+  createdBy           String?  @map("created_by")                        // nombre del creador
+  createdByUid        String?  @map("created_by_uid")                    // FK opcional Usuario.uid
+  creador             Usuario? @relation("ChecklistCreador", fields: [createdByUid], references: [uidFirebase])
+  timestampCreacion   BigInt?  @map("timestamp_creacion")
+
+  // Referencia a rutina origen (V1 o V2). Se usa para cancelar en cascada.
+  catalogoRutinaId    String?  @map("_catalogo_rutina_id")
+  asignacionId        String?  @map("_asignacion_id")
+  moldeId             String?  @map("_molde_id")
+
+  // Orden de mantenimiento (sub-objeto opcional)
+  mantenimiento       Json?
+
+  // Subtareas (fases anidadas)
+  subtareas           Json?    @default("[]")
+
+  // Items: tareas individuales con foto, antes/despues, palomeo, etc.
+  items               Json     @default("[]")
+
+  // Raw del doc original
+  raw                 Json?
+
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt      @map("updated_at")
+
+  @@index([fecha])
+  @@index([store])
+  @@index([assigned])
+  @@index([enviado])
+  @@index([archivado])
+  @@index([eliminado])
+  @@index([fecha, store])
+  @@index([assigned, fecha])
+  @@index([catalogoRutinaId])
+  @@index([asignacionId])
+  @@map("checklists")
+}
+
+// -----------------------------------------------------------------------------
+//  AREAS (consolida areas + areas_operativas)
+// -----------------------------------------------------------------------------
+model Area {
+  id              String   @id @default(uuid())
+  docIdFirebase   String?  @unique @map("doc_id_firebase")
+  nombre          String   @unique
+  descripcion     String?
+  activa          Boolean  @default(true)
+  bloqueada       Boolean  @default(false)
+  fechaBloqueo    DateTime? @db.Date @map("fecha_bloqueo")
+  // Campos de jornada (consumidos por areas.ts para bloqueo horario):
+  fechaAsignada     String?  @map("fecha_asignada")     // 'YYYY-MM-DD' o vacio
+  horaEntrada       String?  @map("hora_entrada")
+  horaSalida        String?  @map("hora_salida")
+  turnoAsignado     String?  @map("turno_asignado")
+  esRecurrente      Boolean  @default(false) @map("es_recurrente")
+  fechaCreacion     String?  @map("fecha_creacion")     // ISO string
+  fechaModificacion String?  @map("fecha_modificacion") // ISO string
+  raw             Json?
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt      @map("updated_at")
+
+  @@map("areas")
+}
+
+// -----------------------------------------------------------------------------
+//  RUTINAS - CATALOGO (Robot V2)
+// -----------------------------------------------------------------------------
+model RutinaCatalogo {
+  id              String   @id @default(uuid())
+  docIdFirebase   String?  @unique @map("doc_id_firebase")
+  nombre          String
+  descripcion     String?
+  tipo            String?                       // texto libre del cliente
+  frecuencia      String?                       // 'Diaria' | 'Semanal' | 'Catorcenal' | 'Mensual' | 'Trimestral'
+  diaSemana       String?  @map("dia_semana")
+  diaMes          Int?     @map("dia_mes")
+  horaInicio      String?  @map("hora_inicio")
+  horaLimite      String?  @map("hora_limite")
+  responsableSugerido String? @map("responsable_sugerido")
+  nivelCritico    String?  @map("nivel_critico")
+  evidencia       String?                        // 'ninguna' | 'foto' | 'antesDespues' | 'variasFotos'
+  tiempoEstimado  Int?     @map("tiempo_estimado")
+  tareas          Json     @default("[]")        // lista de items/subitems de la rutina
+  activa          Boolean  @default(true)
+  creadoPor       String?  @map("creado_por")
+  creadoEn        BigInt?  @map("creado_en")
+  actualizadoPor  String?  @map("actualizado_por")
+  actualizadoEn   BigInt?  @map("actualizado_en")
+  raw             Json?
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt      @map("updated_at")
+
+  asignaciones    AsignacionRutina[]
+
+  @@index([activa])
+  @@map("rutinas_catalogo")
+}
+
+// -----------------------------------------------------------------------------
+//  ASIGNACIONES DE RUTINAS (Robot V2)
+// -----------------------------------------------------------------------------
+model AsignacionRutina {
+  id                String   @id @default(uuid())
+  docIdFirebase     String?  @unique @map("doc_id_firebase")
+
+  rutinaId          String?  @map("rutina_id")
+  rutina            RutinaCatalogo? @relation(fields: [rutinaId], references: [id], onDelete: SetNull)
+  rutinaIdLegacy    String?  @map("rutina_id_legacy")     // si Firestore aun tenia el id antiguo
+
+  rutinaNombre      String?  @map("rutina_nombre")        // snapshot del nombre al asignar
+  modoAsignacion    String?  @map("modo_asignacion")      // 'porPersonas' | 'porRol' | etc.
+  asignados         String[] @default([])                  // nombres de personas
+  rolObjetivo       String?  @map("rol_objetivo")          // si modo === 'porRol'
+  store             String?
+  area              String?
+  frecuencia        String?
+  diaSemana         String?  @map("dia_semana")
+  diaMes            Int?     @map("dia_mes")
+  fechaInicio       DateTime? @db.Date @map("fecha_inicio")
+  fechaFin          DateTime? @db.Date @map("fecha_fin")
+  horaInicio        String?  @map("hora_inicio")
+  horaLimite        String?  @map("hora_limite")
+  activa            Boolean  @default(true)
+  raw               Json?
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt      @map("updated_at")
+
+  @@index([activa])
+  @@index([store])
+  @@index([rutinaId])
+  @@map("asignaciones_rutinas")
+}
+
+// -----------------------------------------------------------------------------
+//  MOLDES DE CHECKLISTS (Robot V1 — legacy, conservado)
+// -----------------------------------------------------------------------------
+model MoldeChecklist {
+  id              String   @id @default(uuid())
+  docIdFirebase   String?  @unique @map("doc_id_firebase")
+  name            String
+  assigned        String
+  store           String?
+  frecuencia      String?
+  diaSemana       String?  @map("dia_semana")
+  diaMes          Int?     @map("dia_mes")
+  fechaInicio     DateTime? @db.Date @map("fecha_inicio")
+  fechaFin        DateTime? @db.Date @map("fecha_fin")
+  horaInicio      String?  @map("hora_inicio")
+  horaLimite      String?  @map("hora_limite")
+  items           Json     @default("[]")
+  activo          Boolean  @default(true)
+  raw             Json?
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt      @map("updated_at")
+
+  @@map("moldes_checklists")
+}
+
+// -----------------------------------------------------------------------------
+//  TAREAS DE EQUIPO (proyectos colaborativos)
+// -----------------------------------------------------------------------------
+model TareaEquipo {
+  id                  String   @id @default(uuid())
+  docIdFirebase       String?  @unique @map("doc_id_firebase")
+  titulo              String
+  descripcion         String?
+  jefeEquipo          String?  @map("jefe_equipo")
+  integrantes         String[] @default([])
+  store               String?
+  fechaInicio         DateTime? @db.Date @map("fecha_inicio")
+  fechaFin            DateTime? @db.Date @map("fecha_fin")
+  cerrado             Boolean  @default(false)
+  fases               Json     @default("[]")
+  timestampCreacion   BigInt?  @map("timestamp_creacion")
+  raw                 Json?
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt      @map("updated_at")
+
+  @@index([jefeEquipo])
+  @@index([cerrado])
+  @@map("tareas_equipo")
+}
+
+// -----------------------------------------------------------------------------
+//  AGENDA (sub-collection en Firestore: usuarios/{uid}/agenda)
+// -----------------------------------------------------------------------------
+// Tareas personales con campos extras (instrucciones, comentarios, adjunto).
+// Similar a TareaUnica pero apuntando a la pantalla "Agenda" del front.
+model AgendaItem {
+  id              String   @id @default(uuid())
+  docIdFirebase   String?  @unique @map("doc_id_firebase")
+  usuarioId       String   @map("usuario_id")
+  usuario         Usuario  @relation("UsuarioAgenda", fields: [usuarioId], references: [id], onDelete: Cascade)
+  texto           String
+  completada      Boolean  @default(false)
+  fechaCreacion   BigInt   @map("fecha_creacion")
+  instrucciones   String?
+  comentarios     String?
+  adjunto         String?
+  raw             Json?
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt      @map("updated_at")
+
+  @@index([usuarioId])
+  @@index([usuarioId, completada])
+  @@map("agenda_items")
+}
+
+// -----------------------------------------------------------------------------
+//  TAREAS UNICAS (sub-collection en Firestore: usuarios/{uid}/tareas_unicas)
+// -----------------------------------------------------------------------------
+// Subcollection en Firestore. En Postgres es tabla con FK a Usuario.
+model TareaUnica {
+  id              String   @id @default(uuid())
+  docIdFirebase   String?  @unique @map("doc_id_firebase")
+  usuarioId       String   @map("usuario_id")
+  usuario         Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  texto           String
+  completada      Boolean  @default(false)
+  fechaCreacion   BigInt   @map("fecha_creacion")
+  instrucciones   String?
+  subtareas       Json     @default("[]")
+  raw             Json?
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt      @map("updated_at")
+
+  @@index([usuarioId])
+  @@index([usuarioId, completada])
+  @@map("tareas_unicas")
+}
+
+// -----------------------------------------------------------------------------
+//  NOTIFICACIONES
+// -----------------------------------------------------------------------------
+// El campo `empleado` es el NOMBRE del destinatario (compatibilidad con
+// la logica actual). Se agrega `empleadoUid` opcional para futuro FK robusto.
+model Notificacion {
+  id              String   @id @default(uuid())
+  docIdFirebase   String?  @unique @map("doc_id_firebase")
+  empleado        String                                       // nombre del destinatario
+  empleadoUid     String?  @map("empleado_uid")                // opcional: FK Usuario.uidFirebase
+  remitente       String?
+  titulo          String?
+  mensaje         String?
+  leido           Boolean  @default(false)
+  fechaCreacion   DateTime @default(now()) @map("fecha_creacion")
+  raw             Json?
+
+  @@index([empleado, leido])
+  @@map("notificaciones")
+}
+
+// -----------------------------------------------------------------------------
+//  TOKENS FCM (push notifications)
+// -----------------------------------------------------------------------------
+// En Firebase vivian en `usuarios_tokens`. Se mueven al backend para que sea
+// el unico lugar donde se gestiona la identidad de los dispositivos.
+// FCM sigue procesando los push (es gratis); solo cambia donde se guardan los
+// tokens. Cada dispositivo de un usuario tiene su propio token; un mismo
+// usuario puede tener varios (web, movil, etc.).
+model TokenFCM {
+  id              String   @id @default(uuid())
+  token           String   @unique
+  usuario         String                                       // nombre del usuario (compat)
+  usuarioUid      String?  @map("usuario_uid")                 // uid Firebase legacy o id backend
+  userAgent       String?  @map("user_agent")
+  actualizado     BigInt?                                       // timestamp ms ultima actualizacion
+  raw             Json?
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt      @map("updated_at")
+
+  @@index([usuario])
+  @@index([usuarioUid])
+  @@map("tokens_fcm")
+}
+
+// -----------------------------------------------------------------------------
+//  DESCANSOS SEMANALES
+// -----------------------------------------------------------------------------
+model DescansoSemanal {
+  id              String   @id @default(uuid())
+  docIdFirebase   String?  @unique @map("doc_id_firebase")
+  empleado        String                                       // nombre del empleado
+  userId          String?  @map("user_id")                     // referencia opcional al uid del usuario (compatibilidad con docs antiguos)
+  semanaIso       String   @map("semana_iso")                  // 2026-W23
+  /** Dias de descanso en esa semana. Multiples valores: ['Lunes','Martes']. */
+  dias            String[] @default([])
+  actualizadoPor  String?  @map("actualizado_por")
+  actualizadoEn   BigInt?  @map("actualizado_en")
+  raw             Json?
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  @@unique([empleado, semanaIso])
+  @@index([semanaIso])
+  @@map("descansos_semanales")
+}

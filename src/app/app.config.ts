@@ -1,5 +1,6 @@
 import { ApplicationConfig, provideZoneChangeDetection, isDevMode } from '@angular/core';
 import { provideRouter } from '@angular/router';
+import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { routes } from './app.routes';
 
 // 🔥 IMPORTACIONES DE FIREBASE ACTUALIZADAS 🔥
@@ -13,6 +14,8 @@ import { getStorage, provideStorage } from '@angular/fire/storage';
 import { getMessaging, provideMessaging } from '@angular/fire/messaging';
 import { provideServiceWorker } from '@angular/service-worker';
 
+import { jwtInterceptor } from './core/jwt.interceptor';
+
 export const firebaseConfig = {
   apiKey: "AIzaSyAoVz9oTcSQrgvUeqBTTDLYEilEkRFvsug",
   authDomain: "mega-dulces-96c57.firebaseapp.com",
@@ -24,6 +27,14 @@ export const firebaseConfig = {
 
 export const appConfig: ApplicationConfig = {
   providers: [
+    // ====================================================================
+    // HttpClient para el backend Node + Express (Fase 5 de la migracion).
+    // El interceptor adjunta el JWT en cada request al backend propio y
+    // hace logout automatico si recibe 401. No toca llamadas a Cloudinary
+    // ni a Firebase Storage (esas pasan sin headers).
+    // ====================================================================
+    provideHttpClient(withInterceptors([jwtInterceptor])),
+
     provideFirebaseApp(() => initializeApp(firebaseConfig)),
     provideAuth(() => getAuth()),
     

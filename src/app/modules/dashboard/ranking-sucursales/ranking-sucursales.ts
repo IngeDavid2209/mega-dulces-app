@@ -3,10 +3,13 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { Firestore, collection, onSnapshot, query, where } from '@angular/fire/firestore';
+import { firstValueFrom } from 'rxjs';
 
 import { SidebarComponent } from '../../../shared/sidebar/sidebar';
 import { esAdminGlobal, sucursalesPermitidas } from '../../../shared/permisos.util';
 import { esItemHecho } from '../../../shared/item-completado.util';
+import { environment } from '../../../../environments/environment';
+import { ChecklistsApi } from '../../../api/checklists.api';
 
 interface DiaStat {
   fechaISO: string;     // YYYY-MM-DD
@@ -49,7 +52,9 @@ export class RankingSucursalesComponent implements OnInit, OnDestroy {
   fechaAncla = signal<Date>(new Date());
 
   private firestore = inject(Firestore);
+  private checklistsApi = inject(ChecklistsApi);
   private destructores: (() => void)[] = [];
+  private pollRanking: any = null;
 
   // ============================================================================
   // CICLO DE VIDA
@@ -113,6 +118,28 @@ export class RankingSucursalesComponent implements OnInit, OnDestroy {
     const dias = this.diasDeLaSemana();
     const desdeISO = this.toYmd(dias[0]);
     const hastaISO = this.toYmd(dias[6]);
+
+    if (environment.useBackend) {
+      const refresh = async () => {
+        try {
+          // Pedimos crudos al endpoint y dejamos que el computed local arme el
+          // ranking (asi reutilizamos la misma logica que ya existe en cliente).
+          const res = await firstValueFrom(this.checklistsApi.list({
+            fechaDesde: desdeISO, fechaHasta: hastaISO, archivado: false, eliminado: false, limit: 2000,
+          }));
+          this.checklistsSemana.set(res.checklists);
+        } catch (e) {
+          console.error('[ranking/backend] error', e);
+        } finally {
+          this.cargando.set(false);
+        }
+      };
+      refresh();
+      this.pollRanking = setInterval(refresh, 60_000);
+      this.destructores.push(() => { if (this.pollRanking) { clearInterval(this.pollRanking); this.pollRanking = null; } });
+      return;
+    }
+
     const refColl = collection(this.firestore, 'checklists');
     const q = query(refColl, where('date', '>=', desdeISO), where('date', '<=', hastaISO));
     const unsub = onSnapshot(q, (snap) => {

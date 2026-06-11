@@ -4,6 +4,10 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, Router } from '@angular/router';
 import { Firestore, collection, doc, setDoc, deleteDoc, onSnapshot, getDocs, query, where } from '@angular/fire/firestore';
+import { firstValueFrom } from 'rxjs';
+import { environment } from '../../../../environments/environment';
+import { UsuariosApi } from '../../../api/usuarios.api';
+import { AuthApi } from '../../../api/auth.api';
 import {
   getAuth,
   verifyBeforeUpdateEmail,
@@ -101,6 +105,8 @@ export class PersonalComponent implements OnInit, OnDestroy {
   private firestore = inject(Firestore);
   private router = inject(Router);
   private usuariosSvc = inject(UsuariosService);
+  private usuariosApi = inject(UsuariosApi);
+  private authApi = inject(AuthApi);
   private destructoresRadares: (() => void)[] = [];
 
   // Effect: replica la lista del UsuariosService compartido en el signal local
@@ -541,6 +547,26 @@ export class PersonalComponent implements OnInit, OnDestroy {
     };
 
     try {
+      // ============================================================
+      // RAMA BACKEND: el backend Node + Postgres maneja todo (rehash de
+      // password incluido), sin necesidad de Firebase Auth ni indice_login.
+      // ============================================================
+      if (environment.useBackend) {
+        if (this.usuarioEnEdicion) {
+          const userId = this.usuarioEnEdicion.id || this.usuarioEnEdicion.idFirestore;
+          const body: any = { ...payload };
+          // password: solo enviar si cambio (compara contra el "espejo" actual).
+          if (this.formPassword === (this.usuarioEnEdicion.password || '')) delete body.password;
+          await firstValueFrom(this.usuariosApi.update(userId, body));
+        } else {
+          // Nuevo usuario: POST /api/auth/register (requiere admin).
+          await firstValueFrom(this.authApi.register(payload as any));
+        }
+        this.cerrarModal();
+        Swal.fire({ icon: 'success', title: '¡Guardado!', text: 'El usuario se ha guardado correctamente.', confirmButtonColor: '#0F172A' });
+        return;
+      }
+
       if (this.usuarioEnEdicion) {
         const docId = this.usuarioEnEdicion.idFirestore || this.usuarioEnEdicion.uid || this.usuarioEnEdicion.usuario;
         const auth = getAuth();
@@ -1110,17 +1136,19 @@ export class PersonalComponent implements OnInit, OnDestroy {
       cancelButtonText: 'Cancelar'
     });
 
-    // 3. Si dice que sí, lo borramos de Firestore
+    // 3. Si dice que sí, lo borramos
     if (confirmacion.isConfirmed) {
       try {
-        const docId = usuarioParaBorrar.idFirestore || usuarioParaBorrar.uid || usuarioParaBorrar.usuario;
-        
-        // deleteDoc ya lo tienes importado arriba, así que esto funcionará directo
-        await deleteDoc(doc(this.firestore, 'usuarios', docId));
-        
+        if (environment.useBackend) {
+          const userId = usuarioParaBorrar.id || usuarioParaBorrar.idFirestore;
+          await firstValueFrom(this.usuariosApi.remove(userId));
+        } else {
+          const docId = usuarioParaBorrar.idFirestore || usuarioParaBorrar.uid || usuarioParaBorrar.usuario;
+          await deleteDoc(doc(this.firestore, 'usuarios', docId));
+        }
         Swal.fire({ icon: 'success', title: '¡Eliminado!', text: 'El usuario ha sido eliminado de la base de datos.', confirmButtonColor: '#0F172A' });
       } catch (error: any) {
-        Swal.fire({ icon: 'error', title: 'Error', text: 'Hubo un problema al eliminar al usuario: ' + error.message, confirmButtonColor: '#0F172A' });
+        Swal.fire({ icon: 'error', title: 'Error', text: 'Hubo un problema al eliminar al usuario: ' + (error.error || error.message), confirmButtonColor: '#0F172A' });
       }
     }
   }

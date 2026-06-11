@@ -4,6 +4,9 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, Router } from '@angular/router';
 import { Firestore, collection, onSnapshot } from '@angular/fire/firestore';
+import { firstValueFrom } from 'rxjs';
+import { environment } from '../../../../environments/environment';
+import { AsignacionesRutinasApi } from '../../../api/asignaciones-rutinas.api';
 
 import { SidebarComponent } from '../../../shared/sidebar/sidebar';
 import { esAdminGlobal, sucursalesPermitidas } from '../../../shared/permisos.util';
@@ -71,7 +74,9 @@ export class ProgramacionRutinasComponent implements OnInit, OnDestroy {
   private firestore = inject(Firestore);
   private router = inject(Router);
   private usuariosSvc = inject(UsuariosService);
+  private asignacionesApi = inject(AsignacionesRutinasApi);
   private radarAsignaciones: (() => void) | null = null;
+  private pollAsig: any = null;
 
   private _usuariosEffect = effect(() => {
     const raw = this.usuariosSvc.usuarios();
@@ -97,10 +102,23 @@ export class ProgramacionRutinasComponent implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     if (this.radarAsignaciones) { this.radarAsignaciones(); this.radarAsignaciones = null; }
+    if (this.pollAsig) { clearInterval(this.pollAsig); this.pollAsig = null; }
     this.usuariosSvc.detener();
   }
 
   conectarConLaNube() {
+    if (environment.useBackend) {
+      const refresh = async () => {
+        try {
+          const res = await firstValueFrom(this.asignacionesApi.list({ activa: true }));
+          this.asignaciones.set(res.asignaciones as any[]);
+        } catch (e) { console.error('[programacion-rutinas/backend]', e); }
+      };
+      refresh();
+      this.pollAsig = setInterval(refresh, 60_000);
+      return;
+    }
+
     const refAsig = collection(this.firestore, 'asignaciones_rutinas');
     this.radarAsignaciones = onSnapshot(refAsig, snap => {
       const arr: AsignacionRutina[] = [];

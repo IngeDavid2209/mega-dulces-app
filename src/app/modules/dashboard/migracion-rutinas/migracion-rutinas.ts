@@ -30,6 +30,9 @@ import Swal from 'sweetalert2';
 
 import { SidebarComponent } from '../../../shared/sidebar/sidebar';
 import { esAdminGlobal } from '../../../shared/permisos.util';
+import { firstValueFrom } from 'rxjs';
+import { environment } from '../../../../environments/environment';
+import { MoldesChecklistsApi } from '../../../api/moldes-checklists.api';
 import {
   TipoRutina, NivelCritico, FrecuenciaRutina, TareaRutinaMaestra
 } from '../../../shared/rutinas.types';
@@ -69,6 +72,8 @@ export class MigracionRutinasComponent implements OnInit, OnDestroy {
   ultimaCorrida = signal<{ exitosos: number; saltados: number; errores: number } | null>(null);
 
   private firestore = inject(Firestore);
+  private moldesApi = inject(MoldesChecklistsApi);
+  private pollMoldes: any = null;
   private router = inject(Router);
   private radarMoldes: (() => void) | null = null;
 
@@ -85,9 +90,24 @@ export class MigracionRutinasComponent implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     if (this.radarMoldes) { this.radarMoldes(); this.radarMoldes = null; }
+    if (this.pollMoldes)  { clearInterval(this.pollMoldes); this.pollMoldes = null; }
   }
 
   conectarConLaNube() {
+    if (environment.useBackend) {
+      const refresh = async () => {
+        try {
+          const res = await firstValueFrom(this.moldesApi.list());
+          const arr = (res.moldes as any[]).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+          this.moldes.set(arr);
+        } catch (e) {
+          console.error('[migracion-rutinas/backend] error', e);
+        }
+      };
+      refresh();
+      this.pollMoldes = setInterval(refresh, 60_000);
+      return;
+    }
     const refMoldes = collection(this.firestore, 'moldes_checklists');
     this.radarMoldes = onSnapshot(refMoldes, snap => {
       const arr: MoldeLegacy[] = [];

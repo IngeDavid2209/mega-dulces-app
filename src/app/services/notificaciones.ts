@@ -1,6 +1,9 @@
 import { Injectable, inject } from '@angular/core';
 import { Messaging, getToken, onMessage } from '@angular/fire/messaging';
 import { Firestore, doc, setDoc } from '@angular/fire/firestore';
+import { firstValueFrom } from 'rxjs';
+import { environment } from '../../environments/environment';
+import { NotificacionesApi } from '../api/notificaciones.api';
 
 /**
  * Servicio de Firebase Cloud Messaging (FCM) — Push notifications a la PWA.
@@ -19,6 +22,7 @@ const VAPID_PUBLIC_KEY = 'BltRm5eYik-A2jdDOiS3nukAh41n47mYwdpfw9L_IRFUZ2L6OSEDNA
 export class NotificacionesService {
   private messaging = inject(Messaging);
   private firestore = inject(Firestore);
+  private notificacionesApi = inject(NotificacionesApi);
 
   /**
    * Pide permiso de notificaciones, obtiene el token FCM y lo guarda en
@@ -56,16 +60,29 @@ export class NotificacionesService {
         return null;
       }
 
-      // 5. Guardamos el token. Lo indexamos por uid si lo hay (estable),
-      //    si no, por nombre (compatibilidad con el modelo viejo).
-      const docId = uid || usuarioNombre;
-      await setDoc(doc(this.firestore, 'usuarios_tokens', docId), {
-        token,
-        usuario: usuarioNombre,
-        uid: uid || null,
-        actualizado: Date.now(),
-        userAgent: navigator.userAgent
-      }, { merge: true });
+      // 5. Guardamos el token. En modo backend va a Postgres via /api/notificaciones/tokens;
+      //    en modo Firestore legacy a `usuarios_tokens/{uid|nombre}`.
+      if (environment.useBackend) {
+        try {
+          await firstValueFrom(this.notificacionesApi.registrarToken({
+            token,
+            usuario: usuarioNombre,
+            usuarioUid: uid,
+            userAgent: navigator.userAgent,
+          }));
+        } catch (e) {
+          console.error('[FCM/backend] no se pudo registrar el token:', e);
+        }
+      } else {
+        const docId = uid || usuarioNombre;
+        await setDoc(doc(this.firestore, 'usuarios_tokens', docId), {
+          token,
+          usuario: usuarioNombre,
+          uid: uid || null,
+          actualizado: Date.now(),
+          userAgent: navigator.userAgent
+        }, { merge: true });
+      }
 
       // 6. Cuando llega un push y la app está EN PRIMER PLANO, onMessage dispara aquí.
       //    (Si está en background, lo maneja firebase-messaging-sw.js.)

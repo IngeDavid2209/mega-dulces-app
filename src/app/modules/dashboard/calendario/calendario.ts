@@ -5,6 +5,11 @@ import { FormsModule } from '@angular/forms';
 import { RouterModule, Router } from '@angular/router';
 // 🔥 Agregué getDocs y query para que pueda ir por la agenda personal
 import { Firestore, collection, onSnapshot, getDocs, query, where } from '@angular/fire/firestore';
+import { firstValueFrom } from 'rxjs';
+import { environment } from '../../../../environments/environment';
+import { AreasApi } from '../../../api/areas.api';
+import { ChecklistsApi } from '../../../api/checklists.api';
+import { UsuariosApi } from '../../../api/usuarios.api';
 import Swal from 'sweetalert2';
 import { esAdminGlobal, sucursalesPermitidas, normalizarNombre } from '../../../shared/permisos.util';
 
@@ -47,6 +52,11 @@ tareasAgendaMes: any[] = [];
   fechaBuscada = '';
 
   private firestore = inject(Firestore);
+  private areasApi = inject(AreasApi);
+  private checklistsApi = inject(ChecklistsApi);
+  private usuariosApi = inject(UsuariosApi);
+  private pollAreas: any = null;
+  private pollChecklists: any = null;
   private router = inject(Router);
   private usuariosSvc = inject(UsuariosService);
   /** Snapshot dinámico de checklists del mes visible (se recrea al cambiar de mes). */
@@ -96,11 +106,23 @@ tareasAgendaMes: any[] = [];
     // _usuariosEffect aplica el filtro por sucursal. Aqui solo abrimos los
     // listeners de las otras colecciones.
 
-    const areasRef = collection(this.firestore, 'areas_operativas');
-    this.destructores.push(onSnapshot(areasRef, (snap) => {
-      const areasNube = snap.docs.map(d => d.data());
-      this.areas.set(areasNube.sort((a: any, b: any) => (a.nombre || '').localeCompare(b.nombre || '')));
-    }));
+    if (environment.useBackend) {
+      const refresh = async () => {
+        try {
+          const res = await firstValueFrom(this.areasApi.list());
+          this.areas.set([...res.areas].sort((a, b) => (a.nombre || '').localeCompare(b.nombre || '')));
+        } catch (e) { console.error('[calendario/areas backend]', e); }
+      };
+      refresh();
+      this.pollAreas = setInterval(refresh, 60_000);
+      this.destructores.push(() => { if (this.pollAreas) { clearInterval(this.pollAreas); this.pollAreas = null; } });
+    } else {
+      const areasRef = collection(this.firestore, 'areas_operativas');
+      this.destructores.push(onSnapshot(areasRef, (snap) => {
+        const areasNube = snap.docs.map(d => d.data());
+        this.areas.set(areasNube.sort((a: any, b: any) => (a.nombre || '').localeCompare(b.nombre || '')));
+      }));
+    }
 
     // 💸 OPTIMIZACIÓN: filtramos checklists al rango del mes visible (±1 mes para
     // amortiguar al navegar rápido entre meses cercanos). Antes traíamos toda la
@@ -113,10 +135,8 @@ tareasAgendaMes: any[] = [];
    * (1 mes antes y 1 después). Se llama al iniciar y cada vez que cambia el mes.
    */
   private reconectarChecklistsDelMesVisible() {
-    if (this.radarChecklistsActivo) {
-      this.radarChecklistsActivo();
-      this.radarChecklistsActivo = null;
-    }
+    if (this.radarChecklistsActivo) { this.radarChecklistsActivo(); this.radarChecklistsActivo = null; }
+    if (this.pollChecklists) { clearInterval(this.pollChecklists); this.pollChecklists = null; }
 
     // Rango ±1 mes alrededor de fechaActual (3 meses de cobertura)
     const offset = new Date().getTimezoneOffset() * 60000;
@@ -125,24 +145,36 @@ tareasAgendaMes: any[] = [];
     const desdeISO = new Date(inicio.getTime() - offset).toISOString().split('T')[0];
     const hastaISO = new Date(fin.getTime() - offset).toISOString().split('T')[0];
 
+    const aplicarFiltroSucursal = (lista: any[]) => {
+      if (esAdminGlobal(this.currentUser)) return lista;
+      const permitidas = sucursalesPermitidas(this.currentUser);
+      if (permitidas === null) return lista;
+      return lista.filter((c: any) => permitidas.includes(c.store));
+    };
+
+    if (environment.useBackend) {
+      const refresh = async () => {
+        try {
+          const res = await firstValueFrom(this.checklistsApi.list({
+            fechaDesde: desdeISO, fechaHasta: hastaISO, archivado: false, eliminado: false, limit: 2000,
+          }));
+          this.checklistsGlobales = aplicarFiltroSucursal(res.checklists as any[]);
+          this.generarCalendario();
+        } catch (e) { console.error('[calendario/checklists backend]', e); }
+      };
+      refresh();
+      this.pollChecklists = setInterval(refresh, 60_000);
+      return;
+    }
+
     const checklistsRef = collection(this.firestore, 'checklists');
     const q = query(
       checklistsRef,
       where('date', '>=', desdeISO),
       where('date', '<=', hastaISO)
     );
-
     this.radarChecklistsActivo = onSnapshot(q, (snap) => {
-      let lista = snap.docs.map(d => d.data()).filter((c: any) => !c.eliminado && !c.archivado);
-
-      // 🔥 Admin limitado: solo ve checklists de sus sucursales
-      if (!esAdminGlobal(this.currentUser)) {
-        const permitidas = sucursalesPermitidas(this.currentUser);
-        if (permitidas !== null) {
-          lista = lista.filter((c: any) => permitidas.includes(c.store));
-        }
-      }
-
+      const lista = aplicarFiltroSucursal(snap.docs.map(d => d.data()).filter((c: any) => !c.eliminado && !c.archivado));
       this.checklistsGlobales = lista;
       this.generarCalendario();
     });
@@ -250,9 +282,19 @@ async generarCalendario() {
 
     // 2. Traemos la agenda completa una sola vez para este mes (Optimizado)
     if (userId) {
-      const agendaRef = collection(this.firestore, `usuarios/${userId}/agenda`);
-      const snap = await getDocs(query(agendaRef));
-      this.tareasAgendaMes = snap.docs.map(doc => ({ ...doc.data() as any }));
+      if (environment.useBackend) {
+        try {
+          const res = await firstValueFrom(this.usuariosApi.listAgenda(userId));
+          this.tareasAgendaMes = res.items as any[];
+        } catch (e) {
+          console.error('[calendario/agenda backend]', e);
+          this.tareasAgendaMes = [];
+        }
+      } else {
+        const agendaRef = collection(this.firestore, `usuarios/${userId}/agenda`);
+        const snap = await getDocs(query(agendaRef));
+        this.tareasAgendaMes = snap.docs.map(doc => ({ ...doc.data() as any }));
+      }
     }
 
     for (let i = 0; i < primerDia; i++) { grid.push(null); }
@@ -322,16 +364,21 @@ async generarCalendario() {
     if (!userIdToFetch) return;
 
     try {
-      const agendaRef = collection(this.firestore, `usuarios/${userIdToFetch}/agenda`);
-      const snapshot = await getDocs(query(agendaRef));
-
-      const todasLasTareas = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as any }));
+      let todasLasTareas: any[];
+      if (environment.useBackend) {
+        const res = await firstValueFrom(this.usuariosApi.listAgenda(userIdToFetch));
+        todasLasTareas = res.items as any[];
+      } else {
+        const agendaRef = collection(this.firestore, `usuarios/${userIdToFetch}/agenda`);
+        const snapshot = await getDocs(query(agendaRef));
+        todasLasTareas = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as any }));
+      }
 
       // Filtramos las que coincidan exactamente con la fecha que se abrió
       this.tareasPersonalesDelDia = todasLasTareas.filter(t => {
         if (!t.fechaCreacion) return false;
         const offset = new Date().getTimezoneOffset() * 60000;
-        const dateStr = new Date(t.fechaCreacion - offset).toISOString().split('T')[0];
+        const dateStr = new Date(Number(t.fechaCreacion) - offset).toISOString().split('T')[0];
         return dateStr === fechaStr;
       });
 

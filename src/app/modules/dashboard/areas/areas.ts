@@ -1,5 +1,9 @@
 import { Component, signal, OnInit, OnDestroy, inject, effect } from '@angular/core';
 import { UsuariosService } from '../../../shared/usuarios.service';
+import { firstValueFrom } from 'rxjs';
+import { environment } from '../../../../environments/environment';
+import { AreasApi } from '../../../api/areas.api';
+import { UsuariosApi } from '../../../api/usuarios.api';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, Router } from '@angular/router';
@@ -71,7 +75,10 @@ isGuardando = false;
   private firestore = inject(Firestore);
   private router = inject(Router);
   private usuariosSvc = inject(UsuariosService);
+  private areasApi = inject(AreasApi);
+  private usuariosApi = inject(UsuariosApi);
   private destructoresRadares: (() => void)[] = [];
+  private pollAreas: any = null;
 
   // Effect: copia la lista del UsuariosService compartido a this.usuarios.
   private _usuariosEffect = effect(() => {
@@ -100,9 +107,23 @@ isGuardando = false;
   ngOnDestroy() {
     this.destructoresRadares.forEach(apagarRadar => apagarRadar());
     this.usuariosSvc.detener();
+    if (this.pollAreas) { clearInterval(this.pollAreas); this.pollAreas = null; }
   }
 
   conectarConLaNube() {
+    if (environment.useBackend) {
+      const refresh = async () => {
+        try {
+          const res = await firstValueFrom(this.areasApi.list());
+          this.areas.set([...res.areas].sort((a, b) => a.nombre.localeCompare(b.nombre)));
+        } catch (e) {
+          console.error('[areas/backend] error', e);
+        }
+      };
+      refresh();
+      this.pollAreas = setInterval(refresh, 60_000);
+      return;
+    }
     const areasRef = collection(this.firestore, 'areas_operativas');
     const radarAreas = onSnapshot(areasRef, (snapshot) => {
       const areasNube: any[] = [];
@@ -407,24 +428,39 @@ async guardarArea() {
       datosGuardar['fechaModificacion'] = new Date().toISOString();
     }
  
-    // ✅ AHORA SÍ ESPERAMOS A FIRESTORE (await)
-    await setDoc(
-      doc(this.firestore, 'areas_operativas', areaId),
-      datosGuardar,
-      { merge: true }
-    );
- 
+    // Persistencia: Firestore (legacy) o backend (PUT/POST /api/areas + PUT /api/usuarios/:id)
+    if (environment.useBackend) {
+      if (this.areaEditandoId) {
+        // El backend usa UUID Postgres como id. areaEditandoId aqui es el UUID
+        // si la lista vino del backend, o el id Firestore (string libre) si
+        // estamos en transicion. Asumimos UUID en este modo.
+        await firstValueFrom(this.areasApi.update(this.areaEditandoId, datosGuardar as any));
+      } else {
+        await firstValueFrom(this.areasApi.create(datosGuardar as any));
+      }
+    } else {
+      await setDoc(
+        doc(this.firestore, 'areas_operativas', areaId),
+        datosGuardar,
+        { merge: true }
+      );
+    }
+
     // Si es un área nueva, asignamos los usuarios seleccionados
     if (!this.areaEditandoId) {
       for (const u of this.formAssignedUsers) {
         const nuevasAreas = u.areas ? [...u.areas] : [];
         if (!nuevasAreas.includes(nombreFormateado)) {
           nuevasAreas.push(nombreFormateado);
-          await setDoc(
-            doc(this.firestore, 'usuarios', u.idFirestore),
-            { areas: nuevasAreas },
-            { merge: true }
-          );
+          if (environment.useBackend) {
+            await firstValueFrom(this.usuariosApi.update(u.id || u.idFirestore, { areas: nuevasAreas }));
+          } else {
+            await setDoc(
+              doc(this.firestore, 'usuarios', u.idFirestore),
+              { areas: nuevasAreas },
+              { merge: true }
+            );
+          }
         }
       }
  
@@ -435,13 +471,17 @@ async guardarArea() {
           misAreas.includes('Todas las áreas') || misAreas.includes('Todas');
         if (!esGlobalArea && !misAreas.includes(nombreFormateado)) {
           misAreas.push(nombreFormateado);
-          const miId = yo.idFirestore || yo.uid;
+          const miId = yo.id || yo.idFirestore || yo.uid;
           if (miId) {
-            await setDoc(
-              doc(this.firestore, 'usuarios', miId),
-              { areas: misAreas },
-              { merge: true }
-            );
+            if (environment.useBackend) {
+              await firstValueFrom(this.usuariosApi.update(miId, { areas: misAreas }));
+            } else {
+              await setDoc(
+                doc(this.firestore, 'usuarios', miId),
+                { areas: misAreas },
+                { merge: true }
+              );
+            }
           }
         }
       }
@@ -488,7 +528,13 @@ async guardarArea() {
       Swal.fire('Atención', 'Hay personal en esta área. Quítalos primero.', 'warning'); return;
     }
     const res = await Swal.fire({ title: '¿Borrar?', text: area.nombre, icon: 'warning', showCancelButton: true });
-    if (res.isConfirmed) await deleteDoc(doc(this.firestore, 'areas_operativas', area.id));
+    if (res.isConfirmed) {
+      if (environment.useBackend) {
+        await firstValueFrom(this.areasApi.remove(area.id));
+      } else {
+        await deleteDoc(doc(this.firestore, 'areas_operativas', area.id));
+      }
+    }
   }
 
   abrirAsignacion(area: any, event: Event) {
@@ -521,7 +567,12 @@ async guardarArea() {
     else nuevasAreas.push(this.areaSeleccionada.nombre);
 
     // MODO OFFLINE PARA ASIGNAR/DESASIGNAR PERSONAL
-    setDoc(doc(this.firestore, 'usuarios', u.idFirestore), { areas: nuevasAreas }, { merge: true });
+    if (environment.useBackend) {
+      firstValueFrom(this.usuariosApi.update(u.id || u.idFirestore, { areas: nuevasAreas }))
+        .catch(e => console.error('[areas/backend] error al asignar usuario', e));
+    } else {
+      setDoc(doc(this.firestore, 'usuarios', u.idFirestore), { areas: nuevasAreas }, { merge: true });
+    }
   }
 
   trackByIndex(index: number, obj: any): any { return index; }

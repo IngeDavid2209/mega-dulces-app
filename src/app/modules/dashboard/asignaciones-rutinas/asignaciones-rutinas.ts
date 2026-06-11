@@ -4,6 +4,10 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, Router, ActivatedRoute } from '@angular/router';
 import { Firestore, collection, onSnapshot, doc, setDoc, deleteDoc, getDocs, query, where } from '@angular/fire/firestore';
+import { firstValueFrom } from 'rxjs';
+import { environment } from '../../../../environments/environment';
+import { RutinasCatalogoApi } from '../../../api/rutinas-catalogo.api';
+import { AsignacionesRutinasApi } from '../../../api/asignaciones-rutinas.api';
 import Swal from 'sweetalert2';
 
 import { SidebarComponent } from '../../../shared/sidebar/sidebar';
@@ -78,6 +82,10 @@ export class AsignacionesRutinasComponent implements OnInit, OnDestroy {
   ];
 
   private firestore = inject(Firestore);
+  private rutinasApi = inject(RutinasCatalogoApi);
+  private asignacionesApi = inject(AsignacionesRutinasApi);
+  private pollCat: any = null;
+  private pollAsig: any = null;
   private router = inject(Router);
   private route = inject(ActivatedRoute);
   private usuariosSvc = inject(UsuariosService);
@@ -124,10 +132,39 @@ export class AsignacionesRutinasComponent implements OnInit, OnDestroy {
   ngOnDestroy() {
     if (this.radarCatalogo) { this.radarCatalogo(); this.radarCatalogo = null; }
     if (this.radarAsignaciones) { this.radarAsignaciones(); this.radarAsignaciones = null; }
+    if (this.pollCat)  { clearInterval(this.pollCat); this.pollCat = null; }
+    if (this.pollAsig) { clearInterval(this.pollAsig); this.pollAsig = null; }
     this.usuariosSvc.detener();
   }
 
   conectarConLaNube() {
+    if (environment.useBackend) {
+      const refrescarCat = async () => {
+        try {
+          const res = await firstValueFrom(this.rutinasApi.list());
+          const arr = (res.rutinas as any as RutinaMaestra[])
+            .filter(r => (r as any).activa !== false)
+            .slice()
+            .sort((a, b) => a.nombre.localeCompare(b.nombre));
+          this.catalogo.set(arr);
+        } catch (e) { console.error('[asig-rutinas/backend cat]', e); }
+      };
+      const refrescarAsig = async () => {
+        try {
+          const res = await firstValueFrom(this.asignacionesApi.list());
+          const arr = (res.asignaciones as any as AsignacionRutina[])
+            .slice()
+            .sort((a: any, b: any) => (b.creadoEn || 0) - (a.creadoEn || 0));
+          this.asignaciones.set(arr);
+        } catch (e) { console.error('[asig-rutinas/backend asig]', e); }
+      };
+      refrescarCat();
+      refrescarAsig();
+      this.pollCat  = setInterval(refrescarCat,  60_000);
+      this.pollAsig = setInterval(refrescarAsig, 30_000);
+      return;
+    }
+
     // Catálogo (solo activas)
     const refCat = collection(this.firestore, 'catalogo_rutinas');
     this.radarCatalogo = onSnapshot(refCat, snap => {
@@ -467,7 +504,15 @@ export class AsignacionesRutinasComponent implements OnInit, OnDestroy {
     }
 
     try {
-      await setDoc(doc(this.firestore, 'asignaciones_rutinas', id), payload, { merge: true });
+      if (environment.useBackend) {
+        if (this.editandoId) {
+          await firstValueFrom(this.asignacionesApi.update(this.editandoId, payload));
+        } else {
+          await firstValueFrom(this.asignacionesApi.create(payload));
+        }
+      } else {
+        await setDoc(doc(this.firestore, 'asignaciones_rutinas', id), payload, { merge: true });
+      }
       this.cerrarWizard();
       Swal.fire({
         toast: true, position: 'top-end', showConfirmButton: false, timer: 2500,
@@ -501,7 +546,11 @@ export class AsignacionesRutinasComponent implements OnInit, OnDestroy {
     });
     if (!confirma.isConfirmed) return;
     try {
-      await setDoc(doc(this.firestore, 'asignaciones_rutinas', a.id), { activa: !a.activa }, { merge: true });
+      if (environment.useBackend) {
+        await firstValueFrom(this.asignacionesApi.update(a.id, { activa: !a.activa } as any));
+      } else {
+        await setDoc(doc(this.firestore, 'asignaciones_rutinas', a.id), { activa: !a.activa }, { merge: true });
+      }
     } catch (e: any) {
       Swal.fire('Error', e.message || 'No se pudo cambiar el estado.', 'error');
     }
@@ -520,7 +569,14 @@ export class AsignacionesRutinasComponent implements OnInit, OnDestroy {
     });
     if (!confirma.isConfirmed) return;
     try {
-      await deleteDoc(doc(this.firestore, 'asignaciones_rutinas', a.id));
+      if (environment.useBackend) {
+        await firstValueFrom(this.asignacionesApi.remove(a.id));
+        // El backend NO hace cascada para asignaciones (a diferencia de
+        // rutinas-catalogo). Si en el futuro se requiere, se agrega un
+        // endpoint dedicado. Por ahora el cliente sigue cancelando localmente.
+      } else {
+        await deleteDoc(doc(this.firestore, 'asignaciones_rutinas', a.id));
+      }
       // 🗑️ Cancelar las tareas que esta asignación ya había generado y siguen
       // pendientes, para que no queden estancadas contando como sin hacer.
       await this.cancelarChecklistsPendientes(a.id);

@@ -18,10 +18,13 @@
 
 import { Injectable, inject } from '@angular/core';
 import { Firestore, doc, getDoc, setDoc } from '@angular/fire/firestore';
+import { firstValueFrom } from 'rxjs';
 
 import { RutinaMaestra, TareaRutinaMaestra } from './rutinas.types';
 import { AsignacionRutina } from './asignaciones.types';
 import { asignacionAplicaEnFecha, nombreDiaSemana } from './programacion.util';
+import { environment } from '../../environments/environment';
+import { ChecklistsApi } from '../api/checklists.api';
 
 /** Hooks opcionales que recibe el robot (lógica que vive en el componente). */
 export interface RobotV2Hooks {
@@ -32,6 +35,7 @@ export interface RobotV2Hooks {
 @Injectable({ providedIn: 'root' })
 export class RobotRutinasV2Service {
   private firestore = inject(Firestore);
+  private checklistsApi = inject(ChecklistsApi);
 
   /**
    * Genera los checklists que corresponden a la fecha dada (por defecto: hoy).
@@ -52,6 +56,13 @@ export class RobotRutinasV2Service {
     const fechaYmd = this.toYmd(fecha);
     const esDomingo = fecha.getDay() === 0;
     let creados = 0;
+
+    // En modo backend precargamos los docIdFirebase del dia para evitar ir y
+    // venir por cada candidato. El backend igual es idempotente (no duplica si
+    // recibe un docIdFirebase ya existente), pero esto evita requests inutiles.
+    const idsExistentes = environment.useBackend
+      ? await this.cargarIdsExistentesBackend(fechaYmd)
+      : null;
 
     for (const asig of asignaciones) {
       if (!asignacionAplicaEnFecha(asig, fecha)) continue;
@@ -75,22 +86,56 @@ export class RobotRutinasV2Service {
           const periodo = this.llavePeriodo(asig, fecha);
           const checklistId = this.idemKey(asig.id, periodo, sucursal, dest.nombre);
 
-          const ref = doc(this.firestore, 'checklists', checklistId);
-          const snap = await getDoc(ref);
-          if (snap.exists()) continue;
-
           const payload = this.armarChecklist({
             checklistId, asig, rutina, sucursal, destinatario: dest.nombre,
             fechaYmd
           });
 
-          await setDoc(ref, payload);
-          creados++;
+          if (environment.useBackend) {
+            if (idsExistentes!.has(checklistId)) continue;
+            try {
+              const res: any = await firstValueFrom(this.checklistsApi.create({
+                ...payload,
+                docIdFirebase: checklistId,
+              } as any));
+              // El backend devuelve { checklist, idempotente? }. idempotente=true
+              // = ya existia, asi que no contamos como creado.
+              if (!res?.idempotente) creados++;
+            } catch (e) {
+              console.error('[RobotV2/backend] error creando checklist', checklistId, e);
+            }
+          } else {
+            const ref = doc(this.firestore, 'checklists', checklistId);
+            const snap = await getDoc(ref);
+            if (snap.exists()) continue;
+            await setDoc(ref, payload);
+            creados++;
+          }
         }
       }
     }
 
     return creados;
+  }
+
+  /** En modo backend: trae los docIdFirebase ya existentes para la fecha
+   *  para evitar requests de creacion para los que ya estan. */
+  private async cargarIdsExistentesBackend(fechaYmd: string): Promise<Set<string>> {
+    try {
+      const res = await firstValueFrom(this.checklistsApi.list({
+        fechaDesde: fechaYmd,
+        fechaHasta: fechaYmd,
+        limit: 2000,
+      }));
+      const set = new Set<string>();
+      for (const c of res.checklists) {
+        if (c.docIdFirebase) set.add(c.docIdFirebase);
+      }
+      return set;
+    } catch (e) {
+      console.error('[RobotV2/backend] no se pudo precargar IDs existentes:', e);
+      return new Set();
+    }
   }
 
   // ============================================================================

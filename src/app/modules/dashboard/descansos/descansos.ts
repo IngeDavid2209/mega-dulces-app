@@ -4,6 +4,9 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, Router } from '@angular/router';
 import { Firestore, collection, onSnapshot, doc, setDoc, deleteDoc } from '@angular/fire/firestore';
+import { firstValueFrom } from 'rxjs';
+import { environment } from '../../../../environments/environment';
+import { DescansosApi } from '../../../api/descansos.api';
 import Swal from 'sweetalert2';
 
 import { SidebarComponent } from '../../../shared/sidebar/sidebar';
@@ -47,7 +50,9 @@ export class DescansosComponent implements OnInit, OnDestroy {
   private firestore = inject(Firestore);
   private router = inject(Router);
   private usuariosSvc = inject(UsuariosService);
+  private descansosApi = inject(DescansosApi);
   private destructores: (() => void)[] = [];
+  private pollDesc: any = null;
   private semanasYaCargadas = new Set<string>();
   private guardadoTimers = new Map<string, any>();
 
@@ -76,12 +81,37 @@ export class DescansosComponent implements OnInit, OnDestroy {
   ngOnDestroy() {
     this.destructores.forEach(d => d());
     this.usuariosSvc.detener();
+    if (this.pollDesc) { clearInterval(this.pollDesc); this.pollDesc = null; }
     // Limpiamos timers de guardado pendiente
     this.guardadoTimers.forEach(t => clearTimeout(t));
   }
 
   conectarConLaNube() {
-    // Usuarios viene de UsuariosService (listener compartido) + _usuariosEffect.
+    // Usuarios viene de UsuariosService (listener compartido).
+    if (environment.useBackend) {
+      const refresh = async () => {
+        try {
+          const res = await firstValueFrom(this.descansosApi.list());
+          // Mapeamos a la forma esperada por la UI (idFirestore, userNombre, semanaISO).
+          const lista = res.descansos.map(d => ({
+            idFirestore: d.id,
+            userId: d.userId,
+            userNombre: d.empleado,
+            empleado: d.empleado,
+            semanaISO: d.semanaIso,
+            dias: d.dias,
+            actualizadoPor: d.actualizadoPor,
+            actualizadoEn: Number(d.actualizadoEn),
+          }));
+          this.descansos.set(lista);
+        } catch (e) {
+          console.error('[descansos/backend] error', e);
+        }
+      };
+      refresh();
+      this.pollDesc = setInterval(refresh, 60_000);
+      return;
+    }
 
     const descansosRef = collection(this.firestore, 'descansos_semanales');
     const radarDesc = onSnapshot(descansosRef, snap => {
@@ -230,6 +260,16 @@ export class DescansosComponent implements OnInit, OnDestroy {
 
   private async persistirDescanso(docId: string, payload: any, diasFinales: string[]) {
     try {
+      if (environment.useBackend) {
+        // El endpoint hace upsert por (empleado, semanaIso); dias=[] borra.
+        await firstValueFrom(this.descansosApi.upsert({
+          empleado: payload.userNombre,
+          userId: payload.userId,
+          semanaIso: payload.semanaISO,
+          dias: diasFinales,
+        }));
+        return;
+      }
       if (diasFinales.length === 0) {
         // Sin días: borramos el documento para no dejar basura
         await deleteDoc(doc(this.firestore, 'descansos_semanales', docId));

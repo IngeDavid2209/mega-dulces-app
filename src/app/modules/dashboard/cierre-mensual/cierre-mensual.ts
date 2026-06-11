@@ -3,6 +3,9 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { Firestore, collection, getDocs, query, where, writeBatch, doc, serverTimestamp } from '@angular/fire/firestore';
+import { firstValueFrom } from 'rxjs';
+import { environment } from '../../../../environments/environment';
+import { ChecklistsApi } from '../../../api/checklists.api';
 import Swal from 'sweetalert2';
 
 import { SidebarComponent } from '../../../shared/sidebar/sidebar';
@@ -116,6 +119,7 @@ export class CierreMensualComponent implements OnInit, OnDestroy {
   });
 
   private firestore = inject(Firestore);
+  private checklistsApi = inject(ChecklistsApi);
 
   ngOnInit() {
     const sesion = localStorage.getItem('md_sesion_actual');
@@ -167,18 +171,29 @@ export class CierreMensualComponent implements OnInit, OnDestroy {
     try {
       const desde = this.primerDiaDelMes(this.mesSeleccionado());
       const hasta = this.ultimoDiaDelMes(this.mesSeleccionado());
-      const ref = collection(this.firestore, 'checklists');
-      const q = query(ref, where('date', '>=', desde), where('date', '<=', hasta));
-      const snap = await getDocs(q);
-
       const permitidas = sucursalesPermitidas(this.currentUser);
-      const arr: any[] = [];
-      snap.forEach(d => {
-        const data = d.data() as any;
-        if (data.eliminado === true) return;
-        if (permitidas !== null && !permitidas.includes(data.store)) return;
-        arr.push({ ...data, id: d.id });
-      });
+      let arr: any[] = [];
+
+      if (environment.useBackend) {
+        // El backend ya filtra por visibilidad del rol; aqui solo descartamos
+        // eliminados (que vienen por default sin archivados pero con eliminado=false).
+        // Le pedimos sin filtro de archivados ni eliminados para incluir TODO el mes.
+        const res = await firstValueFrom(this.checklistsApi.list({
+          fechaDesde: desde, fechaHasta: hasta, archivado: true, eliminado: false, limit: 5000,
+        }));
+        arr = (res.checklists as any[]);
+        if (permitidas !== null) arr = arr.filter(c => permitidas.includes(c.store));
+      } else {
+        const ref = collection(this.firestore, 'checklists');
+        const q = query(ref, where('date', '>=', desde), where('date', '<=', hasta));
+        const snap = await getDocs(q);
+        snap.forEach(d => {
+          const data = d.data() as any;
+          if (data.eliminado === true) return;
+          if (permitidas !== null && !permitidas.includes(data.store)) return;
+          arr.push({ ...data, id: d.id });
+        });
+      }
       this.checklistsDelMes.set(arr);
     } catch (e) {
       console.error('[cierre-mensual]', e);
@@ -1162,23 +1177,31 @@ export class CierreMensualComponent implements OnInit, OnDestroy {
     const adminNombre = this.currentUser?.nombre || this.currentUser?.email || 'Administración';
 
     try {
-      const CHUNK = 400;
       let hechos = 0;
-      for (let i = 0; i < noArchivados.length; i += CHUNK) {
-        const batch = writeBatch(this.firestore);
-        const slice = noArchivados.slice(i, i + CHUNK);
-        for (const c of slice) {
-          const ref = doc(this.firestore, 'checklists', c.id);
-          batch.set(ref, {
-            archivado: true,
-            archivadoEn: serverTimestamp(),
-            archivadoPor: adminNombre,
-            archivadoMes: yyyymm
-          }, { merge: true });
-        }
-        await batch.commit();
-        hechos += slice.length;
+      if (environment.useBackend) {
+        // El backend tiene un endpoint dedicado que archiva el mes completo en
+        // una sola operacion. Mas rapido y atomico que el batch del cliente.
+        const res = await firstValueFrom(this.checklistsApi.archivarMes(yyyymm));
+        hechos = res.archivados;
         this.archivarProgreso.set(`${hechos} / ${total}`);
+      } else {
+        const CHUNK = 400;
+        for (let i = 0; i < noArchivados.length; i += CHUNK) {
+          const batch = writeBatch(this.firestore);
+          const slice = noArchivados.slice(i, i + CHUNK);
+          for (const c of slice) {
+            const ref = doc(this.firestore, 'checklists', c.id);
+            batch.set(ref, {
+              archivado: true,
+              archivadoEn: serverTimestamp(),
+              archivadoPor: adminNombre,
+              archivadoMes: yyyymm
+            }, { merge: true });
+          }
+          await batch.commit();
+          hechos += slice.length;
+          this.archivarProgreso.set(`${hechos} / ${total}`);
+        }
       }
 
       // Refrescar lista en memoria
@@ -1400,21 +1423,40 @@ export class CierreMensualComponent implements OnInit, OnDestroy {
       }
 
       // Marcar como fotosBorradas SOLO los checklists cuyos public_ids quedaron TODOS limpios
-      const batch = writeBatch(this.firestore);
+      const idsMarcables: string[] = [];
       let checklistsMarcados = 0;
       for (const t of tareas) {
-        const todosOk = t.publicIds.every(pid => borradosOk.has(pid));
-        if (todosOk) {
-          const ref = doc(this.firestore, 'checklists', t.checklistId);
-          batch.set(ref, {
-            fotosBorradas: true,
-            fotosBorradasEn: serverTimestamp(),
-            fotosBorradasCount: t.publicIds.length
-          }, { merge: true });
+        if (t.publicIds.every(pid => borradosOk.has(pid))) {
+          idsMarcables.push(t.checklistId);
           checklistsMarcados++;
         }
       }
-      if (checklistsMarcados > 0) await batch.commit();
+      if (idsMarcables.length > 0) {
+        if (environment.useBackend) {
+          // El endpoint procesa hasta 500 ids por request (cap del backend).
+          const PAGE = 500;
+          for (let i = 0; i < idsMarcables.length; i += PAGE) {
+            const lote = idsMarcables.slice(i, i + PAGE);
+            const sumFotos = tareas
+              .filter(t => lote.includes(t.checklistId))
+              .reduce((s, t) => s + t.publicIds.length, 0);
+            await firstValueFrom(this.checklistsApi.marcarFotosBorradas(lote, sumFotos));
+          }
+        } else {
+          const batch = writeBatch(this.firestore);
+          for (const t of tareas) {
+            if (idsMarcables.includes(t.checklistId)) {
+              const ref = doc(this.firestore, 'checklists', t.checklistId);
+              batch.set(ref, {
+                fotosBorradas: true,
+                fotosBorradasEn: serverTimestamp(),
+                fotosBorradasCount: t.publicIds.length,
+              }, { merge: true });
+            }
+          }
+          await batch.commit();
+        }
+      }
 
       // Refrescar memoria local
       this.checklistsDelMes.update(arr => arr.map(c => {

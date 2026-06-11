@@ -3,6 +3,9 @@ import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { Firestore, collection, onSnapshot, query, where } from '@angular/fire/firestore';
+import { firstValueFrom } from 'rxjs';
+import { environment } from '../../../../environments/environment';
+import { ChecklistsApi } from '../../../api/checklists.api';
 import { esAdminGlobal, sucursalesPermitidas, normalizarNombre } from '../../../shared/permisos.util';
 import { nivelDeCargo } from '../../../shared/nivel-jerarquico.util';
 import { esItemHecho } from '../../../shared/item-completado.util';
@@ -74,7 +77,10 @@ export class EstadisticasComponent implements OnInit, OnDestroy {
 
   private firestore = inject(Firestore);
   private usuariosSvc = inject(UsuariosService);
+  private checklistsApi = inject(ChecklistsApi);
   private destructoresRadares: (() => void)[] = [];
+  private pollRetrasos: any = null;
+  private pollChecklists: any = null;
 
   // Effect que toma usuarios del servicio compartido y recalcula estadisticas.
   private _usuariosEffect = effect(() => {
@@ -137,70 +143,82 @@ export class EstadisticasComponent implements OnInit, OnDestroy {
     // _usuariosEffect recalcula estadisticas. Aqui solo abrimos retrasos y
     // checklists.
 
-    // ⏰ Radar específico para retrasos: query filtrada → solo trae docs con
-    // entregaConRetraso === true. Reduce muchísimo reads vs traer TODO el histórico.
+    // ⏰ Procesadores comunes para ambos modos.
+    const procesarRetrasos = (raw: any[]) => {
+      const arr = raw.filter((data: any) =>
+        data.eliminado !== true && data.archivado !== true &&
+        this.sucursalesPermitidas.includes(data.store)
+      );
+      this.retrasosCrudos.set(arr);
+    };
+
+    const offsetQuery = new Date().getTimezoneOffset() * 60000;
+    const hace7 = new Date(Date.now() - 7 * 86_400_000 - offsetQuery).toISOString().split('T')[0];
+
+    const procesarChecklistsHoy = (raw: any[]) => {
+      const offset = new Date().getTimezoneOffset() * 60000;
+      const fechaHoyLocal = new Date(Date.now() - offset).toISOString().split('T')[0];
+      const listasCrudas: any[] = [];
+      for (const c of raw) {
+        if (c.eliminado === true || c.archivado === true) continue;
+        if (c.date === fechaHoyLocal && this.sucursalesPermitidas.includes(c.store)) listasCrudas.push(c);
+      }
+      const listasSinClones = new Map();
+      listasCrudas.forEach(c => {
+        const marcados = c.items ? c.items.filter((i: any) => this.esItemMarcado(i, c)).length : 0;
+        c.calcProgreso = c.items && c.items.length > 0 ? Math.round((marcados / c.items.length) * 100) : 0;
+        const firma = `${c.name}_${c.assigned}_${c.store}_${c.date}`;
+        if (!listasSinClones.has(firma)) listasSinClones.set(firma, c);
+        else if (c.calcProgreso > listasSinClones.get(firma).calcProgreso) listasSinClones.set(firma, c);
+      });
+      this.todosLosChecklists = Array.from(listasSinClones.values());
+      this.calcularEstadisticasGenerales();
+      this.calcularEstadisticasEmpleados();
+    };
+
+    if (environment.useBackend) {
+      // Retrasos: ChecklistsApi.list trae todo del rango y aqui filtramos por
+      // entregaConRetraso. No tenemos endpoint dedicado para retrasos historicos
+      // — si en algun momento crece mucho, agregamos un GET /api/checklists/retrasos.
+      const refrescarRetrasos = async () => {
+        try {
+          const res = await firstValueFrom(this.checklistsApi.list({
+            fechaDesde: hace7, archivado: false, eliminado: false, limit: 2000,
+          }));
+          procesarRetrasos((res.checklists as any[]).filter(c => c.entregaConRetraso === true));
+        } catch (e) { console.error('[estadisticas/retrasos backend]', e); }
+      };
+      const refrescarChecklists = async () => {
+        try {
+          const res = await firstValueFrom(this.checklistsApi.list({
+            fechaDesde: hace7, archivado: false, eliminado: false, limit: 2000,
+          }));
+          procesarChecklistsHoy(res.checklists as any[]);
+        } catch (e) { console.error('[estadisticas/checklists backend]', e); }
+      };
+      refrescarRetrasos();
+      refrescarChecklists();
+      this.pollRetrasos   = setInterval(refrescarRetrasos,   60_000);
+      this.pollChecklists = setInterval(refrescarChecklists, 30_000);
+      this.destructoresRadares.push(() => { if (this.pollRetrasos) { clearInterval(this.pollRetrasos); this.pollRetrasos = null; } });
+      this.destructoresRadares.push(() => { if (this.pollChecklists) { clearInterval(this.pollChecklists); this.pollChecklists = null; } });
+      return;
+    }
+
+    // Modo Firebase legacy.
     const queryRetrasos = query(
       collection(this.firestore, 'checklists'),
       where('entregaConRetraso', '==', true)
     );
     const radarRetrasos = onSnapshot(queryRetrasos, (snapshot) => {
-      const arr: any[] = [];
-      snapshot.forEach(d => {
-        const data: any = d.data();
-        if (data.eliminado === true || data.archivado === true) return;
-        if (!this.sucursalesPermitidas.includes(data.store)) return; // respeta scope del admin
-        arr.push(data);
-      });
-      this.retrasosCrudos.set(arr);
+      procesarRetrasos(snapshot.docs.map(d => d.data() as any));
     });
     this.destructoresRadares.push(radarRetrasos);
 
-    // Optimizacion de lecturas: limitamos la query a los ultimos 7 dias.
-    // Estadisticas usa todo lo de "hoy" para mostrar el resumen diario; no necesita
-    // arrastrar meses de historico (eso multiplica lecturas por miles). Si en
-    // algun momento queremos rango mas grande, pasamos el filtro como signal.
-    const offsetQuery = new Date().getTimezoneOffset() * 60000;
-    const hace7 = new Date(Date.now() - 7 * 86_400_000 - offsetQuery).toISOString().split('T')[0];
     const checklistsRef = collection(this.firestore, 'checklists');
     const checklistsQuery = query(checklistsRef, where('date', '>=', hace7));
     const radarChecklists = onSnapshot(checklistsQuery, (snapshot) => {
-      const listasCrudas: any[] = [];
-
-      // 🔥 REGLA ESTRICTA DE HOY: Para que las estadísticas no arrastren fantasmas de ayer
-      const offset = new Date().getTimezoneOffset() * 60000;
-      const fechaHoyLocal = new Date(Date.now() - offset).toISOString().split('T')[0];
-
-      snapshot.forEach(docSnap => {
-        const c: any = docSnap.data();
-        
-        if (c.eliminado === true || c.archivado === true) return;
-
-        // SOLO contamos las rutinas que estén etiquetadas con la fecha de HOY
-        if (c.date === fechaHoyLocal && this.sucursalesPermitidas.includes(c.store)) {
-          listasCrudas.push(c);
-        }
-      });
-
-      // 🔥 ESCUDO ANTI-CLONES EN ESTADÍSTICAS 🔥
-      const listasSinClones = new Map();
-      listasCrudas.forEach(c => {
-        const marcados = c.items ? c.items.filter((i:any) => this.esItemMarcado(i, c)).length : 0;
-        c.calcProgreso = c.items && c.items.length > 0 ? Math.round((marcados / c.items.length) * 100) : 0;
-
-        const firma = `${c.name}_${c.assigned}_${c.store}_${c.date}`;
-        if (!listasSinClones.has(firma)) {
-          listasSinClones.set(firma, c);
-        } else {
-          const existente = listasSinClones.get(firma);
-          if (c.calcProgreso > existente.calcProgreso) {
-            listasSinClones.set(firma, c);
-          }
-        }
-      });
-
-      this.todosLosChecklists = Array.from(listasSinClones.values());
-      this.calcularEstadisticasGenerales();
-      this.calcularEstadisticasEmpleados();
+      procesarChecklistsHoy(snapshot.docs.map(d => d.data() as any));
     });
     this.destructoresRadares.push(radarChecklists);
   }

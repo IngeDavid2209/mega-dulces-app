@@ -3,6 +3,9 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, Router } from '@angular/router';
 import { Firestore, collection, onSnapshot, doc, setDoc, deleteDoc, getDocs, query, where } from '@angular/fire/firestore';
+import { firstValueFrom } from 'rxjs';
+import { environment } from '../../../../environments/environment';
+import { RutinasCatalogoApi } from '../../../api/rutinas-catalogo.api';
 import Swal from 'sweetalert2';
 
 import { SidebarComponent } from '../../../shared/sidebar/sidebar';
@@ -78,6 +81,8 @@ export class RutinasCatalogoComponent implements OnInit, OnDestroy {
   readonly etiquetasFrecuencia = ETIQUETAS_FRECUENCIA;
 
   private firestore = inject(Firestore);
+  private rutinasApi = inject(RutinasCatalogoApi);
+  private pollRutinas: any = null;
   private router = inject(Router);
   private radarRutinas: (() => void) | null = null;
 
@@ -96,9 +101,26 @@ export class RutinasCatalogoComponent implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     if (this.radarRutinas) { this.radarRutinas(); this.radarRutinas = null; }
+    if (this.pollRutinas)  { clearInterval(this.pollRutinas); this.pollRutinas = null; }
   }
 
   conectarConLaNube() {
+    if (environment.useBackend) {
+      const refresh = async () => {
+        try {
+          const res = await firstValueFrom(this.rutinasApi.list());
+          const arr = (res.rutinas as any as RutinaMaestra[])
+            .slice()
+            .sort((a, b) => a.nombre.localeCompare(b.nombre));
+          this.rutinas.set(arr);
+        } catch (e) {
+          console.error('[rutinas-catalogo/backend] error', e);
+        }
+      };
+      refresh();
+      this.pollRutinas = setInterval(refresh, 60_000);
+      return;
+    }
     const ref = collection(this.firestore, 'catalogo_rutinas');
     this.radarRutinas = onSnapshot(ref, snap => {
       const arr: RutinaMaestra[] = [];
@@ -304,7 +326,15 @@ export class RutinasCatalogoComponent implements OnInit, OnDestroy {
     }
 
     try {
-      await setDoc(doc(this.firestore, 'catalogo_rutinas', id), payload, { merge: true });
+      if (environment.useBackend) {
+        if (this.editandoId) {
+          await firstValueFrom(this.rutinasApi.update(this.editandoId, payload));
+        } else {
+          await firstValueFrom(this.rutinasApi.create(payload));
+        }
+      } else {
+        await setDoc(doc(this.firestore, 'catalogo_rutinas', id), payload, { merge: true });
+      }
       this.cerrarWizard();
       Swal.fire({
         toast: true, position: 'top-end', showConfirmButton: false, timer: 2500,
@@ -337,7 +367,11 @@ export class RutinasCatalogoComponent implements OnInit, OnDestroy {
       actualizadoEn: undefined
     };
     try {
-      await setDoc(doc(this.firestore, 'catalogo_rutinas', id), copia);
+      if (environment.useBackend) {
+        await firstValueFrom(this.rutinasApi.duplicar(r.id));
+      } else {
+        await setDoc(doc(this.firestore, 'catalogo_rutinas', id), copia);
+      }
       Swal.fire({
         toast: true, position: 'top-end', showConfirmButton: false, timer: 2500,
         icon: 'success', title: 'Rutina duplicada'
@@ -360,8 +394,13 @@ export class RutinasCatalogoComponent implements OnInit, OnDestroy {
     });
     if (!confirma.isConfirmed) return;
     try {
-      await setDoc(doc(this.firestore, 'catalogo_rutinas', r.id), { activa: false }, { merge: true });
-      await this.cancelarChecklistsDeRutina(r.id);
+      if (environment.useBackend) {
+        // El backend hace la cascada de checklists pendientes internamente.
+        await firstValueFrom(this.rutinasApi.archivar(r.id));
+      } else {
+        await setDoc(doc(this.firestore, 'catalogo_rutinas', r.id), { activa: false }, { merge: true });
+        await this.cancelarChecklistsDeRutina(r.id);
+      }
     } catch (e: any) {
       Swal.fire('Error', e.message || 'No se pudo archivar.', 'error');
     }
@@ -370,7 +409,11 @@ export class RutinasCatalogoComponent implements OnInit, OnDestroy {
   async restaurar(r: RutinaMaestra, event: Event) {
     event.stopPropagation();
     try {
-      await setDoc(doc(this.firestore, 'catalogo_rutinas', r.id), { activa: true }, { merge: true });
+      if (environment.useBackend) {
+        await firstValueFrom(this.rutinasApi.restaurar(r.id));
+      } else {
+        await setDoc(doc(this.firestore, 'catalogo_rutinas', r.id), { activa: true }, { merge: true });
+      }
       Swal.fire({
         toast: true, position: 'top-end', showConfirmButton: false, timer: 2000,
         icon: 'success', title: 'Rutina restaurada'
@@ -393,8 +436,13 @@ export class RutinasCatalogoComponent implements OnInit, OnDestroy {
     });
     if (!confirma.isConfirmed) return;
     try {
-      await deleteDoc(doc(this.firestore, 'catalogo_rutinas', r.id));
-      await this.cancelarChecklistsDeRutina(r.id);
+      if (environment.useBackend) {
+        // El backend hace la cascada de checklists pendientes internamente.
+        await firstValueFrom(this.rutinasApi.remove(r.id));
+      } else {
+        await deleteDoc(doc(this.firestore, 'catalogo_rutinas', r.id));
+        await this.cancelarChecklistsDeRutina(r.id);
+      }
     } catch (e: any) {
       Swal.fire('Error', e.message || 'No se pudo eliminar.', 'error');
     }

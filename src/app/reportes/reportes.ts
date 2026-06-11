@@ -3,6 +3,10 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, ActivatedRoute } from '@angular/router';
 import { Firestore, collection, getDocs, getDoc, doc, deleteDoc, setDoc, query, where } from '@angular/fire/firestore';
+import { firstValueFrom } from 'rxjs';
+import { environment } from '../../environments/environment';
+import { ChecklistsApi } from '../api/checklists.api';
+import { UsuariosApi } from '../api/usuarios.api';
 import { sucursalesPermitidas } from '../shared/permisos.util';
 import { nivelDeCargo } from '../shared/nivel-jerarquico.util';
 import { esItemHecho } from '../shared/item-completado.util';
@@ -59,6 +63,8 @@ export class ReportesComponent implements OnInit, OnDestroy {
   passwordInput = '';
 
   private firestore = inject(Firestore);
+  private checklistsApi = inject(ChecklistsApi);
+  private usuariosApi = inject(UsuariosApi);
   private route = inject(ActivatedRoute);
   private busquedaSub: any = null;
 
@@ -183,6 +189,15 @@ export class ReportesComponent implements OnInit, OnDestroy {
   }
 
   async cargarEmpleados() {
+    if (environment.useBackend) {
+      try {
+        const res = await firstValueFrom(this.usuariosApi.list({ rol: 'trabajador' }));
+        this.empleados.set(res.usuarios as any[]);
+      } catch (e) {
+        console.error('[reportes/empleados backend]', e);
+      }
+      return;
+    }
     const usuariosRef = collection(this.firestore, 'usuarios');
     const snapshot = await getDocs(usuariosRef);
     const lista: any[] = [];
@@ -277,18 +292,29 @@ export class ReportesComponent implements OnInit, OnDestroy {
     // filtrábamos en cliente; ahora Firestore solo nos manda los del rango pedido.
     // Auditoría es búsqueda histórica, no necesita realtime.
     try {
-      const checklistsRef = collection(this.firestore, 'checklists');
-      const q = query(
-        checklistsRef,
-        where('date', '>=', this.fechaInicio),
-        where('date', '<=', this.fechaFin)
-      );
-      const snapshot = await getDocs(q);
+      // Trae el rango ya con visibilidad aplicada por el backend (modo backend)
+      // o por Firestore + filtro local en cliente (modo legacy).
+      let crudos: any[] = [];
+      if (environment.useBackend) {
+        const res = await firstValueFrom(this.checklistsApi.list({
+          fechaDesde: this.fechaInicio, fechaHasta: this.fechaFin,
+          archivado: false, eliminado: false, limit: 5000,
+        }));
+        crudos = res.checklists as any[];
+      } else {
+        const checklistsRef = collection(this.firestore, 'checklists');
+        const q = query(
+          checklistsRef,
+          where('date', '>=', this.fechaInicio),
+          where('date', '<=', this.fechaFin)
+        );
+        const snapshot = await getDocs(q);
+        crudos = snapshot.docs.map(d => d.data() as any);
+      }
 
       const listasSinClones = new Map();
 
-      snapshot.forEach(docSnap => {
-        const c = docSnap.data() as any;
+      crudos.forEach((c: any) => {
         if (c.eliminado === true || c.archivado === true) return;
 
         // 🔥 Admin limitado: descarta cualquier checklist que NO sea de sus sucursales
@@ -369,6 +395,22 @@ export class ReportesComponent implements OnInit, OnDestroy {
     if (!r.isConfirmed) return;
 
     try {
+      // En modo backend, un solo endpoint hace la cascada completa (soft-delete
+      // de hermanos por firma name+assigned+store+fecha, borra molde V1 y
+      // desactiva asignacion V2 si corresponde).
+      if (environment.useBackend) {
+        const res = await firstValueFrom(this.checklistsApi.softDelete(c.id, true));
+        this.volverALista();
+        if (this.busquedaRealizada()) this.buscarReportes();
+        Swal.fire({
+          icon: 'success', title: 'Borrado definitivo',
+          html: `Checklists afectados: <strong>${res.checklistsAfectados}</strong>.<br>` +
+                `Molde V1 y asignacion V2 manejados por el backend.`,
+          confirmButtonColor: '#0F172A'
+        });
+        return;
+      }
+
       const targetName = (c.name || '').replace(/ \((Diaria|Semanal|Catorcenal|Mensual|Trimestral)\)$/, '').trim();
       const targetAssigned = c.assigned;
       const meta = { eliminado: true, eliminadoPor: this.currentUser?.nombre || 'admin', eliminadoEn: Date.now() };
@@ -468,9 +510,15 @@ export class ReportesComponent implements OnInit, OnDestroy {
     if (result.isConfirmed) {
       this.buscando.set(true);
       try {
-        for (const checklist of this.resultados()) {
-          const docId = checklist.id.toString();
-          await deleteDoc(doc(this.firestore, 'checklists', docId));
+        if (environment.useBackend) {
+          for (const checklist of this.resultados()) {
+            await firstValueFrom(this.checklistsApi.hardDelete(checklist.id));
+          }
+        } else {
+          for (const checklist of this.resultados()) {
+            const docId = checklist.id.toString();
+            await deleteDoc(doc(this.firestore, 'checklists', docId));
+          }
         }
         Swal.fire({ icon: 'success', title: 'Limpieza Total', text: 'Historial eliminado con éxito.', confirmButtonColor: '#0F172A' });
       } catch (error) {

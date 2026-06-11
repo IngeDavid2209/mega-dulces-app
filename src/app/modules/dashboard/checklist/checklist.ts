@@ -4,6 +4,14 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, ActivatedRoute } from '@angular/router';
 import { Firestore, collection, doc, setDoc, getDoc, deleteDoc, onSnapshot, getDocs, query, where } from '@angular/fire/firestore';
+import { firstValueFrom } from 'rxjs';
+import { environment } from '../../../../environments/environment';
+import { ChecklistsApi } from '../../../api/checklists.api';
+import { TareasEquipoApi } from '../../../api/tareas-equipo.api';
+import { NotificacionesApi } from '../../../api/notificaciones.api';
+import { RutinasCatalogoApi } from '../../../api/rutinas-catalogo.api';
+import { AsignacionesRutinasApi } from '../../../api/asignaciones-rutinas.api';
+import { MoldesChecklistsApi } from '../../../api/moldes-checklists.api';
 import * as localforage from 'localforage';
 import Swal from 'sweetalert2';
 import { esAdminGlobal, esAdminLimitado, sucursalesPermitidas, esSupervisor, mismoEmpleadoNombre, normalizarNombre } from '../../../shared/permisos.util';
@@ -219,6 +227,18 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   terminoBusquedaEmpleadoWizardRutina: string = '';
 
   private firestore = inject(Firestore);
+  private checklistsApi = inject(ChecklistsApi);
+  private tareasEquipoApi = inject(TareasEquipoApi);
+  private notificacionesApi = inject(NotificacionesApi);
+  private rutinasCatApi = inject(RutinasCatalogoApi);
+  private asignacionesApi = inject(AsignacionesRutinasApi);
+  private moldesApi = inject(MoldesChecklistsApi);
+  private pollChecklists: any = null;
+  private pollTareasEq: any = null;
+  private pollNotis: any = null;
+  private pollCatalogo: any = null;
+  private pollAsignaciones: any = null;
+  private pollMoldes: any = null;
   private route = inject(ActivatedRoute);
   private robotV2 = inject(RobotRutinasV2Service);
   private usuariosSvc = inject(UsuariosService);
@@ -965,6 +985,11 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     // El effect _usuariosEffect llama procesarUsuariosCompartidos() cada vez que
     // se actualiza. No abrimos onSnapshot duplicado aqui.
 
+    if (environment.useBackend) {
+      this.conectarRadarNubeBackend();
+      return;
+    }
+
     const moldesRef = collection(this.firestore, 'moldes_checklists');
     const radarMoldes = onSnapshot(moldesRef, (snapshot) => {
       const moldesActivos: any[] = [];
@@ -1185,6 +1210,136 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     this.destructoresRadares.push(radarNotificaciones);
   }
 
+  /**
+   * Variante de conectarRadarNube para modo backend. Reemplaza onSnapshot por
+   * polling cada N segundos y reutiliza los procesadores en cliente (filtros
+   * por rol/sucursal, dedup, esItemHecho, etc.) sin duplicar logica.
+   */
+  private conectarRadarNubeBackend(): void {
+    const offset = new Date().getTimezoneOffset() * 60000;
+    const fechaHoyLocal = new Date(Date.now() - offset).toISOString().split('T')[0];
+    const leerSesion = (): any => {
+      try { return JSON.parse(localStorage.getItem('md_sesion_actual') || 'null'); }
+      catch { return null; }
+    };
+
+    // ---- Moldes V1 (entrada al Robot V1) ----
+    const refrescarMoldes = async () => {
+      try {
+        const res = await firstValueFrom(this.moldesApi.list(true));
+        this.ejecutarRobotRutinas((res.moldes as any[]).filter(m => m.activo !== false));
+      } catch (e) { console.error('[checklist/moldes backend]', e); }
+    };
+    refrescarMoldes();
+    this.pollMoldes = setInterval(refrescarMoldes, 60_000);
+    this.destructoresRadares.push(() => { if (this.pollMoldes) { clearInterval(this.pollMoldes); this.pollMoldes = null; } });
+
+    // ---- Catalogo Rutinas V2 ----
+    const refrescarCatalogo = async () => {
+      try {
+        const res = await firstValueFrom(this.rutinasCatApi.list());
+        this.catalogoV2 = (res.rutinas as any[]).filter(r => r.activa !== false) as RutinaMaestra[];
+        this.dispararRobotV2();
+      } catch (e) { console.error('[checklist/catalogo backend]', e); }
+    };
+    refrescarCatalogo();
+    this.pollCatalogo = setInterval(refrescarCatalogo, 60_000);
+    this.destructoresRadares.push(() => { if (this.pollCatalogo) { clearInterval(this.pollCatalogo); this.pollCatalogo = null; } });
+
+    // ---- Asignaciones V2 ----
+    const refrescarAsignaciones = async () => {
+      try {
+        const res = await firstValueFrom(this.asignacionesApi.list({ activa: true }));
+        this.asignacionesV2 = res.asignaciones as any[] as AsignacionRutina[];
+        this.dispararRobotV2();
+      } catch (e) { console.error('[checklist/asignaciones backend]', e); }
+    };
+    refrescarAsignaciones();
+    this.pollAsignaciones = setInterval(refrescarAsignaciones, 60_000);
+    this.destructoresRadares.push(() => { if (this.pollAsignaciones) { clearInterval(this.pollAsignaciones); this.pollAsignaciones = null; } });
+
+    // ---- Checklists (solo hoy) ----
+    const refrescarChecklists = async () => {
+      try {
+        const res = await firstValueFrom(this.checklistsApi.list({
+          fechaDesde: fechaHoyLocal, archivado: false, eliminado: false, limit: 2000,
+        }));
+        // Reutilizamos las mismas reglas del Firestore listener para no
+        // divergir comportamiento entre modos.
+        const todasLasListas: any[] = [];
+        for (const c of res.checklists as any[]) {
+          if (c.fecha) {
+            // El backend devuelve `fecha` (Date) — normalizamos a string YYYY-MM-DD
+            const f = typeof c.fecha === 'string' ? c.fecha.slice(0, 10) : new Date(c.fecha).toISOString().slice(0, 10);
+            c.date = f;
+          }
+          if (c.eliminado || c.archivado) continue;
+          if (c.enviado) continue;
+          if (c.date !== fechaHoyLocal) continue;
+          const tareasMarcadas = (c.items || []).filter((i: any) => esItemHecho(i, c)).length;
+          c.calcCompletados = tareasMarcadas;
+          c.calcProgreso = Math.round((tareasMarcadas / (c.items?.length || 1)) * 100) || 0;
+          todasLasListas.push(c);
+        }
+        const listasSinClones = new Map<string, any>();
+        todasLasListas.forEach(c => {
+          const firma = `${c.name}_${c.assigned}_${c.store}_${c.date}`;
+          const existente = listasSinClones.get(firma);
+          if (!existente || c.calcProgreso > existente.calcProgreso) listasSinClones.set(firma, c);
+        });
+        const listasFinales = Array.from(listasSinClones.values())
+          .sort((a, b) => a.date.localeCompare(b.date) || (Number(b.timestampCreacion) - Number(a.timestampCreacion)));
+
+        // Filtro por rol — replica las ramas del modo Firestore.
+        const sesion = leerSesion() || this.currentUser;
+        const esGlobal = esAdminGlobal(sesion);
+        const esLimitado = esAdminLimitado(sesion);
+        const supervisor = esSupervisor(sesion);
+        const permitidas = sucursalesPermitidas(sesion);
+        let resultado: any[];
+        if (esGlobal) resultado = listasFinales;
+        else if (esLimitado || supervisor) resultado = listasFinales.filter(c => (permitidas ?? []).includes(c.store));
+        else resultado = listasFinales.filter(c => mismoEmpleadoNombre(c.assigned, sesion?.nombre));
+        this.checklists.set(resultado);
+      } catch (e) { console.error('[checklist/checklists backend]', e); }
+    };
+    refrescarChecklists();
+    this.pollChecklists = setInterval(refrescarChecklists, 30_000);
+    this.destructoresRadares.push(() => { if (this.pollChecklists) { clearInterval(this.pollChecklists); this.pollChecklists = null; } });
+
+    // ---- Tareas equipo ----
+    const refrescarTareasEq = async () => {
+      try {
+        const res = await firstValueFrom(this.tareasEquipoApi.list());
+        // El backend ya aplica visibilidad por rol (admin global / limitado /
+        // trabajador como jefe o integrante). Aqui solo ocultamos cerradas
+        // para no-admin como hacia la version Firestore.
+        const sesion = leerSesion() || this.currentUser;
+        const esGlobal = esAdminGlobal(sesion);
+        let arr = res.tareas as any[] as TareaEquipo[];
+        if (!esGlobal) arr = arr.filter(t => t.cerrado !== true);
+        arr.sort((a: any, b: any) => Number(b.timestampCreacion || 0) - Number(a.timestampCreacion || 0));
+        this.tareasEquipo.set(arr);
+      } catch (e) { console.error('[checklist/tareas-equipo backend]', e); }
+    };
+    refrescarTareasEq();
+    this.pollTareasEq = setInterval(refrescarTareasEq, 30_000);
+    this.destructoresRadares.push(() => { if (this.pollTareasEq) { clearInterval(this.pollTareasEq); this.pollTareasEq = null; } });
+
+    // ---- Notificaciones ----
+    const refrescarNotis = async () => {
+      try {
+        const res = await firstValueFrom(this.notificacionesApi.list({ leido: false }));
+        const arr = (res.notificaciones as any[])
+          .sort((a, b) => new Date(a.fechaCreacion).getTime() - new Date(b.fechaCreacion).getTime());
+        this.notificacionesPendientes.set(arr);
+      } catch (e) { console.error('[checklist/notis backend]', e); }
+    };
+    refrescarNotis();
+    this.pollNotis = setInterval(refrescarNotis, 30_000);
+    this.destructoresRadares.push(() => { if (this.pollNotis) { clearInterval(this.pollNotis); this.pollNotis = null; } });
+  }
+
   abrirModalNotificacion(empleadoNombre: string) {
     this.empleadoParaNotificar = empleadoNombre;
     this.mensajeNotificacion = '';
@@ -1204,14 +1359,28 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       de: this.currentUser?.nombre || 'Gerencia', leido: false, timestamp: Date.now()
     };
     try {
-      await setDoc(doc(this.firestore, 'notificaciones', notiId), payload);
+      if (environment.useBackend) {
+        await firstValueFrom(this.notificacionesApi.create({
+          empleado: this.empleadoParaNotificar,
+          mensaje: payload.mensaje,
+          remitente: payload.de,
+        } as any));
+      } else {
+        await setDoc(doc(this.firestore, 'notificaciones', notiId), payload);
+      }
       this.mostrarToast(` 🔔 ¡Zumbido enviado a ${this.empleadoParaNotificar}!`);
       this.cerrarModalNotificacion();
     } catch (error) { alert('Error al enviar la alerta.'); }
   }
 
   async marcarNotificacionComoLeida(noti: any) {
-    try { await setDoc(doc(this.firestore, 'notificaciones', noti.id), { leido: true }, { merge: true }); }
+    try {
+      if (environment.useBackend) {
+        await firstValueFrom(this.notificacionesApi.marcarLeida(noti.id));
+      } else {
+        await setDoc(doc(this.firestore, 'notificaciones', noti.id), { leido: true }, { merge: true });
+      }
+    }
     catch (error) { console.error("Error cerrando notificación", error); }
   }
 
@@ -1395,8 +1564,21 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   }
 
   async guardarEnLaNube(checklist: any) {
-    try { await setDoc(doc(this.firestore, 'checklists', checklist.id.toString()), checklist, { merge: true }); }
-    catch (error) { console.error("Error: ", error); }
+    try {
+      if (environment.useBackend) {
+        // POST con docIdFirebase activa el upsert del backend: si ya existe lo
+        // actualiza, si no lo crea. Sirve para el primer guardado tras crear
+        // la tarea, para subir progreso/fotos y para el Robot V2.
+        const payload = {
+          ...checklist,
+          docIdFirebase: String(checklist.id),
+          fecha: checklist.date || checklist.fecha,
+        };
+        await firstValueFrom(this.checklistsApi.create(payload));
+      } else {
+        await setDoc(doc(this.firestore, 'checklists', checklist.id.toString()), checklist, { merge: true });
+      }
+    } catch (error) { console.error("Error: ", error); }
   }
 
   eliminarChecklist(checklist: any, event: Event) {
@@ -1578,7 +1760,11 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     let ok = 0, fail = 0;
     for (const item of lista) {
       try {
-        await setDoc(doc(this.firestore, 'checklists', item.id), { enviado: false }, { merge: true });
+        if (environment.useBackend) {
+          await firstValueFrom(this.checklistsApi.updateByFirebaseId(item.id, { enviado: false } as any));
+        } else {
+          await setDoc(doc(this.firestore, 'checklists', item.id), { enviado: false }, { merge: true });
+        }
         ok++;
       } catch (e) { console.error('[reabrirMisTareasEnviadas]', e); fail++; }
     }
@@ -2157,7 +2343,11 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       _tipo: 'equipo'
     };
     try {
-      await setDoc(doc(this.firestore, 'tareas_equipo', id), tarea);
+      if (environment.useBackend) {
+        await firstValueFrom(this.tareasEquipoApi.create(tarea as any));
+      } else {
+        await setDoc(doc(this.firestore, 'tareas_equipo', id), tarea);
+      }
       this.mostrarToast(' Proyecto en equipo creado.');
       this.cerrarModalEquipo();
     } catch (e) {
@@ -2223,7 +2413,8 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     if (!this.puedeOperarItemEquipo(fresca, item)) return;
     item.completada = !item.completada;
     item.completadaEn = item.completada ? Date.now() : undefined;
-    await setDoc(doc(this.firestore, 'tareas_equipo', t.id), { fases: fresca.fases }, { merge: true });
+    if (environment.useBackend) await firstValueFrom(this.tareasEquipoApi.update(t.id, { fases: fresca.fases } as any));
+    else await setDoc(doc(this.firestore, 'tareas_equipo', t.id), { fases: fresca.fases }, { merge: true });
   }
 
   /** Marca/desmarca una subtarea de un item. */
@@ -2241,7 +2432,8 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     sub.completada = !sub.completada;
     sub.completadaPor = sub.completada ? this.currentUser?.nombre : undefined;
     sub.completadaEn = sub.completada ? Date.now() : undefined;
-    await setDoc(doc(this.firestore, 'tareas_equipo', t.id), { fases: fresca.fases }, { merge: true });
+    if (environment.useBackend) await firstValueFrom(this.tareasEquipoApi.update(t.id, { fases: fresca.fases } as any));
+    else await setDoc(doc(this.firestore, 'tareas_equipo', t.id), { fases: fresca.fases }, { merge: true });
   }
 
   /** Jefe agrega una tarea nueva en la fase activa, asignada a un integrante. */
@@ -2266,7 +2458,8 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       agregadaPor: this.currentUser?.nombre,
       agregadaEn: Date.now()
     });
-    await setDoc(doc(this.firestore, 'tareas_equipo', t.id), { fases: fresca.fases }, { merge: true });
+    if (environment.useBackend) await firstValueFrom(this.tareasEquipoApi.update(t.id, { fases: fresca.fases } as any));
+    else await setDoc(doc(this.firestore, 'tareas_equipo', t.id), { fases: fresca.fases }, { merge: true });
     this.nuevoItemTexto = '';
     this.nuevoItemHoraLimite = '';
     this.nuevoItemRequiresPhoto = false;
@@ -2289,7 +2482,8 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       completada: false
     };
     item.subtareas.push(sub);
-    await setDoc(doc(this.firestore, 'tareas_equipo', t.id), { fases: fresca.fases }, { merge: true });
+    if (environment.useBackend) await firstValueFrom(this.tareasEquipoApi.update(t.id, { fases: fresca.fases } as any));
+    else await setDoc(doc(this.firestore, 'tareas_equipo', t.id), { fases: fresca.fases }, { merge: true });
     this.nuevaSubtareaTexto = '';
     this.agregandoSubtareaItemId = null;
   }
@@ -2322,7 +2516,8 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       siguiente.estado = 'activa';
       siguiente.iniciadaEn = Date.now();
     }
-    await setDoc(doc(this.firestore, 'tareas_equipo', t.id), { fases: fresca.fases }, { merge: true });
+    if (environment.useBackend) await firstValueFrom(this.tareasEquipoApi.update(t.id, { fases: fresca.fases } as any));
+    else await setDoc(doc(this.firestore, 'tareas_equipo', t.id), { fases: fresca.fases }, { merge: true });
     this.mostrarToast(siguiente ? ` Fase cerrada. Inicia: ${siguiente.nombre}` : ' Última fase cerrada.');
   }
 
@@ -2344,8 +2539,12 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       confirmButtonColor: '#0F172A'
     });
     if (!r.isConfirmed) return;
-    await setDoc(doc(this.firestore, 'tareas_equipo', t.id),
-      { cerrado: true, cerradoEn: Date.now() }, { merge: true });
+    if (environment.useBackend) {
+      await firstValueFrom(this.tareasEquipoApi.cerrar(t.id));
+    } else {
+      await setDoc(doc(this.firestore, 'tareas_equipo', t.id),
+        { cerrado: true, cerradoEn: Date.now() }, { merge: true });
+    }
     this.volverDeEquipoDetalle();
   }
 

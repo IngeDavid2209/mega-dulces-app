@@ -13,6 +13,9 @@
 npm-debug.log
 yarn-error.log
 package-lock.json
+# Excepcion: el lockfile del backend SI se commitea (lo requiere `npm ci`
+# del Dockerfile para builds reproducibles en Railway/Render).
+!backend/package-lock.json
 
 # IDEs and editors
 .idea/

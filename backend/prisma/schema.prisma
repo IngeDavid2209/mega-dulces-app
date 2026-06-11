@@ -401,7 +401,7 @@ model DescansoSemanal {
   empleado        String                                       // nombre del empleado
   userId          String?  @map("user_id")                     // referencia opcional al uid del usuario (compatibilidad con docs antiguos)
   semanaIso       String   @map("semana_iso")                  // 2026-W23
-  /** Dias de descanso en esa semana. Multiples valores: ['Lunes','Martes']. */
+  /// Dias de descanso en esa semana. Multiples valores: ['Lunes','Martes'].
   dias            String[] @default([])
   actualizadoPor  String?  @map("actualizado_por")
   actualizadoEn   BigInt?  @map("actualizado_en")

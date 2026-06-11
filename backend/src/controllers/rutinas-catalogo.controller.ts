@@ -81,10 +81,13 @@ export async function duplicar(req: Request, res: Response): Promise<void> {
   const original = await prisma.rutinaCatalogo.findUnique({ where: { id: req.params.id } });
   if (!original) { res.status(404).json({ error: 'Rutina no encontrada' }); return; }
 
-  const { id, docIdFirebase, createdAt, updatedAt, creadoPor, creadoEn, actualizadoPor, actualizadoEn, raw, ...resto } = original;
+  const { id, docIdFirebase, createdAt, updatedAt, creadoPor, creadoEn, actualizadoPor, actualizadoEn, raw, tareas, ...resto } = original;
+  // Prisma `JsonValue` (output) acepta null pero `InputJsonValue` (input) no.
+  // Casteamos a `any` el campo tareas para evitar el conflicto de tipos.
   const copia = await prisma.rutinaCatalogo.create({
     data: {
       ...resto,
+      tareas: (tareas ?? []) as any,
       nombre: `${original.nombre} (copia)`,
       creadoPor: req.user?.nombre,
       creadoEn:  BigInt(Date.now()),

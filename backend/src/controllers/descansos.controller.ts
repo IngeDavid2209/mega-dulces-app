@@ -38,10 +38,11 @@ export async function list(req: Request, res: Response): Promise<void> {
 export async function upsert(req: Request, res: Response): Promise<void> {
   const data = parseBody(req, res, upsertSchema);
   if (!data) return;
+  const dias = data.dias ?? [];
 
   // Si el front envia dias=[] interpretamos como "borrar el descanso de la
   // semana" (no dejar registro vacio). Esto simplifica el flujo de UI.
-  if (data.dias.length === 0) {
+  if (dias.length === 0) {
     await prisma.descansoSemanal.deleteMany({
       where: { empleado: data.empleado, semanaIso: data.semanaIso },
     });
@@ -53,7 +54,7 @@ export async function upsert(req: Request, res: Response): Promise<void> {
   const result = await prisma.descansoSemanal.upsert({
     where: { empleado_semanaIso: { empleado: data.empleado, semanaIso: data.semanaIso } },
     update: {
-      dias: data.dias,
+      dias,
       userId: data.userId ?? undefined,
       actualizadoPor,
       actualizadoEn: BigInt(Date.now()),
@@ -62,7 +63,7 @@ export async function upsert(req: Request, res: Response): Promise<void> {
       empleado: data.empleado,
       userId: data.userId ?? null,
       semanaIso: data.semanaIso,
-      dias: data.dias,
+      dias,
       actualizadoPor,
       actualizadoEn: BigInt(Date.now()),
     },

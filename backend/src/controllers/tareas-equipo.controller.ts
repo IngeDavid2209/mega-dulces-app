@@ -26,6 +26,72 @@ const baseSchema = z.object({
 
 const updateSchema = baseSchema.partial();
 
+// Normaliza nombres igual que el front (src/app/shared/permisos.util.ts):
+// quita tildes/puntuacion, colapsa espacios y pasa a minusculas.
+function normalizarNombre(n: string | null | undefined): string {
+  if (!n) return '';
+  return n
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[^\p{L}\p{N}\s]/gu, '')
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, ' ');
+}
+
+// Comparacion tolerante de nombres (mismoEmpleadoNombre del front): identicos,
+// o uno es prefijo exacto del otro compartiendo al menos 2 palabras.
+function nombresIguales(a: string | null | undefined, b: string | null | undefined): boolean {
+  const na = normalizarNombre(a);
+  const nb = normalizarNombre(b);
+  if (!na || !nb) return false;
+  if (na === nb) return true;
+  const corto = na.length < nb.length ? na : nb;
+  const largo = na.length < nb.length ? nb : na;
+  if (!largo.startsWith(corto + ' ')) return false;
+  return corto.split(' ').filter(Boolean).length >= 2;
+}
+
+type TareaParaAutorizar = { jefeEquipo: string | null; integrantes: string[]; store: string | null };
+
+// ¿El usuario es participante de ESTA tarea? (admin con acceso, jefe o integrante).
+// Replica puedeMonitorearEquipo + esIntegranteEquipo del front. Sustituye al
+// permiso global puedeCrearTareasUnicas para no bloquear a integrantes/jefes
+// que solo completan o se agregan tareas propias.
+function esParticipante(req: Request, tarea: TareaParaAutorizar): boolean {
+  const u = req.user;
+  if (!u) return false;
+  if (permisos.esAdminGlobal(u)) return true;
+  if (permisos.esAdminLimitado(u)) {
+    const sucs = u.sucursales ?? [];
+    return !!tarea.store && sucs.includes(tarea.store);
+  }
+  if (nombresIguales(u.nombre, tarea.jefeEquipo)) return true;
+  return (tarea.integrantes ?? []).some((n) => nombresIguales(u.nombre, n));
+}
+
+// Autorizacion "legacy" que existia antes (requirePermiso('puedeCrearTareasUnicas')):
+// admin de cualquier alcance O trabajador con el flag. Se mantiene como fallback
+// para NO quitarle acceso a quien ya lo tenia (ej. el creador con permiso que no
+// es el jefe). Las reglas nuevas (participacion) solo AMPLIAN el acceso.
+function tienePermisoLegacy(req: Request): boolean {
+  const u = req.user;
+  if (!u) return false;
+  return permisos.esAdmin(u) || u.puedeCrearTareasUnicas === true;
+}
+
+// ¿El usuario puede monitorear (cerrar fases/proyecto)? Admin o jefe designado.
+function esMonitor(req: Request, tarea: TareaParaAutorizar): boolean {
+  const u = req.user;
+  if (!u) return false;
+  if (permisos.esAdminGlobal(u)) return true;
+  if (permisos.esAdminLimitado(u)) {
+    const sucs = u.sucursales ?? [];
+    return !!tarea.store && sucs.includes(tarea.store);
+  }
+  return nombresIguales(u.nombre, tarea.jefeEquipo);
+}
+
 function visibilidad(req: Request) {
   const u = req.user!;
   if (permisos.esAdminGlobal(u)) return {};
@@ -79,6 +145,14 @@ export async function create(req: Request, res: Response): Promise<void> {
 export async function update(req: Request, res: Response): Promise<void> {
   const data = parseBody(req, res, updateSchema);
   if (!data) return;
+  // Autorizacion por participacion (no por permiso global): el integrante debe
+  // poder completar sus items y agregarse tareas propias en la fase activa.
+  const existente = await prisma.tareaEquipo.findUnique({ where: { id: req.params.id } });
+  if (!existente) { res.status(404).json({ error: 'Tarea no encontrada' }); return; }
+  if (!esParticipante(req, existente) && !tienePermisoLegacy(req)) {
+    res.status(403).json({ error: 'No formas parte de esta tarea de equipo' });
+    return;
+  }
   try {
     const actualizada = await prisma.tareaEquipo.update({
       where: { id: req.params.id },
@@ -96,6 +170,13 @@ export async function update(req: Request, res: Response): Promise<void> {
 }
 
 export async function cerrar(req: Request, res: Response): Promise<void> {
+  // Cerrar el proyecto es accion de monitor (admin con acceso o jefe designado).
+  const existente = await prisma.tareaEquipo.findUnique({ where: { id: req.params.id } });
+  if (!existente) { res.status(404).json({ error: 'Tarea no encontrada' }); return; }
+  if (!esMonitor(req, existente) && !tienePermisoLegacy(req)) {
+    res.status(403).json({ error: 'Solo el jefe de equipo o un admin puede cerrar el proyecto' });
+    return;
+  }
   try {
     const tarea = await prisma.tareaEquipo.update({
       where: { id: req.params.id },

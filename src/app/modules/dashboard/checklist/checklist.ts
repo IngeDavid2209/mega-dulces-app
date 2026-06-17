@@ -174,6 +174,18 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   agregandoSubtareaItemId: string | null = null;
   nuevaSubtareaTexto = '';
 
+  // Estado del "agregar tarea propia" del integrante (auto-asignada a sí mismo).
+  // Separado del flujo del jefe para que no compartan el formulario inline.
+  agregandoTareaPropiaFaseId: string | null = null;
+  nuevaTareaPropiaTexto = '';
+  nuevaTareaPropiaHora = '';
+
+  // "Agregar mi tarea del día": tarea propia/extra que el trabajador suma a su
+  // lista diaria de rutinas (checklist auto-asignado para hoy).
+  isModalTareaDiaOpen = false;
+  tareaDiaTexto = '';
+  tareaDiaHora = '';
+
   // 🩺 Diagnóstico del último snapshot — alimenta el botón "¿Por qué no veo tareas?"
   // en el estado vacío para inspeccionar el filtrado desde el propio móvil.
   ultimoDiagnostico: any = null;
@@ -1581,6 +1593,79 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     } catch (error) { console.error("Error: ", error); }
   }
 
+  // ==========================================================================
+  // TAREA PROPIA DEL DÍA — el trabajador suma una tarea/extra a sus rutinas de hoy
+  // ==========================================================================
+  abrirModalTareaDia() {
+    this.tareaDiaTexto = '';
+    this.tareaDiaHora = '';
+    this.isModalTareaDiaOpen = true;
+  }
+
+  cerrarModalTareaDia() { this.isModalTareaDiaOpen = false; }
+
+  /** Sucursal por defecto del usuario para asociar la tarea propia. */
+  private miSucursalPrincipal(): string {
+    const u = this.currentUser;
+    return (u?.sucursales && u.sucursales[0]) || u?.sucursal || 'General';
+  }
+
+  /** Crea un checklist auto-asignado para hoy con una sola tarea manual.
+   *  Aparece junto a las rutinas del día del trabajador y se completa/envía
+   *  con el flujo normal (sin requerir foto). */
+  async guardarTareaDia() {
+    const texto = this.tareaDiaTexto.trim();
+    if (!texto) { this.mostrarToast(' Escribe el nombre de tu tarea.'); return; }
+    const nombre = this.currentUser?.nombre;
+    if (!nombre) { this.mostrarToast(' No hay sesión activa.'); return; }
+
+    const hoy = this.hoyIsoStr;
+    const id = `propia_${normalizarNombre(nombre).replace(/\s+/g, '_')}_${Date.now()}`;
+    const checklist: any = {
+      id,
+      timestampCreacion: Date.now(),
+      name: texto,
+      assigned: nombre,
+      store: this.miSucursalPrincipal(),
+      date: hoy,
+      time: this.tareaDiaHora || '23:59',
+      status: 'pendiente',
+      enviado: false,
+      createdBy: nombre,
+      esTareaPropia: true,
+      notaEmpleado: '',
+      items: [{
+        id: Date.now(),
+        text: texto,
+        requiresPhoto: false,
+        requiresAntesDespues: false,
+        requiresVariasFotos: false,
+        permiteGaleria: false,
+        permiteDocumentos: false,
+        checked: false,
+        photo: null, photoTime: null, photoAntes: null, photoAntesTime: null,
+        photoAntesTimestamp: null, photoDespues: null, photoDespuesTime: null, photos: [],
+        tipo: 'manual',
+        horaInicio: null,
+        horaLimite: this.tareaDiaHora || null,
+        frecuencia: null
+      }]
+    };
+
+    try {
+      await this.guardarEnLaNube(checklist);
+      // Refresco optimista: aparece de inmediato sin esperar el poll de 30s.
+      this.checklists.set([...(this.checklists() || []), checklist]);
+      this.isModalTareaDiaOpen = false;
+      this.tareaDiaTexto = '';
+      this.tareaDiaHora = '';
+      this.mostrarToast(' Tu tarea fue agregada a tu día.');
+    } catch (e) {
+      console.error('[tarea-propia-dia] error', e);
+      this.mostrarToast(' Error al agregar tu tarea.');
+    }
+  }
+
   eliminarChecklist(checklist: any, event: Event) {
     event.stopPropagation();
     this.checklistToDelete = checklist;
@@ -2465,6 +2550,56 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     this.nuevoItemRequiresPhoto = false;
     this.agregandoEnFaseId = null;
     this.mostrarToast(' Tarea agregada al equipo.');
+  }
+
+  /** ¿El usuario actual es integrante (o jefe) de este equipo? Base para que
+   *  cualquier miembro pueda agregarse tareas propias, no solo el monitor. */
+  esIntegranteEquipo(t: TareaEquipo | null): boolean {
+    if (!t) return false;
+    const mi = this.currentUser?.nombre;
+    if (mismoEmpleadoNombre(t.jefeEquipo, mi)) return true;
+    return (t.integrantes || []).some(n => mismoEmpleadoNombre(n, mi));
+  }
+
+  /** ¿Puede agregar una tarea PROPIA (auto-asignada) en la fase activa?
+   *  Cualquier integrante del equipo puede; los monitores ya usan
+   *  agregarItemEnVivo (que además permite asignar a otros). */
+  puedeAgregarTareaPropia(t: TareaEquipo | null): boolean {
+    if (!t || t.cerrado) return false;
+    return this.esIntegranteEquipo(t) || this.puedeMonitorearEquipo(t);
+  }
+
+  /** Integrante agrega una tarea suya (auto-asignada) en la fase activa. */
+  async agregarTareaPropiaEnVivo(t: TareaEquipo, faseId: string) {
+    if (!this.puedeAgregarTareaPropia(t) || t.cerrado) return;
+    if (!this.nuevaTareaPropiaTexto.trim()) {
+      this.mostrarToast(' Escribe la tarea que quieres agregar.');
+      return;
+    }
+    const fresca = await this.obtenerTareaEquipoFresca(t.id);
+    if (!fresca) return;
+    const fase = fresca.fases.find(f => f.id === faseId);
+    if (!fase || fase.estado !== 'activa') {
+      this.mostrarToast(' Esta fase no está activa.');
+      return;
+    }
+    fase.items.push({
+      id: 'item_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+      asignado: this.currentUser?.nombre,
+      texto: this.nuevaTareaPropiaTexto.trim(),
+      horaLimite: this.nuevaTareaPropiaHora || undefined,
+      requiresPhoto: false,
+      completada: false,
+      subtareas: [],
+      agregadaPor: this.currentUser?.nombre,
+      agregadaEn: Date.now()
+    });
+    if (environment.useBackend) await firstValueFrom(this.tareasEquipoApi.update(t.id, { fases: fresca.fases } as any));
+    else await setDoc(doc(this.firestore, 'tareas_equipo', t.id), { fases: fresca.fases }, { merge: true });
+    this.nuevaTareaPropiaTexto = '';
+    this.nuevaTareaPropiaHora = '';
+    this.agregandoTareaPropiaFaseId = null;
+    this.mostrarToast(' Tu tarea fue agregada.');
   }
 
   /** Jefe agrega una subtarea dentro de un item existente. */

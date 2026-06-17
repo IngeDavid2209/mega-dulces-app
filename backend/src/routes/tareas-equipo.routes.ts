@@ -9,8 +9,11 @@ const router = Router();
 router.get('/',                requireAuth,                                            asyncHandler(ctrl.list));
 router.get('/:id',             requireAuth,                                            asyncHandler(ctrl.getById));
 router.post('/',               requireAuth, requirePermiso('puedeCrearTareasUnicas'),  asyncHandler(ctrl.create));
-router.put('/:id',             requireAuth, requirePermiso('puedeCrearTareasUnicas'),  asyncHandler(ctrl.update));
-router.post('/:id/cerrar',     requireAuth, requirePermiso('puedeCrearTareasUnicas'),  asyncHandler(ctrl.cerrar));
+// PUT y cerrar autorizan por participacion DENTRO del controlador (jefe /
+// integrante / admin con acceso), no por permiso global: los integrantes deben
+// poder completar items y agregarse tareas propias.
+router.put('/:id',             requireAuth,                                            asyncHandler(ctrl.update));
+router.post('/:id/cerrar',     requireAuth,                                            asyncHandler(ctrl.cerrar));
 router.delete('/:id',          requireAuth, requireAdmin,                              asyncHandler(ctrl.remove));
 
 export default router;

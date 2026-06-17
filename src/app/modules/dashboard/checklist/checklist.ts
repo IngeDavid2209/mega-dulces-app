@@ -14,7 +14,7 @@ import { AsignacionesRutinasApi } from '../../../api/asignaciones-rutinas.api';
 import { MoldesChecklistsApi } from '../../../api/moldes-checklists.api';
 import * as localforage from 'localforage';
 import Swal from 'sweetalert2';
-import { esAdminGlobal, esAdminLimitado, sucursalesPermitidas, esSupervisor, mismoEmpleadoNombre, normalizarNombre } from '../../../shared/permisos.util';
+import { esAdminGlobal, esAdminLimitado, sucursalesPermitidas, esSupervisor, mismoEmpleadoNombre, normalizarNombre, puedeSerAsignado } from '../../../shared/permisos.util';
 import { nivelDeCargo } from '../../../shared/nivel-jerarquico.util';
 import { TareaEquipo, FaseEquipo, ItemEquipo, SubtareaEquipo } from '../../../shared/tareas-equipo.types';
 import { esItemHecho, tieneEvidencia } from '../../../shared/item-completado.util';
@@ -649,16 +649,10 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     if (emp.usuario && this.currentUser?.usuario && emp.usuario === this.currentUser.usuario) {
       return true;
     }
-    // Toma sucursales del array; si viene vacío usa el campo singular como fallback.
-    const susSucursales = (emp.sucursales && emp.sucursales.length) ? emp.sucursales : [emp.sucursal || ''];
-    const storeNorm = normalizarNombre(store);
-    const coincide = susSucursales.some((s: string) => normalizarNombre(s) === storeNorm);
-    if (emp.rol === 'admin') {
-      return coincide;
-    }
-    // 'General (Acceso Total)' pone al trabajador en todas las sucursales.
-    if (susSucursales.some((s: string) => normalizarNombre(s) === normalizarNombre('General (Acceso Total)'))) return true;
-    return coincide;
+    // Asignable a esta sucursal (comparación normalizada; admin global y comodín
+    // 'General (Acceso Total)' aplican a cualquier sucursal). Incluye admins:
+    // hay cargos operativos con cuenta admin que igual reciben tareas.
+    return puedeSerAsignado(emp, store ? [store] : []);
   }
 
   /**
@@ -985,18 +979,12 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       // dropdown de sucursales. Sin esto, un empleado cuya sucursal esté escrita
       // con una variación mínima respecto a la del catálogo desaparecía del
       // listado de asignación de rutinas/tareas.
-      const misSucNorm = new Set(misSucursales.map(s => normalizarNombre(s)));
-      const candidatos = todosLosUsuarios.filter((u: any) => {
-        if (u.rol === 'trabajador') return true;
-        if (u.rol === 'admin'
-            && u.alcance !== 'global'
-            && !(u.sucursales || []).includes('General (Acceso Total)')) return true;
-        return false;
-      });
-      const empleadosFiltrados = candidatos.filter((t: any) => {
-        const susSucursales = (t.sucursales && t.sucursales.length) ? t.sucursales : [t.sucursal || ''];
-        return susSucursales.some((s: string) => misSucNorm.has(normalizarNombre(s)));
-      });
+      // Candidatos: trabajadores + admins (incluye admin global). Algunos cargos
+      // operativos tienen cuenta admin y aun asi deben poder recibir tareas.
+      const candidatos = todosLosUsuarios.filter((u: any) => u.rol === 'trabajador' || u.rol === 'admin');
+      // Filtra a los asignables en las sucursales del usuario actual (normalizado;
+      // admin global y comodín 'General (Acceso Total)' pasan en cualquier sucursal).
+      const empleadosFiltrados = candidatos.filter((t: any) => puedeSerAsignado(t, misSucursales));
       this.empleados.set(empleadosFiltrados);
     }
   }

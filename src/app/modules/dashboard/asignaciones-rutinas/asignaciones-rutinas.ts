@@ -11,7 +11,7 @@ import { AsignacionesRutinasApi } from '../../../api/asignaciones-rutinas.api';
 import Swal from 'sweetalert2';
 
 import { SidebarComponent } from '../../../shared/sidebar/sidebar';
-import { esAdminGlobal, sucursalesPermitidas, normalizarNombre } from '../../../shared/permisos.util';
+import { esAdminGlobal, sucursalesPermitidas, normalizarNombre, puedeSerAsignado } from '../../../shared/permisos.util';
 import {
   RutinaMaestra,
   FrecuenciaRutina,
@@ -388,13 +388,13 @@ export class AsignacionesRutinasComponent implements OnInit, OnDestroy {
   // PASO 3: A QUIÉN (rol o personas)
   // ============================================================================
   empleadosVisibles = computed(() => {
-    let lista = this.usuarios().filter(u => u.rol === 'trabajador');
-    // Filtrar por sucursales seleccionadas (comparación normalizada)
+    // Incluye trabajadores y admins: algunos cargos operativos tienen cuenta
+    // admin y aun asi necesitan recibir rutinas.
+    let lista = this.usuarios().filter(u => u.rol === 'trabajador' || u.rol === 'admin');
+    // Filtrar por sucursales seleccionadas (normalizado; admin global y comodín
+    // 'General (Acceso Total)' pasan en cualquier sucursal).
     if (this.formSucursales.length > 0) {
-      lista = lista.filter(u => {
-        const susSuc = (u.sucursales && u.sucursales.length) ? u.sucursales : (u.sucursal ? [u.sucursal] : []);
-        return this.algunaSucursalCoincide(susSuc, this.formSucursales);
-      });
+      lista = lista.filter(u => puedeSerAsignado(u, this.formSucursales));
     }
     // Buscador
     const t = this.terminoBusquedaEmpleado.toLowerCase().trim();

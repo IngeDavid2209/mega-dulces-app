@@ -649,12 +649,16 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     if (emp.usuario && this.currentUser?.usuario && emp.usuario === this.currentUser.usuario) {
       return true;
     }
-    const susSucursales = emp.sucursales || [emp.sucursal || ''];
+    // Toma sucursales del array; si viene vacío usa el campo singular como fallback.
+    const susSucursales = (emp.sucursales && emp.sucursales.length) ? emp.sucursales : [emp.sucursal || ''];
+    const storeNorm = normalizarNombre(store);
+    const coincide = susSucursales.some((s: string) => normalizarNombre(s) === storeNorm);
     if (emp.rol === 'admin') {
-      return susSucursales.includes(store);
+      return coincide;
     }
-    if (emp.sucursales && emp.sucursales.includes('General (Acceso Total)')) return true;
-    return susSucursales.includes(store);
+    // 'General (Acceso Total)' pone al trabajador en todas las sucursales.
+    if (susSucursales.some((s: string) => normalizarNombre(s) === normalizarNombre('General (Acceso Total)'))) return true;
+    return coincide;
   }
 
   /**
@@ -977,6 +981,11 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     } else if (esAdminLimitado(this.currentUser) || this.currentUser?.puedeCrearChecklists) {
       const permitidas = sucursalesPermitidas(this.currentUser);
       const misSucursales = permitidas ?? [];
+      // Comparación NORMALIZADA (tildes/mayúsculas/espacios), igual que el
+      // dropdown de sucursales. Sin esto, un empleado cuya sucursal esté escrita
+      // con una variación mínima respecto a la del catálogo desaparecía del
+      // listado de asignación de rutinas/tareas.
+      const misSucNorm = new Set(misSucursales.map(s => normalizarNombre(s)));
       const candidatos = todosLosUsuarios.filter((u: any) => {
         if (u.rol === 'trabajador') return true;
         if (u.rol === 'admin'
@@ -985,8 +994,8 @@ export class ChecklistComponent implements OnInit, OnDestroy {
         return false;
       });
       const empleadosFiltrados = candidatos.filter((t: any) => {
-        const susSucursales = t.sucursales || [t.sucursal || ''];
-        return susSucursales.some((s: string) => misSucursales.includes(s));
+        const susSucursales = (t.sucursales && t.sucursales.length) ? t.sucursales : [t.sucursal || ''];
+        return susSucursales.some((s: string) => misSucNorm.has(normalizarNombre(s)));
       });
       this.empleados.set(empleadosFiltrados);
     }

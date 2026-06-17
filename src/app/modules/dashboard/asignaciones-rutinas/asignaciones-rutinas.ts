@@ -11,7 +11,7 @@ import { AsignacionesRutinasApi } from '../../../api/asignaciones-rutinas.api';
 import Swal from 'sweetalert2';
 
 import { SidebarComponent } from '../../../shared/sidebar/sidebar';
-import { esAdminGlobal, sucursalesPermitidas } from '../../../shared/permisos.util';
+import { esAdminGlobal, sucursalesPermitidas, normalizarNombre } from '../../../shared/permisos.util';
 import {
   RutinaMaestra,
   FrecuenciaRutina,
@@ -194,8 +194,18 @@ export class AsignacionesRutinasComponent implements OnInit, OnDestroy {
       this.sucursalesDisponibles.set([...this.todasLasSucursales]);
     } else {
       const permitidas = sucursalesPermitidas(this.currentUser) ?? [];
-      this.sucursalesDisponibles.set(this.todasLasSucursales.filter(s => permitidas.includes(s)));
+      const permNorm = new Set(permitidas.map(s => normalizarNombre(s)));
+      this.sucursalesDisponibles.set(this.todasLasSucursales.filter(s => permNorm.has(normalizarNombre(s))));
     }
+  }
+
+  /** ¿Alguna de las sucursales del empleado coincide (normalizada) con la lista
+   *  objetivo? Tolera diferencias de tildes/mayúsculas/espacios entre el perfil
+   *  del empleado y el catálogo de sucursales. */
+  private algunaSucursalCoincide(susSucursales: string[], objetivo: string[]): boolean {
+    if (!objetivo || objetivo.length === 0) return false;
+    const objNorm = new Set(objetivo.map(s => normalizarNombre(s)));
+    return susSucursales.some(s => objNorm.has(normalizarNombre(s)));
   }
 
   // ============================================================================
@@ -379,11 +389,11 @@ export class AsignacionesRutinasComponent implements OnInit, OnDestroy {
   // ============================================================================
   empleadosVisibles = computed(() => {
     let lista = this.usuarios().filter(u => u.rol === 'trabajador');
-    // Filtrar por sucursales seleccionadas
+    // Filtrar por sucursales seleccionadas (comparación normalizada)
     if (this.formSucursales.length > 0) {
       lista = lista.filter(u => {
-        const susSuc = u.sucursales || (u.sucursal ? [u.sucursal] : []);
-        return susSuc.some((s: string) => this.formSucursales.includes(s));
+        const susSuc = (u.sucursales && u.sucursales.length) ? u.sucursales : (u.sucursal ? [u.sucursal] : []);
+        return this.algunaSucursalCoincide(susSuc, this.formSucursales);
       });
     }
     // Buscador
@@ -405,8 +415,8 @@ export class AsignacionesRutinasComponent implements OnInit, OnDestroy {
       if (u.rol !== 'trabajador') return false;
       const rolLower = (u.cargo || '').toLowerCase();
       if (!rolLower.includes(this.formRol.toLowerCase())) return false;
-      const susSuc = u.sucursales || (u.sucursal ? [u.sucursal] : []);
-      return susSuc.some((s: string) => this.formSucursales.includes(s));
+      const susSuc = (u.sucursales && u.sucursales.length) ? u.sucursales : (u.sucursal ? [u.sucursal] : []);
+      return this.algunaSucursalCoincide(susSuc, this.formSucursales);
     }).length;
   }
 

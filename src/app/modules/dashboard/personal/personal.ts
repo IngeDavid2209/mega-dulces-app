@@ -1173,7 +1173,11 @@ export class PersonalComponent implements OnInit, OnDestroy {
         return { ...u, zonaCalculada: zona };
       }).sort((a, b) => a.zonaCalculada.localeCompare(b.zonaCalculada));
 
-      const ExcelJS = await import('exceljs');
+      // ExcelJS es CommonJS: segun el bundler los exports quedan bajo `.default`
+      // o directo en el namespace. Tomamos el que tenga `Workbook` para evitar
+      // "Workbook is not a constructor".
+      const ExcelJSModule: any = await import('exceljs');
+      const ExcelJS: any = ExcelJSModule?.Workbook ? ExcelJSModule : (ExcelJSModule?.default ?? ExcelJSModule);
       const workbook = new ExcelJS.Workbook();
       const worksheet = workbook.addWorksheet('Personal MegaDulces');
 

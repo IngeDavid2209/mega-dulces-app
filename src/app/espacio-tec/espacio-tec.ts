@@ -1,17 +1,17 @@
 import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { RouterModule, Router } from '@angular/router';
 import { Firestore, collection, query, onSnapshot, addDoc, doc, updateDoc, deleteDoc } from '@angular/fire/firestore';
-import { Auth } from '@angular/fire/auth';
 import Swal from 'sweetalert2';
 
+import { SidebarComponent } from '../shared/sidebar/sidebar';
+
 /**
- * Espacio TEC de Monterrey — apartado AISLADO para el grupo de estudiantes.
+ * Espacio TEC — apartado colaborativo dentro de la app, visible solo para
+ * usuarios con el privilegio `grupoTec` (que solo el admin activa) o admins.
  *
- * - Solo entran usuarios con `grupoTec === true` (o un admin global de soporte).
- * - NO ven datos reales de Mega Dulces (empleados, checklists, etc.).
- * - Tablero COLABORATIVO: los 8 comparten las mismas tareas e ideas/notas.
+ * Tablero COMPARTIDO entre los miembros: tareas e ideas/notas.
  *
  * Datos en Firestore:
  *   - tec_tareas: { texto, completada, creadoPor, creadoPorUid, creadoEn, completadaPor, completadaEn }
@@ -20,12 +20,13 @@ import Swal from 'sweetalert2';
 @Component({
   selector: 'app-espacio-tec',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, RouterModule, SidebarComponent],
   templateUrl: './espacio-tec.html',
   styleUrls: ['./espacio-tec.css']
 })
 export class EspacioTecComponent implements OnInit, OnDestroy {
   currentUser: any = null;
+  isMenuOpen = false;
   vista: 'tareas' | 'notas' = 'tareas';
 
   // Tareas compartidas
@@ -42,9 +43,10 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
   edicionTexto = '';
   private radarNotas: (() => void) | null = null;
 
-  private auth = inject(Auth);
   private firestore = inject(Firestore);
   private router = inject(Router);
+
+  toggleMenu() { this.isMenuOpen = !this.isMenuOpen; }
 
   ngOnInit() {
     const sesion = localStorage.getItem('md_sesion_actual');
@@ -189,11 +191,5 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
     try {
       return new Date(ts).toLocaleString('es-MX', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
     } catch { return ''; }
-  }
-
-  async cerrarSesion() {
-    try { if (this.auth) await this.auth.signOut(); } catch { /* noop */ }
-    localStorage.removeItem('md_sesion_actual');
-    this.router.navigate(['/login']);
   }
 }

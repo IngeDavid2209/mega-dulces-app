@@ -949,16 +949,14 @@ export class ChecklistComponent implements OnInit, OnDestroy {
 
     // Empleados que el usuario actual puede asignar
     if (esAdminGlobal(this.currentUser)) {
-      // Excluimos al Grupo TEC: no son personal de la empresa.
-      const personalActivo = todosLosUsuarios.filter((u: any) => (u.rol === 'trabajador' || u.rol === 'admin') && !u.grupoTec);
+      const personalActivo = todosLosUsuarios.filter((u: any) => u.rol === 'trabajador' || u.rol === 'admin');
       this.empleados.set(personalActivo);
     } else if (esAdminLimitado(this.currentUser) || this.currentUser?.puedeCrearChecklists) {
       const permitidas = sucursalesPermitidas(this.currentUser);
       const misSucursales = permitidas ?? [];
-      // Candidatos: trabajadores + admins (incluye admin global), excluyendo al
-      // Grupo TEC. Algunos cargos operativos tienen cuenta admin y aun asi deben
-      // poder recibir tareas.
-      const candidatos = todosLosUsuarios.filter((u: any) => (u.rol === 'trabajador' || u.rol === 'admin') && !u.grupoTec);
+      // Candidatos: trabajadores + admins (incluye admin global). Algunos cargos
+      // operativos tienen cuenta admin y aun asi deben poder recibir tareas.
+      const candidatos = todosLosUsuarios.filter((u: any) => u.rol === 'trabajador' || u.rol === 'admin');
       // Asignables en las sucursales del usuario actual (normalizado; admin global
       // y comodín 'General (Acceso Total)' pasan en cualquier sucursal).
       const empleadosFiltrados = candidatos.filter((t: any) => puedeSerAsignado(t, misSucursales));

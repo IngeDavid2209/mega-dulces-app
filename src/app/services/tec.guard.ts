@@ -2,11 +2,13 @@ import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
 
 /**
- * Guard del apartado /tec.
+ * Guard del apartado /tec (Espacio TEC).
+ * Es una sección normal de la app, gateada por el privilegio `grupoTec` que solo
+ * el admin activa:
  *  - Sin sesión → login.
- *  - Usuario del Grupo TEC (grupoTec) → entra.
- *  - Admin global (soporte/dueño) → entra también, para poder supervisar.
- *  - Cualquier otro (personal de la empresa) → fuera, a /home.
+ *  - Usuario con el privilegio (grupoTec) → entra.
+ *  - Cualquier admin (para administrar/supervisar) → entra.
+ *  - Cualquier otro → fuera, a /home.
  */
 export const soloTecGuard: CanActivateFn = () => {
   const router = inject(Router);
@@ -16,9 +18,7 @@ export const soloTecGuard: CanActivateFn = () => {
 
   try {
     const u = JSON.parse(sesion);
-    const esTec = u?.grupoTec === true;
-    const esAdminGlobal = u?.rol === 'admin' && (u?.alcance ?? 'global') === 'global';
-    if (esTec || esAdminGlobal) return true;
+    if (u?.grupoTec === true || u?.rol === 'admin') return true;
   } catch { /* sesión corrupta */ }
 
   router.navigate(['/home']);

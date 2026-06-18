@@ -342,8 +342,8 @@ export class AsignacionesRutinasComponent implements OnInit, OnDestroy {
   // ============================================================================
   empleadosVisibles = computed(() => {
     // Incluye trabajadores y admins (algunos cargos operativos tienen cuenta
-    // admin y aun asi reciben rutinas); excluye al Grupo TEC.
-    let lista = this.usuarios().filter(u => (u.rol === 'trabajador' || u.rol === 'admin') && !u.grupoTec);
+    // admin y aun asi reciben rutinas).
+    let lista = this.usuarios().filter(u => u.rol === 'trabajador' || u.rol === 'admin');
     // Filtrar por sucursales seleccionadas (normalizado; admin global y comodín
     // 'General (Acceso Total)' pasan en cualquier sucursal).
     if (this.formSucursales.length > 0) {

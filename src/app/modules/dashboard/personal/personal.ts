@@ -205,8 +205,7 @@ export class PersonalComponent implements OnInit, OnDestroy {
       u.nombre.toLowerCase().includes(termino) ||
       (u.cargo && u.cargo.toLowerCase().includes(termino));
 
-    // Excluimos miembros del Grupo TEC: viven en su apartado aislado, no en el directorio.
-    const admins = this.usuarios().filter(u => u.rol === 'admin' && !u.grupoTec && matchTexto(u));
+    const admins = this.usuarios().filter(u => u.rol === 'admin' && matchTexto(u));
 
     // Admin global: ve todos
     if (esAdminGlobal(yo)) return admins;
@@ -246,8 +245,7 @@ export class PersonalComponent implements OnInit, OnDestroy {
     this._cacheBaseHuella = huella;
 
     const yo = this.liveUser;
-    // Excluimos miembros del Grupo TEC: no son personal de la empresa.
-    let lista = this.usuarios().filter(u => u.rol === 'trabajador' && !u.grupoTec);
+    let lista = this.usuarios().filter(u => u.rol === 'trabajador');
 
     // FILTRO ESTRICTO EN VIVO PARA ADMINS LIMITADOS Y JEFES / ENCARGADOS
     if (!esAdminGlobal(yo)) {

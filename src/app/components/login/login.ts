@@ -119,8 +119,7 @@ export class LoginComponent {
       // el usuario rechaza permisos o el navegador no soporta push).
       this.notificaciones.solicitarPermisos(perfil.nombre, creds.user.uid).catch(() => {});
 
-      // 🎓 Los usuarios del Grupo TEC van a su apartado aislado, no al panel de la empresa.
-      this.router.navigate([perfil?.grupoTec === true ? '/tec' : '/home']);
+      this.router.navigate(['/home']);
 
     } catch (error: any) {
       console.error('Error de login:', error?.code || error);

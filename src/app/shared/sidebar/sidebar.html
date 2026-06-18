@@ -34,6 +34,17 @@
         Agenda Personal
       </a>
 
+      <!-- 🎓 Espacio TEC: solo visible si el admin le activó el privilegio (o es admin) -->
+      <a class="nav-item" routerLink="/tec" routerLinkActive="active"
+         *ngIf="currentUser?.rol === 'admin' || currentUser?.grupoTec"
+         (click)="onNavClick()">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M22 10v6M2 10l10-5 10 5-10 5z"></path>
+          <path d="M6 12v5c3 3 9 3 12 0v-5"></path>
+        </svg>
+        Espacio TEC
+      </a>
+
       <a class="nav-item" routerLink="/checkstore" routerLinkActive="active"
          *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeVerCheckstore"
          (click)="onNavClick()">

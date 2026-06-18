@@ -489,6 +489,18 @@
 .gr-miembro-x { background: transparent; border: none; color: #94A3B8; font-size: 16px; line-height: 1; cursor: pointer; padding: 0 2px; }
 .gr-miembro-x:hover { color: #DC2626; }
 
+.gr-pick-label { font-size: 11.5px; font-weight: 700; color: var(--text-muted); margin: 4px 0 8px; }
+.gr-picker { display: flex; flex-direction: column; gap: 6px; max-height: 220px; overflow-y: auto; }
+.gr-pick {
+  display: flex; align-items: center; gap: 9px; width: 100%; text-align: left;
+  background: #fff; border: 1px solid var(--border); border-radius: 10px;
+  padding: 7px 10px; cursor: pointer;
+}
+.gr-pick:hover { background: #F8FAFC; }
+.gr-pick.sel { border-color: var(--tec-blue); background: #EFF6FF; }
+.gr-pick-nom { flex: 1; font-size: 14px; color: var(--text-main); }
+.gr-pick-check { color: var(--tec-blue); flex-shrink: 0; }
+
 @media (max-width: 600px) {
   .gr-grid { grid-template-columns: 1fr; }
 }

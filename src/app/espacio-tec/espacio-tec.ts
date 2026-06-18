@@ -78,6 +78,8 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
     'FINANZAS', 'SISTEMAS', 'RH', 'MKT', 'MANTENIMIENTO'
   ];
   usuariosEmpresa: any[] = [];
+  /** Usuarios con acceso al Espacio TEC (privilegio grupoTec). */
+  miembrosTec: any[] = [];
   private radarUsuarios: (() => void) | null = null;
   sucursalSel = '';
   empleadosSel: string[] = [];
@@ -158,9 +160,11 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
     // Personal de la empresa (para asignar tareas por sucursal).
     const usuariosRef = collection(this.firestore, 'usuarios');
     this.radarUsuarios = onSnapshot(query(usuariosRef), snap => {
-      this.usuariosEmpresa = snap.docs
-        .map(d => ({ id: d.id, ...(d.data() as any) }))
-        .filter(u => u.rol === 'trabajador' && !u.grupoTec);
+      const todos = snap.docs.map(d => ({ id: d.id, ...(d.data() as any) }));
+      this.usuariosEmpresa = todos.filter(u => u.rol === 'trabajador' && !u.grupoTec);
+      this.miembrosTec = todos
+        .filter(u => u.grupoTec === true)
+        .sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''));
     });
 
     // Tareas asignadas por el TEC a personal (para el resumen).
@@ -424,6 +428,17 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
   quitarMiembro(m: string) {
     if (!this.grupoModal) return;
     this.grupoModal.miembros = this.grupoModal.miembros.filter((x: string) => x !== m);
+  }
+
+  /** ¿El miembro (por nombre) ya está en el grupo abierto? */
+  esMiembroDeGrupo(nombre: string): boolean {
+    return !!this.grupoModal && (this.grupoModal.miembros || []).includes(nombre);
+  }
+  /** Alterna a un miembro del TEC dentro del grupo abierto. */
+  toggleMiembro(nombre: string) {
+    if (!this.grupoModal) return;
+    if (this.esMiembroDeGrupo(nombre)) this.quitarMiembro(nombre);
+    else this.grupoModal.miembros = [...this.grupoModal.miembros, nombre];
   }
 
   async guardarGrupo() {

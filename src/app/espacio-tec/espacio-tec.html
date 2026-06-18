@@ -571,6 +571,8 @@
       </div>
 
       <label class="tec-modal-label">Miembros</label>
+
+      <!-- Seleccionados -->
       <div class="gr-miembros-list" *ngIf="grupoModal.miembros.length > 0">
         <span class="gr-miembro-chip" *ngFor="let m of grupoModal.miembros">
           <span class="gr-avatar gr-avatar-sm" [style.background]="grupoModal.color">{{ inicial(m) }}</span>
@@ -578,9 +580,25 @@
           <button class="gr-miembro-x" (click)="quitarMiembro(m)" title="Quitar">×</button>
         </span>
       </div>
-      <div class="tec-sub-add">
+
+      <!-- Personas con acceso al Espacio TEC (clic para agregar/quitar) -->
+      <div class="gr-pick-label" *ngIf="miembrosTec.length > 0">Con acceso al Espacio TEC:</div>
+      <div class="gr-picker" *ngIf="miembrosTec.length > 0">
+        <button type="button" class="gr-pick" *ngFor="let u of miembrosTec"
+                [class.sel]="esMiembroDeGrupo(u.nombre)" (click)="toggleMiembro(u.nombre)">
+          <span class="gr-avatar gr-avatar-sm" [style.background]="grupoModal.color">{{ inicial(u.nombre) }}</span>
+          <span class="gr-pick-nom">{{ u.nombre }}</span>
+          <svg class="gr-pick-check" *ngIf="esMiembroDeGrupo(u.nombre)" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+        </button>
+      </div>
+      <div class="rs-empty" *ngIf="miembrosTec.length === 0" style="padding:10px 0;">
+        Aún nadie tiene acceso al Espacio TEC. Actívaselo a quien quieras en <strong>Personal → Editar → "Acceso al Espacio TEC"</strong>.
+      </div>
+
+      <!-- Agregar a alguien que no esté en la lista (opcional) -->
+      <div class="tec-sub-add" style="margin-top:10px;">
         <input class="tec-input" type="text" [(ngModel)]="nuevoMiembroTexto"
-               placeholder="Nombre del miembro..." (keyup.enter)="agregarMiembro()">
+               placeholder="Agregar otro nombre (opcional)..." (keyup.enter)="agregarMiembro()">
         <button class="tec-btn-soft tec-btn-sm" (click)="agregarMiembro()">Agregar</button>
       </div>
     </div>

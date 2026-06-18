@@ -23,6 +23,7 @@ export class PerfilComponent implements OnInit {
   formCorreo = '';
   formPassword = '';
   formTelefono = '';
+  subiendoFoto = false;
 
   ngOnInit() {
     // Cargamos los datos del usuario que está conectado
@@ -37,6 +38,74 @@ export class PerfilComponent implements OnInit {
 
 // Asegúrate de tener 'verifyBeforeUpdateEmail' importado en la parte de arriba:
 // import { Auth, updatePassword, reauthenticateWithCredential, EmailAuthProvider, verifyBeforeUpdateEmail } from '@angular/fire/auth';
+
+  private miUid(): string {
+    return this.auth.currentUser?.uid || this.currentUser?.uid || this.currentUser?.id || '';
+  }
+
+  /** Redimensiona la imagen a una miniatura cuadrada (~256px) en JPEG para que
+   *  pese poco y quepa sin problema en Firestore. Devuelve un data URL. */
+  private redimensionar(file: File, max = 256): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const img = new Image();
+        img.onload = () => {
+          const lado = Math.min(img.width, img.height);
+          const sx = (img.width - lado) / 2;
+          const sy = (img.height - lado) / 2;
+          const canvas = document.createElement('canvas');
+          canvas.width = max; canvas.height = max;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) { reject('no-canvas'); return; }
+          ctx.drawImage(img, sx, sy, lado, lado, 0, 0, max, max);
+          resolve(canvas.toDataURL('image/jpeg', 0.8));
+        };
+        img.onerror = reject;
+        img.src = reader.result as string;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async onFotoSeleccionada(event: any) {
+    const file: File = event?.target?.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      Swal.fire('Archivo no válido', 'Selecciona una imagen (JPG o PNG).', 'warning');
+      return;
+    }
+    const uid = this.miUid();
+    if (!uid) { Swal.fire('Error', 'No hay sesión activa.', 'error'); return; }
+
+    this.subiendoFoto = true;
+    try {
+      const dataUrl = await this.redimensionar(file);
+      await updateDoc(doc(this.firestore, 'usuarios', uid), { fotoPerfil: dataUrl });
+      this.currentUser.fotoPerfil = dataUrl;
+      localStorage.setItem('md_sesion_actual', JSON.stringify(this.currentUser));
+      Swal.fire('✅ Listo', 'Tu foto de perfil se actualizó.', 'success');
+    } catch (e: any) {
+      console.error('[perfil] foto', e);
+      Swal.fire('❌ Error', 'No se pudo guardar la foto. Intenta con otra imagen.', 'error');
+    } finally {
+      this.subiendoFoto = false;
+      if (event?.target) event.target.value = '';
+    }
+  }
+
+  async quitarFoto() {
+    const uid = this.miUid();
+    if (!uid) return;
+    const r = await Swal.fire({ title: 'Quitar foto', text: '¿Quitar tu foto de perfil?', icon: 'warning', showCancelButton: true, confirmButtonText: 'Sí, quitar', cancelButtonText: 'Cancelar', confirmButtonColor: '#DC2626' });
+    if (!r.isConfirmed) return;
+    try {
+      await updateDoc(doc(this.firestore, 'usuarios', uid), { fotoPerfil: '' });
+      this.currentUser.fotoPerfil = '';
+      localStorage.setItem('md_sesion_actual', JSON.stringify(this.currentUser));
+    } catch (e) { console.error('[perfil] quitarFoto', e); }
+  }
 
   async actualizarMisDatos() {
     const user = this.auth.currentUser;

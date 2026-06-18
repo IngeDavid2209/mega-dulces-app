@@ -94,7 +94,7 @@
   background: linear-gradient(135deg, #1e293b 0%, #3b82f6 100%);
 }
 
-.perfil-avatar-wrapper { display: flex; justify-content: center; margin-top: -50px; }
+.perfil-avatar-wrapper { display: flex; justify-content: center; margin-top: -50px; position: relative; }
 
 .perfil-avatar {
   width: 100px; height: 100px; background-color: #ffffff;
@@ -102,7 +102,18 @@
   display: flex; align-items: center; justify-content: center;
   font-size: 40px; font-weight: bold; color: #3b82f6;
   box-shadow: 0 4px 6px rgba(0,0,0,0.1); box-sizing: border-box;
+  overflow: hidden;
 }
+.perfil-foto-btn {
+  position: absolute; bottom: 0; left: 50%; transform: translateX(18px);
+  width: 34px; height: 34px; border-radius: 50%;
+  background: #2563EB; color: #fff; border: 3px solid #fff;
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+}
+.perfil-foto-btn:hover { background: #1D4ED8; }
+.perfil-foto-btn.cargando { opacity: .7; cursor: default; }
+.perfil-foto-spin { font-size: 20px; line-height: 1; }
 
 .perfil-body { padding: 20px 40px 40px; }
 .perfil-header-info { text-align: center; margin-bottom: 25px; }

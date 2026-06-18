@@ -43,7 +43,13 @@ service cloud.firestore {
     // Lectura para cualquier sesión válida; solo admin crea/edita/borra.
     match /usuarios/{id} {
       allow read: if autenticado();
-      allow create, update, delete: if esAdmin();
+      allow create, delete: if esAdmin();
+      // Admin edita cualquier usuario. Un usuario puede editar SOLO su propio
+      // documento y SOLO campos seguros (no puede cambiar rol/permisos/sucursales).
+      allow update: if esAdmin()
+        || (request.auth != null && request.auth.uid == id
+            && request.resource.data.diff(resource.data).affectedKeys()
+                 .hasOnly(['correo', 'telefono', 'password', 'fotoPerfil']));
 
       // Agenda personal (subcolección usuarios/{uid}/agenda): tareas propias.
       // Cualquier sesión válida la opera (la app filtra por dueño).

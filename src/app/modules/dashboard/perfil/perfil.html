@@ -28,8 +28,24 @@
         
         <div class="perfil-avatar-wrapper">
           <div class="perfil-avatar">
-            {{ currentUser?.nombre?.charAt(0) || 'U' }}
+            <img *ngIf="currentUser?.fotoPerfil" [src]="currentUser.fotoPerfil" alt="Foto de perfil"
+                 style="width:100%; height:100%; object-fit:cover; border-radius:inherit; display:block;">
+            <span *ngIf="!currentUser?.fotoPerfil">{{ currentUser?.nombre?.charAt(0) || 'U' }}</span>
           </div>
+          <label class="perfil-foto-btn" [class.cargando]="subiendoFoto" title="Cambiar foto">
+            <svg *ngIf="!subiendoFoto" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+              <circle cx="12" cy="13" r="4"></circle>
+            </svg>
+            <span *ngIf="subiendoFoto" class="perfil-foto-spin">…</span>
+            <input type="file" accept="image/*" (change)="onFotoSeleccionada($event)" [disabled]="subiendoFoto" hidden>
+          </label>
+        </div>
+        <div *ngIf="currentUser?.fotoPerfil" style="text-align:center; margin-top:6px;">
+          <button (click)="quitarFoto()"
+                  style="background:none; border:none; color:#DC2626; font-size:12px; font-weight:700; cursor:pointer;">
+            Quitar foto
+          </button>
         </div>
 
         <div class="perfil-body">

@@ -262,14 +262,11 @@
                    [style.borderLeftColor]="c.color" (click)="abrirTarjeta(c)">
                 <div class="kb-card-placeholder" *cdkDragPlaceholder></div>
                 <div class="kb-card-title">{{ c.titulo }}</div>
-                <div class="kb-card-foot" *ngIf="progresoSub(c).total > 0 || c.fechaLimite || c.asignado">
-                  <span class="kb-chip kb-chip-sub" *ngIf="progresoSub(c).total > 0"
-                        [class.kb-chip-done]="progresoSub(c).hechas === progresoSub(c).total">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                      <polyline points="20 6 9 17 4 12"></polyline>
-                    </svg>
-                    {{ progresoSub(c).hechas }}/{{ progresoSub(c).total }}
-                  </span>
+                <div class="kb-progress" *ngIf="progresoSub(c).total > 0">
+                  <div class="kb-progress-bar"><span [style.width.%]="progresoPct(c)" [class.full]="progresoPct(c) === 100"></span></div>
+                  <span class="kb-progress-txt">{{ progresoSub(c).hechas }}/{{ progresoSub(c).total }} fases · {{ progresoPct(c) }}%</span>
+                </div>
+                <div class="kb-card-foot" *ngIf="c.fechaLimite || c.asignado">
                   <span class="kb-chip" *ngIf="c.fechaLimite">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <circle cx="12" cy="12" r="10"></circle>
@@ -357,6 +354,10 @@
           <div class="gr-card" *ngFor="let g of equipos" (click)="abrirGrupo(g)" [style.borderTopColor]="g.color">
             <div class="gr-card-nombre">{{ g.nombre }}</div>
             <div class="gr-card-desc">{{ g.descripcion || 'Sin descripción' }}</div>
+            <div class="gr-progress" *ngIf="g.tareas.length > 0">
+              <div class="gr-progress-bar"><span [style.width.%]="progresoGrupo(g).pct" [style.background]="g.color"></span></div>
+              <span class="gr-progress-txt">{{ progresoGrupo(g).hechas }}/{{ progresoGrupo(g).total }} tareas · {{ progresoGrupo(g).pct }}%</span>
+            </div>
             <div class="gr-card-miembros">
               <span class="gr-avatar" *ngFor="let m of miembrosVisibles(g)" [title]="m" [style.background]="g.color">{{ inicial(m) }}</span>
               <span class="gr-avatar gr-avatar-extra" *ngIf="miembrosExtra(g) > 0">+{{ miembrosExtra(g) }}</span>
@@ -379,6 +380,10 @@
           <div class="gr-card" *ngFor="let g of proyectos" (click)="abrirGrupo(g)" [style.borderTopColor]="g.color">
             <div class="gr-card-nombre">{{ g.nombre }}</div>
             <div class="gr-card-desc">{{ g.descripcion || 'Sin descripción' }}</div>
+            <div class="gr-progress" *ngIf="g.tareas.length > 0">
+              <div class="gr-progress-bar"><span [style.width.%]="progresoGrupo(g).pct" [style.background]="g.color"></span></div>
+              <span class="gr-progress-txt">{{ progresoGrupo(g).hechas }}/{{ progresoGrupo(g).total }} tareas · {{ progresoGrupo(g).pct }}%</span>
+            </div>
             <div class="gr-card-miembros">
               <span class="gr-avatar" *ngFor="let m of miembrosVisibles(g)" [title]="m" [style.background]="g.color">{{ inicial(m) }}</span>
               <span class="gr-avatar gr-avatar-extra" *ngIf="miembrosExtra(g) > 0">+{{ miembrosExtra(g) }}</span>
@@ -522,11 +527,14 @@
       </div>
 
       <label class="tec-modal-label">
-        Checklist
+        Fases / pasos
         <span class="tec-sub-count" *ngIf="tarjeta.subtareas.length > 0">
-          {{ progresoSub(tarjeta).hechas }}/{{ progresoSub(tarjeta).total }}
+          {{ progresoSub(tarjeta).hechas }}/{{ progresoSub(tarjeta).total }} · {{ progresoPct(tarjeta) }}%
         </span>
       </label>
+      <div class="gr-progress" *ngIf="tarjeta.subtareas.length > 0" style="margin-bottom:10px;">
+        <div class="gr-progress-bar"><span [style.width.%]="progresoPct(tarjeta)" [style.background]="tarjeta.color"></span></div>
+      </div>
       <div class="tec-sub-list">
         <label class="tec-sub-item" *ngFor="let s of tarjeta.subtareas" [class.done]="s.hecha">
           <input type="checkbox" [checked]="s.hecha" (change)="toggleSubtareaModal(s)">
@@ -600,6 +608,28 @@
         <input class="tec-input" type="text" [(ngModel)]="nuevoMiembroTexto"
                placeholder="Agregar otro nombre (opcional)..." (keyup.enter)="agregarMiembro()">
         <button class="tec-btn-soft tec-btn-sm" (click)="agregarMiembro()">Agregar</button>
+      </div>
+
+      <label class="tec-modal-label">
+        Tareas {{ grupoModal.tipo === 'equipo' ? 'del equipo' : 'del proyecto' }}
+        <span class="tec-sub-count" *ngIf="grupoModal.tareas.length > 0">
+          {{ progresoGrupo(grupoModal).hechas }}/{{ progresoGrupo(grupoModal).total }} · {{ progresoGrupo(grupoModal).pct }}%
+        </span>
+      </label>
+      <div class="gr-progress" *ngIf="grupoModal.tareas.length > 0" style="margin-bottom:10px;">
+        <div class="gr-progress-bar"><span [style.width.%]="progresoGrupo(grupoModal).pct" [style.background]="grupoModal.color"></span></div>
+      </div>
+      <div class="tec-sub-list">
+        <label class="tec-sub-item" *ngFor="let t of grupoModal.tareas" [class.done]="t.hecha">
+          <input type="checkbox" [checked]="t.hecha" (change)="toggleTareaProyecto(t)">
+          <span class="tec-sub-texto">{{ t.texto }}</span>
+          <button class="tec-sub-del" (click)="eliminarTareaProyecto(t)" title="Quitar">×</button>
+        </label>
+      </div>
+      <div class="tec-sub-add">
+        <input class="tec-input" type="text" [(ngModel)]="nuevaTareaProyectoTexto"
+               placeholder="Agregar tarea del proyecto..." (keyup.enter)="agregarTareaProyecto()">
+        <button class="tec-btn-soft tec-btn-sm" (click)="agregarTareaProyecto()">Agregar</button>
       </div>
     </div>
 

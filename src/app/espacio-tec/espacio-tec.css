@@ -367,6 +367,18 @@
 .kb-avatar { margin-left: auto; width: 24px; height: 24px; border-radius: 50%; background: var(--primary-navy); color: #fff; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
 .kb-empty { font-size: 12px; color: #94A3B8; text-align: center; padding: 14px 6px; border: 1px dashed #CBD5E1; border-radius: 10px; }
 
+/* Barras de progreso (tarjetas del tablero + proyectos) */
+.kb-progress { margin-top: 10px; }
+.kb-progress-bar { height: 6px; background: #E2E8F0; border-radius: 20px; overflow: hidden; }
+.kb-progress-bar > span { display: block; height: 100%; background: #4F46E5; border-radius: 20px; transition: width .25s ease; }
+.kb-progress-bar > span.full { background: #10B981; }
+.kb-progress-txt { display: block; font-size: 10.5px; color: var(--text-muted); margin-top: 3px; font-weight: 700; }
+
+.gr-progress { margin-top: 10px; }
+.gr-progress-bar { height: 7px; background: #E2E8F0; border-radius: 20px; overflow: hidden; }
+.gr-progress-bar > span { display: block; height: 100%; border-radius: 20px; background: #4F46E5; transition: width .25s ease; }
+.gr-progress-txt { display: block; font-size: 11px; color: var(--text-muted); margin-top: 5px; font-weight: 700; }
+
 /* CDK drag-drop */
 .cdk-drag-preview { box-shadow: 0 8px 20px rgba(0,0,0,.18); border-radius: 10px; }
 .cdk-drag-placeholder { opacity: 0; }

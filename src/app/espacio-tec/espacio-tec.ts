@@ -153,7 +153,14 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
     const gruposRef = collection(this.firestore, 'tec_grupos');
     this.radarGrupos = onSnapshot(query(gruposRef), snap => {
       this.grupos = snap.docs
-        .map(d => ({ id: d.id, ...(d.data() as any), miembros: Array.isArray((d.data() as any).miembros) ? (d.data() as any).miembros : [] }))
+        .map(d => {
+          const data = d.data() as any;
+          return {
+            id: d.id, ...data,
+            miembros: Array.isArray(data.miembros) ? data.miembros : [],
+            tareas: Array.isArray(data.tareas) ? data.tareas : [],
+          };
+        })
         .sort((a, b) => Number(a.creadoEn || 0) - Number(b.creadoEn || 0));
     });
 
@@ -247,6 +254,11 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
     const total = (c.subtareas || []).length;
     const hechas = (c.subtareas || []).filter((s: Subtarea) => s.hecha).length;
     return { hechas, total };
+  }
+  /** Porcentaje de fases/pasos cumplidos de una tarjeta. */
+  progresoPct(c: any): number {
+    const { hechas, total } = this.progresoSub(c);
+    return total ? Math.round((hechas / total) * 100) : 0;
   }
 
   async agregarCard(colId: string) {
@@ -401,18 +413,39 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
   }
 
   // ===================== EQUIPOS / PROYECTOS =====================
+  nuevaTareaProyectoTexto = '';
+
   abrirNuevoGrupo(tipo: 'equipo' | 'proyecto') {
     this.grupoEsNuevo = true;
-    this.grupoModal = { tipo, nombre: '', descripcion: '', color: '#60A5FA', miembros: [] };
+    this.grupoModal = { tipo, nombre: '', descripcion: '', color: '#60A5FA', miembros: [], tareas: [] };
     this.nuevoMiembroTexto = '';
+    this.nuevaTareaProyectoTexto = '';
     this.isGrupoModalOpen = true;
   }
 
   abrirGrupo(g: any) {
     this.grupoEsNuevo = false;
-    this.grupoModal = { ...g, miembros: [...(g.miembros || [])] };
+    this.grupoModal = { ...g, miembros: [...(g.miembros || [])], tareas: (g.tareas || []).map((t: any) => ({ ...t })) };
     this.nuevoMiembroTexto = '';
+    this.nuevaTareaProyectoTexto = '';
     this.isGrupoModalOpen = true;
+  }
+
+  /** Tareas del proyecto/equipo abierto. */
+  agregarTareaProyecto() {
+    const t = this.nuevaTareaProyectoTexto.trim();
+    if (!t || !this.grupoModal) return;
+    this.grupoModal.tareas = [...(this.grupoModal.tareas || []), { id: 'pt_' + Date.now() + Math.random().toString(36).slice(2, 5), texto: t, hecha: false }];
+    this.nuevaTareaProyectoTexto = '';
+  }
+  toggleTareaProyecto(t: any) { t.hecha = !t.hecha; }
+  eliminarTareaProyecto(t: any) { if (this.grupoModal) this.grupoModal.tareas = this.grupoModal.tareas.filter((x: any) => x.id !== t.id); }
+
+  /** Avance de un grupo según sus tareas. */
+  progresoGrupo(g: any): { hechas: number; total: number; pct: number } {
+    const total = (g.tareas || []).length;
+    const hechas = (g.tareas || []).filter((t: any) => t.hecha).length;
+    return { hechas, total, pct: total ? Math.round((hechas / total) * 100) : 0 };
   }
 
   cerrarGrupo() { this.isGrupoModalOpen = false; this.grupoModal = null; }
@@ -452,6 +485,7 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
           descripcion: (this.grupoModal.descripcion || '').trim(),
           color: this.grupoModal.color || '#60A5FA',
           miembros: this.grupoModal.miembros || [],
+          tareas: this.grupoModal.tareas || [],
           creadoPor: this.miNombre(), creadoPorUid: this.miUid(),
           creadoEn: Date.now(), actualizadoEn: Date.now()
         });
@@ -461,6 +495,7 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
           descripcion: (this.grupoModal.descripcion || '').trim(),
           color: this.grupoModal.color || '#60A5FA',
           miembros: this.grupoModal.miembros || [],
+          tareas: this.grupoModal.tareas || [],
           actualizadoEn: Date.now()
         });
       }

@@ -35,6 +35,10 @@
           Conversaciones
           <span class="tec-badge tec-badge-soft" *ngIf="posts.length > 0">{{ posts.length }}</span>
         </button>
+        <button class="tec-tab" [class.active]="vista === 'equipos'" (click)="cambiarVista('equipos')">
+          Equipos y Proyectos
+          <span class="tec-badge tec-badge-soft" *ngIf="grupos.length > 0">{{ grupos.length }}</span>
+        </button>
         <button class="tec-tab" [class.active]="vista === 'notas'" (click)="cambiarVista('notas')">
           Ideas y Notas
           <span class="tec-badge tec-badge-soft" *ngIf="notas.length > 0">{{ notas.length }}</span>
@@ -157,6 +161,53 @@
         </div>
       </section>
 
+      <!-- ====================== EQUIPOS / PROYECTOS ====================== -->
+      <section *ngIf="vista === 'equipos'">
+        <!-- EQUIPOS -->
+        <div class="gr-section-head">
+          <h3 class="gr-section-title">Equipos</h3>
+          <button class="gr-new-btn" (click)="abrirNuevoGrupo('equipo')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg> Nuevo equipo
+          </button>
+        </div>
+        <div class="tec-empty" *ngIf="equipos.length === 0">Aún no hay equipos. Crea el primero.</div>
+        <div class="gr-grid">
+          <div class="gr-card" *ngFor="let g of equipos" (click)="abrirGrupo(g)" [style.borderTopColor]="g.color">
+            <div class="gr-card-nombre">{{ g.nombre }}</div>
+            <div class="gr-card-desc">{{ g.descripcion || 'Sin descripción' }}</div>
+            <div class="gr-card-miembros">
+              <span class="gr-avatar" *ngFor="let m of miembrosVisibles(g)" [title]="m" [style.background]="g.color">{{ inicial(m) }}</span>
+              <span class="gr-avatar gr-avatar-extra" *ngIf="miembrosExtra(g) > 0">+{{ miembrosExtra(g) }}</span>
+              <span class="gr-sin-miembros" *ngIf="g.miembros.length === 0">Sin miembros</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- PROYECTOS -->
+        <div class="gr-section-head" style="margin-top: 28px;">
+          <h3 class="gr-section-title">Proyectos</h3>
+          <button class="gr-new-btn" (click)="abrirNuevoGrupo('proyecto')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg> Nuevo proyecto
+          </button>
+        </div>
+        <div class="tec-empty" *ngIf="proyectos.length === 0">Aún no hay proyectos. Crea el primero.</div>
+        <div class="gr-grid">
+          <div class="gr-card" *ngFor="let g of proyectos" (click)="abrirGrupo(g)" [style.borderTopColor]="g.color">
+            <div class="gr-card-nombre">{{ g.nombre }}</div>
+            <div class="gr-card-desc">{{ g.descripcion || 'Sin descripción' }}</div>
+            <div class="gr-card-miembros">
+              <span class="gr-avatar" *ngFor="let m of miembrosVisibles(g)" [title]="m" [style.background]="g.color">{{ inicial(m) }}</span>
+              <span class="gr-avatar gr-avatar-extra" *ngIf="miembrosExtra(g) > 0">+{{ miembrosExtra(g) }}</span>
+              <span class="gr-sin-miembros" *ngIf="g.miembros.length === 0">Sin miembros</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <!-- ====================== IDEAS / NOTAS ====================== -->
       <section *ngIf="vista === 'notas'">
         <div class="tec-nota-form">
@@ -260,6 +311,51 @@
       <div style="display:flex; gap:10px;">
         <button class="tec-btn-soft" (click)="cerrarTarjeta()">Cancelar</button>
         <button class="tec-btn-primary" (click)="guardarTarjeta()">Guardar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ====================== MODAL: EQUIPO / PROYECTO ====================== -->
+<div class="tec-modal-overlay" *ngIf="isGrupoModalOpen && grupoModal" (click)="cerrarGrupo()">
+  <div class="tec-modal" (click)="$event.stopPropagation()">
+    <div class="tec-modal-top" [style.background]="grupoModal.color"></div>
+    <div class="tec-modal-body">
+      <label class="tec-modal-label">{{ grupoModal.tipo === 'equipo' ? 'Nombre del equipo' : 'Nombre del proyecto' }}</label>
+      <input class="tec-input" type="text" [(ngModel)]="grupoModal.nombre"
+             [placeholder]="grupoModal.tipo === 'equipo' ? 'Ej: Diseño' : 'Ej: Sitio web'">
+
+      <label class="tec-modal-label">Descripción</label>
+      <textarea class="tec-input tec-textarea" [(ngModel)]="grupoModal.descripcion" rows="2"
+                placeholder="¿De qué trata?"></textarea>
+
+      <label class="tec-modal-label">Color</label>
+      <div class="tec-color-row">
+        <button class="tec-color" *ngFor="let col of colores" [style.background]="col"
+                [class.sel]="grupoModal.color === col" (click)="elegirColorGrupo(col)"></button>
+      </div>
+
+      <label class="tec-modal-label">Miembros</label>
+      <div class="gr-miembros-list" *ngIf="grupoModal.miembros.length > 0">
+        <span class="gr-miembro-chip" *ngFor="let m of grupoModal.miembros">
+          <span class="gr-avatar gr-avatar-sm" [style.background]="grupoModal.color">{{ inicial(m) }}</span>
+          {{ m }}
+          <button class="gr-miembro-x" (click)="quitarMiembro(m)" title="Quitar">×</button>
+        </span>
+      </div>
+      <div class="tec-sub-add">
+        <input class="tec-input" type="text" [(ngModel)]="nuevoMiembroTexto"
+               placeholder="Nombre del miembro..." (keyup.enter)="agregarMiembro()">
+        <button class="tec-btn-soft tec-btn-sm" (click)="agregarMiembro()">Agregar</button>
+      </div>
+    </div>
+
+    <div class="tec-modal-foot">
+      <button class="tec-btn-del-text" *ngIf="!grupoEsNuevo" (click)="eliminarGrupo()">Eliminar</button>
+      <span *ngIf="grupoEsNuevo"></span>
+      <div style="display:flex; gap:10px;">
+        <button class="tec-btn-soft" (click)="cerrarGrupo()">Cancelar</button>
+        <button class="tec-btn-primary" (click)="guardarGrupo()">{{ grupoEsNuevo ? 'Crear' : 'Guardar' }}</button>
       </div>
     </div>
   </div>

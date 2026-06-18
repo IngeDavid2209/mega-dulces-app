@@ -95,6 +95,7 @@ service cloud.firestore {
     match /tec_tareas/{id}        { allow read, write: if autenticado(); }
     match /tec_notas/{id}         { allow read, write: if autenticado(); }
     match /tec_conversaciones/{id}{ allow read, write: if autenticado(); }
+    match /tec_grupos/{id}        { allow read, write: if autenticado(); }
 
     // --- TODO LO DEMÁS: DENEGADO ---
     match /{document=**} {

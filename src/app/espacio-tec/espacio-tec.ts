@@ -30,7 +30,7 @@ interface Subtarea { id: string; texto: string; hecha: boolean; }
 export class EspacioTecComponent implements OnInit, OnDestroy {
   currentUser: any = null;
   isMenuOpen = false;
-  vista: 'tablero' | 'conversaciones' | 'notas' = 'tablero';
+  vista: 'tablero' | 'conversaciones' | 'equipos' | 'notas' = 'tablero';
 
   // ---------------- Tablero Kanban ----------------
   readonly columnas = [
@@ -61,6 +61,14 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
   respuestaTexto: Record<string, string> = {};
   private radarPosts: (() => void) | null = null;
 
+  // ---------------- Equipos / Proyectos ----------------
+  grupos: any[] = [];
+  private radarGrupos: (() => void) | null = null;
+  isGrupoModalOpen = false;
+  grupoModal: any = null;        // copia editable
+  grupoEsNuevo = false;
+  nuevoMiembroTexto = '';
+
   // ---------------- Ideas / Notas ----------------
   notas: any[] = [];
   nuevaNotaTitulo = '';
@@ -86,6 +94,7 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
     if (this.radarTareas) { this.radarTareas(); this.radarTareas = null; }
     if (this.radarNotas) { this.radarNotas(); this.radarNotas = null; }
     if (this.radarPosts) { this.radarPosts(); this.radarPosts = null; }
+    if (this.radarGrupos) { this.radarGrupos(); this.radarGrupos = null; }
   }
 
   private miUid(): string { return this.currentUser?.uid || this.currentUser?.id || ''; }
@@ -117,7 +126,17 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
         .map(d => ({ id: d.id, ...(d.data() as any), respuestas: Array.isArray((d.data() as any).respuestas) ? (d.data() as any).respuestas : [] }))
         .sort((a, b) => Number(b.creadoEn || 0) - Number(a.creadoEn || 0));
     });
+
+    const gruposRef = collection(this.firestore, 'tec_grupos');
+    this.radarGrupos = onSnapshot(query(gruposRef), snap => {
+      this.grupos = snap.docs
+        .map(d => ({ id: d.id, ...(d.data() as any), miembros: Array.isArray((d.data() as any).miembros) ? (d.data() as any).miembros : [] }))
+        .sort((a, b) => Number(a.creadoEn || 0) - Number(b.creadoEn || 0));
+    });
   }
+
+  get equipos() { return this.grupos.filter(g => g.tipo === 'equipo'); }
+  get proyectos() { return this.grupos.filter(g => g.tipo === 'proyecto'); }
 
   /** Tolera tarjetas viejas (modelo simple texto/completada). */
   private normalizar(c: any): any {
@@ -131,7 +150,7 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
     };
   }
 
-  cambiarVista(v: 'tablero' | 'conversaciones' | 'notas') { this.vista = v; }
+  cambiarVista(v: 'tablero' | 'conversaciones' | 'equipos' | 'notas') { this.vista = v; }
 
   // ===================== KANBAN =====================
   nombreColumna(id: string): string { return this.columnas.find(c => c.id === id)?.nombre || id; }
@@ -292,6 +311,81 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
     try { await updateDoc(doc(this.firestore, 'tec_conversaciones', p.id), { respuestas }); }
     catch (e) { console.error('[tec] eliminarRespuesta', e); }
   }
+
+  // ===================== EQUIPOS / PROYECTOS =====================
+  abrirNuevoGrupo(tipo: 'equipo' | 'proyecto') {
+    this.grupoEsNuevo = true;
+    this.grupoModal = { tipo, nombre: '', descripcion: '', color: '#60A5FA', miembros: [] };
+    this.nuevoMiembroTexto = '';
+    this.isGrupoModalOpen = true;
+  }
+
+  abrirGrupo(g: any) {
+    this.grupoEsNuevo = false;
+    this.grupoModal = { ...g, miembros: [...(g.miembros || [])] };
+    this.nuevoMiembroTexto = '';
+    this.isGrupoModalOpen = true;
+  }
+
+  cerrarGrupo() { this.isGrupoModalOpen = false; this.grupoModal = null; }
+
+  elegirColorGrupo(color: string) { if (this.grupoModal) this.grupoModal.color = color; }
+
+  agregarMiembro() {
+    const m = this.nuevoMiembroTexto.trim();
+    if (!m || !this.grupoModal) return;
+    if (!this.grupoModal.miembros.includes(m)) this.grupoModal.miembros = [...this.grupoModal.miembros, m];
+    this.nuevoMiembroTexto = '';
+  }
+  quitarMiembro(m: string) {
+    if (!this.grupoModal) return;
+    this.grupoModal.miembros = this.grupoModal.miembros.filter((x: string) => x !== m);
+  }
+
+  async guardarGrupo() {
+    if (!this.grupoModal) return;
+    const nombre = (this.grupoModal.nombre || '').trim();
+    if (!nombre) { Swal.fire({ icon: 'info', title: 'Ponle un nombre', confirmButtonColor: '#0F172A' }); return; }
+    try {
+      if (this.grupoEsNuevo) {
+        await addDoc(collection(this.firestore, 'tec_grupos'), {
+          tipo: this.grupoModal.tipo, nombre,
+          descripcion: (this.grupoModal.descripcion || '').trim(),
+          color: this.grupoModal.color || '#60A5FA',
+          miembros: this.grupoModal.miembros || [],
+          creadoPor: this.miNombre(), creadoPorUid: this.miUid(),
+          creadoEn: Date.now(), actualizadoEn: Date.now()
+        });
+      } else {
+        await updateDoc(doc(this.firestore, 'tec_grupos', this.grupoModal.id), {
+          nombre,
+          descripcion: (this.grupoModal.descripcion || '').trim(),
+          color: this.grupoModal.color || '#60A5FA',
+          miembros: this.grupoModal.miembros || [],
+          actualizadoEn: Date.now()
+        });
+      }
+      this.cerrarGrupo();
+    } catch (e) {
+      console.error('[tec] guardarGrupo', e);
+      Swal.fire({ icon: 'error', title: 'No se pudo guardar', confirmButtonColor: '#0F172A' });
+    }
+  }
+
+  async eliminarGrupo() {
+    if (!this.grupoModal || this.grupoEsNuevo) return;
+    const r = await Swal.fire({
+      title: 'Eliminar', text: `¿Eliminar "${this.grupoModal.nombre}"?`, icon: 'warning',
+      showCancelButton: true, confirmButtonText: 'Sí, eliminar', cancelButtonText: 'Cancelar', confirmButtonColor: '#DC2626'
+    });
+    if (!r.isConfirmed) return;
+    try { await deleteDoc(doc(this.firestore, 'tec_grupos', this.grupoModal.id)); this.cerrarGrupo(); }
+    catch (e) { console.error('[tec] eliminarGrupo', e); }
+  }
+
+  /** Primeros N miembros para mostrar avatares; el resto como "+N". */
+  miembrosVisibles(g: any, max = 5): string[] { return (g.miembros || []).slice(0, max); }
+  miembrosExtra(g: any, max = 5): number { return Math.max(0, (g.miembros || []).length - max); }
 
   // ===================== NOTAS / IDEAS =====================
   async agregarNota() {

@@ -351,3 +351,44 @@
 @media (max-width: 600px) {
   .cv-composer, .cv-feed { max-width: 100%; }
 }
+
+/* ======================================================= */
+/* 6. EQUIPOS / PROYECTOS                                  */
+/* ======================================================= */
+.gr-section-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.gr-section-title { font-size: 16px; font-weight: 800; color: var(--primary-navy); margin: 0; }
+.gr-new-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: #fff; border: 1px solid var(--border); color: var(--tec-blue);
+  font-size: 13px; font-weight: 700; padding: 8px 14px; border-radius: 9px; cursor: pointer;
+}
+.gr-new-btn:hover { background: #EFF6FF; }
+
+.gr-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
+.gr-card {
+  background: #fff; border: 1px solid var(--border); border-top: 4px solid #60A5FA;
+  border-radius: 12px; padding: 16px; cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0,0,0,.04);
+}
+.gr-card:hover { box-shadow: 0 6px 16px rgba(0,0,0,.09); transform: translateY(-2px); transition: all .15s ease; }
+.gr-card-nombre { font-size: 16px; font-weight: 800; color: var(--primary-navy); word-break: break-word; }
+.gr-card-desc { font-size: 13px; color: var(--text-muted); margin-top: 6px; min-height: 34px; word-break: break-word; }
+.gr-card-miembros { display: flex; align-items: center; margin-top: 12px; }
+.gr-avatar {
+  width: 30px; height: 30px; border-radius: 50%; background: #60A5FA; color: #fff;
+  font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center;
+  border: 2px solid #fff; margin-left: -8px;
+}
+.gr-avatar:first-child { margin-left: 0; }
+.gr-avatar-extra { background: #CBD5E1; color: var(--primary-navy); }
+.gr-avatar-sm { width: 24px; height: 24px; font-size: 11px; border: none; margin-left: 0; }
+.gr-sin-miembros { font-size: 12px; color: #94A3B8; }
+
+.gr-miembros-list { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+.gr-miembro-chip { display: inline-flex; align-items: center; gap: 6px; background: #F1F5F9; border: 1px solid var(--border); border-radius: 20px; padding: 3px 10px 3px 3px; font-size: 13px; color: var(--text-main); }
+.gr-miembro-x { background: transparent; border: none; color: #94A3B8; font-size: 16px; line-height: 1; cursor: pointer; padding: 0 2px; }
+.gr-miembro-x:hover { color: #DC2626; }
+
+@media (max-width: 600px) {
+  .gr-grid { grid-template-columns: 1fr; }
+}

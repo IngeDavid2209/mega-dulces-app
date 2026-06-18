@@ -35,10 +35,10 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
 
   // ---------------- Tablero Kanban ----------------
   readonly columnas = [
-    { id: 'porhacer', nombre: 'Por hacer' },
-    { id: 'hoy',      nombre: 'Para hoy' },
-    { id: 'progreso', nombre: 'En progreso' },
-    { id: 'hecho',    nombre: 'Hecho' },
+    { id: 'porhacer', nombre: 'Por hacer',   color: '#8B5CF6' },
+    { id: 'hoy',      nombre: 'Para hoy',    color: '#3B82F6' },
+    { id: 'progreso', nombre: 'En progreso', color: '#F59E0B' },
+    { id: 'hecho',    nombre: 'Hecho',       color: '#10B981' },
   ];
   readonly colores = ['#A78BFA', '#34D399', '#FCD34D', '#F472B6', '#60A5FA', '#FB923C', '#E2E8F0'];
   readonly idsColumnas = this.columnas.map(c => c.id);

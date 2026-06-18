@@ -23,41 +23,69 @@
     <app-sidebar [currentUser]="currentUser" [isMenuOpen]="isMenuOpen" (closeMenu)="isMenuOpen = false"></app-sidebar>
 
     <div class="content">
-      <div class="section-header" style="margin-bottom: 18px;">
-        <h2 class="section-title">Espacio TEC</h2>
-        <p class="section-sub">Tablero colaborativo del equipo e ideas/notas compartidas.</p>
+      <!-- Hero -->
+      <div class="tec-hero">
+        <div class="tec-hero-icon">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 10v6M2 10l10-5 10 5-10 5z"></path>
+            <path d="M6 12v5c3 3 9 3 12 0v-5"></path>
+          </svg>
+        </div>
+        <div>
+          <h2 class="tec-hero-title">Espacio TEC</h2>
+          <p class="tec-hero-sub">Tablero, conversaciones, equipos e ideas del equipo del TEC.</p>
+        </div>
       </div>
 
       <!-- Tabs -->
       <div class="tec-tabs">
-        <button class="tec-tab" [class.active]="vista === 'tablero'" (click)="cambiarVista('tablero')">Tablero</button>
+        <button class="tec-tab" [class.active]="vista === 'tablero'" (click)="cambiarVista('tablero')">
+          <svg class="tec-tab-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="7" height="18" rx="1.5"></rect><rect x="14" y="3" width="7" height="11" rx="1.5"></rect>
+          </svg>
+          Tablero
+        </button>
         <button class="tec-tab" [class.active]="vista === 'conversaciones'" (click)="cambiarVista('conversaciones')">
+          <svg class="tec-tab-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+          </svg>
           Conversaciones
-          <span class="tec-badge tec-badge-soft" *ngIf="posts.length > 0">{{ posts.length }}</span>
+          <span class="tec-tab-badge" *ngIf="posts.length > 0">{{ posts.length }}</span>
         </button>
         <button class="tec-tab" [class.active]="vista === 'equipos'" (click)="cambiarVista('equipos')">
+          <svg class="tec-tab-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"></path>
+          </svg>
           Equipos y Proyectos
-          <span class="tec-badge tec-badge-soft" *ngIf="grupos.length > 0">{{ grupos.length }}</span>
+          <span class="tec-tab-badge" *ngIf="grupos.length > 0">{{ grupos.length }}</span>
         </button>
         <button class="tec-tab" [class.active]="vista === 'asignar'" (click)="cambiarVista('asignar')">
+          <svg class="tec-tab-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+          </svg>
           Asignar a Personal
         </button>
         <button class="tec-tab" [class.active]="vista === 'notas'" (click)="cambiarVista('notas')">
+          <svg class="tec-tab-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline>
+          </svg>
           Ideas y Notas
-          <span class="tec-badge tec-badge-soft" *ngIf="notas.length > 0">{{ notas.length }}</span>
+          <span class="tec-tab-badge" *ngIf="notas.length > 0">{{ notas.length }}</span>
         </button>
       </div>
 
       <!-- ====================== TABLERO KANBAN ====================== -->
       <section *ngIf="vista === 'tablero'">
         <div class="kb-board">
-          <div class="kb-col" *ngFor="let col of columnas">
+          <div class="kb-col" *ngFor="let col of columnas" [style.borderTopColor]="col.color">
             <div class="kb-col-head">
               <div class="kb-col-title">
+                <span class="kb-col-dot" [style.background]="col.color"></span>
                 {{ col.nombre }}
-                <span class="kb-col-count">{{ tablero[col.id].length }}</span>
+                <span class="kb-col-count" [style.color]="col.color" [style.background]="col.color + '22'">{{ tablero[col.id].length }}</span>
               </div>
-              <button class="kb-add-btn" title="Agregar tarjeta"
+              <button class="kb-add-btn" title="Agregar tarjeta" [style.color]="col.color"
                       (click)="agregandoEnColumna = (agregandoEnColumna === col.id ? null : col.id); nuevoCardTexto = '';">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                   <line x1="12" y1="5" x2="12" y2="19"></line>

@@ -69,27 +69,57 @@
 /* 2. CONTENIDO DEL ESPACIO TEC                            */
 /* ======================================================= */
 
-/* Tabs */
-.tec-tabs { display: flex; gap: 8px; margin-bottom: 20px; }
+/* Hero */
+.tec-hero {
+  display: flex; align-items: center; gap: 16px;
+  background: linear-gradient(120deg, #4F46E5 0%, #2563EB 55%, #0EA5E9 100%);
+  color: #fff;
+  border-radius: 18px;
+  padding: 20px 24px;
+  margin-bottom: 18px;
+  box-shadow: 0 10px 26px rgba(37, 99, 235, .28);
+}
+.tec-hero-icon {
+  width: 52px; height: 52px; flex-shrink: 0;
+  background: rgba(255,255,255,.18);
+  border-radius: 14px;
+  display: flex; align-items: center; justify-content: center;
+}
+.tec-hero-title { margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -.4px; }
+.tec-hero-sub { margin: 3px 0 0; font-size: 13.5px; color: rgba(255,255,255,.85); }
+
+/* Tabs (pills con icono) */
+.tec-tabs { display: flex; gap: 8px; margin-bottom: 22px; overflow-x: auto; padding-bottom: 4px; }
 .tec-tab {
+  flex-shrink: 0;
   background: #fff;
   border: 1px solid var(--border);
   color: var(--text-muted);
-  padding: 10px 18px;
-  border-radius: 10px;
-  font-size: 14px;
-  font-weight: 600;
+  padding: 9px 15px;
+  border-radius: 999px;
+  font-size: 13.5px;
+  font-weight: 700;
   cursor: pointer;
-  display: flex; align-items: center; gap: 8px;
+  display: inline-flex; align-items: center; gap: 7px;
+  white-space: nowrap;
+  transition: all .15s ease;
 }
+.tec-tab:hover { border-color: #C7D2FE; color: var(--primary-navy); }
+.tec-tab-ic { width: 16px; height: 16px; }
 .tec-tab.active {
-  background: var(--primary-navy);
-  border-color: var(--primary-navy);
+  background: linear-gradient(120deg, #4F46E5, #2563EB);
+  border-color: transparent;
   color: #fff;
+  box-shadow: 0 6px 14px rgba(37, 99, 235, .3);
 }
+.tec-tab-badge {
+  background: #EEF2FF; color: #4F46E5; font-size: 11px; font-weight: 800;
+  padding: 1px 8px; border-radius: 20px;
+}
+.tec-tab.active .tec-tab-badge { background: rgba(255,255,255,.28); color: #fff; }
+/* compat: badge de "Ideas y Notas" en su forma vieja si quedara */
 .tec-badge { background: var(--tec-blue); color: #fff; font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 20px; }
-.tec-badge-soft { background: #CBD5E1; color: var(--primary-navy); }
-.tec-tab.active .tec-badge-soft { background: rgba(255,255,255,.25); color: #fff; }
+.tec-badge-soft { background: #EEF2FF; color: #4F46E5; }
 
 /* Inputs */
 .tec-input {
@@ -107,17 +137,19 @@
 .tec-textarea { resize: vertical; }
 
 .tec-btn-primary {
-  background: var(--tec-blue);
+  background: linear-gradient(120deg, #4F46E5, #2563EB);
   color: #fff;
   border: none;
-  border-radius: 9px;
+  border-radius: 10px;
   padding: 11px 18px;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
   white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(37,99,235,.25);
 }
-.tec-btn-primary:hover { background: #1E40AF; }
+.tec-btn-primary:hover { filter: brightness(1.06); }
+.tec-btn-primary:disabled { opacity: .6; cursor: default; box-shadow: none; }
 .tec-btn-soft {
   background: #fff;
   color: var(--text-muted);
@@ -227,21 +259,23 @@
   padding-bottom: 12px;
 }
 .kb-col {
-  flex: 0 0 280px;
-  width: 280px;
-  background: #EEF2F7;
+  flex: 0 0 286px;
+  width: 286px;
+  background: #F4F6FB;
   border: 1px solid var(--border);
+  border-top: 4px solid #94A3B8;
   border-radius: 14px;
   padding: 12px;
-  max-height: calc(100vh - 240px);
+  max-height: calc(100vh - 250px);
   display: flex;
   flex-direction: column;
 }
-.kb-col-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.kb-col-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
 .kb-col-title { font-size: 14px; font-weight: 800; color: var(--primary-navy); display: flex; align-items: center; gap: 8px; }
-.kb-col-count { background: #CBD5E1; color: var(--primary-navy); font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 20px; }
-.kb-add-btn { background: transparent; border: none; color: #10B981; cursor: pointer; border-radius: 8px; padding: 4px; display: flex; }
-.kb-add-btn:hover { background: #D1FAE5; }
+.kb-col-dot { width: 9px; height: 9px; border-radius: 50%; background: #94A3B8; flex-shrink: 0; }
+.kb-col-count { font-size: 11px; font-weight: 800; padding: 1px 9px; border-radius: 20px; background: #E2E8F0; color: var(--primary-navy); }
+.kb-add-btn { background: transparent; border: none; color: #64748B; cursor: pointer; border-radius: 8px; padding: 4px; display: flex; }
+.kb-add-btn:hover { background: #E2E8F0; }
 
 .kb-quickadd { background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 10px; margin-bottom: 10px; }
 .kb-quickadd-input { width: 100%; box-sizing: border-box; border: 1px solid var(--border); border-radius: 8px; padding: 9px 11px; font-size: 13.5px; font-family: inherit; }
@@ -396,9 +430,9 @@
 /* ======================================================= */
 /* 7. ASIGNAR A PERSONAL                                   */
 /* ======================================================= */
-.as-wrap { display: grid; grid-template-columns: 340px 1fr; gap: 20px; align-items: start; max-width: 900px; }
-.as-form { background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 18px; }
-.as-empleados { background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 18px; }
+.as-wrap { display: grid; grid-template-columns: 360px 1fr; gap: 20px; align-items: start; max-width: 960px; }
+.as-form { background: #fff; border: 1px solid var(--border); border-top: 4px solid #4F46E5; border-radius: 16px; padding: 20px; box-shadow: 0 6px 18px rgba(15,23,42,.05); position: sticky; top: 8px; }
+.as-empleados { background: #fff; border: 1px solid var(--border); border-top: 4px solid #0EA5E9; border-radius: 16px; padding: 20px; box-shadow: 0 6px 18px rgba(15,23,42,.05); }
 .as-empleados-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; font-size: 14px; color: var(--text-main); }
 .as-lista { display: flex; flex-direction: column; gap: 8px; max-height: 520px; overflow-y: auto; }
 .as-emp { display: flex; align-items: center; gap: 10px; padding: 9px 11px; border: 1px solid var(--border); border-radius: 10px; cursor: pointer; }

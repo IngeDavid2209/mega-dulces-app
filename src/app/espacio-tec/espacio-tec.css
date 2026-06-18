@@ -392,3 +392,24 @@
 @media (max-width: 600px) {
   .gr-grid { grid-template-columns: 1fr; }
 }
+
+/* ======================================================= */
+/* 7. ASIGNAR A PERSONAL                                   */
+/* ======================================================= */
+.as-wrap { display: grid; grid-template-columns: 340px 1fr; gap: 20px; align-items: start; max-width: 900px; }
+.as-form { background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 18px; }
+.as-empleados { background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 18px; }
+.as-empleados-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; font-size: 14px; color: var(--text-main); }
+.as-lista { display: flex; flex-direction: column; gap: 8px; max-height: 520px; overflow-y: auto; }
+.as-emp { display: flex; align-items: center; gap: 10px; padding: 9px 11px; border: 1px solid var(--border); border-radius: 10px; cursor: pointer; }
+.as-emp:hover { background: #F8FAFC; }
+.as-emp.sel { border-color: var(--tec-blue); background: #EFF6FF; }
+.as-emp input[type=checkbox] { width: 17px; height: 17px; flex-shrink: 0; }
+.as-emp-info { display: flex; flex-direction: column; line-height: 1.25; }
+.as-emp-nombre { font-size: 14px; font-weight: 600; color: var(--text-main); }
+.as-emp-cargo { font-size: 11.5px; color: var(--text-muted); }
+.as-sel-count { margin-top: 12px; font-size: 13px; font-weight: 700; color: var(--tec-blue); }
+
+@media (max-width: 760px) {
+  .as-wrap { grid-template-columns: 1fr; }
+}

@@ -3,10 +3,11 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, Router } from '@angular/router';
 import { DragDropModule, CdkDragDrop, moveItemInArray, transferArrayItem } from '@angular/cdk/drag-drop';
-import { Firestore, collection, query, onSnapshot, addDoc, doc, updateDoc, deleteDoc } from '@angular/fire/firestore';
+import { Firestore, collection, query, onSnapshot, addDoc, doc, setDoc, updateDoc, deleteDoc } from '@angular/fire/firestore';
 import Swal from 'sweetalert2';
 
 import { SidebarComponent } from '../shared/sidebar/sidebar';
+import { normalizarNombre } from '../shared/permisos.util';
 
 interface Subtarea { id: string; texto: string; hecha: boolean; }
 
@@ -30,7 +31,7 @@ interface Subtarea { id: string; texto: string; hecha: boolean; }
 export class EspacioTecComponent implements OnInit, OnDestroy {
   currentUser: any = null;
   isMenuOpen = false;
-  vista: 'tablero' | 'conversaciones' | 'equipos' | 'notas' = 'tablero';
+  vista: 'tablero' | 'conversaciones' | 'equipos' | 'asignar' | 'notas' = 'tablero';
 
   // ---------------- Tablero Kanban ----------------
   readonly columnas = [
@@ -69,6 +70,21 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
   grupoEsNuevo = false;
   nuevoMiembroTexto = '';
 
+  // ---------------- Asignar a Personal (sucursales) ----------------
+  readonly sucursales = [
+    'Canindo', 'La Piedad Abastos', '8 Esquinas', 'Padre Hidalgo',
+    'Morelia Madero', 'Morelia Abastos', 'Yurécuaro', 'Zamora Centro',
+    'OFICINAS CORPORATIVAS', 'CAJA GENERAL', 'COMPRAS', 'CONTABILIDAD',
+    'FINANZAS', 'SISTEMAS', 'RH', 'MKT', 'MANTENIMIENTO'
+  ];
+  usuariosEmpresa: any[] = [];
+  private radarUsuarios: (() => void) | null = null;
+  sucursalSel = '';
+  empleadosSel: string[] = [];
+  tareaAsignarTexto = '';
+  tareaAsignarHora = '';
+  asignando = false;
+
   // ---------------- Ideas / Notas ----------------
   notas: any[] = [];
   nuevaNotaTitulo = '';
@@ -95,6 +111,7 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
     if (this.radarNotas) { this.radarNotas(); this.radarNotas = null; }
     if (this.radarPosts) { this.radarPosts(); this.radarPosts = null; }
     if (this.radarGrupos) { this.radarGrupos(); this.radarGrupos = null; }
+    if (this.radarUsuarios) { this.radarUsuarios(); this.radarUsuarios = null; }
   }
 
   private miUid(): string { return this.currentUser?.uid || this.currentUser?.id || ''; }
@@ -133,6 +150,14 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
         .map(d => ({ id: d.id, ...(d.data() as any), miembros: Array.isArray((d.data() as any).miembros) ? (d.data() as any).miembros : [] }))
         .sort((a, b) => Number(a.creadoEn || 0) - Number(b.creadoEn || 0));
     });
+
+    // Personal de la empresa (para asignar tareas por sucursal).
+    const usuariosRef = collection(this.firestore, 'usuarios');
+    this.radarUsuarios = onSnapshot(query(usuariosRef), snap => {
+      this.usuariosEmpresa = snap.docs
+        .map(d => ({ id: d.id, ...(d.data() as any) }))
+        .filter(u => u.rol === 'trabajador' && !u.grupoTec);
+    });
   }
 
   get equipos() { return this.grupos.filter(g => g.tipo === 'equipo'); }
@@ -150,7 +175,7 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
     };
   }
 
-  cambiarVista(v: 'tablero' | 'conversaciones' | 'equipos' | 'notas') { this.vista = v; }
+  cambiarVista(v: 'tablero' | 'conversaciones' | 'equipos' | 'asignar' | 'notas') { this.vista = v; }
 
   // ===================== KANBAN =====================
   nombreColumna(id: string): string { return this.columnas.find(c => c.id === id)?.nombre || id; }
@@ -386,6 +411,79 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
   /** Primeros N miembros para mostrar avatares; el resto como "+N". */
   miembrosVisibles(g: any, max = 5): string[] { return (g.miembros || []).slice(0, max); }
   miembrosExtra(g: any, max = 5): number { return Math.max(0, (g.miembros || []).length - max); }
+
+  // ===================== ASIGNAR A PERSONAL (sucursales) =====================
+  /** Empleados de la empresa que pertenecen a la sucursal seleccionada. */
+  get empleadosDeSucursal(): any[] {
+    if (!this.sucursalSel) return [];
+    const objetivo = normalizarNombre(this.sucursalSel);
+    const comodin = normalizarNombre('General (Acceso Total)');
+    return this.usuariosEmpresa
+      .filter(u => {
+        const sucs: string[] = (u.sucursales && u.sucursales.length) ? u.sucursales : (u.sucursal ? [u.sucursal] : []);
+        return sucs.some(s => { const n = normalizarNombre(s); return n === objetivo || n === comodin; });
+      })
+      .sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''));
+  }
+
+  cambiarSucursalAsignar(suc: string) { this.sucursalSel = suc; this.empleadosSel = []; }
+
+  toggleEmpleadoSel(nombre: string) {
+    const i = this.empleadosSel.indexOf(nombre);
+    if (i > -1) this.empleadosSel.splice(i, 1); else this.empleadosSel.push(nombre);
+  }
+  estaSeleccionado(nombre: string): boolean { return this.empleadosSel.includes(nombre); }
+
+  seleccionarTodosEmpleados() {
+    const todos = this.empleadosDeSucursal.map(e => e.nombre);
+    this.empleadosSel = this.empleadosSel.length === todos.length ? [] : [...todos];
+  }
+
+  private hoyISO(): string {
+    const d = new Date();
+    const off = d.getTimezoneOffset() * 60000;
+    return new Date(d.getTime() - off).toISOString().split('T')[0];
+  }
+
+  /** Crea una tarea (checklist) para cada empleado seleccionado; aparece en su Checklist normal. */
+  async asignarTareaSucursal() {
+    const texto = this.tareaAsignarTexto.trim();
+    if (!this.sucursalSel) { Swal.fire({ icon: 'info', title: 'Elige una sucursal', confirmButtonColor: '#0F172A' }); return; }
+    if (!texto) { Swal.fire({ icon: 'info', title: 'Escribe la tarea', confirmButtonColor: '#0F172A' }); return; }
+    if (this.empleadosSel.length === 0) { Swal.fire({ icon: 'info', title: 'Selecciona al menos un empleado', confirmButtonColor: '#0F172A' }); return; }
+
+    this.asignando = true;
+    const hoy = this.hoyISO();
+    try {
+      await Promise.all(this.empleadosSel.map((nombre, i) => {
+        const id = `tec_${normalizarNombre(nombre).replace(/\s+/g, '_')}_${Date.now()}_${i}`;
+        const checklist: any = {
+          id, timestampCreacion: Date.now(),
+          name: texto, assigned: nombre, store: this.sucursalSel, date: hoy,
+          time: this.tareaAsignarHora || '23:59',
+          status: 'pendiente', enviado: false,
+          createdBy: this.miNombre(), origenTec: true, notaEmpleado: '',
+          items: [{
+            id: Date.now() + i, text: texto,
+            requiresPhoto: false, requiresAntesDespues: false, requiresVariasFotos: false,
+            permiteGaleria: false, permiteDocumentos: false, checked: false,
+            photo: null, photoTime: null, photoAntes: null, photoAntesTime: null,
+            photoAntesTimestamp: null, photoDespues: null, photoDespuesTime: null, photos: [],
+            tipo: 'manual', horaInicio: null, horaLimite: this.tareaAsignarHora || null, frecuencia: null
+          }]
+        };
+        return setDoc(doc(this.firestore, 'checklists', id), checklist);
+      }));
+      const n = this.empleadosSel.length;
+      this.tareaAsignarTexto = ''; this.tareaAsignarHora = ''; this.empleadosSel = [];
+      Swal.fire({ icon: 'success', title: 'Tarea asignada', text: `Se asignó a ${n} ${n === 1 ? 'persona' : 'personas'} de ${this.sucursalSel}.`, confirmButtonColor: '#0F172A' });
+    } catch (e) {
+      console.error('[tec] asignarTareaSucursal', e);
+      Swal.fire({ icon: 'error', title: 'No se pudo asignar', confirmButtonColor: '#0F172A' });
+    } finally {
+      this.asignando = false;
+    }
+  }
 
   // ===================== NOTAS / IDEAS =====================
   async agregarNota() {

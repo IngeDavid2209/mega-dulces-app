@@ -39,6 +39,9 @@
           Equipos y Proyectos
           <span class="tec-badge tec-badge-soft" *ngIf="grupos.length > 0">{{ grupos.length }}</span>
         </button>
+        <button class="tec-tab" [class.active]="vista === 'asignar'" (click)="cambiarVista('asignar')">
+          Asignar a Personal
+        </button>
         <button class="tec-tab" [class.active]="vista === 'notas'" (click)="cambiarVista('notas')">
           Ideas y Notas
           <span class="tec-badge tec-badge-soft" *ngIf="notas.length > 0">{{ notas.length }}</span>
@@ -203,6 +206,61 @@
               <span class="gr-avatar" *ngFor="let m of miembrosVisibles(g)" [title]="m" [style.background]="g.color">{{ inicial(m) }}</span>
               <span class="gr-avatar gr-avatar-extra" *ngIf="miembrosExtra(g) > 0">+{{ miembrosExtra(g) }}</span>
               <span class="gr-sin-miembros" *ngIf="g.miembros.length === 0">Sin miembros</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ====================== ASIGNAR A PERSONAL ====================== -->
+      <section *ngIf="vista === 'asignar'">
+        <div class="as-wrap">
+          <div class="as-form">
+            <label class="tec-modal-label" style="margin-top:0;">Sucursal / Departamento</label>
+            <select class="tec-input" [ngModel]="sucursalSel" (ngModelChange)="cambiarSucursalAsignar($event)">
+              <option value="">— Elige una sucursal —</option>
+              <option *ngFor="let s of sucursales" [value]="s">{{ s }}</option>
+            </select>
+
+            <label class="tec-modal-label">Tarea</label>
+            <input class="tec-input" type="text" [(ngModel)]="tareaAsignarTexto"
+                   placeholder="Ej: Revisar inventario de bodega">
+
+            <label class="tec-modal-label">Hora límite (opcional)</label>
+            <input class="tec-input" type="time" [(ngModel)]="tareaAsignarHora">
+
+            <button class="tec-btn-primary" style="margin-top:16px; width:100%;"
+                    [disabled]="asignando" (click)="asignarTareaSucursal()">
+              {{ asignando ? 'Asignando...' : 'Asignar tarea' }}
+            </button>
+          </div>
+
+          <div class="as-empleados">
+            <div class="as-empleados-head" *ngIf="sucursalSel">
+              <span>Personal de <strong>{{ sucursalSel }}</strong> ({{ empleadosDeSucursal.length }})</span>
+              <button class="tec-btn-soft tec-btn-sm" *ngIf="empleadosDeSucursal.length > 0"
+                      (click)="seleccionarTodosEmpleados()">
+                {{ empleadosSel.length === empleadosDeSucursal.length ? 'Quitar todos' : 'Seleccionar todos' }}
+              </button>
+            </div>
+
+            <div class="tec-empty" *ngIf="!sucursalSel">Elige una sucursal para ver a su personal.</div>
+            <div class="tec-empty" *ngIf="sucursalSel && empleadosDeSucursal.length === 0">
+              No hay personal registrado en esta sucursal.
+            </div>
+
+            <div class="as-lista" *ngIf="sucursalSel && empleadosDeSucursal.length > 0">
+              <label class="as-emp" *ngFor="let e of empleadosDeSucursal" [class.sel]="estaSeleccionado(e.nombre)">
+                <input type="checkbox" [checked]="estaSeleccionado(e.nombre)" (change)="toggleEmpleadoSel(e.nombre)">
+                <span class="gr-avatar gr-avatar-sm" style="background:#0F172A;">{{ inicial(e.nombre) }}</span>
+                <span class="as-emp-info">
+                  <span class="as-emp-nombre">{{ e.nombre }}</span>
+                  <span class="as-emp-cargo">{{ e.cargo || 'Colaborador' }}</span>
+                </span>
+              </label>
+            </div>
+
+            <div class="as-sel-count" *ngIf="empleadosSel.length > 0">
+              {{ empleadosSel.length }} seleccionado(s)
             </div>
           </div>
         </div>

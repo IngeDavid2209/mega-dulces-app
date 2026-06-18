@@ -44,6 +44,12 @@ service cloud.firestore {
     match /usuarios/{id} {
       allow read: if autenticado();
       allow create, update, delete: if esAdmin();
+
+      // Agenda personal (subcolección usuarios/{uid}/agenda): tareas propias.
+      // Cualquier sesión válida la opera (la app filtra por dueño).
+      match /agenda/{tareaId} {
+        allow read, write: if autenticado();
+      }
     }
     // Colección legacy 'users' (si existe).
     match /users/{id} {
@@ -55,6 +61,14 @@ service cloud.firestore {
     // Cualquier usuario autenticado lee, crea (robot) y actualiza (sube evidencia).
     // Solo admin puede borrar/limpiar historial.
     match /checklists/{id} {
+      allow read, create, update: if autenticado();
+      allow delete: if esAdmin();
+    }
+
+    // --- TAREAS DE EQUIPO (proyectos colaborativos por fases) ---
+    // Lectura/escritura para sesión válida; la UI controla quién monitorea.
+    // Solo admin borra definitivo.
+    match /tareas_equipo/{id} {
       allow read, create, update: if autenticado();
       allow delete: if esAdmin();
     }

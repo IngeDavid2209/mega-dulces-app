@@ -133,3 +133,27 @@ export function mismoEmpleadoNombre(a: string | undefined | null, b: string | un
   if (!largo.startsWith(corto + ' ')) return false;
   return corto.split(' ').filter(Boolean).length >= 2;
 }
+
+/**
+ * ¿Esta persona puede ser ASIGNADA a tareas/rutinas en alguna de las sucursales
+ * objetivo? Sirve para los selectores de "a quién asignar".
+ *
+ * Incluye tanto trabajadores como ADMINISTRADORES (algunos cargos operativos
+ * tienen cuenta admin y aun asi necesitan recibir tareas):
+ *   - Admin global, o cualquiera con 'General (Acceso Total)' → asignable en
+ *     cualquier sucursal (comodin).
+ *   - Resto (trabajador o admin limitado) → si alguna de sus sucursales coincide
+ *     (normalizada: tildes/mayusculas/espacios) con las objetivo.
+ *   - `sucursalesObjetivo` vacio = sin filtro de sucursal → asignable.
+ */
+export function puedeSerAsignado(persona: any, sucursalesObjetivo: string[]): boolean {
+  if (!persona) return false;
+  const susSuc: string[] = (persona.sucursales && persona.sucursales.length)
+    ? persona.sucursales
+    : (persona.sucursal ? [persona.sucursal] : []);
+  const comodin = normalizarNombre('General (Acceso Total)');
+  if (esAdminGlobal(persona) || susSuc.some(s => normalizarNombre(s) === comodin)) return true;
+  if (!sucursalesObjetivo || sucursalesObjetivo.length === 0) return true;
+  const objNorm = new Set(sucursalesObjetivo.map(s => normalizarNombre(s)));
+  return susSuc.some(s => objNorm.has(normalizarNombre(s)));
+}

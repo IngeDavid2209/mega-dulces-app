@@ -198,6 +198,29 @@
                 </button>
               </div>
 
+              <!-- Integrante (no monitor): agregar una tarea PROPIA a la fase activa -->
+              <div class="eq-fase-card-actions"
+                   *ngIf="fase.estado === 'activa' && esIntegranteEquipo(proyecto) && !puedeMonitorearEquipo(proyecto)">
+                <button class="btn-secondary eq-btn-mini"
+                        (click)="agregandoTareaPropiaFaseId = (agregandoTareaPropiaFaseId === fase.id ? null : fase.id);
+                                 nuevaTareaPropiaTexto = ''; nuevaTareaPropiaHora = '';">
+                  + Mi tarea
+                </button>
+              </div>
+
+              <!-- Mini-form de agregar tarea propia (integrante, auto-asignada) -->
+              <div class="eq-add-item-inline"
+                   *ngIf="agregandoTareaPropiaFaseId === fase.id && esIntegranteEquipo(proyecto) && !puedeMonitorearEquipo(proyecto)">
+                <input type="text" class="form-input" [(ngModel)]="nuevaTareaPropiaTexto" placeholder="¿Qué tarea tuya quieres agregar?">
+                <input type="time" class="form-input eq-add-item-hora" [(ngModel)]="nuevaTareaPropiaHora" title="Hora límite (opcional)">
+                <button class="btn-primary eq-btn-mini" (click)="agregarTareaPropiaEnVivo(proyecto, fase.id)">
+                  Agregar
+                </button>
+                <button class="btn-secondary eq-btn-mini" (click)="agregandoTareaPropiaFaseId = null">
+                  Cancelar
+                </button>
+              </div>
+
               <!-- Items visibles para el usuario -->
               <div class="eq-items-lista">
                 <div class="eq-item" *ngFor="let item of itemsVisiblesParaUsuario(proyecto, fase)"
@@ -284,6 +307,18 @@
             <span class="vista-tab-badge">{{ contadorTodasChecklists }}</span>
           </button>
         </section>
+
+        <!-- Cualquier trabajador puede sumar una tarea propia/extra a su día -->
+        <div class="tarea-propia-bar" *ngIf="vistaEquipo() === 'lista'"
+             style="display:flex; justify-content:flex-end; margin:0 0 14px 0;">
+          <button class="btn-primary" (click)="abrirModalTareaDia()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                 style="margin-right:6px; vertical-align:middle;">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg> Agregar mi tarea
+          </button>
+        </div>
 
         <div class="checklist-grid" *ngIf="vistaEquipo() === 'lista'">
 
@@ -1640,6 +1675,34 @@
               (click)="enviarNotificacion()">
               Enviar Alerta
             </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ╔══════════════════════════════════════════════════╗ -->
+      <!-- ║   MODAL: AGREGAR MI TAREA DEL DÍA                ║ -->
+      <!-- ╚══════════════════════════════════════════════════╝ -->
+      <div class="modal-overlay" *ngIf="isModalTareaDiaOpen" style="z-index: 9999;">
+        <div class="modal" style="max-width: 420px; padding: 28px;">
+          <h3 style="margin:0 0 6px; color:var(--primary-navy); font-size:20px; font-weight:800;">
+            Agregar mi tarea
+          </h3>
+          <p style="margin:0 0 18px; font-size:13px; color:#64748B;">
+            Suma una tarea propia a tu lista de hoy. Aparecerá junto a tus rutinas del día.
+          </p>
+          <div class="form-group">
+            <label class="form-label">¿Qué tarea quieres agregar?</label>
+            <input class="form-input" type="text" [(ngModel)]="tareaDiaTexto"
+                   placeholder="Ej: Revisar inventario de bodega"
+                   (keyup.enter)="guardarTareaDia()">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Hora límite (opcional)</label>
+            <input class="form-input" type="time" [(ngModel)]="tareaDiaHora">
+          </div>
+          <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:20px;">
+            <button class="btn-secondary" (click)="cerrarModalTareaDia()">Cancelar</button>
+            <button class="btn-primary" (click)="guardarTareaDia()">Agregar a mi día</button>
           </div>
         </div>
       </div>

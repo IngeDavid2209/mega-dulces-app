@@ -7,7 +7,7 @@ import { Firestore, collection, onSnapshot, doc, setDoc, deleteDoc, getDocs, que
 import Swal from 'sweetalert2';
 
 import { SidebarComponent } from '../../../shared/sidebar/sidebar';
-import { esAdminGlobal, sucursalesPermitidas } from '../../../shared/permisos.util';
+import { esAdminGlobal, sucursalesPermitidas, puedeSerAsignado } from '../../../shared/permisos.util';
 import {
   RutinaMaestra,
   FrecuenciaRutina,
@@ -341,13 +341,13 @@ export class AsignacionesRutinasComponent implements OnInit, OnDestroy {
   // PASO 3: A QUIÉN (rol o personas)
   // ============================================================================
   empleadosVisibles = computed(() => {
-    let lista = this.usuarios().filter(u => u.rol === 'trabajador');
-    // Filtrar por sucursales seleccionadas
+    // Incluye trabajadores y admins (algunos cargos operativos tienen cuenta
+    // admin y aun asi reciben rutinas); excluye al Grupo TEC.
+    let lista = this.usuarios().filter(u => (u.rol === 'trabajador' || u.rol === 'admin') && !u.grupoTec);
+    // Filtrar por sucursales seleccionadas (normalizado; admin global y comodín
+    // 'General (Acceso Total)' pasan en cualquier sucursal).
     if (this.formSucursales.length > 0) {
-      lista = lista.filter(u => {
-        const susSuc = u.sucursales || (u.sucursal ? [u.sucursal] : []);
-        return susSuc.some((s: string) => this.formSucursales.includes(s));
-      });
+      lista = lista.filter(u => puedeSerAsignado(u, this.formSucursales));
     }
     // Buscador
     const t = this.terminoBusquedaEmpleado.toLowerCase().trim();

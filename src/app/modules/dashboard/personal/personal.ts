@@ -1148,13 +1148,21 @@ export class PersonalComponent implements OnInit, OnDestroy {
       didOpen: () => Swal.showLoading()
     });
 
-    try {
-      const listaOrdenada = list.map(u => {
-        const zona = u.sucursales ? (Array.isArray(u.sucursales) ? u.sucursales.join(' - ') : u.sucursales) : 'General';
-        return { ...u, zonaCalculada: zona };
-      }).sort((a, b) => a.zonaCalculada.localeCompare(b.zonaCalculada));
+    const listaOrdenada = list.map(u => {
+      const zona = u.sucursales ? (Array.isArray(u.sucursales) ? u.sucursales.join(' - ') : u.sucursales) : 'General';
+      return { ...u, zonaCalculada: zona };
+    }).sort((a, b) => a.zonaCalculada.localeCompare(b.zonaCalculada));
 
-      const ExcelJS = await import('exceljs');
+    try {
+      // ExcelJS es CommonJS: segun el bundler los exports quedan bajo `.default`
+      // o directo en el namespace. Tomamos el que tenga `Workbook` para evitar
+      // "Workbook is not a constructor".
+      const ExcelJSModule: any = await import('exceljs');
+      const ExcelJS: any = ExcelJSModule?.Workbook ? ExcelJSModule
+        : (ExcelJSModule?.default?.Workbook ? ExcelJSModule.default : (ExcelJSModule?.default ?? ExcelJSModule));
+      if (typeof ExcelJS?.Workbook !== 'function') {
+        throw new Error('ExcelJS.Workbook no disponible tras el import');
+      }
       const workbook = new ExcelJS.Workbook();
       const worksheet = workbook.addWorksheet('Personal MegaDulces');
 
@@ -1239,40 +1247,74 @@ export class PersonalComponent implements OnInit, OnDestroy {
         });
       });
 
-      try {
-        const buffer = await workbook.xlsx.writeBuffer();
-        const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `Nomina_Personal_Agrupado.xlsx`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
-      } catch (error) {
-        console.error("Error al exportar Personal:", error);
-        Swal.fire({ icon: 'error', title: 'Error de Exportación', text: 'Hubo un error al generar el Excel de personal.', confirmButtonColor: '#0F172A' });
-      }
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      this.descargarBlob(blob, 'Nomina_Personal_Agrupado.xlsx');
       Swal.close();
     } catch (e: any) {
-      console.error('[descargarExcel] fallo cargar ExcelJS o generar el archivo:', e);
-      Swal.fire({
-        icon: 'error',
-        title: 'No se pudo generar el Excel',
-        html: `<div style="text-align:left;font-size:13px">
-                 <p>Probable causa: la librería de Excel no se descargó (red intermitente o caché del navegador).</p>
-                 <p style="font-size:11px;color:#64748B;margin-top:8px">
-                   <strong>Detalle:</strong> <code style="word-break:break-word">${(e?.message || e || '').toString().slice(0, 240)}</code>
-                 </p>
-                 <p style="font-size:12px;color:#475569;margin-top:8px">
-                   Intenta recargar la página (Ctrl+Shift+R) y vuelve a darle a Exportar.
-                 </p>
-               </div>`,
-        confirmButtonColor: '#0F172A'
-      });
+      // Si ExcelJS no carga/instancia (problema de bundle, red o cache), no
+      // dejamos al usuario sin exportar: caemos a CSV con los mismos datos.
+      console.error('[descargarExcel] ExcelJS fallo; usando CSV de respaldo:', e);
+      try {
+        this.exportarPersonalCSV(listaOrdenada);
+        Swal.fire({
+          icon: 'success',
+          title: 'Exportado en CSV',
+          text: 'El módulo de Excel no se pudo cargar, así que descargamos un CSV con los mismos datos (se abre en Excel).',
+          confirmButtonColor: '#0F172A'
+        });
+      } catch (e2: any) {
+        console.error('[descargarExcel] tambien fallo el CSV:', e2);
+        Swal.fire({
+          icon: 'error',
+          title: 'No se pudo exportar',
+          text: 'Intenta recargar la página (Ctrl+Shift+R) y vuelve a darle a Exportar.',
+          confirmButtonColor: '#0F172A'
+        });
+      }
     }
+  }
+
+  /** Descarga genérica de un Blob como archivo. */
+  private descargarBlob(blob: Blob, nombreArchivo: string) {
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = nombreArchivo;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  }
+
+  /** Fallback robusto: exporta el personal en CSV (UTF-8 con BOM y `sep=,` para
+   *  que Excel lo abra correctamente en cualquier idioma). */
+  private exportarPersonalCSV(listaOrdenada: any[]) {
+    const cols: { header: string; valor: (u: any) => string }[] = [
+      { header: 'Nombre Completo',    valor: u => u.nombre || '-' },
+      { header: 'Usuario',            valor: u => u.usuario || '-' },
+      { header: 'Correo Electronico', valor: u => u.correo || '-' },
+      { header: 'Rol',                valor: u => (u.rol || '').toUpperCase() },
+      { header: 'Cargo',              valor: u => u.cargo || '-' },
+      { header: 'Sucursales',         valor: u => u.zonaCalculada || 'General' },
+      { header: 'Areas',              valor: u => u.areas ? (Array.isArray(u.areas) ? u.areas.join(', ') : u.areas) : 'General' },
+      { header: 'Crea Check',         valor: u => u.puedeCrearChecklists ? 'Si' : 'No' },
+      { header: 'Crea Rutinas',       valor: u => u.puedeCrearRutinas ? 'Si' : 'No' },
+      { header: 'Crea Tareas',        valor: u => u.puedeCrearTareasUnicas ? 'Si' : 'No' },
+      { header: 'Ve Store',           valor: u => u.puedeVerCheckstore ? 'Si' : 'No' },
+      { header: 'Ve Est.',            valor: u => u.puedeVerEstadisticas ? 'Si' : 'No' },
+      { header: 'Ve Hist.',           valor: u => u.puedeVerHistorial ? 'Si' : 'No' },
+      { header: 'Adm. Pers.',         valor: u => u.puedeAdministrarPersonal ? 'Si' : 'No' },
+      { header: 'Calendario',         valor: u => u.puedeVerCalendario ? 'Si' : 'No' },
+    ];
+    const esc = (v: string) => `"${(v ?? '').toString().replace(/"/g, '""')}"`;
+    const lineas: string[] = ['sep=,', cols.map(c => esc(c.header)).join(',')];
+    for (const u of listaOrdenada) {
+      lineas.push(cols.map(c => esc(c.valor(u))).join(','));
+    }
+    const contenido = '﻿' + lineas.join('\r\n');
+    const blob = new Blob([contenido], { type: 'text/csv;charset=utf-8;' });
+    this.descargarBlob(blob, 'Nomina_Personal.csv');
   }
 
   togglePassword() {

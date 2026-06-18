@@ -6,7 +6,7 @@ import { RouterModule, ActivatedRoute } from '@angular/router';
 import { Firestore, collection, doc, setDoc, getDoc, deleteDoc, onSnapshot, getDocs, query, where } from '@angular/fire/firestore';
 import * as localforage from 'localforage';
 import Swal from 'sweetalert2';
-import { esAdminGlobal, esAdminLimitado, sucursalesPermitidas, esSupervisor, mismoEmpleadoNombre, normalizarNombre } from '../../../shared/permisos.util';
+import { esAdminGlobal, esAdminLimitado, sucursalesPermitidas, esSupervisor, mismoEmpleadoNombre, normalizarNombre, puedeSerAsignado } from '../../../shared/permisos.util';
 import { nivelDeCargo } from '../../../shared/nivel-jerarquico.util';
 import { TareaEquipo, FaseEquipo, ItemEquipo, SubtareaEquipo } from '../../../shared/tareas-equipo.types';
 import { esItemHecho, tieneEvidencia } from '../../../shared/item-completado.util';
@@ -165,6 +165,17 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   nuevoItemRequiresPhoto = false;
   agregandoSubtareaItemId: string | null = null;
   nuevaSubtareaTexto = '';
+
+  // Auto-tarea del integrante en tareas de equipo (auto-asignada a sí mismo).
+  agregandoTareaPropiaFaseId: string | null = null;
+  nuevaTareaPropiaTexto = '';
+  nuevaTareaPropiaHora = '';
+
+  // "Agregar mi tarea del día": tarea propia/extra que el trabajador suma a su
+  // lista diaria de rutinas (checklist auto-asignado para hoy).
+  isModalTareaDiaOpen = false;
+  tareaDiaTexto = '';
+  tareaDiaHora = '';
 
   // 🩺 Diagnóstico del último snapshot — alimenta el botón "¿Por qué no veo tareas?"
   // en el estado vacío para inspeccionar el filtrado desde el propio móvil.
@@ -617,12 +628,10 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     if (emp.usuario && this.currentUser?.usuario && emp.usuario === this.currentUser.usuario) {
       return true;
     }
-    const susSucursales = emp.sucursales || [emp.sucursal || ''];
-    if (emp.rol === 'admin') {
-      return susSucursales.includes(store);
-    }
-    if (emp.sucursales && emp.sucursales.includes('General (Acceso Total)')) return true;
-    return susSucursales.includes(store);
+    // Asignable a esta sucursal (comparación normalizada; admin global y comodín
+    // 'General (Acceso Total)' aplican a cualquier sucursal). Incluye admins:
+    // hay cargos operativos con cuenta admin que igual reciben tareas.
+    return puedeSerAsignado(emp, store ? [store] : []);
   }
 
   /**
@@ -940,22 +949,19 @@ export class ChecklistComponent implements OnInit, OnDestroy {
 
     // Empleados que el usuario actual puede asignar
     if (esAdminGlobal(this.currentUser)) {
-      const personalActivo = todosLosUsuarios.filter((u: any) => u.rol === 'trabajador' || u.rol === 'admin');
+      // Excluimos al Grupo TEC: no son personal de la empresa.
+      const personalActivo = todosLosUsuarios.filter((u: any) => (u.rol === 'trabajador' || u.rol === 'admin') && !u.grupoTec);
       this.empleados.set(personalActivo);
     } else if (esAdminLimitado(this.currentUser) || this.currentUser?.puedeCrearChecklists) {
       const permitidas = sucursalesPermitidas(this.currentUser);
       const misSucursales = permitidas ?? [];
-      const candidatos = todosLosUsuarios.filter((u: any) => {
-        if (u.rol === 'trabajador') return true;
-        if (u.rol === 'admin'
-            && u.alcance !== 'global'
-            && !(u.sucursales || []).includes('General (Acceso Total)')) return true;
-        return false;
-      });
-      const empleadosFiltrados = candidatos.filter((t: any) => {
-        const susSucursales = t.sucursales || [t.sucursal || ''];
-        return susSucursales.some((s: string) => misSucursales.includes(s));
-      });
+      // Candidatos: trabajadores + admins (incluye admin global), excluyendo al
+      // Grupo TEC. Algunos cargos operativos tienen cuenta admin y aun asi deben
+      // poder recibir tareas.
+      const candidatos = todosLosUsuarios.filter((u: any) => (u.rol === 'trabajador' || u.rol === 'admin') && !u.grupoTec);
+      // Asignables en las sucursales del usuario actual (normalizado; admin global
+      // y comodín 'General (Acceso Total)' pasan en cualquier sucursal).
+      const empleadosFiltrados = candidatos.filter((t: any) => puedeSerAsignado(t, misSucursales));
       this.empleados.set(empleadosFiltrados);
     }
   }
@@ -1397,6 +1403,79 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   async guardarEnLaNube(checklist: any) {
     try { await setDoc(doc(this.firestore, 'checklists', checklist.id.toString()), checklist, { merge: true }); }
     catch (error) { console.error("Error: ", error); }
+  }
+
+  // ==========================================================================
+  // TAREA PROPIA DEL DÍA — el trabajador suma una tarea/extra a sus rutinas de hoy
+  // ==========================================================================
+  abrirModalTareaDia() {
+    this.tareaDiaTexto = '';
+    this.tareaDiaHora = '';
+    this.isModalTareaDiaOpen = true;
+  }
+
+  cerrarModalTareaDia() { this.isModalTareaDiaOpen = false; }
+
+  /** Sucursal por defecto del usuario para asociar la tarea propia. */
+  private miSucursalPrincipal(): string {
+    const u = this.currentUser;
+    return (u?.sucursales && u.sucursales[0]) || u?.sucursal || 'General';
+  }
+
+  /** Crea un checklist auto-asignado para hoy con una sola tarea manual.
+   *  Aparece junto a las rutinas del día del trabajador y se completa/envía
+   *  con el flujo normal (sin requerir foto). */
+  async guardarTareaDia() {
+    const texto = this.tareaDiaTexto.trim();
+    if (!texto) { this.mostrarToast(' Escribe el nombre de tu tarea.'); return; }
+    const nombre = this.currentUser?.nombre;
+    if (!nombre) { this.mostrarToast(' No hay sesión activa.'); return; }
+
+    const hoy = this.hoyIsoStr;
+    const id = `propia_${normalizarNombre(nombre).replace(/\s+/g, '_')}_${Date.now()}`;
+    const checklist: any = {
+      id,
+      timestampCreacion: Date.now(),
+      name: texto,
+      assigned: nombre,
+      store: this.miSucursalPrincipal(),
+      date: hoy,
+      time: this.tareaDiaHora || '23:59',
+      status: 'pendiente',
+      enviado: false,
+      createdBy: nombre,
+      esTareaPropia: true,
+      notaEmpleado: '',
+      items: [{
+        id: Date.now(),
+        text: texto,
+        requiresPhoto: false,
+        requiresAntesDespues: false,
+        requiresVariasFotos: false,
+        permiteGaleria: false,
+        permiteDocumentos: false,
+        checked: false,
+        photo: null, photoTime: null, photoAntes: null, photoAntesTime: null,
+        photoAntesTimestamp: null, photoDespues: null, photoDespuesTime: null, photos: [],
+        tipo: 'manual',
+        horaInicio: null,
+        horaLimite: this.tareaDiaHora || null,
+        frecuencia: null
+      }]
+    };
+
+    try {
+      await this.guardarEnLaNube(checklist);
+      // Refresco optimista: aparece de inmediato sin esperar el snapshot.
+      this.checklists.set([...(this.checklists() || []), checklist]);
+      this.isModalTareaDiaOpen = false;
+      this.tareaDiaTexto = '';
+      this.tareaDiaHora = '';
+      this.mostrarToast(' Tu tarea fue agregada a tu día.');
+    } catch (e) {
+      console.error('[tarea-propia-dia] error', e);
+      this.mostrarToast(' Error al agregar tu tarea.');
+    }
   }
 
   eliminarChecklist(checklist: any, event: Event) {
@@ -2272,6 +2351,53 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     this.nuevoItemRequiresPhoto = false;
     this.agregandoEnFaseId = null;
     this.mostrarToast(' Tarea agregada al equipo.');
+  }
+
+  /** ¿El usuario actual es integrante (o jefe) de este equipo? */
+  esIntegranteEquipo(t: TareaEquipo | null): boolean {
+    if (!t) return false;
+    const mi = this.currentUser?.nombre;
+    if (mismoEmpleadoNombre(t.jefeEquipo, mi)) return true;
+    return (t.integrantes || []).some(n => mismoEmpleadoNombre(n, mi));
+  }
+
+  /** ¿Puede agregar una tarea PROPIA (auto-asignada) en la fase activa?
+   *  Cualquier integrante puede; los monitores ya usan agregarItemEnVivo. */
+  puedeAgregarTareaPropia(t: TareaEquipo | null): boolean {
+    if (!t || t.cerrado) return false;
+    return this.esIntegranteEquipo(t) || this.puedeMonitorearEquipo(t);
+  }
+
+  /** Integrante agrega una tarea suya (auto-asignada) en la fase activa. */
+  async agregarTareaPropiaEnVivo(t: TareaEquipo, faseId: string) {
+    if (!this.puedeAgregarTareaPropia(t) || t.cerrado) return;
+    if (!this.nuevaTareaPropiaTexto.trim()) {
+      this.mostrarToast(' Escribe la tarea que quieres agregar.');
+      return;
+    }
+    const fresca = await this.obtenerTareaEquipoFresca(t.id);
+    if (!fresca) return;
+    const fase = fresca.fases.find(f => f.id === faseId);
+    if (!fase || fase.estado !== 'activa') {
+      this.mostrarToast(' Esta fase no está activa.');
+      return;
+    }
+    fase.items.push({
+      id: 'item_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+      asignado: this.currentUser?.nombre,
+      texto: this.nuevaTareaPropiaTexto.trim(),
+      horaLimite: this.nuevaTareaPropiaHora || undefined,
+      requiresPhoto: false,
+      completada: false,
+      subtareas: [],
+      agregadaPor: this.currentUser?.nombre,
+      agregadaEn: Date.now()
+    });
+    await setDoc(doc(this.firestore, 'tareas_equipo', t.id), { fases: fresca.fases }, { merge: true });
+    this.nuevaTareaPropiaTexto = '';
+    this.nuevaTareaPropiaHora = '';
+    this.agregandoTareaPropiaFaseId = null;
+    this.mostrarToast(' Tu tarea fue agregada.');
   }
 
   /** Jefe agrega una subtarea dentro de un item existente. */

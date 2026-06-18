@@ -92,8 +92,9 @@ service cloud.firestore {
     // --- ESPACIO TEC (apartado colaborativo aislado para el grupo de estudiantes) ---
     // Tablero compartido de tareas e ideas/notas. Lectura/escritura para sesión
     // válida (la UI controla que solo el Grupo TEC entre a /tec).
-    match /tec_tareas/{id} { allow read, write: if autenticado(); }
-    match /tec_notas/{id}  { allow read, write: if autenticado(); }
+    match /tec_tareas/{id}        { allow read, write: if autenticado(); }
+    match /tec_notas/{id}         { allow read, write: if autenticado(); }
+    match /tec_conversaciones/{id}{ allow read, write: if autenticado(); }
 
     // --- TODO LO DEMÁS: DENEGADO ---
     match /{document=**} {

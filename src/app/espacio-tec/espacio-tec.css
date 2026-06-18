@@ -308,3 +308,46 @@
 .tec-modal-foot { display: flex; align-items: center; justify-content: space-between; padding: 16px 22px; border-top: 1px solid var(--border); background: #F8FAFC; }
 .tec-btn-del-text { background: transparent; border: none; color: #DC2626; font-weight: 700; font-size: 14px; cursor: pointer; }
 .tec-btn-del-text:hover { text-decoration: underline; }
+
+/* ======================================================= */
+/* 5. CONVERSACIONES (muro / feed)                         */
+/* ======================================================= */
+.cv-avatar {
+  flex-shrink: 0;
+  width: 38px; height: 38px; border-radius: 50%;
+  background: var(--primary-navy); color: #fff;
+  font-size: 15px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+}
+.cv-avatar-me { background: var(--tec-blue); }
+.cv-avatar-sm { width: 30px; height: 30px; font-size: 13px; }
+
+.cv-composer {
+  display: flex; gap: 12px;
+  background: #fff; border: 1px solid var(--border); border-radius: 14px;
+  padding: 14px; margin-bottom: 20px;
+  max-width: 720px;
+}
+
+.cv-feed { display: flex; flex-direction: column; gap: 14px; max-width: 720px; }
+.cv-post { background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 16px; }
+.cv-post-head { display: flex; align-items: center; gap: 10px; }
+.cv-post-meta { display: flex; flex-direction: column; line-height: 1.25; }
+.cv-author { font-size: 14px; font-weight: 700; color: var(--text-main); }
+.cv-time { font-size: 11px; color: var(--text-muted); }
+.cv-post-head .tec-sub-del { margin-left: auto; }
+.cv-post-texto { font-size: 14.5px; color: var(--text-main); margin-top: 10px; white-space: pre-wrap; word-break: break-word; }
+
+.cv-respuestas { margin-top: 14px; padding-left: 12px; border-left: 2px solid var(--border); display: flex; flex-direction: column; gap: 12px; }
+.cv-resp { display: flex; gap: 10px; }
+.cv-resp-body { flex: 1; min-width: 0; }
+.cv-resp-meta { display: flex; align-items: center; gap: 8px; }
+.cv-resp-meta .tec-sub-del { margin-left: auto; }
+.cv-resp-texto { font-size: 13.5px; color: var(--text-main); margin-top: 2px; white-space: pre-wrap; word-break: break-word; }
+
+.cv-reply { display: flex; gap: 8px; margin-top: 14px; }
+.cv-reply .tec-input { flex: 1; }
+
+@media (max-width: 600px) {
+  .cv-composer, .cv-feed { max-width: 100%; }
+}

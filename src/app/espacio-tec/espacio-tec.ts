@@ -30,7 +30,7 @@ interface Subtarea { id: string; texto: string; hecha: boolean; }
 export class EspacioTecComponent implements OnInit, OnDestroy {
   currentUser: any = null;
   isMenuOpen = false;
-  vista: 'tablero' | 'notas' = 'tablero';
+  vista: 'tablero' | 'conversaciones' | 'notas' = 'tablero';
 
   // ---------------- Tablero Kanban ----------------
   readonly columnas = [
@@ -54,6 +54,12 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
   isCardModalOpen = false;
   tarjeta: any = null;            // copia editable de la tarjeta abierta
   nuevaSubtareaTexto = '';
+
+  // ---------------- Conversaciones ----------------
+  posts: any[] = [];
+  nuevoPostTexto = '';
+  respuestaTexto: Record<string, string> = {};
+  private radarPosts: (() => void) | null = null;
 
   // ---------------- Ideas / Notas ----------------
   notas: any[] = [];
@@ -79,6 +85,7 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
   ngOnDestroy() {
     if (this.radarTareas) { this.radarTareas(); this.radarTareas = null; }
     if (this.radarNotas) { this.radarNotas(); this.radarNotas = null; }
+    if (this.radarPosts) { this.radarPosts(); this.radarPosts = null; }
   }
 
   private miUid(): string { return this.currentUser?.uid || this.currentUser?.id || ''; }
@@ -103,6 +110,13 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
         .map(d => ({ id: d.id, ...(d.data() as any) }))
         .sort((a, b) => Number(b.creadoEn || 0) - Number(a.creadoEn || 0));
     });
+
+    const postsRef = collection(this.firestore, 'tec_conversaciones');
+    this.radarPosts = onSnapshot(query(postsRef), snap => {
+      this.posts = snap.docs
+        .map(d => ({ id: d.id, ...(d.data() as any), respuestas: Array.isArray((d.data() as any).respuestas) ? (d.data() as any).respuestas : [] }))
+        .sort((a, b) => Number(b.creadoEn || 0) - Number(a.creadoEn || 0));
+    });
   }
 
   /** Tolera tarjetas viejas (modelo simple texto/completada). */
@@ -117,7 +131,7 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
     };
   }
 
-  cambiarVista(v: 'tablero' | 'notas') { this.vista = v; }
+  cambiarVista(v: 'tablero' | 'conversaciones' | 'notas') { this.vista = v; }
 
   // ===================== KANBAN =====================
   nombreColumna(id: string): string { return this.columnas.find(c => c.id === id)?.nombre || id; }
@@ -221,6 +235,62 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
       await deleteDoc(doc(this.firestore, 'tec_tareas', this.tarjeta.id));
       this.cerrarTarjeta();
     } catch (e) { console.error('[tec] eliminarTarjeta', e); }
+  }
+
+  // ===================== CONVERSACIONES =====================
+  /** ¿Puede borrar este post/respuesta? El autor o un admin. */
+  puedeBorrar(autorUid: string | undefined): boolean {
+    return autorUid === this.miUid() || this.currentUser?.rol === 'admin';
+  }
+
+  async publicarPost() {
+    const texto = this.nuevoPostTexto.trim();
+    if (!texto) return;
+    try {
+      await addDoc(collection(this.firestore, 'tec_conversaciones'), {
+        texto, autor: this.miNombre(), autorUid: this.miUid(),
+        creadoEn: Date.now(), respuestas: []
+      });
+      this.nuevoPostTexto = '';
+    } catch (e) {
+      console.error('[tec] publicarPost', e);
+      Swal.fire({ icon: 'error', title: 'No se pudo publicar', confirmButtonColor: '#0F172A' });
+    }
+  }
+
+  async eliminarPost(p: any) {
+    if (!this.puedeBorrar(p.autorUid)) return;
+    const r = await Swal.fire({
+      title: 'Eliminar mensaje', text: '¿Seguro? También se borran sus respuestas.', icon: 'warning',
+      showCancelButton: true, confirmButtonText: 'Sí, eliminar', cancelButtonText: 'Cancelar', confirmButtonColor: '#DC2626'
+    });
+    if (!r.isConfirmed) return;
+    try { await deleteDoc(doc(this.firestore, 'tec_conversaciones', p.id)); }
+    catch (e) { console.error('[tec] eliminarPost', e); }
+  }
+
+  async responder(p: any) {
+    const texto = (this.respuestaTexto[p.id] || '').trim();
+    if (!texto) return;
+    const resp = {
+      id: 'r_' + Date.now() + Math.random().toString(36).slice(2, 5),
+      texto, autor: this.miNombre(), autorUid: this.miUid(), creadoEn: Date.now()
+    };
+    const respuestas = [...(p.respuestas || []), resp];
+    try {
+      await updateDoc(doc(this.firestore, 'tec_conversaciones', p.id), { respuestas });
+      this.respuestaTexto[p.id] = '';
+    } catch (e) {
+      console.error('[tec] responder', e);
+      Swal.fire({ icon: 'error', title: 'No se pudo responder', confirmButtonColor: '#0F172A' });
+    }
+  }
+
+  async eliminarRespuesta(p: any, r: any) {
+    if (!this.puedeBorrar(r.autorUid)) return;
+    const respuestas = (p.respuestas || []).filter((x: any) => x.id !== r.id);
+    try { await updateDoc(doc(this.firestore, 'tec_conversaciones', p.id), { respuestas }); }
+    catch (e) { console.error('[tec] eliminarRespuesta', e); }
   }
 
   // ===================== NOTAS / IDEAS =====================

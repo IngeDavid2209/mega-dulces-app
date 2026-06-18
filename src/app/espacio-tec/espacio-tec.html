@@ -31,6 +31,10 @@
       <!-- Tabs -->
       <div class="tec-tabs">
         <button class="tec-tab" [class.active]="vista === 'tablero'" (click)="cambiarVista('tablero')">Tablero</button>
+        <button class="tec-tab" [class.active]="vista === 'conversaciones'" (click)="cambiarVista('conversaciones')">
+          Conversaciones
+          <span class="tec-badge tec-badge-soft" *ngIf="posts.length > 0">{{ posts.length }}</span>
+        </button>
         <button class="tec-tab" [class.active]="vista === 'notas'" (click)="cambiarVista('notas')">
           Ideas y Notas
           <span class="tec-badge tec-badge-soft" *ngIf="notas.length > 0">{{ notas.length }}</span>
@@ -96,6 +100,58 @@
               <div class="kb-empty" *ngIf="tablero[col.id].length === 0 && agregandoEnColumna !== col.id">
                 Arrastra o agrega tarjetas aquí.
               </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ====================== CONVERSACIONES ====================== -->
+      <section *ngIf="vista === 'conversaciones'">
+        <div class="cv-composer">
+          <div class="cv-avatar cv-avatar-me">{{ inicial(currentUser?.nombre || currentUser?.usuario) }}</div>
+          <div style="flex:1;">
+            <textarea class="tec-input tec-textarea" [(ngModel)]="nuevoPostTexto" rows="2"
+                      placeholder="Escribe un mensaje para el equipo..."></textarea>
+            <div style="display:flex; justify-content:flex-end; margin-top:8px;">
+              <button class="tec-btn-primary" (click)="publicarPost()">Publicar</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="tec-empty" *ngIf="posts.length === 0">Aún no hay mensajes. Inicia la conversación arriba.</div>
+
+        <div class="cv-feed">
+          <div class="cv-post" *ngFor="let p of posts">
+            <div class="cv-post-head">
+              <div class="cv-avatar">{{ inicial(p.autor) }}</div>
+              <div class="cv-post-meta">
+                <span class="cv-author">{{ p.autor }}</span>
+                <span class="cv-time">{{ formatearFecha(p.creadoEn) }}</span>
+              </div>
+              <button class="tec-sub-del" *ngIf="puedeBorrar(p.autorUid)" (click)="eliminarPost(p)" title="Eliminar">×</button>
+            </div>
+            <div class="cv-post-texto">{{ p.texto }}</div>
+
+            <!-- Respuestas -->
+            <div class="cv-respuestas" *ngIf="p.respuestas.length > 0">
+              <div class="cv-resp" *ngFor="let r of p.respuestas">
+                <div class="cv-avatar cv-avatar-sm">{{ inicial(r.autor) }}</div>
+                <div class="cv-resp-body">
+                  <div class="cv-resp-meta">
+                    <span class="cv-author">{{ r.autor }}</span>
+                    <span class="cv-time">{{ formatearFecha(r.creadoEn) }}</span>
+                    <button class="tec-sub-del" *ngIf="puedeBorrar(r.autorUid)" (click)="eliminarRespuesta(p, r)" title="Eliminar">×</button>
+                  </div>
+                  <div class="cv-resp-texto">{{ r.texto }}</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Caja de respuesta -->
+            <div class="cv-reply">
+              <input class="tec-input" type="text" [(ngModel)]="respuestaTexto[p.id]"
+                     placeholder="Responder..." (keyup.enter)="responder(p)">
+              <button class="tec-btn-soft tec-btn-sm" (click)="responder(p)">Responder</button>
             </div>
           </div>
         </div>

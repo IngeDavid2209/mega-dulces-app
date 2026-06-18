@@ -431,15 +431,69 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
     this.isGrupoModalOpen = true;
   }
 
-  /** Tareas del proyecto/equipo abierto. */
-  agregarTareaProyecto() {
-    const t = this.nuevaTareaProyectoTexto.trim();
-    if (!t || !this.grupoModal) return;
-    this.grupoModal.tareas = [...(this.grupoModal.tareas || []), { id: 'pt_' + Date.now() + Math.random().toString(36).slice(2, 5), texto: t, hecha: false }];
-    this.nuevaTareaProyectoTexto = '';
+  // ---- Editor de tarea de proyecto (formato completo) ----
+  tareaProyEditor: any = null;
+  tareaProyEsNueva = false;
+  nuevaFaseTexto = '';
+
+  private tareaProyVacia() {
+    return {
+      id: 'pt_' + Date.now() + Math.random().toString(36).slice(2, 5),
+      texto: '', hecha: false,
+      fechaInicio: '', fechaFin: '', horaInicio: '', horaFin: '',
+      requiereFoto: false, requiereVariasFotos: false, permiteDocs: false,
+      tieneFases: false, fases: [] as any[]
+    };
   }
+
+  abrirNuevaTareaProyecto() {
+    this.tareaProyEsNueva = true;
+    this.tareaProyEditor = this.tareaProyVacia();
+    this.nuevaFaseTexto = '';
+  }
+  editarTareaProyecto(t: any) {
+    this.tareaProyEsNueva = false;
+    this.tareaProyEditor = { ...this.tareaProyVacia(), ...t, fases: (t.fases || []).map((f: any) => ({ ...f })) };
+    this.nuevaFaseTexto = '';
+  }
+  cerrarTareaProyEditor() { this.tareaProyEditor = null; }
+
+  agregarFaseEditor() {
+    const t = this.nuevaFaseTexto.trim();
+    if (!t || !this.tareaProyEditor) return;
+    this.tareaProyEditor.fases = [...(this.tareaProyEditor.fases || []), { id: 'f_' + Date.now() + Math.random().toString(36).slice(2, 5), texto: t, hecha: false }];
+    this.nuevaFaseTexto = '';
+  }
+  quitarFaseEditor(f: any) {
+    if (this.tareaProyEditor) this.tareaProyEditor.fases = this.tareaProyEditor.fases.filter((x: any) => x.id !== f.id);
+  }
+
+  guardarTareaProyEditor() {
+    if (!this.tareaProyEditor || !this.grupoModal) return;
+    const nombre = (this.tareaProyEditor.texto || '').trim();
+    if (!nombre) { Swal.fire({ icon: 'info', title: 'Ponle nombre a la tarea', confirmButtonColor: '#0F172A' }); return; }
+    this.tareaProyEditor.texto = nombre;
+    if (!this.tareaProyEditor.tieneFases) this.tareaProyEditor.fases = [];
+    const lista = [...(this.grupoModal.tareas || [])];
+    const i = lista.findIndex(x => x.id === this.tareaProyEditor.id);
+    if (i > -1) lista[i] = this.tareaProyEditor; else lista.push(this.tareaProyEditor);
+    this.grupoModal.tareas = lista;
+    this.tareaProyEditor = null;
+  }
+  eliminarTareaProyEditor() {
+    if (!this.tareaProyEditor || !this.grupoModal) return;
+    this.grupoModal.tareas = (this.grupoModal.tareas || []).filter((x: any) => x.id !== this.tareaProyEditor.id);
+    this.tareaProyEditor = null;
+  }
+
   toggleTareaProyecto(t: any) { t.hecha = !t.hecha; }
-  eliminarTareaProyecto(t: any) { if (this.grupoModal) this.grupoModal.tareas = this.grupoModal.tareas.filter((x: any) => x.id !== t.id); }
+
+  /** Fases de una tarea de proyecto: progreso. */
+  faseInfo(t: any): { hechas: number; total: number } {
+    const total = (t.fases || []).length;
+    const hechas = (t.fases || []).filter((f: any) => f.hecha).length;
+    return { hechas, total };
+  }
 
   /** Avance de un grupo según sus tareas. */
   progresoGrupo(g: any): { hechas: number; total: number; pct: number } {

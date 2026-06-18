@@ -619,18 +619,26 @@
       <div class="gr-progress" *ngIf="grupoModal.tareas.length > 0" style="margin-bottom:10px;">
         <div class="gr-progress-bar"><span [style.width.%]="progresoGrupo(grupoModal).pct" [style.background]="grupoModal.color"></span></div>
       </div>
-      <div class="tec-sub-list">
-        <label class="tec-sub-item" *ngFor="let t of grupoModal.tareas" [class.done]="t.hecha">
-          <input type="checkbox" [checked]="t.hecha" (change)="toggleTareaProyecto(t)">
-          <span class="tec-sub-texto">{{ t.texto }}</span>
-          <button class="tec-sub-del" (click)="eliminarTareaProyecto(t)" title="Quitar">×</button>
-        </label>
+      <div class="pt-list">
+        <div class="pt-row" *ngFor="let t of grupoModal.tareas" [class.done]="t.hecha">
+          <input type="checkbox" class="pt-check" [checked]="t.hecha" (change)="toggleTareaProyecto(t)" title="Marcar hecha">
+          <div class="pt-row-body" (click)="editarTareaProyecto(t)">
+            <div class="pt-row-nom">{{ t.texto }}</div>
+            <div class="pt-row-meta" *ngIf="t.fechaInicio || t.fechaFin || t.horaInicio || t.requiereFoto || t.requiereVariasFotos || t.permiteDocs || (t.tieneFases && t.fases.length)">
+              <span class="pt-chip" *ngIf="t.fechaInicio || t.fechaFin">📅 {{ formatearDia(t.fechaInicio) }}<span *ngIf="t.fechaFin"> → {{ formatearDia(t.fechaFin) }}</span></span>
+              <span class="pt-chip" *ngIf="t.horaInicio || t.horaFin">🕒 {{ t.horaInicio }}<span *ngIf="t.horaFin">–{{ t.horaFin }}</span></span>
+              <span class="pt-chip" *ngIf="t.requiereFoto">📷 Foto</span>
+              <span class="pt-chip" *ngIf="t.requiereVariasFotos">📷 Varias</span>
+              <span class="pt-chip" *ngIf="t.permiteDocs">📎 Docs</span>
+              <span class="pt-chip" *ngIf="t.tieneFases && t.fases.length">🧩 {{ faseInfo(t).hechas }}/{{ faseInfo(t).total }} fases</span>
+            </div>
+          </div>
+          <button class="pt-edit" (click)="editarTareaProyecto(t)" title="Editar">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+          </button>
+        </div>
       </div>
-      <div class="tec-sub-add">
-        <input class="tec-input" type="text" [(ngModel)]="nuevaTareaProyectoTexto"
-               placeholder="Agregar tarea del proyecto..." (keyup.enter)="agregarTareaProyecto()">
-        <button class="tec-btn-soft tec-btn-sm" (click)="agregarTareaProyecto()">Agregar</button>
-      </div>
+      <button class="tec-btn-soft tec-btn-sm" style="margin-top:10px;" (click)="abrirNuevaTareaProyecto()">+ Nueva tarea</button>
     </div>
 
     <div class="tec-modal-foot">
@@ -639,6 +647,68 @@
       <div style="display:flex; gap:10px;">
         <button class="tec-btn-soft" (click)="cerrarGrupo()">Cancelar</button>
         <button class="tec-btn-primary" (click)="guardarGrupo()">{{ grupoEsNuevo ? 'Crear' : 'Guardar' }}</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ====================== MODAL: EDITOR DE TAREA DE PROYECTO ====================== -->
+<div class="tec-modal-overlay" *ngIf="tareaProyEditor" style="z-index: 3500;" (click)="cerrarTareaProyEditor()">
+  <div class="tec-modal" (click)="$event.stopPropagation()">
+    <div class="tec-modal-top" [style.background]="grupoModal?.color || '#60A5FA'"></div>
+    <div class="tec-modal-body">
+      <label class="tec-modal-label">Nombre de la tarea</label>
+      <input class="tec-input" type="text" [(ngModel)]="tareaProyEditor.texto" placeholder="¿Qué hay que hacer?">
+
+      <div class="tec-modal-grid">
+        <div>
+          <label class="tec-modal-label">Fecha de inicio</label>
+          <input class="tec-input" type="date" [(ngModel)]="tareaProyEditor.fechaInicio">
+        </div>
+        <div>
+          <label class="tec-modal-label">Fecha final</label>
+          <input class="tec-input" type="date" [(ngModel)]="tareaProyEditor.fechaFin">
+        </div>
+      </div>
+      <div class="tec-modal-grid">
+        <div>
+          <label class="tec-modal-label">Hora de inicio</label>
+          <input class="tec-input" type="time" [(ngModel)]="tareaProyEditor.horaInicio">
+        </div>
+        <div>
+          <label class="tec-modal-label">Hora final</label>
+          <input class="tec-input" type="time" [(ngModel)]="tareaProyEditor.horaFin">
+        </div>
+      </div>
+
+      <label class="tec-modal-label">Evidencia / archivos</label>
+      <label class="pt-toggle"><input type="checkbox" [(ngModel)]="tareaProyEditor.requiereFoto"> <span>Requiere foto</span></label>
+      <label class="pt-toggle"><input type="checkbox" [(ngModel)]="tareaProyEditor.requiereVariasFotos"> <span>Permite varias fotos</span></label>
+      <label class="pt-toggle"><input type="checkbox" [(ngModel)]="tareaProyEditor.permiteDocs"> <span>Permite documentos (cualquier tipo)</span></label>
+
+      <label class="pt-toggle" style="margin-top:10px;"><input type="checkbox" [(ngModel)]="tareaProyEditor.tieneFases"> <span><strong>Esta tarea tiene fases / pasos</strong></span></label>
+
+      <div *ngIf="tareaProyEditor.tieneFases" style="margin-top:8px;">
+        <div class="tec-sub-list">
+          <label class="tec-sub-item" *ngFor="let f of tareaProyEditor.fases" [class.done]="f.hecha">
+            <input type="checkbox" [checked]="f.hecha" (change)="f.hecha = !f.hecha">
+            <span class="tec-sub-texto">{{ f.texto }}</span>
+            <button class="tec-sub-del" (click)="quitarFaseEditor(f)" title="Quitar">×</button>
+          </label>
+        </div>
+        <div class="tec-sub-add">
+          <input class="tec-input" type="text" [(ngModel)]="nuevaFaseTexto" placeholder="Agregar fase / paso..." (keyup.enter)="agregarFaseEditor()">
+          <button class="tec-btn-soft tec-btn-sm" (click)="agregarFaseEditor()">Agregar</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="tec-modal-foot">
+      <button class="tec-btn-del-text" *ngIf="!tareaProyEsNueva" (click)="eliminarTareaProyEditor()">Eliminar</button>
+      <span *ngIf="tareaProyEsNueva"></span>
+      <div style="display:flex; gap:10px;">
+        <button class="tec-btn-soft" (click)="cerrarTareaProyEditor()">Cancelar</button>
+        <button class="tec-btn-primary" (click)="guardarTareaProyEditor()">{{ tareaProyEsNueva ? 'Agregar tarea' : 'Guardar' }}</button>
       </div>
     </div>
   </div>

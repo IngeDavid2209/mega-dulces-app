@@ -513,6 +513,22 @@
 .gr-pick-nom { flex: 1; font-size: 14px; color: var(--text-main); }
 .gr-pick-check { color: var(--tec-blue); flex-shrink: 0; }
 
+/* Tareas del proyecto (formato completo) */
+.pt-list { display: flex; flex-direction: column; gap: 8px; }
+.pt-row { display: flex; align-items: center; gap: 10px; border: 1px solid var(--border); border-radius: 10px; padding: 9px 11px; }
+.pt-row.done { background: #F0FDF4; border-color: #BBF7D0; }
+.pt-row.done .pt-row-nom { text-decoration: line-through; color: #94A3B8; }
+.pt-check { width: 18px; height: 18px; flex-shrink: 0; }
+.pt-row-body { flex: 1; min-width: 0; cursor: pointer; }
+.pt-row-nom { font-size: 14px; font-weight: 600; color: var(--text-main); word-break: break-word; }
+.pt-row-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 5px; }
+.pt-chip { font-size: 10.5px; font-weight: 700; color: var(--text-muted); background: #F1F5F9; border-radius: 6px; padding: 2px 7px; }
+.pt-edit { background: transparent; border: none; color: #94A3B8; cursor: pointer; padding: 4px; border-radius: 6px; flex-shrink: 0; }
+.pt-edit:hover { color: var(--tec-blue); background: #EFF6FF; }
+
+.pt-toggle { display: flex; align-items: center; gap: 9px; font-size: 14px; color: var(--text-main); padding: 7px 0; cursor: pointer; }
+.pt-toggle input[type=checkbox] { width: 17px; height: 17px; flex-shrink: 0; }
+
 @media (max-width: 600px) {
   .gr-grid { grid-template-columns: 1fr; }
 }

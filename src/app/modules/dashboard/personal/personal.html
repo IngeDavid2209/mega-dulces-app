@@ -413,6 +413,17 @@
               </div>
             </div>
 
+            <!-- 🎓 GRUPO TEC DE MONTERREY (apartado aislado) -->
+            <div class="form-group form-full" style="padding-top: 16px; border-top: 1px solid var(--border);">
+              <label class="premium-perm-item" style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+                <div class="perm-text">
+                  <strong>Grupo TEC de Monterrey</strong>
+                  <span>El usuario solo entra a su apartado aislado (tareas e ideas del grupo). No ve datos de Mega Dulces ni aparece en el directorio.</span>
+                </div>
+                <div class="perm-switch"><input type="checkbox" [(ngModel)]="formGrupoTec"><span class="slider"></span></div>
+              </label>
+            </div>
+
             <!-- 🔥 ALCANCE DEL ADMIN (Global vs Por sucursales) 🔥 -->
             <div class="form-group form-full" *ngIf="formRol === 'admin'"
                  style="padding-top: 16px; border-top: 1px solid var(--border);">

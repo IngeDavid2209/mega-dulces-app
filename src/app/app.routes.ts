@@ -1,7 +1,8 @@
 import { Routes } from '@angular/router';
 
 import { CalendarioComponent } from './modules/dashboard/calendario/calendario';
-import { authGuard } from './services/auth.guard'; 
+import { authGuard } from './services/auth.guard';
+import { soloTecGuard } from './services/tec.guard';
 import { AgendaComponent } from './agenda/agenda';
 
 export const routes: Routes = [
@@ -105,6 +106,13 @@ export const routes: Routes = [
     path: 'perfil',
     canActivate: [authGuard],
     loadComponent: () => import('./modules/dashboard/perfil/perfil').then(m => m.PerfilComponent)
+  },
+
+  // 🎓 ESPACIO TEC DE MONTERREY — apartado aislado para el grupo de estudiantes
+  {
+    path: 'tec',
+    canActivate: [soloTecGuard],
+    loadComponent: () => import('./espacio-tec/espacio-tec').then(m => m.EspacioTecComponent)
   },
 
   

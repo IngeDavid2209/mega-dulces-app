@@ -1,0 +1,220 @@
+:host {
+  --tec-navy: #0F172A;
+  --tec-blue: #1D4ED8;
+  --tec-bg: #F1F5F9;
+  --tec-border: #E2E8F0;
+  --tec-text: #1E293B;
+  --tec-muted: #64748B;
+  display: block;
+  min-height: 100vh;
+  background: var(--tec-bg);
+}
+
+.tec-app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Header */
+.tec-header {
+  background: var(--tec-navy);
+  color: #fff;
+  padding: 14px 22px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.tec-header-left { display: flex; align-items: center; gap: 12px; }
+.tec-logo {
+  width: 40px; height: 40px;
+  border-radius: 10px;
+  background: var(--tec-blue);
+  color: #fff;
+  font-weight: 800;
+  font-size: 14px;
+  display: flex; align-items: center; justify-content: center;
+  letter-spacing: .5px;
+}
+.tec-brand { font-size: 17px; font-weight: 700; line-height: 1.2; display: flex; flex-direction: column; }
+.tec-brand small { font-size: 11px; font-weight: 500; color: #94A3B8; }
+.tec-header-right { display: flex; align-items: center; gap: 14px; }
+.tec-user { font-size: 13px; color: #CBD5E1; }
+.tec-btn-logout {
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.15);
+  color: #fff;
+  width: 36px; height: 36px;
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+}
+.tec-btn-logout:hover { background: rgba(255,255,255,.16); }
+
+/* Content */
+.tec-content {
+  width: 100%;
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 24px 18px 60px;
+  flex: 1;
+}
+
+/* Tabs */
+.tec-tabs { display: flex; gap: 8px; margin-bottom: 20px; }
+.tec-tab {
+  background: #fff;
+  border: 1px solid var(--tec-border);
+  color: var(--tec-muted);
+  padding: 10px 18px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex; align-items: center; gap: 8px;
+}
+.tec-tab.active {
+  background: var(--tec-navy);
+  border-color: var(--tec-navy);
+  color: #fff;
+}
+.tec-badge {
+  background: var(--tec-blue);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 1px 8px;
+  border-radius: 20px;
+}
+.tec-badge-soft { background: #CBD5E1; color: var(--tec-navy); }
+.tec-tab.active .tec-badge-soft { background: rgba(255,255,255,.25); color: #fff; }
+
+/* Inputs */
+.tec-input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--tec-border);
+  border-radius: 9px;
+  padding: 11px 13px;
+  font-size: 14px;
+  color: var(--tec-text);
+  background: #fff;
+  font-family: inherit;
+}
+.tec-input:focus { outline: none; border-color: var(--tec-blue); box-shadow: 0 0 0 3px rgba(29,78,216,.12); }
+.tec-textarea { resize: vertical; }
+
+.tec-btn-primary {
+  background: var(--tec-blue);
+  color: #fff;
+  border: none;
+  border-radius: 9px;
+  padding: 11px 18px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.tec-btn-primary:hover { background: #1E40AF; }
+.tec-btn-soft {
+  background: #fff;
+  color: var(--tec-muted);
+  border: 1px solid var(--tec-border);
+  border-radius: 9px;
+  padding: 11px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.tec-add-row { display: flex; gap: 10px; margin-bottom: 18px; }
+
+.tec-empty {
+  text-align: center;
+  color: var(--tec-muted);
+  font-size: 14px;
+  padding: 40px 20px;
+  background: #fff;
+  border: 1px dashed var(--tec-border);
+  border-radius: 12px;
+}
+
+/* Tareas */
+.tec-lista { display: flex; flex-direction: column; gap: 10px; }
+.tec-tarea {
+  background: #fff;
+  border: 1px solid var(--tec-border);
+  border-radius: 12px;
+  padding: 14px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.tec-tarea.completada .tec-tarea-texto { text-decoration: line-through; color: var(--tec-muted); }
+.tec-check {
+  flex-shrink: 0;
+  width: 24px; height: 24px;
+  border-radius: 7px;
+  border: 2px solid #CBD5E1;
+  background: #fff;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  margin-top: 1px;
+}
+.tec-check.on { background: #10B981; border-color: #10B981; }
+.tec-tarea-body { flex: 1; min-width: 0; }
+.tec-tarea-texto { font-size: 15px; color: var(--tec-text); font-weight: 500; word-break: break-word; }
+.tec-tarea-meta { font-size: 11px; color: var(--tec-muted); margin-top: 4px; }
+.tec-btn-del {
+  flex-shrink: 0;
+  background: transparent;
+  border: none;
+  color: #94A3B8;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+}
+.tec-btn-del:hover { color: #DC2626; background: #FEF2F2; }
+
+/* Notas */
+.tec-nota-form {
+  background: #fff;
+  border: 1px solid var(--tec-border);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.tec-notas-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 14px;
+}
+.tec-nota-card {
+  background: #fff;
+  border: 1px solid var(--tec-border);
+  border-radius: 12px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+}
+.tec-nota-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.tec-nota-titulo { font-size: 15px; font-weight: 700; color: var(--tec-navy); word-break: break-word; }
+.tec-nota-acciones { display: flex; gap: 4px; flex-shrink: 0; }
+.tec-icon {
+  background: transparent; border: none; color: #94A3B8; cursor: pointer; padding: 4px; border-radius: 6px;
+}
+.tec-icon:hover { color: var(--tec-blue); background: #EFF6FF; }
+.tec-icon-del:hover { color: #DC2626; background: #FEF2F2; }
+.tec-nota-texto { font-size: 13.5px; color: var(--tec-text); margin-top: 8px; white-space: pre-wrap; word-break: break-word; }
+.tec-nota-meta { font-size: 11px; color: var(--tec-muted); margin-top: 12px; }
+
+@media (max-width: 600px) {
+  .tec-add-row { flex-direction: column; }
+  .tec-notas-grid { grid-template-columns: 1fr; }
+}

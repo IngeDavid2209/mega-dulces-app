@@ -58,6 +58,8 @@ export class PersonalComponent implements OnInit, OnDestroy {
   formPuedeVerCalendario = false; // 🔥 NUEVO: PERMISO DE CALENDARIO 🔥
   formSucursales: string[] = [];
   formAreas: string[] = [];
+  // 🎓 Grupo TEC: marca al usuario como miembro del apartado aislado del TEC.
+  formGrupoTec = false;
   // 🔥 NUEVO: Alcance del admin (global = todas las sucursales, sucursales = solo las asignadas)
   formAlcance: 'global' | 'sucursales' = 'global';
 
@@ -203,7 +205,8 @@ export class PersonalComponent implements OnInit, OnDestroy {
       u.nombre.toLowerCase().includes(termino) ||
       (u.cargo && u.cargo.toLowerCase().includes(termino));
 
-    const admins = this.usuarios().filter(u => u.rol === 'admin' && matchTexto(u));
+    // Excluimos miembros del Grupo TEC: viven en su apartado aislado, no en el directorio.
+    const admins = this.usuarios().filter(u => u.rol === 'admin' && !u.grupoTec && matchTexto(u));
 
     // Admin global: ve todos
     if (esAdminGlobal(yo)) return admins;
@@ -243,7 +246,8 @@ export class PersonalComponent implements OnInit, OnDestroy {
     this._cacheBaseHuella = huella;
 
     const yo = this.liveUser;
-    let lista = this.usuarios().filter(u => u.rol === 'trabajador');
+    // Excluimos miembros del Grupo TEC: no son personal de la empresa.
+    let lista = this.usuarios().filter(u => u.rol === 'trabajador' && !u.grupoTec);
 
     // FILTRO ESTRICTO EN VIVO PARA ADMINS LIMITADOS Y JEFES / ENCARGADOS
     if (!esAdminGlobal(yo)) {
@@ -389,6 +393,7 @@ export class PersonalComponent implements OnInit, OnDestroy {
     this.formAreas = [];
     this.formPuedeAdministrarAreas = false;
     this.formAlcance = 'global'; // 🔥 Por defecto los admins nuevos son globales
+    this.formGrupoTec = false;
   }
 
   editarUsuario(user: any) {
@@ -433,6 +438,7 @@ export class PersonalComponent implements OnInit, OnDestroy {
   this.formPuedeVerHistorial        = !!user.puedeVerHistorial;
   this.formPuedeAdministrarPersonal = !!user.puedeAdministrarPersonal;
   this.formPuedeVerCalendario       = !!user.puedeVerCalendario;
+  this.formGrupoTec                 = !!user.grupoTec;
 
   this.isModalOpen = true;
 }
@@ -538,6 +544,9 @@ export class PersonalComponent implements OnInit, OnDestroy {
       sucursales: sucursalesFinal,
       areas: areasFinal,
       puedeAdministrarAreas: this.formRol === 'admin' ? true : this.formPuedeAdministrarAreas,
+      // 🎓 Miembro del Grupo TEC (apartado aislado). Si está activo, la app lo
+      // manda a /tec y no aparece en el directorio ni en las listas de la empresa.
+      grupoTec: this.formGrupoTec === true,
     };
 
     try {

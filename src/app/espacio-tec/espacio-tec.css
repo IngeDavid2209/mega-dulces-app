@@ -401,6 +401,11 @@
   padding: 40px 16px; z-index: 3000; overflow-y: auto;
 }
 .tec-modal { background: #fff; width: 100%; max-width: 520px; border-radius: 16px; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,.3); }
+.tec-modal-lg { max-width: 720px; }
+.tec-modal-lg .tec-modal-body { padding: 26px 30px; }
+.tec-modal-lg .tec-input { padding: 12px 14px; font-size: 15px; }
+.tec-modal-lg .tec-modal-grid { gap: 16px; }
+@media (max-width: 760px) { .tec-modal-lg .tec-modal-body { padding: 20px 18px; } }
 .tec-modal-top { height: 10px; }
 .tec-modal-body { padding: 20px 22px; }
 .tec-modal-label { display: block; font-size: 12px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: .4px; margin: 14px 0 6px; }

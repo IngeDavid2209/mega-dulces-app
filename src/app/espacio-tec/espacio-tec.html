@@ -654,7 +654,7 @@
 
 <!-- ====================== MODAL: EDITOR DE TAREA DE PROYECTO ====================== -->
 <div class="tec-modal-overlay" *ngIf="tareaProyEditor" style="z-index: 3500;" (click)="cerrarTareaProyEditor()">
-  <div class="tec-modal" (click)="$event.stopPropagation()">
+  <div class="tec-modal tec-modal-lg" (click)="$event.stopPropagation()">
     <div class="tec-modal-top" [style.background]="grupoModal?.color || '#60A5FA'"></div>
     <div class="tec-modal-body">
       <label class="tec-modal-label">Nombre de la tarea</label>

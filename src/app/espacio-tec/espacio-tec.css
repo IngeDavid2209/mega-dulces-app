@@ -1,74 +1,80 @@
+/* ======================================================= */
+/* 1. ESTRUCTURA MAESTRA (igual que el resto del panel)    */
+/* ======================================================= */
 :host {
-  --tec-navy: #0F172A;
+  --primary-navy: #0F172A;
+  --primary-blue: #1E40AF;
+  --text-main: #1E293B;
+  --text-muted: #64748B;
+  --bg-app: #F8FAFC;
+  --bg-sidebar: #FFFFFF;
+  --border: #E2E8F0;
   --tec-blue: #1D4ED8;
-  --tec-bg: #F1F5F9;
-  --tec-border: #E2E8F0;
-  --tec-text: #1E293B;
-  --tec-muted: #64748B;
-  display: block;
-  min-height: 100vh;
-  background: var(--tec-bg);
 }
 
-.tec-app {
-  min-height: 100vh;
+.app-layout {
   display: flex;
   flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  background-color: var(--bg-app);
 }
 
-/* Header */
-.tec-header {
-  background: var(--tec-navy);
-  color: #fff;
-  padding: 14px 22px;
+.header {
+  background-color: var(--bg-sidebar) !important;
+  height: 64px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  position: sticky;
-  top: 0;
-  z-index: 10;
+  padding: 0 24px;
+  border-bottom: 1px solid var(--border) !important;
+  z-index: 20;
 }
-.tec-header-left { display: flex; align-items: center; gap: 12px; }
-.tec-logo {
-  width: 40px; height: 40px;
-  border-radius: 10px;
-  background: var(--tec-blue);
-  color: #fff;
-  font-weight: 800;
-  font-size: 14px;
-  display: flex; align-items: center; justify-content: center;
-  letter-spacing: .5px;
-}
-.tec-brand { font-size: 17px; font-weight: 700; line-height: 1.2; display: flex; flex-direction: column; }
-.tec-brand small { font-size: 11px; font-weight: 500; color: #94A3B8; }
-.tec-header-right { display: flex; align-items: center; gap: 14px; }
-.tec-user { font-size: 13px; color: #CBD5E1; }
-.tec-btn-logout {
-  background: rgba(255,255,255,.08);
-  border: 1px solid rgba(255,255,255,.15);
-  color: #fff;
-  width: 36px; height: 36px;
-  border-radius: 8px;
-  display: flex; align-items: center; justify-content: center;
-  cursor: pointer;
-}
-.tec-btn-logout:hover { background: rgba(255,255,255,.16); }
+.header-left { display: flex; align-items: center; gap: 12px; }
+.header-logo-wrap { width: 32px; height: 32px; background-color: var(--primary-navy) !important; border-radius: 6px; display: flex; align-items: center; justify-content: center; }
+.header-brand { font-size: 18px; font-weight: 700; color: var(--text-main) !important; line-height: 1.2; margin-left: 8px; }
+.header-brand small { display: block; font-size: 11px; color: var(--text-muted) !important; font-weight: 500; }
 
-/* Content */
-.tec-content {
-  width: 100%;
-  max-width: 860px;
-  margin: 0 auto;
-  padding: 24px 18px 60px;
+.main-wrapper {
+  display: flex;
   flex: 1;
+  overflow: hidden;
 }
+
+.content {
+  flex: 1;
+  padding: 32px 40px;
+  overflow-y: auto;
+  background-color: var(--bg-app);
+}
+
+.section-title { font-size: 28px; font-weight: 800; color: var(--text-main); letter-spacing: -0.5px; margin-bottom: 5px; }
+.section-sub { color: var(--text-muted); font-size: 15px; }
+
+/* Adaptación móvil */
+.btn-menu-mobile { display: none; background: transparent; border: none; color: var(--text-main); font-size: 26px; cursor: pointer; padding: 0; }
+
+@media screen and (max-width: 768px) {
+  .app-layout { position: relative !important; height: 100dvh !important; width: 100vw !important; }
+  .header { position: relative !important; flex: 0 0 auto !important; padding-top: max(15px, env(safe-area-inset-top)) !important; padding-bottom: 12px !important; z-index: 100 !important; }
+  .main-wrapper { flex: 1 1 auto !important; flex-direction: column !important; }
+  .btn-menu-mobile { display: block !important; margin-right: 10px !important; }
+  .header-brand { font-size: 16px !important; margin-left: 5px !important; }
+  .header-brand small { display: none !important; }
+  .mobile-overlay { position: fixed !important; inset: 0 !important; background: rgba(15, 23, 42, 0.6) !important; z-index: 1999 !important; backdrop-filter: blur(2px) !important; }
+  .content { padding: 20px 16px !important; }
+}
+
+/* ======================================================= */
+/* 2. CONTENIDO DEL ESPACIO TEC                            */
+/* ======================================================= */
 
 /* Tabs */
 .tec-tabs { display: flex; gap: 8px; margin-bottom: 20px; }
 .tec-tab {
   background: #fff;
-  border: 1px solid var(--tec-border);
-  color: var(--tec-muted);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
   padding: 10px 18px;
   border-radius: 10px;
   font-size: 14px;
@@ -77,30 +83,23 @@
   display: flex; align-items: center; gap: 8px;
 }
 .tec-tab.active {
-  background: var(--tec-navy);
-  border-color: var(--tec-navy);
+  background: var(--primary-navy);
+  border-color: var(--primary-navy);
   color: #fff;
 }
-.tec-badge {
-  background: var(--tec-blue);
-  color: #fff;
-  font-size: 11px;
-  font-weight: 700;
-  padding: 1px 8px;
-  border-radius: 20px;
-}
-.tec-badge-soft { background: #CBD5E1; color: var(--tec-navy); }
+.tec-badge { background: var(--tec-blue); color: #fff; font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 20px; }
+.tec-badge-soft { background: #CBD5E1; color: var(--primary-navy); }
 .tec-tab.active .tec-badge-soft { background: rgba(255,255,255,.25); color: #fff; }
 
 /* Inputs */
 .tec-input {
   width: 100%;
   box-sizing: border-box;
-  border: 1px solid var(--tec-border);
+  border: 1px solid var(--border);
   border-radius: 9px;
   padding: 11px 13px;
   font-size: 14px;
-  color: var(--tec-text);
+  color: var(--text-main);
   background: #fff;
   font-family: inherit;
 }
@@ -121,8 +120,8 @@
 .tec-btn-primary:hover { background: #1E40AF; }
 .tec-btn-soft {
   background: #fff;
-  color: var(--tec-muted);
-  border: 1px solid var(--tec-border);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
   border-radius: 9px;
   padding: 11px 16px;
   font-size: 14px;
@@ -134,11 +133,11 @@
 
 .tec-empty {
   text-align: center;
-  color: var(--tec-muted);
+  color: var(--text-muted);
   font-size: 14px;
   padding: 40px 20px;
   background: #fff;
-  border: 1px dashed var(--tec-border);
+  border: 1px dashed var(--border);
   border-radius: 12px;
 }
 
@@ -146,14 +145,14 @@
 .tec-lista { display: flex; flex-direction: column; gap: 10px; }
 .tec-tarea {
   background: #fff;
-  border: 1px solid var(--tec-border);
+  border: 1px solid var(--border);
   border-radius: 12px;
   padding: 14px;
   display: flex;
   align-items: flex-start;
   gap: 12px;
 }
-.tec-tarea.completada .tec-tarea-texto { text-decoration: line-through; color: var(--tec-muted); }
+.tec-tarea.completada .tec-tarea-texto { text-decoration: line-through; color: var(--text-muted); }
 .tec-check {
   flex-shrink: 0;
   width: 24px; height: 24px;
@@ -166,8 +165,8 @@
 }
 .tec-check.on { background: #10B981; border-color: #10B981; }
 .tec-tarea-body { flex: 1; min-width: 0; }
-.tec-tarea-texto { font-size: 15px; color: var(--tec-text); font-weight: 500; word-break: break-word; }
-.tec-tarea-meta { font-size: 11px; color: var(--tec-muted); margin-top: 4px; }
+.tec-tarea-texto { font-size: 15px; color: var(--text-main); font-weight: 500; word-break: break-word; }
+.tec-tarea-meta { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
 .tec-btn-del {
   flex-shrink: 0;
   background: transparent;
@@ -182,7 +181,7 @@
 /* Notas */
 .tec-nota-form {
   background: #fff;
-  border: 1px solid var(--tec-border);
+  border: 1px solid var(--border);
   border-radius: 12px;
   padding: 16px;
   display: flex;
@@ -197,22 +196,20 @@
 }
 .tec-nota-card {
   background: #fff;
-  border: 1px solid var(--tec-border);
+  border: 1px solid var(--border);
   border-radius: 12px;
   padding: 14px;
   display: flex;
   flex-direction: column;
 }
 .tec-nota-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
-.tec-nota-titulo { font-size: 15px; font-weight: 700; color: var(--tec-navy); word-break: break-word; }
+.tec-nota-titulo { font-size: 15px; font-weight: 700; color: var(--primary-navy); word-break: break-word; }
 .tec-nota-acciones { display: flex; gap: 4px; flex-shrink: 0; }
-.tec-icon {
-  background: transparent; border: none; color: #94A3B8; cursor: pointer; padding: 4px; border-radius: 6px;
-}
+.tec-icon { background: transparent; border: none; color: #94A3B8; cursor: pointer; padding: 4px; border-radius: 6px; }
 .tec-icon:hover { color: var(--tec-blue); background: #EFF6FF; }
 .tec-icon-del:hover { color: #DC2626; background: #FEF2F2; }
-.tec-nota-texto { font-size: 13.5px; color: var(--tec-text); margin-top: 8px; white-space: pre-wrap; word-break: break-word; }
-.tec-nota-meta { font-size: 11px; color: var(--tec-muted); margin-top: 12px; }
+.tec-nota-texto { font-size: 13.5px; color: var(--text-main); margin-top: 8px; white-space: pre-wrap; word-break: break-word; }
+.tec-nota-meta { font-size: 11px; color: var(--text-muted); margin-top: 12px; }
 
 @media (max-width: 600px) {
   .tec-add-row { flex-direction: column; }

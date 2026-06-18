@@ -512,4 +512,21 @@
 
 @media (max-width: 760px) {
   .as-wrap { grid-template-columns: 1fr; }
+  .as-form { position: static; }
+}
+
+/* ======================================================= */
+/* AJUSTES FINOS PARA CELULAR                              */
+/* ======================================================= */
+@media (max-width: 600px) {
+  .content { padding: 18px 14px !important; }
+  .tec-hero { padding: 16px; gap: 12px; border-radius: 14px; }
+  .tec-hero-icon { width: 44px; height: 44px; }
+  .tec-hero-title { font-size: 20px; }
+  .tec-hero-sub { font-size: 12.5px; }
+  .rs-grid { grid-template-columns: 1fr; }
+  .rs-saludo { font-size: 16px; }
+  .tec-modal-grid { grid-template-columns: 1fr; }
+  .tec-modal-overlay { padding: 16px 10px; }
+  .rs-asignar-head { align-items: flex-start; }
 }

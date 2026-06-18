@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, Router } from '@angular/router';
 import { DragDropModule, CdkDragDrop, moveItemInArray, transferArrayItem } from '@angular/cdk/drag-drop';
-import { Firestore, collection, query, onSnapshot, addDoc, doc, setDoc, updateDoc, deleteDoc } from '@angular/fire/firestore';
+import { Firestore, collection, query, where, onSnapshot, addDoc, doc, setDoc, updateDoc, deleteDoc } from '@angular/fire/firestore';
 import Swal from 'sweetalert2';
 
 import { SidebarComponent } from '../shared/sidebar/sidebar';
@@ -31,7 +31,7 @@ interface Subtarea { id: string; texto: string; hecha: boolean; }
 export class EspacioTecComponent implements OnInit, OnDestroy {
   currentUser: any = null;
   isMenuOpen = false;
-  vista: 'tablero' | 'conversaciones' | 'equipos' | 'asignar' | 'notas' = 'tablero';
+  vista: 'inicio' | 'tablero' | 'conversaciones' | 'equipos' | 'asignar' | 'notas' = 'inicio';
 
   // ---------------- Tablero Kanban ----------------
   readonly columnas = [
@@ -84,6 +84,9 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
   tareaAsignarTexto = '';
   tareaAsignarHora = '';
   asignando = false;
+  /** Tareas que el equipo TEC ha asignado a personal (checklists con origenTec). */
+  tecAsignadas: any[] = [];
+  private radarAsignadas: (() => void) | null = null;
 
   // ---------------- Ideas / Notas ----------------
   notas: any[] = [];
@@ -112,6 +115,7 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
     if (this.radarPosts) { this.radarPosts(); this.radarPosts = null; }
     if (this.radarGrupos) { this.radarGrupos(); this.radarGrupos = null; }
     if (this.radarUsuarios) { this.radarUsuarios(); this.radarUsuarios = null; }
+    if (this.radarAsignadas) { this.radarAsignadas(); this.radarAsignadas = null; }
   }
 
   private miUid(): string { return this.currentUser?.uid || this.currentUser?.id || ''; }
@@ -158,7 +162,34 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
         .map(d => ({ id: d.id, ...(d.data() as any) }))
         .filter(u => u.rol === 'trabajador' && !u.grupoTec);
     });
+
+    // Tareas asignadas por el TEC a personal (para el resumen).
+    const chkRef = collection(this.firestore, 'checklists');
+    this.radarAsignadas = onSnapshot(query(chkRef, where('origenTec', '==', true)), snap => {
+      this.tecAsignadas = snap.docs.map(d => ({ id: d.id, ...(d.data() as any) }));
+    }, err => console.error('[tec] asignadas', err));
   }
+
+  // ===================== RESUMEN (Inicio) =====================
+  get resumenColumnas() {
+    return this.columnas.map(c => ({ ...c, n: (this.tablero[c.id] || []).length }));
+  }
+  get totalTarjetas(): number { return this.columnas.reduce((s, c) => s + (this.tablero[c.id] || []).length, 0); }
+  get ultimasConversaciones(): any[] { return this.posts.slice(0, 3); }
+  get ultimasNotas(): any[] { return this.notas.slice(0, 3); }
+
+  /** Tareas TEC asignadas HOY, agrupadas por sucursal. */
+  get asignadasHoyPorSucursal(): { store: string; n: number }[] {
+    const hoy = this.hoyISO();
+    const mapa: Record<string, number> = {};
+    for (const t of this.tecAsignadas) {
+      if (t.date !== hoy) continue;
+      const s = t.store || 'Sin sucursal';
+      mapa[s] = (mapa[s] || 0) + 1;
+    }
+    return Object.keys(mapa).map(store => ({ store, n: mapa[store] })).sort((a, b) => b.n - a.n);
+  }
+  get totalAsignadasHoy(): number { return this.asignadasHoyPorSucursal.reduce((s, x) => s + x.n, 0); }
 
   get equipos() { return this.grupos.filter(g => g.tipo === 'equipo'); }
   get proyectos() { return this.grupos.filter(g => g.tipo === 'proyecto'); }
@@ -175,7 +206,7 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
     };
   }
 
-  cambiarVista(v: 'tablero' | 'conversaciones' | 'equipos' | 'asignar' | 'notas') { this.vista = v; }
+  cambiarVista(v: 'inicio' | 'tablero' | 'conversaciones' | 'equipos' | 'asignar' | 'notas') { this.vista = v; }
 
   // ===================== KANBAN =====================
   nombreColumna(id: string): string { return this.columnas.find(c => c.id === id)?.nombre || id; }

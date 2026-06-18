@@ -39,6 +39,12 @@
 
       <!-- Tabs -->
       <div class="tec-tabs">
+        <button class="tec-tab" [class.active]="vista === 'inicio'" (click)="cambiarVista('inicio')">
+          <svg class="tec-tab-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline>
+          </svg>
+          Inicio
+        </button>
         <button class="tec-tab" [class.active]="vista === 'tablero'" (click)="cambiarVista('tablero')">
           <svg class="tec-tab-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <rect x="3" y="3" width="7" height="18" rx="1.5"></rect><rect x="14" y="3" width="7" height="11" rx="1.5"></rect>
@@ -74,6 +80,101 @@
           <span class="tec-tab-badge" *ngIf="notas.length > 0">{{ notas.length }}</span>
         </button>
       </div>
+
+      <!-- ====================== INICIO / RESUMEN ====================== -->
+      <section *ngIf="vista === 'inicio'">
+        <div class="rs-grid">
+          <!-- Tablero -->
+          <div class="rs-card" (click)="cambiarVista('tablero')">
+            <div class="rs-card-head">
+              <span class="rs-ic" style="background:#EEF2FF; color:#4F46E5;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="18" rx="1.5"></rect><rect x="14" y="3" width="7" height="11" rx="1.5"></rect></svg>
+              </span>
+              <span class="rs-card-title">Tablero</span>
+              <span class="rs-card-total">{{ totalTarjetas }}</span>
+            </div>
+            <div class="rs-cols">
+              <div class="rs-col" *ngFor="let c of resumenColumnas">
+                <span class="rs-col-dot" [style.background]="c.color"></span>
+                <span class="rs-col-n">{{ c.n }}</span>
+                <span class="rs-col-nom">{{ c.nombre }}</span>
+              </div>
+            </div>
+            <div class="rs-card-link">Abrir tablero →</div>
+          </div>
+
+          <!-- Conversaciones -->
+          <div class="rs-card" (click)="cambiarVista('conversaciones')">
+            <div class="rs-card-head">
+              <span class="rs-ic" style="background:#ECFEFF; color:#0891B2;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+              </span>
+              <span class="rs-card-title">Conversaciones</span>
+              <span class="rs-card-total">{{ posts.length }}</span>
+            </div>
+            <div class="rs-list" *ngIf="ultimasConversaciones.length > 0">
+              <div class="rs-li" *ngFor="let p of ultimasConversaciones">
+                <span class="rs-li-avatar">{{ inicial(p.autor) }}</span>
+                <span class="rs-li-text"><strong>{{ p.autor }}:</strong> {{ p.texto }}</span>
+              </div>
+            </div>
+            <div class="rs-empty" *ngIf="ultimasConversaciones.length === 0">Sin mensajes todavía.</div>
+            <div class="rs-card-link">Ver conversaciones →</div>
+          </div>
+
+          <!-- Equipos y Proyectos -->
+          <div class="rs-card" (click)="cambiarVista('equipos')">
+            <div class="rs-card-head">
+              <span class="rs-ic" style="background:#FEF3C7; color:#D97706;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle></svg>
+              </span>
+              <span class="rs-card-title">Equipos y Proyectos</span>
+              <span class="rs-card-total">{{ grupos.length }}</span>
+            </div>
+            <div class="rs-bignums">
+              <div><span class="rs-big">{{ equipos.length }}</span><span class="rs-big-lbl">Equipos</span></div>
+              <div><span class="rs-big">{{ proyectos.length }}</span><span class="rs-big-lbl">Proyectos</span></div>
+            </div>
+            <div class="rs-card-link">Ver equipos →</div>
+          </div>
+
+          <!-- Ideas y Notas -->
+          <div class="rs-card" (click)="cambiarVista('notas')">
+            <div class="rs-card-head">
+              <span class="rs-ic" style="background:#FCE7F3; color:#DB2777;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+              </span>
+              <span class="rs-card-title">Ideas y Notas</span>
+              <span class="rs-card-total">{{ notas.length }}</span>
+            </div>
+            <div class="rs-list" *ngIf="ultimasNotas.length > 0">
+              <div class="rs-li" *ngFor="let n of ultimasNotas">
+                <span class="rs-li-dot">•</span>
+                <span class="rs-li-text">{{ n.titulo }}</span>
+              </div>
+            </div>
+            <div class="rs-empty" *ngIf="ultimasNotas.length === 0">Sin notas todavía.</div>
+            <div class="rs-card-link">Ver ideas →</div>
+          </div>
+        </div>
+
+        <!-- Asignaciones a sucursales (hoy) -->
+        <div class="rs-asignar">
+          <div class="rs-asignar-head">
+            <div>
+              <div class="rs-asignar-title">Tareas asignadas a sucursales · hoy</div>
+              <div class="rs-asignar-sub">{{ totalAsignadasHoy }} tarea(s) enviadas al personal hoy</div>
+            </div>
+            <button class="tec-btn-primary" (click)="cambiarVista('asignar')">Asignar tarea</button>
+          </div>
+          <div class="rs-sucs" *ngIf="asignadasHoyPorSucursal.length > 0">
+            <span class="rs-suc" *ngFor="let s of asignadasHoyPorSucursal">
+              {{ s.store }} <strong>{{ s.n }}</strong>
+            </span>
+          </div>
+          <div class="rs-empty" *ngIf="asignadasHoyPorSucursal.length === 0">Aún no has asignado tareas hoy.</div>
+        </div>
+      </section>
 
       <!-- ====================== TABLERO KANBAN ====================== -->
       <section *ngIf="vista === 'tablero'">

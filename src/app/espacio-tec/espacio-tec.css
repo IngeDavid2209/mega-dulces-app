@@ -215,3 +215,96 @@
   .tec-add-row { flex-direction: column; }
   .tec-notas-grid { grid-template-columns: 1fr; }
 }
+
+/* ======================================================= */
+/* 3. TABLERO KANBAN                                       */
+/* ======================================================= */
+.kb-board {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  overflow-x: auto;
+  padding-bottom: 12px;
+}
+.kb-col {
+  flex: 0 0 280px;
+  width: 280px;
+  background: #EEF2F7;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 12px;
+  max-height: calc(100vh - 240px);
+  display: flex;
+  flex-direction: column;
+}
+.kb-col-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.kb-col-title { font-size: 14px; font-weight: 800; color: var(--primary-navy); display: flex; align-items: center; gap: 8px; }
+.kb-col-count { background: #CBD5E1; color: var(--primary-navy); font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 20px; }
+.kb-add-btn { background: transparent; border: none; color: #10B981; cursor: pointer; border-radius: 8px; padding: 4px; display: flex; }
+.kb-add-btn:hover { background: #D1FAE5; }
+
+.kb-quickadd { background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 10px; margin-bottom: 10px; }
+.kb-quickadd-input { width: 100%; box-sizing: border-box; border: 1px solid var(--border); border-radius: 8px; padding: 9px 11px; font-size: 13.5px; font-family: inherit; }
+.kb-quickadd-input:focus { outline: none; border-color: var(--tec-blue); }
+.kb-quickadd-actions { display: flex; gap: 8px; margin-top: 8px; }
+
+.kb-list { flex: 1; overflow-y: auto; min-height: 24px; display: flex; flex-direction: column; gap: 10px; }
+
+.kb-card {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-left: 5px solid #E2E8F0;
+  border-radius: 10px;
+  padding: 12px 12px 10px;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(0,0,0,.04);
+}
+.kb-card:hover { box-shadow: 0 3px 10px rgba(0,0,0,.08); }
+.kb-card-title { font-size: 14px; color: var(--text-main); font-weight: 600; word-break: break-word; }
+.kb-card-foot { display: flex; align-items: center; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.kb-chip { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 700; color: var(--text-muted); background: #F1F5F9; padding: 2px 7px; border-radius: 6px; }
+.kb-chip-sub.kb-chip-done { background: #D1FAE5; color: #047857; }
+.kb-avatar { margin-left: auto; width: 24px; height: 24px; border-radius: 50%; background: var(--primary-navy); color: #fff; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+.kb-empty { font-size: 12px; color: #94A3B8; text-align: center; padding: 14px 6px; border: 1px dashed #CBD5E1; border-radius: 10px; }
+
+/* CDK drag-drop */
+.cdk-drag-preview { box-shadow: 0 8px 20px rgba(0,0,0,.18); border-radius: 10px; }
+.cdk-drag-placeholder { opacity: 0; }
+.kb-card-placeholder { background: #DCE3EC; border: 2px dashed #94A3B8; border-radius: 10px; min-height: 46px; }
+.cdk-drag-animating { transition: transform 200ms cubic-bezier(0,0,.2,1); }
+.kb-list.cdk-drop-list-dragging .kb-card:not(.cdk-drag-placeholder) { transition: transform 200ms cubic-bezier(0,0,.2,1); }
+
+.tec-btn-sm { padding: 7px 12px; font-size: 13px; }
+
+@media (max-width: 768px) {
+  .kb-col { flex: 0 0 76vw; width: 76vw; max-height: none; }
+}
+
+/* ======================================================= */
+/* 4. MODAL DE TARJETA                                     */
+/* ======================================================= */
+.tec-modal-overlay {
+  position: fixed; inset: 0; background: rgba(15,23,42,.55);
+  display: flex; align-items: flex-start; justify-content: center;
+  padding: 40px 16px; z-index: 3000; overflow-y: auto;
+}
+.tec-modal { background: #fff; width: 100%; max-width: 520px; border-radius: 16px; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,.3); }
+.tec-modal-top { height: 10px; }
+.tec-modal-body { padding: 20px 22px; }
+.tec-modal-label { display: block; font-size: 12px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: .4px; margin: 14px 0 6px; }
+.tec-modal-label:first-child { margin-top: 0; }
+.tec-modal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.tec-color-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.tec-color { width: 30px; height: 30px; border-radius: 8px; border: 2px solid transparent; cursor: pointer; }
+.tec-color.sel { border-color: var(--primary-navy); box-shadow: 0 0 0 2px #fff inset; }
+.tec-sub-count { color: var(--tec-blue); margin-left: 6px; }
+.tec-sub-list { display: flex; flex-direction: column; gap: 6px; }
+.tec-sub-item { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--text-main); background: #F8FAFC; border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; }
+.tec-sub-item.done .tec-sub-texto { text-decoration: line-through; color: #94A3B8; }
+.tec-sub-texto { flex: 1; word-break: break-word; }
+.tec-sub-del { background: transparent; border: none; color: #94A3B8; font-size: 18px; line-height: 1; cursor: pointer; padding: 0 4px; }
+.tec-sub-del:hover { color: #DC2626; }
+.tec-sub-add { display: flex; gap: 8px; margin-top: 8px; }
+.tec-modal-foot { display: flex; align-items: center; justify-content: space-between; padding: 16px 22px; border-top: 1px solid var(--border); background: #F8FAFC; }
+.tec-btn-del-text { background: transparent; border: none; color: #DC2626; font-weight: 700; font-size: 14px; cursor: pointer; }
+.tec-btn-del-text:hover { text-decoration: underline; }

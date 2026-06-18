@@ -191,6 +191,34 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
   }
   get totalAsignadasHoy(): number { return this.asignadasHoyPorSucursal.reduce((s, x) => s + x.n, 0); }
 
+  /** Tarjetas del tablero asignadas al usuario actual y aún no terminadas. */
+  get misTarjetas(): any[] {
+    const mi = normalizarNombre(this.miNombre());
+    if (!mi) return [];
+    const out: any[] = [];
+    for (const col of this.columnas) {
+      if (col.id === 'hecho') continue;
+      for (const c of (this.tablero[col.id] || [])) {
+        if (c.asignado && normalizarNombre(c.asignado) === mi) {
+          out.push({ ...c, columnaNombre: col.nombre, columnaColor: col.color });
+        }
+      }
+    }
+    return out;
+  }
+
+  /** Saludo según la hora. */
+  get saludo(): string {
+    const h = new Date().getHours();
+    if (h < 12) return 'Buenos días';
+    if (h < 19) return 'Buenas tardes';
+    return 'Buenas noches';
+  }
+  get miPrimerNombre(): string { return (this.miNombre() || '').split(' ')[0]; }
+
+  /** Acceso rápido: abre una sección (y opcionalmente prepara algo). */
+  irA(v: 'tablero' | 'conversaciones' | 'asignar' | 'notas') { this.vista = v; }
+
   get equipos() { return this.grupos.filter(g => g.tipo === 'equipo'); }
   get proyectos() { return this.grupos.filter(g => g.tipo === 'proyecto'); }
 

@@ -108,7 +108,14 @@ export class AgendaComponent implements OnInit, OnDestroy {
       this.tareasPersonales = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data() as any
-      })).sort((a: any, b: any) => b.fechaCreacion - a.fechaCreacion);
+      })).sort((a: any, b: any) => {
+        // Las que tienen fecha van primero, en orden cronológico (lo más próximo
+        // arriba); las sin fecha después, por fecha de creación (más reciente).
+        if (a.fecha && b.fecha) return a.fecha.localeCompare(b.fecha);
+        if (a.fecha && !b.fecha) return -1;
+        if (!a.fecha && b.fecha) return 1;
+        return (b.fechaCreacion || 0) - (a.fechaCreacion || 0);
+      });
     });
   }
 
@@ -120,6 +127,7 @@ export class AgendaComponent implements OnInit, OnDestroy {
       texto: this.nuevaTareaTexto,
       completada: false,
       fechaCreacion: Date.now(),
+      fecha: '',            // 📅 día en que se debe hacer (YYYY-MM-DD), opcional
       instrucciones: '',
       comentarios: '',
       adjunto: null,
@@ -180,6 +188,7 @@ export class AgendaComponent implements OnInit, OnDestroy {
         const docRef = doc(this.firestore, `usuarios/${userId}/agenda/${this.tareaActiva.id}`);
         await updateDoc(docRef, {
           texto: this.tareaActiva.texto,
+          fecha: this.tareaActiva.fecha || '',
           instrucciones: this.tareaActiva.instrucciones || '',
           comentarios: this.tareaActiva.comentarios || ''
         });
@@ -190,6 +199,20 @@ export class AgendaComponent implements OnInit, OnDestroy {
       alert('Hubo un error al procesar la solicitud.');
     }
   }
+
+  // 📅 Helpers de fecha de actividad
+  private hoyISO(): string {
+    const d = new Date();
+    const off = d.getTimezoneOffset() * 60000;
+    return new Date(d.getTime() - off).toISOString().split('T')[0];
+  }
+  formatearFecha(iso: string | undefined): string {
+    if (!iso) return '';
+    try { return new Date(iso + 'T00:00:00').toLocaleDateString('es-MX', { weekday: 'short', day: '2-digit', month: 'short' }); }
+    catch { return iso; }
+  }
+  esHoy(iso: string | undefined): boolean { return !!iso && iso === this.hoyISO(); }
+  estaVencida(t: any): boolean { return !!t?.fecha && !t?.completada && t.fecha < this.hoyISO(); }
 
   // Layout
   toggleMenu() { this.isMenuOpen = !this.isMenuOpen; }

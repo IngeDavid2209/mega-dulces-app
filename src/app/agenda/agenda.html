@@ -102,8 +102,17 @@
                 style="font-weight: 600; font-size: 16px; transition: 0.2s;">
                 {{ tarea.texto }}
               </span>
-              <div *ngIf="tarea.instrucciones || tarea.comentarios || tarea.adjunto"
-                style="display: flex; gap: 10px; margin-top: 4px;">
+              <div *ngIf="tarea.fecha || tarea.instrucciones || tarea.comentarios || tarea.adjunto"
+                style="display: flex; gap: 8px; margin-top: 5px; flex-wrap: wrap; align-items: center;">
+                <span *ngIf="tarea.fecha"
+                  [ngStyle]="{ 'color': estaVencida(tarea) ? '#DC2626' : (esHoy(tarea.fecha) ? '#1D4ED8' : '#475569'), 'background': estaVencida(tarea) ? '#FEF2F2' : (esHoy(tarea.fecha) ? '#EFF6FF' : '#F1F5F9') }"
+                  style="font-size: 11px; font-weight: 800; padding: 3px 9px; border-radius: 20px; display: inline-flex; align-items: center; gap: 4px;">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="4" width="18" height="18" rx="2"></rect>
+                    <line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line>
+                  </svg>
+                  {{ esHoy(tarea.fecha) ? 'Hoy' : formatearFecha(tarea.fecha) }}{{ estaVencida(tarea) ? ' · vencida' : '' }}
+                </span>
                 <span *ngIf="tarea.instrucciones"
                   style="font-size: 11px; color: #64748B; display: flex; align-items: center; gap: 3px;"><svg width="12"
                     height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -161,6 +170,15 @@
           <label style="font-size: 12px; font-weight: 700; color: #64748B; text-transform: uppercase;">Tarea</label>
           <input type="text" [(ngModel)]="tareaActiva.texto"
             style="width: 100%; padding: 10px 14px; border: 1px solid #CBD5E1; border-radius: 8px; font-size: 16px; font-weight: 600; color: #0F172A; margin-top: 6px; box-sizing: border-box;">
+        </div>
+
+        <div style="margin-bottom: 20px;">
+          <label style="font-size: 12px; font-weight: 700; color: #64748B; text-transform: uppercase; display: flex; align-items: center; gap: 6px;">
+            📅 Fecha de la actividad
+          </label>
+          <input type="date" [(ngModel)]="tareaActiva.fecha"
+            style="width: 100%; padding: 10px 14px; border: 1px solid #CBD5E1; border-radius: 8px; font-size: 15px; color: #0F172A; margin-top: 6px; box-sizing: border-box;">
+          <p style="font-size: 11px; color: #94A3B8; margin: 6px 0 0;">Opcional. Útil para agendar reportes o pendientes a futuro y ver qué día toca cada cosa.</p>
         </div>
 
         <div style="margin-bottom: 20px;">

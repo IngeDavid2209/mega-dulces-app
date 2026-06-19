@@ -60,6 +60,10 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
   posts: any[] = [];
   nuevoPostTexto = '';
   respuestaTexto: Record<string, string> = {};
+  postEnEdicion: string | null = null;
+  postEdicionTexto = '';
+  respEnEdicion: string | null = null;
+  respEdicionTexto = '';
   private radarPosts: (() => void) | null = null;
 
   // ---------------- Equipos / Proyectos ----------------
@@ -412,6 +416,31 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
     catch (e) { console.error('[tec] eliminarRespuesta', e); }
   }
 
+  // Editar mensaje
+  empezarEdicionPost(p: any) { if (!this.puedeBorrar(p.autorUid)) return; this.postEnEdicion = p.id; this.postEdicionTexto = p.texto || ''; }
+  cancelarEdicionPost() { this.postEnEdicion = null; this.postEdicionTexto = ''; }
+  async guardarEdicionPost(p: any) {
+    const t = this.postEdicionTexto.trim();
+    if (!t) return;
+    try {
+      await updateDoc(doc(this.firestore, 'tec_conversaciones', p.id), { texto: t, editadoEn: Date.now() });
+      this.cancelarEdicionPost();
+    } catch (e) { console.error('[tec] editar post', e); }
+  }
+
+  // Editar respuesta
+  empezarEdicionResp(r: any) { if (!this.puedeBorrar(r.autorUid)) return; this.respEnEdicion = r.id; this.respEdicionTexto = r.texto || ''; }
+  cancelarEdicionResp() { this.respEnEdicion = null; this.respEdicionTexto = ''; }
+  async guardarEdicionResp(p: any, r: any) {
+    const t = this.respEdicionTexto.trim();
+    if (!t) return;
+    const respuestas = (p.respuestas || []).map((x: any) => x.id === r.id ? { ...x, texto: t, editadoEn: Date.now() } : x);
+    try {
+      await updateDoc(doc(this.firestore, 'tec_conversaciones', p.id), { respuestas });
+      this.cancelarEdicionResp();
+    } catch (e) { console.error('[tec] editar respuesta', e); }
+  }
+
   // ===================== EQUIPOS / PROYECTOS =====================
   nuevaTareaProyectoTexto = '';
 
@@ -646,6 +675,55 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
     } finally {
       this.asignando = false;
     }
+  }
+
+  // ---- Editar / borrar tareas ya asignadas a personal ----
+  asignadaEdit: any = null;
+
+  /** Tareas TEC asignadas, activas (no borradas), de más reciente a más antigua. */
+  get asignadasActivas(): any[] {
+    return this.tecAsignadas
+      .filter(t => !t.eliminado)
+      .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+  }
+
+  abrirEditarAsignada(t: any) {
+    this.asignadaEdit = { id: t.id, name: t.name || '', hora: (t.items && t.items[0]?.horaLimite) || (t.time && t.time !== '23:59' ? t.time : '') || '' };
+  }
+  cerrarEditarAsignada() { this.asignadaEdit = null; }
+
+  async guardarAsignada() {
+    if (!this.asignadaEdit) return;
+    const nombre = (this.asignadaEdit.name || '').trim();
+    if (!nombre) { Swal.fire({ icon: 'info', title: 'Escribe el nombre de la tarea', confirmButtonColor: '#0F172A' }); return; }
+    const orig = this.tecAsignadas.find(x => x.id === this.asignadaEdit.id);
+    const items = (orig?.items || []).map((it: any, i: number) => i === 0 ? { ...it, text: nombre, horaLimite: this.asignadaEdit.hora || null } : it);
+    try {
+      await updateDoc(doc(this.firestore, 'checklists', this.asignadaEdit.id), {
+        name: nombre, items, time: this.asignadaEdit.hora || '23:59'
+      });
+      this.asignadaEdit = null;
+    } catch (e) {
+      console.error('[tec] guardarAsignada', e);
+      Swal.fire({ icon: 'error', title: 'No se pudo guardar', confirmButtonColor: '#0F172A' });
+    }
+  }
+
+  async eliminarAsignada(t: any) {
+    const r = await Swal.fire({
+      title: 'Quitar tarea asignada', text: `¿Quitar "${t.name}" de ${t.assigned}?`, icon: 'warning',
+      showCancelButton: true, confirmButtonText: 'Sí, quitar', cancelButtonText: 'Cancelar', confirmButtonColor: '#DC2626'
+    });
+    if (!r.isConfirmed) return;
+    try { await updateDoc(doc(this.firestore, 'checklists', t.id), { eliminado: true }); }
+    catch (e) { console.error('[tec] eliminarAsignada', e); }
+  }
+
+  estadoAsignada(t: any): string {
+    if (t.enviado) return 'Enviada';
+    if (t.status === 'completo') return 'Completa';
+    if (t.status === 'en-progreso') return 'En progreso';
+    return 'Pendiente';
   }
 
   // ===================== NOTAS / IDEAS =====================

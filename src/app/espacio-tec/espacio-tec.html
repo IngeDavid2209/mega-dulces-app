@@ -309,9 +309,23 @@
                 <span class="cv-author">{{ p.autor }}</span>
                 <span class="cv-time">{{ formatearFecha(p.creadoEn) }}</span>
               </div>
-              <button class="tec-sub-del" *ngIf="puedeBorrar(p.autorUid)" (click)="eliminarPost(p)" title="Eliminar">×</button>
+              <div class="cv-acciones" *ngIf="puedeBorrar(p.autorUid) && postEnEdicion !== p.id">
+                <button class="cv-edit" (click)="empezarEdicionPost(p)" title="Editar">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                </button>
+                <button class="tec-sub-del" (click)="eliminarPost(p)" title="Eliminar">×</button>
+              </div>
             </div>
-            <div class="cv-post-texto">{{ p.texto }}</div>
+            <div class="cv-post-texto" *ngIf="postEnEdicion !== p.id">
+              {{ p.texto }}<span class="cv-editado" *ngIf="p.editadoEn"> · editado</span>
+            </div>
+            <div *ngIf="postEnEdicion === p.id" style="margin-top:8px;">
+              <textarea class="tec-input tec-textarea" rows="2" [(ngModel)]="postEdicionTexto"></textarea>
+              <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:6px;">
+                <button class="tec-btn-soft tec-btn-sm" (click)="cancelarEdicionPost()">Cancelar</button>
+                <button class="tec-btn-primary tec-btn-sm" (click)="guardarEdicionPost(p)">Guardar</button>
+              </div>
+            </div>
 
             <!-- Respuestas -->
             <div class="cv-respuestas" *ngIf="p.respuestas.length > 0">
@@ -321,9 +335,23 @@
                   <div class="cv-resp-meta">
                     <span class="cv-author">{{ r.autor }}</span>
                     <span class="cv-time">{{ formatearFecha(r.creadoEn) }}</span>
-                    <button class="tec-sub-del" *ngIf="puedeBorrar(r.autorUid)" (click)="eliminarRespuesta(p, r)" title="Eliminar">×</button>
+                    <span class="cv-acciones" *ngIf="puedeBorrar(r.autorUid) && respEnEdicion !== r.id" style="margin-left:auto;">
+                      <button class="cv-edit" (click)="empezarEdicionResp(r)" title="Editar">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                      </button>
+                      <button class="tec-sub-del" (click)="eliminarRespuesta(p, r)" title="Eliminar">×</button>
+                    </span>
                   </div>
-                  <div class="cv-resp-texto">{{ r.texto }}</div>
+                  <div class="cv-resp-texto" *ngIf="respEnEdicion !== r.id">
+                    {{ r.texto }}<span class="cv-editado" *ngIf="r.editadoEn"> · editado</span>
+                  </div>
+                  <div *ngIf="respEnEdicion === r.id" style="margin-top:6px;">
+                    <input class="tec-input" type="text" [(ngModel)]="respEdicionTexto" (keyup.enter)="guardarEdicionResp(p, r)">
+                    <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:6px;">
+                      <button class="tec-btn-soft tec-btn-sm" (click)="cancelarEdicionResp()">Cancelar</button>
+                      <button class="tec-btn-primary tec-btn-sm" (click)="guardarEdicionResp(p, r)">Guardar</button>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -443,6 +471,23 @@
 
             <div class="as-sel-count" *ngIf="empleadosSel.length > 0">
               {{ empleadosSel.length }} seleccionado(s)
+            </div>
+          </div>
+        </div>
+
+        <!-- Tareas ya asignadas (editar / quitar) -->
+        <div class="as-asignadas" *ngIf="asignadasActivas.length > 0">
+          <h3 class="gr-section-title" style="margin: 24px 0 12px;">Tareas asignadas ({{ asignadasActivas.length }})</h3>
+          <div class="as-asig-list">
+            <div class="as-asig-row" *ngFor="let t of asignadasActivas">
+              <div class="as-asig-body">
+                <div class="as-asig-nom">{{ t.name }}</div>
+                <div class="as-asig-meta">{{ t.assigned }} · {{ t.store }} · {{ formatearDia(t.date) }} · {{ estadoAsignada(t) }}</div>
+              </div>
+              <button class="pt-edit" (click)="abrirEditarAsignada(t)" title="Editar">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+              </button>
+              <button class="tec-sub-del" (click)="eliminarAsignada(t)" title="Quitar">×</button>
             </div>
           </div>
         </div>
@@ -709,6 +754,27 @@
       <div style="display:flex; gap:10px;">
         <button class="tec-btn-soft" (click)="cerrarTareaProyEditor()">Cancelar</button>
         <button class="tec-btn-primary" (click)="guardarTareaProyEditor()">{{ tareaProyEsNueva ? 'Agregar tarea' : 'Guardar' }}</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ====================== MODAL: EDITAR TAREA ASIGNADA ====================== -->
+<div class="tec-modal-overlay" *ngIf="asignadaEdit" style="z-index: 3500;" (click)="cerrarEditarAsignada()">
+  <div class="tec-modal" (click)="$event.stopPropagation()">
+    <div class="tec-modal-top" style="background:#0EA5E9;"></div>
+    <div class="tec-modal-body">
+      <label class="tec-modal-label">Tarea</label>
+      <input class="tec-input" type="text" [(ngModel)]="asignadaEdit.name" placeholder="Nombre de la tarea">
+      <label class="tec-modal-label">Hora límite (opcional)</label>
+      <input class="tec-input" type="time" [(ngModel)]="asignadaEdit.hora">
+      <p style="font-size:12px; color:#64748B; margin-top:10px;">El cambio se refleja en el Checklist del empleado.</p>
+    </div>
+    <div class="tec-modal-foot">
+      <span></span>
+      <div style="display:flex; gap:10px;">
+        <button class="tec-btn-soft" (click)="cerrarEditarAsignada()">Cancelar</button>
+        <button class="tec-btn-primary" (click)="guardarAsignada()">Guardar</button>
       </div>
     </div>
   </div>

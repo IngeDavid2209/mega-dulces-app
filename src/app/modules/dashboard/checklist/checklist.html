@@ -128,6 +128,7 @@
           <div class="eq-detalle-head">
             <div>
               <h2 class="eq-detalle-titulo">{{ proyecto.name }}</h2>
+              <p *ngIf="proyecto.objetivo" style="margin:4px 0 8px; font-size:13.5px; color:#475569; max-width:560px;">🎯 {{ proyecto.objetivo }}</p>
               <div class="eq-detalle-meta">
                 <span><strong>Sucursal:</strong> {{ proyecto.store }}</span>
                 <span><strong>Fecha:</strong> {{ proyecto.date }}</span>
@@ -1833,6 +1834,11 @@
                   <label>Fecha objetivo</label>
                   <input type="date" class="form-input" [(ngModel)]="equipoFormDate" [min]="hoyIsoStr">
                 </div>
+              </div>
+              <div class="eq-field">
+                <label>Objetivo del proyecto</label>
+                <textarea class="form-input" rows="2" [(ngModel)]="equipoFormObjetivo"
+                          placeholder="¿Qué se busca lograr con este proyecto?"></textarea>
               </div>
             </div>
 

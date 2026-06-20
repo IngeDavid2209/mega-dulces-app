@@ -149,6 +149,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   // Wizard de creación de Tarea en Equipo (4 pasos)
   pasoEquipoWizard: 1 | 2 | 3 | 4 = 1;
   equipoFormName = '';
+  equipoFormObjetivo = '';
   equipoFormStore = '';
   equipoFormDate = '';
   equipoFormIntegrantes: string[] = [];
@@ -2113,6 +2114,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   abrirModalEquipo() {
     this.pasoEquipoWizard = 1;
     this.equipoFormName = '';
+    this.equipoFormObjetivo = '';
     this.equipoFormStore = this.sucursalesDisponibles().length > 0 ? this.sucursalesDisponibles()[0] : '';
     this.equipoFormDate = this.hoyIsoStr;
     this.equipoFormIntegrantes = [];
@@ -2224,6 +2226,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     const tarea: TareaEquipo = {
       id,
       name: this.equipoFormName.trim(),
+      objetivo: this.equipoFormObjetivo.trim(),
       store: this.equipoFormStore,
       date: this.equipoFormDate,
       createdBy: this.currentUser?.nombre || 'admin',

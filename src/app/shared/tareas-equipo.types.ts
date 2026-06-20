@@ -58,6 +58,8 @@ export interface FaseEquipo {
 export interface TareaEquipo {
   id: string;
   name: string;
+  /** Objetivo / meta del proyecto (qué se busca lograr). Opcional. */
+  objetivo?: string;
   store: string;
   date: string;                      // YYYY-MM-DD fecha objetivo / límite
   createdBy: string;                 // admin que creó

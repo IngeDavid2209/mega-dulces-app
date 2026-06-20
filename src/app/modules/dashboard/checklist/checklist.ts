@@ -1171,6 +1171,15 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       });
       arr.sort((a, b) => (b.timestampCreacion || 0) - (a.timestampCreacion || 0));
       this.tareasEquipo.set(arr);
+
+      // 🔄 Mantener el DETALLE abierto sincronizado con los cambios en vivo.
+      // Sin esto, al completar un item / agregar tarea / cerrar fase, se guardaba
+      // pero la pantalla del proyecto seguía mostrando los datos viejos.
+      const sel = this.tareaEquipoSeleccionada();
+      if (sel) {
+        const actualizado = arr.find(t => t.id === sel.id);
+        if (actualizado) this.tareaEquipoSeleccionada.set(actualizado);
+      }
     });
     this.destructoresRadares.push(radarTareasEquipo);
 

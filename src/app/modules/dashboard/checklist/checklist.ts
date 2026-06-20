@@ -155,7 +155,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   equipoFormIntegrantes: string[] = [];
   equipoFormJefe = '';
   /** Fases temporales mientras se crea — cada una con un array de items iniciales. */
-  equipoFormFases: { id: string; nombre: string; items: { id: string; asignado: string; texto: string; horaLimite?: string; requiresPhoto?: boolean; requiresAntesDespues?: boolean; }[] }[] = [];
+  equipoFormFases: { id: string; nombre: string; items: { id: string; asignado: string; texto: string; objetivo?: string; horaLimite?: string; requiresPhoto?: boolean; requiresAntesDespues?: boolean; }[] }[] = [];
   equipoBusquedaIntegrante = '';
 
   // Estado del agregar-en-vivo dentro de una fase activa (vista detalle)
@@ -2186,10 +2186,22 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       id: 'item_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
       asignado: this.equipoFormIntegrantes[0] || '',
       texto: '',
+      objetivo: '',
       horaLimite: '',
       requiresPhoto: false,
       requiresAntesDespues: false
     });
+  }
+
+  /** Crea de un jalón una tarea (vacía) para CADA integrante en la fase. */
+  agregarTareaPorIntegrante(faseIdx: number) {
+    for (const nombre of this.equipoFormIntegrantes) {
+      this.equipoFormFases[faseIdx].items.push({
+        id: 'item_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+        asignado: nombre, texto: '', objetivo: '', horaLimite: '',
+        requiresPhoto: false, requiresAntesDespues: false
+      });
+    }
   }
   eliminarItemFaseEquipoTemp(faseIdx: number, itemIdx: number) {
     this.equipoFormFases[faseIdx].items.splice(itemIdx, 1);
@@ -2213,6 +2225,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
         id: it.id,
         asignado: it.asignado,
         texto: it.texto.trim(),
+        objetivo: it.objetivo?.trim() || undefined,
         horaLimite: it.horaLimite || undefined,
         requiresPhoto: !!it.requiresPhoto && !it.requiresAntesDespues,
         requiresAntesDespues: !!it.requiresAntesDespues,

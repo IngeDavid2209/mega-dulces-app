@@ -29,6 +29,7 @@ export interface ItemEquipo {
   id: string;
   asignado: string;                  // nombre del integrante responsable
   texto: string;
+  objetivo?: string;                 // objetivo / meta de la tarea (opcional)
   horaLimite?: string;               // HH:mm opcional
   requiresPhoto?: boolean;
   requiresAntesDespues?: boolean;

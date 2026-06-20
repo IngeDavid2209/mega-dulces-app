@@ -236,6 +236,7 @@
                     </button>
                     <div class="eq-item-body">
                       <div class="eq-item-texto">{{ item.texto }}</div>
+                      <div class="eq-item-objetivo" *ngIf="item.objetivo" style="font-size:12px; color:#64748B; margin-top:2px;">🎯 {{ item.objetivo }}</div>
                       <div class="eq-item-meta">
                         <span class="eq-item-asignado">Para <strong>{{ item.asignado }}</strong></span>
                         <span *ngIf="item.horaLimite" class="eq-item-hora">· Límite {{ formatearHora(item.horaLimite) }}</span>
@@ -1883,21 +1884,41 @@
               </div>
             </div>
 
-            <!-- PASO 4: FASES (solo nombres — el jefe agrega las tareas después) -->
+            <!-- PASO 4: FASES + TAREAS POR INTEGRANTE -->
             <div *ngIf="pasoEquipoWizard === 4" class="eq-step">
-              <h4 class="eq-step-title">Define las fases del proyecto</h4>
+              <h4 class="eq-step-title">Define las fases y asigna tareas</h4>
               <p class="eq-step-hint">
-                Solo escribe el nombre de cada fase (ej: <em>Planeación</em>, <em>Ejecución</em>, <em>Cierre</em>).
-                Las fases avanzan en orden — la Fase 2 se activa cuando el jefe cierre la Fase 1.
-                <br>
-                <strong>El jefe</strong> entrará al proyecto después para agregar las tareas y subtareas a cada integrante.
+                Cada fase avanza en orden (la Fase 2 se activa cuando el jefe cierre la Fase 1).
+                Dentro de cada fase puedes asignarle una o varias <strong>tareas a cada integrante</strong>.
+                Lo que dejes vacío, el jefe lo puede agregar después.
               </p>
 
               <div class="eq-fase-box eq-fase-box-slim" *ngFor="let fase of equipoFormFases; let fIdx = index">
-                <div class="eq-fase-head" style="margin-bottom: 0;">
+                <div class="eq-fase-head" style="margin-bottom: 10px;">
                   <div class="eq-fase-num">{{ fIdx + 1 }}</div>
                   <input type="text" class="form-input eq-fase-nombre" [(ngModel)]="fase.nombre" placeholder="Nombre de la fase">
                   <button type="button" class="eq-fase-del" *ngIf="equipoFormFases.length > 1" (click)="eliminarFaseEquipoTemp(fIdx)" title="Quitar fase">&times;</button>
+                </div>
+
+                <!-- Tareas de la fase -->
+                <div class="eq-wz-item" *ngFor="let it of fase.items; let iIdx = index">
+                  <div class="eq-wz-item-row">
+                    <select class="form-input select-input eq-wz-asignado" [(ngModel)]="it.asignado">
+                      <option *ngFor="let n of equipoFormIntegrantes" [value]="n">{{ n }}</option>
+                    </select>
+                    <input type="text" class="form-input" [(ngModel)]="it.texto" placeholder="Nombre de la tarea">
+                    <input type="time" class="form-input eq-wz-hora" [(ngModel)]="it.horaLimite" title="Hora límite (opcional)">
+                    <button type="button" class="eq-fase-del" (click)="eliminarItemFaseEquipoTemp(fIdx, iIdx)" title="Quitar tarea">&times;</button>
+                  </div>
+                  <input type="text" class="form-input eq-wz-objetivo" [(ngModel)]="it.objetivo" placeholder="Objetivo de la tarea (opcional)">
+                </div>
+
+                <div class="eq-wz-item-actions">
+                  <button type="button" class="eq-add-fase eq-add-fase-mini" (click)="agregarItemFaseEquipoTemp(fIdx)">+ Tarea</button>
+                  <button type="button" class="eq-add-fase eq-add-fase-mini" *ngIf="equipoFormIntegrantes.length > 0"
+                          (click)="agregarTareaPorIntegrante(fIdx)" title="Crea una tarea en blanco por cada integrante">
+                    + Una por integrante
+                  </button>
                 </div>
               </div>
 

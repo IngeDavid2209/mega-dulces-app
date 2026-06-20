@@ -45,6 +45,10 @@ export const appConfig: ApplicationConfig = {
     provideFirestore(() => {
       const app = getApp();
       return initializeFirestore(app, {
+        // Firestore lanza error si se le escribe un campo con valor `undefined`.
+        // Varias pantallas (ej. Tareas en Equipo) generan campos undefined al
+        // guardar; con esto se ignoran en vez de romper la operación.
+        ignoreUndefinedProperties: true,
         localCache: persistentLocalCache({
           tabManager: persistentMultipleTabManager(),
           cacheSizeBytes: CACHE_SIZE_UNLIMITED

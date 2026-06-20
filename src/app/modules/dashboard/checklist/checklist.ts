@@ -2153,29 +2153,21 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Empleados disponibles en el paso 2 del wizard de Equipo.
-   * Combina los empleados de la sucursal del proyecto + TODOS los admins
-   * globales (la gerencia general puede ser integrante/jefe en cualquier
-   * proyecto, sin importar su sucursal). Aplica búsqueda libre.
+   * Empleados del paso 2 del wizard de Equipo: SOLO quienes pertenecen de verdad
+   * a la sucursal elegida (su sucursal está literalmente en su perfil). No se
+   * incluyen admins globales ni gente con 'General (Acceso Total)', para que el
+   * equipo sea de esa sucursal y no salga medio directorio.
    */
   get empleadosParaEquipoWizard(): any[] {
-    const deSucursal = this.equipoFormStore
-      ? this.empleados().filter(e => this.empleadoPerteneceASucursal(e, this.equipoFormStore))
-      : this.empleados();
-    // Admins globales se agregan SIEMPRE, sin filtro de sucursal.
-    const globales = this.adminsGlobales();
-    // Dedup por nombre (un admin global podría también haber entrado por sucursal).
-    const vistos = new Set<string>();
-    let lista: any[] = [];
-    for (const u of [...deSucursal, ...globales]) {
-      const k = (u.nombre || '').trim().toLowerCase();
-      if (!k || vistos.has(k)) continue;
-      vistos.add(k);
-      lista.push(u);
-    }
+    if (!this.equipoFormStore) return [];
+    const store = normalizarNombre(this.equipoFormStore);
+    let lista = this.empleados().filter(e => {
+      const sucs: string[] = (e.sucursales && e.sucursales.length) ? e.sucursales : (e.sucursal ? [e.sucursal] : []);
+      return sucs.some((s: string) => normalizarNombre(s) === store);
+    });
     const t = this.equipoBusquedaIntegrante.trim().toLowerCase();
     if (t) lista = lista.filter(e => (e.nombre || '').toLowerCase().includes(t));
-    return lista;
+    return lista.sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''));
   }
 
   /** Manejo de fases temporales en paso 4. */

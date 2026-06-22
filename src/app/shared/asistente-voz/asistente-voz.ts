@@ -315,8 +315,10 @@ export class AsistenteVozComponent implements OnDestroy {
         this.tareaTexto = data.texto || this.transcript;
         this.tareaFechaInicio = data.fecha || '';
         this.tareaInstrucciones = data.instrucciones || '';
+        this.asignadoSeleccionadoId = '';           // por defecto: para mi
+        await this.cargarAsignables();               // por si quiere asignarla a alguien mas
         this.estado = 'confirmar';
-        this.hablar(`Entendí: ${this.tareaTexto}. Revisa la fecha y la hora de inicio y fin, y confirma.`);
+        this.hablar(`Entendí: ${this.tareaTexto}. Elige para quién, revisa la fecha y la hora, y confirma.`);
       } else if (data.accion === 'consultar') {
         await this.consultarTareas(data.filtro || 'pendientes', data.fecha || '');
       } else if (data.accion === 'asignar') {
@@ -338,7 +340,12 @@ export class AsistenteVozComponent implements OnDestroy {
     const texto = (this.tareaTexto || '').trim();
     if (!texto) { return; }
 
-    const userId = this.obtenerUserId();
+    // Para mi (vacio) o para alguien mas.
+    const destino = this.asignadoSeleccionadoId
+      ? this.asignables.find(u => u.id === this.asignadoSeleccionadoId)
+      : null;
+    const usuario = this.obtenerUsuario();
+    const userId = destino ? destino.id : this.obtenerUserId();
     if (!userId) {
       this.mensajeError = 'No encontre tu usuario. Vuelve a iniciar sesion.';
       this.estado = 'error';
@@ -355,17 +362,44 @@ export class AsistenteVozComponent implements OnDestroy {
         instrucciones: this.tareaInstrucciones || '',
         comentarios: '',
         adjunto: null,
-        creadaPorVoz: true
+        creadaPorVoz: true,
+        ...(destino ? { asignadaPor: usuario?.nombre || usuario?.correo || 'Un jefe' } : {})
       });
 
       this.estado = 'listo';
-      const frase = this.respuestaIA || 'Listo, ya agende tu tarea.';
+      const frase = destino
+        ? `Listo, le asigné a ${destino.nombre || destino.correo}: ${texto}.`
+        : (this.respuestaIA || 'Listo, ya agendé tu tarea.');
       this.hablar(frase);
-      setTimeout(() => { this.zone.run(() => this.cerrar()); }, 2200);
+      setTimeout(() => { this.zone.run(() => this.cerrar()); }, 2400);
     } catch (_) {
       this.mensajeError = 'No pude guardar la tarea. Intenta de nuevo.';
       this.estado = 'error';
     }
+  }
+
+  // Carga la gente a la que este admin puede asignar (misma logica que la agenda):
+  // admin global ve a todos; admin limitado, solo personal de sus sucursales.
+  private async cargarAsignables(): Promise<void> {
+    const usuario = this.obtenerUsuario();
+    const usersRef = collection(this.firestore, 'usuarios');
+    const snap = await getDocs(query(usersRef));
+    let lista = snap.docs.map(d => ({ id: d.id, ...(d.data() as any) }));
+
+    if (!esAdminGlobal(usuario)) {
+      const permitidas = sucursalesPermitidas(usuario);
+      if (permitidas !== null) {
+        lista = lista.filter((u: any) => {
+          if (u.rol === 'admin') return false;
+          const susSuc: string[] = u.sucursales || (u.sucursal ? [u.sucursal] : []);
+          return susSuc.some((s: string) => permitidas.includes(s));
+        });
+      }
+    }
+    const miId = this.obtenerUserId();
+    lista = lista.filter((u: any) => u.id !== miId);
+    lista.sort((a: any, b: any) => (a.nombre || a.correo || '').localeCompare(b.nombre || b.correo || ''));
+    this.asignables = lista;
   }
 
   // --- Asignar tareas a otros por voz (Fase 3) ---
@@ -380,32 +414,9 @@ export class AsistenteVozComponent implements OnDestroy {
       return;
     }
 
-    // Si la IA no capto bien la tarea, no cortamos: abrimos el formulario igual
-    // para que el jefe escriba la tarea y elija a la persona.
-
     try {
-      // Cargar la gente a la que este jefe puede asignar (misma logica que la agenda).
-      const usersRef = collection(this.firestore, 'usuarios');
-      const snap = await getDocs(query(usersRef));
-      let lista = snap.docs.map(d => ({ id: d.id, ...(d.data() as any) }));
-
-      if (!esAdminGlobal(usuario)) {
-        const permitidas = sucursalesPermitidas(usuario);
-        if (permitidas !== null) {
-          lista = lista.filter((u: any) => {
-            if (u.rol === 'admin') return false;
-            const susSuc: string[] = u.sucursales || (u.sucursal ? [u.sucursal] : []);
-            return susSuc.some((s: string) => permitidas.includes(s));
-          });
-        }
-      }
-      // No asignarse a si mismo por esta via.
-      const miId = this.obtenerUserId();
-      lista = lista.filter((u: any) => u.id !== miId);
-      // Orden alfabetico por nombre.
-      lista.sort((a: any, b: any) => (a.nombre || a.correo || '').localeCompare(b.nombre || b.correo || ''));
-
-      this.asignables = lista;
+      await this.cargarAsignables();
+      const lista = this.asignables;
       this.nombreDictado = data.asignadoA || '';
       this.tareaTexto = data.texto || '';
       this.tareaFechaInicio = data.fecha || '';

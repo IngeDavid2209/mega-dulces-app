@@ -57,6 +57,12 @@
       <div *ngIf="estado === 'confirmar'" class="av-state av-state-left">
         <p class="av-hint av-center">Entendí esto. Revísalo y confirma:</p>
 
+        <label class="av-label">Para quién</label>
+        <select class="av-input" [(ngModel)]="asignadoSeleccionadoId">
+          <option value="">Yo (mi agenda)</option>
+          <option *ngFor="let u of asignables" [value]="u.id">{{ u.nombre || u.correo }}</option>
+        </select>
+
         <label class="av-label">Tarea</label>
         <input class="av-input" type="text" [(ngModel)]="tareaTexto" placeholder="Descripción de la tarea">
 

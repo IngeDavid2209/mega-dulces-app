@@ -8,7 +8,7 @@
 #   2) run:   instala solo dependencias de produccion y arranca el servidor.
 
 # ---------- Etapa 1: compilar Angular ----------
-FROM node:20-alpine AS build
+FROM node:20-slim AS build
 WORKDIR /app
 COPY package*.json ./
 RUN npm install --include=dev
@@ -16,7 +16,7 @@ COPY . .
 RUN npm run build
 
 # ---------- Etapa 2: imagen final ----------
-FROM node:20-alpine
+FROM node:20-slim
 WORKDIR /app
 ENV NODE_ENV=production
 COPY package*.json ./

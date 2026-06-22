@@ -36,12 +36,14 @@
         <p class="av-hint">Te escucho... habla ahora</p>
         <p class="av-transcript" *ngIf="transcript">"{{ transcript }}"</p>
         <button class="av-btn av-btn-primary" (click)="detenerDictado()">Listo</button>
+        <button class="av-link" (click)="irAManual()">Prefiero escribir</button>
       </div>
 
       <!-- Idle (no escuchando aun) -->
       <div *ngIf="estado === 'idle'" class="av-state">
         <p class="av-hint">Toca para hablar. Ejemplo: "Agéndame el reporte de ventas para mañana".</p>
         <button class="av-btn av-btn-primary" (click)="iniciarEscucha()">Hablar</button>
+        <button class="av-link" (click)="irAManual()">Prefiero escribir</button>
       </div>
 
       <!-- Procesando -->
@@ -151,11 +153,18 @@
         <button class="av-btn av-btn-primary" (click)="reintentar()">Intentar de nuevo</button>
       </div>
 
-      <!-- No soportado -->
-      <div *ngIf="estado === 'noSoportado'" class="av-state">
-        <p class="av-hint av-error">Tu navegador no soporta el dictado por voz.</p>
-        <p class="av-hint">Usa <strong>Google Chrome en Android</strong> para el asistente de voz. (En iPhone el dictado dentro de la app aún no es estable.)</p>
-        <button class="av-btn av-btn-ghost" (click)="cerrar()">Cerrar</button>
+      <!-- Modo escribir / dictar con el teclado (iPhone y fallback) -->
+      <div *ngIf="estado === 'manual'" class="av-state av-state-left">
+        <p class="av-hint av-center">Escribe o dicta con el micrófono de tu teclado:</p>
+        <textarea class="av-input" rows="3" [(ngModel)]="entradaManual"
+          placeholder='Ej: "Agéndame el reporte de ventas para mañana"'></textarea>
+        <p class="av-hint" style="font-size: 12px; color: #64748B;">
+          Tip: en iPhone, toca el micrófono del teclado para dictar sin escribir.
+        </p>
+        <div class="av-actions">
+          <button class="av-btn av-btn-ghost" (click)="cerrar()">Cancelar</button>
+          <button class="av-btn av-btn-primary" (click)="enviarManual()">Enviar</button>
+        </div>
       </div>
 
     </div>

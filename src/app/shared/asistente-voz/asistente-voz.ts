@@ -38,6 +38,7 @@ export class AsistenteVozComponent implements OnDestroy {
   estado: string = 'cerrado';
 
   transcript = '';
+  entradaManual = '';   // texto escrito/dictado con el teclado (iPhone y fallback)
   mensajeError = '';
 
   // Datos de la tarea interpretada (editables antes de guardar)
@@ -100,14 +101,30 @@ export class AsistenteVozComponent implements OnDestroy {
 
   // --- Abrir / cerrar el panel ---
   abrir() {
-    const SR = this.obtenerSpeechRecognition();
-    if (!SR) {
-      this.estado = 'noSoportado';
-      return;
-    }
     this.reset();
-    this.estado = 'idle';
-    this.iniciarEscucha();
+    const SR = this.obtenerSpeechRecognition();
+    if (SR) {
+      // Android/Chrome: reconocimiento de voz dentro de la app.
+      this.estado = 'idle';
+      this.iniciarEscucha();
+    } else {
+      // iPhone/Safari u otros sin soporte: modo escribir/dictar con el teclado.
+      this.estado = 'manual';
+    }
+  }
+
+  // Cambiar a modo manual (escribir o dictar con el teclado) desde cualquier punto.
+  irAManual() {
+    this.detenerReconocedor();
+    if (this.transcript) this.entradaManual = this.transcript;
+    this.estado = 'manual';
+  }
+
+  enviarManual() {
+    const t = (this.entradaManual || '').trim();
+    if (!t) return;
+    this.transcript = t;
+    this.procesar();
   }
 
   cerrar() {
@@ -117,6 +134,7 @@ export class AsistenteVozComponent implements OnDestroy {
 
   private reset() {
     this.transcript = '';
+    this.entradaManual = '';
     this.mensajeError = '';
     this.tareaTexto = '';
     this.tareaFecha = '';
@@ -132,7 +150,7 @@ export class AsistenteVozComponent implements OnDestroy {
   // --- Reconocimiento de voz ---
   iniciarEscucha() {
     const SR = this.obtenerSpeechRecognition();
-    if (!SR) { this.estado = 'noSoportado'; return; }
+    if (!SR) { this.estado = 'manual'; return; }
 
     this.detenerReconocedor();
     this.transcript = '';
@@ -475,8 +493,13 @@ export class AsistenteVozComponent implements OnDestroy {
 
   reintentar() {
     this.reset();
-    this.estado = 'idle';
-    this.iniciarEscucha();
+    const SR = this.obtenerSpeechRecognition();
+    if (SR) {
+      this.estado = 'idle';
+      this.iniciarEscucha();
+    } else {
+      this.estado = 'manual';
+    }
   }
 
   // --- Voz de respuesta (texto a voz) ---

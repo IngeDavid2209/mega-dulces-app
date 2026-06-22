@@ -238,3 +238,16 @@
 .av-btn-primary:hover { background: #1D4ED8; }
 .av-btn-ghost { background: #fff; color: #475569; border-color: #CBD5E1; }
 .av-btn-ghost:hover { background: #F8FAFC; }
+
+/* Enlace discreto (ej. "Prefiero escribir") */
+.av-link {
+  background: none;
+  border: none;
+  color: #2563EB;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px;
+  text-decoration: underline;
+}
+.av-link:hover { color: #1D4ED8; }

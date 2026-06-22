@@ -1,0 +1,15 @@
+# Configuracion de build y arranque para Railway (Nixpacks).
+#
+# install: instala TODAS las dependencias (incluye las de desarrollo, que se
+#          necesitan para compilar Angular, aunque Railway ponga NODE_ENV=production).
+# build:   compila la app de Angular (genera dist/mega-dulces-app/browser).
+# start:   levanta el servidor Express que sirve la app y las rutas /api.
+
+[phases.install]
+cmds = ["npm install --include=dev"]
+
+[phases.build]
+cmds = ["npm run build"]
+
+[start]
+cmd = "node server.js"

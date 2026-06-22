@@ -1,0 +1,112 @@
+<!-- Boton flotante del microfono -->
+<button *ngIf="estado === 'cerrado'" class="av-fab" (click)="abrir()" title="Asistente de voz" aria-label="Asistente de voz">
+  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+    stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+    <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+    <line x1="12" y1="19" x2="12" y2="23"></line>
+    <line x1="8" y1="23" x2="16" y2="23"></line>
+  </svg>
+</button>
+
+<!-- Panel del asistente -->
+<div *ngIf="estado !== 'cerrado'" class="av-overlay" (click)="cerrar()">
+  <div class="av-panel" (click)="$event.stopPropagation()">
+
+    <div class="av-header">
+      <div class="av-title">
+        <span class="av-dot"></span> Asistente de voz
+      </div>
+      <button class="av-close" (click)="cerrar()" aria-label="Cerrar">&times;</button>
+    </div>
+
+    <div class="av-body">
+
+      <!-- Escuchando -->
+      <div *ngIf="estado === 'escuchando'" class="av-state">
+        <div class="av-mic-pulse">
+          <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+            <line x1="12" y1="19" x2="12" y2="23"></line>
+            <line x1="8" y1="23" x2="16" y2="23"></line>
+          </svg>
+        </div>
+        <p class="av-hint">Te escucho... habla ahora</p>
+        <p class="av-transcript" *ngIf="transcript">"{{ transcript }}"</p>
+        <button class="av-btn av-btn-primary" (click)="detenerDictado()">Listo</button>
+      </div>
+
+      <!-- Idle (no escuchando aun) -->
+      <div *ngIf="estado === 'idle'" class="av-state">
+        <p class="av-hint">Toca para hablar. Ejemplo: "Agéndame el reporte de ventas para mañana".</p>
+        <button class="av-btn av-btn-primary" (click)="iniciarEscucha()">Hablar</button>
+      </div>
+
+      <!-- Procesando -->
+      <div *ngIf="estado === 'procesando'" class="av-state">
+        <div class="av-spinner"></div>
+        <p class="av-hint">Entendiendo lo que dijiste...</p>
+        <p class="av-transcript" *ngIf="transcript">"{{ transcript }}"</p>
+      </div>
+
+      <!-- Confirmar tarea -->
+      <div *ngIf="estado === 'confirmar'" class="av-state av-state-left">
+        <p class="av-hint av-center">Entendí esto. Revísalo y confirma:</p>
+
+        <label class="av-label">Tarea</label>
+        <input class="av-input" type="text" [(ngModel)]="tareaTexto" placeholder="Descripción de la tarea">
+
+        <label class="av-label">Fecha (opcional)</label>
+        <input class="av-input" type="date" [(ngModel)]="tareaFecha">
+
+        <label class="av-label">Instrucciones (opcional)</label>
+        <textarea class="av-input" rows="2" [(ngModel)]="tareaInstrucciones"
+          placeholder="Detalles extra..."></textarea>
+
+        <div class="av-actions">
+          <button class="av-btn av-btn-ghost" (click)="reintentar()">Repetir</button>
+          <button class="av-btn av-btn-primary" (click)="confirmarCrear()">Crear tarea</button>
+        </div>
+      </div>
+
+      <!-- Guardando -->
+      <div *ngIf="estado === 'guardando'" class="av-state">
+        <div class="av-spinner"></div>
+        <p class="av-hint">Guardando tu tarea...</p>
+      </div>
+
+      <!-- Listo -->
+      <div *ngIf="estado === 'listo'" class="av-state">
+        <div class="av-check">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+            stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+        </div>
+        <p class="av-hint">{{ respuestaIA || 'Listo, ya agendé tu tarea.' }}</p>
+      </div>
+
+      <!-- Info (funcion de fase futura) -->
+      <div *ngIf="estado === 'info'" class="av-state">
+        <p class="av-hint">{{ mensajeError }}</p>
+        <button class="av-btn av-btn-primary" (click)="reintentar()">Entendido</button>
+      </div>
+
+      <!-- Error -->
+      <div *ngIf="estado === 'error'" class="av-state">
+        <p class="av-hint av-error">{{ mensajeError }}</p>
+        <button class="av-btn av-btn-primary" (click)="reintentar()">Intentar de nuevo</button>
+      </div>
+
+      <!-- No soportado -->
+      <div *ngIf="estado === 'noSoportado'" class="av-state">
+        <p class="av-hint av-error">Tu navegador no soporta el dictado por voz.</p>
+        <p class="av-hint">Usa <strong>Google Chrome en Android</strong> para el asistente de voz. (En iPhone el dictado dentro de la app aún no es estable.)</p>
+        <button class="av-btn av-btn-ghost" (click)="cerrar()">Cerrar</button>
+      </div>
+
+    </div>
+  </div>
+</div>

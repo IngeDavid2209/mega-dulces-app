@@ -81,16 +81,20 @@ module.exports = async (req, res) => {
       'Devuelve UNICAMENTE un objeto JSON valido, sin texto adicional y sin markdown, con esta forma exacta:',
       '{',
       '  "accion": "crear" | "consultar" | "asignar" | "desconocido",',
-      '  "texto": string,        // descripcion corta y clara de la tarea',
+      '  "texto": string,        // descripcion corta y clara de la tarea (solo para crear)',
       '  "fecha": string,        // "YYYY-MM-DD" o "" si no se menciono',
       '  "instrucciones": string,// detalle extra o ""',
       '  "asignadoA": string,    // nombre de la persona si quiere asignar a otro, o ""',
+      '  "filtro": string,       // solo para consultar: "hoy" | "pendientes" | "vencidas" | "fecha" | "todas"',
       '  "respuesta": string     // frase corta y natural en espanol para leerle en voz alta',
       '}',
       '',
       'Reglas:',
       '- "crear": el trabajador quiere agregar/agendar/recordar una tarea o pendiente.',
-      '- "consultar": pregunta que tareas o pendientes tiene.',
+      '- "consultar": pregunta que tareas o pendientes tiene. Elige "filtro":',
+      '    "hoy" si pregunta por hoy; "vencidas" si pregunta por atrasadas/vencidas;',
+      '    "fecha" si pregunta por un dia especifico (pon ese dia en "fecha");',
+      '    "todas" si quiere ver todo; "pendientes" en cualquier otro caso.',
       '- "asignar": quiere darle una tarea a OTRA persona (pon su nombre en asignadoA).',
       '- "desconocido": si no entiendes la intencion.',
       '- Resuelve fechas relativas (hoy, manana, pasado manana, el viernes, en 3 dias) a formato YYYY-MM-DD usando la fecha de hoy. Si no hay fecha, deja "".',
@@ -135,6 +139,7 @@ module.exports = async (req, res) => {
         fecha: '',
         instrucciones: '',
         asignadoA: '',
+        filtro: '',
         respuesta: 'Perdon, no te entendi bien. Intenta de nuevo.'
       });
     }
@@ -146,6 +151,7 @@ module.exports = async (req, res) => {
       fecha: String(intencion.fecha || '').trim(),
       instrucciones: String(intencion.instrucciones || '').trim(),
       asignadoA: String(intencion.asignadoA || '').trim(),
+      filtro: String(intencion.filtro || '').trim(),
       respuesta: String(intencion.respuesta || '').trim()
     });
   } catch (e) {

@@ -184,6 +184,46 @@
 }
 .av-actions .av-btn { flex: 1; }
 
+/* Lista de resultados de consulta */
+.av-lista {
+  list-style: none;
+  margin: 4px 0 8px;
+  padding: 0;
+  width: 100%;
+  max-height: 46vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.av-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+.av-item-texto {
+  font-size: 15px;
+  font-weight: 600;
+  color: #0F172A;
+}
+.av-chip {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 3px 9px;
+  border-radius: 20px;
+  background: #F1F5F9;
+  color: #475569;
+  white-space: nowrap;
+}
+.av-chip-hoy { background: #EFF6FF; color: #1D4ED8; }
+.av-chip-vencida { background: #FEF2F2; color: #DC2626; }
+
 /* Botones */
 .av-btn {
   padding: 12px 18px;

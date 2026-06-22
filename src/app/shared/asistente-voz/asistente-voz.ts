@@ -1,7 +1,7 @@
 import { Component, NgZone, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Firestore, collection, addDoc } from '@angular/fire/firestore';
+import { Firestore, collection, addDoc, getDocs, query } from '@angular/fire/firestore';
 import { Auth } from '@angular/fire/auth';
 
 /**
@@ -44,11 +44,38 @@ export class AsistenteVozComponent implements OnDestroy {
   tareaInstrucciones = '';
   respuestaIA = '';
 
+  // Resultados de consultar tareas por voz (Fase 2)
+  resultados: any[] = [];
+  tituloConsulta = '';
+
   private reconocedor: any = null;
 
   ngOnDestroy() {
     this.detenerReconocedor();
   }
+
+  // --- Usuario y fecha actual ---
+  private obtenerUserId(): string {
+    const sesion = localStorage.getItem('md_sesion_actual');
+    const user = sesion ? JSON.parse(sesion) : null;
+    return user?.uid || user?.id || user?.idUsuario || user?.correo || '';
+  }
+
+  private hoyISO(): string {
+    const d = new Date();
+    const off = d.getTimezoneOffset() * 60000;
+    return new Date(d.getTime() - off).toISOString().split('T')[0];
+  }
+
+  formatearFecha(iso: string | undefined): string {
+    if (!iso) return '';
+    try {
+      return new Date(iso + 'T00:00:00').toLocaleDateString('es-MX', { weekday: 'short', day: '2-digit', month: 'short' });
+    } catch { return iso; }
+  }
+
+  esHoy(iso: string | undefined): boolean { return !!iso && iso === this.hoyISO(); }
+  estaVencida(t: any): boolean { return !!t?.fecha && !t?.completada && t.fecha < this.hoyISO(); }
 
   // --- Soporte del navegador ---
   private obtenerSpeechRecognition(): any {
@@ -80,6 +107,8 @@ export class AsistenteVozComponent implements OnDestroy {
     this.tareaFecha = '';
     this.tareaInstrucciones = '';
     this.respuestaIA = '';
+    this.resultados = [];
+    this.tituloConsulta = '';
   }
 
   // --- Reconocimiento de voz ---
@@ -195,9 +224,7 @@ export class AsistenteVozComponent implements OnDestroy {
         this.tareaInstrucciones = data.instrucciones || '';
         this.estado = 'confirmar';
       } else if (data.accion === 'consultar') {
-        this.mensajeError = 'Pronto podras consultar tus tareas por voz. Por ahora solo puedo crear tareas.';
-        this.estado = 'info';
-        this.hablar(this.mensajeError);
+        await this.consultarTareas(data.filtro || 'pendientes', data.fecha || '');
       } else if (data.accion === 'asignar') {
         this.mensajeError = 'Pronto podras asignar tareas a otros por voz. Por ahora solo puedo crear tus tareas.';
         this.estado = 'info';
@@ -218,9 +245,7 @@ export class AsistenteVozComponent implements OnDestroy {
     const texto = (this.tareaTexto || '').trim();
     if (!texto) { return; }
 
-    const sesion = localStorage.getItem('md_sesion_actual');
-    const user = sesion ? JSON.parse(sesion) : null;
-    const userId = user?.uid || user?.id || user?.idUsuario || user?.correo || '';
+    const userId = this.obtenerUserId();
     if (!userId) {
       this.mensajeError = 'No encontre tu usuario. Vuelve a iniciar sesion.';
       this.estado = 'error';
@@ -248,6 +273,82 @@ export class AsistenteVozComponent implements OnDestroy {
       this.mensajeError = 'No pude guardar la tarea. Intenta de nuevo.';
       this.estado = 'error';
     }
+  }
+
+  // --- Consultar tareas por voz (Fase 2) ---
+  async consultarTareas(filtro: string, fecha: string) {
+    const userId = this.obtenerUserId();
+    if (!userId) {
+      this.mensajeError = 'No encontre tu usuario. Vuelve a iniciar sesion.';
+      this.estado = 'error';
+      return;
+    }
+
+    try {
+      const agendaRef = collection(this.firestore, `usuarios/${userId}/agenda`);
+      const snap = await getDocs(query(agendaRef));
+      const todas = snap.docs.map(d => ({ id: d.id, ...(d.data() as any) }));
+      const hoy = this.hoyISO();
+
+      let lista: any[] = [];
+      let titulo = '';
+
+      switch (filtro) {
+        case 'hoy':
+          lista = todas.filter(t => !t.completada && t.fecha === hoy);
+          titulo = 'Pendientes de hoy';
+          break;
+        case 'vencidas':
+          lista = todas.filter(t => !t.completada && t.fecha && t.fecha < hoy);
+          titulo = 'Tareas vencidas';
+          break;
+        case 'fecha':
+          lista = todas.filter(t => !t.completada && t.fecha === fecha);
+          titulo = 'Tareas del ' + (this.formatearFecha(fecha) || fecha);
+          break;
+        case 'todas':
+          lista = todas.filter(t => !t.completada);
+          titulo = 'Todas tus tareas';
+          break;
+        default: // pendientes
+          lista = todas.filter(t => !t.completada);
+          titulo = 'Tus pendientes';
+          break;
+      }
+
+      // Orden: con fecha primero (cronologico), luego sin fecha
+      lista.sort((a, b) => {
+        if (a.fecha && b.fecha) return a.fecha.localeCompare(b.fecha);
+        if (a.fecha && !b.fecha) return -1;
+        if (!a.fecha && b.fecha) return 1;
+        return (b.fechaCreacion || 0) - (a.fechaCreacion || 0);
+      });
+
+      this.resultados = lista;
+      this.tituloConsulta = titulo;
+      this.estado = 'resultados';
+      this.hablar(this.construirResumen(lista, filtro));
+    } catch (_) {
+      this.mensajeError = 'No pude leer tus tareas. Intenta de nuevo.';
+      this.estado = 'error';
+    }
+  }
+
+  private construirResumen(lista: any[], filtro: string): string {
+    const cuando = filtro === 'hoy' ? ' para hoy'
+      : filtro === 'vencidas' ? ' vencidas'
+      : '';
+    if (lista.length === 0) {
+      return 'No tienes pendientes' + cuando + '.';
+    }
+    const n = lista.length;
+    const encabezado = n === 1 ? 'Tienes 1 pendiente' + cuando : `Tienes ${n} pendientes${cuando}`;
+    // Leer en voz hasta 5 para no hacerlo eterno
+    const nombres = lista.slice(0, 5).map(t => t.texto).filter(Boolean);
+    if (nombres.length === 0) return encabezado + '.';
+    let detalle = nombres.join(', ');
+    if (n > 5) detalle += ', y mas';
+    return encabezado + ': ' + detalle + '.';
   }
 
   reintentar() {

@@ -88,6 +88,29 @@
         <p class="av-hint">{{ respuestaIA || 'Listo, ya agendé tu tarea.' }}</p>
       </div>
 
+      <!-- Resultados de consulta (Fase 2) -->
+      <div *ngIf="estado === 'resultados'" class="av-state av-state-left">
+        <p class="av-hint av-center"><strong>{{ tituloConsulta }}</strong></p>
+
+        <p *ngIf="resultados.length === 0" class="av-hint av-center">No tienes pendientes por aquí.</p>
+
+        <ul *ngIf="resultados.length > 0" class="av-lista">
+          <li *ngFor="let t of resultados" class="av-item">
+            <span class="av-item-texto">{{ t.texto }}</span>
+            <span *ngIf="t.fecha" class="av-chip"
+              [class.av-chip-hoy]="esHoy(t.fecha)"
+              [class.av-chip-vencida]="estaVencida(t)">
+              {{ esHoy(t.fecha) ? 'Hoy' : formatearFecha(t.fecha) }}{{ estaVencida(t) ? ' · vencida' : '' }}
+            </span>
+          </li>
+        </ul>
+
+        <div class="av-actions">
+          <button class="av-btn av-btn-ghost" (click)="reintentar()">Preguntar otra</button>
+          <button class="av-btn av-btn-primary" (click)="cerrar()">Cerrar</button>
+        </div>
+      </div>
+
       <!-- Info (funcion de fase futura) -->
       <div *ngIf="estado === 'info'" class="av-state">
         <p class="av-hint">{{ mensajeError }}</p>

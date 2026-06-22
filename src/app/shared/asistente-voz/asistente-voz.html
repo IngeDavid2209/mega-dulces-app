@@ -71,6 +71,34 @@
         </div>
       </div>
 
+      <!-- Asignar a otro (Fase 3) -->
+      <div *ngIf="estado === 'asignar'" class="av-state av-state-left">
+        <p class="av-hint av-center">Asignar tarea. Revisa y confirma:</p>
+
+        <label class="av-label">Para quién</label>
+        <select class="av-input" [(ngModel)]="asignadoSeleccionadoId">
+          <option value="">— Elige a la persona —</option>
+          <option *ngFor="let u of asignables" [value]="u.id">{{ u.nombre || u.correo }}</option>
+        </select>
+        <p *ngIf="nombreDictado && !asignadoSeleccionadoId" class="av-hint" style="font-size: 12px; color: #DC2626;">
+          No reconocí "{{ nombreDictado }}" en tu personal. Elígelo de la lista.
+        </p>
+
+        <label class="av-label">Tarea</label>
+        <input class="av-input" type="text" [(ngModel)]="tareaTexto" placeholder="Descripción de la tarea">
+
+        <label class="av-label">Fecha (opcional)</label>
+        <input class="av-input" type="date" [(ngModel)]="tareaFecha">
+
+        <label class="av-label">Instrucciones (opcional)</label>
+        <textarea class="av-input" rows="2" [(ngModel)]="tareaInstrucciones" placeholder="Detalles extra..."></textarea>
+
+        <div class="av-actions">
+          <button class="av-btn av-btn-ghost" (click)="reintentar()">Repetir</button>
+          <button class="av-btn av-btn-primary" (click)="confirmarAsignar()">Asignar</button>
+        </div>
+      </div>
+
       <!-- Guardando -->
       <div *ngIf="estado === 'guardando'" class="av-state">
         <div class="av-spinner"></div>

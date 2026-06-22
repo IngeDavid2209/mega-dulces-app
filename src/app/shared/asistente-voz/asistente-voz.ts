@@ -4,6 +4,8 @@ import { FormsModule } from '@angular/forms';
 import { Firestore, collection, addDoc, getDocs, query } from '@angular/fire/firestore';
 import { Auth } from '@angular/fire/auth';
 
+import { esAdminGlobal, sucursalesPermitidas } from '../permisos.util';
+
 /**
  * Asistente de voz - FASE 1: Crear tareas hablando.
  *
@@ -48,6 +50,11 @@ export class AsistenteVozComponent implements OnDestroy {
   resultados: any[] = [];
   tituloConsulta = '';
 
+  // Asignar tareas a otros por voz (Fase 3)
+  asignables: any[] = [];          // personas a las que el jefe puede asignar
+  asignadoSeleccionadoId = '';     // id del trabajador elegido
+  nombreDictado = '';              // nombre que se entendio por voz
+
   private reconocedor: any = null;
 
   ngOnDestroy() {
@@ -55,10 +62,18 @@ export class AsistenteVozComponent implements OnDestroy {
   }
 
   // --- Usuario y fecha actual ---
-  private obtenerUserId(): string {
+  private obtenerUsuario(): any {
     const sesion = localStorage.getItem('md_sesion_actual');
-    const user = sesion ? JSON.parse(sesion) : null;
+    return sesion ? JSON.parse(sesion) : null;
+  }
+
+  private obtenerUserId(): string {
+    const user = this.obtenerUsuario();
     return user?.uid || user?.id || user?.idUsuario || user?.correo || '';
+  }
+
+  private normaliza(s: string): string {
+    return (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
   }
 
   private hoyISO(): string {
@@ -109,6 +124,9 @@ export class AsistenteVozComponent implements OnDestroy {
     this.respuestaIA = '';
     this.resultados = [];
     this.tituloConsulta = '';
+    this.asignables = [];
+    this.asignadoSeleccionadoId = '';
+    this.nombreDictado = '';
   }
 
   // --- Reconocimiento de voz ---
@@ -226,9 +244,7 @@ export class AsistenteVozComponent implements OnDestroy {
       } else if (data.accion === 'consultar') {
         await this.consultarTareas(data.filtro || 'pendientes', data.fecha || '');
       } else if (data.accion === 'asignar') {
-        this.mensajeError = 'Pronto podras asignar tareas a otros por voz. Por ahora solo puedo crear tus tareas.';
-        this.estado = 'info';
-        this.hablar(this.mensajeError);
+        await this.prepararAsignacion(data);
       } else {
         this.mensajeError = data.respuesta || 'No te entendi bien. Intenta de nuevo.';
         this.estado = 'error';
@@ -271,6 +287,112 @@ export class AsistenteVozComponent implements OnDestroy {
       setTimeout(() => { this.zone.run(() => this.cerrar()); }, 2200);
     } catch (_) {
       this.mensajeError = 'No pude guardar la tarea. Intenta de nuevo.';
+      this.estado = 'error';
+    }
+  }
+
+  // --- Asignar tareas a otros por voz (Fase 3) ---
+  async prepararAsignacion(data: any) {
+    const usuario = this.obtenerUsuario();
+
+    // Solo admin/jefe puede asignar a otros.
+    if (!usuario || usuario.rol !== 'admin') {
+      this.mensajeError = 'Solo los jefes pueden asignar tareas a otros. Tu puedes crear tus propias tareas.';
+      this.estado = 'info';
+      this.hablar('Solo los jefes pueden asignar tareas a otros.');
+      return;
+    }
+
+    if (!data.texto) {
+      this.mensajeError = 'No entendi que tarea asignar. Intenta de nuevo.';
+      this.estado = 'error';
+      return;
+    }
+
+    try {
+      // Cargar la gente a la que este jefe puede asignar (misma logica que la agenda).
+      const usersRef = collection(this.firestore, 'usuarios');
+      const snap = await getDocs(query(usersRef));
+      let lista = snap.docs.map(d => ({ id: d.id, ...(d.data() as any) }));
+
+      if (!esAdminGlobal(usuario)) {
+        const permitidas = sucursalesPermitidas(usuario);
+        if (permitidas !== null) {
+          lista = lista.filter((u: any) => {
+            if (u.rol === 'admin') return false;
+            const susSuc: string[] = u.sucursales || (u.sucursal ? [u.sucursal] : []);
+            return susSuc.some((s: string) => permitidas.includes(s));
+          });
+        }
+      }
+      // No asignarse a si mismo por esta via.
+      const miId = this.obtenerUserId();
+      lista = lista.filter((u: any) => u.id !== miId);
+      // Orden alfabetico por nombre.
+      lista.sort((a: any, b: any) => (a.nombre || a.correo || '').localeCompare(b.nombre || b.correo || ''));
+
+      this.asignables = lista;
+      this.nombreDictado = data.asignadoA || '';
+      this.tareaTexto = data.texto || '';
+      this.tareaFecha = data.fecha || '';
+      this.tareaInstrucciones = data.instrucciones || '';
+
+      // Intentar emparejar el nombre dictado con un trabajador.
+      const objetivo = this.normaliza(this.nombreDictado);
+      let preseleccion = '';
+      if (objetivo) {
+        const candidatos = lista.filter((u: any) => {
+          const n = this.normaliza(u.nombre || u.correo || '');
+          return n.includes(objetivo) || objetivo.includes(n) ||
+                 n.split(' ')[0] === objetivo.split(' ')[0];
+        });
+        if (candidatos.length === 1) preseleccion = candidatos[0].id;
+      }
+      this.asignadoSeleccionadoId = preseleccion;
+
+      this.estado = 'asignar';
+    } catch (_) {
+      this.mensajeError = 'No pude cargar la lista de personal. Intenta de nuevo.';
+      this.estado = 'error';
+    }
+  }
+
+  async confirmarAsignar() {
+    const texto = (this.tareaTexto || '').trim();
+    if (!texto) return;
+    if (!this.asignadoSeleccionadoId) {
+      this.mensajeError = 'Elige a quien asignarle la tarea.';
+      return;
+    }
+
+    const usuario = this.obtenerUsuario();
+    const destino = this.asignables.find(u => u.id === this.asignadoSeleccionadoId);
+    if (!destino) {
+      this.mensajeError = 'No encontre a esa persona.';
+      return;
+    }
+
+    this.estado = 'guardando';
+    try {
+      await addDoc(collection(this.firestore, `usuarios/${destino.id}/agenda`), {
+        texto,
+        completada: false,
+        fechaCreacion: Date.now(),
+        fecha: this.tareaFecha || '',
+        instrucciones: this.tareaInstrucciones || '',
+        comentarios: '',
+        adjunto: null,
+        creadaPorVoz: true,
+        asignadaPor: usuario?.nombre || usuario?.correo || 'Un jefe'
+      });
+
+      const nombre = destino.nombre || destino.correo || 'la persona';
+      this.respuestaIA = `Listo, le asigne a ${nombre}: ${texto}.`;
+      this.estado = 'listo';
+      this.hablar(this.respuestaIA);
+      setTimeout(() => { this.zone.run(() => this.cerrar()); }, 2400);
+    } catch (_) {
+      this.mensajeError = 'No pude asignar la tarea. Intenta de nuevo.';
       this.estado = 'error';
     }
   }

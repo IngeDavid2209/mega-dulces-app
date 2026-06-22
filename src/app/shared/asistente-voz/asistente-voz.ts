@@ -41,6 +41,10 @@ export class AsistenteVozComponent implements OnDestroy {
   entradaManual = '';   // texto escrito/dictado con el teclado (iPhone y fallback)
   mensajeError = '';
 
+  // Para el flujo conversacional de asignar (preguntas por voz, paso a paso)
+  modoEscucha: 'normal' | 'persona' | 'tarea' = 'normal';
+  preguntaActual = '';  // pregunta que se muestra/dice durante un paso
+
   // Datos de la tarea interpretada (editables antes de guardar)
   tareaTexto = '';
   tareaFechaInicio = '';   // YYYY-MM-DD
@@ -137,7 +141,7 @@ export class AsistenteVozComponent implements OnDestroy {
       // (asi el microfono no capta su propio saludo).
       this.estado = 'idle';
       this.hablar('Hola, dime qué necesitas.', () => {
-        if (this.estado === 'idle') this.iniciarEscucha();
+        if (this.estado === 'idle') this.escucharNormal();
       });
     } else {
       // iPhone/Safari u otros sin soporte: modo escribir/dictar con el teclado.
@@ -180,9 +184,18 @@ export class AsistenteVozComponent implements OnDestroy {
     this.asignables = [];
     this.asignadoSeleccionadoId = '';
     this.nombreDictado = '';
+    this.modoEscucha = 'normal';
+    this.preguntaActual = '';
   }
 
   // --- Reconocimiento de voz ---
+  // Escuchar un comando normal (lo que se diga se manda a la IA).
+  escucharNormal() {
+    this.modoEscucha = 'normal';
+    this.preguntaActual = '';
+    this.iniciarEscucha();
+  }
+
   iniciarEscucha() {
     const SR = this.obtenerSpeechRecognition();
     if (!SR) { this.estado = 'manual'; return; }
@@ -220,9 +233,17 @@ export class AsistenteVozComponent implements OnDestroy {
 
     rec.onend = () => {
       this.zone.run(() => {
-        if (this.estado === 'escuchando') {
-          if (this.transcript) {
-            this.procesar();
+        if (this.estado !== 'escuchando') return;
+        if (this.transcript) {
+          // Despachar segun el modo: normal -> IA; persona/tarea -> paso del wizard.
+          if (this.modoEscucha === 'persona') this.procesarPersona();
+          else if (this.modoEscucha === 'tarea') this.procesarTarea();
+          else this.procesar();
+        } else {
+          // No capto nada.
+          if (this.modoEscucha === 'persona' || this.modoEscucha === 'tarea') {
+            // En medio del wizard: caer al formulario para completar a mano.
+            this.estado = 'asignar';
           } else {
             this.estado = 'idle';
           }
@@ -403,12 +424,78 @@ export class AsistenteVozComponent implements OnDestroy {
       }
       this.asignadoSeleccionadoId = preseleccion;
 
-      this.estado = 'asignar';
-      this.hablar(`Vas a asignar: ${this.tareaTexto}. Elige a la persona y confirma.`);
+      // Flujo conversacional: preguntar por voz lo que falte (persona, tarea).
+      this.iniciarWizardAsignar();
     } catch (_) {
       this.mensajeError = 'No pude cargar la lista de personal. Intenta de nuevo.';
       this.estado = 'error';
     }
+  }
+
+  // --- Wizard conversacional de asignar (pregunta por voz, paso a paso) ---
+  private iniciarWizardAsignar() {
+    if (!this.asignadoSeleccionadoId) {
+      this.escucharPaso('persona', 'Bien. ¿A quién le quieres asignar la tarea?');
+    } else if (!this.tareaTexto) {
+      this.escucharPaso('tarea', '¿Qué tarea le asignas?');
+    } else {
+      this.irAConfirmarAsignar();
+    }
+  }
+
+  // Hace una pregunta por voz y luego escucha la respuesta de ese paso.
+  private escucharPaso(modo: 'persona' | 'tarea', pregunta: string) {
+    const SR = this.obtenerSpeechRecognition();
+    if (!SR) { this.estado = 'asignar'; return; }  // sin voz -> formulario manual
+    this.modoEscucha = modo;
+    this.preguntaActual = pregunta;
+    this.estado = 'escuchando';
+    this.hablar(pregunta, () => {
+      if (this.estado === 'escuchando') this.iniciarEscucha();
+    });
+  }
+
+  // Paso "persona": empareja lo dictado con un trabajador de la lista.
+  private procesarPersona() {
+    const objetivo = this.normaliza(this.transcript);
+    const candidatos = this.asignables.filter(u => {
+      const n = this.normaliza(u.nombre || u.correo || '');
+      return n.includes(objetivo) || objetivo.includes(n) || n.split(' ')[0] === objetivo.split(' ')[0];
+    });
+    if (candidatos.length === 1) {
+      this.asignadoSeleccionadoId = candidatos[0].id;
+      this.nombreDictado = candidatos[0].nombre || '';
+      this.preguntaActual = '';
+      if (!this.tareaTexto) {
+        this.escucharPaso('tarea', `Listo. ¿Qué tarea le asignas a ${candidatos[0].nombre || 'esa persona'}?`);
+      } else {
+        this.irAConfirmarAsignar();
+      }
+    } else {
+      // No quedo claro (0 o varios): que elija de la lista en el formulario.
+      this.nombreDictado = this.transcript;
+      this.preguntaActual = '';
+      this.modoEscucha = 'normal';
+      this.estado = 'asignar';
+      this.hablar('No te entendí bien el nombre. Elígelo de la lista.');
+    }
+  }
+
+  // Paso "tarea": toma lo dictado como la descripcion de la tarea.
+  private procesarTarea() {
+    this.tareaTexto = this.transcript;
+    this.preguntaActual = '';
+    this.irAConfirmarAsignar();
+  }
+
+  // Pantalla final de confirmacion de asignar.
+  private irAConfirmarAsignar() {
+    this.modoEscucha = 'normal';
+    this.preguntaActual = '';
+    this.estado = 'asignar';
+    const destino = this.asignables.find(u => u.id === this.asignadoSeleccionadoId);
+    const nombre = destino ? (destino.nombre || destino.correo) : 'la persona';
+    this.hablar(`Le vas a asignar a ${nombre}: ${this.tareaTexto}. Revisa la fecha y la hora, y confirma.`);
   }
 
   async confirmarAsignar() {

@@ -33,7 +33,7 @@
             <line x1="8" y1="23" x2="16" y2="23"></line>
           </svg>
         </div>
-        <p class="av-hint">Te escucho... habla ahora</p>
+        <p class="av-hint">{{ preguntaActual || 'Te escucho... habla ahora' }}</p>
         <p class="av-transcript" *ngIf="transcript">"{{ transcript }}"</p>
         <button class="av-btn av-btn-primary" (click)="detenerDictado()">Listo</button>
         <button class="av-link" (click)="irAManual()">Prefiero escribir</button>
@@ -42,7 +42,7 @@
       <!-- Idle (no escuchando aun) -->
       <div *ngIf="estado === 'idle'" class="av-state">
         <p class="av-hint">Toca para hablar. Ejemplo: "Agéndame el reporte de ventas para mañana".</p>
-        <button class="av-btn av-btn-primary" (click)="iniciarEscucha()">Hablar</button>
+        <button class="av-btn av-btn-primary" (click)="escucharNormal()">Hablar</button>
         <button class="av-link" (click)="irAManual()">Prefiero escribir</button>
       </div>
 

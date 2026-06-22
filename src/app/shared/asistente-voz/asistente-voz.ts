@@ -119,9 +119,12 @@ export class AsistenteVozComponent implements OnDestroy {
     this.reset();
     const SR = this.obtenerSpeechRecognition();
     if (SR) {
-      // Android/Chrome: reconocimiento de voz dentro de la app.
+      // Android/Chrome: el asistente saluda por voz y LUEGO empieza a escuchar
+      // (asi el microfono no capta su propio saludo).
       this.estado = 'idle';
-      this.iniciarEscucha();
+      this.hablar('Hola, dime qué necesitas.', () => {
+        if (this.estado === 'idle') this.iniciarEscucha();
+      });
     } else {
       // iPhone/Safari u otros sin soporte: modo escribir/dictar con el teclado.
       this.estado = 'manual';
@@ -266,6 +269,7 @@ export class AsistenteVozComponent implements OnDestroy {
       if (!resp.ok) {
         this.mensajeError = 'El asistente no esta disponible en este momento. Intenta mas tarde.';
         this.estado = 'error';
+        this.hablar('Ahorita no estoy disponible. Intenta más tarde.');
         return;
       }
 
@@ -277,6 +281,7 @@ export class AsistenteVozComponent implements OnDestroy {
         this.tareaFechaInicio = data.fecha || '';
         this.tareaInstrucciones = data.instrucciones || '';
         this.estado = 'confirmar';
+        this.hablar(`Entendí: ${this.tareaTexto}. Revisa la fecha y la hora de inicio y fin, y confirma.`);
       } else if (data.accion === 'consultar') {
         await this.consultarTareas(data.filtro || 'pendientes', data.fecha || '');
       } else if (data.accion === 'asignar') {
@@ -289,6 +294,7 @@ export class AsistenteVozComponent implements OnDestroy {
     } catch (_) {
       this.mensajeError = 'No me pude conectar. Revisa tu internet e intenta de nuevo.';
       this.estado = 'error';
+      this.hablar('No me pude conectar. Revisa tu internet e intenta de nuevo.');
     }
   }
 
@@ -387,6 +393,7 @@ export class AsistenteVozComponent implements OnDestroy {
       this.asignadoSeleccionadoId = preseleccion;
 
       this.estado = 'asignar';
+      this.hablar(`Vas a asignar: ${this.tareaTexto}. Elige a la persona y confirma.`);
     } catch (_) {
       this.mensajeError = 'No pude cargar la lista de personal. Intenta de nuevo.';
       this.estado = 'error';
@@ -521,15 +528,29 @@ export class AsistenteVozComponent implements OnDestroy {
   }
 
   // --- Voz de respuesta (texto a voz) ---
-  private hablar(texto: string) {
+  // Si se pasa "alTerminar", se ejecuta cuando termina de hablar (para encadenar
+  // "habla y luego escucha" sin que el microfono capte la propia voz).
+  private hablar(texto: string, alTerminar?: () => void) {
     try {
       const synth = (window as any).speechSynthesis;
-      if (!synth || !texto) return;
+      if (!synth || !texto) { if (alTerminar) alTerminar(); return; }
       const u = new (window as any).SpeechSynthesisUtterance(texto);
       u.lang = 'es-MX';
       u.rate = 1;
+      let listo = false;
+      const fin = () => {
+        if (listo) return;
+        listo = true;
+        if (alTerminar) this.zone.run(() => alTerminar());
+      };
+      u.onend = fin;
+      u.onerror = fin;
       synth.cancel();
       synth.speak(u);
-    } catch (_) {}
+      // Respaldo: algunos navegadores no disparan onend de forma confiable.
+      if (alTerminar) setTimeout(fin, 5000);
+    } catch (_) {
+      if (alTerminar) alTerminar();
+    }
   }
 }

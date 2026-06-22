@@ -61,6 +61,20 @@ export class AsistenteVozComponent implements OnDestroy {
 
   private reconocedor: any = null;
 
+  constructor() {
+    // Precargar las voces de TTS (Chrome las carga de forma asincrona; si no se
+    // piden antes, la primera vez sale la voz robotica por defecto).
+    try {
+      const synth = (window as any).speechSynthesis;
+      if (synth) {
+        synth.getVoices();
+        if (synth.addEventListener) {
+          synth.addEventListener('voiceschanged', () => synth.getVoices());
+        }
+      }
+    } catch (_) {}
+  }
+
   ngOnDestroy() {
     this.detenerReconocedor();
   }
@@ -527,6 +541,27 @@ export class AsistenteVozComponent implements OnDestroy {
     }
   }
 
+  // Elige la voz en espanol mas natural disponible (las "Google" suenan mucho
+  // mejor que la voz robotica por defecto). Devuelve null si no hay ninguna.
+  private elegirVoz(): any {
+    try {
+      const synth = (window as any).speechSynthesis;
+      if (!synth) return null;
+      const voces = synth.getVoices() || [];
+      if (!voces.length) return null;
+      const es = voces.filter((v: any) => /^es/i.test(v.lang || ''));
+      return (
+        es.find((v: any) => /google/i.test(v.name || '')) ||              // Google es (la mejor en Chrome/Android)
+        es.find((v: any) => /natural|premium|enhanced/i.test(v.name || '')) ||
+        es.find((v: any) => /es[-_]mx/i.test(v.lang || '')) ||            // espanol de Mexico
+        es[0] ||
+        null
+      );
+    } catch {
+      return null;
+    }
+  }
+
   // --- Voz de respuesta (texto a voz) ---
   // Si se pasa "alTerminar", se ejecuta cuando termina de hablar (para encadenar
   // "habla y luego escucha" sin que el microfono capte la propia voz).
@@ -535,8 +570,11 @@ export class AsistenteVozComponent implements OnDestroy {
       const synth = (window as any).speechSynthesis;
       if (!synth || !texto) { if (alTerminar) alTerminar(); return; }
       const u = new (window as any).SpeechSynthesisUtterance(texto);
-      u.lang = 'es-MX';
-      u.rate = 1;
+      const voz = this.elegirVoz();
+      if (voz) u.voice = voz;
+      u.lang = (voz && voz.lang) || 'es-MX';
+      u.rate = 0.98;
+      u.pitch = 1.05;
       let listo = false;
       const fin = () => {
         if (listo) return;

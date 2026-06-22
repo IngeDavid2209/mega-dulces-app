@@ -43,7 +43,10 @@ export class AsistenteVozComponent implements OnDestroy {
 
   // Datos de la tarea interpretada (editables antes de guardar)
   tareaTexto = '';
-  tareaFecha = '';
+  tareaFechaInicio = '';   // YYYY-MM-DD
+  tareaHoraInicio = '';    // HH:mm
+  tareaFechaFin = '';      // YYYY-MM-DD
+  tareaHoraFin = '';       // HH:mm
   tareaInstrucciones = '';
   respuestaIA = '';
 
@@ -75,6 +78,18 @@ export class AsistenteVozComponent implements OnDestroy {
 
   private normaliza(s: string): string {
     return (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
+  }
+
+  /** Campos de fecha/hora de inicio y fin que se guardan en la tarea.
+   *  `fecha` se mantiene = fechaInicio para que la agenda siga ordenando/mostrando. */
+  private camposFechaHora() {
+    return {
+      fecha: this.tareaFechaInicio || '',
+      fechaInicio: this.tareaFechaInicio || '',
+      horaInicio: this.tareaHoraInicio || '',
+      fechaFin: this.tareaFechaFin || '',
+      horaFin: this.tareaHoraFin || ''
+    };
   }
 
   private hoyISO(): string {
@@ -137,7 +152,10 @@ export class AsistenteVozComponent implements OnDestroy {
     this.entradaManual = '';
     this.mensajeError = '';
     this.tareaTexto = '';
-    this.tareaFecha = '';
+    this.tareaFechaInicio = '';
+    this.tareaHoraInicio = '';
+    this.tareaFechaFin = '';
+    this.tareaHoraFin = '';
     this.tareaInstrucciones = '';
     this.respuestaIA = '';
     this.resultados = [];
@@ -256,7 +274,7 @@ export class AsistenteVozComponent implements OnDestroy {
 
       if (data.accion === 'crear') {
         this.tareaTexto = data.texto || this.transcript;
-        this.tareaFecha = data.fecha || '';
+        this.tareaFechaInicio = data.fecha || '';
         this.tareaInstrucciones = data.instrucciones || '';
         this.estado = 'confirmar';
       } else if (data.accion === 'consultar') {
@@ -292,7 +310,7 @@ export class AsistenteVozComponent implements OnDestroy {
         texto,
         completada: false,
         fechaCreacion: Date.now(),
-        fecha: this.tareaFecha || '',
+        ...this.camposFechaHora(),
         instrucciones: this.tareaInstrucciones || '',
         comentarios: '',
         adjunto: null,
@@ -352,7 +370,7 @@ export class AsistenteVozComponent implements OnDestroy {
       this.asignables = lista;
       this.nombreDictado = data.asignadoA || '';
       this.tareaTexto = data.texto || '';
-      this.tareaFecha = data.fecha || '';
+      this.tareaFechaInicio = data.fecha || '';
       this.tareaInstrucciones = data.instrucciones || '';
 
       // Intentar emparejar el nombre dictado con un trabajador.
@@ -396,7 +414,7 @@ export class AsistenteVozComponent implements OnDestroy {
         texto,
         completada: false,
         fechaCreacion: Date.now(),
-        fecha: this.tareaFecha || '',
+        ...this.camposFechaHora(),
         instrucciones: this.tareaInstrucciones || '',
         comentarios: '',
         adjunto: null,

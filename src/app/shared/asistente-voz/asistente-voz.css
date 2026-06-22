@@ -177,6 +177,13 @@
 }
 .av-input:focus { outline: none; border-color: #2563EB; }
 
+/* Fila de dos inputs lado a lado (fecha + hora) */
+.av-fila {
+  display: flex;
+  gap: 8px;
+}
+.av-fila .av-input { flex: 1; min-width: 0; }
+
 .av-actions {
   display: flex;
   gap: 10px;

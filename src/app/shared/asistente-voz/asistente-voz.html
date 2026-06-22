@@ -60,8 +60,17 @@
         <label class="av-label">Tarea</label>
         <input class="av-input" type="text" [(ngModel)]="tareaTexto" placeholder="Descripción de la tarea">
 
-        <label class="av-label">Fecha (opcional)</label>
-        <input class="av-input" type="date" [(ngModel)]="tareaFecha">
+        <label class="av-label">Inicio (fecha y hora)</label>
+        <div class="av-fila">
+          <input class="av-input" type="date" [(ngModel)]="tareaFechaInicio">
+          <input class="av-input" type="time" [(ngModel)]="tareaHoraInicio">
+        </div>
+
+        <label class="av-label">Fin (fecha y hora)</label>
+        <div class="av-fila">
+          <input class="av-input" type="date" [(ngModel)]="tareaFechaFin">
+          <input class="av-input" type="time" [(ngModel)]="tareaHoraFin">
+        </div>
 
         <label class="av-label">Instrucciones (opcional)</label>
         <textarea class="av-input" rows="2" [(ngModel)]="tareaInstrucciones"
@@ -89,8 +98,17 @@
         <label class="av-label">Tarea</label>
         <input class="av-input" type="text" [(ngModel)]="tareaTexto" placeholder="Descripción de la tarea">
 
-        <label class="av-label">Fecha (opcional)</label>
-        <input class="av-input" type="date" [(ngModel)]="tareaFecha">
+        <label class="av-label">Inicio (fecha y hora)</label>
+        <div class="av-fila">
+          <input class="av-input" type="date" [(ngModel)]="tareaFechaInicio">
+          <input class="av-input" type="time" [(ngModel)]="tareaHoraInicio">
+        </div>
+
+        <label class="av-label">Fin (fecha y hora)</label>
+        <div class="av-fila">
+          <input class="av-input" type="date" [(ngModel)]="tareaFechaFin">
+          <input class="av-input" type="time" [(ngModel)]="tareaHoraFin">
+        </div>
 
         <label class="av-label">Instrucciones (opcional)</label>
         <textarea class="av-input" rows="2" [(ngModel)]="tareaInstrucciones" placeholder="Detalles extra..."></textarea>

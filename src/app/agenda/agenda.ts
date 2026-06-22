@@ -6,13 +6,12 @@ import { Firestore, collection, query, onSnapshot, addDoc, doc, updateDoc, delet
 import { Auth } from '@angular/fire/auth';
 
 import { SidebarComponent } from '../shared/sidebar/sidebar';
-import { AsistenteVozComponent } from '../shared/asistente-voz/asistente-voz';
 import { esAdminGlobal, sucursalesPermitidas } from '../shared/permisos.util';
 
 @Component({
   selector: 'app-agenda',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, SidebarComponent, AsistenteVozComponent],
+  imports: [CommonModule, FormsModule, RouterModule, SidebarComponent],
   templateUrl: './agenda.html',
   styleUrls: ['./agenda.css']
 })

@@ -1,26 +1,51 @@
 import { Component, OnInit, inject } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
+import { CommonModule } from '@angular/common';
+import { RouterOutlet, Router, NavigationEnd } from '@angular/router';
 import { Firestore, doc, setDoc, updateDoc, getDoc, onSnapshot, collection, query, where, getDocs } from '@angular/fire/firestore';
 import { Storage, ref, uploadString, getDownloadURL } from '@angular/fire/storage';
 import { SwUpdate, VersionReadyEvent } from '@angular/service-worker';
 import { filter } from 'rxjs/operators';
 import * as localforage from 'localforage';
 
+import { AsistenteVozComponent } from './shared/asistente-voz/asistente-voz';
+
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet],
+  imports: [RouterOutlet, CommonModule, AsistenteVozComponent],
   templateUrl: './app.html',
   styleUrls: ['./app.css']
 })
 export class AppComponent implements OnInit {
   title = 'Mega Dulces Task';
-  
+
+  /** El asistente de voz solo se muestra a administradores, en toda la app. */
+  esAdmin = false;
+
   private firestore = inject(Firestore);
   private storage = inject(Storage);
   private swUpdate = inject(SwUpdate);
+  private router = inject(Router);
+
+  /** Relee la sesión y decide si el usuario actual es admin. */
+  private actualizarEsAdmin() {
+    try {
+      const raw = localStorage.getItem('md_sesion_actual');
+      const user = raw ? JSON.parse(raw) : null;
+      this.esAdmin = user?.rol === 'admin';
+    } catch {
+      this.esAdmin = false;
+    }
+  }
 
   ngOnInit() {
+    // Mostrar/ocultar el asistente de voz según el rol, y re-evaluar en cada
+    // navegación (cubre login, logout y cambios de pantalla).
+    this.actualizarEsAdmin();
+    this.router.events
+      .pipe(filter((e): e is NavigationEnd => e instanceof NavigationEnd))
+      .subscribe(() => this.actualizarEsAdmin());
+
     // 🔄 AUTO-ACTUALIZACIÓN DE LA PWA INSTALADA 🔄
     this.vigilarActualizaciones();
 

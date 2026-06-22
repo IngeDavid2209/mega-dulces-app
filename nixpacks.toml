@@ -6,7 +6,7 @@
 # start:   levanta el servidor Express que sirve la app y las rutas /api.
 
 [phases.install]
-cmds = ["npm install --include=dev"]
+cmds = ["npm install --include=dev --legacy-peer-deps"]
 
 [phases.build]
 cmds = ["npm run build"]

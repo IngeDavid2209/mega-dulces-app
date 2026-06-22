@@ -7,12 +7,12 @@ import { SwUpdate, VersionReadyEvent } from '@angular/service-worker';
 import { filter } from 'rxjs/operators';
 import * as localforage from 'localforage';
 
-import { AsistenteVozComponent } from './shared/asistente-voz/asistente-voz';
+import { AsistenteChatComponent } from './shared/asistente-chat/asistente-chat';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, CommonModule, AsistenteVozComponent],
+  imports: [RouterOutlet, CommonModule, AsistenteChatComponent],
   templateUrl: './app.html',
   styleUrls: ['./app.css']
 })

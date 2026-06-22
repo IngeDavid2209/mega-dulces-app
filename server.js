@@ -32,6 +32,7 @@ app.use(express.json({ limit: '2mb' }));
 // Se montan con app.all para que tambien reciban OPTIONS (las funciones ya
 // manejan el metodo y el CORS internamente).
 app.all('/api/asistente-voz', require('./api/asistente-voz'));
+app.all('/api/asistente-chat', require('./api/asistente-chat'));
 app.all('/api/notify-update', require('./api/notify-update'));
 app.all('/api/cloudinary-cleanup', require('./api/cloudinary-cleanup'));
 

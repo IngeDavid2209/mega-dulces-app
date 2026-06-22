@@ -359,11 +359,8 @@ export class AsistenteVozComponent implements OnDestroy {
       return;
     }
 
-    if (!data.texto) {
-      this.mensajeError = 'No entendi que tarea asignar. Intenta de nuevo.';
-      this.estado = 'error';
-      return;
-    }
+    // Si la IA no capto bien la tarea, no cortamos: abrimos el formulario igual
+    // para que el jefe escriba la tarea y elija a la persona.
 
     try {
       // Cargar la gente a la que este jefe puede asignar (misma logica que la agenda).

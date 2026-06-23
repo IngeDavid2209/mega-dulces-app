@@ -37,26 +37,7 @@ const NIVELES = ['obligatorio', 'importante', 'informativo'];
 // Herramientas
 // ---------------------------------------------------------------------------
 const TOOLS = [
-  // --- TAREAS ---
-  {
-    name: 'agregar_tarea',
-    description: 'Crea una tarea/pendiente. Puede ser para una persona, para toda una sucursal, para un rol/cargo, o para TODO el personal del admin. Si no se indica destino, es para el propio usuario. Resuelve fechas relativas a YYYY-MM-DD con la fecha de hoy.',
-    input_schema: {
-      type: 'object',
-      properties: {
-        titulo: { type: 'string' },
-        fecha: { type: 'string', description: 'YYYY-MM-DD o vacio' },
-        hora_inicio: { type: 'string', description: 'HH:mm' },
-        fecha_fin: { type: 'string' }, hora_fin: { type: 'string' },
-        prioridad: { type: 'string', enum: ['alta', 'media', 'baja'] },
-        para_quien: { type: 'string', description: 'Nombre de UNA persona.' },
-        para_sucursal: { type: 'string', description: 'Asigna a TODO el personal de esa sucursal.' },
-        para_rol: { type: 'string', enum: ROLES, description: 'Asigna a todos los de ese rol/cargo (puede combinarse con para_sucursal).' },
-        para_todos: { type: 'boolean', description: 'true = asigna a TODO el personal en los privilegios del admin.' }
-      },
-      required: ['titulo']
-    }
-  },
+  // --- TAREAS (agenda: solo consultar/editar; la CREACION ahora es crear_checklist) ---
   {
     name: 'consultar_tareas',
     description: 'Consulta tareas. Por defecto las tuyas; con "persona" puedes ver las de cualquier trabajador (admin). Usala ANTES de completar/editar/eliminar para conocer el id.',
@@ -96,6 +77,9 @@ const TOOLS = [
             type: 'object',
             properties: {
               text: { type: 'string', description: 'Descripcion de la tarea.' },
+              tipo: { type: 'string', enum: ['manual', 'rutina'], description: 'manual = tarea suelta; rutina = recurrente.' },
+              frecuencia: { type: 'string', enum: FRECUENCIAS, description: 'Solo si tipo=rutina.' },
+              dia_semana: { type: 'string', enum: DIAS, description: 'Solo si rutina semanal.' },
               requiere_foto: { type: 'boolean', description: 'Si pide foto de evidencia.' },
               hora_inicio: { type: 'string', description: 'HH:mm opcional.' },
               hora_limite: { type: 'string', description: 'HH:mm opcional.' }
@@ -393,23 +377,28 @@ async function ejecutarHerramienta(db, ctx, nombre, input) {
     if (itemsIn.length === 0) return { ok: false, mensaje: 'Faltan los items (tareas) del checklist.' };
 
     const ahora = Date.now();
-    const items = itemsIn.map((it, idx) => ({
-      id: ahora + idx,
-      text: String(it.text),
-      checked: false,
-      tipo: 'manual',
-      requiresPhoto: !!it.requiere_foto,
-      requiresAntesDespues: false,
-      requiresVariasFotos: false,
-      permiteGaleria: false,
-      permiteDocumentos: true,
-      horaInicio: it.hora_inicio || null,
-      horaLimite: it.hora_limite || input.hora_limite || null,
-      frecuencia: null, diaSemana: null, diaMes: null,
-      fechaInicio: null, fechaFin: null, tiempoEstimado: null,
-      photo: null, photoTime: null, photoAntes: null, photoAntesTime: null,
-      photoAntesTimestamp: null, photoDespues: null, photoDespuesTime: null, photos: []
-    }));
+    const items = itemsIn.map((it, idx) => {
+      const esRutina = it.tipo === 'rutina';
+      return {
+        id: ahora + idx,
+        text: String(it.text),
+        checked: false,
+        tipo: esRutina ? 'rutina' : 'manual',
+        requiresPhoto: !!it.requiere_foto,
+        requiresAntesDespues: false,
+        requiresVariasFotos: false,
+        permiteGaleria: false,
+        permiteDocumentos: false,
+        horaInicio: it.hora_inicio || null,
+        horaLimite: it.hora_limite || input.hora_limite || null,
+        frecuencia: esRutina ? (FRECUENCIAS.includes(it.frecuencia) ? it.frecuencia : 'Diaria') : null,
+        diaSemana: esRutina && DIAS.includes(it.dia_semana) ? it.dia_semana : null,
+        diaMes: null,
+        fechaInicio: null, fechaFin: null, tiempoEstimado: null,
+        photo: null, photoTime: null, photoAntes: null, photoAntesTime: null,
+        photoAntesTimestamp: null, photoDespues: null, photoDespuesTime: null, photos: []
+      };
+    });
 
     const id = String(ahora);
     const fecha = input.fecha || ctx.fechaHoy || '';
@@ -647,9 +636,8 @@ module.exports = async (req, res) => {
       'Reglas:',
       '- El usuario es administrador con ACCESO TOTAL: puedes consultar tareas de cualquier persona (consultar_tareas con "persona") y estadisticas de cualquier sucursal o de toda la operacion (estadisticas con "sucursal"). No digas que algo es solo personal o que no puedes por sucursal: usa los parametros.',
       '- CONFIRMA ANTES DE ESCRIBIR: antes de crear o asignar (agregar_tarea individual o en grupo, crear_checklist y crear_rutina) RESUME en una frase que haras y a quien, y pide confirmacion. Ej: "Voy a crear el checklist [nombre] para [persona] en [sucursal] el [fecha] con estos items: ... ¿Confirmo?". Llama la herramienta SOLO despues de que el usuario diga si/confirme. Si menciona a una persona y no estas 100% seguro de quien es, di a quien entendiste y pide que confirme. Para consultas, resumenes y estadisticas (solo lectura) NO pidas confirmacion: hazlo directo.',
-      '- TAREA vs CHECKLIST: usa agregar_tarea para un PENDIENTE PERSONAL (va a la agenda de alguien). Usa crear_checklist para una LISTA OPERATIVA por SUCURSAL (ej. checklist de cierre, limpieza, apertura) asignada a una persona; pide la sucursal y los items si no los dieron.',
+      '- CREAR siempre es un CHECKLIST: para crear cualquier cosa usa crear_checklist (escribe en la coleccion checklists, NUNCA en la agenda). Arma los items de lo que el admin dicte: una tarea suelta = item tipo "manual"; una rutina (ej. "todos los lunes...") = item tipo "rutina" con frecuencia y dia_semana. Pide nombre, persona, sucursal, fecha e items si faltan, antes de confirmar.',
       '- Usa las herramientas para EJECUTAR de verdad; no digas que hiciste algo sin llamarlas.',
-      '- Para asignar a VARIAS personas a la vez usa agregar_tarea con para_sucursal, para_rol o para_todos (true). Confirma a cuantas personas quedo asignada.',
       '- Para completar/editar/eliminar una tarea, primero usa consultar_tareas para obtener el id.',
       '- Para crear_rutina necesitas: nombre, frecuencia, sucursales y modo (porRol con rol_objetivo, o porPersonas con personas). Si falta algo, preguntalo corto antes de crear.',
       '- Resuelve fechas relativas a YYYY-MM-DD usando la fecha de hoy.',

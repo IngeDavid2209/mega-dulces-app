@@ -189,6 +189,8 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   isModalTareaDiaOpen = false;
   tareaDiaTexto = '';
   tareaDiaHora = '';
+  /** Si no es null, el modal "mi tarea" esta EDITANDO esta tarea propia (id del checklist). */
+  editandoTareaPropiaId: string | null = null;
   // Recurrencia de "mi tarea": 'unica' = solo hoy; o se repite con frecuencia.
   tareaDiaFrecuencia: 'unica' | 'Diaria' | 'Semanal' | 'Mensual' | 'Anual' = 'unica';
   tareaDiaDiaSemana = 1;      // 0=Domingo .. 6=Sabado (para Semanal)
@@ -1541,6 +1543,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     this.tareaDiaDiaSemana = 1;
     this.tareaDiaDiaMes = 1;
     this.tareaDiaFechaAnual = '';
+    this.editandoTareaPropiaId = null;
   }
 
   /** Identificador estable del usuario actual. */
@@ -1658,6 +1661,63 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     }
   }
 
+  /** ¿Es una tarea propia del usuario actual? (para permitir editar/eliminar simple). */
+  esTareaPropiaMia(checklist: any): boolean {
+    if (!checklist?.esTareaPropia) return false;
+    return mismoEmpleadoNombre(checklist.assigned, this.currentUser?.nombre) ||
+           checklist.createdBy === this.currentUser?.nombre;
+  }
+
+  /** Abre el modal simple (solo nombre + hora) para editar una tarea propia. */
+  editarTareaPropia(checklist: any, event: Event) {
+    event.stopPropagation();
+    this.resetCamposTareaDia();
+    this.editandoTareaPropiaId = String(checklist.id);
+    this.tareaDiaTexto = checklist.name || '';
+    const hora = (checklist.time && checklist.time !== '23:59')
+      ? checklist.time
+      : (checklist.items?.[0]?.horaLimite || '');
+    this.tareaDiaHora = hora || '';
+    this.isModalTareaDiaOpen = true;
+  }
+
+  /** Guarda los cambios básicos (nombre + hora) de una tarea propia. */
+  private async actualizarTareaPropia(texto: string) {
+    const id = this.editandoTareaPropiaId!;
+    const hora = this.tareaDiaHora || '';
+    try {
+      const ref = doc(this.firestore, 'checklists', id);
+      const snap = await getDoc(ref);
+      const items = (snap.exists() ? (snap.data() as any).items : null) || [];
+      if (items[0]) { items[0].text = texto; items[0].horaLimite = hora || null; }
+      await setDoc(ref, { name: texto, time: hora || '23:59', items }, { merge: true });
+      this.isModalTareaDiaOpen = false;
+      this.resetCamposTareaDia();
+      this.mostrarToast(' Tarea actualizada.');
+    } catch (e) {
+      console.error('[actualizarTareaPropia]', e);
+      this.mostrarToast(' Error al actualizar la tarea.');
+    }
+  }
+
+  /** Elimina (soft-delete) una sola tarea propia del usuario. Sin contraseña ni admin. */
+  async eliminarTareaPropia(checklist: any) {
+    const res = await Swal.fire({
+      title: 'Eliminar tu tarea',
+      html: `¿Quitar "<strong>${checklist.name}</strong>" de tu día?`,
+      icon: 'warning', showCancelButton: true,
+      confirmButtonText: 'Si, eliminar', cancelButtonText: 'Cancelar', confirmButtonColor: '#dc2626'
+    });
+    if (!res.isConfirmed) return;
+    try {
+      await setDoc(doc(this.firestore, 'checklists', String(checklist.id)), { eliminado: true }, { merge: true });
+      this.mostrarToast(' Tarea eliminada.');
+    } catch (e) {
+      console.error('[eliminarTareaPropia]', e);
+      this.mostrarToast(' Error al eliminar.');
+    }
+  }
+
   /** Quita una rutina personal (deja de repetirse; lo ya generado se queda). */
   async eliminarRutinaPersonal(r: any) {
     const res = await Swal.fire({
@@ -1689,6 +1749,12 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     if (!texto) { this.mostrarToast(' Escribe el nombre de tu tarea.'); return; }
     const nombre = this.currentUser?.nombre;
     if (!nombre) { this.mostrarToast(' No hay sesión activa.'); return; }
+
+    // Modo edición: actualiza la tarea propia existente (solo nombre + hora).
+    if (this.editandoTareaPropiaId) {
+      await this.actualizarTareaPropia(texto);
+      return;
+    }
 
     // Recurrente: se guarda como rutina personal; el snapshot genera la de hoy.
     if (this.tareaDiaFrecuencia !== 'unica') {
@@ -1746,6 +1812,8 @@ export class ChecklistComponent implements OnInit, OnDestroy {
 
   eliminarChecklist(checklist: any, event: Event) {
     event.stopPropagation();
+    // Tarea propia del usuario: la puede eliminar el mismo, sin contraseña ni admin.
+    if (this.esTareaPropiaMia(checklist)) { this.eliminarTareaPropia(checklist); return; }
     this.checklistToDelete = checklist;
     this.passwordInput = '';
     this.isPasswordModalOpen = true;
@@ -1940,6 +2008,8 @@ export class ChecklistComponent implements OnInit, OnDestroy {
    * - En cualquier otro caso → editor de Tarea Única.
    */
   editarChecklist(checklist: any, event: Event) {
+    // Tarea propia: edición simple (solo nombre + hora), no el wizard completo.
+    if (this.esTareaPropiaMia(checklist)) { this.editarTareaPropia(checklist, event); return; }
     const esRutina = /\((Diaria|Semanal|Catorcenal|Mensual|Trimestral)\)$/.test(checklist?.name || '');
     if (esRutina) this.editarBloqueRutinas(checklist, event);
     else this.editarTareaUnica(checklist, event);

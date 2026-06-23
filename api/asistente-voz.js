@@ -18,10 +18,11 @@ const admin = require('firebase-admin');
 let inicializado = false;
 function inicializar() {
   if (inicializado) return;
-  const raw = process.env.FIREBASE_SERVICE_ACCOUNT;
-  if (!raw) throw new Error('Falta variable FIREBASE_SERVICE_ACCOUNT en las variables de entorno.');
-  const sa = JSON.parse(raw);
-  admin.initializeApp({ credential: admin.credential.cert(sa) });
+  if (!admin.apps.length) {
+    const raw = process.env.FIREBASE_SERVICE_ACCOUNT;
+    if (!raw) throw new Error('Falta variable FIREBASE_SERVICE_ACCOUNT en las variables de entorno.');
+    admin.initializeApp({ credential: admin.credential.cert(JSON.parse(raw)) });
+  }
   inicializado = true;
 }
 

@@ -56,6 +56,17 @@
         Tareas Asignadas
       </a>
 
+      <a class="nav-item" routerLink="/turnos" routerLinkActive="active"
+         *ngIf="esAdminCanindo"
+         (click)="onNavClick()"
+         title="Turnos manana/tarde de Canindo: define quien va en cada turno">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="9"></circle>
+          <polyline points="12 7 12 12 15 14"></polyline>
+        </svg>
+        Turnos Canindo
+      </a>
+
       <a class="nav-item" routerLink="/checkstore" routerLinkActive="active"
          *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeVerCheckstore"
          (click)="onNavClick()">
@@ -206,16 +217,6 @@
           <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
         </svg>
         Días de Descanso
-      </a>
-      <a class="nav-item" routerLink="/turnos" routerLinkActive="active"
-         *ngIf="esAdminCanindo"
-         (click)="onNavClick()"
-         title="Turnos manana/tarde de Canindo">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="12" cy="12" r="9"></circle>
-          <polyline points="12 7 12 12 15 14"></polyline>
-        </svg>
-        Turnos Canindo
       </a>
     </nav>
 

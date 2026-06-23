@@ -50,10 +50,13 @@ export class TurnosComponent implements OnInit, OnDestroy {
   candidatos = computed(() => {
     const canindo = normalizarNombre('Canindo');
     return this.usuarios()
-      .filter(u => (u.rol === 'trabajador' || u.rol === 'admin'))
+      // Solo trabajadores (no admins) con Canindo EXPLICITO en su lista.
+      // No se incluye por el comodin 'General (Acceso Total)' para que no se
+      // cuelen gerencia general ni cuentas de otras sucursales.
+      .filter(u => u.rol === 'trabajador')
       .filter(u => {
         const sus: string[] = u.sucursales || (u.sucursal ? [u.sucursal] : []);
-        return sus.some(s => normalizarNombre(s) === canindo) || sus.includes('General (Acceso Total)');
+        return sus.some(s => normalizarNombre(s) === canindo);
       })
       .map(u => ({ uid: u.id || u.uid, nombre: u.nombre || u.correo || '(sin nombre)' }))
       .filter(u => !!u.uid)

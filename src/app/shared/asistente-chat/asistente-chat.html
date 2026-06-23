@@ -11,7 +11,12 @@
   <div class="ac-panel" (click)="$event.stopPropagation()">
 
     <div class="ac-header">
-      <div class="ac-title"><span class="ac-dot"></span> Asistente</div>
+      <div class="ac-title">
+        <span class="ac-dot" [class.ac-dot-habla]="hablando" [class.ac-dot-escucha]="escuchando"></span>
+        Asistente
+        <span *ngIf="hablando" class="ac-estado">· hablando</span>
+        <span *ngIf="escuchando" class="ac-estado">· escuchando</span>
+      </div>
       <button class="ac-close" (click)="cerrar()" aria-label="Cerrar">&times;</button>
     </div>
 

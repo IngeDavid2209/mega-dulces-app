@@ -35,6 +35,7 @@ export class AsistenteChatComponent implements OnDestroy {
   entrada = '';
   cargando = false;
   escuchando = false;
+  hablando = false;   // true mientras el TTS esta leyendo una respuesta
 
   mensajes: { de: 'user' | 'bot'; texto: string }[] = [];
   private historial: any[] = [];
@@ -69,6 +70,7 @@ export class AsistenteChatComponent implements OnDestroy {
 
   cerrar() {
     this.detenerReconocedor();
+    this.detenerVoz();
     this.escuchando = false;
     this.abierto = false;
   }
@@ -78,6 +80,7 @@ export class AsistenteChatComponent implements OnDestroy {
     const texto = (this.entrada || '').trim();
     if (!texto || this.cargando) return;
 
+    this.detenerVoz();   // si estaba leyendo una respuesta anterior, callarla
     this.entrada = '';
     this.mensajes.push({ de: 'user', texto });
     this.historial.push({ role: 'user', content: texto });
@@ -131,6 +134,7 @@ export class AsistenteChatComponent implements OnDestroy {
     const w = window as any;
     const SR = w.SpeechRecognition || w.webkitSpeechRecognition;
     if (!SR) return;
+    this.detenerVoz();   // si el asistente esta hablando, callarlo YA antes de escuchar
     if (this.escuchando) { this.detenerReconocedor(); this.escuchando = false; return; }
 
     this.detenerReconocedor();
@@ -183,16 +187,49 @@ export class AsistenteChatComponent implements OnDestroy {
     } catch { return null; }
   }
 
+  // Limpia el texto SOLO para la voz (la pantalla conserva su formato):
+  // quita emojis/pictogramas y simbolos de markdown que no se deben leer.
+  private limpiarTextoParaVoz(texto: string): string {
+    if (!texto) return '';
+    let t = texto;
+    // Emojis, pictogramas, banderas y selectores de variacion / ZWJ.
+    t = t.replace(/[\u{1F1E6}-\u{1F1FF}]/gu, '');        // banderas (indicadores regionales)
+    t = t.replace(/\p{Extended_Pictographic}/gu, '');    // caritas, simbolos, pictogramas
+    t = t.replace(/[\u{FE00}-\u{FE0F}\u{200D}\u{20E3}]/gu, '');
+    // Markdown: vinetas de lista al inicio de linea ("- ", "* ", "• ").
+    t = t.replace(/^\s*[-*•]\s+/gm, '');
+    // Encabezados (#) y citas (>) al inicio de linea.
+    t = t.replace(/^\s{0,3}#{1,6}\s*/gm, '');
+    t = t.replace(/^\s{0,3}>\s?/gm, '');
+    // Enfasis y codigo: ** * _ ~ ` (se queda el texto, se van los simbolos).
+    t = t.replace(/[*_~`]+/g, '');
+    // Colapsar espacios dobles y limpiar por linea.
+    t = t.replace(/[ \t]{2,}/g, ' ');
+    t = t.split('\n').map(l => l.trim()).filter((l, i, arr) => l || (i > 0 && arr[i - 1])).join('. ');
+    return t.replace(/\.\s*\./g, '.').trim();
+  }
+
+  // Corta la voz al instante (aunque este a media frase).
+  private detenerVoz() {
+    try { (window as any).speechSynthesis?.cancel(); } catch (_) {}
+    this.hablando = false;
+  }
+
   private hablar(texto: string) {
     try {
       const synth = (window as any).speechSynthesis;
-      if (!synth || !texto) return;
-      const u = new (window as any).SpeechSynthesisUtterance(texto);
+      if (!synth) return;
+      const limpio = this.limpiarTextoParaVoz(texto);
+      if (!limpio) return;
+      const u = new (window as any).SpeechSynthesisUtterance(limpio);
       const voz = this.elegirVoz();
       if (voz) u.voice = voz;
       u.lang = (voz && voz.lang) || 'es-MX';
       u.rate = 0.98;
       u.pitch = 1.05;
+      u.onstart = () => this.zone.run(() => { this.hablando = true; });
+      u.onend = () => this.zone.run(() => { this.hablando = false; });
+      u.onerror = () => this.zone.run(() => { this.hablando = false; });
       synth.cancel();
       synth.speak(u);
     } catch (_) {}

@@ -70,7 +70,11 @@
   flex-shrink: 0;
 }
 .ac-title { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 15px; color: #0F172A; }
-.ac-dot { width: 9px; height: 9px; border-radius: 50%; background: #22C55E; }
+.ac-dot { width: 9px; height: 9px; border-radius: 50%; background: #22C55E; transition: background .2s; }
+.ac-dot-habla { background: #2563EB; animation: ac-blink 1s infinite; }
+.ac-dot-escucha { background: #DC2626; animation: ac-blink 1s infinite; }
+@keyframes ac-blink { 50% { opacity: .35; } }
+.ac-estado { font-size: 12px; font-weight: 600; color: #64748B; }
 .ac-close { background: none; border: none; font-size: 26px; line-height: 1; color: #64748B; cursor: pointer; }
 
 /* Cuerpo del chat */

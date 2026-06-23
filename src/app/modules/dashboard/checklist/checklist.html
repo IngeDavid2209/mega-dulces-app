@@ -1751,6 +1751,29 @@
             <input class="form-input" type="time" [(ngModel)]="tareaDiaHora">
           </div>
 
+          <!-- Actividades (sub-tareas con casilla de terminado) -->
+          <div class="form-group">
+            <label class="form-label">Actividades (opcional)</label>
+            <div style="display:flex; gap:8px;">
+              <input class="form-input" type="text" [(ngModel)]="nuevaActividadTexto"
+                     placeholder="Ej: Revisar precios"
+                     (keyup.enter)="agregarActividadDia()" style="flex:1;">
+              <button type="button" class="btn-secondary" (click)="agregarActividadDia()"
+                      style="white-space:nowrap;">+ Agregar</button>
+            </div>
+            <div class="actividades-lista" *ngIf="tareaDiaActividades.length > 0">
+              <div class="actividad-item" *ngFor="let a of tareaDiaActividades; let i = index">
+                <span class="act-check">✓</span>
+                <span class="act-texto">{{ a }}</span>
+                <button type="button" class="act-del" (click)="quitarActividadDia(i)" title="Quitar">&times;</button>
+              </div>
+            </div>
+            <small style="display:block; margin-top:6px; font-size:11.5px; color:#94A3B8;">
+              Cada actividad será una casilla que podrás marcar como terminada. Si no agregas
+              ninguna, la tarea será una sola casilla.
+            </small>
+          </div>
+
           <div class="form-group" *ngIf="!editandoTareaPropiaId">
             <label class="form-label">¿Se repite?</label>
             <select class="form-input select-input" [(ngModel)]="tareaDiaFrecuencia">
@@ -1795,7 +1818,7 @@
           <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:20px;">
             <button class="btn-secondary" (click)="cerrarModalTareaDia()">Cancelar</button>
             <button class="btn-primary" (click)="guardarTareaDia()">
-              {{ editandoTareaPropiaId ? 'Guardar cambios' : (tareaDiaFrecuencia === 'unica' ? 'Agregar a mi día' : 'Crear recurrente') }}
+              {{ editandoTareaPropiaId ? 'Guardar cambios' : (tareaDiaFrecuencia === 'unica' ? 'Agregar' : 'Crear recurrente') }}
             </button>
           </div>
         </div>

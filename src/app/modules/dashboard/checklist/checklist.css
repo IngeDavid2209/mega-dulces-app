@@ -3589,3 +3589,20 @@
   border: none; background: #fee2e2; color: #b91c1c; width: 26px; height: 26px;
   border-radius: 7px; font-size: 17px; line-height: 1; cursor: pointer; flex-shrink: 0;
 }
+
+/* Actividades (sub-tareas) en el modal "mi tarea" */
+.actividades-lista { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.actividad-item {
+  display: flex; align-items: center; gap: 8px;
+  border: 1px solid #e2e8f0; border-radius: 8px; padding: 7px 10px; background: #f8fafc;
+}
+.actividad-item .act-check {
+  width: 18px; height: 18px; flex-shrink: 0; border-radius: 5px;
+  background: #e2e8f0; color: #64748b; font-size: 12px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+}
+.actividad-item .act-texto { flex: 1; min-width: 0; font-size: 13.5px; color: #0f172a; }
+.actividad-item .act-del {
+  border: none; background: #fee2e2; color: #b91c1c; width: 24px; height: 24px;
+  border-radius: 6px; font-size: 16px; line-height: 1; cursor: pointer; flex-shrink: 0;
+}

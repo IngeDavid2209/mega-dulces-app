@@ -1562,6 +1562,7 @@
   width: 100%;
   max-width: 720px;
   max-height: 92vh;
+  max-height: 92dvh;        /* dvh = alto visible real en movil */
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -2370,10 +2371,12 @@
   display: flex;
   gap: 12px;
   padding: 20px 28px;
+  padding-bottom: calc(20px + env(safe-area-inset-bottom));  /* no quedar bajo la barra del telefono */
   background: #F8FAFC;
   border-top: 1px solid #E2E8F0;
   align-items: center;
   flex-wrap: wrap; /* 🔥 Si no caben en una línea, se apilan */
+  flex-shrink: 0;            /* el footer siempre visible */
 }
 
 .wizard-btn {
@@ -2445,7 +2448,8 @@
 
   .wizard-modal {
     max-height: 100vh;
-    height: 100vh;
+    max-height: 100dvh;
+    height: 100dvh;          /* alto visible real, sin la barra del navegador */
     border-radius: 0;
     max-width: 100%;
   }
@@ -2499,6 +2503,7 @@
 
   .wizard-footer {
     padding: 14px 18px;
+    padding-bottom: calc(14px + env(safe-area-inset-bottom));
   }
 
   .wizard-btn {

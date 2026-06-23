@@ -635,6 +635,7 @@
   border-radius: 20px;
   width: 100%; max-width: 760px;
   max-height: 92vh;
+  max-height: 92dvh;        /* dvh = alto visible real en movil */
   display: flex; flex-direction: column;
   overflow: hidden;
   box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
@@ -767,10 +768,12 @@
 .wizard-footer {
   display: flex; gap: 12px;
   padding: 18px 28px;
+  padding-bottom: calc(18px + env(safe-area-inset-bottom));
   background: #F8FAFC;
   border-top: 1px solid var(--border);
   align-items: center;
   flex-wrap: wrap;
+  flex-shrink: 0;
 }
 .wizard-btn {
   font-size: 16px; font-weight: 800;
@@ -836,7 +839,7 @@
   .cat-grid { grid-template-columns: 1fr; gap: 14px; }
 
   .wizard-overlay { padding: 0; }
-  .wizard-modal { max-height: 100vh; border-radius: 0; max-width: 100%; }
+  .wizard-modal { max-height: 100vh; max-height: 100dvh; border-radius: 0; max-width: 100%; }
   .wizard-step { padding: 20px 18px; }
   .wizard-question { font-size: 20px; }
   .wizard-hint { font-size: 14px; }

@@ -1730,9 +1730,10 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     };
 
     try {
+      // El snapshot de checklists la muestra sola (incluso con cache local).
+      // NO hacemos push optimista: causaba que apareciera DUPLICADA hasta refrescar
+      // (el snapshot ya la traia y ademas la agregabamos a mano).
       await this.guardarEnLaNube(checklist);
-      // Refresco optimista: aparece de inmediato sin esperar el snapshot.
-      this.checklists.set([...(this.checklists() || []), checklist]);
       this.isModalTareaDiaOpen = false;
       this.tareaDiaTexto = '';
       this.tareaDiaHora = '';

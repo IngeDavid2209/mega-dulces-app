@@ -3575,3 +3575,17 @@
 .persona-chevron { font-size: 20px; color: #94a3b8; transition: transform .2s; }
 .persona-chevron.colapsado { transform: rotate(-90deg); }
 .persona-cards { padding: 14px 16px; }
+
+/* Lista de tareas recurrentes en el modal "Agregar mi tarea" */
+.recurrentes-lista { display: flex; flex-direction: column; gap: 8px; max-height: 180px; overflow-y: auto; }
+.recurrente-item {
+  display: flex; align-items: center; gap: 10px;
+  border: 1px solid #e2e8f0; border-radius: 10px; padding: 8px 12px; background: #f8fafc;
+}
+.recurrente-item .rec-info { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.recurrente-item .rec-texto { font-weight: 600; color: #0f172a; font-size: 13.5px; }
+.recurrente-item .rec-freq { font-size: 11.5px; color: #64748b; }
+.recurrente-item .rec-del {
+  border: none; background: #fee2e2; color: #b91c1c; width: 26px; height: 26px;
+  border-radius: 7px; font-size: 17px; line-height: 1; cursor: pointer; flex-shrink: 0;
+}

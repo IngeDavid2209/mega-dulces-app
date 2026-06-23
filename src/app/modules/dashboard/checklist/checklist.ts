@@ -189,6 +189,17 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   isModalTareaDiaOpen = false;
   tareaDiaTexto = '';
   tareaDiaHora = '';
+  // Recurrencia de "mi tarea": 'unica' = solo hoy; o se repite con frecuencia.
+  tareaDiaFrecuencia: 'unica' | 'Diaria' | 'Semanal' | 'Mensual' | 'Anual' = 'unica';
+  tareaDiaDiaSemana = 1;      // 0=Domingo .. 6=Sabado (para Semanal)
+  tareaDiaDiaMes = 1;         // 1..31 (para Mensual)
+  tareaDiaFechaAnual = '';    // 'YYYY-MM-DD' (para Anual; se guarda MM-DD)
+  readonly diasSemanaOpc = [
+    { v: 1, t: 'Lunes' }, { v: 2, t: 'Martes' }, { v: 3, t: 'Miercoles' },
+    { v: 4, t: 'Jueves' }, { v: 5, t: 'Viernes' }, { v: 6, t: 'Sabado' }, { v: 0, t: 'Domingo' }
+  ];
+  /** Tareas recurrentes personales del usuario actual (coleccion rutinas_personales). */
+  misRutinasPersonales = signal<any[]>([]);
 
   // 🩺 Diagnóstico del último snapshot — alimenta el botón "¿Por qué no veo tareas?"
   // en el estado vacío para inspeccionar el filtrado desde el propio móvil.
@@ -1091,6 +1102,19 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     });
     this.destructoresRadares.push(radarTurnos);
 
+    // 🔁 Tareas recurrentes personales del usuario: las regenera para hoy si aplican.
+    const miUid = this.miUid();
+    if (miUid) {
+      const rpQuery = query(collection(this.firestore, 'rutinas_personales'), where('uid', '==', miUid));
+      const radarRP = onSnapshot(rpQuery, (snap) => {
+        const arr: any[] = [];
+        snap.forEach(d => arr.push({ id: d.id, ...(d.data() || {}) }));
+        this.misRutinasPersonales.set(arr);
+        this.generarRutinasPersonalesDeHoy();
+      });
+      this.destructoresRadares.push(radarRP);
+    }
+
     // 📅 SOLO HOY: el trabajador ve únicamente las tareas del día de hoy.
     // Las que vencieron su HORA siguen siendo de hoy, así que siguen apareciendo
     // y se pueden enviar con retardo (con justificante). NO se arrastran días
@@ -1504,12 +1528,152 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   // TAREA PROPIA DEL DÍA — el trabajador suma una tarea/extra a sus rutinas de hoy
   // ==========================================================================
   abrirModalTareaDia() {
-    this.tareaDiaTexto = '';
-    this.tareaDiaHora = '';
+    this.resetCamposTareaDia();
     this.isModalTareaDiaOpen = true;
   }
 
   cerrarModalTareaDia() { this.isModalTareaDiaOpen = false; }
+
+  private resetCamposTareaDia() {
+    this.tareaDiaTexto = '';
+    this.tareaDiaHora = '';
+    this.tareaDiaFrecuencia = 'unica';
+    this.tareaDiaDiaSemana = 1;
+    this.tareaDiaDiaMes = 1;
+    this.tareaDiaFechaAnual = '';
+  }
+
+  /** Identificador estable del usuario actual. */
+  private miUid(): string { return this.currentUser?.uid || this.currentUser?.id || ''; }
+
+  // ---- Tareas recurrentes personales (coleccion rutinas_personales) ----
+
+  /** Etiqueta legible de una rutina personal (frecuencia + dia). */
+  etiquetaRutinaPersonal(r: any): string {
+    switch (r?.frecuencia) {
+      case 'Diaria': return 'Diaria';
+      case 'Semanal': return 'Semanal (' + (this.diasSemanaOpc.find(d => d.v === Number(r.diaSemana))?.t || '?') + ')';
+      case 'Mensual': return 'Mensual (dia ' + r.diaMes + ')';
+      case 'Anual': return 'Anual (' + (r.fechaAnual || '') + ')';
+      default: return '';
+    }
+  }
+
+  private aplicaRutinaPersonalHoy(r: any, hoy: Date): boolean {
+    switch (r?.frecuencia) {
+      case 'Diaria': return true;
+      case 'Semanal': return hoy.getDay() === Number(r.diaSemana);
+      case 'Mensual': {
+        const diasDelMes = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0).getDate();
+        const objetivo = Math.min(Number(r.diaMes) || 1, diasDelMes); // si es 31 en feb -> ultimo dia
+        return hoy.getDate() === objetivo;
+      }
+      case 'Anual': {
+        const mmdd = `${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`;
+        return r.fechaAnual === mmdd;
+      }
+      default: return false;
+    }
+  }
+
+  private periodoRutinaPersonal(r: any, hoy: Date): string {
+    switch (r?.frecuencia) {
+      case 'Semanal': return obtenerSemanaISO(hoy);
+      case 'Mensual': return `${hoy.getFullYear()}-${hoy.getMonth() + 1}`;
+      case 'Anual': return `${hoy.getFullYear()}`;
+      default: return this.hoyIsoStr; // Diaria
+    }
+  }
+
+  private construirChecklistPersonal(r: any, id: string, hoyIso: string): any {
+    const ahora = Date.now();
+    return {
+      id, timestampCreacion: ahora,
+      name: r.texto, assigned: r.nombre, store: r.sucursal || this.miSucursalPrincipal(),
+      date: hoyIso, time: r.hora || '23:59', status: 'pendiente', enviado: false,
+      createdBy: r.nombre, esTareaPropia: true, _rutinaPersonalId: r.id, notaEmpleado: '',
+      items: [{
+        id: ahora, text: r.texto, requiresPhoto: false, requiresAntesDespues: false,
+        requiresVariasFotos: false, permiteGaleria: false, permiteDocumentos: false, checked: false,
+        photo: null, photoTime: null, photoAntes: null, photoAntesTime: null,
+        photoAntesTimestamp: null, photoDespues: null, photoDespuesTime: null, photos: [],
+        tipo: 'manual', horaInicio: null, horaLimite: r.hora || null, frecuencia: r.frecuencia || null
+      }]
+    };
+  }
+
+  /** Crea (idempotente) la instancia de hoy de cada rutina personal que aplique. */
+  private async generarRutinasPersonalesDeHoy() {
+    const lista = this.misRutinasPersonales();
+    if (!lista.length) return;
+    const hoy = new Date();
+    const hoyIso = this.hoyIsoStr;
+    for (const r of lista) {
+      if (r.activa === false) continue;
+      if (!this.aplicaRutinaPersonalHoy(r, hoy)) continue;
+      const id = `rpers_${r.id}_${this.periodoRutinaPersonal(r, hoy)}`;
+      try {
+        const ref = doc(this.firestore, 'checklists', id);
+        const snap = await getDoc(ref);
+        if (snap.exists()) continue;
+        await setDoc(ref, this.construirChecklistPersonal(r, id, hoyIso));
+      } catch (e) {
+        console.error('[rutina-personal] error generando', r?.id, e);
+      }
+    }
+  }
+
+  /** Guarda una rutina personal recurrente. El snapshot regenera la instancia de hoy. */
+  private async guardarRutinaPersonal(texto: string) {
+    const nombre = this.currentUser?.nombre;
+    const uid = this.miUid();
+    if (!uid) { this.mostrarToast(' No se pudo identificar tu usuario.'); return; }
+    const frecuencia = this.tareaDiaFrecuencia;
+    let fechaAnual: string | null = null;
+    if (frecuencia === 'Anual') {
+      const v = this.tareaDiaFechaAnual;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) { this.mostrarToast(' Elige la fecha de la tarea anual.'); return; }
+      fechaAnual = v.slice(5); // MM-DD
+    }
+    const id = `rp_${normalizarNombre(nombre).replace(/\s+/g, '_')}_${Date.now()}`;
+    const r: any = {
+      id, uid, nombre, texto,
+      hora: this.tareaDiaHora || '',
+      sucursal: this.miSucursalPrincipal(),
+      frecuencia,
+      diaSemana: frecuencia === 'Semanal' ? Number(this.tareaDiaDiaSemana) : null,
+      diaMes: frecuencia === 'Mensual' ? Number(this.tareaDiaDiaMes) : null,
+      fechaAnual,
+      activa: true,
+      creadoEn: Date.now()
+    };
+    try {
+      await setDoc(doc(this.firestore, 'rutinas_personales', id), r);
+      this.isModalTareaDiaOpen = false;
+      this.resetCamposTareaDia();
+      this.mostrarToast(' Tarea recurrente creada. Aparecera sola cuando toque.');
+    } catch (e) {
+      console.error('[rutina-personal] error al guardar', e);
+      this.mostrarToast(' Error al crear la tarea recurrente.');
+    }
+  }
+
+  /** Quita una rutina personal (deja de repetirse; lo ya generado se queda). */
+  async eliminarRutinaPersonal(r: any) {
+    const res = await Swal.fire({
+      title: 'Dejar de repetir',
+      html: `"<strong>${r.texto}</strong>" ya no se repetira (${this.etiquetaRutinaPersonal(r)}).<br>Lo que ya esta en tu dia se queda.`,
+      icon: 'warning', showCancelButton: true,
+      confirmButtonText: 'Si, quitar', cancelButtonText: 'Cancelar', confirmButtonColor: '#dc2626'
+    });
+    if (!res.isConfirmed) return;
+    try {
+      await deleteDoc(doc(this.firestore, 'rutinas_personales', r.id));
+      this.mostrarToast(' Tarea recurrente eliminada.');
+    } catch (e) {
+      this.mostrarToast(' Error al eliminar.');
+    }
+  }
 
   /** Sucursal por defecto del usuario para asociar la tarea propia. */
   private miSucursalPrincipal(): string {
@@ -1525,6 +1689,12 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     if (!texto) { this.mostrarToast(' Escribe el nombre de tu tarea.'); return; }
     const nombre = this.currentUser?.nombre;
     if (!nombre) { this.mostrarToast(' No hay sesión activa.'); return; }
+
+    // Recurrente: se guarda como rutina personal; el snapshot genera la de hoy.
+    if (this.tareaDiaFrecuencia !== 'unica') {
+      await this.guardarRutinaPersonal(texto);
+      return;
+    }
 
     const hoy = this.hoyIsoStr;
     const id = `propia_${normalizarNombre(nombre).replace(/\s+/g, '_')}_${Date.now()}`;

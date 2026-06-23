@@ -1750,9 +1750,53 @@
             <label class="form-label">Hora límite (opcional)</label>
             <input class="form-input" type="time" [(ngModel)]="tareaDiaHora">
           </div>
+
+          <div class="form-group">
+            <label class="form-label">¿Se repite?</label>
+            <select class="form-input select-input" [(ngModel)]="tareaDiaFrecuencia">
+              <option value="unica">No, solo hoy</option>
+              <option value="Diaria">Todos los días</option>
+              <option value="Semanal">Cada semana</option>
+              <option value="Mensual">Cada mes</option>
+              <option value="Anual">Cada año</option>
+            </select>
+          </div>
+
+          <!-- Día de repetición segun frecuencia -->
+          <div class="form-group" *ngIf="tareaDiaFrecuencia === 'Semanal'">
+            <label class="form-label">¿Qué día de la semana?</label>
+            <select class="form-input select-input" [(ngModel)]="tareaDiaDiaSemana">
+              <option *ngFor="let d of diasSemanaOpc" [ngValue]="d.v">{{ d.t }}</option>
+            </select>
+          </div>
+          <div class="form-group" *ngIf="tareaDiaFrecuencia === 'Mensual'">
+            <label class="form-label">¿Qué día del mes? (1 al 31)</label>
+            <input class="form-input" type="number" min="1" max="31" [(ngModel)]="tareaDiaDiaMes">
+          </div>
+          <div class="form-group" *ngIf="tareaDiaFrecuencia === 'Anual'">
+            <label class="form-label">¿Qué fecha cada año?</label>
+            <input class="form-input" type="date" [(ngModel)]="tareaDiaFechaAnual">
+          </div>
+
+          <!-- Mis tareas recurrentes -->
+          <div class="form-group" *ngIf="misRutinasPersonales().length > 0">
+            <label class="form-label">Mis tareas recurrentes</label>
+            <div class="recurrentes-lista">
+              <div class="recurrente-item" *ngFor="let r of misRutinasPersonales()">
+                <div class="rec-info">
+                  <span class="rec-texto">{{ r.texto }}</span>
+                  <span class="rec-freq">{{ etiquetaRutinaPersonal(r) }}{{ r.hora ? ' · ' + formatearHora(r.hora) : '' }}</span>
+                </div>
+                <button type="button" class="rec-del" (click)="eliminarRutinaPersonal(r)" title="Dejar de repetir">&times;</button>
+              </div>
+            </div>
+          </div>
+
           <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:20px;">
             <button class="btn-secondary" (click)="cerrarModalTareaDia()">Cancelar</button>
-            <button class="btn-primary" (click)="guardarTareaDia()">Agregar a mi día</button>
+            <button class="btn-primary" (click)="guardarTareaDia()">
+              {{ tareaDiaFrecuencia === 'unica' ? 'Agregar a mi día' : 'Crear recurrente' }}
+            </button>
           </div>
         </div>
       </div>

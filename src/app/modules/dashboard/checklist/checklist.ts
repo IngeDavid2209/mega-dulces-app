@@ -143,6 +143,15 @@ export class ChecklistComponent implements OnInit, OnDestroy {
    *  `empleados()` para no contaminar el wizard normal de checklists. */
   adminsGlobales = signal<any[]>([]);
   sucursalesDisponibles = signal<string[]>([]);
+  /** Lista COMPLETA de sucursales operativas (sin filtrar por permisos).
+   *  La usa el wizard de "Proyecto en Equipo" del Espacio TEC, donde el grupo
+   *  puede armar proyectos para cualquier sucursal aunque no tenga permisos de
+   *  checklist en ella. */
+  readonly todasLasSucursalesProyecto = [
+    'Canindo', 'La Piedad Abastos', '8 Esquinas', 'Padre Hidalgo',
+    'Morelia Madero', 'Morelia Abastos', 'Yurécuaro', 'Zamora Centro', 'OFICINAS CORPORATIVAS',
+    'CAJA GENERAL', 'COMPRAS', 'CONTABILIDAD', 'FINANZAS', 'SISTEMAS', 'RH', 'MKT', 'MANTENIMIENTO'
+  ];
 
   // ===== Tareas de Equipo (proyectos colaborativos en fases) =====
   tareasEquipo = signal<TareaEquipo[]>([]);

@@ -1876,7 +1876,8 @@
                 <div class="eq-field">
                   <label>Sucursal</label>
                   <select class="form-input select-input" [(ngModel)]="equipoFormStore">
-                    <option *ngFor="let s of sucursalesDisponibles()" [value]="s">{{ s }}</option>
+                    <option value="" disabled>Selecciona una sucursal...</option>
+                    <option *ngFor="let s of todasLasSucursalesProyecto" [value]="s">{{ s }}</option>
                   </select>
                 </div>
                 <div class="eq-field">

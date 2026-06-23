@@ -1,0 +1,85 @@
+<div class="app-layout">
+  <header class="header">
+    <div class="header-left">
+      <button class="btn-menu-mobile" (click)="toggleMenu()">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <line x1="3" y1="12" x2="21" y2="12"></line>
+          <line x1="3" y1="6" x2="21" y2="6"></line>
+          <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+      </button>
+      <div class="header-brand">Mega Dulces<small>Tareas Asignadas</small></div>
+    </div>
+  </header>
+
+  <div class="main-wrapper">
+    <div class="mobile-overlay" *ngIf="isMenuOpen" (click)="toggleMenu()"></div>
+    <app-sidebar [currentUser]="currentUser" [isMenuOpen]="isMenuOpen" (closeMenu)="isMenuOpen = false"></app-sidebar>
+
+    <div class="content" style="padding: 30px;">
+      <div style="max-width: 1000px; margin: 0 auto;">
+
+        <div class="section-header" style="margin-bottom: 20px;">
+          <h2 class="section-title">Tareas que asigné</h2>
+          <p class="section-sub">Todo lo que has repartido a tu personal: a quién, qué, cuándo y si ya está hecho.</p>
+        </div>
+
+        <!-- Resumen -->
+        <div style="display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap;">
+          <div class="ta-stat"><span class="ta-stat-num">{{ tareasFiltradas.length }}</span><span class="ta-stat-lbl">Total</span></div>
+          <div class="ta-stat ta-stat-pend"><span class="ta-stat-num">{{ totalPendientes }}</span><span class="ta-stat-lbl">Pendientes</span></div>
+          <div class="ta-stat ta-stat-ok"><span class="ta-stat-num">{{ totalCompletadas }}</span><span class="ta-stat-lbl">Completadas</span></div>
+        </div>
+
+        <!-- Filtros -->
+        <div class="ta-filtros">
+          <select [(ngModel)]="filtroPersona">
+            <option value="">Todas las personas</option>
+            <option *ngFor="let p of personas" [value]="p">{{ p }}</option>
+          </select>
+          <select [(ngModel)]="filtroSucursal">
+            <option value="">Todas las sucursales</option>
+            <option *ngFor="let s of sucursales" [value]="s">{{ s }}</option>
+          </select>
+          <select [(ngModel)]="filtroEstado">
+            <option value="">Cualquier estado</option>
+            <option value="pendiente">Pendientes</option>
+            <option value="completada">Completadas</option>
+          </select>
+          <input type="date" [(ngModel)]="filtroFecha">
+          <button class="ta-limpiar" (click)="limpiarFiltros()">Limpiar</button>
+        </div>
+
+        <!-- Estados -->
+        <div *ngIf="cargando" class="ta-msg">Cargando tareas asignadas...</div>
+        <div *ngIf="error" class="ta-msg ta-error">{{ error }}</div>
+        <div *ngIf="!cargando && !error && tareasFiltradas.length === 0" class="ta-msg">
+          No hay tareas asignadas con esos filtros.
+        </div>
+
+        <!-- Lista -->
+        <div *ngFor="let t of tareasFiltradas" class="ta-card" [class.ta-card-ok]="t.completada">
+          <div class="ta-check" [class.on]="t.completada">
+            <svg *ngIf="t.completada" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+          </div>
+          <div class="ta-card-body">
+            <div class="ta-card-top">
+              <span class="ta-texto" [class.tachado]="t.completada">{{ t.texto }}</span>
+              <span class="ta-estado" [class.ta-estado-ok]="t.completada">{{ t.completada ? 'Completada' : 'Pendiente' }}</span>
+            </div>
+            <div class="ta-meta">
+              <span class="ta-persona">{{ t.persona }}</span>
+              <span *ngIf="t.sucursal" class="ta-chip">{{ t.sucursal }}</span>
+              <span class="ta-chip">{{ formatearFecha(t.fecha) }}{{ t.horaInicio ? ' · ' + t.horaInicio : '' }}</span>
+              <span *ngIf="t.prioridad" class="ta-chip ta-prio-{{ t.prioridad }}">{{ t.prioridad }}</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>

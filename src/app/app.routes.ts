@@ -101,6 +101,13 @@ export const routes: Routes = [
     loadComponent: () => import('./modules/dashboard/migracion-rutinas/migracion-rutinas').then(m => m.MigracionRutinasComponent)
   },
 
+  // 📤 TAREAS QUE EL ADMIN HA ASIGNADO A OTROS
+  {
+    path: 'tareas-asignadas',
+    canActivate: [authGuard],
+    loadComponent: () => import('./modules/dashboard/tareas-asignadas/tareas-asignadas').then(m => m.TareasAsignadasComponent)
+  },
+
   // 🔥 NUEVA RUTA: PERFIL DEL USUARIO 🔥
   {
     path: 'perfil',

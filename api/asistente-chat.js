@@ -151,11 +151,34 @@ function sucursalesPermitidas(ctx) {
   }
   return sucursalesDe(ctx.perfil).filter(s => s && s !== 'General (Acceso Total)');
 }
+// Distancia de edicion (para tolerar errores de dictado/tipeo).
+function levenshtein(a, b) {
+  a = a || ''; b = b || '';
+  const m = a.length, n = b.length;
+  if (!m) return n; if (!n) return m;
+  const fila = Array.from({ length: n + 1 }, (_, i) => i);
+  for (let i = 1; i <= m; i++) {
+    let prev = fila[0]; fila[0] = i;
+    for (let j = 1; j <= n; j++) {
+      const tmp = fila[j];
+      fila[j] = Math.min(fila[j] + 1, fila[j - 1] + 1, prev + (a[i - 1] === b[j - 1] ? 0 : 1));
+      prev = tmp;
+    }
+  }
+  return fila[n];
+}
+// ¿Dos palabras se parecen? (tolera 1-2 letras de diferencia segun el largo).
+function palabrasParecidas(a, b) {
+  if (a === b) return true;
+  if (a.length < 3 || b.length < 3) return false;
+  const tol = Math.max(a.length, b.length) >= 6 ? 2 : 1;
+  return levenshtein(a, b) <= tol;
+}
+
 // Empareja un nombre dictado con un usuario. Devuelve { user, ambiguos }:
 //   - user: el usuario si hay UN match claro; null si no.
-//   - ambiguos: nombres de candidatos cuando hay varios (para que el bot pregunte).
-// Match estricto para no asignar a la persona equivocada (ej. "Luis Francisco"
-// NO debe caer en "Luis Gerardo").
+//   - ambiguos: candidatos cuando hay varios (para que el bot PREGUNTE cual).
+// Es estricto para no asignar al equivocado, pero tolera errores de dictado.
 function resolverPersona(ctx, nombre) {
   const objetivo = normaliza(nombre);
   if (!objetivo) return { user: null, ambiguos: [] };
@@ -167,7 +190,7 @@ function resolverPersona(ctx, nombre) {
   if (exacto) return { user: exacto, ambiguos: [] };
 
   // 2) Match fuerte: el nombre contiene lo dictado (o viceversa), o coinciden
-  //    al menos 2 palabras (tipo nombre + apellido).
+  //    al menos 2 palabras exactas (tipo nombre + apellido).
   const fuertes = ctx.usuarios.filter(u => {
     const n = normaliza(nombreDe(u));
     if (!n) return false;
@@ -178,11 +201,22 @@ function resolverPersona(ctx, nombre) {
   if (fuertes.length === 1) return { user: fuertes[0], ambiguos: [] };
   if (fuertes.length > 1) return { user: null, ambiguos: fuertes.map(nombreDe) };
 
-  // 3) Debil: solo dictaron UN nombre de pila. Acepta si es unico.
-  if (palabras.length === 1) {
-    const debiles = ctx.usuarios.filter(u => normaliza(nombreDe(u)).split(/\s+/).includes(objetivo));
-    if (debiles.length === 1) return { user: debiles[0], ambiguos: [] };
-    if (debiles.length > 1) return { user: null, ambiguos: debiles.map(nombreDe) };
+  // 3) Fuzzy: tolera errores de dictado ("Fransisco" ~ "Francisco"). Cuenta
+  //    cuantas palabras dictadas se parecen a alguna palabra del nombre.
+  const puntajes = ctx.usuarios.map(u => {
+    const tokens = normaliza(nombreDe(u)).split(/\s+/).filter(Boolean);
+    let pts = 0;
+    for (const p of palabras) if (tokens.some(t => palabrasParecidas(p, t))) pts++;
+    return { u, pts };
+  });
+  const minPts = palabras.length >= 2 ? 2 : 1; // si dictan 2+ palabras, exige 2
+  const candidatos = puntajes.filter(c => c.pts >= minPts).sort((a, b) => b.pts - a.pts);
+  if (candidatos.length === 1) return { user: candidatos[0].u, ambiguos: [] };
+  if (candidatos.length > 1) {
+    // Ganador claro por puntaje -> proponerlo (la confirmacion lo valida);
+    // empate -> devolver candidatos para que el bot pregunte.
+    if (candidatos[0].pts > candidatos[1].pts) return { user: candidatos[0].u, ambiguos: [] };
+    return { user: null, ambiguos: candidatos.slice(0, 6).map(c => nombreDe(c.u)) };
   }
 
   return { user: null, ambiguos: [] };
@@ -525,6 +559,7 @@ module.exports = async (req, res) => {
       '',
       'Reglas:',
       '- El usuario es administrador con ACCESO TOTAL: puedes consultar tareas de cualquier persona (consultar_tareas con "persona") y estadisticas de cualquier sucursal o de toda la operacion (estadisticas con "sucursal"). No digas que algo es solo personal o que no puedes por sucursal: usa los parametros.',
+      '- CONFIRMA ANTES DE ESCRIBIR: antes de crear o asignar (agregar_tarea individual o en grupo, y crear_rutina) RESUME en una frase que haras y a quien, y pide confirmacion. Ej: "Voy a crear: [tarea] para [persona] el [fecha] a las [hora]. ¿Confirmo?". Llama la herramienta SOLO despues de que el usuario diga si/confirme. Si menciona a una persona y no estas 100% seguro de quien es, di a quien entendiste y pide que confirme. Para consultas, resumenes y estadisticas (solo lectura) NO pidas confirmacion: hazlo directo.',
       '- Usa las herramientas para EJECUTAR de verdad; no digas que hiciste algo sin llamarlas.',
       '- Para asignar a VARIAS personas a la vez usa agregar_tarea con para_sucursal, para_rol o para_todos (true). Confirma a cuantas personas quedo asignada.',
       '- Para completar/editar/eliminar una tarea, primero usa consultar_tareas para obtener el id.',

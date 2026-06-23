@@ -920,18 +920,23 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       this.sucursalesDisponibles.set(todasLasSucursales);
     } else if (esAdminLimitado(yoVivo) || yoVivo?.puedeCrearChecklists) {
       const permitidas = sucursalesPermitidas(yoVivo);
-      const misSucursales = permitidas ?? [];
-      const misSucNorm = new Set(misSucursales.map(s => normalizarNombre(s)));
-      const sucursalesFiltradas = todasLasSucursales.filter(
-        s => s !== 'ADMINISTRADORES DEL SISTEMA' && misSucNorm.has(normalizarNombre(s))
-      );
-      this.sucursalesDisponibles.set(sucursalesFiltradas);
-      if (sucursalesFiltradas.length === 0) {
-        console.warn('[checklist] Lista de sucursales vacia para Nueva Tarea. ' +
-          `rol=${yoVivo?.rol} alcance=${yoVivo?.alcance} ` +
-          `sucursales=${JSON.stringify(yoVivo?.sucursales)} ` +
-          `puedeCrearChecklists=${!!yoVivo?.puedeCrearChecklists}. ` +
-          'Si tienes sucursales asignadas, verifica que esten escritas exactamente como en el catalogo (tildes, mayusculas).');
+      if (permitidas === null) {
+        // null = acceso a TODAS (admin con comodin 'General (Acceso Total)').
+        // OJO: antes esto se volvia [] y dejaba la lista vacia (bug de Ivette).
+        this.sucursalesDisponibles.set(todasLasSucursales.filter(s => s !== 'ADMINISTRADORES DEL SISTEMA'));
+      } else {
+        const misSucNorm = new Set(permitidas.map(s => normalizarNombre(s)));
+        const sucursalesFiltradas = todasLasSucursales.filter(
+          s => s !== 'ADMINISTRADORES DEL SISTEMA' && misSucNorm.has(normalizarNombre(s))
+        );
+        this.sucursalesDisponibles.set(sucursalesFiltradas);
+        if (sucursalesFiltradas.length === 0) {
+          console.warn('[checklist] Lista de sucursales vacia para Nueva Tarea. ' +
+            `rol=${yoVivo?.rol} alcance=${yoVivo?.alcance} ` +
+            `sucursales=${JSON.stringify(yoVivo?.sucursales)} ` +
+            `puedeCrearChecklists=${!!yoVivo?.puedeCrearChecklists}. ` +
+            'Si tienes sucursales asignadas, verifica que esten escritas exactamente como en el catalogo (tildes, mayusculas).');
+        }
       }
     } else {
       this.sucursalesDisponibles.set([]);

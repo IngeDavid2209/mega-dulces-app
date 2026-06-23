@@ -37,7 +37,7 @@ export class AsistenteChatComponent implements OnDestroy {
   escuchando = false;
   hablando = false;   // true mientras el TTS esta leyendo una respuesta
 
-  mensajes: { de: 'user' | 'bot'; texto: string }[] = [];
+  mensajes: { de: 'user' | 'bot'; texto: string; whatsapps?: { telefono: string; nombre: string; texto: string }[] }[] = [];
   private historial: any[] = [];
 
   private reconocedor: any = null;
@@ -73,6 +73,12 @@ export class AsistenteChatComponent implements OnDestroy {
     this.detenerVoz();
     this.escuchando = false;
     this.abierto = false;
+  }
+
+  // Abre WhatsApp (web/app) con el mensaje pre-armado para esa persona.
+  abrirWhatsapp(w: { telefono: string; texto: string }) {
+    const url = 'https://wa.me/' + w.telefono + '?text=' + encodeURIComponent(w.texto || '');
+    window.open(url, '_blank');
   }
 
   // --- Enviar mensaje ---
@@ -118,8 +124,10 @@ export class AsistenteChatComponent implements OnDestroy {
       // turnos de herramientas para mantener el contexto en el siguiente mensaje).
       if (Array.isArray(data.messages)) this.historial = data.messages;
       const respuesta = (data.respuesta || 'Listo.').trim();
+      // Botones de WhatsApp si alguna accion (crear_checklist) trae datos.
+      const wa = (data.acciones || []).map((a: any) => a.whatsapp).filter((x: any) => x && x.telefono);
       this.cargando = false;
-      this.mensajes.push({ de: 'bot', texto: respuesta });
+      this.mensajes.push({ de: 'bot', texto: respuesta, whatsapps: wa.length ? wa : undefined });
       this.scrollAbajo();
       this.hablar(respuesta);
     } catch (_) {

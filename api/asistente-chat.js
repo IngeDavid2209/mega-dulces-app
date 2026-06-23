@@ -402,14 +402,29 @@ async function ejecutarHerramienta(db, ctx, nombre, input) {
 
     const id = String(ahora);
     const fecha = input.fecha || ctx.fechaHoy || '';
+    const assigned = r.user.nombre || r.user.correo;
     const checklist = {
       id: ahora, timestampCreacion: ahora, name: nombreCk,
-      assigned: r.user.nombre || r.user.correo, store, date: fecha,
+      assigned, store, date: fecha,
       time: input.hora_limite || '23:59', status: 'pendiente', enviado: false,
       createdBy: ctx.nombre, notaEmpleado: '', items, subtareas: []
     };
     await db.collection('checklists').doc(id).set(checklist, { merge: true });
-    return { ok: true, id, mensaje: `Checklist "${nombreCk}" creado para ${checklist.assigned} en ${store} el ${fecha} con ${items.length} tarea(s).` };
+
+    // WhatsApp: enlace wa.me con mensaje listo (el admin lo envia con un toque).
+    let tel = String(r.user.telefono || '').replace(/[^\d]/g, '');
+    if (tel.length === 10) tel = '52' + tel;   // Mexico: agrega lada si falta
+    const appUrl = process.env.APP_URL || (process.env.RAILWAY_PUBLIC_DOMAIN ? 'https://' + process.env.RAILWAY_PUBLIC_DOMAIN : '');
+    const textoWA = `Hola ${assigned}, te asignaron el checklist "${nombreCk}"${fecha ? ' para el ' + fecha : ''} en ${store}.\n`
+      + items.map(i => '- ' + i.text).join('\n')
+      + (appUrl ? `\n\nEntra a la app: ${appUrl}` : '');
+    const whatsapp = tel ? { telefono: tel, nombre: assigned, texto: textoWA } : null;
+
+    return {
+      ok: true, id, whatsapp,
+      mensaje: `Checklist "${nombreCk}" creado para ${assigned} en ${store} el ${fecha} con ${items.length} tarea(s).`
+        + (whatsapp ? '' : ' (Nota: esa persona no tiene telefono registrado, no podre ofrecer el WhatsApp.)')
+    };
   }
 
   // ---- RUTINAS ----

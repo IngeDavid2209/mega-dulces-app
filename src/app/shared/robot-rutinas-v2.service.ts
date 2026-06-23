@@ -22,6 +22,8 @@ import { Firestore, doc, getDoc, setDoc } from '@angular/fire/firestore';
 import { RutinaMaestra, TareaRutinaMaestra } from './rutinas.types';
 import { AsignacionRutina } from './asignaciones.types';
 import { asignacionAplicaEnFecha, nombreDiaSemana } from './programacion.util';
+import { normalizarNombre } from './permisos.util';
+import { ConfigTurnos, fechaISO, rutinaPermitidaEnTurno } from './turnos.util';
 
 /** Hooks opcionales que recibe el robot (lógica que vive en el componente). */
 export interface RobotV2Hooks {
@@ -53,6 +55,22 @@ export class RobotRutinasV2Service {
     const esDomingo = fecha.getDay() === 0;
     let creados = 0;
 
+    // 🕐 Config de turnos de Canindo: para no generar rutinas a quien esa hora
+    // cae fuera de su turno. Mapa nombre->uid para resolver al destinatario.
+    let configTurnos: ConfigTurnos | null = null;
+    try {
+      const ct = await getDoc(doc(this.firestore, 'config', 'turnos'));
+      if (ct.exists()) configTurnos = ct.data() as ConfigTurnos;
+    } catch { /* sin config => sin restriccion */ }
+    const diaISO = fechaISO(fecha);
+    const nombreAUid = new Map<string, string>();
+    if (configTurnos?.habilitado) {
+      for (const u of usuarios) {
+        const id = u.id || u.uid;
+        if (id && u.nombre) nombreAUid.set(normalizarNombre(u.nombre), id);
+      }
+    }
+
     for (const asig of asignaciones) {
       if (!asignacionAplicaEnFecha(asig, fecha)) continue;
 
@@ -71,7 +89,17 @@ export class RobotRutinasV2Service {
         const destinatarios = this.expandirDestinatarios(asig, usuarios, sucursal);
         if (destinatarios.length === 0) continue;
 
+        // Hora efectiva de esta rutina (misma que se guarda en el checklist).
+        const horaRutina = asig.horaLimite || rutina.horaLimite || '23:59';
+
         for (const dest of destinatarios) {
+          // 🕐 Restriccion de turno: si el destinatario tiene turno y la hora de
+          // la rutina cae fuera de su turno ese dia, no se le genera.
+          if (configTurnos?.habilitado) {
+            const uid = nombreAUid.get(normalizarNombre(dest.nombre));
+            if (uid && !rutinaPermitidaEnTurno(configTurnos, uid, diaISO, horaRutina)) continue;
+          }
+
           const periodo = this.llavePeriodo(asig, fecha);
           const checklistId = this.idemKey(asig.id, periodo, sucursal, dest.nombre);
 

@@ -190,6 +190,34 @@ export function evaluarAsignacion(config: ConfigTurnos | null, uid: string, ahor
   };
 }
 
+/**
+ * ¿Se le puede GENERAR una rutina a esta persona en un dia dado, segun la hora
+ * de la rutina? La usa el robot de rutinas. Reglas:
+ *   - Si el control esta apagado o la persona no esta en turnos -> SI.
+ *   - Si la rutina no tiene hora real (vacia o 23:59 = "todo el dia") -> SI
+ *     (no se puede ubicar en un turno, asi que pasa).
+ *   - Si tiene hora -> SOLO si esa hora cae dentro de su turno efectivo ese dia.
+ */
+export function rutinaPermitidaEnTurno(
+  config: ConfigTurnos | null,
+  uid: string,
+  diaISO: string,
+  horaRutina: string | null | undefined
+): boolean {
+  if (!config || !config.habilitado) return true;
+  const turno = turnoEfectivo(config, uid, diaISO);
+  if (turno === null) return true; // no esta en el sistema de turnos
+
+  const min = aMinutos(horaRutina || '');
+  if (isNaN(min) || (horaRutina || '').trim() === '23:59') return true; // sin hora real -> pasa
+
+  const h = config.horarios?.[turno];
+  const ini = aMinutos(h?.inicio);
+  const fin = aMinutos(h?.fin);
+  if (isNaN(ini) || isNaN(fin)) return true;
+  return min >= ini && min <= fin;
+}
+
 /** Etiqueta legible de un turno. */
 export function etiquetaTurno(t: Turno | null): string {
   if (t === 'manana') return 'Manana';

@@ -191,4 +191,9 @@
   .persona-card .seg { flex: 1 1 100%; }
   .persona-card .seg button { flex: 1; }
   .persona-card .badge-hoy { margin-left: 52px; }
+
+  .exc-form { flex-direction: column; align-items: stretch; }
+  .exc-form select, .exc-form input, .exc-form .lbl, .exc-form .motivo, .exc-form .btn-pri { width: 100%; box-sizing: border-box; }
+  .grupos-toolbar { flex-direction: column; align-items: stretch; }
+  .buscador { width: 100%; }
 }

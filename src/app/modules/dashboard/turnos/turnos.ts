@@ -60,6 +60,32 @@ export class TurnosComponent implements OnInit, OnDestroy {
       .sort((a, b) => a.nombre.localeCompare(b.nombre));
   });
 
+  // Buscador y filtro de la lista de personas.
+  buscarPersona = signal('');
+  filtroTurno = signal<'todos' | 'manana' | 'tarde' | 'sin'>('todos');
+
+  candidatosFiltrados = computed(() => {
+    const q = normalizarNombre(this.buscarPersona());
+    const ft = this.filtroTurno();
+    return this.candidatos().filter(c => {
+      if (q && !normalizarNombre(c.nombre).includes(q)) return false;
+      if (ft !== 'todos') {
+        const base = this.turnoBaseDe(c.uid);
+        if (ft === 'sin') return base === null;
+        return base === ft;
+      }
+      return true;
+    });
+  });
+
+  // Contadores del grupo base.
+  cuentaManana = computed(() => this.config().grupoManana.length);
+  cuentaTarde = computed(() => this.config().grupoTarde.length);
+  cuentaSinTurno = computed(() => {
+    const enTurno = new Set([...this.config().grupoManana, ...this.config().grupoTarde].map(m => m.uid));
+    return this.candidatos().filter(c => !enTurno.has(c.uid)).length;
+  });
+
   // Formulario de nueva excepcion.
   nuevaExc = { uid: '', turno: 'tarde' as Turno, desde: this.hoyISO, hasta: this.hoyISO, motivo: '' };
 

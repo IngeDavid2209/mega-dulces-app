@@ -40,8 +40,24 @@
   box-sizing: border-box;
 }
 
-.page-head h1 { margin: 0 0 6px; font-size: 26px; color: #0f172a; }
-.page-head .sub { margin: 0 0 20px; color: #64748b; font-size: 14px; line-height: 1.4; }
+/* Encabezado */
+.page-head {
+  display: flex; align-items: flex-start; gap: 16px;
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  color: #fff; border-radius: 16px; padding: 22px 24px; margin-bottom: 18px;
+}
+.page-head .ph-icon {
+  width: 48px; height: 48px; flex-shrink: 0; border-radius: 12px;
+  background: rgba(255,255,255,.12); display: flex; align-items: center; justify-content: center; color: #fff;
+}
+.page-head h1 { margin: 0 0 4px; font-size: 24px; }
+.page-head .sub { margin: 0; color: #cbd5e1; font-size: 13.5px; line-height: 1.45; max-width: 640px; }
+.ph-estado {
+  margin-left: auto; align-self: center; flex-shrink: 0;
+  font-size: 12px; font-weight: 700; padding: 6px 12px; border-radius: 999px;
+  background: rgba(255,255,255,.12); color: #fca5a5;
+}
+.ph-estado.on { background: rgba(16,185,129,.2); color: #6ee7b7; }
 
 .card {
   background: #fff; border: 1px solid #e2e8f0; border-radius: 14px;
@@ -52,42 +68,87 @@
 .card h2 .muted, .muted { color: #94a3b8; font-weight: 400; }
 .hint { color: #64748b; font-size: 13px; margin: 0 0 14px; line-height: 1.4; }
 
-/* Switch rows */
-.switch-row { display: flex; align-items: center; gap: 12px; cursor: pointer; }
-.switch-row input { width: 20px; height: 20px; accent-color: #0f172a; }
-.switch-row span { display: flex; flex-direction: column; }
-.switch-row strong { color: #0f172a; font-size: 15px; }
-.switch-row small { color: #64748b; font-size: 12px; }
+/* Dos tarjetas en fila (activar / rotacion) */
+.cards-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.cards-2 .card { margin-bottom: 16px; }
+.switch-card { display: flex; align-items: flex-start; gap: 14px; }
+.switch-text { display: flex; flex-direction: column; }
+.switch-text strong { color: #0f172a; font-size: 15px; }
+.switch-text small { color: #64748b; font-size: 12px; margin-top: 2px; }
+.link-btn { align-self: flex-start; margin-top: 8px; background: none; border: none; padding: 0; color: #1e40af; font-size: 12.5px; font-weight: 600; cursor: pointer; text-decoration: underline; }
+
+/* Switch toggle */
+.switch { position: relative; display: inline-block; width: 44px; height: 26px; flex-shrink: 0; }
+.switch input { opacity: 0; width: 0; height: 0; }
+.switch .slider {
+  position: absolute; inset: 0; cursor: pointer; background: #cbd5e1;
+  border-radius: 999px; transition: .2s;
+}
+.switch .slider::before {
+  content: ''; position: absolute; height: 20px; width: 20px; left: 3px; top: 3px;
+  background: #fff; border-radius: 50%; transition: .2s; box-shadow: 0 1px 3px rgba(0,0,0,.2);
+}
+.switch input:checked + .slider { background: #10b981; }
+.switch input:checked + .slider::before { transform: translateX(18px); }
 
 /* Horarios */
 .horarios-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .horario-box { border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; }
-.horario-box h3 { margin: 0 0 10px; font-size: 15px; }
+.hb-top { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+.hb-top h3 { margin: 0; font-size: 15px; }
+.hb-dot { width: 9px; height: 9px; border-radius: 50%; }
+.hb-count { margin-left: auto; font-size: 11.5px; font-weight: 600; color: #64748b; background: rgba(255,255,255,.6); padding: 2px 8px; border-radius: 999px; }
 .horario-box.manana { background: #fffbeb; border-color: #fde68a; }
+.horario-box.manana .hb-dot { background: #f59e0b; }
 .horario-box.tarde { background: #eff6ff; border-color: #bfdbfe; }
+.horario-box.tarde .hb-dot { background: #3b82f6; }
 .time-row { display: flex; gap: 10px; }
 .time-row label { display: flex; flex-direction: column; font-size: 12px; color: #475569; gap: 4px; flex: 1; }
-.time-row input { border: 1px solid #cbd5e1; border-radius: 8px; padding: 7px 8px; font-size: 14px; }
+.time-row input { border: 1px solid #cbd5e1; border-radius: 8px; padding: 7px 8px; font-size: 14px; background: #fff; }
 
-/* Grupos */
-.tabla-grupos { border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; }
-.grupo-head, .grupo-row {
-  display: grid; grid-template-columns: 1.4fr 1.6fr 0.9fr; align-items: center; gap: 10px;
-  padding: 10px 14px;
+/* Toolbar de grupos */
+.grupos-toolbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.resumen-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.rchip { font-size: 12px; font-weight: 700; padding: 5px 11px; border-radius: 999px; }
+.rchip.m { background: #fef3c7; color: #92400e; }
+.rchip.t { background: #dbeafe; color: #1e40af; }
+.rchip.s { background: #f1f5f9; color: #64748b; }
+.buscador { display: flex; align-items: center; gap: 8px; border: 1px solid #cbd5e1; border-radius: 10px; padding: 8px 12px; flex: 1; min-width: 200px; color: #94a3b8; }
+.buscador input { border: none; outline: none; flex: 1; font-size: 14px; color: #0f172a; background: transparent; }
+
+.filtros { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+.filtros button { border: 1px solid #e2e8f0; background: #fff; color: #475569; border-radius: 999px; padding: 6px 14px; font-size: 13px; cursor: pointer; }
+.filtros button.on { background: #0f172a; color: #fff; border-color: #0f172a; }
+
+/* Lista de personas (tarjetas) */
+.personas-lista { display: flex; flex-direction: column; gap: 8px; }
+.persona-card {
+  display: flex; align-items: center; gap: 14px;
+  border: 1px solid #e2e8f0; border-left: 4px solid #e2e8f0; border-radius: 12px;
+  padding: 10px 14px; background: #fff; transition: border-color .15s, box-shadow .15s;
 }
-.grupo-head { background: #f8fafc; font-size: 12px; text-transform: uppercase; color: #64748b; letter-spacing: .04em; }
-.grupo-row { border-top: 1px solid #f1f5f9; }
-.grupo-row .nombre { font-weight: 600; color: #0f172a; font-size: 14px; }
+.persona-card:hover { box-shadow: 0 2px 10px -4px rgba(15,23,42,.18); }
+.persona-card[data-turno="manana"] { border-left-color: #f59e0b; }
+.persona-card[data-turno="tarde"] { border-left-color: #3b82f6; }
+.pc-avatar {
+  width: 38px; height: 38px; flex-shrink: 0; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; color: #fff; background: #94a3b8; font-size: 15px;
+}
+.pc-avatar[data-turno="manana"] { background: #f59e0b; }
+.pc-avatar[data-turno="tarde"] { background: #3b82f6; }
+.pc-nombre { flex: 1; min-width: 0; font-weight: 600; color: #0f172a; font-size: 14px; }
+.vacio-filtro { padding: 16px 0; text-align: center; }
 
-.seg { display: inline-flex; border: 1px solid #cbd5e1; border-radius: 8px; overflow: hidden; }
+.seg { display: inline-flex; border: 1px solid #cbd5e1; border-radius: 8px; overflow: hidden; flex-shrink: 0; }
 .seg button {
-  border: none; background: #fff; padding: 6px 10px; font-size: 12px; cursor: pointer;
+  border: none; background: #fff; padding: 7px 12px; font-size: 12px; cursor: pointer;
   color: #475569; border-right: 1px solid #e2e8f0;
 }
 .seg button:last-child { border-right: none; }
 .seg button.on { background: #0f172a; color: #fff; }
 
-.badge-hoy { font-size: 12px; font-weight: 700; text-align: center; padding: 4px 8px; border-radius: 999px; background: #f1f5f9; color: #94a3b8; }
+.badge-hoy { font-size: 12px; font-weight: 700; text-align: center; padding: 5px 10px; border-radius: 999px; background: #f1f5f9; color: #94a3b8; flex-shrink: 0; min-width: 64px; }
 .badge-hoy.m { background: #fef3c7; color: #92400e; }
 .badge-hoy.t { background: #dbeafe; color: #1e40af; }
 
@@ -121,8 +182,13 @@
   .btn-menu-mobile { display: block; }
 }
 @media (max-width: 760px) {
+  .cards-2 { grid-template-columns: 1fr; }
   .horarios-grid { grid-template-columns: 1fr; }
-  .grupo-head { display: none; }
-  .grupo-row { grid-template-columns: 1fr; gap: 8px; padding: 12px 14px; }
-  .grupo-row .badge-hoy { justify-self: start; }
+  .page-head { flex-wrap: wrap; }
+  .ph-estado { margin-left: 0; }
+  .persona-card { flex-wrap: wrap; }
+  .persona-card .pc-nombre { flex: 1 1 calc(100% - 52px); }
+  .persona-card .seg { flex: 1 1 100%; }
+  .persona-card .seg button { flex: 1; }
+  .persona-card .badge-hoy { margin-left: 52px; }
 }

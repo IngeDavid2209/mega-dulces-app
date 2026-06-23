@@ -24,31 +24,59 @@
     <main class="content" *ngIf="autorizado">
 
     <header class="page-head">
-      <h1>Turnos de Canindo</h1>
-      <p class="sub">
-        Controla a quien se le puede asignar tareas segun su turno. Fuera de su horario
-        queda bloqueado (salvo excepcion). Cada lunes los grupos intercambian turno.
-      </p>
+      <div class="ph-icon">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="9"></circle>
+          <polyline points="12 7 12 12 15 14"></polyline>
+        </svg>
+      </div>
+      <div>
+        <h1>Turnos de Canindo</h1>
+        <p class="sub">
+          Controla a quien se le puede asignar tareas segun su turno. Fuera de su horario
+          queda bloqueado (salvo excepcion). Cada lunes los grupos intercambian turno.
+        </p>
+      </div>
+      <span class="ph-estado" [class.on]="config().habilitado">
+        {{ config().habilitado ? 'Control activo' : 'Control apagado' }}
+      </span>
     </header>
 
-    <!-- Activar -->
-    <section class="card">
-      <label class="switch-row">
-        <input type="checkbox" [ngModel]="config().habilitado"
-               (ngModelChange)="setHabilitado($event)">
-        <span>
+    <!-- Activar + Rotacion -->
+    <div class="cards-2">
+      <section class="card switch-card">
+        <label class="switch">
+          <input type="checkbox" [ngModel]="config().habilitado" (ngModelChange)="setHabilitado($event)">
+          <span class="slider"></span>
+        </label>
+        <div class="switch-text">
           <strong>Activar control de turnos</strong>
           <small>Si esta apagado, no se restringe a nadie.</small>
-        </span>
-      </label>
-    </section>
+        </div>
+      </section>
+
+      <section class="card switch-card">
+        <label class="switch">
+          <input type="checkbox" [ngModel]="config().rotacionAutomatica" (ngModelChange)="setRotacion($event)">
+          <span class="slider"></span>
+        </label>
+        <div class="switch-text">
+          <strong>Rotacion automatica cada lunes</strong>
+          <small>Cada semana los dos grupos intercambian turno.</small>
+          <button class="link-btn" (click)="reiniciarRotacion()">Reiniciar rotacion a esta semana</button>
+        </div>
+      </section>
+    </div>
 
     <!-- Horarios -->
     <section class="card">
       <h2>Horarios</h2>
       <div class="horarios-grid">
         <div class="horario-box manana">
-          <h3>Manana</h3>
+          <div class="hb-top">
+            <span class="hb-dot"></span><h3>Manana</h3>
+            <span class="hb-count">{{ cuentaManana() }} persona(s)</span>
+          </div>
           <div class="time-row">
             <label>Entra
               <input type="time" [ngModel]="config().horarios.manana.inicio"
@@ -61,7 +89,10 @@
           </div>
         </div>
         <div class="horario-box tarde">
-          <h3>Tarde</h3>
+          <div class="hb-top">
+            <span class="hb-dot"></span><h3>Tarde</h3>
+            <span class="hb-count">{{ cuentaTarde() }} persona(s)</span>
+          </div>
           <div class="time-row">
             <label>Entra
               <input type="time" [ngModel]="config().horarios.tarde.inicio"
@@ -76,35 +107,41 @@
       </div>
     </section>
 
-    <!-- Rotacion -->
-    <section class="card">
-      <label class="switch-row">
-        <input type="checkbox" [ngModel]="config().rotacionAutomatica"
-               (ngModelChange)="setRotacion($event)">
-        <span>
-          <strong>Rotacion automatica cada lunes</strong>
-          <small>Cada semana los dos grupos intercambian turno.</small>
-        </span>
-      </label>
-      <button class="btn-sec" (click)="reiniciarRotacion()">Reiniciar rotacion a esta semana</button>
-    </section>
-
     <!-- Grupos -->
     <section class="card">
       <h2>Quien va en cada turno <small class="muted">(semana base)</small></h2>
       <p class="hint">
-        Asigna a cada persona de Canindo. La columna "Esta semana" muestra su turno real
-        de hoy ya considerando la rotacion y las excepciones.
+        Asigna a cada persona de Canindo. La etiqueta de la derecha ("Esta semana") muestra
+        su turno real de hoy ya considerando la rotacion y las excepciones.
       </p>
 
-      <div class="tabla-grupos" *ngIf="candidatos().length > 0; else sinCandidatos">
-        <div class="grupo-head">
-          <span>Persona</span>
-          <span>Turno base</span>
-          <span>Esta semana</span>
+      <!-- Resumen + buscador + filtros -->
+      <div class="grupos-toolbar">
+        <div class="resumen-chips">
+          <span class="rchip m">Manana: {{ cuentaManana() }}</span>
+          <span class="rchip t">Tarde: {{ cuentaTarde() }}</span>
+          <span class="rchip s">Sin turno: {{ cuentaSinTurno() }}</span>
         </div>
-        <div class="grupo-row" *ngFor="let c of candidatos()">
-          <span class="nombre">{{ c.nombre }}</span>
+        <div class="buscador">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <input type="text" placeholder="Buscar persona..."
+                 [ngModel]="buscarPersona()" (ngModelChange)="buscarPersona.set($event)">
+        </div>
+      </div>
+      <div class="filtros">
+        <button [class.on]="filtroTurno() === 'todos'" (click)="filtroTurno.set('todos')">Todos</button>
+        <button [class.on]="filtroTurno() === 'manana'" (click)="filtroTurno.set('manana')">Manana</button>
+        <button [class.on]="filtroTurno() === 'tarde'" (click)="filtroTurno.set('tarde')">Tarde</button>
+        <button [class.on]="filtroTurno() === 'sin'" (click)="filtroTurno.set('sin')">Sin turno</button>
+      </div>
+
+      <div class="personas-lista" *ngIf="candidatos().length > 0; else sinCandidatos">
+        <div class="persona-card" *ngFor="let c of candidatosFiltrados()"
+             [attr.data-turno]="turnoBaseDe(c.uid)">
+          <div class="pc-avatar" [attr.data-turno]="turnoBaseDe(c.uid)">{{ (c.nombre || '?').charAt(0) | uppercase }}</div>
+          <div class="pc-nombre">{{ c.nombre }}</div>
           <div class="seg">
             <button [class.on]="turnoBaseDe(c.uid) === 'manana'" (click)="setTurnoBase(c, 'manana')">Manana</button>
             <button [class.on]="turnoBaseDe(c.uid) === 'tarde'" (click)="setTurnoBase(c, 'tarde')">Tarde</button>
@@ -112,10 +149,14 @@
           </div>
           <span class="badge-hoy"
                 [class.m]="turnoHoyDe(c.uid) === 'manana'"
-                [class.t]="turnoHoyDe(c.uid) === 'tarde'">
+                [class.t]="turnoHoyDe(c.uid) === 'tarde'"
+                [title]="turnoHoyDe(c.uid) ? 'Turno de hoy' : 'Sin turno hoy'">
             {{ turnoHoyDe(c.uid) ? etiqueta(turnoHoyDe(c.uid)) : '—' }}
           </span>
         </div>
+        <p class="muted vacio-filtro" *ngIf="candidatosFiltrados().length === 0">
+          Nadie coincide con el filtro.
+        </p>
       </div>
       <ng-template #sinCandidatos>
         <p class="muted">No hay personal de Canindo cargado todavia.</p>

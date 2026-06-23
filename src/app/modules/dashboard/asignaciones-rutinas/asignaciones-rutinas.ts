@@ -362,12 +362,15 @@ export class AsignacionesRutinasComponent implements OnInit, OnDestroy {
   }
 
   estimacionPersonasPorRol(): number {
-    // Cuántos trabajadores cumplen rol + sucursales seleccionadas
+    // Cuántas personas cumplen rol + sucursales seleccionadas.
+    // Debe coincidir con lo que hace el robot al aplicar la rutina: incluye
+    // trabajadores Y admins (cargos operativos como Encargado/Supervisor suelen
+    // tener cuenta admin y aun asi reciben la rutina).
     if (!this.formRol || this.formSucursales.length === 0) return 0;
+    const rolBuscado = this.formRol.toLowerCase().trim();
     return this.usuarios().filter(u => {
-      if (u.rol !== 'trabajador') return false;
-      const rolLower = (u.cargo || '').toLowerCase();
-      if (!rolLower.includes(this.formRol.toLowerCase())) return false;
+      if (u.rol !== 'trabajador' && u.rol !== 'admin') return false;
+      if (!(u.cargo || '').toLowerCase().includes(rolBuscado)) return false;
       const susSuc = u.sucursales || (u.sucursal ? [u.sucursal] : []);
       return susSuc.some((s: string) => this.formSucursales.includes(s));
     }).length;

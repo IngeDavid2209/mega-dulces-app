@@ -115,7 +115,9 @@ export class RobotRutinasV2Service {
     if (!rolLower) return [];
     return usuarios
       .filter(u => {
-        if (u.rol !== 'trabajador') return false;
+        // Incluir trabajadores Y admins: hay cargos operativos (Encargado,
+        // Supervisor) con cuenta admin que igual deben recibir la rutina.
+        if (u.rol !== 'trabajador' && u.rol !== 'admin') return false;
         const cargo = (u.cargo || '').toLowerCase();
         if (!cargo.includes(rolLower)) return false;
         const susSuc = u.sucursales || (u.sucursal ? [u.sucursal] : []);

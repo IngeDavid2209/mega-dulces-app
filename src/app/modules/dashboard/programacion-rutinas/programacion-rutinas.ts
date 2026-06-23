@@ -115,10 +115,11 @@ export class ProgramacionRutinasComponent implements OnInit, OnDestroy {
   }
 
   calcularSucursalesDisponibles() {
-    if (esAdminGlobal(this.currentUser)) {
+    const permitidas = esAdminGlobal(this.currentUser) ? null : sucursalesPermitidas(this.currentUser);
+    if (permitidas === null) {
+      // null = acceso a TODAS (admin global o con comodin 'General (Acceso Total)').
       this.sucursalesDisponibles.set([...this.todasLasSucursales]);
     } else {
-      const permitidas = sucursalesPermitidas(this.currentUser) ?? [];
       this.sucursalesDisponibles.set(this.todasLasSucursales.filter(s => permitidas.includes(s)));
     }
   }

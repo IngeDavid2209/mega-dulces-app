@@ -2274,7 +2274,10 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     if (!t) return false;
     const u = this.currentUser;
     if (esAdminGlobal(u)) return true;
-    if (esAdminLimitado(u) && (sucursalesPermitidas(u) ?? []).includes(t.store)) return true;
+    if (esAdminLimitado(u)) {
+      const perms = sucursalesPermitidas(u);
+      if (perms === null || perms.includes(t.store)) return true;  // null = comodin (acceso total)
+    }
     if (mismoEmpleadoNombre(u?.nombre, t.createdBy)) return true;
     if (mismoEmpleadoNombre(u?.nombre, t.jefeEquipo)) return true;
     return false;

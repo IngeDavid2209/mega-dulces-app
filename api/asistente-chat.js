@@ -38,7 +38,7 @@ const TOOLS = [
   // --- TAREAS ---
   {
     name: 'agregar_tarea',
-    description: 'Crea una tarea/pendiente. Usala para agendar/recordar algo. Resuelve fechas relativas a YYYY-MM-DD con la fecha de hoy.',
+    description: 'Crea una tarea/pendiente. Puede ser para una persona, para toda una sucursal, para un rol/cargo, o para TODO el personal del admin. Si no se indica destino, es para el propio usuario. Resuelve fechas relativas a YYYY-MM-DD con la fecha de hoy.',
     input_schema: {
       type: 'object',
       properties: {
@@ -47,7 +47,10 @@ const TOOLS = [
         hora_inicio: { type: 'string', description: 'HH:mm' },
         fecha_fin: { type: 'string' }, hora_fin: { type: 'string' },
         prioridad: { type: 'string', enum: ['alta', 'media', 'baja'] },
-        para_quien: { type: 'string', description: 'Nombre de otra persona, o vacio para uno mismo' }
+        para_quien: { type: 'string', description: 'Nombre de UNA persona.' },
+        para_sucursal: { type: 'string', description: 'Asigna a TODO el personal de esa sucursal.' },
+        para_rol: { type: 'string', enum: ROLES, description: 'Asigna a todos los de ese rol/cargo (puede combinarse con para_sucursal).' },
+        para_todos: { type: 'boolean', description: 'true = asigna a TODO el personal en los privilegios del admin.' }
       },
       required: ['titulo']
     }
@@ -185,6 +188,26 @@ function resolverPersona(ctx, nombre) {
   return { user: null, ambiguos: [] };
 }
 
+// Personal al que el admin puede asignar (dentro de sus privilegios/sucursales),
+// opcionalmente filtrado por sucursal y/o rol(cargo).
+function personalAsignable(ctx, opts) {
+  opts = opts || {};
+  const permitidas = sucursalesPermitidas(ctx);
+  const global = esAdminGlobal(ctx.perfil);
+  const sNorm = opts.sucursal ? normaliza(opts.sucursal) : null;
+  const rNorm = opts.rol ? normaliza(opts.rol) : null;
+  return ctx.usuarios.filter(u => {
+    if (u.rol !== 'trabajador' && u.rol !== 'admin') return false;
+    if (u.id === ctx.uid) return false; // no a uno mismo
+    const sus = sucursalesDe(u);
+    const enScope = global || sus.some(s => permitidas.some(p => normaliza(p) === normaliza(s)));
+    if (!enScope) return false;
+    if (sNorm && !sus.some(s => { const x = normaliza(s); return x === sNorm || x.includes(sNorm) || sNorm.includes(x); })) return false;
+    if (rNorm && !normaliza(u.cargo || '').includes(rNorm)) return false;
+    return true;
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Ejecutores
 // ---------------------------------------------------------------------------
@@ -193,6 +216,31 @@ async function ejecutarHerramienta(db, ctx, nombre, input) {
 
   // ---- TAREAS ----
   if (nombre === 'agregar_tarea') {
+    const titulo = String(input.titulo || '').trim();
+    if (!titulo) return { ok: false, mensaje: 'Falta el titulo de la tarea.' };
+    const construirDoc = (asignadaPor) => ({
+      texto: titulo, completada: false, fechaCreacion: Date.now(),
+      fecha: input.fecha || '', fechaInicio: input.fecha || '', horaInicio: input.hora_inicio || '',
+      fechaFin: input.fecha_fin || '', horaFin: input.hora_fin || '', prioridad: input.prioridad || '',
+      instrucciones: '', comentarios: '', adjunto: null, creadaPorVoz: true,
+      ...(asignadaPor ? { asignadaPor } : {})
+    });
+
+    // Asignacion en GRUPO (sucursal, rol o todos)
+    if (input.para_todos || input.para_sucursal || input.para_rol) {
+      if (!ctx.esAdmin) return { ok: false, mensaje: 'Solo los administradores pueden asignar a varias personas.' };
+      const rol = input.para_rol ? (ROLES.find(r => normaliza(r) === normaliza(input.para_rol)) || input.para_rol) : null;
+      const destinatarios = personalAsignable(ctx, { sucursal: input.para_sucursal, rol });
+      if (destinatarios.length === 0) return { ok: false, mensaje: 'No encontre personal que coincida con ese grupo en tus sucursales.' };
+      for (const u of destinatarios) await agendaRef(db, u.id).add(construirDoc(ctx.nombre));
+      const partes = [];
+      if (input.para_todos) partes.push('todo tu personal');
+      if (rol) partes.push('rol ' + rol);
+      if (input.para_sucursal) partes.push('sucursal ' + input.para_sucursal);
+      return { ok: true, total: destinatarios.length, mensaje: `Tarea asignada a ${destinatarios.length} persona(s) (${partes.join(', ')}).` };
+    }
+
+    // Una sola persona (o uno mismo)
     let uidDestino = ctx.uid, etiqueta = 'tu agenda';
     if (input.para_quien) {
       const r = resolverPersona(ctx, input.para_quien);
@@ -202,14 +250,7 @@ async function ejecutarHerramienta(db, ctx, nombre, input) {
       }
       uidDestino = r.user.id; etiqueta = r.user.nombre || r.user.correo;
     }
-    const doc = {
-      texto: String(input.titulo || '').trim(), completada: false, fechaCreacion: Date.now(),
-      fecha: input.fecha || '', fechaInicio: input.fecha || '', horaInicio: input.hora_inicio || '',
-      fechaFin: input.fecha_fin || '', horaFin: input.hora_fin || '', prioridad: input.prioridad || '',
-      instrucciones: '', comentarios: '', adjunto: null, creadaPorVoz: true
-    };
-    if (uidDestino !== ctx.uid) doc.asignadaPor = ctx.nombre;
-    const ref = await agendaRef(db, uidDestino).add(doc);
+    const ref = await agendaRef(db, uidDestino).add(construirDoc(uidDestino !== ctx.uid ? ctx.nombre : null));
     return { ok: true, id: ref.id, mensaje: `Tarea creada en ${etiqueta}.` };
   }
 
@@ -485,6 +526,7 @@ module.exports = async (req, res) => {
       'Reglas:',
       '- El usuario es administrador con ACCESO TOTAL: puedes consultar tareas de cualquier persona (consultar_tareas con "persona") y estadisticas de cualquier sucursal o de toda la operacion (estadisticas con "sucursal"). No digas que algo es solo personal o que no puedes por sucursal: usa los parametros.',
       '- Usa las herramientas para EJECUTAR de verdad; no digas que hiciste algo sin llamarlas.',
+      '- Para asignar a VARIAS personas a la vez usa agregar_tarea con para_sucursal, para_rol o para_todos (true). Confirma a cuantas personas quedo asignada.',
       '- Para completar/editar/eliminar una tarea, primero usa consultar_tareas para obtener el id.',
       '- Para crear_rutina necesitas: nombre, frecuencia, sucursales y modo (porRol con rol_objetivo, o porPersonas con personas). Si falta algo, preguntalo corto antes de crear.',
       '- Resuelve fechas relativas a YYYY-MM-DD usando la fecha de hoy.',

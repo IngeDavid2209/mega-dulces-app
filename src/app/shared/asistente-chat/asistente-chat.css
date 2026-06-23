@@ -1,3 +1,9 @@
+/* El componente NO debe participar en el layout de la app: no ocupa caja,
+   no empuja ni mueve nada. El boton y el panel son 100% flotantes (fixed). */
+:host {
+  display: contents;
+}
+
 /* Boton flotante */
 .ac-fab {
   position: fixed;

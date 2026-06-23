@@ -15,6 +15,7 @@ import { RobotRutinasV2Service } from '../../../shared/robot-rutinas-v2.service'
 import { RutinaMaestra } from '../../../shared/rutinas.types';
 import { AsignacionRutina } from '../../../shared/asignaciones.types';
 import { comprimirImagenSiAplica } from '../../../shared/imagen.util';
+import { ConfigTurnos, EvaluacionTurno, evaluarAsignacion, etiquetaTurno } from '../../../shared/turnos.util';
 
 import { SidebarComponent } from '../../../shared/sidebar/sidebar';
 
@@ -134,6 +135,8 @@ export class ChecklistComponent implements OnInit, OnDestroy {
 
   checklists = signal<any[]>([]);
   empleados = signal<any[]>([]);
+  /** Config de turnos de Canindo (manana/tarde). null mientras no carga. */
+  configTurnos = signal<ConfigTurnos | null>(null);
   /** Admins globales SIEMPRE disponibles (no se filtran por sucursal). Lo usa
    *  el wizard de Tareas de Equipo para que el admin que arma el proyecto pueda
    *  incluir a la gerencia general como integrante o jefe. No se mezcla en
@@ -612,6 +615,25 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   }
 
   /**
+   * Evalua el estado de turno de un empleado AHORA (para mostrar badge y bloquear).
+   * Devuelve null si no esta sujeto al control de turnos.
+   */
+  estadoTurnoEmpleado(emp: any): EvaluacionTurno | null {
+    const uid = emp?.id || emp?.uid;
+    if (!uid) return null;
+    const ev = evaluarAsignacion(this.configTurnos(), uid);
+    return ev.restringido ? ev : null;
+  }
+
+  /** Texto del badge de turno para el wizard, o '' si no aplica. */
+  badgeTurno(emp: any): string {
+    const ev = this.estadoTurnoEmpleado(emp);
+    if (!ev) return '';
+    const t = etiquetaTurno(ev.turno);
+    return ev.permitido ? `Turno ${t}` : `Fuera de turno (${t})`;
+  }
+
+  /**
    * ¿Este empleado se puede asignar en `store`?
    *
    * - Sucursal "ADMINISTRADORES DEL SISTEMA": solo admins.
@@ -1008,6 +1030,12 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       this.dispararRobotV2();
     });
     this.destructoresRadares.push(radarAsignaciones);
+
+    // 🕐 Config de turnos de Canindo: para bloquear asignaciones fuera de turno.
+    const radarTurnos = onSnapshot(doc(this.firestore, 'config', 'turnos'), (snap) => {
+      this.configTurnos.set(snap.exists() ? (snap.data() as ConfigTurnos) : null);
+    });
+    this.destructoresRadares.push(radarTurnos);
 
     // 📅 SOLO HOY: el trabajador ve únicamente las tareas del día de hoy.
     // Las que vencieron su HORA siguen siendo de hoy, así que siguen apareciendo
@@ -2673,6 +2701,22 @@ export class ChecklistComponent implements OnInit, OnDestroy {
 
     if (tareasValidas.length === 0) {
       alert('Agrega tareas.');
+      return;
+    }
+
+    // 🕐 VALIDACIÓN DE TURNO (Canindo): no se puede asignar a alguien fuera de su
+    // turno. La excepción la registra un admin de Canindo en la pantalla de Turnos.
+    const fueraDeTurno = this.formAssigned
+      .map(nombre => this.empleados().find(e => e.nombre === nombre))
+      .filter(emp => emp)
+      .map(emp => ({ emp, ev: this.estadoTurnoEmpleado(emp) }))
+      .filter(x => x.ev && !x.ev.permitido);
+    if (fueraDeTurno.length > 0) {
+      const html = `Estas personas estan <strong>fuera de su turno</strong> ahora mismo, no se les puede asignar:` +
+        `<ul style="text-align:left; margin:12px 0; padding-left:24px;">` +
+        fueraDeTurno.map(x => `<li>${x.emp.nombre} <small>(turno ${etiquetaTurno(x.ev!.turno)})</small></li>`).join('') +
+        `</ul>Si por necesidad debe trabajar en otro turno, registra una <strong>excepcion</strong> en la pantalla de Turnos.`;
+      await Swal.fire({ title: 'Fuera de turno', html, icon: 'error', confirmButtonText: 'Entendido', confirmButtonColor: '#0F172A' });
       return;
     }
 

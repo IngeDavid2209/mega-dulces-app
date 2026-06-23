@@ -1,0 +1,147 @@
+<div class="layout" translate="no">
+  <app-sidebar [currentUser]="currentUser" [isMenuOpen]="isMenuOpen"
+               (closeMenu)="isMenuOpen = false"></app-sidebar>
+
+  <main class="contenido" *ngIf="autorizado">
+    <button class="menu-toggle" (click)="isMenuOpen = !isMenuOpen" aria-label="Menu">☰</button>
+
+    <header class="page-head">
+      <h1>Turnos de Canindo</h1>
+      <p class="sub">
+        Controla a quien se le puede asignar tareas segun su turno. Fuera de su horario
+        queda bloqueado (salvo excepcion). Cada lunes los grupos intercambian turno.
+      </p>
+    </header>
+
+    <!-- Activar -->
+    <section class="card">
+      <label class="switch-row">
+        <input type="checkbox" [ngModel]="config().habilitado"
+               (ngModelChange)="setHabilitado($event)">
+        <span>
+          <strong>Activar control de turnos</strong>
+          <small>Si esta apagado, no se restringe a nadie.</small>
+        </span>
+      </label>
+    </section>
+
+    <!-- Horarios -->
+    <section class="card">
+      <h2>Horarios</h2>
+      <div class="horarios-grid">
+        <div class="horario-box manana">
+          <h3>Manana</h3>
+          <div class="time-row">
+            <label>Entra
+              <input type="time" [ngModel]="config().horarios.manana.inicio"
+                     (ngModelChange)="setHorario('manana', 'inicio', $event)">
+            </label>
+            <label>Sale
+              <input type="time" [ngModel]="config().horarios.manana.fin"
+                     (ngModelChange)="setHorario('manana', 'fin', $event)">
+            </label>
+          </div>
+        </div>
+        <div class="horario-box tarde">
+          <h3>Tarde</h3>
+          <div class="time-row">
+            <label>Entra
+              <input type="time" [ngModel]="config().horarios.tarde.inicio"
+                     (ngModelChange)="setHorario('tarde', 'inicio', $event)">
+            </label>
+            <label>Sale
+              <input type="time" [ngModel]="config().horarios.tarde.fin"
+                     (ngModelChange)="setHorario('tarde', 'fin', $event)">
+            </label>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Rotacion -->
+    <section class="card">
+      <label class="switch-row">
+        <input type="checkbox" [ngModel]="config().rotacionAutomatica"
+               (ngModelChange)="setRotacion($event)">
+        <span>
+          <strong>Rotacion automatica cada lunes</strong>
+          <small>Cada semana los dos grupos intercambian turno.</small>
+        </span>
+      </label>
+      <button class="btn-sec" (click)="reiniciarRotacion()">Reiniciar rotacion a esta semana</button>
+    </section>
+
+    <!-- Grupos -->
+    <section class="card">
+      <h2>Quien va en cada turno <small class="muted">(semana base)</small></h2>
+      <p class="hint">
+        Asigna a cada persona de Canindo. La columna "Esta semana" muestra su turno real
+        de hoy ya considerando la rotacion y las excepciones.
+      </p>
+
+      <div class="tabla-grupos" *ngIf="candidatos().length > 0; else sinCandidatos">
+        <div class="grupo-head">
+          <span>Persona</span>
+          <span>Turno base</span>
+          <span>Esta semana</span>
+        </div>
+        <div class="grupo-row" *ngFor="let c of candidatos()">
+          <span class="nombre">{{ c.nombre }}</span>
+          <div class="seg">
+            <button [class.on]="turnoBaseDe(c.uid) === 'manana'" (click)="setTurnoBase(c, 'manana')">Manana</button>
+            <button [class.on]="turnoBaseDe(c.uid) === 'tarde'" (click)="setTurnoBase(c, 'tarde')">Tarde</button>
+            <button [class.on]="turnoBaseDe(c.uid) === null" (click)="setTurnoBase(c, null)">Sin turno</button>
+          </div>
+          <span class="badge-hoy"
+                [class.m]="turnoHoyDe(c.uid) === 'manana'"
+                [class.t]="turnoHoyDe(c.uid) === 'tarde'">
+            {{ turnoHoyDe(c.uid) ? etiqueta(turnoHoyDe(c.uid)) : '—' }}
+          </span>
+        </div>
+      </div>
+      <ng-template #sinCandidatos>
+        <p class="muted">No hay personal de Canindo cargado todavia.</p>
+      </ng-template>
+    </section>
+
+    <!-- Excepciones -->
+    <section class="card">
+      <h2>Excepciones temporales</h2>
+      <p class="hint">Cuando alguien entra en otro turno por necesidad de la empresa.</p>
+
+      <div class="exc-form">
+        <select [(ngModel)]="nuevaExc.uid">
+          <option value="">Persona...</option>
+          <option *ngFor="let c of candidatos()" [value]="c.uid">{{ c.nombre }}</option>
+        </select>
+        <select [(ngModel)]="nuevaExc.turno">
+          <option value="manana">Manana</option>
+          <option value="tarde">Tarde</option>
+        </select>
+        <label class="lbl">Desde <input type="date" [(ngModel)]="nuevaExc.desde"></label>
+        <label class="lbl">Hasta <input type="date" [(ngModel)]="nuevaExc.hasta"></label>
+        <input type="text" placeholder="Motivo (opcional)" [(ngModel)]="nuevaExc.motivo" class="motivo">
+        <button class="btn-pri sm" (click)="agregarExcepcion()">Agregar</button>
+      </div>
+
+      <ul class="exc-lista" *ngIf="config().excepciones.length > 0">
+        <li *ngFor="let e of config().excepciones; let i = index" [class.activa]="excActiva(e)">
+          <div>
+            <strong>{{ e.nombre || e.uid }}</strong> &rarr; {{ etiqueta(e.turno) }}
+            <span class="rango">{{ e.desde }} a {{ e.hasta }}</span>
+            <span class="chip" *ngIf="excActiva(e)">activa hoy</span>
+            <div class="motivo-txt" *ngIf="e.motivo">{{ e.motivo }}</div>
+          </div>
+          <button class="btn-del" (click)="quitarExcepcion(i)" aria-label="Quitar">&times;</button>
+        </li>
+      </ul>
+      <p class="muted" *ngIf="config().excepciones.length === 0">Sin excepciones registradas.</p>
+    </section>
+
+    <div class="acciones">
+      <button class="btn-pri" (click)="guardar()" [disabled]="guardando()">
+        {{ guardando() ? 'Guardando...' : 'Guardar cambios' }}
+      </button>
+    </div>
+  </main>
+</div>

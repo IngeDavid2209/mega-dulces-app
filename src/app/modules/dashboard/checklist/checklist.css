@@ -3520,3 +3520,25 @@
   .eq-wz-item-row { flex-wrap: wrap; }
   .eq-wz-asignado, .eq-wz-hora { max-width: none; flex: 1 1 100%; }
 }
+
+/* 🕐 Badge de turno en el wizard de seleccion de personal */
+.wizard-turno-badge {
+  margin-top: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #dbeafe;
+  color: #1e40af;
+  text-align: center;
+}
+.wizard-turno-badge.bloqueado {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+.wizard-empleado-card.fuera-turno {
+  opacity: 0.7;
+}
+.wizard-empleado-card.fuera-turno .wizard-empleado-avatar {
+  filter: grayscale(0.5);
+}

@@ -2,6 +2,7 @@ import { Component, Input, Output, EventEmitter, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { APP_BUILD_SELLO } from '../version';
+import { esAdminDeCanindo } from '../permisos.util';
 
 /**
  * Sidebar compartido del panel administrativo.
@@ -31,6 +32,11 @@ export class SidebarComponent {
   readonly buildSello = APP_BUILD_SELLO;
 
   private router = inject(Router);
+
+  /** Solo los admins de Canindo (o admin global) ven/configuran turnos. */
+  get esAdminCanindo(): boolean {
+    return esAdminDeCanindo(this.currentUser);
+  }
 
   onNavClick() {
     this.closeMenu.emit();

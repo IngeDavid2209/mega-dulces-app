@@ -108,6 +108,13 @@ export const routes: Routes = [
     loadComponent: () => import('./modules/dashboard/tareas-asignadas/tareas-asignadas').then(m => m.TareasAsignadasComponent)
   },
 
+  // 🕐 TURNOS DE CANINDO (manana/tarde) — solo admins de Canindo
+  {
+    path: 'turnos',
+    canActivate: [authGuard],
+    loadComponent: () => import('./modules/dashboard/turnos/turnos').then(m => m.TurnosComponent)
+  },
+
   // 🔥 NUEVA RUTA: PERFIL DEL USUARIO 🔥
   {
     path: 'perfil',

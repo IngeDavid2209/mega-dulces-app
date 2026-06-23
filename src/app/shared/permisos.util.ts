@@ -67,6 +67,19 @@ export function sucursalesPermitidas(user: any): string[] | null {
   return lista;
 }
 
+/**
+ * ¿Es admin de la sucursal Canindo? (admin global, o admin limitado con Canindo
+ * en su lista de sucursales). Solo estos pueden configurar los TURNOS de Canindo.
+ */
+export function esAdminDeCanindo(user: any): boolean {
+  if (!esAdmin(user)) return false;
+  if (esAdminGlobal(user)) return true;
+  const lista: string[] = user.sucursales || (user.sucursal ? [user.sucursal] : []);
+  const canindo = normalizarNombre('Canindo');
+  return lista.some(s => normalizarNombre(s) === canindo) ||
+         lista.includes('General (Acceso Total)');
+}
+
 /** Verifica si el usuario puede operar en una sucursal específica. */
 export function tieneAccesoASucursal(user: any, sucursal: string): boolean {
   const permitidas = sucursalesPermitidas(user);

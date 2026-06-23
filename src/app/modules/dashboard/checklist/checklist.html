@@ -1006,9 +1006,14 @@
               <button type="button" class="wizard-empleado-card"
                       *ngFor="let emp of empleadosFiltradosWizard"
                       [class.selected]="formAssigned.includes(emp.nombre)"
+                      [class.fuera-turno]="estadoTurnoEmpleado(emp) && !estadoTurnoEmpleado(emp)!.permitido"
                       (click)="toggleEmpleado(emp.nombre)">
                 <div class="wizard-empleado-avatar">{{ emp.nombre.charAt(0) | uppercase }}</div>
                 <div class="wizard-empleado-nombre">{{ emp.nombre }}</div>
+                <div class="wizard-turno-badge" *ngIf="badgeTurno(emp)"
+                     [class.bloqueado]="!estadoTurnoEmpleado(emp)!.permitido">
+                  {{ badgeTurno(emp) }}
+                </div>
                 <div class="wizard-empleado-check">
                   <svg *ngIf="formAssigned.includes(emp.nombre)" width="20" height="20" viewBox="0 0 24 24" fill="none"
                        stroke="currentColor" stroke-width="3">

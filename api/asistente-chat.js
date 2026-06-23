@@ -34,6 +34,70 @@ const TIPOS = ['apertura', 'cierre', 'administracion', 'contabilidad', 'operacio
 const NIVELES = ['obligatorio', 'importante', 'informativo'];
 
 // ---------------------------------------------------------------------------
+// TURNOS (Canindo) — misma logica que src/app/shared/turnos.util.ts.
+// Si cambias una regla aqui, cambiala alla tambien.
+// ---------------------------------------------------------------------------
+function aMinTurno(hhmm) {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(String(hhmm || '').trim());
+  return m ? parseInt(m[1], 10) * 60 + parseInt(m[2], 10) : NaN;
+}
+function lunesISOTurno(fechaISO) {
+  const [y, m, d] = fechaISO.split('-').map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  const dow = dt.getUTCDay();
+  const diff = dow === 0 ? 6 : dow - 1;
+  dt.setUTCDate(dt.getUTCDate() - diff);
+  return dt.toISOString().split('T')[0];
+}
+function semanasEntreTurno(aISO, bISO) {
+  const a = new Date(lunesISOTurno(aISO) + 'T00:00:00Z').getTime();
+  const b = new Date(lunesISOTurno(bISO) + 'T00:00:00Z').getTime();
+  return Math.round((b - a) / (7 * 24 * 3600 * 1000));
+}
+// "Ahora" en hora de Mexico (Railway corre en UTC).
+function ahoraMexico() {
+  const fmt = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Mexico_City', year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', hour12: false
+  });
+  const p = {};
+  for (const part of fmt.formatToParts(new Date())) p[part.type] = part.value;
+  return { fechaISO: `${p.year}-${p.month}-${p.day}`, minutos: parseInt(p.hour, 10) * 60 + parseInt(p.minute, 10) };
+}
+function grupoBaseTurno(config, uid) {
+  if (!config || !uid) return null;
+  if ((config.grupoManana || []).some(m => m.uid === uid)) return 'manana';
+  if ((config.grupoTarde || []).some(m => m.uid === uid)) return 'tarde';
+  return null;
+}
+function excepcionActivaTurno(config, uid, diaISO) {
+  if (!config || !config.excepciones) return null;
+  return config.excepciones.find(e => e.uid === uid && e.desde <= diaISO && diaISO <= e.hasta) || null;
+}
+function turnoEfectivoTurno(config, uid, diaISO) {
+  const base = grupoBaseTurno(config, uid);
+  if (base === null) return null;
+  const exc = excepcionActivaTurno(config, uid, diaISO);
+  if (exc) return exc.turno;
+  if (config.rotacionAutomatica) {
+    const semanas = semanasEntreTurno(config.semanaBase, diaISO);
+    if ((((semanas % 2) + 2) % 2) === 1) return base === 'manana' ? 'tarde' : 'manana';
+  }
+  return base;
+}
+/** Evalua si a `uid` se le puede asignar AHORA. { restringido, permitido, turno }. */
+function evaluarTurno(config, uid) {
+  if (!config || !config.habilitado) return { restringido: false, permitido: true, turno: null };
+  const { fechaISO, minutos } = ahoraMexico();
+  const turno = turnoEfectivoTurno(config, uid, fechaISO);
+  if (turno === null) return { restringido: false, permitido: true, turno: null };
+  const h = (config.horarios || {})[turno] || {};
+  const ini = aMinTurno(h.inicio), fin = aMinTurno(h.fin);
+  const dentro = !isNaN(ini) && !isNaN(fin) && minutos >= ini && minutos <= fin;
+  return { restringido: true, permitido: dentro, turno };
+}
+
+// ---------------------------------------------------------------------------
 // Herramientas
 // ---------------------------------------------------------------------------
 const TOOLS = [
@@ -366,6 +430,12 @@ async function ejecutarHerramienta(db, ctx, nombre, input) {
       return { ok: false, mensaje: `No encontre a "${input.para_quien}" en el personal.` };
     }
 
+    // Restriccion de TURNO: no asignar a alguien fuera de su turno.
+    const evT = evaluarTurno(ctx.configTurnos, r.user.id);
+    if (evT.restringido && !evT.permitido) {
+      return { ok: false, mensaje: `${r.user.nombre} esta fuera de su turno (${evT.turno}) en este momento, no se le puede asignar la tarea. Si por necesidad de la empresa debe trabajar en otro turno, un admin de Canindo puede registrar una excepcion en la pantalla de Turnos.` };
+    }
+
     // Sucursal valida
     const permitidas = sucursalesPermitidas(ctx);
     const s = normaliza(input.sucursal);
@@ -628,8 +698,15 @@ module.exports = async (req, res) => {
     const usuariosSnap = await db.collection('usuarios').get();
     const usuarios = usuariosSnap.docs.map(d => ({ id: d.id, ...(d.data() || {}) }));
 
+    // Config de turnos de Canindo (para bloquear asignaciones fuera de turno).
+    let configTurnos = null;
+    try {
+      const ct = await db.collection('config').doc('turnos').get();
+      if (ct.exists) configTurnos = ct.data();
+    } catch (e) { /* sin config => sin restriccion */ }
+
     const ctx = {
-      uid: decoded.uid, perfil, usuarios,
+      uid: decoded.uid, perfil, usuarios, configTurnos,
       nombre: perfil.nombre || perfil.correo || 'Usuario',
       esAdmin: perfil.rol === 'admin',
       fechaHoy: String(body.fechaHoy || '').trim(),
@@ -655,6 +732,7 @@ module.exports = async (req, res) => {
       '- Usa las herramientas para EJECUTAR de verdad; no digas que hiciste algo sin llamarlas.',
       '- Para completar/editar/eliminar una tarea, primero usa consultar_tareas para obtener el id.',
       '- Para crear_rutina necesitas: nombre, frecuencia, sucursales y modo (porRol con rol_objetivo, o porPersonas con personas). Si falta algo, preguntalo corto antes de crear.',
+      '- TURNOS (Canindo): algunas personas solo pueden recibir tareas dentro de su turno (manana/tarde). Si crear_checklist devuelve que la persona esta "fuera de turno", NO insistas: explicale al admin que esta fuera de su horario y que, si por necesidad debe trabajar otro turno, puede registrar una excepcion en la pantalla de Turnos de Canindo.',
       '- Resuelve fechas relativas a YYYY-MM-DD usando la fecha de hoy.',
       '- Responde SIEMPRE en espanol, breve y claro. Confirma lo hecho en una frase.',
       '- Si una accion falla, dilo con amabilidad y ofrece reintentar.'

@@ -207,6 +207,16 @@
         </svg>
         Días de Descanso
       </a>
+      <a class="nav-item" routerLink="/turnos" routerLinkActive="active"
+         *ngIf="esAdminCanindo"
+         (click)="onNavClick()"
+         title="Turnos manana/tarde de Canindo">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="9"></circle>
+          <polyline points="12 7 12 12 15 14"></polyline>
+        </svg>
+        Turnos Canindo
+      </a>
     </nav>
 
     <div class="bottom-nav" style="margin-top: auto; padding: 0 12px 20px 12px;">

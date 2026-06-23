@@ -77,6 +77,37 @@ const TOOLS = [
   },
   { name: 'eliminar_tarea', description: 'Elimina una tarea. Requiere id (de consultar_tareas).', input_schema: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] } },
 
+  // --- CHECKLIST ---
+  {
+    name: 'crear_checklist',
+    description: 'Crea un CHECKLIST operativo (lista de tareas por sucursal, ej. checklist de cierre/limpieza) para una persona en una sucursal y fecha. Distinto de agregar_tarea (pendiente personal en la agenda). Pide sucursal e items si faltan.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        nombre: { type: 'string', description: 'Nombre del checklist.' },
+        para_quien: { type: 'string', description: 'Persona responsable (nombre).' },
+        sucursal: { type: 'string', description: 'Sucursal (store).' },
+        fecha: { type: 'string', description: 'YYYY-MM-DD. Por defecto hoy.' },
+        hora_limite: { type: 'string', description: 'HH:mm limite general. Opcional.' },
+        items: {
+          type: 'array',
+          description: 'Tareas del checklist (al menos una).',
+          items: {
+            type: 'object',
+            properties: {
+              text: { type: 'string', description: 'Descripcion de la tarea.' },
+              requiere_foto: { type: 'boolean', description: 'Si pide foto de evidencia.' },
+              hora_inicio: { type: 'string', description: 'HH:mm opcional.' },
+              hora_limite: { type: 'string', description: 'HH:mm opcional.' }
+            },
+            required: ['text']
+          }
+        }
+      },
+      required: ['nombre', 'para_quien', 'sucursal', 'items']
+    }
+  },
+
   // --- RUTINAS ---
   {
     name: 'crear_rutina',
@@ -338,6 +369,60 @@ async function ejecutarHerramienta(db, ctx, nombre, input) {
     return { ok: true, mensaje: 'Tarea eliminada.' };
   }
 
+  // ---- CHECKLIST ----
+  if (nombre === 'crear_checklist') {
+    if (!ctx.esAdmin) return { ok: false, mensaje: 'Solo los administradores pueden crear checklists.' };
+    const nombreCk = String(input.nombre || '').trim();
+    if (!nombreCk) return { ok: false, mensaje: 'Falta el nombre del checklist.' };
+
+    // Persona responsable
+    const r = resolverPersona(ctx, input.para_quien);
+    if (!r.user) {
+      if (r.ambiguos.length) return { ok: false, mensaje: `Hay varias personas que coinciden con "${input.para_quien}": ${r.ambiguos.slice(0, 6).join(', ')}. ¿A cuál?` };
+      return { ok: false, mensaje: `No encontre a "${input.para_quien}" en el personal.` };
+    }
+
+    // Sucursal valida
+    const permitidas = sucursalesPermitidas(ctx);
+    const s = normaliza(input.sucursal);
+    const store = permitidas.find(p => normaliza(p) === s) || permitidas.find(p => normaliza(p).includes(s) || s.includes(normaliza(p)));
+    if (!store) return { ok: false, mensaje: 'Sucursal no valida. Disponibles: ' + permitidas.join(', ') };
+
+    // Items
+    const itemsIn = Array.isArray(input.items) ? input.items.filter(it => it && it.text) : [];
+    if (itemsIn.length === 0) return { ok: false, mensaje: 'Faltan los items (tareas) del checklist.' };
+
+    const ahora = Date.now();
+    const items = itemsIn.map((it, idx) => ({
+      id: ahora + idx,
+      text: String(it.text),
+      checked: false,
+      tipo: 'manual',
+      requiresPhoto: !!it.requiere_foto,
+      requiresAntesDespues: false,
+      requiresVariasFotos: false,
+      permiteGaleria: false,
+      permiteDocumentos: true,
+      horaInicio: it.hora_inicio || null,
+      horaLimite: it.hora_limite || input.hora_limite || null,
+      frecuencia: null, diaSemana: null, diaMes: null,
+      fechaInicio: null, fechaFin: null, tiempoEstimado: null,
+      photo: null, photoTime: null, photoAntes: null, photoAntesTime: null,
+      photoAntesTimestamp: null, photoDespues: null, photoDespuesTime: null, photos: []
+    }));
+
+    const id = String(ahora);
+    const fecha = input.fecha || ctx.fechaHoy || '';
+    const checklist = {
+      id: ahora, timestampCreacion: ahora, name: nombreCk,
+      assigned: r.user.nombre || r.user.correo, store, date: fecha,
+      time: input.hora_limite || '23:59', status: 'pendiente', enviado: false,
+      createdBy: ctx.nombre, notaEmpleado: '', items, subtareas: []
+    };
+    await db.collection('checklists').doc(id).set(checklist, { merge: true });
+    return { ok: true, id, mensaje: `Checklist "${nombreCk}" creado para ${checklist.assigned} en ${store} el ${fecha} con ${items.length} tarea(s).` };
+  }
+
   // ---- RUTINAS ----
   if (nombre === 'crear_rutina') {
     if (ctx.perfil.rol !== 'admin') return { ok: false, mensaje: 'Solo los administradores pueden crear rutinas.' };
@@ -561,7 +646,8 @@ module.exports = async (req, res) => {
       '',
       'Reglas:',
       '- El usuario es administrador con ACCESO TOTAL: puedes consultar tareas de cualquier persona (consultar_tareas con "persona") y estadisticas de cualquier sucursal o de toda la operacion (estadisticas con "sucursal"). No digas que algo es solo personal o que no puedes por sucursal: usa los parametros.',
-      '- CONFIRMA ANTES DE ESCRIBIR: antes de crear o asignar (agregar_tarea individual o en grupo, y crear_rutina) RESUME en una frase que haras y a quien, y pide confirmacion. Ej: "Voy a crear: [tarea] para [persona] el [fecha] a las [hora]. ¿Confirmo?". Llama la herramienta SOLO despues de que el usuario diga si/confirme. Si menciona a una persona y no estas 100% seguro de quien es, di a quien entendiste y pide que confirme. Para consultas, resumenes y estadisticas (solo lectura) NO pidas confirmacion: hazlo directo.',
+      '- CONFIRMA ANTES DE ESCRIBIR: antes de crear o asignar (agregar_tarea individual o en grupo, crear_checklist y crear_rutina) RESUME en una frase que haras y a quien, y pide confirmacion. Ej: "Voy a crear el checklist [nombre] para [persona] en [sucursal] el [fecha] con estos items: ... ¿Confirmo?". Llama la herramienta SOLO despues de que el usuario diga si/confirme. Si menciona a una persona y no estas 100% seguro de quien es, di a quien entendiste y pide que confirme. Para consultas, resumenes y estadisticas (solo lectura) NO pidas confirmacion: hazlo directo.',
+      '- TAREA vs CHECKLIST: usa agregar_tarea para un PENDIENTE PERSONAL (va a la agenda de alguien). Usa crear_checklist para una LISTA OPERATIVA por SUCURSAL (ej. checklist de cierre, limpieza, apertura) asignada a una persona; pide la sucursal y los items si no los dieron.',
       '- Usa las herramientas para EJECUTAR de verdad; no digas que hiciste algo sin llamarlas.',
       '- Para asignar a VARIAS personas a la vez usa agregar_tarea con para_sucursal, para_rol o para_todos (true). Confirma a cuantas personas quedo asignada.',
       '- Para completar/editar/eliminar una tarea, primero usa consultar_tareas para obtener el id.',

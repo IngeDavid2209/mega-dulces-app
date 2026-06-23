@@ -54,12 +54,13 @@ const TOOLS = [
   },
   {
     name: 'consultar_tareas',
-    description: 'Consulta tareas del usuario. Tambien usala ANTES de completar/editar/eliminar para conocer el id.',
+    description: 'Consulta tareas. Por defecto las tuyas; con "persona" puedes ver las de cualquier trabajador (admin). Usala ANTES de completar/editar/eliminar para conocer el id.',
     input_schema: {
       type: 'object',
       properties: {
         filtro: { type: 'string', enum: ['hoy', 'pendientes', 'vencidas', 'todas'] },
-        fecha: { type: 'string' }
+        fecha: { type: 'string' },
+        persona: { type: 'string', description: 'Nombre de otra persona para ver SUS tareas. Vacio = las tuyas.' }
       },
       required: []
     }
@@ -109,8 +110,16 @@ const TOOLS = [
   },
   {
     name: 'estadisticas',
-    description: 'Estadisticas del usuario: cuantas tareas completo en los ultimos N dias (por defecto 7) y cuantas tiene pendientes.',
-    input_schema: { type: 'object', properties: { dias: { type: 'integer', description: 'Ventana en dias (por defecto 7).' } }, required: [] }
+    description: 'Estadisticas (admin: acceso a TODO). Cumplimiento de checklists por SUCURSAL o de TODA la operacion en un dia (completados, pendientes, % cumplimiento). Tambien estadisticas personales de tus tareas.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        sucursal: { type: 'string', description: 'Sucursal para el cumplimiento de checklists. Vacio = toda la operacion.' },
+        fecha: { type: 'string', description: 'YYYY-MM-DD de los checklists. Por defecto hoy.' },
+        dias: { type: 'integer', description: 'Ventana en dias para TUS tareas completadas (por defecto 7).' }
+      },
+      required: []
+    }
   }
 ];
 
@@ -206,7 +215,16 @@ async function ejecutarHerramienta(db, ctx, nombre, input) {
 
   if (nombre === 'consultar_tareas') {
     const filtro = input.filtro || 'pendientes', hoy = ctx.fechaHoy;
-    const snap = await agendaRef(db, ctx.uid).get();
+    let uidConsulta = ctx.uid;
+    if (input.persona) {
+      const r = resolverPersona(ctx, input.persona);
+      if (!r.user) {
+        if (r.ambiguos.length) return { ok: false, mensaje: `Hay varias personas que coinciden con "${input.persona}": ${r.ambiguos.slice(0, 6).join(', ')}. Dime el nombre completo.` };
+        return { ok: false, mensaje: `No encontre a "${input.persona}" en el personal.` };
+      }
+      uidConsulta = r.user.id;
+    }
+    const snap = await agendaRef(db, uidConsulta).get();
     let lista = snap.docs.map(d => ({ id: d.id, ...(d.data() || {}) }));
     if (filtro === 'hoy') lista = lista.filter(t => !t.completada && t.fecha === hoy);
     else if (filtro === 'vencidas') lista = lista.filter(t => !t.completada && t.fecha && t.fecha < hoy);
@@ -359,13 +377,35 @@ async function ejecutarHerramienta(db, ctx, nombre, input) {
   }
 
   if (nombre === 'estadisticas') {
+    // Cumplimiento de checklists del dia (por sucursal o toda la operacion).
+    let checklists = null;
+    const fecha = input.fecha || ctx.fechaHoy;
+    if (fecha) {
+      const cs = await db.collection('checklists').where('date', '==', fecha).get();
+      let docs = cs.docs.map(d => d.data() || {}).filter(c => !c.eliminado && !c.archivado);
+      if (input.sucursal) {
+        const s = normaliza(input.sucursal);
+        docs = docs.filter(c => { const st = normaliza(c.store || ''); return st === s || st.includes(s) || s.includes(st); });
+      }
+      const total = docs.length;
+      const completados = docs.filter(c => c.enviado === true).length;
+      checklists = {
+        fecha, sucursal: input.sucursal || 'toda la operacion',
+        total, completados, pendientes: total - completados,
+        cumplimiento_pct: total ? Math.round(completados * 100 / total) : 0
+      };
+    }
+    // Estadisticas personales del usuario.
     const dias = input.dias && input.dias > 0 ? input.dias : 7;
     const desde = Date.now() - dias * 24 * 60 * 60 * 1000;
     const snap = await agendaRef(db, ctx.uid).get();
     const todas = snap.docs.map(d => d.data() || {});
-    const completadas = todas.filter(t => t.completada && (t.completadaEn || 0) >= desde).length;
-    const pendientes = todas.filter(t => !t.completada).length;
-    return { ok: true, ventana_dias: dias, completadas_en_ventana: completadas, pendientes_totales: pendientes };
+    const mis_tareas = {
+      ventana_dias: dias,
+      completadas_en_ventana: todas.filter(t => t.completada && (t.completadaEn || 0) >= desde).length,
+      pendientes_totales: todas.filter(t => !t.completada).length
+    };
+    return { ok: true, checklists, mis_tareas };
   }
 
   return { ok: false, mensaje: 'Herramienta desconocida: ' + nombre };
@@ -443,6 +483,7 @@ module.exports = async (req, res) => {
       '- Frecuencias: ' + FRECUENCIAS.join(', ') + '. Dias: ' + DIAS.join(', ') + '.',
       '',
       'Reglas:',
+      '- El usuario es administrador con ACCESO TOTAL: puedes consultar tareas de cualquier persona (consultar_tareas con "persona") y estadisticas de cualquier sucursal o de toda la operacion (estadisticas con "sucursal"). No digas que algo es solo personal o que no puedes por sucursal: usa los parametros.',
       '- Usa las herramientas para EJECUTAR de verdad; no digas que hiciste algo sin llamarlas.',
       '- Para completar/editar/eliminar una tarea, primero usa consultar_tareas para obtener el id.',
       '- Para crear_rutina necesitas: nombre, frecuencia, sucursales y modo (porRol con rol_objetivo, o porPersonas con personas). Si falta algo, preguntalo corto antes de crear.',

@@ -1,16 +1,16 @@
 // Endpoint del ASISTENTE (chat con tool-use).
 //
-// A diferencia de api/asistente-voz.js (una sola llamada que devuelve JSON),
-// aqui corre el BUCLE de herramientas de Claude: el modelo pide una herramienta,
-// el servidor la ejecuta de verdad sobre Firestore (con firebase-admin), le
-// devuelve el resultado, y el modelo sigue hasta terminar.
+// Corre el BUCLE de herramientas de Claude: el modelo pide una herramienta, el
+// servidor la ejecuta de verdad sobre Firestore (firebase-admin), le devuelve el
+// resultado, y el modelo sigue hasta terminar.
 //
-// Fase 1: herramientas de TAREAS personales (subcoleccion usuarios/{uid}/agenda).
+// Herramientas:
+//   TAREAS:   agregar_tarea, consultar_tareas, completar_tarea, editar_tarea, eliminar_tarea
+//   RUTINAS:  crear_rutina (crea catalogo_rutinas + asignaciones_rutinas)
+//   INFO:     consultar_rutinas, resumen_hoy, estadisticas
 //
 // Variables de entorno (Railway -> Variables):
-//   ANTHROPIC_API_KEY        = llave de Claude.
-//   FIREBASE_SERVICE_ACCOUNT = JSON del service account.
-//   ASISTENTE_MODELO         = opcional (por defecto claude-opus-4-8).
+//   ANTHROPIC_API_KEY, FIREBASE_SERVICE_ACCOUNT, ASISTENTE_MODELO (opcional)
 
 const admin = require('firebase-admin');
 
@@ -19,217 +19,344 @@ function inicializar() {
   if (inicializado) return;
   const raw = process.env.FIREBASE_SERVICE_ACCOUNT;
   if (!raw) throw new Error('Falta variable FIREBASE_SERVICE_ACCOUNT en las variables de entorno.');
-  const sa = JSON.parse(raw);
-  admin.initializeApp({ credential: admin.credential.cert(sa) });
+  admin.initializeApp({ credential: admin.credential.cert(JSON.parse(raw)) });
   inicializado = true;
 }
 
-const MAX_ITERACIONES = 6; // tope de vueltas del bucle de herramientas (anti-loop)
+const MAX_ITERACIONES = 8;
+
+const ROLES = ['Cajero', 'Encargado', 'Auxiliar', 'Supervisor', 'Almacenista', 'Limpieza', 'Vendedor', 'Contador'];
+const DIAS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+const FRECUENCIAS = ['Diaria', 'Semanal', 'Catorcenal', 'Mensual', 'Trimestral', 'PorEvento'];
+const TIPOS = ['apertura', 'cierre', 'administracion', 'contabilidad', 'operacion'];
+const NIVELES = ['obligatorio', 'importante', 'informativo'];
 
 // ---------------------------------------------------------------------------
-// Definicion de herramientas (lo que el modelo puede pedir)
+// Herramientas
 // ---------------------------------------------------------------------------
 const TOOLS = [
+  // --- TAREAS ---
   {
     name: 'agregar_tarea',
-    description: 'Crea una nueva tarea/pendiente en la agenda. Usala cuando el usuario quiera agendar, recordar o anotar algo que hacer. Resuelve fechas relativas (manana, el viernes) a formato YYYY-MM-DD usando la fecha de hoy del contexto.',
+    description: 'Crea una tarea/pendiente. Usala para agendar/recordar algo. Resuelve fechas relativas a YYYY-MM-DD con la fecha de hoy.',
     input_schema: {
       type: 'object',
       properties: {
-        titulo: { type: 'string', description: 'Descripcion corta y clara de la tarea.' },
-        fecha: { type: 'string', description: 'Dia de la tarea en formato YYYY-MM-DD. Vacio si no se menciona.' },
-        hora_inicio: { type: 'string', description: 'Hora de inicio HH:mm (24h). Opcional.' },
-        fecha_fin: { type: 'string', description: 'Fecha de fin YYYY-MM-DD. Opcional.' },
-        hora_fin: { type: 'string', description: 'Hora de fin HH:mm. Opcional.' },
-        prioridad: { type: 'string', enum: ['alta', 'media', 'baja'], description: 'Prioridad. Opcional.' },
-        para_quien: { type: 'string', description: 'Nombre de otra persona si la tarea es para alguien mas. Vacio = para uno mismo.' }
+        titulo: { type: 'string' },
+        fecha: { type: 'string', description: 'YYYY-MM-DD o vacio' },
+        hora_inicio: { type: 'string', description: 'HH:mm' },
+        fecha_fin: { type: 'string' }, hora_fin: { type: 'string' },
+        prioridad: { type: 'string', enum: ['alta', 'media', 'baja'] },
+        para_quien: { type: 'string', description: 'Nombre de otra persona, o vacio para uno mismo' }
       },
       required: ['titulo']
     }
   },
   {
     name: 'consultar_tareas',
-    description: 'Consulta las tareas/pendientes del usuario. Usala cuando pregunte que tiene pendiente, que hay para hoy, que esta vencido, etc. Tambien usala ANTES de completar/editar/eliminar para conocer el id de la tarea.',
+    description: 'Consulta tareas del usuario. Tambien usala ANTES de completar/editar/eliminar para conocer el id.',
     input_schema: {
       type: 'object',
       properties: {
-        filtro: { type: 'string', enum: ['hoy', 'pendientes', 'vencidas', 'todas'], description: 'Que tareas traer. Por defecto pendientes.' },
-        fecha: { type: 'string', description: 'Si pregunta por un dia especifico, YYYY-MM-DD.' }
+        filtro: { type: 'string', enum: ['hoy', 'pendientes', 'vencidas', 'todas'] },
+        fecha: { type: 'string' }
       },
       required: []
     }
   },
+  { name: 'completar_tarea', description: 'Marca una tarea como completada. Requiere id (de consultar_tareas).', input_schema: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] } },
   {
-    name: 'completar_tarea',
-    description: 'Marca una tarea como completada/hecha. Requiere el id de la tarea (obtenlo primero con consultar_tareas).',
-    input_schema: {
-      type: 'object',
-      properties: { id: { type: 'string', description: 'Id de la tarea.' } },
-      required: ['id']
-    }
+    name: 'editar_tarea', description: 'Modifica una tarea. Requiere id. Solo manda lo que cambia.',
+    input_schema: { type: 'object', properties: { id: { type: 'string' }, titulo: { type: 'string' }, fecha: { type: 'string' }, hora_inicio: { type: 'string' }, fecha_fin: { type: 'string' }, hora_fin: { type: 'string' }, prioridad: { type: 'string', enum: ['alta', 'media', 'baja'] }, instrucciones: { type: 'string' } }, required: ['id'] }
   },
+  { name: 'eliminar_tarea', description: 'Elimina una tarea. Requiere id (de consultar_tareas).', input_schema: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] } },
+
+  // --- RUTINAS ---
   {
-    name: 'editar_tarea',
-    description: 'Modifica una tarea existente (titulo, fecha, horas, prioridad, instrucciones). Requiere el id (obtenlo con consultar_tareas). Solo manda los campos que cambian.',
+    name: 'crear_rutina',
+    description: 'Crea una rutina recurrente (ej. "todos los lunes y miercoles hacer inventario a las 8am"). Crea la plantilla y la asignacion para que el sistema genere los checklists. Pregunta lo que falte (sucursales y a quien) antes de crear.',
     input_schema: {
       type: 'object',
       properties: {
-        id: { type: 'string', description: 'Id de la tarea.' },
-        titulo: { type: 'string' },
-        fecha: { type: 'string', description: 'YYYY-MM-DD' },
+        nombre: { type: 'string', description: 'Nombre de la rutina.' },
+        frecuencia: { type: 'string', enum: FRECUENCIAS, description: 'Diaria, Semanal, Catorcenal, Mensual, Trimestral o PorEvento.' },
+        dias_semana: { type: 'array', items: { type: 'string', enum: DIAS }, description: 'Dias (para Semanal/Catorcenal). Ej: ["Lunes","Miércoles"].' },
+        dia_mes: { type: 'integer', description: 'Dia del mes (1-31) para Mensual/Trimestral.' },
         hora_inicio: { type: 'string', description: 'HH:mm' },
-        fecha_fin: { type: 'string', description: 'YYYY-MM-DD' },
-        hora_fin: { type: 'string', description: 'HH:mm' },
-        prioridad: { type: 'string', enum: ['alta', 'media', 'baja'] },
-        instrucciones: { type: 'string' }
+        hora_limite: { type: 'string', description: 'HH:mm' },
+        tipo: { type: 'string', enum: TIPOS, description: 'Tipo de rutina. Por defecto operacion.' },
+        nivel_critico: { type: 'string', enum: NIVELES, description: 'Por defecto importante.' },
+        sucursales: { type: 'array', items: { type: 'string' }, description: 'Sucursales donde aplica. Usa "todas" para todas las permitidas.' },
+        modo: { type: 'string', enum: ['porRol', 'porPersonas'], description: 'Como se asigna.' },
+        rol_objetivo: { type: 'string', enum: ROLES, description: 'Si modo=porRol.' },
+        personas: { type: 'array', items: { type: 'string' }, description: 'Nombres, si modo=porPersonas.' },
+        tareas: { type: 'array', items: { type: 'string' }, description: 'Lista de pasos/tareas del checklist. Opcional.' }
       },
-      required: ['id']
+      required: ['nombre', 'frecuencia', 'sucursales', 'modo']
     }
   },
+
+  // --- INFO ---
   {
-    name: 'eliminar_tarea',
-    description: 'Elimina una tarea. Requiere el id (obtenlo con consultar_tareas). Confirma con el usuario antes si no esta seguro.',
-    input_schema: {
-      type: 'object',
-      properties: { id: { type: 'string', description: 'Id de la tarea.' } },
-      required: ['id']
-    }
+    name: 'consultar_rutinas',
+    description: 'Lista las rutinas activas (asignadas). Usala cuando pregunten que rutinas hay activas o programadas.',
+    input_schema: { type: 'object', properties: { sucursal: { type: 'string', description: 'Filtrar por una sucursal. Opcional.' } }, required: [] }
+  },
+  {
+    name: 'resumen_hoy',
+    description: 'Da un resumen del dia del usuario: cuantas tareas pendientes tiene para hoy y cuales.',
+    input_schema: { type: 'object', properties: {}, required: [] }
+  },
+  {
+    name: 'estadisticas',
+    description: 'Estadisticas del usuario: cuantas tareas completo en los ultimos N dias (por defecto 7) y cuantas tiene pendientes.',
+    input_schema: { type: 'object', properties: { dias: { type: 'integer', description: 'Ventana en dias (por defecto 7).' } }, required: [] }
   }
 ];
 
 // ---------------------------------------------------------------------------
-// Ejecutores de herramientas (Firestore con firebase-admin)
+// Utilidades
 // ---------------------------------------------------------------------------
 function normaliza(s) {
   return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
 }
-
 function agendaRef(db, uid) {
   return db.collection('usuarios').doc(uid).collection('agenda');
 }
-
-// Busca el uid de otra persona por nombre (para "para_quien").
-async function resolverPersona(db, nombre) {
+function esAdminGlobal(perfil) {
+  const alc = (perfil.alcance || '').toLowerCase();
+  return perfil.rol === 'admin' && (alc === 'global' || alc === '' || (perfil.sucursales || []).includes('General (Acceso Total)'));
+}
+function sucursalesDe(u) {
+  return u.sucursales || (u.sucursal ? [u.sucursal] : []);
+}
+// Sucursales a las que este admin puede asignar.
+function sucursalesPermitidas(ctx) {
+  if (esAdminGlobal(ctx.perfil)) {
+    const set = new Set();
+    ctx.usuarios.forEach(u => sucursalesDe(u).forEach(s => { if (s) set.add(s); }));
+    return Array.from(set);
+  }
+  return sucursalesDe(ctx.perfil).filter(s => s && s !== 'General (Acceso Total)');
+}
+function resolverPersona(ctx, nombre) {
   const objetivo = normaliza(nombre);
   if (!objetivo) return null;
-  const snap = await db.collection('usuarios').get();
   let mejor = null;
-  snap.forEach(d => {
-    const u = d.data() || {};
+  ctx.usuarios.forEach(u => {
     const n = normaliza(u.nombre || u.correo || '');
     if (!n) return;
     if (n === objetivo || n.includes(objetivo) || objetivo.includes(n) || n.split(' ')[0] === objetivo.split(' ')[0]) {
-      if (!mejor) mejor = { id: d.id, nombre: u.nombre || u.correo };
+      if (!mejor) mejor = u;
     }
   });
   return mejor;
 }
 
+// ---------------------------------------------------------------------------
+// Ejecutores
+// ---------------------------------------------------------------------------
 async function ejecutarHerramienta(db, ctx, nombre, input) {
   input = input || {};
 
+  // ---- TAREAS ----
   if (nombre === 'agregar_tarea') {
-    let uidDestino = ctx.uid;
-    let etiquetaDestino = 'tu agenda';
-    if (input.para_quien && ctx.esAdmin) {
-      const persona = await resolverPersona(db, input.para_quien);
-      if (!persona) return { ok: false, mensaje: `No encontre a "${input.para_quien}" en el personal.` };
-      uidDestino = persona.id;
-      etiquetaDestino = persona.nombre;
+    let uidDestino = ctx.uid, etiqueta = 'tu agenda';
+    if (input.para_quien) {
+      const p = resolverPersona(ctx, input.para_quien);
+      if (!p) return { ok: false, mensaje: `No encontre a "${input.para_quien}" en el personal.` };
+      uidDestino = p.id; etiqueta = p.nombre || p.correo;
     }
     const doc = {
-      texto: String(input.titulo || '').trim(),
-      completada: false,
-      fechaCreacion: Date.now(),
-      fecha: input.fecha || '',
-      fechaInicio: input.fecha || '',
-      horaInicio: input.hora_inicio || '',
-      fechaFin: input.fecha_fin || '',
-      horaFin: input.hora_fin || '',
-      prioridad: input.prioridad || '',
-      instrucciones: '',
-      comentarios: '',
-      adjunto: null,
-      creadaPorVoz: true
+      texto: String(input.titulo || '').trim(), completada: false, fechaCreacion: Date.now(),
+      fecha: input.fecha || '', fechaInicio: input.fecha || '', horaInicio: input.hora_inicio || '',
+      fechaFin: input.fecha_fin || '', horaFin: input.hora_fin || '', prioridad: input.prioridad || '',
+      instrucciones: '', comentarios: '', adjunto: null, creadaPorVoz: true
     };
-    if (uidDestino !== ctx.uid) doc.asignadaPor = ctx.nombre || 'Un jefe';
+    if (uidDestino !== ctx.uid) doc.asignadaPor = ctx.nombre;
     const ref = await agendaRef(db, uidDestino).add(doc);
-    return { ok: true, id: ref.id, mensaje: `Tarea creada en ${etiquetaDestino}.`, tarea: { id: ref.id, titulo: doc.texto, fecha: doc.fecha } };
+    return { ok: true, id: ref.id, mensaje: `Tarea creada en ${etiqueta}.` };
   }
 
   if (nombre === 'consultar_tareas') {
-    const filtro = input.filtro || 'pendientes';
-    const hoy = ctx.fechaHoy;
+    const filtro = input.filtro || 'pendientes', hoy = ctx.fechaHoy;
     const snap = await agendaRef(db, ctx.uid).get();
     let lista = snap.docs.map(d => ({ id: d.id, ...(d.data() || {}) }));
     if (filtro === 'hoy') lista = lista.filter(t => !t.completada && t.fecha === hoy);
     else if (filtro === 'vencidas') lista = lista.filter(t => !t.completada && t.fecha && t.fecha < hoy);
     else if (filtro === 'todas') { /* todas */ }
     else if (input.fecha) lista = lista.filter(t => !t.completada && t.fecha === input.fecha);
-    else lista = lista.filter(t => !t.completada); // pendientes
-    // Devolver solo lo util para el modelo.
-    const tareas = lista.map(t => ({
-      id: t.id, titulo: t.texto, fecha: t.fecha || '', hora_inicio: t.horaInicio || '',
-      prioridad: t.prioridad || '', completada: !!t.completada
-    }));
-    return { ok: true, total: tareas.length, tareas };
+    else lista = lista.filter(t => !t.completada);
+    return { ok: true, total: lista.length, tareas: lista.map(t => ({ id: t.id, titulo: t.texto, fecha: t.fecha || '', hora_inicio: t.horaInicio || '', prioridad: t.prioridad || '', completada: !!t.completada })) };
   }
 
   if (nombre === 'completar_tarea') {
-    if (!input.id) return { ok: false, mensaje: 'Falta el id de la tarea.' };
+    if (!input.id) return { ok: false, mensaje: 'Falta el id.' };
     await agendaRef(db, ctx.uid).doc(input.id).update({ completada: true, completadaEn: Date.now() });
-    return { ok: true, mensaje: 'Tarea marcada como completada.' };
+    return { ok: true, mensaje: 'Tarea completada.' };
   }
 
   if (nombre === 'editar_tarea') {
-    if (!input.id) return { ok: false, mensaje: 'Falta el id de la tarea.' };
-    const cambios = {};
-    if (input.titulo != null) cambios.texto = input.titulo;
-    if (input.fecha != null) { cambios.fecha = input.fecha; cambios.fechaInicio = input.fecha; }
-    if (input.hora_inicio != null) cambios.horaInicio = input.hora_inicio;
-    if (input.fecha_fin != null) cambios.fechaFin = input.fecha_fin;
-    if (input.hora_fin != null) cambios.horaFin = input.hora_fin;
-    if (input.prioridad != null) cambios.prioridad = input.prioridad;
-    if (input.instrucciones != null) cambios.instrucciones = input.instrucciones;
-    if (Object.keys(cambios).length === 0) return { ok: false, mensaje: 'No indicaste que cambiar.' };
-    await agendaRef(db, ctx.uid).doc(input.id).update(cambios);
+    if (!input.id) return { ok: false, mensaje: 'Falta el id.' };
+    const c = {};
+    if (input.titulo != null) c.texto = input.titulo;
+    if (input.fecha != null) { c.fecha = input.fecha; c.fechaInicio = input.fecha; }
+    if (input.hora_inicio != null) c.horaInicio = input.hora_inicio;
+    if (input.fecha_fin != null) c.fechaFin = input.fecha_fin;
+    if (input.hora_fin != null) c.horaFin = input.hora_fin;
+    if (input.prioridad != null) c.prioridad = input.prioridad;
+    if (input.instrucciones != null) c.instrucciones = input.instrucciones;
+    if (!Object.keys(c).length) return { ok: false, mensaje: 'No indicaste que cambiar.' };
+    await agendaRef(db, ctx.uid).doc(input.id).update(c);
     return { ok: true, mensaje: 'Tarea actualizada.' };
   }
 
   if (nombre === 'eliminar_tarea') {
-    if (!input.id) return { ok: false, mensaje: 'Falta el id de la tarea.' };
+    if (!input.id) return { ok: false, mensaje: 'Falta el id.' };
     await agendaRef(db, ctx.uid).doc(input.id).delete();
     return { ok: true, mensaje: 'Tarea eliminada.' };
+  }
+
+  // ---- RUTINAS ----
+  if (nombre === 'crear_rutina') {
+    if (ctx.perfil.rol !== 'admin') return { ok: false, mensaje: 'Solo los administradores pueden crear rutinas.' };
+    const nombreR = String(input.nombre || '').trim();
+    if (!nombreR) return { ok: false, mensaje: 'Falta el nombre de la rutina.' };
+    const frecuencia = FRECUENCIAS.includes(input.frecuencia) ? input.frecuencia : 'Diaria';
+
+    // Sucursales (resolver "todas")
+    const permitidas = sucursalesPermitidas(ctx);
+    let sucursales = Array.isArray(input.sucursales) ? input.sucursales : [];
+    if (sucursales.some(s => normaliza(s) === 'todas') || sucursales.length === 0) sucursales = permitidas;
+    // Conservar solo las permitidas (match flexible)
+    sucursales = sucursales.filter(s => permitidas.some(p => normaliza(p) === normaliza(s)))
+      .map(s => permitidas.find(p => normaliza(p) === normaliza(s)) || s);
+    sucursales = Array.from(new Set(sucursales));
+    if (sucursales.length === 0) return { ok: false, mensaje: 'No identifique sucursales validas. Sucursales disponibles: ' + permitidas.join(', ') };
+
+    const modo = input.modo === 'porPersonas' ? 'porPersonas' : 'porRol';
+    let rolObjetivo = '', empleadosNombres = [];
+    if (modo === 'porRol') {
+      rolObjetivo = ROLES.find(r => normaliza(r) === normaliza(input.rol_objetivo)) || input.rol_objetivo || 'Encargado';
+    } else {
+      const nombres = Array.isArray(input.personas) ? input.personas : [];
+      empleadosNombres = nombres.map(n => { const p = resolverPersona(ctx, n); return p ? (p.nombre || p.correo) : n; });
+      if (empleadosNombres.length === 0) return { ok: false, mensaje: 'No indicaste a que personas asignar la rutina.' };
+    }
+
+    const dias = Array.isArray(input.dias_semana) ? input.dias_semana.filter(d => DIAS.includes(d)) : [];
+    const ahora = Date.now();
+
+    // 1) Plantilla en el catalogo
+    const tareasTxt = Array.isArray(input.tareas) && input.tareas.length ? input.tareas : [nombreR];
+    const catRef = db.collection('catalogo_rutinas').doc();
+    await catRef.set({
+      id: catRef.id, nombre: nombreR,
+      tipo: TIPOS.includes(input.tipo) ? input.tipo : 'operacion',
+      descripcion: '',
+      frecuencia,
+      diaSemana: dias[0] || '',
+      diaMes: input.dia_mes || null,
+      horaInicio: input.hora_inicio || '', horaLimite: input.hora_limite || '',
+      responsableSugerido: rolObjetivo || 'Encargado',
+      nivelCritico: NIVELES.includes(input.nivel_critico) ? input.nivel_critico : 'importante',
+      tareas: tareasTxt.map((t, i) => ({
+        id: 't' + i + '_' + ahora, text: String(t),
+        requiresPhoto: false, requiresAntesDespues: false, requiresVariasFotos: false,
+        permiteGaleria: true, permiteDocumentos: true
+      })),
+      activa: true, creadoPor: ctx.nombre, creadoEn: ahora
+    });
+
+    // 2) Asignacion(es). Para Semanal/Catorcenal con varios dias, una por dia.
+    const base = {
+      catalogoRutinaId: catRef.id, nombreRutina: nombreR,
+      sucursales, modoAsignacion: modo, frecuencia,
+      horaInicio: input.hora_inicio || '', horaLimite: input.hora_limite || '',
+      fechaInicio: ctx.fechaHoy || '', fechaFin: null,
+      activa: true, creadoPor: ctx.nombre, creadoEn: ahora
+    };
+    if (modo === 'porRol') base.rolObjetivo = rolObjetivo; else base.empleadosNombres = empleadosNombres;
+    if (frecuencia === 'Mensual' || frecuencia === 'Trimestral') base.diaMes = input.dia_mes || 1;
+
+    let creadas = 0;
+    if ((frecuencia === 'Semanal' || frecuencia === 'Catorcenal') && dias.length) {
+      for (const d of dias) {
+        const aref = db.collection('asignaciones_rutinas').doc();
+        await aref.set({ id: aref.id, ...base, diaSemana: d });
+        creadas++;
+      }
+    } else {
+      const aref = db.collection('asignaciones_rutinas').doc();
+      const extra = (frecuencia === 'Semanal' || frecuencia === 'Catorcenal') ? { diaSemana: dias[0] || 'Lunes' } : {};
+      await aref.set({ id: aref.id, ...base, ...extra });
+      creadas++;
+    }
+
+    const aQuien = modo === 'porRol' ? `rol ${rolObjetivo}` : empleadosNombres.join(', ');
+    return { ok: true, mensaje: `Rutina "${nombreR}" creada (${frecuencia}${dias.length ? ' ' + dias.join(', ') : ''}) para ${aQuien} en ${sucursales.join(', ')}.` };
+  }
+
+  // ---- INFO ----
+  if (nombre === 'consultar_rutinas') {
+    const snap = await db.collection('asignaciones_rutinas').get();
+    let lista = snap.docs.map(d => ({ id: d.id, ...(d.data() || {}) })).filter(a => a.activa !== false);
+    if (input.sucursal) lista = lista.filter(a => (a.sucursales || []).some(s => normaliza(s) === normaliza(input.sucursal)));
+    return {
+      ok: true, total: lista.length,
+      rutinas: lista.slice(0, 40).map(a => ({
+        nombre: a.nombreRutina, frecuencia: a.frecuencia, dia: a.diaSemana || a.diaMes || '',
+        asignado: a.modoAsignacion === 'porRol' ? ('rol ' + (a.rolObjetivo || '')) : (a.empleadosNombres || []).join(', '),
+        sucursales: a.sucursales || []
+      }))
+    };
+  }
+
+  if (nombre === 'resumen_hoy') {
+    const hoy = ctx.fechaHoy;
+    const snap = await agendaRef(db, ctx.uid).get();
+    const todas = snap.docs.map(d => ({ id: d.id, ...(d.data() || {}) }));
+    const deHoy = todas.filter(t => !t.completada && t.fecha === hoy);
+    const vencidas = todas.filter(t => !t.completada && t.fecha && t.fecha < hoy);
+    return {
+      ok: true,
+      pendientes_hoy: deHoy.length, vencidas: vencidas.length,
+      tareas_hoy: deHoy.map(t => t.texto), tareas_vencidas: vencidas.map(t => t.texto)
+    };
+  }
+
+  if (nombre === 'estadisticas') {
+    const dias = input.dias && input.dias > 0 ? input.dias : 7;
+    const desde = Date.now() - dias * 24 * 60 * 60 * 1000;
+    const snap = await agendaRef(db, ctx.uid).get();
+    const todas = snap.docs.map(d => d.data() || {});
+    const completadas = todas.filter(t => t.completada && (t.completadaEn || 0) >= desde).length;
+    const pendientes = todas.filter(t => !t.completada).length;
+    return { ok: true, ventana_dias: dias, completadas_en_ventana: completadas, pendientes_totales: pendientes };
   }
 
   return { ok: false, mensaje: 'Herramienta desconocida: ' + nombre };
 }
 
 // ---------------------------------------------------------------------------
-// Llamada a Claude
+// Claude
 // ---------------------------------------------------------------------------
 async function llamarClaude(apiKey, modelo, system, messages) {
   const r = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
-    headers: {
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-      'content-type': 'application/json'
-    },
+    headers: { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
     body: JSON.stringify({ model: modelo, max_tokens: 1024, system, tools: TOOLS, messages })
   });
   if (!r.ok) {
     const detalle = await r.text().catch(() => '');
-    const err = new Error('Claude respondio ' + r.status);
-    err.detalle = detalle;
-    err.status = r.status;
+    const err = new Error('Claude respondio ' + r.status); err.detalle = detalle; err.status = r.status;
     throw err;
   }
   return r.json();
 }
 
 // ---------------------------------------------------------------------------
-// Handler HTTP
+// Handler
 // ---------------------------------------------------------------------------
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -241,7 +368,6 @@ module.exports = async (req, res) => {
   try {
     inicializar();
 
-    // 1) Validar sesion
     const authHeader = String(req.headers['authorization'] || '');
     const idToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
     if (!idToken) return res.status(401).json({ error: 'Falta Authorization Bearer token' });
@@ -259,38 +385,44 @@ module.exports = async (req, res) => {
     if (!apiKey) return res.status(500).json({ error: 'Falta ANTHROPIC_API_KEY en las variables de entorno.' });
     const modelo = process.env.ASISTENTE_MODELO || 'claude-opus-4-8';
 
+    // Cargar usuarios UNA vez (se reutiliza en resolverPersona, sucursales, etc.)
+    const usuariosSnap = await db.collection('usuarios').get();
+    const usuarios = usuariosSnap.docs.map(d => ({ id: d.id, ...(d.data() || {}) }));
+
     const ctx = {
-      uid: decoded.uid,
+      uid: decoded.uid, perfil, usuarios,
       nombre: perfil.nombre || perfil.correo || 'Usuario',
       esAdmin: perfil.rol === 'admin',
       fechaHoy: String(body.fechaHoy || '').trim(),
       diaSemana: String(body.diaSemana || '').trim()
     };
+    const sucs = sucursalesPermitidas(ctx);
 
     const system = [
       'Eres el asistente de Mega Dulces Task, una app de tareas para una dulceria.',
       `Hablas con ${ctx.nombre}${ctx.esAdmin ? ' (administrador)' : ''}.`,
       `Hoy es ${ctx.fechaHoy || '(desconocido)'}${ctx.diaSemana ? ' (' + ctx.diaSemana + ')' : ''}.`,
       '',
-      'Ayudas a gestionar tareas/pendientes usando las herramientas disponibles.',
+      'Puedes gestionar TAREAS, crear RUTINAS recurrentes y dar INFORMACION, usando las herramientas.',
+      'Contexto para rutinas:',
+      '- Sucursales disponibles: ' + (sucs.length ? sucs.join(', ') : '(ninguna)') + '.',
+      '- Roles validos: ' + ROLES.join(', ') + '.',
+      '- Frecuencias: ' + FRECUENCIAS.join(', ') + '. Dias: ' + DIAS.join(', ') + '.',
+      '',
       'Reglas:',
-      '- Usa las herramientas para EJECUTAR acciones reales; no inventes que hiciste algo sin llamarlas.',
-      '- Para completar, editar o eliminar una tarea necesitas su id: primero llama a consultar_tareas, identifica la correcta y luego actua.',
-      '- Resuelve fechas relativas (hoy, manana, el viernes, en 3 dias) a YYYY-MM-DD usando la fecha de hoy.',
-      '- Responde SIEMPRE en espanol, breve y claro. Confirma lo que hiciste en una frase.',
-      '- Si una accion falla, explica el problema con amabilidad y sugiere que hacer.',
-      '- No pidas datos que no necesitas; si falta algo importante, pregunta corto.'
+      '- Usa las herramientas para EJECUTAR de verdad; no digas que hiciste algo sin llamarlas.',
+      '- Para completar/editar/eliminar una tarea, primero usa consultar_tareas para obtener el id.',
+      '- Para crear_rutina necesitas: nombre, frecuencia, sucursales y modo (porRol con rol_objetivo, o porPersonas con personas). Si falta algo, preguntalo corto antes de crear.',
+      '- Resuelve fechas relativas a YYYY-MM-DD usando la fecha de hoy.',
+      '- Responde SIEMPRE en espanol, breve y claro. Confirma lo hecho en una frase.',
+      '- Si una accion falla, dilo con amabilidad y ofrece reintentar.'
     ].join('\n');
 
-    // 2) Bucle de herramientas
     const acciones = [];
-    let respuestaTexto = '';
-    let data;
+    let respuestaTexto = '', data;
 
     for (let i = 0; i < MAX_ITERACIONES; i++) {
       data = await llamarClaude(apiKey, modelo, system, messages);
-
-      // Guardar el turno del asistente en el historial.
       messages.push({ role: 'assistant', content: data.content });
 
       if (data.stop_reason === 'tool_use') {
@@ -298,34 +430,20 @@ module.exports = async (req, res) => {
         for (const block of (data.content || [])) {
           if (block.type !== 'tool_use') continue;
           let resultado;
-          try {
-            resultado = await ejecutarHerramienta(db, ctx, block.name, block.input);
-          } catch (e) {
-            resultado = { ok: false, mensaje: (e && e.message) || 'Error ejecutando la herramienta.' };
-          }
+          try { resultado = await ejecutarHerramienta(db, ctx, block.name, block.input); }
+          catch (e) { resultado = { ok: false, mensaje: (e && e.message) || 'Error ejecutando la herramienta.' }; }
           if (resultado && resultado.ok) acciones.push({ herramienta: block.name, ...resultado });
-          toolResults.push({
-            type: 'tool_result',
-            tool_use_id: block.id,
-            content: JSON.stringify(resultado),
-            is_error: !(resultado && resultado.ok)
-          });
+          toolResults.push({ type: 'tool_result', tool_use_id: block.id, content: JSON.stringify(resultado), is_error: !(resultado && resultado.ok) });
         }
         messages.push({ role: 'user', content: toolResults });
-        continue; // volver a llamar a Claude con los resultados
+        continue;
       }
 
-      // Sin tool_use: respuesta final.
-      respuestaTexto = (data.content || [])
-        .filter(b => b && b.type === 'text')
-        .map(b => b.text)
-        .join('\n')
-        .trim();
+      respuestaTexto = (data.content || []).filter(b => b && b.type === 'text').map(b => b.text).join('\n').trim();
       break;
     }
 
     if (!respuestaTexto) respuestaTexto = 'Listo.';
-
     return res.status(200).json({ respuesta: respuestaTexto, acciones, messages });
   } catch (e) {
     console.error('[asistente-chat] error:', e && e.message, e && e.detalle);

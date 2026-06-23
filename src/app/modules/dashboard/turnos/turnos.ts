@@ -33,6 +33,8 @@ export class TurnosComponent implements OnInit, OnDestroy {
   currentUser: any = null;
   autorizado = false;
 
+  toggleMenu() { this.isMenuOpen = !this.isMenuOpen; }
+
   private firestore = inject(Firestore);
   private router = inject(Router);
   private usuariosSvc = inject(UsuariosService);

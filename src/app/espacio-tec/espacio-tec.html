@@ -438,9 +438,33 @@
             <label class="tec-modal-label">Hora límite (opcional)</label>
             <input class="tec-input" type="time" [(ngModel)]="tareaAsignarHora">
 
+            <label class="tec-modal-label">¿Se repite?</label>
+            <select class="tec-input" [(ngModel)]="tareaAsignarFrecuencia">
+              <option value="unica">No, solo hoy</option>
+              <option value="Diaria">Todos los días</option>
+              <option value="Semanal">Cada semana</option>
+              <option value="Mensual">Cada mes</option>
+              <option value="Anual">Cada año</option>
+            </select>
+
+            <ng-container *ngIf="tareaAsignarFrecuencia === 'Semanal'">
+              <label class="tec-modal-label">¿Qué día de la semana?</label>
+              <select class="tec-input" [(ngModel)]="tareaAsignarDiaSemana">
+                <option *ngFor="let d of diasSemanaOpc" [ngValue]="d.v">{{ d.t }}</option>
+              </select>
+            </ng-container>
+            <ng-container *ngIf="tareaAsignarFrecuencia === 'Mensual'">
+              <label class="tec-modal-label">¿Qué día del mes? (1 al 31)</label>
+              <input class="tec-input" type="number" min="1" max="31" [(ngModel)]="tareaAsignarDiaMes">
+            </ng-container>
+            <ng-container *ngIf="tareaAsignarFrecuencia === 'Anual'">
+              <label class="tec-modal-label">¿Qué fecha cada año?</label>
+              <input class="tec-input" type="date" [(ngModel)]="tareaAsignarFechaAnual">
+            </ng-container>
+
             <button class="tec-btn-primary" style="margin-top:16px; width:100%;"
                     [disabled]="asignando" (click)="asignarTareaSucursal()">
-              {{ asignando ? 'Asignando...' : 'Asignar tarea' }}
+              {{ asignando ? 'Asignando...' : (tareaAsignarFrecuencia === 'unica' ? 'Asignar tarea' : 'Asignar tarea recurrente') }}
             </button>
           </div>
 

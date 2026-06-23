@@ -90,6 +90,15 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
   tareaAsignarTexto = '';
   tareaAsignarHora = '';
   asignando = false;
+  // Frecuencia de la tarea asignada: 'unica' = solo hoy; o recurrente.
+  tareaAsignarFrecuencia: 'unica' | 'Diaria' | 'Semanal' | 'Mensual' | 'Anual' = 'unica';
+  tareaAsignarDiaSemana = 1;   // 0=Domingo .. 6=Sabado
+  tareaAsignarDiaMes = 1;      // 1..31
+  tareaAsignarFechaAnual = ''; // 'YYYY-MM-DD' (se guarda MM-DD)
+  readonly diasSemanaOpc = [
+    { v: 1, t: 'Lunes' }, { v: 2, t: 'Martes' }, { v: 3, t: 'Miercoles' },
+    { v: 4, t: 'Jueves' }, { v: 5, t: 'Viernes' }, { v: 6, t: 'Sabado' }, { v: 0, t: 'Domingo' }
+  ];
   /** Tareas que el equipo TEC ha asignado a personal (checklists con origenTec). */
   tecAsignadas: any[] = [];
   private radarAsignadas: (() => void) | null = null;
@@ -644,31 +653,66 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
     if (!texto) { Swal.fire({ icon: 'info', title: 'Escribe la tarea', confirmButtonColor: '#0F172A' }); return; }
     if (this.empleadosSel.length === 0) { Swal.fire({ icon: 'info', title: 'Selecciona al menos un empleado', confirmButtonColor: '#0F172A' }); return; }
 
+    const frecuencia = this.tareaAsignarFrecuencia;
+    const recurrente = frecuencia !== 'unica';
+    let fechaAnual: string | null = null;
+    if (frecuencia === 'Anual') {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(this.tareaAsignarFechaAnual)) {
+        Swal.fire({ icon: 'info', title: 'Elige la fecha de la tarea anual', confirmButtonColor: '#0F172A' });
+        return;
+      }
+      fechaAnual = this.tareaAsignarFechaAnual.slice(5); // MM-DD
+    }
+
     this.asignando = true;
     const hoy = this.hoyISO();
     try {
-      await Promise.all(this.empleadosSel.map((nombre, i) => {
-        const id = `tec_${normalizarNombre(nombre).replace(/\s+/g, '_')}_${Date.now()}_${i}`;
-        const checklist: any = {
-          id, timestampCreacion: Date.now(),
-          name: texto, assigned: nombre, store: this.sucursalSel, date: hoy,
-          time: this.tareaAsignarHora || '23:59',
-          status: 'pendiente', enviado: false,
-          createdBy: this.miNombre(), origenTec: true, notaEmpleado: '',
-          items: [{
-            id: Date.now() + i, text: texto,
-            requiresPhoto: false, requiresAntesDespues: false, requiresVariasFotos: false,
-            permiteGaleria: false, permiteDocumentos: false, checked: false,
-            photo: null, photoTime: null, photoAntes: null, photoAntesTime: null,
-            photoAntesTimestamp: null, photoDespues: null, photoDespuesTime: null, photos: [],
-            tipo: 'manual', horaInicio: null, horaLimite: this.tareaAsignarHora || null, frecuencia: null
-          }]
-        };
-        return setDoc(doc(this.firestore, 'checklists', id), checklist);
-      }));
+      if (recurrente) {
+        // Recurrente: se guarda una rutina_personal por empleado (con su uid).
+        // El checklist del empleado regenera la instancia cuando aplica.
+        await Promise.all(this.empleadosSel.map((nombre, i) => {
+          const u = this.usuariosEmpresa.find(x => normalizarNombre(x.nombre) === normalizarNombre(nombre));
+          const uid = u?.id || u?.uid;
+          if (!uid) return Promise.resolve();
+          const rid = `rp_tec_${normalizarNombre(nombre).replace(/\s+/g, '_')}_${Date.now()}_${i}`;
+          const r: any = {
+            id: rid, uid, nombre, texto, hora: this.tareaAsignarHora || '',
+            sucursal: this.sucursalSel, frecuencia,
+            diaSemana: frecuencia === 'Semanal' ? Number(this.tareaAsignarDiaSemana) : null,
+            diaMes: frecuencia === 'Mensual' ? Number(this.tareaAsignarDiaMes) : null,
+            fechaAnual, actividades: [], activa: true,
+            origenTec: true, createdBy: this.miNombre(), creadoEn: Date.now()
+          };
+          return setDoc(doc(this.firestore, 'rutinas_personales', rid), r);
+        }));
+      } else {
+        await Promise.all(this.empleadosSel.map((nombre, i) => {
+          const id = `tec_${normalizarNombre(nombre).replace(/\s+/g, '_')}_${Date.now()}_${i}`;
+          const checklist: any = {
+            id, timestampCreacion: Date.now(),
+            name: texto, assigned: nombre, store: this.sucursalSel, date: hoy,
+            time: this.tareaAsignarHora || '23:59',
+            status: 'pendiente', enviado: false,
+            createdBy: this.miNombre(), origenTec: true, notaEmpleado: '',
+            items: [{
+              id: Date.now() + i, text: texto,
+              requiresPhoto: false, requiresAntesDespues: false, requiresVariasFotos: false,
+              permiteGaleria: false, permiteDocumentos: false, checked: false,
+              photo: null, photoTime: null, photoAntes: null, photoAntesTime: null,
+              photoAntesTimestamp: null, photoDespues: null, photoDespuesTime: null, photos: [],
+              tipo: 'manual', horaInicio: null, horaLimite: this.tareaAsignarHora || null, frecuencia: null
+            }]
+          };
+          return setDoc(doc(this.firestore, 'checklists', id), checklist);
+        }));
+      }
       const n = this.empleadosSel.length;
       this.tareaAsignarTexto = ''; this.tareaAsignarHora = ''; this.empleadosSel = [];
-      Swal.fire({ icon: 'success', title: 'Tarea asignada', text: `Se asignó a ${n} ${n === 1 ? 'persona' : 'personas'} de ${this.sucursalSel}.`, confirmButtonColor: '#0F172A' });
+      this.tareaAsignarFrecuencia = 'unica'; this.tareaAsignarFechaAnual = '';
+      const detalle = recurrente
+        ? `Tarea ${frecuencia.toLowerCase()} asignada a ${n} ${n === 1 ? 'persona' : 'personas'} de ${this.sucursalSel}.`
+        : `Se asignó a ${n} ${n === 1 ? 'persona' : 'personas'} de ${this.sucursalSel}.`;
+      Swal.fire({ icon: 'success', title: 'Tarea asignada', text: detalle, confirmButtonColor: '#0F172A' });
     } catch (e) {
       console.error('[tec] asignarTareaSucursal', e);
       Swal.fire({ icon: 'error', title: 'No se pudo asignar', confirmButtonColor: '#0F172A' });

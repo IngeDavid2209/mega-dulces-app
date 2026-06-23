@@ -1633,7 +1633,11 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       id, timestampCreacion: ahora,
       name: r.texto, assigned: r.nombre, store: r.sucursal || this.miSucursalPrincipal(),
       date: hoyIso, time: r.hora || '23:59', status: 'pendiente', enviado: false,
-      createdBy: r.nombre, esTareaPropia: true, _rutinaPersonalId: r.id, notaEmpleado: '',
+      createdBy: r.createdBy || r.nombre,
+      // Si la asignó el Espacio TEC, no es "propia" (el empleado no la edita/borra).
+      esTareaPropia: !r.origenTec,
+      origenTec: !!r.origenTec,
+      _rutinaPersonalId: r.id, notaEmpleado: '',
       items: this.construirItemsPersonal(r.texto, r.actividades || [], r.hora || '')
     };
   }

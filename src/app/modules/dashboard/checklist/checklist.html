@@ -322,21 +322,21 @@
           </button>
         </div>
 
-        <div class="checklist-grid" *ngIf="vistaEquipo() === 'lista'">
+        <!-- 🔀 Toggle: agrupar por persona / lista (solo admin-supervisor en "Todas") -->
+        <div class="agrupar-bar" *ngIf="vistaEquipo() === 'lista' && puedeFiltrarVista && vistaTareas === 'todas'">
+          <button class="agrupar-toggle" [class.on]="agruparPorPersona()" (click)="toggleAgruparPorPersona()">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+              <circle cx="9" cy="7" r="4"></circle>
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+            </svg>
+            {{ agruparPorPersona() ? 'Agrupado por persona' : 'Lista' }}
+          </button>
+        </div>
 
-          <ng-container *ngFor="let checklist of checklistsOrdenadosPorNivel; let i = index; trackBy: trackByChecklist">
-            <!-- Encabezado de la sección Mandos cuando arranca con un mando y hay operativos detrás -->
-            <div *ngIf="i === 0 && nivelDelAssigned(checklist.assigned) === 'mando' && checklistsDeOperativos.length > 0"
-                 style="grid-column: 1 / -1; font-size: 12px; font-weight: 700; color: #1E3A8A; letter-spacing: .5px; text-transform: uppercase; margin: 4px 0 2px 4px;">
-              Mandos de sucursal ({{ checklistsDeMandos.length }})
-            </div>
-            <!-- Separador cuando cambia de mando a operativo -->
-            <div *ngIf="i > 0
-                       && nivelDelAssigned(checklistsOrdenadosPorNivel[i-1].assigned) === 'mando'
-                       && nivelDelAssigned(checklist.assigned) === 'operativo'"
-                 style="grid-column: 1 / -1; border-top: 1px dashed #E2E8F0; margin: 14px 0 6px 0; padding-top: 10px; font-size: 12px; font-weight: 700; color: #475569; letter-spacing: .5px; text-transform: uppercase;">
-              Operativos ({{ checklistsDeOperativos.length }})
-            </div>
+        <!-- Plantilla reutilizable de tarjeta de checklist -->
+        <ng-template #checklistCard let-checklist>
           <div class="checklist-card" (click)="verDetalle(checklist)">
 
             <!-- HEAD: avatar + título + estado + acciones -->
@@ -430,8 +430,51 @@
             </div>
 
           </div>
+        </ng-template>
+
+        <!-- VISTA AGRUPADA POR PERSONA -->
+        <div class="checklist-grupos"
+             *ngIf="vistaEquipo() === 'lista' && agruparPorPersona() && puedeFiltrarVista && vistaTareas === 'todas'">
+          <div class="persona-grupo" *ngFor="let g of gruposPorPersona; trackBy: trackByGrupo">
+            <button type="button" class="persona-head" (click)="toggleGrupoColapsado(g.nombre)">
+              <span class="persona-avatar" [attr.data-nivel]="g.nivel">{{ (g.nombre || '?').charAt(0) | uppercase }}</span>
+              <span class="persona-info">
+                <span class="persona-nombre">{{ g.nombre }}</span>
+                <span class="persona-sub">{{ g.completas }}/{{ g.total }} completas</span>
+              </span>
+              <span class="persona-chevron" [class.colapsado]="grupoEstaColapsado(g.nombre)">⌄</span>
+            </button>
+            <div class="checklist-grid persona-cards" *ngIf="!grupoEstaColapsado(g.nombre)">
+              <ng-container *ngFor="let checklist of g.checklists; trackBy: trackByChecklist">
+                <ng-container *ngTemplateOutlet="checklistCard; context: { $implicit: checklist }"></ng-container>
+              </ng-container>
+            </div>
+          </div>
+        </div>
+
+        <!-- VISTA LISTA (plana por nivel) -->
+        <div class="checklist-grid"
+             *ngIf="vistaEquipo() === 'lista' && (!agruparPorPersona() || !puedeFiltrarVista || vistaTareas !== 'todas')">
+          <ng-container *ngFor="let checklist of checklistsOrdenadosPorNivel; let i = index; trackBy: trackByChecklist">
+            <!-- Encabezado de la sección Mandos cuando arranca con un mando y hay operativos detrás -->
+            <div *ngIf="i === 0 && nivelDelAssigned(checklist.assigned) === 'mando' && checklistsDeOperativos.length > 0"
+                 style="grid-column: 1 / -1; font-size: 12px; font-weight: 700; color: #1E3A8A; letter-spacing: .5px; text-transform: uppercase; margin: 4px 0 2px 4px;">
+              Mandos de sucursal ({{ checklistsDeMandos.length }})
+            </div>
+            <!-- Separador cuando cambia de mando a operativo -->
+            <div *ngIf="i > 0
+                       && nivelDelAssigned(checklistsOrdenadosPorNivel[i-1].assigned) === 'mando'
+                       && nivelDelAssigned(checklist.assigned) === 'operativo'"
+                 style="grid-column: 1 / -1; border-top: 1px dashed #E2E8F0; margin: 14px 0 6px 0; padding-top: 10px; font-size: 12px; font-weight: 700; color: #475569; letter-spacing: .5px; text-transform: uppercase;">
+              Operativos ({{ checklistsDeOperativos.length }})
+            </div>
+            <ng-container *ngTemplateOutlet="checklistCard; context: { $implicit: checklist }"></ng-container>
           </ng-container>
-          <div class="empty-state" *ngIf="checklistsFiltrados.length === 0">
+        </div>
+
+        <!-- Estado vacío (compartido por ambas vistas) -->
+        <div class="checklist-grid" *ngIf="vistaEquipo() === 'lista' && checklistsFiltrados.length === 0">
+          <div class="empty-state">
             <div class="empty-state-icon"><svg width="48" height="48" viewBox="0 0 24 24" fill="none"
                 stroke="currentColor" stroke-width="2">
                 <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>

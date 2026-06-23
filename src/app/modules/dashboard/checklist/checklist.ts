@@ -732,6 +732,51 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     return this._cacheChecklistsOrdenados;
   }
 
+  /** Vista agrupada por persona (solo para admin/supervisor con varias personas). */
+  agruparPorPersona = signal<boolean>(true);
+  /** Nombres (en minusculas) de los grupos colapsados. */
+  gruposColapsados = new Set<string>();
+
+  toggleAgruparPorPersona() { this.agruparPorPersona.set(!this.agruparPorPersona()); }
+  grupoEstaColapsado(nombre: string): boolean { return this.gruposColapsados.has((nombre || '').toLowerCase()); }
+  toggleGrupoColapsado(nombre: string) {
+    const k = (nombre || '').toLowerCase();
+    if (this.gruposColapsados.has(k)) this.gruposColapsados.delete(k);
+    else this.gruposColapsados.add(k);
+  }
+
+  /**
+   * Checklists agrupados por persona asignada. Mandos primero, luego por nombre.
+   * Cada grupo: { nombre, nivel, checklists[], total, completas }.
+   * Reusa el cache ordenado para no recorrer la lista en cada change detection.
+   */
+  private _cacheGruposHuella = '';
+  private _cacheGrupos: any[] = [];
+  get gruposPorPersona() {
+    this.actualizarCacheChecklistsSiCambio();
+    if (this._cacheChecklistsHuella === this._cacheGruposHuella) return this._cacheGrupos;
+    this._cacheGruposHuella = this._cacheChecklistsHuella;
+    const mapa = new Map<string, any>();
+    for (const c of this._cacheChecklistsOrdenados) {
+      const nombre = (c.assigned || 'Sin asignar').trim();
+      const key = nombre.toLowerCase();
+      let g = mapa.get(key);
+      if (!g) {
+        g = { nombre, nivel: this.nivelDelAssigned(nombre), checklists: [], total: 0, completas: 0 };
+        mapa.set(key, g);
+      }
+      g.checklists.push(c);
+      g.total++;
+      if (c.status === 'completo') g.completas++;
+    }
+    this._cacheGrupos = [...mapa.values()].sort((a, b) =>
+      a.nivel === b.nivel ? a.nombre.localeCompare(b.nombre) : (a.nivel === 'mando' ? -1 : 1)
+    );
+    return this._cacheGrupos;
+  }
+
+  trackByGrupo(_: number, g: any): string { return g?.nombre || _; }
+
   /**
    * Cache de `checklistsFiltrados`. Recalcula solo si cambian length de
    * checklists, vistaTareas o el termino de búsqueda. Sin esto, los templates

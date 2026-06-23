@@ -4,13 +4,14 @@
   display: contents;
 }
 
-/* Boton flotante */
+/* Boton flotante. Se sube (bottom alto) para NO tapar las barras de botones
+   inferiores de los formularios/wizards (ej. "Siguiente", "Guardar"). */
 .ac-fab {
   position: fixed;
-  right: 22px;
-  bottom: 22px;
-  width: 60px;
-  height: 60px;
+  right: 18px;
+  bottom: 92px;
+  width: 54px;
+  height: 54px;
   border-radius: 50%;
   border: none;
   background: linear-gradient(135deg, #2563EB, #1D4ED8);

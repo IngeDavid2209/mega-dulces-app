@@ -139,18 +139,41 @@ function sucursalesPermitidas(ctx) {
   }
   return sucursalesDe(ctx.perfil).filter(s => s && s !== 'General (Acceso Total)');
 }
+// Empareja un nombre dictado con un usuario. Devuelve { user, ambiguos }:
+//   - user: el usuario si hay UN match claro; null si no.
+//   - ambiguos: nombres de candidatos cuando hay varios (para que el bot pregunte).
+// Match estricto para no asignar a la persona equivocada (ej. "Luis Francisco"
+// NO debe caer en "Luis Gerardo").
 function resolverPersona(ctx, nombre) {
   const objetivo = normaliza(nombre);
-  if (!objetivo) return null;
-  let mejor = null;
-  ctx.usuarios.forEach(u => {
-    const n = normaliza(u.nombre || u.correo || '');
-    if (!n) return;
-    if (n === objetivo || n.includes(objetivo) || objetivo.includes(n) || n.split(' ')[0] === objetivo.split(' ')[0]) {
-      if (!mejor) mejor = u;
-    }
+  if (!objetivo) return { user: null, ambiguos: [] };
+  const nombreDe = u => u.nombre || u.correo || '';
+  const palabras = objetivo.split(/\s+/).filter(Boolean);
+
+  // 1) Match exacto del nombre completo.
+  const exacto = ctx.usuarios.find(u => normaliza(nombreDe(u)) === objetivo);
+  if (exacto) return { user: exacto, ambiguos: [] };
+
+  // 2) Match fuerte: el nombre contiene lo dictado (o viceversa), o coinciden
+  //    al menos 2 palabras (tipo nombre + apellido).
+  const fuertes = ctx.usuarios.filter(u => {
+    const n = normaliza(nombreDe(u));
+    if (!n) return false;
+    if (n.includes(objetivo) || objetivo.includes(n)) return true;
+    const set = new Set(n.split(/\s+/));
+    return palabras.filter(p => set.has(p)).length >= 2;
   });
-  return mejor;
+  if (fuertes.length === 1) return { user: fuertes[0], ambiguos: [] };
+  if (fuertes.length > 1) return { user: null, ambiguos: fuertes.map(nombreDe) };
+
+  // 3) Debil: solo dictaron UN nombre de pila. Acepta si es unico.
+  if (palabras.length === 1) {
+    const debiles = ctx.usuarios.filter(u => normaliza(nombreDe(u)).split(/\s+/).includes(objetivo));
+    if (debiles.length === 1) return { user: debiles[0], ambiguos: [] };
+    if (debiles.length > 1) return { user: null, ambiguos: debiles.map(nombreDe) };
+  }
+
+  return { user: null, ambiguos: [] };
 }
 
 // ---------------------------------------------------------------------------
@@ -163,9 +186,12 @@ async function ejecutarHerramienta(db, ctx, nombre, input) {
   if (nombre === 'agregar_tarea') {
     let uidDestino = ctx.uid, etiqueta = 'tu agenda';
     if (input.para_quien) {
-      const p = resolverPersona(ctx, input.para_quien);
-      if (!p) return { ok: false, mensaje: `No encontre a "${input.para_quien}" en el personal.` };
-      uidDestino = p.id; etiqueta = p.nombre || p.correo;
+      const r = resolverPersona(ctx, input.para_quien);
+      if (!r.user) {
+        if (r.ambiguos.length) return { ok: false, mensaje: `Hay varias personas que coinciden con "${input.para_quien}": ${r.ambiguos.slice(0, 6).join(', ')}. ¿A cuál te refieres? Dime el nombre completo.` };
+        return { ok: false, mensaje: `No encontre a "${input.para_quien}" en el personal. Verifica el nombre.` };
+      }
+      uidDestino = r.user.id; etiqueta = r.user.nombre || r.user.correo;
     }
     const doc = {
       texto: String(input.titulo || '').trim(), completada: false, fechaCreacion: Date.now(),
@@ -240,8 +266,15 @@ async function ejecutarHerramienta(db, ctx, nombre, input) {
       rolObjetivo = ROLES.find(r => normaliza(r) === normaliza(input.rol_objetivo)) || input.rol_objetivo || 'Encargado';
     } else {
       const nombres = Array.isArray(input.personas) ? input.personas : [];
-      empleadosNombres = nombres.map(n => { const p = resolverPersona(ctx, n); return p ? (p.nombre || p.correo) : n; });
-      if (empleadosNombres.length === 0) return { ok: false, mensaje: 'No indicaste a que personas asignar la rutina.' };
+      if (nombres.length === 0) return { ok: false, mensaje: 'No indicaste a que personas asignar la rutina.' };
+      for (const n of nombres) {
+        const r = resolverPersona(ctx, n);
+        if (!r.user) {
+          if (r.ambiguos.length) return { ok: false, mensaje: `Hay varias personas que coinciden con "${n}": ${r.ambiguos.slice(0, 6).join(', ')}. Dime el nombre completo.` };
+          return { ok: false, mensaje: `No encontre a "${n}" en el personal.` };
+        }
+        empleadosNombres.push(r.user.nombre || r.user.correo);
+      }
     }
 
     const dias = Array.isArray(input.dias_semana) ? input.dias_semana.filter(d => DIAS.includes(d)) : [];

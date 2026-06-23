@@ -581,8 +581,10 @@ module.exports = async (req, res) => {
         for (const block of (data.content || [])) {
           if (block.type !== 'tool_use') continue;
           let resultado;
+          console.log('[asistente-chat] herramienta:', block.name, '| datos:', JSON.stringify(block.input || {}));
           try { resultado = await ejecutarHerramienta(db, ctx, block.name, block.input); }
           catch (e) { resultado = { ok: false, mensaje: (e && e.message) || 'Error ejecutando la herramienta.' }; }
+          console.log('[asistente-chat] resultado:', JSON.stringify(resultado));
           if (resultado && resultado.ok) acciones.push({ herramienta: block.name, ...resultado });
           toolResults.push({ type: 'tool_result', tool_use_id: block.id, content: JSON.stringify(resultado), is_error: !(resultado && resultado.ok) });
         }

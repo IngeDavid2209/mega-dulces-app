@@ -63,11 +63,14 @@
               <div class="cf-razon">{{ c.razon }}</div>
             </div>
             <div class="cf-sug" *ngIf="c.sugeridos.length > 0">
-              <span class="cf-sug-lbl">Disponibles:</span>
-              <span class="cf-sug-pill" *ngFor="let s of c.sugeridos">{{ s }}</span>
+              <span class="cf-sug-lbl">{{ c.tipo === 'sin_asignar' ? 'Asignar a:' : 'Reasignar a:' }}</span>
+              <button type="button" class="cf-sug-pill" *ngFor="let s of c.sugeridos"
+                      (click)="resolverConflicto(c, s)">{{ s }} ✓</button>
+              <button type="button" class="cf-omitir" (click)="resolverConflicto(c, null)">Omitir</button>
             </div>
             <div class="cf-sug" *ngIf="c.sugeridos.length === 0">
               <span class="cf-sug-lbl cf-nadie">Nadie disponible ese día</span>
+              <button type="button" class="cf-omitir" (click)="resolverConflicto(c, null)">Dejar sin asignar</button>
             </div>
           </div>
         </div>

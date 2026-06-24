@@ -69,6 +69,14 @@ function destinatarios(asig: AsignacionRutina, usuarios: any[], sucursal: string
   );
 }
 
+/** ¿Hay una excepción que ya resuelve este (fecha, persona)? */
+function yaResuelto(asig: AsignacionRutina, fechaYmd: string, personaOriginal: string): boolean {
+  return (asig.excepciones || []).some(e =>
+    e.fecha === fechaYmd &&
+    normalizarNombre(e.personaOriginal || '') === normalizarNombre(personaOriginal || '')
+  );
+}
+
 /** ¿Esta persona está disponible (no descansa, no fuera de turno) ese día/hora? */
 function disponible(u: any, fecha: Date, fechaYmd: string, hora: string, descansos: any[], cfg: ConfigTurnos | null): boolean {
   const uid = uidDe(u);
@@ -96,6 +104,7 @@ export function analizarConflictos(o: AnalizarConflictosOpts): ConflictoRutina[]
         const dest = destinatarios(asig, o.usuarios, sucursal);
 
         if (dest.length === 0) {
+          if (yaResuelto(asig, fechaYmd, '')) continue;     // omitido/asignado a mano
           out.push({
             asignacionId: asig.id, nombreRutina: asig.nombreRutina, sucursal,
             fecha: fechaYmd, diaNombre, hora, persona: '', uid: '',
@@ -106,6 +115,7 @@ export function analizarConflictos(o: AnalizarConflictosOpts): ConflictoRutina[]
         }
 
         for (const u of dest) {
+          if (yaResuelto(asig, fechaYmd, u.nombre)) continue;  // ya reasignado/omitido
           const uid = uidDe(u);
           const desc = o.descansos.filter(d => d.userId === uid);
           let tipo: TipoConflicto | null = null;

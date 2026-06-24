@@ -53,6 +53,38 @@ export class AsignacionesRutinasComponent implements OnInit, OnDestroy {
   }));
   conflictosCount = computed(() => this.conflictos().length);
 
+  /** Resuelve un conflicto creando una excepción puntual en la asignación.
+   *  reemplazo = nombre → ese día lo hace otra persona; null = se omite. */
+  async resolverConflicto(c: ConflictoRutina, reemplazo: string | null) {
+    const asig = this.asignaciones().find(a => a.id === c.asignacionId);
+    if (!asig) return;
+    const yo = this.currentUser?.nombre || this.currentUser?.usuario || 'desconocido';
+    const nueva = {
+      fecha: c.fecha,
+      personaOriginal: c.persona || '',
+      reemplazo,
+      motivo: reemplazo
+        ? `Reasignado por ${c.tipo === 'descanso' ? 'descanso' : c.tipo === 'turno' ? 'turno' : 'falta de personal'}`
+        : 'Omitido ese día',
+      creadoPor: yo,
+      creadoEn: Date.now()
+    };
+    // Reemplaza cualquier excepción previa del mismo (fecha, persona).
+    const previas = (asig.excepciones || []).filter(e =>
+      !(e.fecha === c.fecha && (e.personaOriginal || '') === (c.persona || '')));
+    try {
+      await setDoc(doc(this.firestore, 'asignaciones_rutinas', asig.id),
+        { excepciones: [...previas, nueva] }, { merge: true });
+      Swal.fire({
+        toast: true, position: 'top-end', showConfirmButton: false, timer: 2400, icon: 'success',
+        title: reemplazo ? `Reasignado a ${reemplazo}` : 'Conflicto omitido'
+      });
+    } catch (e: any) {
+      console.error('[resolverConflicto]', e);
+      Swal.fire('Error', e.message || 'No se pudo resolver.', 'error');
+    }
+  }
+
   // ---------- Filtros ----------
   terminoBusqueda = '';
   sucursalFiltro = 'todas';

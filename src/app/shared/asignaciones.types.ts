@@ -19,6 +19,21 @@ export type ModoAsignacion =
   | 'porRol'              // Todos los trabajadores de las sucursales que tengan este rol/cargo
   | 'porPersonas';        // Lista explícita de nombres
 
+/**
+ * Excepción puntual de una asignación para una fecha concreta.
+ * La crea la pantalla de Asignación al "resolver un conflicto":
+ *  - reemplazo = nombre  → ese día lo hace otra persona
+ *  - reemplazo = null    → ese día se omite a propósito (deja sin asignar)
+ */
+export interface ExcepcionAsignacion {
+  fecha: string;                 // YYYY-MM-DD
+  personaOriginal: string;       // nombre con conflicto ('' si era "sin asignar")
+  reemplazo: string | null;      // nombre que la hará, o null = omitir
+  motivo?: string;
+  creadoPor?: string;
+  creadoEn?: number;
+}
+
 export interface AsignacionRutina {
   id: string;
 
@@ -49,6 +64,9 @@ export interface AsignacionRutina {
   /** Vigencia: cuándo empieza y opcionalmente cuándo termina. */
   fechaInicio: string;                   // YYYY-MM-DD
   fechaFin?: string | null;
+
+  /** Excepciones puntuales por fecha (resolución de conflictos). */
+  excepciones?: ExcepcionAsignacion[];
 
   // --- ESTADO ---
   activa: boolean;                       // soft-delete / pausar

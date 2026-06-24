@@ -86,7 +86,25 @@ export class RobotRutinasV2Service {
         if (esDomingo && hooks.esSucursalAdministrativa?.(sucursal) && asig.frecuencia === 'Diaria') continue;
 
         // Expandir destinatarios (rol → personas, o personas explícitas)
-        const destinatarios = this.expandirDestinatarios(asig, usuarios, sucursal);
+        const baseDest = this.expandirDestinatarios(asig, usuarios, sucursal);
+
+        // 🔧 Aplica las EXCEPCIONES de esta fecha (resolución de conflictos):
+        //  - personaOriginal con reemplazo  → ese día lo hace otra persona
+        //  - personaOriginal con reemplazo null → se omite ese día
+        //  - personaOriginal '' con reemplazo → "sin asignar" resuelto a mano
+        const excHoy = (asig.excepciones || []).filter(e => e.fecha === fechaYmd);
+        const destinatarios = baseDest.flatMap(d => {
+          const ex = excHoy.find(e => normalizarNombre(e.personaOriginal || '') === normalizarNombre(d.nombre));
+          if (!ex) return [d];
+          if (ex.reemplazo == null) return [];
+          return [{ nombre: ex.reemplazo }];
+        });
+        for (const e of excHoy) {
+          if (!(e.personaOriginal || '') && e.reemplazo &&
+              !destinatarios.some(d => normalizarNombre(d.nombre) === normalizarNombre(e.reemplazo!))) {
+            destinatarios.push({ nombre: e.reemplazo });
+          }
+        }
         if (destinatarios.length === 0) continue;
 
         // Hora efectiva de esta rutina (misma que se guarda en el checklist).

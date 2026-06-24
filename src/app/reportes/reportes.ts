@@ -194,6 +194,167 @@ export class ReportesComponent implements OnInit, OnDestroy {
   }
 
   // ============================================================================
+  //  📊 REPORTES (Personal / Personal×Sucursal / Tareas / Tareas×Sucursal)
+  // ============================================================================
+  modoVista: 'auditoria' | 'reportes' = 'auditoria';
+  repTab: 'personal' | 'personalSuc' | 'tareas' | 'tareasSuc' = 'personal';
+  repRango: 'semana' | 'mes' | 'todo' = 'semana';
+  repCargando = signal(false);
+  private repCargado = false;
+
+  dPersonal: any[] = [];
+  dPersonalSuc: any[] = [];
+  dTareas = { total: 0, completadas: 0, pendientes: 0, pct: 0, checklists: 0 };
+  dTareasSuc: any[] = [];
+
+  private repToYmd(d: Date): string {
+    const off = d.getTimezoneOffset() * 60000;
+    return new Date(d.getTime() - off).toISOString().split('T')[0];
+  }
+  private repSucsDe(u: any): string[] {
+    return (u?.sucursales && u.sucursales.length) ? u.sucursales : (u?.sucursal ? [u.sucursal] : []);
+  }
+
+  cambiarModo(m: 'auditoria' | 'reportes') {
+    this.modoVista = m;
+    if (m === 'reportes' && !this.repCargado) this.cargarReportes();
+  }
+  cambiarRepRango(r: 'semana' | 'mes' | 'todo') {
+    this.repRango = r;
+    this.cargarReportes();
+  }
+
+  /** Carga usuarios + checklists del rango y arma los 4 reportes (desde Firestore). */
+  async cargarReportes() {
+    this.repCargando.set(true);
+    try {
+      const permitidas = sucursalesPermitidas(this.currentUser); // null = todas
+      const enScope = (store: string) => permitidas === null || permitidas.includes(store);
+
+      // --- PERSONAL ---
+      const usnap = await getDocs(collection(this.firestore, 'usuarios'));
+      const usuarios: any[] = [];
+      usnap.forEach(d => usuarios.push({ id: d.id, ...(d.data() as any) }));
+      const personalEnScope = usuarios.filter(u =>
+        u.rol === 'trabajador' && (permitidas === null || this.repSucsDe(u).some(s => permitidas.includes(s)))
+      );
+
+      this.dPersonal = personalEnScope.map(u => ({
+        nombre: u.nombre || u.correo || '(sin nombre)',
+        sucursal: this.repSucsDe(u).join(', ') || '—',
+        cargo: u.cargo || '—',
+        rol: u.rol || 'trabajador',
+        estado: u.ultimoLatido ? 'Activo' : 'Nunca ha entrado'
+      })).sort((a, b) => a.nombre.localeCompare(b.nombre));
+
+      // --- PERSONAL POR SUCURSAL ---
+      const porSuc = new Map<string, number>();
+      for (const u of personalEnScope) {
+        for (const s of this.repSucsDe(u)) {
+          if (!enScope(s)) continue;
+          porSuc.set(s, (porSuc.get(s) || 0) + 1);
+        }
+      }
+      this.dPersonalSuc = [...porSuc.entries()]
+        .map(([sucursal, total]) => ({ sucursal, total }))
+        .sort((a, b) => b.total - a.total || a.sucursal.localeCompare(b.sucursal));
+
+      // --- TAREAS (rango) ---
+      let qChk;
+      if (this.repRango === 'todo') {
+        qChk = collection(this.firestore, 'checklists');
+      } else {
+        const desde = new Date();
+        if (this.repRango === 'semana') desde.setDate(desde.getDate() - 7);
+        else desde.setDate(1); // mes actual
+        qChk = query(collection(this.firestore, 'checklists'), where('date', '>=', this.repToYmd(desde)));
+      }
+      const csnap = await getDocs(qChk as any);
+      const checklists: any[] = [];
+      csnap.forEach(d => {
+        const c = d.data() as any;
+        if (c.eliminado === true || c.archivado === true) return;
+        if (!c.store || !enScope(c.store)) return;
+        checklists.push(c);
+      });
+
+      let total = 0, ok = 0;
+      const sucMap = new Map<string, { total: number; ok: number; checklists: number }>();
+      for (const c of checklists) {
+        const items = Array.isArray(c.items) ? c.items : [];
+        const m = sucMap.get(c.store) || { total: 0, ok: 0, checklists: 0 };
+        m.checklists++;
+        for (const it of items) {
+          total++; m.total++;
+          if (esItemHecho(it, c)) { ok++; m.ok++; }
+        }
+        sucMap.set(c.store, m);
+      }
+      this.dTareas = {
+        total, completadas: ok, pendientes: total - ok,
+        pct: total > 0 ? Math.round((ok / total) * 100) : 0,
+        checklists: checklists.length
+      };
+      this.dTareasSuc = [...sucMap.entries()]
+        .map(([sucursal, m]) => ({
+          sucursal, checklists: m.checklists, total: m.total, completadas: m.ok,
+          pct: m.total > 0 ? Math.round((m.ok / m.total) * 100) : 0
+        }))
+        .sort((a, b) => b.pct - a.pct || a.sucursal.localeCompare(b.sucursal));
+
+      this.repCargado = true;
+    } catch (e: any) {
+      console.error('[reportes]', e);
+      Swal.fire('Error', e?.message || 'No se pudieron cargar los reportes.', 'error');
+    } finally {
+      this.repCargando.set(false);
+    }
+  }
+
+  /** Exporta una tabla genérica a Excel (carga ExcelJS solo al exportar). */
+  private async exportarTablaExcel(nombreHoja: string, columnas: { header: string; key: string; width?: number }[], filas: any[]) {
+    if (!filas.length) { Swal.fire({ icon: 'info', title: 'Sin datos', text: 'No hay datos para exportar.', confirmButtonColor: '#0F172A' }); return; }
+    const ExcelJS = await import('exceljs');
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet(nombreHoja.slice(0, 28));
+    ws.columns = columnas.map(c => ({ header: c.header, key: c.key, width: c.width || 18 }));
+    ws.getRow(1).font = { bold: true };
+    filas.forEach(f => ws.addRow(f));
+    const buf = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `${nombreHoja}_${this.repToYmd(new Date())}.xlsx`;
+    a.click(); URL.revokeObjectURL(url);
+  }
+  exportarPersonalExcel() {
+    this.exportarTablaExcel('Personal',
+      [{ header: 'Nombre', key: 'nombre', width: 28 }, { header: 'Sucursal', key: 'sucursal', width: 24 }, { header: 'Cargo', key: 'cargo', width: 18 }, { header: 'Estado', key: 'estado', width: 16 }],
+      this.dPersonal);
+  }
+  exportarPersonalSucExcel() {
+    this.exportarTablaExcel('Personal_por_sucursal',
+      [{ header: 'Sucursal', key: 'sucursal', width: 28 }, { header: 'Personal', key: 'total', width: 12 }],
+      this.dPersonalSuc);
+  }
+  exportarTareasSucExcel() {
+    this.exportarTablaExcel('Tareas_por_sucursal',
+      [{ header: 'Sucursal', key: 'sucursal', width: 28 }, { header: 'Checklists', key: 'checklists', width: 12 }, { header: 'Tareas', key: 'total', width: 12 }, { header: 'Completadas', key: 'completadas', width: 14 }, { header: '% ', key: 'pct', width: 8 }],
+      this.dTareasSuc);
+  }
+  exportarTareasExcel() {
+    this.exportarTablaExcel('Tareas_resumen',
+      [{ header: 'Métrica', key: 'k', width: 22 }, { header: 'Valor', key: 'v', width: 14 }],
+      [
+        { k: 'Checklists', v: this.dTareas.checklists },
+        { k: 'Tareas totales', v: this.dTareas.total },
+        { k: 'Completadas', v: this.dTareas.completadas },
+        { k: 'Pendientes', v: this.dTareas.pendientes },
+        { k: '% completado', v: this.dTareas.pct + '%' }
+      ]);
+  }
+
+  // ============================================================================
   //  EMPLEADOS — getters y handlers
   // ============================================================================
   get empleadosFiltrados() {

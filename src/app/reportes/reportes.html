@@ -28,6 +28,95 @@
     <div class="content">
       <div *ngIf="vistaActual() === 'lista'">
 
+        <!-- Pestañas: Auditoría | Reportes -->
+        <div class="rep-modo-tabs">
+          <button [class.on]="modoVista === 'auditoria'" (click)="cambiarModo('auditoria')">Auditoría</button>
+          <button [class.on]="modoVista === 'reportes'" (click)="cambiarModo('reportes')">📊 Reportes</button>
+        </div>
+
+        <!-- ════════════════════ REPORTES ════════════════════ -->
+        <div *ngIf="modoVista === 'reportes'" class="rep-wrap">
+          <div class="rep-subtabs">
+            <button [class.on]="repTab === 'personal'" (click)="repTab = 'personal'">Personal</button>
+            <button [class.on]="repTab === 'personalSuc'" (click)="repTab = 'personalSuc'">Personal por sucursal</button>
+            <button [class.on]="repTab === 'tareas'" (click)="repTab = 'tareas'">Tareas</button>
+            <button [class.on]="repTab === 'tareasSuc'" (click)="repTab = 'tareasSuc'">Tareas por sucursal</button>
+          </div>
+
+          <!-- Rango (solo afecta a tareas) -->
+          <div class="rep-rango" *ngIf="repTab === 'tareas' || repTab === 'tareasSuc'">
+            <span>Rango:</span>
+            <button [class.on]="repRango === 'semana'" (click)="cambiarRepRango('semana')">Esta semana</button>
+            <button [class.on]="repRango === 'mes'" (click)="cambiarRepRango('mes')">Este mes</button>
+            <button [class.on]="repRango === 'todo'" (click)="cambiarRepRango('todo')">Histórico</button>
+          </div>
+
+          <div class="rep-cargando" *ngIf="repCargando()">Cargando reporte…</div>
+
+          <ng-container *ngIf="!repCargando()">
+            <!-- PERSONAL -->
+            <div *ngIf="repTab === 'personal'">
+              <div class="rep-head"><h3>Personal ({{ dPersonal.length }})</h3>
+                <button class="rep-xls" (click)="exportarPersonalExcel()">⬇ Excel</button></div>
+              <table class="rep-tabla">
+                <thead><tr><th>Nombre</th><th>Sucursal</th><th>Cargo</th><th>Estado</th></tr></thead>
+                <tbody>
+                  <tr *ngFor="let r of dPersonal">
+                    <td>{{ r.nombre }}</td><td>{{ r.sucursal }}</td><td>{{ r.cargo }}</td>
+                    <td><span class="rep-estado" [class.activo]="r.estado === 'Activo'">{{ r.estado }}</span></td>
+                  </tr>
+                  <tr *ngIf="dPersonal.length === 0"><td colspan="4" class="rep-vacio">Sin personal en tu alcance.</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- PERSONAL POR SUCURSAL -->
+            <div *ngIf="repTab === 'personalSuc'">
+              <div class="rep-head"><h3>Personal por sucursal</h3>
+                <button class="rep-xls" (click)="exportarPersonalSucExcel()">⬇ Excel</button></div>
+              <table class="rep-tabla">
+                <thead><tr><th>Sucursal</th><th>Personal</th></tr></thead>
+                <tbody>
+                  <tr *ngFor="let r of dPersonalSuc"><td>{{ r.sucursal }}</td><td><strong>{{ r.total }}</strong></td></tr>
+                  <tr *ngIf="dPersonalSuc.length === 0"><td colspan="2" class="rep-vacio">Sin datos.</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- TAREAS (resumen) -->
+            <div *ngIf="repTab === 'tareas'">
+              <div class="rep-head"><h3>Tareas — {{ repRango === 'semana' ? 'esta semana' : repRango === 'mes' ? 'este mes' : 'histórico' }}</h3>
+                <button class="rep-xls" (click)="exportarTareasExcel()">⬇ Excel</button></div>
+              <div class="rep-cards">
+                <div class="rep-card"><span class="rep-card-num">{{ dTareas.checklists }}</span><span class="rep-card-lbl">Checklists</span></div>
+                <div class="rep-card"><span class="rep-card-num">{{ dTareas.total }}</span><span class="rep-card-lbl">Tareas</span></div>
+                <div class="rep-card ok"><span class="rep-card-num">{{ dTareas.completadas }}</span><span class="rep-card-lbl">Completadas</span></div>
+                <div class="rep-card pend"><span class="rep-card-num">{{ dTareas.pendientes }}</span><span class="rep-card-lbl">Pendientes</span></div>
+                <div class="rep-card pct"><span class="rep-card-num">{{ dTareas.pct }}%</span><span class="rep-card-lbl">Completado</span></div>
+              </div>
+            </div>
+
+            <!-- TAREAS POR SUCURSAL -->
+            <div *ngIf="repTab === 'tareasSuc'">
+              <div class="rep-head"><h3>Tareas por sucursal — {{ repRango === 'semana' ? 'esta semana' : repRango === 'mes' ? 'este mes' : 'histórico' }}</h3>
+                <button class="rep-xls" (click)="exportarTareasSucExcel()">⬇ Excel</button></div>
+              <table class="rep-tabla">
+                <thead><tr><th>Sucursal</th><th>Checklists</th><th>Tareas</th><th>Completadas</th><th>%</th></tr></thead>
+                <tbody>
+                  <tr *ngFor="let r of dTareasSuc">
+                    <td>{{ r.sucursal }}</td><td>{{ r.checklists }}</td><td>{{ r.total }}</td><td>{{ r.completadas }}</td>
+                    <td><span class="rep-pct" [class.bajo]="r.pct < 40" [class.medio]="r.pct >= 40 && r.pct < 70" [class.alto]="r.pct >= 70">{{ r.pct }}%</span></td>
+                  </tr>
+                  <tr *ngIf="dTareasSuc.length === 0"><td colspan="5" class="rep-vacio">Sin tareas en el rango.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </ng-container>
+        </div>
+
+        <!-- ════════════════════ AUDITORÍA (existente) ════════════════════ -->
+        <div [hidden]="modoVista !== 'auditoria'">
+
         <!-- ╔══════════════════════════════════════════════════════╗ -->
         <!-- ║   HEADER PROFESIONAL DE AUDITORÍA                    ║ -->
         <!-- ╚══════════════════════════════════════════════════════╝ -->
@@ -400,6 +489,7 @@
             <p>No se encontraron checklists con los filtros seleccionados.</p>
           </div>
         </div>
+        </div><!-- /[hidden] auditoría -->
       </div>
 
       <!-- VISTA DE DETALLE -->

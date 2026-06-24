@@ -1,8 +1,9 @@
-import { Component, Input, Output, EventEmitter, inject } from '@angular/core';
+import { Component, Input, Output, EventEmitter, inject, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { APP_BUILD_SELLO } from '../version';
 import { esAdminDeCanindo } from '../permisos.util';
+import { ConflictosRutinasService } from '../conflictos-rutinas.service';
 
 /**
  * Sidebar compartido del panel administrativo.
@@ -22,7 +23,7 @@ import { esAdminDeCanindo } from '../permisos.util';
   templateUrl: './sidebar.html',
   styleUrls: ['./sidebar.css']
 })
-export class SidebarComponent {
+export class SidebarComponent implements OnInit, OnDestroy {
   @Input() currentUser: any = null;
   @Input() isMenuOpen = false;
   /** Se emite cuando el usuario hace click en un nav-item o cierra el menú móvil. */
@@ -32,6 +33,24 @@ export class SidebarComponent {
   readonly buildSello = APP_BUILD_SELLO;
 
   private router = inject(Router);
+  private conflictosSvc = inject(ConflictosRutinasService);
+  private conflictosActivo = false;
+
+  /** ¿Este usuario gestiona rutinas? (para mostrar el badge de conflictos). */
+  get gestionaRutinas(): boolean {
+    return this.currentUser?.rol === 'admin' || !!this.currentUser?.puedeCrearRutinas;
+  }
+  /** Conteo de conflictos de rutinas (próximos 7 días). */
+  get conflictosRutinas(): number {
+    return this.gestionaRutinas ? this.conflictosSvc.count() : 0;
+  }
+
+  ngOnInit() {
+    if (this.gestionaRutinas) { this.conflictosActivo = true; this.conflictosSvc.iniciar(); }
+  }
+  ngOnDestroy() {
+    if (this.conflictosActivo) this.conflictosSvc.detener();
+  }
 
   /** Solo los admins de Canindo (o admin global) ven/configuran turnos. */
   get esAdminCanindo(): boolean {

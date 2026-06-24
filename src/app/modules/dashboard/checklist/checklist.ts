@@ -2678,19 +2678,31 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     await setDoc(doc(this.firestore, 'tareas_equipo', t.id), { fases: fresca.fases }, { merge: true });
   }
 
-  /** Sube una foto a un item de Tarea de Equipo (la puede subir el asignado o el jefe). */
-  async subirFotoItemEquipo(event: any, t: TareaEquipo, faseId: string, itemId: string) {
-    const fileOriginal = event?.target?.files?.[0];
-    if (!fileOriginal) return;
+  /** Fotos de un item de equipo (junta la foto legacy `photo` con el arreglo `photos`). */
+  fotosItemEquipo(item: any): { url: string; time?: string }[] {
+    const arr = Array.isArray(item?.photos) ? [...item.photos] : [];
+    if (item?.photo && item.photo !== 'subiendo...' && !arr.some(p => p.url === item.photo)) {
+      arr.unshift({ url: item.photo, time: item.photoTime });
+    }
+    return arr;
+  }
+
+  /** Sube UNA o VARIAS fotos a un item de Tarea de Equipo (asignado o jefe). */
+  async subirFotosItemEquipo(event: any, t: TareaEquipo, faseId: string, itemId: string) {
+    const files: File[] = Array.from(event?.target?.files || []);
+    if (!files.length) return;
     if (t.cerrado) { this.mostrarToast(' El proyecto está cerrado.'); event.target.value = ''; return; }
 
-    let file: File;
-    try { file = await comprimirImagenSiAplica(fileOriginal); } catch { file = fileOriginal; }
-
-    this.mostrarToast(' Subiendo foto...');
-    const res = await this.subirACloudinary(file);
-    if (!res.ok || !res.url) {
-      Swal.fire({ icon: 'warning', title: 'No se pudo subir la foto', text: (res.error || 'Intenta de nuevo.').toString().slice(0, 200), confirmButtonColor: '#0F172A' });
+    this.mostrarToast(` Subiendo ${files.length} foto(s)...`);
+    const urls: string[] = [];
+    for (const f of files) {
+      let file: File;
+      try { file = await comprimirImagenSiAplica(f); } catch { file = f; }
+      const res = await this.subirACloudinary(file);
+      if (res.ok && res.url) urls.push(res.url);
+    }
+    if (!urls.length) {
+      Swal.fire({ icon: 'warning', title: 'No se pudieron subir las fotos', text: 'Revisa tu conexión e intenta de nuevo.', confirmButtonColor: '#0F172A' });
       event.target.value = '';
       return;
     }
@@ -2698,19 +2710,42 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     const fresca = await this.obtenerTareaEquipoFresca(t.id);
     if (!fresca) { event.target.value = ''; return; }
     const fase = fresca.fases.find(f => f.id === faseId);
-    const item = fase?.items.find(i => i.id === itemId);
+    const item: any = fase?.items.find(i => i.id === itemId);
     if (!item) { event.target.value = ''; return; }
     if (!this.puedeOperarItemEquipo(fresca, item)) {
-      this.mostrarToast(' No puedes subir foto a esta tarea.');
+      this.mostrarToast(' No puedes subir fotos a esta tarea.');
       event.target.value = '';
       return;
     }
 
-    item.photo = res.url;
-    item.photoTime = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+    if (!Array.isArray(item.photos)) item.photos = [];
+    // Migra la foto legacy al arreglo para tener una sola fuente.
+    if (item.photo && item.photo !== 'subiendo...' && !item.photos.some((p: any) => p.url === item.photo)) {
+      item.photos.unshift({ url: item.photo, time: item.photoTime });
+    }
+    item.photo = '';
+    const time = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+    for (const u of urls) item.photos.push({ url: u, time });
+
     await setDoc(doc(this.firestore, 'tareas_equipo', t.id), { fases: fresca.fases }, { merge: true });
-    this.mostrarToast(' Foto subida ✓');
+    this.mostrarToast(` ✓ ${urls.length} foto(s) subida(s)`);
     event.target.value = '';
+  }
+
+  /** Quita una foto de un item de equipo. */
+  async quitarFotoItemEquipo(t: TareaEquipo, faseId: string, itemId: string, url: string) {
+    if (t.cerrado) return;
+    const res = await Swal.fire({ title: 'Quitar foto', text: '¿Eliminar esta foto?', icon: 'warning', showCancelButton: true, confirmButtonText: 'Sí, quitar', cancelButtonText: 'Cancelar', confirmButtonColor: '#dc2626' });
+    if (!res.isConfirmed) return;
+    const fresca = await this.obtenerTareaEquipoFresca(t.id);
+    if (!fresca) return;
+    const fase = fresca.fases.find(f => f.id === faseId);
+    const item: any = fase?.items.find(i => i.id === itemId);
+    if (!item || !this.puedeOperarItemEquipo(fresca, item)) return;
+    if (item.photo === url) item.photo = '';
+    if (Array.isArray(item.photos)) item.photos = item.photos.filter((p: any) => p.url !== url);
+    await setDoc(doc(this.firestore, 'tareas_equipo', t.id), { fases: fresca.fases }, { merge: true });
+    this.mostrarToast(' Foto eliminada');
   }
 
   /** Marca/desmarca una subtarea de un item. */

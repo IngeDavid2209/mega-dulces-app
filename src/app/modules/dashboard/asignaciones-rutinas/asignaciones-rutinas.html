@@ -171,6 +171,36 @@
             </ng-container>
           </p>
 
+          <!-- Grilla días × personas (semana actual) -->
+          <button type="button" class="asig-grid-toggle" (click)="toggleGrid(a.id, $event)">
+            {{ gridExpandida(a.id) ? '▴ Ocultar semana' : '▾ Ver quién la hace esta semana' }}
+          </button>
+          <div class="asig-grid-wrap" *ngIf="gridExpandida(a.id)" (click)="$event.stopPropagation()">
+            <table class="asig-grid">
+              <thead>
+                <tr>
+                  <th class="asig-grid-persona-h">Persona</th>
+                  <th *ngFor="let d of diasSemanaAsig()" [class.hoy]="esHoyAsig(d)">
+                    {{ nombreCortoDia(d) }}<small>{{ numDia(d) }}</small>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let f of gridDe(a)">
+                  <td class="asig-grid-persona">{{ f.nombre }}</td>
+                  <td *ngFor="let c of f.celdas" class="asig-grid-cell">
+                    <span class="ac" [ngClass]="'ac-' + c.estado">
+                      {{ c.estado === 'ok' ? '✓' : c.estado === 'descanso' ? 'descansa' : c.estado === 'turno' ? 'turno' : '—' }}
+                    </span>
+                  </td>
+                </tr>
+                <tr *ngIf="gridDe(a).length === 0">
+                  <td [attr.colspan]="8" class="asig-grid-vacio">Sin personas asignadas todavía.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
           <footer class="cat-card-footer">
             <button type="button" class="cat-card-action" (click)="abrirWizardEditar(a); $event.stopPropagation()" title="Editar">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">

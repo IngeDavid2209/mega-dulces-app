@@ -18,8 +18,8 @@ import {
 } from '../../../shared/rutinas.types';
 import { AsignacionRutina, ModoAsignacion } from '../../../shared/asignaciones.types';
 import { ConfigTurnos } from '../../../shared/turnos.util';
-import { analizarConflictos, ConflictoRutina } from '../../../shared/conflictos-rutinas.util';
-import { rangoDias } from '../../../shared/programacion.util';
+import { analizarConflictos, ConflictoRutina, gridPersonasAsignacion, FilaPersonaAsig } from '../../../shared/conflictos-rutinas.util';
+import { rangoDias, fechaToYmd } from '../../../shared/programacion.util';
 
 @Component({
   selector: 'app-asignaciones-rutinas',
@@ -53,6 +53,31 @@ export class AsignacionesRutinasComponent implements OnInit, OnDestroy {
     rango: rangoDias(new Date(), 7)
   }));
   conflictosCount = computed(() => this.conflictos().length);
+
+  // ---------- Grilla días × personas por asignación ----------
+  diasSemanaAsig = computed(() => {
+    const hoy = new Date();
+    const base = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
+    base.setDate(base.getDate() - ((base.getDay() + 6) % 7)); // lunes de esta semana
+    return rangoDias(base, 7);
+  });
+  gridsExpandidas = new Set<string>();
+  toggleGrid(id: string, ev: Event) {
+    ev.stopPropagation();
+    if (this.gridsExpandidas.has(id)) this.gridsExpandidas.delete(id);
+    else this.gridsExpandidas.add(id);
+  }
+  gridExpandida(id: string): boolean { return this.gridsExpandidas.has(id); }
+  gridDe(a: AsignacionRutina): FilaPersonaAsig[] {
+    return gridPersonasAsignacion({
+      asig: a, catalogo: this.catalogo(), usuarios: this.usuarios(),
+      descansos: this.descansos(), configTurnos: this.configTurnos(), dias: this.diasSemanaAsig()
+    });
+  }
+  nombreCortoDia(d: Date): string { return ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'][d.getDay()]; }
+  numDia(d: Date): number { return d.getDate(); }
+  esHoyAsig(d: Date): boolean { return fechaToYmd(d) === fechaToYmd(new Date()); }
+  primerNombre(n: string): string { const p = (n || '').trim().split(/\s+/); return p[0] || ''; }
 
   /** Resuelve un conflicto creando una excepción puntual en la asignación.
    *  reemplazo = nombre → ese día lo hace otra persona; null = se omite. */

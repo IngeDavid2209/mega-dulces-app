@@ -195,6 +195,56 @@ export function construirMatrizSemana(o: MatrizOpts): FilaProg[] {
   return filas;
 }
 
+// ===========================================================================
+// GRID PERSONAS × DÍAS (para la pantalla de Asignación)
+// ===========================================================================
+
+export type EstadoDisp = 'na' | 'ok' | 'descanso' | 'turno';
+export interface CeldaDisp { fecha: string; estado: EstadoDisp; }
+export interface FilaPersonaAsig { nombre: string; celdas: CeldaDisp[]; }
+
+export interface GridAsigOpts {
+  asig: AsignacionRutina;
+  catalogo: RutinaMaestra[];
+  usuarios: any[];
+  descansos: any[];
+  configTurnos: ConfigTurnos | null;
+  dias: Date[];
+}
+
+/** Para una asignación, una fila por persona con su disponibilidad cada día. */
+export function gridPersonasAsignacion(o: GridAsigOpts): FilaPersonaAsig[] {
+  const rutina = o.catalogo.find(c => c.id === o.asig.catalogoRutinaId);
+  const hora = o.asig.horaLimite || o.asig.horaInicio || rutina?.horaLimite || rutina?.horaInicio || '';
+  const byNombre = new Map(o.usuarios.map(u => [normalizarNombre(u.nombre || ''), u]));
+
+  // Personas (unión de destinatarios de todas las sucursales, sin duplicar).
+  const nombres: string[] = [];
+  const vistos = new Set<string>();
+  for (const sucursal of (o.asig.sucursales || [])) {
+    for (const u of destinatarios(o.asig, o.usuarios, sucursal)) {
+      const k = normalizarNombre(u.nombre);
+      if (!vistos.has(k)) { vistos.add(k); nombres.push(u.nombre); }
+    }
+  }
+
+  return nombres.map(nombre => {
+    const u = byNombre.get(normalizarNombre(nombre));
+    const celdas: CeldaDisp[] = o.dias.map(fecha => {
+      const fechaYmd = fechaToYmd(fecha);
+      if (!asignacionAplicaEnFecha(o.asig, fecha)) return { fecha: fechaYmd, estado: 'na' as EstadoDisp };
+      if (u && esDiaDescansoEnFecha(fecha, o.descansos.filter(d => d.userId === uidDe(u)))) {
+        return { fecha: fechaYmd, estado: 'descanso' as EstadoDisp };
+      }
+      if (u && o.configTurnos && !rutinaPermitidaEnTurno(o.configTurnos, uidDe(u), fechaYmd, hora)) {
+        return { fecha: fechaYmd, estado: 'turno' as EstadoDisp };
+      }
+      return { fecha: fechaYmd, estado: 'ok' as EstadoDisp };
+    });
+    return { nombre, celdas };
+  });
+}
+
 export function analizarConflictos(o: AnalizarConflictosOpts): ConflictoRutina[] {
   const out: ConflictoRutina[] = [];
   const catById = new Map(o.catalogo.map(c => [c.id, c]));

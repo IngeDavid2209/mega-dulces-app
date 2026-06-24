@@ -851,3 +851,23 @@ button.cf-sug-pill:hover { background: #BBF7D0; }
 .ra-text { display: flex; flex-direction: column; gap: 3px; }
 .ra-text strong { color: #0F172A; font-size: 14px; }
 .ra-text small { color: #64748B; font-size: 12px; line-height: 1.4; }
+
+/* ====== Grilla días × personas por asignación (Fase E) ====== */
+.asig-grid-toggle {
+  width: 100%; margin-top: 12px; border: 1px dashed #CBD5E1; background: #F8FAFC;
+  color: #475569; font-weight: 600; font-size: 12.5px; border-radius: 9px; padding: 8px; cursor: pointer;
+}
+.asig-grid-toggle:hover { background: #F1F5F9; color: #0F172A; }
+.asig-grid-wrap { margin-top: 10px; overflow-x: auto; border: 1px solid #E2E8F0; border-radius: 10px; }
+.asig-grid { border-collapse: collapse; width: 100%; min-width: 460px; }
+.asig-grid th, .asig-grid td { border: 1px solid #F1F5F9; padding: 6px 7px; text-align: center; font-size: 12px; }
+.asig-grid thead th { background: #F8FAFC; color: #64748B; font-size: 10.5px; text-transform: uppercase; letter-spacing: .03em; }
+.asig-grid thead th small { display: block; color: #0F172A; font-weight: 700; font-size: 12px; }
+.asig-grid thead th.hoy { background: #EEF2FF; color: #1E40AF; }
+.asig-grid-persona-h, .asig-grid-persona { text-align: left; font-weight: 600; color: #0F172A; white-space: nowrap; }
+.ac { display: inline-block; border-radius: 999px; padding: 2px 8px; font-size: 11px; font-weight: 700; }
+.ac-ok { background: #DCFCE7; color: #166534; }
+.ac-descanso { background: #FEE2E2; color: #991B1B; }
+.ac-turno { background: #FEF3C7; color: #92400E; }
+.ac-na { background: transparent; color: #CBD5E1; }
+.asig-grid-vacio { color: #94A3B8; font-style: italic; padding: 14px; }

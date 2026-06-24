@@ -81,33 +81,6 @@
           <button (click)="agregarTarea()" class="ag-add-btn" title="Agregar tarea">+</button>
         </div>
 
-        <!-- Rutinas recomendadas (solo admin, sucursales habilitadas) -->
-        <div class="ag-reco" *ngIf="esAdminUsuario && (recomendaciones.length > 0 || analizandoReco)">
-          <div class="ag-reco-head">
-            <span class="ag-reco-ic">💡</span>
-            <div class="ag-reco-head-txt">
-              <strong>Rutinas recomendadas</strong>
-              <small>Tareas que se repiten en tus sucursales y aún no son rutinas</small>
-            </div>
-            <button class="ag-reco-re" (click)="analizarRecomendaciones()" [disabled]="analizandoReco" title="Re-analizar">
-              {{ analizandoReco ? '…' : '↻' }}
-            </button>
-          </div>
-          <div class="ag-reco-list">
-            <div class="ag-reco-item" *ngFor="let r of recomendaciones">
-              <span class="ag-reco-conf" [ngClass]="'nv-' + r.nivel">{{ r.nivel }}</span>
-              <div class="ag-reco-info">
-                <div class="ag-reco-nombre">{{ r.nombre }}</div>
-                <div class="ag-reco-meta">{{ r.frecuencia }} · {{ r.motivo }}</div>
-              </div>
-              <div class="ag-reco-actions">
-                <button class="ag-reco-add" (click)="agregarRecoAMiAgenda(r)">A mi agenda</button>
-                <button class="ag-reco-rut" (click)="crearRutinaDeReco(r)">Crear rutina</button>
-                <button class="ag-reco-x" (click)="descartarReco(r)" title="Descartar">✕</button>
-              </div>
-            </div>
-          </div>
-        </div>
 
         <!-- Estado vacío -->
         <div *ngIf="tareasPersonales.length === 0" class="ag-empty">

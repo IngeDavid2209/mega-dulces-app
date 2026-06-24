@@ -63,7 +63,6 @@ export class AgendaComponent implements OnInit, OnDestroy {
       if (this.currentUser?.rol === 'admin') {
         this.cargarListaPersonal();
       }
-      if (this.esAdminUsuario) this.analizarRecomendaciones();
 
       this.cargarAgenda();
     } else {

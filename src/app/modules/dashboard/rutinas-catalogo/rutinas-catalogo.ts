@@ -196,6 +196,32 @@ export class RutinasCatalogoComponent implements OnInit, OnDestroy {
     return lista;
   });
 
+  /** Rutinas agrupadas por departamento (tipo), para el acordeón del catálogo. */
+  rutinasPorDepartamento = computed(() => {
+    const orden: TipoRutina[] = ['apertura', 'operacion', 'cierre', 'administracion', 'contabilidad'];
+    const mapa = new Map<string, RutinaMaestra[]>();
+    for (const r of this.rutinasFiltradas()) {
+      const k = r.tipo || 'operacion';
+      if (!mapa.has(k)) mapa.set(k, []);
+      mapa.get(k)!.push(r);
+    }
+    return orden.filter(t => mapa.has(t)).map(t => ({
+      tipo: t,
+      etiqueta: this.etiquetasTipo[t],
+      rutinas: mapa.get(t)!.sort((a, b) => a.nombre.localeCompare(b.nombre))
+    }));
+  });
+
+  gruposCatColapsados = new Set<string>();
+  toggleGrupoCat(tipo: string) {
+    if (this.gruposCatColapsados.has(tipo)) this.gruposCatColapsados.delete(tipo);
+    else this.gruposCatColapsados.add(tipo);
+  }
+  grupoCatColapsado(tipo: string): boolean { return this.gruposCatColapsados.has(tipo); }
+
+  /** ¿La rutina tiene asignación activa? (para el semáforo). Aprox por nombre. */
+  iconoSemaforo(r: RutinaMaestra): 'on' | 'off' { return r.activa === false ? 'off' : 'on'; }
+
   // Recompute manual cuando cambien filtros (signals no reaccionan a primitivos)
   onCambioFiltro() {
     // Forzamos recálculo asignando el mismo signal (truco)

@@ -136,9 +136,16 @@
       <!-- ╔══════════════════════════════════════════════════╗ -->
       <!-- ║   GRID DE RUTINAS                                ║ -->
       <!-- ╚══════════════════════════════════════════════════╝ -->
-      <div class="cat-grid">
-        <article class="cat-card"
-                 *ngFor="let r of rutinasFiltradas(); trackBy: trackById"
+      <div class="cat-departamentos">
+        <section class="cat-dept" *ngFor="let g of rutinasPorDepartamento()">
+          <button type="button" class="cat-dept-head" (click)="toggleGrupoCat(g.tipo)">
+            <span class="cat-dept-titulo">{{ g.etiqueta }}</span>
+            <span class="cat-dept-count">{{ g.rutinas.length }}</span>
+            <span class="cat-dept-chev" [class.cerrado]="grupoCatColapsado(g.tipo)">▾</span>
+          </button>
+          <div class="cat-grid" *ngIf="!grupoCatColapsado(g.tipo)">
+            <article class="cat-card"
+                 *ngFor="let r of g.rutinas; trackBy: trackById"
                  [class.cat-card--archivada]="!r.activa"
                  (click)="abrirDetalle(r)">
 
@@ -233,9 +240,11 @@
             </button>
           </footer>
         </article>
+          </div>
+        </section>
 
         <!-- Estado vacío -->
-        <div class="cat-empty" *ngIf="rutinasFiltradas().length === 0">
+        <div class="cat-empty" *ngIf="rutinasPorDepartamento().length === 0">
           <div class="cat-empty-icon">📋</div>
           <h3 *ngIf="!mostrarArchivadas">Aún no tienes rutinas en el catálogo</h3>
           <h3 *ngIf="mostrarArchivadas">No hay rutinas archivadas</h3>

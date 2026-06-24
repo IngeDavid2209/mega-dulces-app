@@ -481,6 +481,29 @@
                 <small>Si a un asignado le toca pero descansa o está fuera de turno, el robot pasa la rutina al primer disponible de la sucursal (mismo rol). Si lo dejas apagado, ese día simplemente no se genera y aparece como conflicto.</small>
               </span>
             </label>
+
+            <!-- Orden de reemplazo (backups priorizados) -->
+            <div class="bk-box" *ngIf="formReasignacionAuto">
+              <div class="bk-titulo">Orden de reemplazo <small>(opcional)</small></div>
+              <p class="bk-hint">El robot probará estos backups <strong>en orden</strong> antes de tomar al primer disponible.</p>
+
+              <ol class="bk-lista" *ngIf="formOrdenReemplazo.length > 0">
+                <li class="bk-item" *ngFor="let n of formOrdenReemplazo; let i = index">
+                  <span class="bk-num">{{ i + 1 }}</span>
+                  <span class="bk-nombre">{{ n }}</span>
+                  <span class="bk-acciones">
+                    <button type="button" (click)="subirBackup(i)" [disabled]="i === 0" title="Subir">↑</button>
+                    <button type="button" (click)="bajarBackup(i)" [disabled]="i === formOrdenReemplazo.length - 1" title="Bajar">↓</button>
+                    <button type="button" class="bk-x" (click)="quitarBackup(i)" title="Quitar">✕</button>
+                  </span>
+                </li>
+              </ol>
+
+              <select class="wizard-input" (change)="agregarBackup($event)">
+                <option value="">+ Agregar backup…</option>
+                <option *ngFor="let n of candidatosBackupDisponibles()" [value]="n">{{ n }}</option>
+              </select>
+            </div>
           </div>
 
           <!-- PASO 6 — RESUMEN -->

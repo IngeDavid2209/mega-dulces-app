@@ -167,6 +167,16 @@ export function construirMatrizSemana(o: MatrizOpts): FilaProg[] {
           }
           // No disponible: si la asignación reasigna sola, busca reemplazo.
           if (asig.reasignacionAuto) {
+            // 1) Backups priorizados (ordenReemplazo), en orden.
+            for (const nb of (asig.ordenReemplazo || [])) {
+              const k = normalizarNombre(nb);
+              if (yaUsados.has(k)) continue;
+              const cand = usuariosByNombre.get(k);
+              if (cand && disponible(cand, fecha, fechaYmd, hora, o.descansos, o.configTurnos)) {
+                yaUsados.add(k); return { nombre: cand.nombre, estado: 'reasignado' as EstadoPersona };
+              }
+            }
+            // 2) Fallback: primer disponible de la sucursal.
             const rep = o.usuarios.find(c =>
               !yaUsados.has(normalizarNombre(c.nombre || '')) &&
               (c.rol === 'trabajador' || c.rol === 'admin') &&

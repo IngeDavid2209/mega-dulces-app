@@ -8,7 +8,7 @@ import Swal from 'sweetalert2';
 
 import { SidebarComponent } from '../../../shared/sidebar/sidebar';
 import { RutinasNavComponent } from '../../../shared/rutinas-nav/rutinas-nav';
-import { esAdminGlobal, sucursalesPermitidas, puedeSerAsignado } from '../../../shared/permisos.util';
+import { esAdminGlobal, sucursalesPermitidas, puedeSerAsignado, normalizarNombre } from '../../../shared/permisos.util';
 import {
   RutinaMaestra,
   FrecuenciaRutina,
@@ -74,6 +74,36 @@ export class AsignacionesRutinasComponent implements OnInit, OnDestroy {
       descansos: this.descansos(), configTurnos: this.configTurnos(), dias: this.diasSemanaAsig()
     });
   }
+  // ---------- Orden de reemplazo (backups) ----------
+  /** Personas de las sucursales elegidas, candidatas a backup. */
+  candidatosBackup(): string[] {
+    const sucs = new Set(this.formSucursales.map(s => normalizarNombre(s)));
+    const comodin = normalizarNombre('General (Acceso Total)');
+    return this.usuarios()
+      .filter(u => (u.rol === 'trabajador' || u.rol === 'admin'))
+      .filter(u => {
+        const us = (u.sucursales && u.sucursales.length) ? u.sucursales : (u.sucursal ? [u.sucursal] : []);
+        return us.some((s: string) => { const n = normalizarNombre(s); return sucs.has(n) || n === comodin; });
+      })
+      .map(u => u.nombre).filter(Boolean)
+      .sort((a, b) => a.localeCompare(b));
+  }
+  candidatosBackupDisponibles(): string[] {
+    const elegidos = new Set(this.formOrdenReemplazo.map(n => normalizarNombre(n)));
+    return this.candidatosBackup().filter(n => !elegidos.has(normalizarNombre(n)));
+  }
+  agregarBackup(ev: Event) {
+    const sel = ev.target as HTMLSelectElement;
+    const nombre = sel.value;
+    if (nombre && !this.formOrdenReemplazo.some(n => normalizarNombre(n) === normalizarNombre(nombre))) {
+      this.formOrdenReemplazo = [...this.formOrdenReemplazo, nombre];
+    }
+    sel.value = '';
+  }
+  quitarBackup(i: number) { const a = [...this.formOrdenReemplazo]; a.splice(i, 1); this.formOrdenReemplazo = a; }
+  subirBackup(i: number) { if (i <= 0) return; const a = [...this.formOrdenReemplazo]; [a[i - 1], a[i]] = [a[i], a[i - 1]]; this.formOrdenReemplazo = a; }
+  bajarBackup(i: number) { if (i >= this.formOrdenReemplazo.length - 1) return; const a = [...this.formOrdenReemplazo]; [a[i + 1], a[i]] = [a[i], a[i + 1]]; this.formOrdenReemplazo = a; }
+
   nombreCortoDia(d: Date): string { return ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'][d.getDay()]; }
   numDia(d: Date): number { return d.getDate(); }
   esHoyAsig(d: Date): boolean { return fechaToYmd(d) === fechaToYmd(new Date()); }
@@ -137,6 +167,7 @@ export class AsignacionesRutinasComponent implements OnInit, OnDestroy {
   formFechaInicio = '';
   formFechaFin: string | null = null;
   formReasignacionAuto = false;
+  formOrdenReemplazo: string[] = [];   // backups priorizados
   terminoBusquedaEmpleado = '';
   terminoBusquedaRutina = '';
 
@@ -330,6 +361,7 @@ export class AsignacionesRutinasComponent implements OnInit, OnDestroy {
     this.formFechaInicio = a.fechaInicio;
     this.formFechaFin = a.fechaFin ?? null;
     this.formReasignacionAuto = !!a.reasignacionAuto;
+    this.formOrdenReemplazo = [...(a.ordenReemplazo || [])];
     this.wizardStep = 1;
     this.isWizardOpen = true;
   }
@@ -357,6 +389,7 @@ export class AsignacionesRutinasComponent implements OnInit, OnDestroy {
     this.formFechaInicio = new Date(Date.now() - offset).toISOString().split('T')[0];
     this.formFechaFin = null;
     this.formReasignacionAuto = false;
+    this.formOrdenReemplazo = [];
   }
 
   avanzarPaso() {
@@ -543,6 +576,7 @@ export class AsignacionesRutinasComponent implements OnInit, OnDestroy {
       fechaInicio: this.formFechaInicio,
       fechaFin: this.formFechaFin || null,
       reasignacionAuto: this.formReasignacionAuto,
+      ordenReemplazo: this.formReasignacionAuto ? this.formOrdenReemplazo : [],
       activa: true
     };
 

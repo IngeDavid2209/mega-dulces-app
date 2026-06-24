@@ -177,8 +177,16 @@ export class RobotRutinasV2Service {
     sucursal: string,
     yaAsignados: Set<string>,
     disponible: (uid: string | undefined) => boolean,
-    _nombreAUid: Map<string, string>
+    nombreAUid: Map<string, string>
   ): string | null {
+    // 1) Backups priorizados (ordenReemplazo): se prueban EN ORDEN.
+    for (const nombre of (asig.ordenReemplazo || [])) {
+      const clave = normalizarNombre(nombre);
+      const uid = nombreAUid.get(clave);
+      if (!clave || !uid || yaAsignados.has(clave)) continue;
+      if (disponible(uid)) return nombre;
+    }
+    // 2) Fallback: primer disponible de la sucursal.
     const objetivo = normalizarNombre(sucursal);
     const comodin = normalizarNombre('General (Acceso Total)');
     const rol = asig.modoAsignacion === 'porRol' ? normalizarNombre(asig.rolObjetivo || '') : '';

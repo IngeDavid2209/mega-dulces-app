@@ -75,6 +75,12 @@ export interface AsignacionRutina {
    */
   reasignacionAuto?: boolean;
 
+  /**
+   * Orden de reemplazo (backups) priorizado: si reasignacionAuto está activo, el
+   * robot prueba estos nombres EN ORDEN antes de tomar al "primer disponible".
+   */
+  ordenReemplazo?: string[];
+
   // --- ESTADO ---
   activa: boolean;                       // soft-delete / pausar
 

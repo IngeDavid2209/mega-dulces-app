@@ -871,3 +871,17 @@ button.cf-sug-pill:hover { background: #BBF7D0; }
 .ac-turno { background: #FEF3C7; color: #92400E; }
 .ac-na { background: transparent; color: #CBD5E1; }
 .asig-grid-vacio { color: #94A3B8; font-style: italic; padding: 14px; }
+
+/* ====== Orden de reemplazo (backups) en el wizard ====== */
+.bk-box { margin-top: 14px; padding: 14px 16px; border: 1px solid #E2E8F0; border-radius: 12px; background: #fff; }
+.bk-titulo { font-weight: 700; color: #0F172A; font-size: 14px; }
+.bk-titulo small { color: #94A3B8; font-weight: 500; }
+.bk-hint { color: #64748B; font-size: 12px; margin: 4px 0 12px; }
+.bk-lista { list-style: none; margin: 0 0 12px; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.bk-item { display: flex; align-items: center; gap: 10px; border: 1px solid #E2E8F0; border-radius: 9px; padding: 8px 12px; }
+.bk-num { width: 22px; height: 22px; border-radius: 50%; background: #0F172A; color: #fff; font-size: 12px; font-weight: 700; display: grid; place-items: center; flex-shrink: 0; }
+.bk-nombre { flex: 1; min-width: 0; font-weight: 600; color: #0F172A; font-size: 13.5px; }
+.bk-acciones { display: flex; gap: 4px; }
+.bk-acciones button { width: 28px; height: 28px; border: 1px solid #CBD5E1; background: #fff; border-radius: 7px; cursor: pointer; color: #475569; font-size: 13px; }
+.bk-acciones button:disabled { opacity: .4; cursor: default; }
+.bk-acciones .bk-x:hover { background: #FEE2E2; color: #B91C1C; border-color: #FECACA; }

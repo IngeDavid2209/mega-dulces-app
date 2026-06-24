@@ -110,6 +110,7 @@ export class AsignacionesRutinasComponent implements OnInit, OnDestroy {
   formHoraLimite = '';
   formFechaInicio = '';
   formFechaFin: string | null = null;
+  formReasignacionAuto = false;
   terminoBusquedaEmpleado = '';
   terminoBusquedaRutina = '';
 
@@ -302,6 +303,7 @@ export class AsignacionesRutinasComponent implements OnInit, OnDestroy {
     this.formHoraLimite = a.horaLimite || '';
     this.formFechaInicio = a.fechaInicio;
     this.formFechaFin = a.fechaFin ?? null;
+    this.formReasignacionAuto = !!a.reasignacionAuto;
     this.wizardStep = 1;
     this.isWizardOpen = true;
   }
@@ -328,6 +330,7 @@ export class AsignacionesRutinasComponent implements OnInit, OnDestroy {
     const offset = new Date().getTimezoneOffset() * 60000;
     this.formFechaInicio = new Date(Date.now() - offset).toISOString().split('T')[0];
     this.formFechaFin = null;
+    this.formReasignacionAuto = false;
   }
 
   avanzarPaso() {
@@ -513,6 +516,7 @@ export class AsignacionesRutinasComponent implements OnInit, OnDestroy {
       horaLimite: this.formHoraLimite || '',
       fechaInicio: this.formFechaInicio,
       fechaFin: this.formFechaFin || null,
+      reasignacionAuto: this.formReasignacionAuto,
       activa: true
     };
 

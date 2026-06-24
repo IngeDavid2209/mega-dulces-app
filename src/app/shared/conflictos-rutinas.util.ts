@@ -137,6 +137,10 @@ export function analizarConflictos(o: AnalizarConflictosOpts): ConflictoRutina[]
             .map(c => c.nombre)
             .slice(0, 4);
 
+          // Si la asignación reasigna sola y hay alguien disponible, el robot lo
+          // cubre: no es un conflicto que el admin deba atender.
+          if (asig.reasignacionAuto && sugeridos.length > 0) continue;
+
           out.push({
             asignacionId: asig.id, nombreRutina: asig.nombreRutina, sucursal,
             fecha: fechaYmd, diaNombre, hora, persona: u.nombre, uid, tipo, razon, sugeridos

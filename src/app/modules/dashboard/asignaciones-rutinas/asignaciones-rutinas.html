@@ -441,6 +441,14 @@
                 Déjala vacía si la asignación es <strong>permanente</strong>.
               </small>
             </div>
+
+            <label class="ra-toggle">
+              <input type="checkbox" [(ngModel)]="formReasignacionAuto">
+              <span class="ra-text">
+                <strong>Reasignar automáticamente si alguien falta</strong>
+                <small>Si a un asignado le toca pero descansa o está fuera de turno, el robot pasa la rutina al primer disponible de la sucursal (mismo rol). Si lo dejas apagado, ese día simplemente no se genera y aparece como conflicto.</small>
+              </span>
+            </label>
           </div>
 
           <!-- PASO 6 — RESUMEN -->

@@ -118,26 +118,39 @@ export class RobotRutinasV2Service {
         // Hora efectiva de esta rutina (misma que se guarda en el checklist).
         const horaRutina = asig.horaLimite || rutina.horaLimite || '23:59';
 
+        // Disponibilidad: ¿esta persona puede ese día/hora? (no descansa, en turno)
+        const disponible = (uid: string | undefined): boolean => {
+          if (uid && esDiaDescansoEnFecha(fecha, descansosSemana.filter(d => d.userId === uid))) return false;
+          if (configTurnos?.habilitado && uid && !rutinaPermitidaEnTurno(configTurnos, uid, diaISO, horaRutina)) return false;
+          return true;
+        };
+
+        const yaAsignados = new Set<string>();
+
         for (const dest of destinatarios) {
-          const uidDest = nombreAUid.get(normalizarNombre(dest.nombre));
+          let nombreFinal = dest.nombre;
 
-          // 📅 Día de descanso: no se le genera la rutina ese día.
-          if (uidDest && esDiaDescansoEnFecha(fecha, descansosSemana.filter(d => d.userId === uidDest))) continue;
+          if (!disponible(nombreAUid.get(normalizarNombre(dest.nombre)))) {
+            if (!asig.reasignacionAuto) continue;   // Fase D: omitir si no hay auto-reasignación
+            // 🔁 Auto-reasignación: primer disponible de la sucursal no asignado aún.
+            const reemplazo = this.primerDisponible(asig, usuarios, sucursal, yaAsignados, disponible, nombreAUid);
+            if (!reemplazo) continue;               // nadie disponible → el detector lo marca
+            nombreFinal = reemplazo;
+          }
 
-          // 🕐 Restriccion de turno: si el destinatario tiene turno y la hora de
-          // la rutina cae fuera de su turno ese dia, no se le genera.
-          if (configTurnos?.habilitado && uidDest &&
-              !rutinaPermitidaEnTurno(configTurnos, uidDest, diaISO, horaRutina)) continue;
+          const claveNombre = normalizarNombre(nombreFinal);
+          if (yaAsignados.has(claveNombre)) continue;  // evita duplicar a la misma persona
+          yaAsignados.add(claveNombre);
 
           const periodo = this.llavePeriodo(asig, fecha);
-          const checklistId = this.idemKey(asig.id, periodo, sucursal, dest.nombre);
+          const checklistId = this.idemKey(asig.id, periodo, sucursal, nombreFinal);
 
           const ref = doc(this.firestore, 'checklists', checklistId);
           const snap = await getDoc(ref);
           if (snap.exists()) continue;
 
           const payload = this.armarChecklist({
-            checklistId, asig, rutina, sucursal, destinatario: dest.nombre,
+            checklistId, asig, rutina, sucursal, destinatario: nombreFinal,
             fechaYmd
           });
 
@@ -153,6 +166,35 @@ export class RobotRutinasV2Service {
   // ============================================================================
   // INTERNAL
   // ============================================================================
+
+  /**
+   * Primer empleado disponible de la sucursal (mismo rol si la asignación es
+   * porRol) que aún no esté asignado ese día. Para la auto-reasignación.
+   */
+  private primerDisponible(
+    asig: AsignacionRutina,
+    usuarios: any[],
+    sucursal: string,
+    yaAsignados: Set<string>,
+    disponible: (uid: string | undefined) => boolean,
+    _nombreAUid: Map<string, string>
+  ): string | null {
+    const objetivo = normalizarNombre(sucursal);
+    const comodin = normalizarNombre('General (Acceso Total)');
+    const rol = asig.modoAsignacion === 'porRol' ? normalizarNombre(asig.rolObjetivo || '') : '';
+    for (const u of usuarios) {
+      if (u.rol !== 'trabajador' && u.rol !== 'admin') continue;
+      const sucs = (u.sucursales && u.sucursales.length) ? u.sucursales : (u.sucursal ? [u.sucursal] : []);
+      const enSuc = sucs.some((s: string) => { const n = normalizarNombre(s); return n === objetivo || n === comodin; });
+      if (!enSuc) continue;
+      if (rol && !normalizarNombre(u.cargo || '').includes(rol)) continue;
+      const clave = normalizarNombre(u.nombre || '');
+      if (!clave || yaAsignados.has(clave)) continue;
+      if (!disponible(u.id || u.uid)) continue;
+      return u.nombre;
+    }
+    return null;
+  }
 
   /**
    * Devuelve la lista de nombres de personas que deben recibir esta asignación

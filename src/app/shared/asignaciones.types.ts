@@ -68,6 +68,13 @@ export interface AsignacionRutina {
   /** Excepciones puntuales por fecha (resolución de conflictos). */
   excepciones?: ExcepcionAsignacion[];
 
+  /**
+   * Si está activo: cuando a un asignado le toca pero descansa o está fuera de
+   * turno, el robot reasigna automáticamente al primer disponible de la sucursal
+   * (mismo rol si es porRol). Por defecto apagado.
+   */
+  reasignacionAuto?: boolean;
+
   // --- ESTADO ---
   activa: boolean;                       // soft-delete / pausar
 

@@ -844,3 +844,10 @@ button.cf-sug-pill { cursor: pointer; font-family: inherit; transition: backgrou
 button.cf-sug-pill:hover { background: #BBF7D0; }
 .cf-omitir { border: 1px solid #CBD5E1; background: #fff; color: #64748B; border-radius: 999px; padding: 4px 11px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; }
 .cf-omitir:hover { background: #F1F5F9; color: #334155; }
+
+/* Toggle de auto-reasignación en el wizard */
+.ra-toggle { display: flex; align-items: flex-start; gap: 12px; margin-top: 18px; padding: 14px 16px; border: 1px solid #E2E8F0; border-radius: 12px; background: #F8FAFC; cursor: pointer; }
+.ra-toggle input { width: 20px; height: 20px; margin-top: 1px; accent-color: #0F172A; flex-shrink: 0; }
+.ra-text { display: flex; flex-direction: column; gap: 3px; }
+.ra-text strong { color: #0F172A; font-size: 14px; }
+.ra-text small { color: #64748B; font-size: 12px; line-height: 1.4; }

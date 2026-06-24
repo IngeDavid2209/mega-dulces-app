@@ -103,6 +103,87 @@
       </div>
 
       <!-- ╔══════════════════════════════════════════════════╗ -->
+      <!-- ║   RECOMENDACIONES INTELIGENTES (solo admin)      ║ -->
+      <!-- ╚══════════════════════════════════════════════════╝ -->
+      <div class="reco-panel" *ngIf="esAdminUsuario">
+        <button type="button" class="reco-bar" (click)="togglePanelReco()">
+          <span class="reco-ico">💡</span>
+          <span class="reco-bar-text">
+            <strong>Recomendaciones inteligentes</strong>
+            <small>Tareas que se repiten y aún no son rutinas</small>
+          </span>
+          <span class="reco-count" *ngIf="yaAnalizado && recomendaciones().length > 0">{{ recomendaciones().length }}</span>
+          <span class="reco-chev">{{ panelRecoAbierto ? '▴' : '▾' }}</span>
+        </button>
+
+        <div class="reco-body" *ngIf="panelRecoAbierto">
+          <div class="reco-toolbar">
+            <button type="button" class="reco-reanalizar" (click)="analizarRecomendaciones()" [disabled]="analizandoReco">
+              {{ analizandoReco ? 'Analizando…' : '↻ Re-analizar' }}
+            </button>
+            <button type="button" class="reco-config" *ngIf="esAdminGlobalUsuario" (click)="abrirModalRecoConfig()">
+              ⚙ Sucursales habilitadas
+            </button>
+          </div>
+
+          <div class="reco-cargando" *ngIf="analizandoReco">Analizando el historial de los últimos 30 días…</div>
+
+          <div class="reco-lista" *ngIf="!analizandoReco && recomendaciones().length > 0">
+            <article class="reco-card" *ngFor="let r of recomendaciones()">
+              <div class="reco-card-conf" [ngClass]="'nv-' + r.nivel">{{ r.nivel }}</div>
+              <div class="reco-card-info">
+                <div class="reco-card-nombre">{{ r.nombre }}</div>
+                <div class="reco-card-meta">
+                  <span class="reco-tag">🔁 {{ r.frecuencia }}</span>
+                  <span class="reco-tag">{{ r.motivo }}</span>
+                  <span class="reco-tag" *ngIf="r.sucursales.length === 1">🏪 {{ r.sucursales[0] }}</span>
+                </div>
+              </div>
+              <div class="reco-card-actions">
+                <button type="button" class="reco-btn-add" (click)="agregarRecomendacion(r)">+ Agregar rutina</button>
+                <button type="button" class="reco-btn-desc" (click)="descartarRecomendacion(r)" title="Descartar">✕</button>
+              </div>
+            </article>
+          </div>
+
+          <div class="reco-vacio" *ngIf="yaAnalizado && !analizandoReco && recomendaciones().length === 0">
+            <ng-container *ngIf="recoHabilitadas().length === 0">
+              Aún no hay sucursales habilitadas para recomendaciones.
+              <span *ngIf="esAdminGlobalUsuario">Actívalas en “⚙ Sucursales habilitadas”.</span>
+            </ng-container>
+            <ng-container *ngIf="recoHabilitadas().length > 0">
+              Sin recomendaciones nuevas: no hay tareas repetidas (fuera del catálogo) en tu alcance.
+            </ng-container>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal: sucursales habilitadas para recomendaciones (admin global) -->
+      <div class="pl-overlay" *ngIf="isModalRecoConfigOpen" (click)="cerrarModalRecoConfig()">
+        <div class="pl-modal" style="max-width:520px;" (click)="$event.stopPropagation()">
+          <div class="pl-modal-head">
+            <div>
+              <h2>Sucursales con recomendaciones</h2>
+              <p>Elige en qué sucursales se analizan patrones y se sugieren rutinas.</p>
+            </div>
+            <button type="button" class="pl-x" (click)="cerrarModalRecoConfig()" aria-label="Cerrar">&times;</button>
+          </div>
+          <div style="padding:16px 24px; display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+            <label class="reco-suc-opt" *ngFor="let s of todasLasSucursales" [class.on]="sucursalRecoHabilitada(s)">
+              <input type="checkbox" [checked]="sucursalRecoHabilitada(s)" (change)="toggleSucursalReco(s)">
+              <span>{{ s }}</span>
+            </label>
+          </div>
+          <div style="padding:0 24px 22px; display:flex; justify-content:flex-end; gap:10px;">
+            <button type="button" class="cat-btn-plantillas" (click)="cerrarModalRecoConfig()">Cancelar</button>
+            <button type="button" class="pl-activar" style="width:auto;padding:10px 20px;" [disabled]="guardandoRecoConfig" (click)="guardarRecoConfig()">
+              {{ guardandoRecoConfig ? 'Guardando…' : 'Guardar' }}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ╔══════════════════════════════════════════════════╗ -->
       <!-- ║   FILTROS                                        ║ -->
       <!-- ╚══════════════════════════════════════════════════╝ -->
       <div class="cat-filters">

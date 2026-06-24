@@ -915,3 +915,47 @@
 .cat-dept-chev { margin-left: auto; color: #94A3B8; font-size: 16px; transition: transform .2s; }
 .cat-dept-chev.cerrado { transform: rotate(-90deg); }
 .cat-dept .cat-grid { padding: 16px 18px; }
+
+/* ====== Recomendaciones inteligentes ====== */
+.reco-panel { background: #fff; border: 1px solid #DDD6FE; border-radius: 14px; overflow: hidden; margin-bottom: 18px; box-shadow: 0 1px 2px rgba(15,23,42,.04); }
+.reco-bar { width: 100%; display: flex; align-items: center; gap: 12px; padding: 14px 18px; background: linear-gradient(135deg, #F5F3FF, #FAF5FF); border: none; cursor: pointer; text-align: left; }
+.reco-ico { font-size: 20px; }
+.reco-bar-text { display: flex; flex-direction: column; }
+.reco-bar-text strong { color: #5B21B6; font-size: 15px; }
+.reco-bar-text small { color: #7C3AED; font-size: 12px; opacity: .85; }
+.reco-count { background: #7C3AED; color: #fff; font-size: 12px; font-weight: 800; border-radius: 999px; padding: 2px 9px; margin-left: auto; }
+.reco-chev { color: #7C3AED; font-size: 14px; }
+.reco-bar .reco-count + .reco-chev { margin-left: 8px; }
+.reco-bar .reco-chev:first-of-type { margin-left: auto; }
+
+.reco-body { border-top: 1px solid #EDE9FE; padding: 14px 18px; }
+.reco-toolbar { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+.reco-reanalizar, .reco-config { border: 1px solid #DDD6FE; background: #fff; color: #5B21B6; border-radius: 9px; padding: 8px 14px; font-size: 13px; font-weight: 600; cursor: pointer; }
+.reco-reanalizar:hover, .reco-config:hover { background: #F5F3FF; }
+.reco-reanalizar:disabled { opacity: .6; cursor: default; }
+.reco-cargando { color: #7C3AED; font-size: 13px; padding: 12px 0; }
+
+.reco-lista { display: flex; flex-direction: column; gap: 10px; }
+.reco-card { display: flex; align-items: center; gap: 14px; border: 1px solid #E2E8F0; border-radius: 12px; padding: 12px 14px; }
+.reco-card-conf { flex-shrink: 0; font-size: 11px; font-weight: 800; padding: 4px 10px; border-radius: 999px; }
+.reco-card-conf.nv-Alta { background: #DCFCE7; color: #166534; }
+.reco-card-conf.nv-Media { background: #FEF3C7; color: #92400E; }
+.reco-card-conf.nv-Baja { background: #F1F5F9; color: #64748B; }
+.reco-card-info { flex: 1; min-width: 0; }
+.reco-card-nombre { font-weight: 700; color: #0F172A; font-size: 14px; }
+.reco-card-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 5px; }
+.reco-tag { font-size: 11.5px; color: #475569; background: #F1F5F9; border-radius: 999px; padding: 3px 9px; }
+.reco-card-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.reco-btn-add { border: none; background: #5B21B6; color: #fff; border-radius: 9px; padding: 8px 14px; font-size: 13px; font-weight: 700; cursor: pointer; }
+.reco-btn-add:hover { background: #4C1D95; }
+.reco-btn-desc { border: 1px solid #E2E8F0; background: #fff; color: #94A3B8; width: 32px; height: 32px; border-radius: 9px; font-size: 14px; cursor: pointer; }
+.reco-btn-desc:hover { background: #FEE2E2; color: #B91C1C; }
+.reco-vacio { color: #64748B; font-size: 13px; padding: 14px 0; }
+
+.reco-suc-opt { display: flex; align-items: center; gap: 8px; border: 1px solid #E2E8F0; border-radius: 9px; padding: 8px 11px; font-size: 13px; color: #334155; cursor: pointer; }
+.reco-suc-opt.on { border-color: #A78BFA; background: #F5F3FF; }
+.reco-suc-opt input { width: 16px; height: 16px; accent-color: #5B21B6; }
+
+@media (max-width: 640px) {
+  .reco-card { flex-wrap: wrap; }
+}

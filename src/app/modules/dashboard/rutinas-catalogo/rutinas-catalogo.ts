@@ -19,7 +19,9 @@ import {
   ETIQUETAS_FRECUENCIA
 } from '../../../shared/rutinas.types';
 import { PLANTILLAS_BASE, PlantillaRutina } from '../../../shared/plantillas-rutinas';
-import { normalizarNombre } from '../../../shared/permisos.util';
+import { normalizarNombre, esAdmin, esAdminGlobal, sucursalesPermitidas } from '../../../shared/permisos.util';
+import { detectarRecomendaciones, Recomendacion } from '../../../shared/recomendaciones-rutinas.util';
+import { getDoc } from '@angular/fire/firestore';
 
 @Component({
   selector: 'app-rutinas-catalogo',
@@ -52,6 +54,151 @@ export class RutinasCatalogoComponent implements OnInit, OnDestroy {
   activandoPlantilla = '';
   abrirPlantillas() { this.isPlantillasOpen = true; }
   cerrarPlantillas() { this.isPlantillasOpen = false; }
+
+  // -------- Recomendaciones inteligentes (solo admin) --------
+  readonly todasLasSucursales = [
+    'Canindo', 'La Piedad Abastos', '8 Esquinas', 'Padre Hidalgo',
+    'Morelia Madero', 'Morelia Abastos', 'Yurécuaro', 'Zamora Centro', 'OFICINAS CORPORATIVAS',
+    'CAJA GENERAL', 'COMPRAS', 'CONTABILIDAD', 'FINANZAS', 'SISTEMAS', 'RH', 'MKT', 'MANTENIMIENTO'
+  ];
+  esAdminUsuario = false;
+  recomendaciones = signal<Recomendacion[]>([]);
+  analizandoReco = false;
+  yaAnalizado = false;
+  panelRecoAbierto = false;
+  // Config de recomendaciones (sucursales habilitadas + descartadas).
+  recoHabilitadas = signal<string[]>([]);
+  recoDescartadas: string[] = [];
+  isModalRecoConfigOpen = false;
+  guardandoRecoConfig = false;
+
+  get esAdminGlobalUsuario(): boolean { return esAdminGlobal(this.currentUser); }
+
+  /** Sucursales sobre las que ESTE admin puede ver recomendaciones (habilitadas ∩ permitidas). */
+  private sucursalesVisiblesReco(): string[] {
+    const habilitadas = this.recoHabilitadas();
+    const permitidas = esAdminGlobal(this.currentUser) ? null : sucursalesPermitidas(this.currentUser);
+    if (permitidas === null) return [...habilitadas];
+    const permSet = new Set(permitidas.map(s => normalizarNombre(s)));
+    return habilitadas.filter(s => permSet.has(normalizarNombre(s)));
+  }
+
+  private async cargarConfigReco() {
+    try {
+      const snap = await getDoc(doc(this.firestore, 'config', 'recomendaciones'));
+      const data = snap.exists() ? (snap.data() as any) : {};
+      this.recoHabilitadas.set(data.sucursalesHabilitadas || []);
+      this.recoDescartadas = data.descartadas || [];
+    } catch (e) {
+      console.error('[reco] cargar config', e);
+    }
+  }
+
+  togglePanelReco() {
+    this.panelRecoAbierto = !this.panelRecoAbierto;
+    if (this.panelRecoAbierto && !this.yaAnalizado) this.analizarRecomendaciones();
+  }
+
+  /** Analiza el historial (getDocs puntual, últimos 30 días) y detecta patrones. */
+  async analizarRecomendaciones() {
+    if (this.analizandoReco) return;
+    this.analizandoReco = true;
+    try {
+      await this.cargarConfigReco();
+      const visibles = this.sucursalesVisiblesReco();
+      if (visibles.length === 0) {
+        this.recomendaciones.set([]);
+        this.yaAnalizado = true;
+        return;
+      }
+      const visSet = new Set(visibles.map(s => normalizarNombre(s)));
+
+      // Últimos 30 días.
+      const hace30 = new Date();
+      hace30.setDate(hace30.getDate() - 30);
+      const offset = hace30.getTimezoneOffset() * 60000;
+      const desde = new Date(hace30.getTime() - offset).toISOString().split('T')[0];
+
+      const ref = collection(this.firestore, 'checklists');
+      const snap = await getDocs(query(ref, where('date', '>=', desde)));
+      const checklists: any[] = [];
+      snap.forEach(d => {
+        const c = d.data() as any;
+        if (c.store && visSet.has(normalizarNombre(c.store))) checklists.push(c);
+      });
+
+      this.recomendaciones.set(detectarRecomendaciones({
+        checklists, catalogo: this.rutinas(), descartadas: this.recoDescartadas, diasVentana: 30
+      }));
+      this.yaAnalizado = true;
+    } catch (e: any) {
+      console.error('[reco] analizar', e);
+      Swal.fire('Error', e.message || 'No se pudo analizar el historial.', 'error');
+    } finally {
+      this.analizandoReco = false;
+    }
+  }
+
+  /** Convierte una recomendación en una rutina del catálogo. */
+  async agregarRecomendacion(r: Recomendacion) {
+    const yo = this.currentUser?.nombre || this.currentUser?.usuario || 'desconocido';
+    const ahora = Date.now();
+    const id = 'rutina_' + ahora;
+    const payload: any = {
+      id, nombre: r.nombre, tipo: 'operacion', descripcion: 'Sugerida automáticamente por patrón de uso.',
+      frecuencia: r.frecuencia, horaInicio: '', horaLimite: '',
+      responsableSugerido: 'Encargado', nivelCritico: 'importante',
+      tareas: [{ id: 'ti_' + ahora, text: r.nombre, requiresPhoto: false, requiresAntesDespues: false, requiresVariasFotos: false, permiteGaleria: false, permiteDocumentos: false }],
+      activa: true, creadoPor: yo, creadoEn: ahora
+    };
+    try {
+      await setDoc(doc(this.firestore, 'catalogo_rutinas', id), payload);
+      this.recomendaciones.set(this.recomendaciones().filter(x => x.clave !== r.clave));
+      Swal.fire({ toast: true, position: 'top-end', showConfirmButton: false, timer: 2600, icon: 'success', title: `"${r.nombre}" agregada al catálogo` });
+    } catch (e: any) {
+      Swal.fire('Error', e.message || 'No se pudo agregar.', 'error');
+    }
+  }
+
+  /** Descarta una recomendación (no vuelve a aparecer). */
+  async descartarRecomendacion(r: Recomendacion) {
+    const nuevas = Array.from(new Set([...this.recoDescartadas, r.clave]));
+    try {
+      await setDoc(doc(this.firestore, 'config', 'recomendaciones'), { descartadas: nuevas }, { merge: true });
+      this.recoDescartadas = nuevas;
+      this.recomendaciones.set(this.recomendaciones().filter(x => x.clave !== r.clave));
+    } catch (e: any) {
+      Swal.fire('Error', e.message || 'No se pudo descartar.', 'error');
+    }
+  }
+
+  // ---- Config por sucursal (solo admin global) ----
+  async abrirModalRecoConfig() {
+    await this.cargarConfigReco();
+    this.isModalRecoConfigOpen = true;
+  }
+  cerrarModalRecoConfig() { this.isModalRecoConfigOpen = false; }
+  sucursalRecoHabilitada(s: string): boolean { return this.recoHabilitadas().includes(s); }
+  toggleSucursalReco(s: string) {
+    const set = new Set(this.recoHabilitadas());
+    if (set.has(s)) set.delete(s); else set.add(s);
+    this.recoHabilitadas.set([...set]);
+  }
+  async guardarRecoConfig() {
+    this.guardandoRecoConfig = true;
+    try {
+      await setDoc(doc(this.firestore, 'config', 'recomendaciones'),
+        { sucursalesHabilitadas: this.recoHabilitadas(), actualizadoPor: this.currentUser?.nombre || '', actualizadoEn: Date.now() },
+        { merge: true });
+      this.isModalRecoConfigOpen = false;
+      this.yaAnalizado = false; // forzar re-análisis con el nuevo alcance
+      Swal.fire({ toast: true, position: 'top-end', showConfirmButton: false, timer: 2200, icon: 'success', title: 'Sucursales actualizadas' });
+    } catch (e: any) {
+      Swal.fire('Error', e.message || 'No se pudo guardar.', 'error');
+    } finally {
+      this.guardandoRecoConfig = false;
+    }
+  }
 
   /** Set de nombres de rutinas ya en el catálogo (activas), normalizados. */
   private nombresEnCatalogo(): Set<string> {
@@ -157,6 +304,8 @@ export class RutinasCatalogoComponent implements OnInit, OnDestroy {
       this.router.navigate(['/home']);
       return;
     }
+    this.esAdminUsuario = esAdmin(this.currentUser);
+    if (this.esAdminUsuario) this.cargarConfigReco();
     this.conectarConLaNube();
   }
 

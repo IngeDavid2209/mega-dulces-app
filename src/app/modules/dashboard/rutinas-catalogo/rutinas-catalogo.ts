@@ -154,7 +154,10 @@ export class RutinasCatalogoComponent implements OnInit, OnDestroy {
     try {
       await setDoc(doc(this.firestore, 'catalogo_rutinas', id), payload);
       this.recomendaciones.set(this.recomendaciones().filter(x => x.clave !== r.clave));
-      Swal.fire({ toast: true, position: 'top-end', showConfirmButton: false, timer: 2600, icon: 'success', title: `"${r.nombre}" agregada al catálogo` });
+      // Encadena a Asignación: ahí se elige A QUIÉN y se configura quién suple si
+      // alguien descansa (reasignar automatico + backups). Pre-llena sucursales.
+      const sucs = (r.sucursales || []).join('|');
+      this.router.navigate(['/asignaciones-rutinas'], { queryParams: { rutina: id, sucs } });
     } catch (e: any) {
       Swal.fire('Error', e.message || 'No se pudo agregar.', 'error');
     }

@@ -221,7 +221,7 @@ export class AsignacionesRutinasComponent implements OnInit, OnDestroy {
     //  - ?editar=XYZ  → abrir directamente la asignación XYZ para editar
     this.route.queryParams.subscribe(params => {
       if (params['rutina']) {
-        setTimeout(() => this.abrirWizardDesdeRutina(params['rutina']), 400);
+        setTimeout(() => this.abrirWizardDesdeRutina(params['rutina'], params['sucs']), 400);
       } else if (params['editar']) {
         setTimeout(() => {
           const a = this.asignaciones().find(x => x.id === params['editar']);
@@ -328,7 +328,7 @@ export class AsignacionesRutinasComponent implements OnInit, OnDestroy {
     this.isWizardOpen = true;
   }
 
-  abrirWizardDesdeRutina(rutinaId: string) {
+  abrirWizardDesdeRutina(rutinaId: string, sucsCsv?: string) {
     this.editandoId = '';
     this.resetForm();
     this.formCatalogoRutinaId = rutinaId;
@@ -341,6 +341,11 @@ export class AsignacionesRutinasComponent implements OnInit, OnDestroy {
       this.formHoraInicio = r.horaInicio || '';
       this.formHoraLimite = r.horaLimite || '';
       this.formRol = r.responsableSugerido || 'Encargado';
+    }
+    // Pre-rellenar sucursales (ej. viniendo de una recomendación) ∩ permitidas.
+    if (sucsCsv) {
+      const disp = new Set(this.sucursalesDisponibles());
+      this.formSucursales = sucsCsv.split('|').filter(s => disp.has(s));
     }
     this.wizardStep = 2; // saltamos el paso 1 (ya elegida)
     this.isWizardOpen = true;

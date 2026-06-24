@@ -37,13 +37,67 @@
           <h1 class="cat-header-title">Catálogo de Rutinas</h1>
           <p class="cat-header-sub">Crea y administra las rutinas maestras del sistema. Aquí defines el "qué"; en otra pantalla decides el "quién" y el "cuándo".</p>
         </div>
-        <button type="button" class="cat-btn-nueva" (click)="abrirWizardNueva()">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-            <line x1="12" y1="5" x2="12" y2="19"></line>
-            <line x1="5" y1="12" x2="19" y2="12"></line>
-          </svg>
-          Nueva Rutina Maestra
-        </button>
+        <div class="cat-header-actions">
+          <button type="button" class="cat-btn-plantillas" (click)="abrirPlantillas()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <rect x="3" y="3" width="7" height="7"></rect>
+              <rect x="14" y="3" width="7" height="7"></rect>
+              <rect x="14" y="14" width="7" height="7"></rect>
+              <rect x="3" y="14" width="7" height="7"></rect>
+            </svg>
+            Plantillas base
+          </button>
+          <button type="button" class="cat-btn-nueva" (click)="abrirWizardNueva()">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            Nueva Rutina Maestra
+          </button>
+        </div>
+      </div>
+
+      <!-- ╔══════════════════════════════════════════════════╗ -->
+      <!-- ║   MODAL: PLANTILLAS BASE                         ║ -->
+      <!-- ╚══════════════════════════════════════════════════╝ -->
+      <div class="pl-overlay" *ngIf="isPlantillasOpen" (click)="cerrarPlantillas()">
+        <div class="pl-modal" (click)="$event.stopPropagation()">
+          <div class="pl-modal-head">
+            <div>
+              <h2>Plantillas base</h2>
+              <p>Activa paquetes de rutinas comunes. Solo se agregan las que aún no tienes; puedes editarlas después.</p>
+            </div>
+            <button type="button" class="pl-x" (click)="cerrarPlantillas()" aria-label="Cerrar">&times;</button>
+          </div>
+
+          <div class="pl-grid">
+            <div class="pl-card" *ngFor="let p of plantillas">
+              <div class="pl-card-head">
+                <span class="pl-ic">{{ p.icono }}</span>
+                <div>
+                  <h3>{{ p.nombre }}</h3>
+                  <p>{{ p.descripcion }}</p>
+                </div>
+              </div>
+              <ul class="pl-rutinas">
+                <li *ngFor="let r of p.rutinas" [class.ya]="rutinaYaExiste(r.nombre)">
+                  <span class="pl-dot"></span>
+                  <span class="pl-rname">{{ r.nombre }}</span>
+                  <span class="pl-rmeta">{{ r.horaInicio || '—' }}</span>
+                  <span class="pl-ya" *ngIf="rutinaYaExiste(r.nombre)">ya está</span>
+                </li>
+              </ul>
+              <button type="button" class="pl-activar"
+                      [disabled]="faltantesDePlantilla(p) === 0 || activandoPlantilla === p.id"
+                      (click)="activarPlantilla(p)">
+                <ng-container *ngIf="faltantesDePlantilla(p) === 0">Todo activado ✓</ng-container>
+                <ng-container *ngIf="faltantesDePlantilla(p) > 0">
+                  {{ activandoPlantilla === p.id ? 'Activando...' : 'Activar (' + faltantesDePlantilla(p) + ')' }}
+                </ng-container>
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- ╔══════════════════════════════════════════════════╗ -->

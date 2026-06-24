@@ -17,6 +17,8 @@ import {
   ETIQUETAS_NIVEL,
   ETIQUETAS_FRECUENCIA
 } from '../../../shared/rutinas.types';
+import { PLANTILLAS_BASE, PlantillaRutina } from '../../../shared/plantillas-rutinas';
+import { normalizarNombre } from '../../../shared/permisos.util';
 
 @Component({
   selector: 'app-rutinas-catalogo',
@@ -42,6 +44,69 @@ export class RutinasCatalogoComponent implements OnInit, OnDestroy {
   // Modal detalle
   rutinaDetalle = signal<RutinaMaestra | null>(null);
   isModalDetalleOpen = false;
+
+  // -------- Plantillas base --------
+  readonly plantillas = PLANTILLAS_BASE;
+  isPlantillasOpen = false;
+  activandoPlantilla = '';
+  abrirPlantillas() { this.isPlantillasOpen = true; }
+  cerrarPlantillas() { this.isPlantillasOpen = false; }
+
+  /** Set de nombres de rutinas ya en el catálogo (activas), normalizados. */
+  private nombresEnCatalogo(): Set<string> {
+    return new Set(this.rutinas().filter(r => r.activa !== false).map(r => normalizarNombre(r.nombre)));
+  }
+  /** ¿Esta rutina de plantilla ya existe en el catálogo? */
+  rutinaYaExiste(nombre: string): boolean {
+    return this.nombresEnCatalogo().has(normalizarNombre(nombre));
+  }
+  /** Cuántas rutinas de la plantilla faltan por activar. */
+  faltantesDePlantilla(p: PlantillaRutina): number {
+    const ya = this.nombresEnCatalogo();
+    return p.rutinas.filter(r => !ya.has(normalizarNombre(r.nombre))).length;
+  }
+
+  /** Activa una plantilla: copia al catálogo las rutinas que aún no existen. */
+  async activarPlantilla(p: PlantillaRutina) {
+    const ya = this.nombresEnCatalogo();
+    const nuevas = p.rutinas.filter(r => !ya.has(normalizarNombre(r.nombre)));
+    if (nuevas.length === 0) {
+      Swal.fire('Ya está activada', 'Todas las rutinas de esta plantilla ya están en tu catálogo.', 'info');
+      return;
+    }
+    const res = await Swal.fire({
+      title: `Activar "${p.nombre}"`,
+      html: `Se agregarán <strong>${nuevas.length}</strong> rutina(s) al catálogo:` +
+        `<ul style="text-align:left;margin:12px auto;max-width:280px;padding-left:20px;">` +
+        nuevas.map(r => `<li>${r.nombre}</li>`).join('') + `</ul>`,
+      icon: 'question', showCancelButton: true,
+      confirmButtonText: 'Sí, activar', cancelButtonText: 'Cancelar', confirmButtonColor: '#0F172A'
+    });
+    if (!res.isConfirmed) return;
+
+    this.activandoPlantilla = p.id;
+    const yo = this.currentUser?.nombre || this.currentUser?.usuario || 'desconocido';
+    try {
+      let i = 0;
+      for (const r of nuevas) {
+        const ahora = Date.now() + (i++);
+        const id = 'rutina_' + ahora;
+        const payload: any = {
+          ...r, id, activa: true, creadoPor: yo, creadoEn: ahora
+        };
+        await setDoc(doc(this.firestore, 'catalogo_rutinas', id), payload);
+      }
+      Swal.fire({
+        toast: true, position: 'top-end', showConfirmButton: false, timer: 2800,
+        icon: 'success', title: `${nuevas.length} rutina(s) agregadas al catálogo`
+      });
+    } catch (e: any) {
+      console.error('Error activando plantilla:', e);
+      Swal.fire('Error', e.message || 'No se pudo activar la plantilla.', 'error');
+    } finally {
+      this.activandoPlantilla = '';
+    }
+  }
 
   // -------- Wizard de creación / edición --------
   isWizardOpen = false;

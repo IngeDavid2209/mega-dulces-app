@@ -303,3 +303,6 @@
 .rank-divisor { padding: 10px 18px; font-size: 12px; font-weight: 700; color: #92400E; background: #FEF9C3; border-top: 1px solid #FDE68A; border-bottom: 1px solid #FDE68A; letter-spacing: .02em; }
 .rank-row-baja { opacity: .82; }
 .rank-row-baja .rank-prom-circle { filter: saturate(.7); }
+
+/* Fracción bajo el círculo de % (claridad: 25/34) */
+.rank-prom-frac { text-align: center; font-size: 11px; font-weight: 700; color: #94A3B8; margin-top: 4px; }

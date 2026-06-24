@@ -27,7 +27,7 @@
         <div>
           <h1 class="rank-title">Ranking de sucursales</h1>
           <p class="rank-sub">Mejor desempeño semanal por sucursal · {{ rangoSemanaTexto() }}</p>
-          <p class="rank-nota">Ordenado por % completado. Las sucursales con menos de 5 tareas en la semana se listan aparte (no encabezan el ranking por un 100% de muestra pequeña).</p>
+          <p class="rank-nota">El % es de toda la semana (tareas hechas ÷ total asignadas), no el promedio de los días: por eso un día en 0% no la baja si los otros días hizo bastante. Las sucursales con menos de 5 tareas se listan aparte.</p>
         </div>
         <div class="rank-nav">
           <button class="rank-nav-btn" (click)="semanaAnterior()" title="Semana anterior">&larr;</button>
@@ -71,7 +71,7 @@
               </div>
             </ng-container>
           </div>
-          <div class="rank-col-promedio">Promedio</div>
+          <div class="rank-col-promedio">% Semana</div>
         </div>
 
         <!-- Filas del ranking -->
@@ -109,9 +109,11 @@
           </div>
           <div class="rank-col-promedio">
             <div class="rank-prom-circle"
-                 [style.background]="colorPct(f.promedioSemana, f.totalSemana)">
+                 [style.background]="colorPct(f.promedioSemana, f.totalSemana)"
+                 [title]="f.completadosSemana + ' de ' + f.totalSemana + ' tareas hechas en la semana'">
               {{ f.promedioSemana }}%
             </div>
+            <div class="rank-prom-frac">{{ f.completadosSemana }}/{{ f.totalSemana }}</div>
           </div>
           </div>
         </ng-container>

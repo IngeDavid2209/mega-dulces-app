@@ -27,6 +27,7 @@
         <div>
           <h1 class="rank-title">Ranking de sucursales</h1>
           <p class="rank-sub">Mejor desempeño semanal por sucursal · {{ rangoSemanaTexto() }}</p>
+          <p class="rank-nota">El orden considera el % completado y el volumen de tareas: una sucursal con pocas tareas no encabeza por un 100% de muestra pequeña.</p>
         </div>
         <div class="rank-nav">
           <button class="rank-nav-btn" (click)="semanaAnterior()" title="Semana anterior">&larr;</button>
@@ -80,7 +81,10 @@
             <div class="rank-puesto-badge" [ngClass]="claseTop(i)">{{ puesto(i) }}</div>
           </div>
           <div class="rank-col-sucursal">
-            <div class="rank-suc-nombre">{{ f.sucursal }}</div>
+            <div class="rank-suc-nombre">
+              {{ f.sucursal }}
+              <span class="rank-muestra-baja" *ngIf="f.muestraBaja" title="Pocas tareas esta semana: su porcentaje pesa menos en el ranking">pocas tareas</span>
+            </div>
             <div class="rank-suc-meta">{{ f.completadosSemana }} de {{ f.totalSemana }} tareas hechas</div>
           </div>
           <div class="rank-col-dias">

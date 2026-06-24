@@ -24,8 +24,15 @@ interface RankingFila {
   dias: DiaStat[];
   totalSemana: number;
   completadosSemana: number;
-  promedioSemana: number; // 0..100
+  promedioSemana: number;   // 0..100 — porcentaje REAL (hechas/total)
+  scoreRanking: number;     // 0..100 — score ajustado al volumen (para ordenar)
+  muestraBaja: boolean;     // pocas tareas en la semana (poco confiable)
 }
+
+/** Tareas mínimas en la semana para considerar la muestra "confiable". */
+const UMBRAL_MUESTRA = 5;
+/** Suavizado bayesiano: cuántas "tareas prior" pesan hacia el promedio global. */
+const SUAVIZADO = 10;
 
 @Component({
   selector: 'app-ranking-sucursales',
@@ -189,12 +196,28 @@ export class RankingSucursalesComponent implements OnInit, OnDestroy {
       const totalSemana = diasStat.reduce((s, x) => s + x.total, 0);
       const completadosSemana = diasStat.reduce((s, x) => s + x.completados, 0);
       const promedio = totalSemana > 0 ? Math.round((completadosSemana / totalSemana) * 100) : 0;
-      filas.push({ sucursal, dias: diasStat, totalSemana, completadosSemana, promedioSemana: promedio });
+      filas.push({
+        sucursal, dias: diasStat, totalSemana, completadosSemana,
+        promedioSemana: promedio, scoreRanking: 0, muestraBaja: totalSemana < UMBRAL_MUESTRA
+      });
+    }
+
+    // 🎯 Score ajustado al VOLUMEN (bayesiano): evita que una sucursal con 1 tarea
+    // hecha (100%) supere a otra con 25/34 (74%). Cada sucursal se "jala" hacia el
+    // promedio global según cuántas tareas tuvo; con muchas tareas su % real pesa
+    // casi completo, con pocas pesa poco.
+    const okGlobal = filas.reduce((s, f) => s + f.completadosSemana, 0);
+    const totalGlobal = filas.reduce((s, f) => s + f.totalSemana, 0);
+    const m = totalGlobal > 0 ? okGlobal / totalGlobal : 0;  // promedio global (0..1)
+    for (const f of filas) {
+      f.scoreRanking = Math.round(
+        ((f.completadosSemana + SUAVIZADO * m) / (f.totalSemana + SUAVIZADO)) * 100
+      );
     }
 
     return filas.sort((a, b) =>
-      b.promedioSemana - a.promedioSemana ||
-      b.totalSemana - a.totalSemana ||
+      b.scoreRanking - a.scoreRanking ||
+      b.completadosSemana - a.completadosSemana ||
       a.sucursal.localeCompare(b.sucursal)
     );
   });

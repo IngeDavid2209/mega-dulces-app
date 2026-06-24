@@ -254,6 +254,51 @@ export class AgendaComponent implements OnInit, OnDestroy {
     return new Date().toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' });
   }
 
+  // ============================================================================
+  // CALENDARIO MENSUAL (estilo planner)
+  // ============================================================================
+  mesActual: Date = new Date();
+  readonly espiral = new Array(14);
+  readonly mesesTabs = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+  readonly diasSemanaCal = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+
+  get mesActualIndex(): number { return this.mesActual.getMonth(); }
+  get anioActual(): number { return this.mesActual.getFullYear(); }
+  get mesNombre(): string {
+    const s = this.mesActual.toLocaleDateString('es-MX', { month: 'long' });
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  }
+  irAMes(i: number) { this.mesActual = new Date(this.anioActual, i, 1); }
+  mesAnterior() { this.mesActual = new Date(this.anioActual, this.mesActualIndex - 1, 1); }
+  mesSiguiente() { this.mesActual = new Date(this.anioActual, this.mesActualIndex + 1, 1); }
+
+  get celdasMes(): any[] {
+    const y = this.mesActual.getFullYear();
+    const m = this.mesActual.getMonth();
+    const primeroDow = (new Date(y, m, 1).getDay() + 6) % 7; // Lunes = 0
+    const diasMes = new Date(y, m + 1, 0).getDate();
+    const celdas: any[] = [];
+    for (let i = 0; i < primeroDow; i++) celdas.push({ dia: null });
+    for (let d = 1; d <= diasMes; d++) {
+      const iso = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      celdas.push({
+        dia: d, iso,
+        tareas: this.tareasPersonales.filter(t => t.fecha === iso),
+        esHoy: iso === this.hoyISO()
+      });
+    }
+    return celdas;
+  }
+
+  /** Clic en un día del calendario: prepara una tarea nueva para ese día. */
+  nuevaEnDia(iso: string) {
+    this.tareaActiva = {
+      texto: '', completada: false, fechaCreacion: Date.now(), fecha: iso,
+      prioridad: 'media', frecuencia: 'unica', instrucciones: '', comentarios: '', adjunto: null,
+      esNueva: true
+    };
+  }
+
   // ----- Listas separadas + contadores -----
   get pendientes(): any[] { return this.tareasPersonales.filter(t => !t.completada); }
   get completadas(): any[] { return this.tareasPersonales.filter(t => t.completada); }

@@ -69,80 +69,78 @@
           </button>
         </div>
 
-        <div *ngIf="tareasPersonales.length === 0" style="text-align: center; padding: 40px; color: #94A3B8;">
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
-            style="margin-bottom: 10px; opacity: 0.5;">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-            <polyline points="14 2 14 8 20 8"></polyline>
-            <line x1="16" y1="13" x2="8" y2="13"></line>
-            <line x1="16" y1="17" x2="8" y2="17"></line>
-            <polyline points="10 9 9 9 8 9"></polyline>
-          </svg>
-          <div style="font-weight: 600; font-size: 16px;">No tienes tareas registradas.</div>
-          <div style="font-size: 14px;">Escribe una arriba para comenzar.</div>
+        <!-- Contador / resumen -->
+        <div *ngIf="tareasPersonales.length > 0" class="ag-resumen">
+          <span class="ag-chip ag-chip-pend">{{ pendientes.length }} pendientes</span>
+          <span class="ag-chip ag-chip-comp">{{ completadas.length }} completadas</span>
         </div>
 
-        <div *ngFor="let tarea of tareasPersonales"
-          style="background: white; border: 1px solid #E2E8F0; border-radius: 12px; padding: 16px; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 4px rgba(0,0,0,0.02); transition: 0.2s;">
+        <!-- Estado vacío -->
+        <div *ngIf="tareasPersonales.length === 0" class="ag-empty">
+          <div class="ag-empty-ic">🗒️</div>
+          <div class="ag-empty-titulo">Tu agenda está despejada</div>
+          <div class="ag-empty-sub">Escribe arriba lo que tengas pendiente para hoy y dale al <strong>+</strong>.</div>
+        </div>
 
-          <div style="display: flex; align-items: center; gap: 16px; flex: 1; cursor: pointer;"
-            (click)="abrirDetalle(tarea)">
-            <div (click)="toggleTarea(tarea); $event.stopPropagation();"
-              style="width: 24px; height: 24px; border-radius: 6px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; cursor: pointer; transition: 0.2s;"
-              [ngStyle]="{'background': tarea.completada ? '#10B981' : 'transparent', 'border': tarea.completada ? '2px solid #10B981' : '2px solid #CBD5E1'}">
-              <svg *ngIf="tarea.completada" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white"
-                stroke-width="3">
-                <polyline points="20 6 9 17 4 12"></polyline>
-              </svg>
-            </div>
+        <!-- Plantilla reutilizable de fila -->
+        <ng-template #filaTarea let-tarea>
+          <div class="ag-task" [class.ag-task-done]="tarea.completada">
+            <div class="ag-task-main" (click)="abrirDetalle(tarea)">
+              <div class="ag-check" (click)="toggleTarea(tarea); $event.stopPropagation();"
+                [ngStyle]="{'background': tarea.completada ? '#10B981' : 'transparent', 'border': tarea.completada ? '2px solid #10B981' : '2px solid #CBD5E1'}">
+                <svg *ngIf="tarea.completada" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3">
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+              </div>
 
-            <div style="display: flex; flex-direction: column;">
-              <span
-                [ngStyle]="{'text-decoration': tarea.completada ? 'line-through' : 'none', 'color': tarea.completada ? '#94A3B8' : '#0F172A'}"
-                style="font-weight: 600; font-size: 16px; transition: 0.2s;">
-                {{ tarea.texto }}
-              </span>
-              <div *ngIf="tarea.fecha || tarea.instrucciones || tarea.comentarios || tarea.adjunto"
-                style="display: flex; gap: 8px; margin-top: 5px; flex-wrap: wrap; align-items: center;">
-                <span *ngIf="tarea.fecha"
-                  [ngStyle]="{ 'color': estaVencida(tarea) ? '#DC2626' : (esHoy(tarea.fecha) ? '#1D4ED8' : '#475569'), 'background': estaVencida(tarea) ? '#FEF2F2' : (esHoy(tarea.fecha) ? '#EFF6FF' : '#F1F5F9') }"
-                  style="font-size: 11px; font-weight: 800; padding: 3px 9px; border-radius: 20px; display: inline-flex; align-items: center; gap: 4px;">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <rect x="3" y="4" width="18" height="18" rx="2"></rect>
-                    <line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line>
-                  </svg>
-                  {{ esHoy(tarea.fecha) ? 'Hoy' : formatearFecha(tarea.fecha) }}{{ estaVencida(tarea) ? ' · vencida' : '' }}
+              <div style="display: flex; flex-direction: column; min-width: 0; flex: 1;">
+                <span class="ag-task-texto"
+                  [ngStyle]="{'text-decoration': tarea.completada ? 'line-through' : 'none', 'color': tarea.completada ? '#94A3B8' : '#0F172A'}">
+                  {{ tarea.texto }}
                 </span>
-                <span *ngIf="tarea.instrucciones"
-                  style="font-size: 11px; color: #64748B; display: flex; align-items: center; gap: 3px;"><svg width="12"
-                    height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                    <polyline points="14 2 14 8 20 8"></polyline>
-                    <line x1="16" y1="13" x2="8" y2="13"></line>
-                    <line x1="16" y1="17" x2="8" y2="17"></line>
-                  </svg> Notas</span>
-                <span *ngIf="tarea.adjunto"
-                  style="font-size: 11px; color: #64748B; display: flex; align-items: center; gap: 3px;"><svg width="12"
-                    height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                    <polyline points="17 8 12 3 7 8"></polyline>
-                    <line x1="12" y1="3" x2="12" y2="15"></line>
-                  </svg> Adjunto</span>
+                <div class="ag-badges">
+                  <span class="ag-prio" [ngClass]="'pr-' + (tarea.prioridad || 'media')">{{ etiquetaPrioridad(tarea.prioridad || 'media') }}</span>
+                  <span class="ag-frec" *ngIf="tarea.frecuencia && tarea.frecuencia !== 'unica'">🔁 {{ etiquetaFrecuencia(tarea.frecuencia) }}</span>
+                  <span *ngIf="tarea.fecha"
+                    [ngStyle]="{ 'color': estaVencida(tarea) ? '#DC2626' : (esHoy(tarea.fecha) ? '#1D4ED8' : '#475569'), 'background': estaVencida(tarea) ? '#FEF2F2' : (esHoy(tarea.fecha) ? '#EFF6FF' : '#F1F5F9') }"
+                    style="font-size: 11px; font-weight: 800; padding: 3px 9px; border-radius: 20px; display: inline-flex; align-items: center; gap: 4px;">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <rect x="3" y="4" width="18" height="18" rx="2"></rect>
+                      <line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line>
+                    </svg>
+                    {{ esHoy(tarea.fecha) ? 'Hoy' : formatearFecha(tarea.fecha) }}{{ estaVencida(tarea) ? ' · vencida' : '' }}
+                  </span>
+                  <span *ngIf="tarea.instrucciones" style="font-size: 11px; color: #64748B; display: flex; align-items: center; gap: 3px;">📝 Notas</span>
+                  <span *ngIf="tarea.adjunto" style="font-size: 11px; color: #64748B; display: flex; align-items: center; gap: 3px;">📎 Adjunto</span>
+                </div>
               </div>
             </div>
-          </div>
 
-          <button (click)="eliminarTarea(tarea.id, $event)"
-            style="background: #FEF2F2; color: #EF4444; border: 1px solid #FECACA; border-radius: 8px; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s; flex-shrink: 0;"
-            onmouseover="this.style.background='#FEE2E2'" onmouseout="this.style.background='#FEF2F2'"
-            title="Eliminar Tarea">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polyline points="3 6 5 6 21 6"></polyline>
-              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-              <line x1="10" y1="11" x2="10" y2="17"></line>
-              <line x1="14" y1="11" x2="14" y2="17"></line>
-            </svg>
-          </button>
+            <button (click)="eliminarTarea(tarea.id, $event)" class="ag-del" title="Eliminar tarea">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                <line x1="10" y1="11" x2="10" y2="17"></line>
+                <line x1="14" y1="11" x2="14" y2="17"></line>
+              </svg>
+            </button>
+          </div>
+        </ng-template>
+
+        <!-- Pendientes -->
+        <div *ngIf="pendientes.length > 0">
+          <div class="ag-sec-head">Pendientes <span>{{ pendientes.length }}</span></div>
+          <ng-container *ngFor="let tarea of pendientes">
+            <ng-container *ngTemplateOutlet="filaTarea; context: { $implicit: tarea }"></ng-container>
+          </ng-container>
+        </div>
+
+        <!-- Completadas -->
+        <div *ngIf="completadas.length > 0" style="margin-top: 22px;">
+          <div class="ag-sec-head ag-sec-head-comp">Completadas <span>{{ completadas.length }}</span></div>
+          <ng-container *ngFor="let tarea of completadas">
+            <ng-container *ngTemplateOutlet="filaTarea; context: { $implicit: tarea }"></ng-container>
+          </ng-container>
         </div>
 
       </div>
@@ -179,6 +177,21 @@
           <input type="date" [(ngModel)]="tareaActiva.fecha"
             style="width: 100%; padding: 10px 14px; border: 1px solid #CBD5E1; border-radius: 8px; font-size: 15px; color: #0F172A; margin-top: 6px; box-sizing: border-box;">
           <p style="font-size: 11px; color: #94A3B8; margin: 6px 0 0;">Opcional. Útil para agendar reportes o pendientes a futuro y ver qué día toca cada cosa.</p>
+        </div>
+
+        <div class="ag-modal-row">
+          <div style="flex:1;">
+            <label class="ag-modal-label">⚑ Prioridad</label>
+            <select [(ngModel)]="tareaActiva.prioridad" class="ag-modal-input">
+              <option *ngFor="let p of prioridades" [value]="p.v">{{ p.t }}</option>
+            </select>
+          </div>
+          <div style="flex:1;">
+            <label class="ag-modal-label">🔁 Frecuencia</label>
+            <select [(ngModel)]="tareaActiva.frecuencia" class="ag-modal-input">
+              <option *ngFor="let f of frecuencias" [value]="f.v">{{ f.t }}</option>
+            </select>
+          </div>
         </div>
 
         <div style="margin-bottom: 20px;">

@@ -128,6 +128,8 @@ export class AgendaComponent implements OnInit, OnDestroy {
       completada: false,
       fechaCreacion: Date.now(),
       fecha: '',            // 📅 día en que se debe hacer (YYYY-MM-DD), opcional
+      prioridad: 'media',   // alta | media | baja
+      frecuencia: 'unica',  // unica | diaria | semanal
       instrucciones: '',
       comentarios: '',
       adjunto: null,
@@ -135,7 +137,21 @@ export class AgendaComponent implements OnInit, OnDestroy {
     };
   }
 
+  // ----- Listas separadas + contadores -----
+  get pendientes(): any[] { return this.tareasPersonales.filter(t => !t.completada); }
+  get completadas(): any[] { return this.tareasPersonales.filter(t => t.completada); }
+
+  readonly prioridades = [
+    { v: 'alta', t: 'Alta' }, { v: 'media', t: 'Media' }, { v: 'baja', t: 'Baja' }
+  ];
+  readonly frecuencias = [
+    { v: 'unica', t: 'Única' }, { v: 'diaria', t: 'Diaria' }, { v: 'semanal', t: 'Semanal' }
+  ];
+  etiquetaPrioridad(p: string): string { return this.prioridades.find(x => x.v === p)?.t || ''; }
+  etiquetaFrecuencia(f: string): string { return this.frecuencias.find(x => x.v === f)?.t || ''; }
+
   async toggleTarea(tarea: any) {
+    
     const userId = this.usuarioSeleccionado; 
     if (!userId) return;
 
@@ -189,6 +205,8 @@ export class AgendaComponent implements OnInit, OnDestroy {
         await updateDoc(docRef, {
           texto: this.tareaActiva.texto,
           fecha: this.tareaActiva.fecha || '',
+          prioridad: this.tareaActiva.prioridad || 'media',
+          frecuencia: this.tareaActiva.frecuencia || 'unica',
           instrucciones: this.tareaActiva.instrucciones || '',
           comentarios: this.tareaActiva.comentarios || ''
         });

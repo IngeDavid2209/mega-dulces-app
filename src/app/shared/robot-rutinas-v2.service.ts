@@ -17,13 +17,14 @@
  */
 
 import { Injectable, inject } from '@angular/core';
-import { Firestore, doc, getDoc, setDoc } from '@angular/fire/firestore';
+import { Firestore, doc, getDoc, setDoc, collection, getDocs, query, where } from '@angular/fire/firestore';
 
 import { RutinaMaestra, TareaRutinaMaestra } from './rutinas.types';
 import { AsignacionRutina } from './asignaciones.types';
 import { asignacionAplicaEnFecha, nombreDiaSemana } from './programacion.util';
 import { normalizarNombre } from './permisos.util';
 import { ConfigTurnos, fechaISO, rutinaPermitidaEnTurno } from './turnos.util';
+import { esDiaDescansoEnFecha, obtenerSemanaISO } from './descansos.util';
 
 /** Hooks opcionales que recibe el robot (lógica que vive en el componente). */
 export interface RobotV2Hooks {
@@ -63,13 +64,20 @@ export class RobotRutinasV2Service {
       if (ct.exists()) configTurnos = ct.data() as ConfigTurnos;
     } catch { /* sin config => sin restriccion */ }
     const diaISO = fechaISO(fecha);
+    // Mapa nombre->uid (siempre, lo usan turnos y descansos).
     const nombreAUid = new Map<string, string>();
-    if (configTurnos?.habilitado) {
-      for (const u of usuarios) {
-        const id = u.id || u.uid;
-        if (id && u.nombre) nombreAUid.set(normalizarNombre(u.nombre), id);
-      }
+    for (const u of usuarios) {
+      const id = u.id || u.uid;
+      if (id && u.nombre) nombreAUid.set(normalizarNombre(u.nombre), id);
     }
+
+    // 📅 Días de descanso de la semana: para no generar rutinas a quien descansa.
+    let descansosSemana: any[] = [];
+    try {
+      const sem = obtenerSemanaISO(fecha);
+      const snap = await getDocs(query(collection(this.firestore, 'descansos_semanales'), where('semanaISO', '==', sem)));
+      descansosSemana = snap.docs.map(d => d.data());
+    } catch { /* sin descansos => no se omite a nadie por descanso */ }
 
     for (const asig of asignaciones) {
       if (!asignacionAplicaEnFecha(asig, fecha)) continue;
@@ -111,12 +119,15 @@ export class RobotRutinasV2Service {
         const horaRutina = asig.horaLimite || rutina.horaLimite || '23:59';
 
         for (const dest of destinatarios) {
+          const uidDest = nombreAUid.get(normalizarNombre(dest.nombre));
+
+          // 📅 Día de descanso: no se le genera la rutina ese día.
+          if (uidDest && esDiaDescansoEnFecha(fecha, descansosSemana.filter(d => d.userId === uidDest))) continue;
+
           // 🕐 Restriccion de turno: si el destinatario tiene turno y la hora de
           // la rutina cae fuera de su turno ese dia, no se le genera.
-          if (configTurnos?.habilitado) {
-            const uid = nombreAUid.get(normalizarNombre(dest.nombre));
-            if (uid && !rutinaPermitidaEnTurno(configTurnos, uid, diaISO, horaRutina)) continue;
-          }
+          if (configTurnos?.habilitado && uidDest &&
+              !rutinaPermitidaEnTurno(configTurnos, uidDest, diaISO, horaRutina)) continue;
 
           const periodo = this.llavePeriodo(asig, fecha);
           const checklistId = this.idemKey(asig.id, periodo, sucursal, dest.nombre);

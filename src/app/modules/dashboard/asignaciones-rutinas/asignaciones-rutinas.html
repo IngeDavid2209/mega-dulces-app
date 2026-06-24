@@ -22,9 +22,6 @@
 
     <div class="content">
 
-      <!-- ╔══════════════════════════════════════════════════╗ -->
-      <!-- ║   HEADER PRO                                     ║ -->
-      <!-- ╚══════════════════════════════════════════════════╝ -->
       <div class="cat-header">
         <div class="cat-header-icon" aria-hidden="true">
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -47,8 +44,38 @@
       </div>
 
       <!-- ╔══════════════════════════════════════════════════╗ -->
-      <!-- ║   FILTROS                                        ║ -->
+      <!-- ║   CONFLICTOS DETECTADOS (próximos 7 días)        ║ -->
       <!-- ╚══════════════════════════════════════════════════╝ -->
+      <div class="cf-banner" *ngIf="conflictosCount() > 0" [class.abierto]="mostrarConflictos">
+        <button type="button" class="cf-bar" (click)="mostrarConflictos = !mostrarConflictos">
+          <span class="cf-ico">⚠️</span>
+          <span class="cf-text"><strong>{{ conflictosCount() }}</strong> conflicto(s) en los próximos 7 días</span>
+          <span class="cf-sub">descansos y turnos cruzados con las asignaciones</span>
+          <span class="cf-chev">{{ mostrarConflictos ? '▴' : '▾' }}</span>
+        </button>
+        <div class="cf-lista" *ngIf="mostrarConflictos">
+          <div class="cf-item" *ngFor="let c of conflictos()">
+            <span class="cf-tag" [class.cf-desc]="c.tipo === 'descanso'" [class.cf-turno]="c.tipo === 'turno'" [class.cf-sin]="c.tipo === 'sin_asignar'">
+              {{ c.tipo === 'descanso' ? 'Descanso' : (c.tipo === 'turno' ? 'Fuera de turno' : 'Sin asignar') }}
+            </span>
+            <div class="cf-info">
+              <div class="cf-titulo">{{ c.nombreRutina }} · {{ c.diaNombre }}{{ c.hora ? ' ' + c.hora : '' }} · {{ c.sucursal }}</div>
+              <div class="cf-razon">{{ c.razon }}</div>
+            </div>
+            <div class="cf-sug" *ngIf="c.sugeridos.length > 0">
+              <span class="cf-sug-lbl">Disponibles:</span>
+              <span class="cf-sug-pill" *ngFor="let s of c.sugeridos">{{ s }}</span>
+            </div>
+            <div class="cf-sug" *ngIf="c.sugeridos.length === 0">
+              <span class="cf-sug-lbl cf-nadie">Nadie disponible ese día</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="cf-ok" *ngIf="conflictosCount() === 0 && asignaciones().length > 0">
+        ✓ Sin conflictos en los próximos 7 días.
+      </div>
+
       <div class="cat-filters">
         <div class="cat-filter-field cat-filter-field--wide">
           <label class="cat-filter-label" for="asig-buscar">🔍 Buscar</label>

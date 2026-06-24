@@ -16,6 +16,9 @@ import {
   ETIQUETAS_FRECUENCIA
 } from '../../../shared/rutinas.types';
 import { AsignacionRutina, ModoAsignacion } from '../../../shared/asignaciones.types';
+import { ConfigTurnos } from '../../../shared/turnos.util';
+import { analizarConflictos, ConflictoRutina } from '../../../shared/conflictos-rutinas.util';
+import { rangoDias } from '../../../shared/programacion.util';
 
 @Component({
   selector: 'app-asignaciones-rutinas',
@@ -34,6 +37,21 @@ export class AsignacionesRutinasComponent implements OnInit, OnDestroy {
   asignaciones = signal<AsignacionRutina[]>([]);
   usuarios = signal<any[]>([]);
   sucursalesDisponibles = signal<string[]>([]);
+  descansos = signal<any[]>([]);
+  configTurnos = signal<ConfigTurnos | null>(null);
+
+  // ---------- Conflictos (Fase B: solo lectura) ----------
+  mostrarConflictos = false;
+  /** Conflictos detectados en los próximos 7 días. */
+  conflictos = computed<ConflictoRutina[]>(() => analizarConflictos({
+    asignaciones: this.asignaciones(),
+    catalogo: this.catalogo(),
+    usuarios: this.usuarios(),
+    descansos: this.descansos(),
+    configTurnos: this.configTurnos(),
+    rango: rangoDias(new Date(), 7)
+  }));
+  conflictosCount = computed(() => this.conflictos().length);
 
   // ---------- Filtros ----------
   terminoBusqueda = '';
@@ -83,6 +101,8 @@ export class AsignacionesRutinasComponent implements OnInit, OnDestroy {
   private usuariosSvc = inject(UsuariosService);
   private radarCatalogo: (() => void) | null = null;
   private radarAsignaciones: (() => void) | null = null;
+  private radarDescansos: (() => void) | null = null;
+  private radarTurnos: (() => void) | null = null;
 
   // Effect: replica la lista del UsuariosService a this.usuarios.
   private _usuariosEffect = effect(() => {
@@ -124,6 +144,8 @@ export class AsignacionesRutinasComponent implements OnInit, OnDestroy {
   ngOnDestroy() {
     if (this.radarCatalogo) { this.radarCatalogo(); this.radarCatalogo = null; }
     if (this.radarAsignaciones) { this.radarAsignaciones(); this.radarAsignaciones = null; }
+    if (this.radarDescansos) { this.radarDescansos(); this.radarDescansos = null; }
+    if (this.radarTurnos) { this.radarTurnos(); this.radarTurnos = null; }
     this.usuariosSvc.detener();
   }
 
@@ -147,6 +169,19 @@ export class AsignacionesRutinasComponent implements OnInit, OnDestroy {
       snap.forEach(d => arr.push({ ...(d.data() as any), id: d.id }));
       arr.sort((a, b) => (b.creadoEn || 0) - (a.creadoEn || 0));
       this.asignaciones.set(arr);
+    });
+
+    // Días de descanso (para detectar conflictos).
+    const refDesc = collection(this.firestore, 'descansos_semanales');
+    this.radarDescansos = onSnapshot(refDesc, snap => {
+      const arr: any[] = [];
+      snap.forEach(d => arr.push({ ...(d.data() as any), id: d.id }));
+      this.descansos.set(arr);
+    });
+
+    // Config de turnos de Canindo (para detectar fuera de turno).
+    this.radarTurnos = onSnapshot(doc(this.firestore, 'config', 'turnos'), snap => {
+      this.configTurnos.set(snap.exists() ? (snap.data() as ConfigTurnos) : null);
     });
 
     // Usuarios viene de UsuariosService (listener compartido) + _usuariosEffect.

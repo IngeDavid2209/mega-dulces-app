@@ -814,3 +814,27 @@
   }
   .wizard-resumen-editar { justify-self: start; }
 }
+
+/* ====== Conflictos (Fase B) ====== */
+.cf-banner { background: #fff; border: 1px solid #FECACA; border-radius: 13px; overflow: hidden; margin-bottom: 18px; box-shadow: 0 1px 2px rgba(0,0,0,.04); }
+.cf-bar { width: 100%; display: flex; align-items: center; gap: 12px; padding: 14px 18px; background: #FEF2F2; border: none; cursor: pointer; text-align: left; }
+.cf-ico { font-size: 18px; }
+.cf-text { font-size: 14px; color: #991B1B; }
+.cf-text strong { font-weight: 800; }
+.cf-sub { font-size: 12px; color: #B91C1C; opacity: .8; }
+.cf-chev { margin-left: auto; color: #B91C1C; font-size: 14px; }
+.cf-lista { border-top: 1px solid #FECACA; }
+.cf-item { display: flex; align-items: center; gap: 12px; padding: 12px 18px; border-bottom: 1px solid #F8FAFC; flex-wrap: wrap; }
+.cf-item:last-child { border-bottom: none; }
+.cf-tag { font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px; white-space: nowrap; }
+.cf-desc { background: #FEE2E2; color: #991B1B; }
+.cf-turno { background: #FEF3C7; color: #92400E; }
+.cf-sin { background: #FEF9C3; color: #854D0E; }
+.cf-info { flex: 1; min-width: 200px; }
+.cf-titulo { font-weight: 600; font-size: 13.5px; color: #0F172A; }
+.cf-razon { font-size: 12px; color: #64748B; margin-top: 2px; }
+.cf-sug { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.cf-sug-lbl { font-size: 11.5px; color: #64748B; }
+.cf-nadie { color: #B91C1C; font-weight: 600; }
+.cf-sug-pill { background: #DCFCE7; color: #166534; border: 1px solid #86EFAC; border-radius: 999px; padding: 4px 10px; font-size: 12px; font-weight: 600; }
+.cf-ok { background: #F0FDF4; border: 1px solid #BBF7D0; color: #166534; border-radius: 11px; padding: 11px 16px; font-size: 13px; font-weight: 600; margin-bottom: 18px; }

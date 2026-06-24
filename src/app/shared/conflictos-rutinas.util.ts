@@ -1,0 +1,139 @@
+/**
+ * Motor de DETECCIÓN DE CONFLICTOS de rutinas (puro, sin Firestore).
+ *
+ * Cruza, para un rango de fechas:
+ *   asignaciones × personas × días de descanso × turnos
+ * y devuelve los conflictos: alguien al que le tocaría una rutina pero ese día
+ * descansa, está fuera de turno, o nadie cumple la asignación (sin asignar).
+ *
+ * Reusa la lógica que ya existe en la app:
+ *   - asignacionAplicaEnFecha (programacion.util)
+ *   - esDiaDescansoEnFecha (descansos.util)
+ *   - rutinaPermitidaEnTurno (turnos.util)
+ */
+
+import { AsignacionRutina } from './asignaciones.types';
+import { RutinaMaestra } from './rutinas.types';
+import { asignacionAplicaEnFecha, fechaToYmd, nombreDiaSemana } from './programacion.util';
+import { esDiaDescansoEnFecha } from './descansos.util';
+import { ConfigTurnos, rutinaPermitidaEnTurno } from './turnos.util';
+import { normalizarNombre } from './permisos.util';
+
+export type TipoConflicto = 'descanso' | 'turno' | 'sin_asignar';
+
+export interface ConflictoRutina {
+  asignacionId: string;
+  nombreRutina: string;
+  sucursal: string;
+  fecha: string;          // YYYY-MM-DD
+  diaNombre: string;
+  hora: string;
+  persona: string;        // nombre (vacío si sin_asignar)
+  uid: string;
+  tipo: TipoConflicto;
+  razon: string;
+  sugeridos: string[];    // nombres disponibles ese día/hora en la sucursal
+}
+
+export interface AnalizarConflictosOpts {
+  asignaciones: AsignacionRutina[];
+  catalogo: RutinaMaestra[];
+  usuarios: any[];
+  descansos: any[];                 // docs de descansos_semanales
+  configTurnos: ConfigTurnos | null;
+  rango: Date[];                    // fechas a evaluar (ej. la semana)
+}
+
+function sucursalesDe(u: any): string[] {
+  return (u?.sucursales && u.sucursales.length) ? u.sucursales : (u?.sucursal ? [u.sucursal] : []);
+}
+function uidDe(u: any): string { return u?.id || u?.uid || ''; }
+function perteneceASucursal(u: any, sucursal: string): boolean {
+  const objetivo = normalizarNombre(sucursal);
+  const comodin = normalizarNombre('General (Acceso Total)');
+  return sucursalesDe(u).some(s => { const n = normalizarNombre(s); return n === objetivo || n === comodin; });
+}
+
+/** Usuarios que recibirían esta asignación en la sucursal dada. */
+function destinatarios(asig: AsignacionRutina, usuarios: any[], sucursal: string): any[] {
+  if (asig.modoAsignacion === 'porPersonas') {
+    const nombres = (asig.empleadosNombres || []).map(n => normalizarNombre(n));
+    return usuarios.filter(u => nombres.includes(normalizarNombre(u.nombre)));
+  }
+  const rol = normalizarNombre(asig.rolObjetivo || '');
+  if (!rol) return [];
+  return usuarios.filter(u =>
+    (u.rol === 'trabajador' || u.rol === 'admin') &&
+    normalizarNombre(u.cargo || '').includes(rol) &&
+    perteneceASucursal(u, sucursal)
+  );
+}
+
+/** ¿Esta persona está disponible (no descansa, no fuera de turno) ese día/hora? */
+function disponible(u: any, fecha: Date, fechaYmd: string, hora: string, descansos: any[], cfg: ConfigTurnos | null): boolean {
+  const uid = uidDe(u);
+  const desc = descansos.filter(d => d.userId === uid);
+  if (esDiaDescansoEnFecha(fecha, desc)) return false;
+  if (cfg && uid && !rutinaPermitidaEnTurno(cfg, uid, fechaYmd, hora)) return false;
+  return true;
+}
+
+export function analizarConflictos(o: AnalizarConflictosOpts): ConflictoRutina[] {
+  const out: ConflictoRutina[] = [];
+  const catById = new Map(o.catalogo.map(c => [c.id, c]));
+
+  for (const asig of o.asignaciones) {
+    if (!asig.activa) continue;
+    const rutina = catById.get(asig.catalogoRutinaId);
+    const hora = asig.horaLimite || asig.horaInicio || rutina?.horaLimite || rutina?.horaInicio || '';
+
+    for (const fecha of o.rango) {
+      if (!asignacionAplicaEnFecha(asig, fecha)) continue;
+      const fechaYmd = fechaToYmd(fecha);
+      const diaNombre = nombreDiaSemana(fecha);
+
+      for (const sucursal of (asig.sucursales || [])) {
+        const dest = destinatarios(asig, o.usuarios, sucursal);
+
+        if (dest.length === 0) {
+          out.push({
+            asignacionId: asig.id, nombreRutina: asig.nombreRutina, sucursal,
+            fecha: fechaYmd, diaNombre, hora, persona: '', uid: '',
+            tipo: 'sin_asignar', razon: 'Nadie cumple esta asignación en la sucursal ese día.',
+            sugeridos: []
+          });
+          continue;
+        }
+
+        for (const u of dest) {
+          const uid = uidDe(u);
+          const desc = o.descansos.filter(d => d.userId === uid);
+          let tipo: TipoConflicto | null = null;
+          let razon = '';
+          if (esDiaDescansoEnFecha(fecha, desc)) {
+            tipo = 'descanso';
+            razon = `${u.nombre} descansa el ${diaNombre}.`;
+          } else if (o.configTurnos && uid && !rutinaPermitidaEnTurno(o.configTurnos, uid, fechaYmd, hora)) {
+            tipo = 'turno';
+            razon = `${u.nombre} está fuera de su turno${hora ? ' a las ' + hora : ''} ese día.`;
+          }
+          if (!tipo) continue;
+
+          const sugeridos = o.usuarios
+            .filter(c => uidDe(c) !== uid &&
+              (c.rol === 'trabajador' || c.rol === 'admin') &&
+              perteneceASucursal(c, sucursal) &&
+              disponible(c, fecha, fechaYmd, hora, o.descansos, o.configTurnos))
+            .map(c => c.nombre)
+            .slice(0, 4);
+
+          out.push({
+            asignacionId: asig.id, nombreRutina: asig.nombreRutina, sucursal,
+            fecha: fechaYmd, diaNombre, hora, persona: u.nombre, uid, tipo, razon, sugeridos
+          });
+        }
+      }
+    }
+  }
+  return out;
+}

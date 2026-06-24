@@ -3,7 +3,7 @@ import { UsuariosService } from '../../../shared/usuarios.service';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, Router } from '@angular/router';
-import { Firestore, collection, onSnapshot } from '@angular/fire/firestore';
+import { Firestore, collection, onSnapshot, doc } from '@angular/fire/firestore';
 
 import { SidebarComponent } from '../../../shared/sidebar/sidebar';
 import { RutinasNavComponent } from '../../../shared/rutinas-nav/rutinas-nav';
@@ -16,7 +16,9 @@ import {
   fechaToYmd,
   nombreDiaSemana
 } from '../../../shared/programacion.util';
-import { ETIQUETAS_FRECUENCIA } from '../../../shared/rutinas.types';
+import { ETIQUETAS_FRECUENCIA, RutinaMaestra } from '../../../shared/rutinas.types';
+import { ConfigTurnos } from '../../../shared/turnos.util';
+import { construirMatrizSemana, FilaProg } from '../../../shared/conflictos-rutinas.util';
 
 /** Una rutina programada para un día específico (resultado del cálculo). */
 interface RutinaProgramada {
@@ -52,12 +54,65 @@ export class ProgramacionRutinasComponent implements OnInit, OnDestroy {
   // ---------- Datos ----------
   asignaciones = signal<AsignacionRutina[]>([]);
   usuarios = signal<any[]>([]);
+  catalogo = signal<RutinaMaestra[]>([]);
+  descansos = signal<any[]>([]);
+  configTurnos = signal<ConfigTurnos | null>(null);
   sucursalesDisponibles = signal<string[]>([]);
 
   // ---------- Filtros ----------
   terminoBusqueda = '';
   sucursalFiltro = 'todas';
   diasAdelante = signal(14);
+
+  // ---------- Vista semanal (tabla de colores) ----------
+  vista = signal<'semana' | 'lista'>('semana');
+  semanaOffset = signal(0);     // 0 = semana actual, +1 siguiente, -1 anterior
+
+  diasSemana = computed(() => {
+    const hoy = new Date();
+    const base = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
+    const dow = (base.getDay() + 6) % 7;     // 0 = lunes
+    base.setDate(base.getDate() - dow + this.semanaOffset() * 7);
+    return rangoDias(base, 7);
+  });
+
+  /** Matriz rutina×día con estados (ok / conflicto / descanso / sin asignar). */
+  matrizSemana = computed<FilaProg[]>(() => {
+    const filas = construirMatrizSemana({
+      asignaciones: this.asignaciones(),
+      catalogo: this.catalogo(),
+      usuarios: this.usuarios(),
+      descansos: this.descansos(),
+      configTurnos: this.configTurnos(),
+      dias: this.diasSemana()
+    });
+    // Filtra por permisos, sucursal y búsqueda.
+    const permitidas = esAdminGlobal(this.currentUser) ? null : sucursalesPermitidas(this.currentUser);
+    const t = this.terminoBusqueda.toLowerCase().trim();
+    return filas.filter(f => {
+      if (permitidas !== null && !permitidas.includes(f.sucursal)) return false;
+      if (this.sucursalFiltro !== 'todas' && f.sucursal !== this.sucursalFiltro) return false;
+      if (t && !f.nombreRutina.toLowerCase().includes(t)) return false;
+      return true;
+    });
+  });
+
+  conflictosSemana = computed(() =>
+    this.matrizSemana().reduce((n, f) => n + f.celdas.filter(c => c.estado === 'conflicto' || c.estado === 'sin_asignar').length, 0)
+  );
+
+  cambiarSemana(delta: number) { this.semanaOffset.set(this.semanaOffset() + delta); }
+  primerNombre(n: string): string { const p = (n || '').trim().split(/\s+/); return p[0] || ''; }
+  etiquetaFrec(frec: string): string { return (this.etiquetasFrecuencia as any)[frec] || frec; }
+  nombreCortoDia(d: Date): string { return ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'][d.getDay()]; }
+  numDia(d: Date): number { return d.getDate(); }
+  esHoy(d: Date): boolean { return fechaToYmd(d) === fechaToYmd(new Date()); }
+  etiquetaSemana(): string {
+    const dias = this.diasSemana();
+    const meses = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+    const a = dias[0], b = dias[6];
+    return `${a.getDate()} ${meses[a.getMonth()]} – ${b.getDate()} ${meses[b.getMonth()]}`;
+  }
 
   // ---------- Constantes ----------
   readonly etiquetasFrecuencia = ETIQUETAS_FRECUENCIA;
@@ -73,6 +128,9 @@ export class ProgramacionRutinasComponent implements OnInit, OnDestroy {
   private router = inject(Router);
   private usuariosSvc = inject(UsuariosService);
   private radarAsignaciones: (() => void) | null = null;
+  private radarCatalogo: (() => void) | null = null;
+  private radarDescansos: (() => void) | null = null;
+  private radarTurnos: (() => void) | null = null;
 
   private _usuariosEffect = effect(() => {
     const raw = this.usuariosSvc.usuarios();
@@ -98,6 +156,9 @@ export class ProgramacionRutinasComponent implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     if (this.radarAsignaciones) { this.radarAsignaciones(); this.radarAsignaciones = null; }
+    if (this.radarCatalogo) { this.radarCatalogo(); this.radarCatalogo = null; }
+    if (this.radarDescansos) { this.radarDescansos(); this.radarDescansos = null; }
+    if (this.radarTurnos) { this.radarTurnos(); this.radarTurnos = null; }
     this.usuariosSvc.detener();
   }
 
@@ -110,6 +171,23 @@ export class ProgramacionRutinasComponent implements OnInit, OnDestroy {
         if (data.activa !== false) arr.push({ ...data, id: d.id });
       });
       this.asignaciones.set(arr);
+    });
+
+    // Catálogo (para hora de la rutina).
+    this.radarCatalogo = onSnapshot(collection(this.firestore, 'catalogo_rutinas'), snap => {
+      const arr: RutinaMaestra[] = [];
+      snap.forEach(d => arr.push({ ...(d.data() as any), id: d.id }));
+      this.catalogo.set(arr);
+    });
+
+    // Descansos y turnos (para colorear conflictos en la matriz).
+    this.radarDescansos = onSnapshot(collection(this.firestore, 'descansos_semanales'), snap => {
+      const arr: any[] = [];
+      snap.forEach(d => arr.push({ ...(d.data() as any), id: d.id }));
+      this.descansos.set(arr);
+    });
+    this.radarTurnos = onSnapshot(doc(this.firestore, 'config', 'turnos'), snap => {
+      this.configTurnos.set(snap.exists() ? (snap.data() as ConfigTurnos) : null);
     });
 
     // Usuarios viene de UsuariosService (listener compartido) + _usuariosEffect.

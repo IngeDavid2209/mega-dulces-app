@@ -511,3 +511,52 @@
     grid-row: 2;
   }
 }
+
+/* ====== Vista semanal (tabla de colores) — Fase E ====== */
+.prog-vista-toggle { display: inline-flex; gap: 4px; background: #F1F5F9; border: 1px solid #E2E8F0; border-radius: 999px; padding: 4px; margin-bottom: 16px; }
+.prog-vista-toggle button { border: none; background: transparent; color: #64748B; font-weight: 600; font-size: 13px; padding: 8px 16px; border-radius: 999px; cursor: pointer; }
+.prog-vista-toggle button.on { background: #0F172A; color: #fff; }
+
+.psem-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+.psem-nav { width: 32px; height: 32px; border-radius: 8px; border: 1px solid #CBD5E1; background: #fff; color: #0F172A; font-size: 18px; line-height: 1; cursor: pointer; }
+.psem-nav:hover { background: #F8FAFC; }
+.psem-rango { font-weight: 700; color: #0F172A; font-size: 15px; min-width: 150px; text-align: center; }
+.psem-hoy { border: 1px solid #CBD5E1; background: #fff; color: #475569; border-radius: 8px; padding: 6px 12px; font-size: 12px; font-weight: 600; cursor: pointer; }
+.psem-conf { margin-left: auto; background: #FEE2E2; color: #991B1B; font-size: 12px; font-weight: 700; padding: 5px 11px; border-radius: 999px; }
+.psem-resolver { border: none; background: #DC2626; color: #fff; border-radius: 8px; padding: 6px 13px; font-size: 12px; font-weight: 700; cursor: pointer; }
+
+.psem-legend { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 12px; font-size: 12px; color: #475569; }
+.psem-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.psem-legend .lg { width: 12px; height: 12px; border-radius: 4px; display: inline-block; }
+.lg-ok { background: #DCFCE7; border: 1px solid #86EFAC; }
+.lg-bad { background: #FEE2E2; border: 1.5px solid #F87171; }
+.lg-open { background: #FEF3C7; border: 1px dashed #FBBF24; }
+.lg-na { background: #F1F5F9; }
+
+.psem-scroll { overflow-x: auto; background: #fff; border: 1px solid #E2E8F0; border-radius: 14px; box-shadow: 0 1px 2px rgba(15,23,42,.04); }
+.psem-tabla { border-collapse: collapse; width: 100%; min-width: 820px; }
+.psem-tabla th, .psem-tabla td { border: 1px solid #F1F5F9; padding: 8px; vertical-align: top; }
+.psem-tabla thead th { background: #F8FAFC; color: #64748B; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; padding: 11px 8px; text-align: center; }
+.psem-tabla thead th small { display: block; font-size: 13px; color: #0F172A; font-weight: 700; margin-top: 2px; }
+.psem-tabla thead th.hoy { background: #EEF2FF; color: #1E40AF; }
+.psem-th-rutina, .psem-rutina { text-align: left; position: sticky; left: 0; background: #fff; min-width: 200px; }
+.psem-tabla thead th.psem-th-rutina { background: #F8FAFC; }
+.psem-rname { font-weight: 700; font-size: 13.5px; color: #0F172A; }
+.psem-rmeta { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 4px; }
+.psem-badge { font-size: 10.5px; font-weight: 600; color: #475569; background: #F1F5F9; border-radius: 999px; padding: 2px 8px; }
+.psem-badge.psem-suc { background: #EEF2FF; color: #1E40AF; }
+.psem-auto { font-size: 10px; font-weight: 800; color: #166534; background: #DCFCE7; border-radius: 999px; padding: 2px 7px; }
+
+.psem-cell { text-align: center; }
+.slot { border-radius: 8px; padding: 6px; min-height: 30px; display: flex; flex-wrap: wrap; gap: 3px; justify-content: center; align-items: center; font-size: 12px; }
+.slot-ok { background: #DCFCE7; }
+.slot-conflicto { background: #FEE2E2; border: 1.5px solid #F87171; }
+.slot-sin_asignar { background: #FEF3C7; border: 1px dashed #FBBF24; color: #92400E; font-weight: 600; font-size: 11px; }
+.slot-na { color: #CBD5E1; }
+.slot-persona { font-weight: 600; border-radius: 999px; padding: 2px 8px; font-size: 11.5px; }
+.slot-persona.p-ok { color: #166534; }
+.slot-persona.p-descanso { background: #FCA5A5; color: #7F1D1D; text-decoration: line-through; }
+.slot-persona.p-turno { background: #FDE68A; color: #92400E; }
+.slot-persona.p-reasignado { background: #BBF7D0; color: #166534; }
+.slot-persona.p-reasignado::before { content: '↦ '; }
+.psem-vacio { padding: 30px; text-align: center; color: #94A3B8; font-size: 14px; }

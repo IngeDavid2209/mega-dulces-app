@@ -29,10 +29,8 @@ interface RankingFila {
   muestraBaja: boolean;     // pocas tareas en la semana (poco confiable)
 }
 
-/** Tareas mínimas en la semana para considerar la muestra "confiable". */
+/** Tareas mínimas en la semana para competir por el liderazgo (no "pocas tareas"). */
 const UMBRAL_MUESTRA = 5;
-/** Suavizado bayesiano: cuántas "tareas prior" pesan hacia el promedio global. */
-const SUAVIZADO = 10;
 
 @Component({
   selector: 'app-ranking-sucursales',
@@ -202,24 +200,17 @@ export class RankingSucursalesComponent implements OnInit, OnDestroy {
       });
     }
 
-    // 🎯 Score ajustado al VOLUMEN (bayesiano): evita que una sucursal con 1 tarea
-    // hecha (100%) supere a otra con 25/34 (74%). Cada sucursal se "jala" hacia el
-    // promedio global según cuántas tareas tuvo; con muchas tareas su % real pesa
-    // casi completo, con pocas pesa poco.
-    const okGlobal = filas.reduce((s, f) => s + f.completadosSemana, 0);
-    const totalGlobal = filas.reduce((s, f) => s + f.totalSemana, 0);
-    const m = totalGlobal > 0 ? okGlobal / totalGlobal : 0;  // promedio global (0..1)
-    for (const f of filas) {
-      f.scoreRanking = Math.round(
-        ((f.completadosSemana + SUAVIZADO * m) / (f.totalSemana + SUAVIZADO)) * 100
-      );
-    }
-
-    return filas.sort((a, b) =>
-      b.scoreRanking - a.scoreRanking ||
+    // Orden que se LEE bien: primero las sucursales con suficientes tareas
+    // (compiten por el liderazgo), ordenadas por % de mayor a menor; después,
+    // aparte, las de "pocas tareas" (un 100% de 1 tarea no encabeza el ranking).
+    const porPorcentaje = (a: RankingFila, b: RankingFila) =>
+      b.promedioSemana - a.promedioSemana ||
       b.completadosSemana - a.completadosSemana ||
-      a.sucursal.localeCompare(b.sucursal)
-    );
+      a.sucursal.localeCompare(b.sucursal);
+
+    const confiables = filas.filter(f => !f.muestraBaja).sort(porPorcentaje);
+    const pocasTareas = filas.filter(f => f.muestraBaja).sort(porPorcentaje);
+    return [...confiables, ...pocasTareas];
   });
 
   /** Promedio general de la organización (todas las sucursales). */

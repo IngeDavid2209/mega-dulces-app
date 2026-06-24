@@ -27,7 +27,7 @@
         <div>
           <h1 class="rank-title">Ranking de sucursales</h1>
           <p class="rank-sub">Mejor desempeño semanal por sucursal · {{ rangoSemanaTexto() }}</p>
-          <p class="rank-nota">El orden considera el % completado y el volumen de tareas: una sucursal con pocas tareas no encabeza por un 100% de muestra pequeña.</p>
+          <p class="rank-nota">Ordenado por % completado. Las sucursales con menos de 5 tareas en la semana se listan aparte (no encabezan el ranking por un 100% de muestra pequeña).</p>
         </div>
         <div class="rank-nav">
           <button class="rank-nav-btn" (click)="semanaAnterior()" title="Semana anterior">&larr;</button>
@@ -75,10 +75,15 @@
         </div>
 
         <!-- Filas del ranking -->
-        <div class="rank-row" *ngFor="let f of ranking(); let i = index"
-             [class.rank-row-top]="i < 3">
+        <ng-container *ngFor="let f of ranking(); let i = index">
+          <div class="rank-divisor" *ngIf="f.muestraBaja && (i === 0 || !ranking()[i-1].muestraBaja)">
+            ✎ Pocas tareas esta semana — no compiten por el liderazgo
+          </div>
+          <div class="rank-row"
+               [class.rank-row-top]="!f.muestraBaja && i < 3"
+               [class.rank-row-baja]="f.muestraBaja">
           <div class="rank-col-puesto">
-            <div class="rank-puesto-badge" [ngClass]="claseTop(i)">{{ puesto(i) }}</div>
+            <div class="rank-puesto-badge" [ngClass]="f.muestraBaja ? '' : claseTop(i)">{{ f.muestraBaja ? '–' : puesto(i) }}</div>
           </div>
           <div class="rank-col-sucursal">
             <div class="rank-suc-nombre">
@@ -108,7 +113,8 @@
               {{ f.promedioSemana }}%
             </div>
           </div>
-        </div>
+          </div>
+        </ng-container>
       </section>
 
       <!-- ESTADO VACÍO -->

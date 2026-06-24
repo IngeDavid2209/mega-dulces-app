@@ -27,9 +27,21 @@
 
       <div style="max-width: 800px; margin: 0 auto;">
 
-        <div class="section-header" style="margin-bottom: 24px;">
-          <h2 class="section-title">Mi Agenda Personal</h2>
-          <p class="section-sub">Organiza tus actividades diarias y tareas fuera de checklist</p>
+        <div class="ag-topbar">
+          <div class="ag-topbar-txt">
+            <h2 class="section-title" style="margin:0;">Mi Agenda Personal</h2>
+            <p class="ag-fecha">{{ fechaHoyTexto }}</p>
+          </div>
+          <div class="ag-stats">
+            <div class="ag-stat ag-stat-pend">
+              <span class="ag-stat-num">{{ pendientes.length }}</span>
+              <span class="ag-stat-lbl">Pendientes</span>
+            </div>
+            <div class="ag-stat ag-stat-ok">
+              <span class="ag-stat-num">{{ completadas.length }}</span>
+              <span class="ag-stat-lbl">Completadas</span>
+            </div>
+          </div>
         </div>
 
         <div *ngIf="currentUser?.rol === 'admin'"
@@ -57,22 +69,44 @@
           </select>
         </div>
 
-        <div
-          style="background: white; border: 1px solid #E2E8F0; border-radius: 12px; padding: 12px 16px; margin-bottom: 24px; display: flex; gap: 12px; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.02);">
+        <div class="ag-addbar">
           <input type="text" [(ngModel)]="nuevaTareaTexto" (keyup.enter)="agregarTarea()"
-            placeholder="¿Qué tienes pendiente para hoy?"
-            style="flex: 1; border: none; font-size: 16px; outline: none; background: transparent;">
-          <button (click)="agregarTarea()"
-            style="background: #2563EB; color: white; border: none; border-radius: 8px; width: 40px; height: 40px; font-size: 20px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s;"
-            onmouseover="this.style.background='#1D4ED8'" onmouseout="this.style.background='#2563EB'">
-            +
-          </button>
+            placeholder="¿Qué tienes pendiente para hoy?" class="ag-add-input">
+          <select [(ngModel)]="nuevaPrioridad" class="ag-add-sel ag-add-prio" [ngClass]="'pr-' + nuevaPrioridad" title="Prioridad">
+            <option *ngFor="let p of prioridades" [value]="p.v">{{ p.t }}</option>
+          </select>
+          <select [(ngModel)]="nuevaFrecuencia" class="ag-add-sel" title="Frecuencia">
+            <option *ngFor="let f of frecuencias" [value]="f.v">{{ f.t }}</option>
+          </select>
+          <button (click)="agregarTarea()" class="ag-add-btn" title="Agregar tarea">+</button>
         </div>
 
-        <!-- Contador / resumen -->
-        <div *ngIf="tareasPersonales.length > 0" class="ag-resumen">
-          <span class="ag-chip ag-chip-pend">{{ pendientes.length }} pendientes</span>
-          <span class="ag-chip ag-chip-comp">{{ completadas.length }} completadas</span>
+        <!-- Rutinas recomendadas (solo admin, sucursales habilitadas) -->
+        <div class="ag-reco" *ngIf="esAdminUsuario && (recomendaciones.length > 0 || analizandoReco)">
+          <div class="ag-reco-head">
+            <span class="ag-reco-ic">💡</span>
+            <div class="ag-reco-head-txt">
+              <strong>Rutinas recomendadas</strong>
+              <small>Tareas que se repiten en tus sucursales y aún no son rutinas</small>
+            </div>
+            <button class="ag-reco-re" (click)="analizarRecomendaciones()" [disabled]="analizandoReco" title="Re-analizar">
+              {{ analizandoReco ? '…' : '↻' }}
+            </button>
+          </div>
+          <div class="ag-reco-list">
+            <div class="ag-reco-item" *ngFor="let r of recomendaciones">
+              <span class="ag-reco-conf" [ngClass]="'nv-' + r.nivel">{{ r.nivel }}</span>
+              <div class="ag-reco-info">
+                <div class="ag-reco-nombre">{{ r.nombre }}</div>
+                <div class="ag-reco-meta">{{ r.frecuencia }} · {{ r.motivo }}</div>
+              </div>
+              <div class="ag-reco-actions">
+                <button class="ag-reco-add" (click)="agregarRecoAMiAgenda(r)">A mi agenda</button>
+                <button class="ag-reco-rut" (click)="crearRutinaDeReco(r)">Crear rutina</button>
+                <button class="ag-reco-x" (click)="descartarReco(r)" title="Descartar">✕</button>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- Estado vacío -->

@@ -6,6 +6,7 @@ import { Firestore, collection, onSnapshot, doc, setDoc, deleteDoc, getDocs, que
 import Swal from 'sweetalert2';
 
 import { SidebarComponent } from '../../../shared/sidebar/sidebar';
+import { RutinasNavComponent } from '../../../shared/rutinas-nav/rutinas-nav';
 import {
   RutinaMaestra,
   TareaRutinaMaestra,
@@ -23,7 +24,7 @@ import { normalizarNombre } from '../../../shared/permisos.util';
 @Component({
   selector: 'app-rutinas-catalogo',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, SidebarComponent],
+  imports: [CommonModule, FormsModule, RouterModule, SidebarComponent, RutinasNavComponent],
   templateUrl: './rutinas-catalogo.html',
   styleUrls: ['./rutinas-catalogo.css']
 })

@@ -91,6 +91,15 @@ service cloud.firestore {
     match /areas/{id}               { allow read: if autenticado(); allow write: if esAdmin(); }
     match /descansos_semanales/{id} { allow read: if autenticado(); allow write: if esAdmin(); }
 
+    // Config global (ej. config/turnos): cualquiera la lee (la app la usa para
+    // bloquear asignaciones fuera de turno); solo admin la edita.
+    match /config/{id}              { allow read: if autenticado(); allow write: if esAdmin(); }
+
+    // --- RUTINAS PERSONALES (tareas recurrentes propias / asignadas desde TEC) ---
+    // Lectura/escritura para sesión válida: el trabajador crea/edita las suyas y
+    // el Espacio TEC asigna recurrentes a personal. (La UI controla los botones.)
+    match /rutinas_personales/{id}  { allow read, write: if autenticado(); }
+
     // --- NOTIFICACIONES Y TOKENS PUSH ---
     match /notificaciones/{id}  { allow read, write: if autenticado(); }
     match /usuarios_tokens/{id} { allow read, write: if autenticado(); }

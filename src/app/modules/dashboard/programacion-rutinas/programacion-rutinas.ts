@@ -6,6 +6,7 @@ import { RouterModule, Router } from '@angular/router';
 import { Firestore, collection, onSnapshot } from '@angular/fire/firestore';
 
 import { SidebarComponent } from '../../../shared/sidebar/sidebar';
+import { RutinasNavComponent } from '../../../shared/rutinas-nav/rutinas-nav';
 import { esAdminGlobal, sucursalesPermitidas } from '../../../shared/permisos.util';
 import { AsignacionRutina } from '../../../shared/asignaciones.types';
 import {
@@ -39,7 +40,7 @@ interface DiaProgramado {
 @Component({
   selector: 'app-programacion-rutinas',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, SidebarComponent],
+  imports: [CommonModule, FormsModule, RouterModule, SidebarComponent, RutinasNavComponent],
   templateUrl: './programacion-rutinas.html',
   styleUrls: ['./programacion-rutinas.css']
 })

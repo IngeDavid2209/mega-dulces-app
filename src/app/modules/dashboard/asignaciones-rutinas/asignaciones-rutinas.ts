@@ -7,6 +7,7 @@ import { Firestore, collection, onSnapshot, doc, setDoc, deleteDoc, getDocs, que
 import Swal from 'sweetalert2';
 
 import { SidebarComponent } from '../../../shared/sidebar/sidebar';
+import { RutinasNavComponent } from '../../../shared/rutinas-nav/rutinas-nav';
 import { esAdminGlobal, sucursalesPermitidas, puedeSerAsignado } from '../../../shared/permisos.util';
 import {
   RutinaMaestra,
@@ -23,7 +24,7 @@ import { rangoDias } from '../../../shared/programacion.util';
 @Component({
   selector: 'app-asignaciones-rutinas',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, SidebarComponent],
+  imports: [CommonModule, FormsModule, RouterModule, SidebarComponent, RutinasNavComponent],
   templateUrl: './asignaciones-rutinas.html',
   styleUrls: ['./asignaciones-rutinas.css']
 })

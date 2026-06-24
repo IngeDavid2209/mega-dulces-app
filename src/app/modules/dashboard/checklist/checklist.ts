@@ -2678,6 +2678,41 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     await setDoc(doc(this.firestore, 'tareas_equipo', t.id), { fases: fresca.fases }, { merge: true });
   }
 
+  /** Sube una foto a un item de Tarea de Equipo (la puede subir el asignado o el jefe). */
+  async subirFotoItemEquipo(event: any, t: TareaEquipo, faseId: string, itemId: string) {
+    const fileOriginal = event?.target?.files?.[0];
+    if (!fileOriginal) return;
+    if (t.cerrado) { this.mostrarToast(' El proyecto está cerrado.'); event.target.value = ''; return; }
+
+    let file: File;
+    try { file = await comprimirImagenSiAplica(fileOriginal); } catch { file = fileOriginal; }
+
+    this.mostrarToast(' Subiendo foto...');
+    const res = await this.subirACloudinary(file);
+    if (!res.ok || !res.url) {
+      Swal.fire({ icon: 'warning', title: 'No se pudo subir la foto', text: (res.error || 'Intenta de nuevo.').toString().slice(0, 200), confirmButtonColor: '#0F172A' });
+      event.target.value = '';
+      return;
+    }
+
+    const fresca = await this.obtenerTareaEquipoFresca(t.id);
+    if (!fresca) { event.target.value = ''; return; }
+    const fase = fresca.fases.find(f => f.id === faseId);
+    const item = fase?.items.find(i => i.id === itemId);
+    if (!item) { event.target.value = ''; return; }
+    if (!this.puedeOperarItemEquipo(fresca, item)) {
+      this.mostrarToast(' No puedes subir foto a esta tarea.');
+      event.target.value = '';
+      return;
+    }
+
+    item.photo = res.url;
+    item.photoTime = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+    await setDoc(doc(this.firestore, 'tareas_equipo', t.id), { fases: fresca.fases }, { merge: true });
+    this.mostrarToast(' Foto subida ✓');
+    event.target.value = '';
+  }
+
   /** Marca/desmarca una subtarea de un item. */
   async toggleSubtareaEquipo(t: TareaEquipo, faseId: string, itemId: string, subId: string) {
     if (t.cerrado) return;

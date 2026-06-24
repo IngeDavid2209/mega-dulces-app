@@ -37,6 +37,7 @@ export interface ItemEquipo {
   completada: boolean;
   completadaEn?: number;             // timestamp
   photo?: string;
+  photoTime?: string;                // hora de subida (HH:mm AM/PM)
   photoAntes?: string;
   photoDespues?: string;
   photos?: { url: string; time?: string }[];

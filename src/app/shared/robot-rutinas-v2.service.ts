@@ -151,6 +151,7 @@ export class RobotRutinasV2Service {
 
           const payload = this.armarChecklist({
             checklistId, asig, rutina, sucursal, destinatario: nombreFinal,
+            destinatarioUid: nombreAUid.get(normalizarNombre(nombreFinal)) || null,
             fechaYmd
           });
 
@@ -286,9 +287,10 @@ export class RobotRutinasV2Service {
     rutina: RutinaMaestra;
     sucursal: string;
     destinatario: string;
+    destinatarioUid?: string | null;
     fechaYmd: string;
   }): any {
-    const { checklistId, asig, rutina, sucursal, destinatario, fechaYmd } = args;
+    const { checklistId, asig, rutina, sucursal, destinatario, destinatarioUid, fechaYmd } = args;
 
     const items = (rutina.tareas || []).map((t: TareaRutinaMaestra) => ({
       id: t.id || ('item_' + Math.random().toString(36).slice(2)),
@@ -316,6 +318,7 @@ export class RobotRutinasV2Service {
       timestampCreacion: Date.now(),
       name: `${rutina.nombre} (${asig.frecuencia})`,
       assigned: destinatario,
+      assignedUid: destinatarioUid || null,
       store: sucursal,
       date: fechaYmd,
       time: asig.horaLimite || rutina.horaLimite || '23:59',

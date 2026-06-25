@@ -886,6 +886,10 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   esElDueno(): boolean {
     const cs = this.checklistSeleccionado();
     if (!cs) return false;
+    // 1) Por uid: inmune a diferencias de nombre (checklists nuevos lo traen).
+    const miUid = this.currentUser?.uid || this.currentUser?.id;
+    if (miUid && cs.assignedUid && cs.assignedUid === miUid) return true;
+    // 2) Por nombre tolerante (acentos/espacios/orden de apellidos).
     return mismoEmpleadoNombre(this.currentUser?.nombre, cs.assigned);
   }
 

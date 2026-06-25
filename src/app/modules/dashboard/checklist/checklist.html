@@ -890,6 +890,18 @@
             </svg></span>
           <strong>Checklist enviado exitosamente.</strong>
         </div>
+
+        <!-- Solo lectura: no es el dueño y la tarea aún no se envía. Antes esto
+             se ocultaba en silencio y el trabajador no sabía por qué no podía enviar. -->
+        <div class="send-section-readonly"
+          *ngIf="!puedoEditarChecklistActivo() && !checklistSeleccionado().enviado"
+          style="background:#FFFBEB; border:1.5px solid #FCD34D; border-radius:12px; padding:14px 16px; margin-top:14px; color:#92400E; font-size:13px; line-height:1.5;">
+          <strong>Modo solo lectura.</strong>
+          Esta tarea está asignada a <strong>{{ checklistSeleccionado().assigned }}</strong>
+          y entraste como <strong>{{ currentUser?.nombre }}</strong>.
+          Si eres tú y no puedes enviarla ni subir evidencia, avísale a tu gerente
+          para que ajuste el nombre de tu cuenta (debe quedar igual al de la tarea).
+        </div>
       </div>
 
       <!-- ╔════════════════════════════════════════════════╗ -->

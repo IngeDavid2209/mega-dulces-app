@@ -124,14 +124,15 @@ export function esMismoTrabajador(currentUser: any, otroNombre: string | undefin
 /**
  * Comparación tolerante de nombres: considera "la misma persona" si:
  *   - Son idénticos tras normalizar, O
- *   - Uno es prefijo exacto del otro (terminando en frontera de palabra) y
- *     comparten al menos 2 palabras (nombre + apellido).
+ *   - Todas las palabras del nombre más corto están dentro del más largo
+ *     (en cualquier orden) y comparten al menos 2 palabras (nombre + apellido).
  *
  * Esto cubre los casos de perfiles desincronizados con las tareas:
- *   - Perfil "Carolina Guzman"        vs assigned "Carolina Guzman Ruiz"     → match
- *   - Perfil "Jorge Alberto Duarte V" vs assigned "Jorge Alberto Duarte"     → match
- *   - Perfil "Carolina Lopez"         vs assigned "Carolina Guzman"          → NO match
- *   - Perfil "Brenda Oceguera"        vs assigned "Benda Margarita"          → NO match
+ *   - Perfil "Carolina Guzman"        vs assigned "Carolina Guzman Ruiz"      → match
+ *   - Perfil "Jorge Alberto Duarte V" vs assigned "Jorge Alberto Duarte"      → match
+ *   - Perfil "Ventura Parienti Cadrugo" vs assigned "Ventura Cadrugo Parienti" → match (orden distinto)
+ *   - Perfil "Carolina Lopez"         vs assigned "Carolina Guzman"           → NO match
+ *   - Perfil "Brenda Oceguera"        vs assigned "Benda Margarita"           → NO match
  *
  * Úsalo solo para FILTRADO/CONTEO (Mis tareas, lista del trabajador puro).
  * Para guardar/asignar usa siempre el `nombre` exacto del perfil.
@@ -141,10 +142,16 @@ export function mismoEmpleadoNombre(a: string | undefined | null, b: string | un
   const nb = normalizarNombre(b);
   if (!na || !nb) return false;
   if (na === nb) return true;
-  const corto = na.length < nb.length ? na : nb;
-  const largo = na.length < nb.length ? nb : na;
-  if (!largo.startsWith(corto + ' ')) return false;
-  return corto.split(' ').filter(Boolean).length >= 2;
+  const ta = na.split(' ').filter(Boolean);
+  const tb = nb.split(' ').filter(Boolean);
+  const corto = ta.length <= tb.length ? ta : tb;
+  const largo = ta.length <= tb.length ? tb : ta;
+  // Necesitamos al menos 2 palabras en común para no confundir personas distintas.
+  if (corto.length < 2) return false;
+  // Todas las palabras del nombre corto deben aparecer en el largo (orden libre).
+  // Cubre apellidos en distinto orden y segundo nombre/apellido de más o de menos.
+  const setLargo = new Set(largo);
+  return corto.every(t => setLargo.has(t));
 }
 
 /**

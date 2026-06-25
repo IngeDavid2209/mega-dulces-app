@@ -14,7 +14,7 @@ import {
 
 // ExcelJS pesa ~700 KB. Se carga dinámicamente cuando el admin pulsa "Exportar".
 import Swal from 'sweetalert2';
-import { esAdmin, esAdminGlobal, esAdminLimitado, normalizarNombre, sucursalesPermitidas } from '../../../shared/permisos.util';
+import { esAdmin, esAdminGlobal, esAdminLimitado, normalizarNombre, mismoEmpleadoNombre, sucursalesPermitidas } from '../../../shared/permisos.util';
 import { nivelDeUsuario, NivelJerarquico } from '../../../shared/nivel-jerarquico.util';
 // 🔥 Para crear usuarios sin desloguear al admin (segunda app Firebase temporal)
 import { initializeApp, deleteApp } from 'firebase/app';
@@ -1124,13 +1124,48 @@ export class PersonalComponent implements OnInit, OnDestroy {
         
         // deleteDoc ya lo tienes importado arriba, así que esto funcionará directo
         await deleteDoc(doc(this.firestore, 'usuarios', docId));
-        
-        Swal.fire({ icon: 'success', title: '¡Eliminado!', text: 'El usuario ha sido eliminado de la base de datos.', confirmButtonColor: '#0F172A' });
+
+        // Sácalo de las asignaciones de rutinas "por personas" para que el robot
+        // no le siga generando tareas fantasma que nadie puede completar/enviar.
+        const quitadas = await this.limpiarAsignacionesDe(usuarioParaBorrar.nombre);
+
+        const extra = quitadas > 0
+          ? ` Se le quitó de ${quitadas} ${quitadas === 1 ? 'asignación de rutina' : 'asignaciones de rutina'}. Revisa si alguna quedó sin responsable y reasígnala.`
+          : '';
+        Swal.fire({ icon: 'success', title: '¡Eliminado!', text: 'El usuario ha sido eliminado de la base de datos.' + extra, confirmButtonColor: '#0F172A' });
       } catch (error: any) {
         Swal.fire({ icon: 'error', title: 'Error', text: 'Hubo un problema al eliminar al usuario: ' + error.message, confirmButtonColor: '#0F172A' });
       }
     }
   }
+
+  /**
+   * Quita a una persona (por nombre) de las asignaciones de rutinas "por personas".
+   * Si una asignación se queda sin nadie, se desactiva (activa:false) para que el
+   * robot no la procese. Devuelve cuántas asignaciones se modificaron.
+   */
+  private async limpiarAsignacionesDe(nombre: string): Promise<number> {
+    if (!nombre) return 0;
+    try {
+      const snap = await getDocs(collection(this.firestore, 'asignaciones_rutinas'));
+      let modificadas = 0;
+      for (const d of snap.docs) {
+        const a = d.data() as any;
+        if (a.modoAsignacion !== 'porPersonas' || !Array.isArray(a.empleadosNombres)) continue;
+        const restantes = a.empleadosNombres.filter((n: string) => !mismoEmpleadoNombre(n, nombre));
+        if (restantes.length === a.empleadosNombres.length) continue; // no estaba
+        const cambios: any = { empleadosNombres: restantes };
+        if (restantes.length === 0) cambios.activa = false;
+        await setDoc(doc(this.firestore, 'asignaciones_rutinas', d.id), cambios, { merge: true });
+        modificadas++;
+      }
+      return modificadas;
+    } catch (e) {
+      console.error('[personal] limpiarAsignacionesDe', e);
+      return 0;
+    }
+  }
+
   async descargarExcel() {
     const list = this.usuarios();
     if (list.length === 0) {

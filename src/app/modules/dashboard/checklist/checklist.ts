@@ -1023,9 +1023,9 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       } else {
         const misSucNorm = new Set(permitidas.map(s => normalizarNombre(s)));
         const sucursalesFiltradas = todasLasSucursales.filter(
-          s => s !== 'ADMINISTRADORES DEL SISTEMA' && misSucNorm.has(normalizarNombre(s))
+          s => s !== 'ADMINISTRADORES DEL SISTEMA' && s !== 'MANTENIMIENTO'
+               && misSucNorm.has(normalizarNombre(s))
         );
-        this.sucursalesDisponibles.set(sucursalesFiltradas);
         if (sucursalesFiltradas.length === 0) {
           console.warn('[checklist] Lista de sucursales vacia para Nueva Tarea. ' +
             `rol=${yoVivo?.rol} alcance=${yoVivo?.alcance} ` +
@@ -1033,6 +1033,11 @@ export class ChecklistComponent implements OnInit, OnDestroy {
             `puedeCrearChecklists=${!!yoVivo?.puedeCrearChecklists}. ` +
             'Si tienes sucursales asignadas, verifica que esten escritas exactamente como en el catalogo (tildes, mayusculas).');
         }
+        // MANTENIMIENTO es una capacidad transversal: cualquiera que pueda crear
+        // tareas puede levantar una orden de mantenimiento, sin tener que meterla
+        // en sus sucursales (antes eso pisaba su departamento real al "darles" la
+        // seccion). Siempre la ofrecemos como ultima opcion.
+        this.sucursalesDisponibles.set([...sucursalesFiltradas, 'MANTENIMIENTO']);
       }
     } else {
       this.sucursalesDisponibles.set([]);

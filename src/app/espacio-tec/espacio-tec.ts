@@ -89,6 +89,11 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
   empleadosSel: string[] = [];
   tareaAsignarTexto = '';
   tareaAsignarHora = '';
+  tareaAsignarFecha = '';   // fecha de la tarea (YYYY-MM-DD); vacío = hoy. Solo aplica a "única".
+  // Rango inicio–fin (solo "única", informativo): la tarea cae en fechaInicio.
+  tareaAsignarUsarFechas = false;
+  tareaAsignarFechaInicio = '';
+  tareaAsignarFechaFin = '';
   asignando = false;
   // Frecuencia de la tarea asignada: 'unica' = solo hoy; o recurrente.
   tareaAsignarFrecuencia: 'unica' | 'Diaria' | 'Semanal' | 'Mensual' | 'Anual' = 'unica';
@@ -254,6 +259,9 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
       columna: c.columna || (c.completada ? 'hecho' : 'porhacer'),
       orden: typeof c.orden === 'number' ? c.orden : 0,
       color: c.color || '#E2E8F0',
+      fechaInicio: c.fechaInicio || '',
+      fechaFin: c.fechaFin || '',
+      usarFechas: !!c.usarFechas,
       subtareas: Array.isArray(c.subtareas) ? c.subtareas : [],
     };
   }
@@ -282,6 +290,7 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
       await addDoc(collection(this.firestore, 'tec_tareas'), {
         titulo, columna: colId, orden,
         color: '#E2E8F0', asignado: '', fechaLimite: '',
+        fechaInicio: '', fechaFin: '', usarFechas: false,
         subtareas: [],
         creadoPor: this.miNombre(), creadoPorUid: this.miUid(),
         creadoEn: Date.now(), actualizadoEn: Date.now()
@@ -346,6 +355,9 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
         color: this.tarjeta.color || '#E2E8F0',
         asignado: this.tarjeta.asignado || '',
         fechaLimite: this.tarjeta.fechaLimite || '',
+        usarFechas: !!this.tarjeta.usarFechas,
+        fechaInicio: this.tarjeta.usarFechas ? (this.tarjeta.fechaInicio || '') : '',
+        fechaFin: this.tarjeta.usarFechas ? (this.tarjeta.fechaFin || '') : '',
         subtareas: this.tarjeta.subtareas || [],
         actualizadoEn: Date.now()
       });
@@ -664,6 +676,14 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
       fechaAnual = this.tareaAsignarFechaAnual.slice(5); // MM-DD
     }
 
+    // Rango inicio–fin (solo "única"): valida orden si ambas están puestas.
+    const usarRango = frecuencia === 'unica' && this.tareaAsignarUsarFechas;
+    if (usarRango && this.tareaAsignarFechaInicio && this.tareaAsignarFechaFin
+        && this.tareaAsignarFechaFin < this.tareaAsignarFechaInicio) {
+      Swal.fire({ icon: 'info', title: 'La fecha de fin no puede ser anterior a la de inicio', confirmButtonColor: '#0F172A' });
+      return;
+    }
+
     this.asignando = true;
     const hoy = this.hoyISO();
     try {
@@ -688,9 +708,14 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
       } else {
         await Promise.all(this.empleadosSel.map((nombre, i) => {
           const id = `tec_${normalizarNombre(nombre).replace(/\s+/g, '_')}_${Date.now()}_${i}`;
+          // Con rango, la tarea cae en la fecha de inicio (o hoy si no se puso).
+          const fechaTarea = usarRango ? (this.tareaAsignarFechaInicio || hoy) : (this.tareaAsignarFecha || hoy);
           const checklist: any = {
             id, timestampCreacion: Date.now(),
-            name: texto, assigned: nombre, store: this.sucursalSel, date: hoy,
+            name: texto, assigned: nombre, store: this.sucursalSel,
+            date: fechaTarea,
+            fechaInicio: usarRango ? (this.tareaAsignarFechaInicio || '') : '',
+            fechaFin: usarRango ? (this.tareaAsignarFechaFin || '') : '',
             time: this.tareaAsignarHora || '23:59',
             status: 'pendiente', enviado: false,
             createdBy: this.miNombre(), origenTec: true, notaEmpleado: '',
@@ -708,7 +733,8 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
       }
       const n = this.empleadosSel.length;
       this.tareaAsignarTexto = ''; this.tareaAsignarHora = ''; this.empleadosSel = [];
-      this.tareaAsignarFrecuencia = 'unica'; this.tareaAsignarFechaAnual = '';
+      this.tareaAsignarFrecuencia = 'unica'; this.tareaAsignarFechaAnual = ''; this.tareaAsignarFecha = '';
+      this.tareaAsignarUsarFechas = false; this.tareaAsignarFechaInicio = ''; this.tareaAsignarFechaFin = '';
       const detalle = recurrente
         ? `Tarea ${frecuencia.toLowerCase()} asignada a ${n} ${n === 1 ? 'persona' : 'personas'} de ${this.sucursalSel}.`
         : `Se asignó a ${n} ${n === 1 ? 'persona' : 'personas'} de ${this.sucursalSel}.`;

@@ -331,6 +331,7 @@
   border: 1px solid var(--border);
   border-top: 4px solid #94A3B8;
   border-radius: 14px;
+
   padding: 12px;
   max-height: calc(100vh - 250px);
   display: flex;
@@ -416,7 +417,8 @@
 .tec-color.sel { border-color: var(--primary-navy); box-shadow: 0 0 0 2px #fff inset; }
 .tec-sub-count { color: var(--tec-blue); margin-left: 6px; }
 .tec-sub-list { display: flex; flex-direction: column; gap: 6px; }
-.tec-sub-item { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--text-main); background: #F8FAFC; border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; }
+.tec-sub-item { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--text-main); 
+  background: #F8FAFC; border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; }
 .tec-sub-item.done .tec-sub-texto { text-decoration: line-through; color: #94A3B8; }
 .tec-sub-texto { flex: 1; word-break: break-word; }
 .tec-sub-del { background: transparent; border: none; color: #94A3B8; font-size: 18px; line-height: 1; cursor: pointer; padding: 0 4px; }

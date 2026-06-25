@@ -22,7 +22,7 @@ import { Firestore, doc, getDoc, setDoc, collection, getDocs, query, where } fro
 import { RutinaMaestra, TareaRutinaMaestra } from './rutinas.types';
 import { AsignacionRutina } from './asignaciones.types';
 import { asignacionAplicaEnFecha, nombreDiaSemana } from './programacion.util';
-import { normalizarNombre } from './permisos.util';
+import { normalizarNombre, mismoEmpleadoNombre } from './permisos.util';
 import { ConfigTurnos, fechaISO, rutinaPermitidaEnTurno } from './turnos.util';
 import { esDiaDescansoEnFecha, obtenerSemanaISO } from './descansos.util';
 
@@ -216,7 +216,12 @@ export class RobotRutinasV2Service {
     sucursal: string
   ): { nombre: string }[] {
     if (asig.modoAsignacion === 'porPersonas') {
-      return (asig.empleadosNombres || []).map(n => ({ nombre: n }));
+      // Solo personas que SIGUEN existiendo en el sistema. Si a alguien lo dieron
+      // de baja pero su nombre quedó en la asignación, ya NO se le genera la tarea
+      // (antes se creaba un checklist fantasma que nadie podía completar/enviar).
+      return (asig.empleadosNombres || [])
+        .filter(n => usuarios.some(u => mismoEmpleadoNombre(u.nombre, n)))
+        .map(n => ({ nombre: n }));
     }
     // porRol
     const rolLower = (asig.rolObjetivo || '').toLowerCase().trim();

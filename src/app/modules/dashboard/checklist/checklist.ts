@@ -2341,6 +2341,64 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     return checklist.items.some((i: any) => this.isTareaVencida(i, checklist.date));
   }
 
+  /**
+   * Limpieza de "huérfanos": borra tareas pendientes asignadas a personas que ya
+   * no existen en el sistema y saca esos nombres de las asignaciones de rutinas.
+   * Resuelve los casos viejos (bajas hechas antes de la limpieza automática).
+   */
+  async limpiarHuerfanas() {
+    if (this.currentUser?.rol !== 'admin' && !esAdminGlobal(this.currentUser)) {
+      Swal.fire({ icon: 'error', title: 'Solo administradores', confirmButtonColor: '#0F172A' });
+      return;
+    }
+    const usuarios = this.usuariosV2 || [];
+    const existe = (nombre: string) => !!nombre && usuarios.some((u: any) => mismoEmpleadoNombre(u.nombre, nombre));
+
+    // 1) Tareas pendientes (no enviadas, no eliminadas) de gente que ya no existe.
+    const huerfanas = this.checklists().filter((c: any) =>
+      c.assigned && c.enviado !== true && c.eliminado !== true && !existe(c.assigned));
+
+    // 2) Asignaciones 'por personas' que conservan nombres inexistentes.
+    let asigSnap: any = null;
+    try { asigSnap = await getDocs(collection(this.firestore, 'asignaciones_rutinas')); }
+    catch (e) { console.error('[limpiarHuerfanas] asignaciones', e); }
+    const asigACambiar: { id: string; cambios: any }[] = [];
+    if (asigSnap) {
+      for (const d of asigSnap.docs) {
+        const a = d.data() as any;
+        if (a.modoAsignacion !== 'porPersonas' || !Array.isArray(a.empleadosNombres)) continue;
+        const restantes = a.empleadosNombres.filter((n: string) => existe(n));
+        if (restantes.length === a.empleadosNombres.length) continue;
+        const cambios: any = { empleadosNombres: restantes };
+        if (restantes.length === 0) cambios.activa = false;
+        asigACambiar.push({ id: d.id, cambios });
+      }
+    }
+
+    if (huerfanas.length === 0 && asigACambiar.length === 0) {
+      Swal.fire({ icon: 'info', title: 'Nada que limpiar', text: 'No hay tareas ni asignaciones de personas dadas de baja.', confirmButtonColor: '#0F172A' });
+      return;
+    }
+
+    const r = await Swal.fire({
+      title: '¿Limpiar pendientes de personas dadas de baja?',
+      html: `Se eliminarán <strong>${huerfanas.length}</strong> tarea(s) pendiente(s) y se corregirán <strong>${asigACambiar.length}</strong> asignación(es) de rutina.`,
+      icon: 'warning', showCancelButton: true, confirmButtonText: 'Sí, limpiar', cancelButtonText: 'Cancelar', confirmButtonColor: '#DC2626'
+    });
+    if (!r.isConfirmed) return;
+
+    let okT = 0, okA = 0;
+    for (const c of huerfanas) {
+      try { await setDoc(doc(this.firestore, 'checklists', String(c.id)), { eliminado: true }, { merge: true }); okT++; }
+      catch (e) { console.error('[limpiarHuerfanas] checklist', c.id, e); }
+    }
+    for (const a of asigACambiar) {
+      try { await setDoc(doc(this.firestore, 'asignaciones_rutinas', a.id), a.cambios, { merge: true }); okA++; }
+      catch (e) { console.error('[limpiarHuerfanas] asignacion', a.id, e); }
+    }
+    Swal.fire({ icon: 'success', title: 'Limpieza lista', html: `Se eliminaron <strong>${okT}</strong> tarea(s) y se corrigieron <strong>${okA}</strong> asignación(es).`, confirmButtonColor: '#0F172A' });
+  }
+
   enviarChecklist() {
     const actual = this.checklistSeleccionado(); if (!actual) return;
     // 🔒 Defensa: solo el dueño del checklist puede enviarlo

@@ -278,6 +278,16 @@
           </div>
 
           <footer class="cat-card-footer">
+            <button type="button" class="cat-card-action cat-card-action--asignar" (click)="irAAsignar(r.id); $event.stopPropagation()"
+                    *ngIf="r.activa" title="Asignar a sucursal o persona">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+                <circle cx="9" cy="7" r="4"></circle>
+                <line x1="19" y1="8" x2="19" y2="14"></line>
+                <line x1="22" y1="11" x2="16" y2="11"></line>
+              </svg>
+              Asignar
+            </button>
             <button type="button" class="cat-card-action" (click)="abrirWizardEditar(r); $event.stopPropagation()"
                     *ngIf="r.activa" title="Editar">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">

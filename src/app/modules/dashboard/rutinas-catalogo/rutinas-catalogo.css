@@ -333,6 +333,13 @@
 .cat-card-action--danger:hover {
   background: #FEF2F2; border-color: #FCA5A5; color: #B91C1C;
 }
+/* Acción principal: asignar la rutina a sucursal/persona */
+.cat-card-action--asignar {
+  background: #0F766E; color: #FFFFFF; border-color: #0F766E;
+}
+.cat-card-action--asignar:hover {
+  background: #0B5C55; border-color: #0B5C55; color: #FFFFFF;
+}
 
 
 /* ============== ESTADO VACÍO ============== */

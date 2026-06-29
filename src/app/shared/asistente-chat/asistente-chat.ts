@@ -114,7 +114,18 @@ export class AsistenteChatComponent implements OnDestroy {
 
       if (!resp.ok) {
         this.cargando = false;
-        this.mensajes.push({ de: 'bot', texto: 'El asistente no está disponible en este momento. Intenta más tarde.' });
+        // Leemos el detalle real que manda el servidor (no romper si no es JSON).
+        let detalle = '';
+        try { const err = await resp.json(); detalle = (err && err.error) || ''; } catch (_) { /* sin cuerpo JSON */ }
+        console.error('[asistente-chat] respuesta', resp.status, detalle);
+        // A los admins les mostramos la causa técnica para poder diagnosticar;
+        // al resto, el mensaje genérico.
+        let esAdmin = false;
+        try { esAdmin = (JSON.parse(localStorage.getItem('md_sesion_actual') || '{}').rol) === 'admin'; } catch (_) { /* noop */ }
+        const texto = esAdmin && detalle
+          ? `El asistente falló (${resp.status}): ${detalle}`
+          : 'El asistente no está disponible en este momento. Intenta más tarde.';
+        this.mensajes.push({ de: 'bot', texto });
         this.scrollAbajo();
         return;
       }

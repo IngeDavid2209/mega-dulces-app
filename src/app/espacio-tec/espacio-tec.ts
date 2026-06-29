@@ -88,8 +88,11 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
   sucursalSel = '';
   empleadosSel: string[] = [];
   tareaAsignarTexto = '';
-  tareaAsignarHora = '';
-  tareaAsignarFecha = '';   // fecha de la tarea (YYYY-MM-DD); vacío = hoy. Solo aplica a "única".
+  // Hora real de la tarea: inicio y finalización (ambas opcionales). La de fin
+  // funciona además como hora límite del checklist.
+  tareaAsignarHoraInicio = '';
+  tareaAsignarHoraFin = '';
+  tareaAsignarFecha = '';   // fecha de la tarea (YYYY-MM-DD); vacío = hoy. Puede ser pasada.
   // Rango inicio–fin (solo "única", informativo): la tarea cae en fechaInicio.
   tareaAsignarUsarFechas = false;
   tareaAsignarFechaInicio = '';
@@ -703,7 +706,8 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
           if (!uid) return Promise.resolve();
           const rid = `rp_tec_${normalizarNombre(nombre).replace(/\s+/g, '_')}_${Date.now()}_${i}`;
           const r: any = {
-            id: rid, uid, nombre, texto, hora: this.tareaAsignarHora || '',
+            id: rid, uid, nombre, texto,
+            hora: this.tareaAsignarHoraFin || '', horaInicio: this.tareaAsignarHoraInicio || '',
             sucursal: this.sucursalSel, frecuencia,
             diaSemana: frecuencia === 'Semanal' ? Number(this.tareaAsignarDiaSemana) : null,
             diaMes: frecuencia === 'Mensual' ? Number(this.tareaAsignarDiaMes) : null,
@@ -723,7 +727,7 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
             date: fechaTarea,
             fechaInicio: usarRango ? (this.tareaAsignarFechaInicio || '') : '',
             fechaFin: usarRango ? (this.tareaAsignarFechaFin || '') : '',
-            time: this.tareaAsignarHora || '23:59',
+            time: this.tareaAsignarHoraFin || '23:59',
             status: 'pendiente', enviado: false,
             createdBy: this.miNombre(), origenTec: true, notaEmpleado: '',
             items: [{
@@ -732,14 +736,14 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
               permiteGaleria: false, permiteDocumentos: false, checked: false,
               photo: null, photoTime: null, photoAntes: null, photoAntesTime: null,
               photoAntesTimestamp: null, photoDespues: null, photoDespuesTime: null, photos: [],
-              tipo: 'manual', horaInicio: null, horaLimite: this.tareaAsignarHora || null, frecuencia: null
+              tipo: 'manual', horaInicio: this.tareaAsignarHoraInicio || null, horaLimite: this.tareaAsignarHoraFin || null, frecuencia: null
             }]
           };
           return setDoc(doc(this.firestore, 'checklists', id), checklist);
         }));
       }
       const n = this.empleadosSel.length;
-      this.tareaAsignarTexto = ''; this.tareaAsignarHora = ''; this.empleadosSel = [];
+      this.tareaAsignarTexto = ''; this.tareaAsignarHoraInicio = ''; this.tareaAsignarHoraFin = ''; this.empleadosSel = [];
       this.tareaAsignarFrecuencia = 'unica'; this.tareaAsignarFechaAnual = ''; this.tareaAsignarFecha = '';
       this.tareaAsignarUsarFechas = false; this.tareaAsignarFechaInicio = ''; this.tareaAsignarFechaFin = '';
       const detalle = recurrente
@@ -765,7 +769,12 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
   }
 
   abrirEditarAsignada(t: any) {
-    this.asignadaEdit = { id: t.id, name: t.name || '', hora: (t.items && t.items[0]?.horaLimite) || (t.time && t.time !== '23:59' ? t.time : '') || '' };
+    const it0 = t.items && t.items[0];
+    this.asignadaEdit = {
+      id: t.id, name: t.name || '',
+      horaInicio: (it0?.horaInicio) || '',
+      horaFin: (it0?.horaLimite) || (t.time && t.time !== '23:59' ? t.time : '') || ''
+    };
   }
   cerrarEditarAsignada() { this.asignadaEdit = null; }
 
@@ -774,10 +783,12 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
     const nombre = (this.asignadaEdit.name || '').trim();
     if (!nombre) { Swal.fire({ icon: 'info', title: 'Escribe el nombre de la tarea', confirmButtonColor: '#0F172A' }); return; }
     const orig = this.tecAsignadas.find(x => x.id === this.asignadaEdit.id);
-    const items = (orig?.items || []).map((it: any, i: number) => i === 0 ? { ...it, text: nombre, horaLimite: this.asignadaEdit.hora || null } : it);
+    const items = (orig?.items || []).map((it: any, i: number) => i === 0
+      ? { ...it, text: nombre, horaInicio: this.asignadaEdit.horaInicio || null, horaLimite: this.asignadaEdit.horaFin || null }
+      : it);
     try {
       await updateDoc(doc(this.firestore, 'checklists', this.asignadaEdit.id), {
-        name: nombre, items, time: this.asignadaEdit.hora || '23:59'
+        name: nombre, items, time: this.asignadaEdit.horaFin || '23:59'
       });
       this.asignadaEdit = null;
     } catch (e) {
@@ -794,6 +805,15 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
     if (!r.isConfirmed) return;
     try { await updateDoc(doc(this.firestore, 'checklists', t.id), { eliminado: true }); }
     catch (e) { console.error('[tec] eliminarAsignada', e); }
+  }
+
+  /** Texto de horario (inicio–fin) de una tarea asignada, o '' si no tiene. */
+  horarioAsignada(t: any): string {
+    const it = t?.items && t.items[0];
+    const ini = it?.horaInicio || '';
+    const fin = it?.horaLimite || (t?.time && t.time !== '23:59' ? t.time : '');
+    if (!ini && !fin) return '';
+    return `${ini || '—'} a ${fin || '—'}`;
   }
 
   estadoAsignada(t: any): string {

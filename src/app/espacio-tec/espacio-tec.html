@@ -438,8 +438,16 @@
             <input class="tec-input" type="text" [(ngModel)]="tareaAsignarTexto"
                    placeholder="Ej: Revisar inventario de bodega">
 
-            <label class="tec-modal-label">Hora límite (opcional)</label>
-            <input class="tec-input" type="time" [(ngModel)]="tareaAsignarHora">
+            <div class="tec-modal-grid">
+              <div>
+                <label class="tec-modal-label" style="margin-top:0;">Hora de inicio (opcional)</label>
+                <input class="tec-input" type="time" [(ngModel)]="tareaAsignarHoraInicio">
+              </div>
+              <div>
+                <label class="tec-modal-label" style="margin-top:0;">Hora de finalización (opcional)</label>
+                <input class="tec-input" type="time" [(ngModel)]="tareaAsignarHoraFin">
+              </div>
+            </div>
 
             <ng-container *ngIf="tareaAsignarFrecuencia === 'unica'">
               <ng-container *ngIf="!tareaAsignarUsarFechas">
@@ -533,7 +541,7 @@
             <div class="as-asig-row" *ngFor="let t of asignadasActivas">
               <div class="as-asig-body">
                 <div class="as-asig-nom">{{ t.name }}</div>
-                <div class="as-asig-meta">{{ t.assigned }} · {{ t.store }} · <ng-container *ngIf="t.fechaInicio || t.fechaFin; else soloDia">{{ formatearDia(t.fechaInicio || t.date) }}<span *ngIf="t.fechaFin"> → {{ formatearDia(t.fechaFin) }}</span></ng-container><ng-template #soloDia>{{ formatearDia(t.date) }}</ng-template> · {{ estadoAsignada(t) }}</div>
+                <div class="as-asig-meta">{{ t.assigned }} · {{ t.store }} · <ng-container *ngIf="t.fechaInicio || t.fechaFin; else soloDia">{{ formatearDia(t.fechaInicio || t.date) }}<span *ngIf="t.fechaFin"> → {{ formatearDia(t.fechaFin) }}</span></ng-container><ng-template #soloDia>{{ formatearDia(t.date) }}</ng-template><span *ngIf="horarioAsignada(t)"> · 🕐 {{ horarioAsignada(t) }}</span> · {{ estadoAsignada(t) }}</div>
               </div>
               <button class="pt-edit" (click)="abrirEditarAsignada(t)" title="Editar">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
@@ -832,8 +840,16 @@
     <div class="tec-modal-body">
       <label class="tec-modal-label">Tarea</label>
       <input class="tec-input" type="text" [(ngModel)]="asignadaEdit.name" placeholder="Nombre de la tarea">
-      <label class="tec-modal-label">Hora límite (opcional)</label>
-      <input class="tec-input" type="time" [(ngModel)]="asignadaEdit.hora">
+      <div class="tec-modal-grid">
+        <div>
+          <label class="tec-modal-label" style="margin-top:0;">Hora de inicio (opcional)</label>
+          <input class="tec-input" type="time" [(ngModel)]="asignadaEdit.horaInicio">
+        </div>
+        <div>
+          <label class="tec-modal-label" style="margin-top:0;">Hora de finalización (opcional)</label>
+          <input class="tec-input" type="time" [(ngModel)]="asignadaEdit.horaFin">
+        </div>
+      </div>
       <p style="font-size:12px; color:#64748B; margin-top:10px;">El cambio se refleja en el Checklist del empleado.</p>
     </div>
     <div class="tec-modal-foot">

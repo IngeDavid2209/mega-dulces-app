@@ -186,7 +186,10 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
     const usuariosRef = collection(this.firestore, 'usuarios');
     this.radarUsuarios = onSnapshot(query(usuariosRef), snap => {
       const todos = snap.docs.map(d => ({ id: d.id, ...(d.data() as any) }));
-      this.usuariosEmpresa = todos.filter(u => u.rol === 'trabajador' && !u.grupoTec);
+      // Incluye trabajadores Y admins: los "encargados de sucursal" tienen cuenta
+      // admin (alcance por sucursales) y deben poder recibir tareas del TEC.
+      // Antes solo se incluían trabajadores, por eso los encargados no aparecían.
+      this.usuariosEmpresa = todos.filter(u => (u.rol === 'trabajador' || u.rol === 'admin') && !u.grupoTec);
       this.miembrosTec = todos
         .filter(u => u.grupoTec === true)
         .sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''));
@@ -634,6 +637,10 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
     return this.usuariosEmpresa
       .filter(u => {
         const sucs: string[] = (u.sucursales && u.sucursales.length) ? u.sucursales : (u.sucursal ? [u.sucursal] : []);
+        // Los admins (encargados) aparecen SOLO si tienen esta sucursal de forma
+        // explícita; NO por el comodín 'General (Acceso Total)', para no saturar
+        // cada sucursal con la gerencia global. Los trabajadores conservan el comodín.
+        if (u.rol === 'admin') return sucs.some(s => normalizarNombre(s) === objetivo);
         return sucs.some(s => { const n = normalizarNombre(s); return n === objetivo || n === comodin; });
       })
       .sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''));

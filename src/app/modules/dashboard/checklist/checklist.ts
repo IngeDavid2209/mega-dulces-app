@@ -976,7 +976,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   }
 
   verificarYNotificarPendientes() {
-    const misPendientes = this.checklists().filter(c => c.status !== 'completo' && c.enviado !== true);
+    const misPendientes = this.checklists().filter(c => !c.esFutura && c.status !== 'completo' && c.enviado !== true);
     if (misPendientes.length > 0) {
       const mensaje = `Tienes ${misPendientes.length} checklist(s) pendientes por terminar. ¡No te retrases! 🕒`;
       if ('Notification' in window && Notification.permission === 'granted') {
@@ -1182,8 +1182,11 @@ export class ChecklistComponent implements OnInit, OnDestroy {
           if (c.assigned) muestraEnviados.push({ id: docId, assigned: c.assigned, name: c.name });
           return;
         }
-        // Solo HOY: el query trae hoy en adelante; aquí excluimos cualquier fecha futura.
-        if (c.date !== fechaHoyLocal) { descartadosFecha++; return; }
+        // HOY + FUTURAS: el query trae de hoy en adelante. Antes descartábamos las
+        // futuras (las tareas programadas para más adelante no aparecían). Ahora las
+        // incluimos y las marcamos como "esFutura" para distinguirlas en la tarjeta.
+        c.esFutura = c.date > fechaHoyLocal;
+        if (c.esFutura) descartadosFecha++; // contador solo para diagnóstico
         // 🔢 Progreso visual: una tarea cuenta como completa si TIENE su evidencia
         // (foto / antes+después / varias fotos / palomeo) O si el checklist trae
         // una nota del colaborador o se entregó con retraso justificado. Usamos
@@ -1264,7 +1267,9 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       console.log('[DBG checklist]', this.ultimoDiagnostico);
 
       if (esTrabajadorPuro) {
-        const pendientesActuales = resultado.filter((c: any) => c.status !== 'completo' && c.enviado !== true).length;
+        // Solo cuentan las de HOY para la alerta de "nueva tarea"; las futuras no
+        // deben disparar la notificación antes de tiempo.
+        const pendientesActuales = resultado.filter((c: any) => !c.esFutura && c.status !== 'completo' && c.enviado !== true).length;
         if (this.cantidadPendientesAnterior !== -1 && pendientesActuales > this.cantidadPendientesAnterior) {
           this.lanzarNotificacionInmediata();
         }

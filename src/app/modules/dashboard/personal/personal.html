@@ -98,6 +98,14 @@
               </svg> Migrar cargos Prevención
             </button>
             <button class="btn-secondary" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeAdministrarPersonal"
+              (click)="togglePanelTec()" title="Ver y administrar quién tiene acceso al Espacio TEC">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                style="margin-right: 6px;">
+                <path d="M22 10v6M2 10l10-5 10 5-10 5z"></path>
+                <path d="M6 12v5c3 3 9 3 12 0v-5"></path>
+              </svg> Miembros TEC <span *ngIf="miembrosTec.length" class="vista-tab-badge">{{ miembrosTec.length }}</span>
+            </button>
+            <button class="btn-secondary" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeAdministrarPersonal"
               (click)="descargarExcel()">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                 style="margin-right: 6px;">
@@ -117,6 +125,41 @@
           </div>
         </div>
       </div>
+
+      <!-- 🎓 Panel: Miembros del Espacio TEC (ver / quitar acceso) -->
+      <section *ngIf="mostrarPanelTec" class="card"
+        style="margin:0 0 18px 0; padding:18px; border:1px solid var(--border); border-radius:14px;">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px;">
+          <div>
+            <strong style="font-size:15px;">Acceso al Espacio TEC</strong>
+            <div style="font-size:13px; color:var(--muted, #64748B);">
+              Estas personas ven el apartado "Espacio TEC". Solo aparece a quien tenga el privilegio activado.
+            </div>
+          </div>
+          <button type="button" class="btn-secondary" (click)="togglePanelTec()" title="Cerrar">Cerrar</button>
+        </div>
+
+        <div *ngIf="miembrosTec.length === 0" style="font-size:13px; color:var(--muted, #64748B); padding:8px 0;">
+          Nadie tiene el acceso activado. (Para darlo, edita un usuario y prende "Acceso al Espacio TEC".)
+        </div>
+
+        <ul *ngIf="miembrosTec.length" style="list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:8px;">
+          <li *ngFor="let u of miembrosTec"
+            style="display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 12px; background:var(--bg-soft, #F8FAFC); border:1px solid var(--border); border-radius:10px;">
+            <div>
+              <strong>{{ u.nombre || u.usuario }}</strong>
+              <span style="font-size:12px; color:var(--muted, #64748B); margin-left:8px;">
+                {{ u.cargo || (u.rol === 'admin' ? 'Administrador' : 'Colaborador') }}
+              </span>
+            </div>
+            <button type="button" class="btn-secondary" (click)="quitarAccesoTec(u)"
+              style="border-color:#DC2626; color:#DC2626;">
+              Quitar acceso
+            </button>
+          </li>
+        </ul>
+      </section>
+
       <!-- Tabs por nivel jerárquico -->
       <section class="vista-tabs" style="display:flex; gap:8px; margin:0 0 18px 0; flex-wrap:wrap;">
         <button type="button" class="vista-tab"

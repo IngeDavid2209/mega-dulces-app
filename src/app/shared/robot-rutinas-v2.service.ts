@@ -22,7 +22,7 @@ import { Firestore, doc, getDoc, setDoc, collection, getDocs, query, where } fro
 import { RutinaMaestra, TareaRutinaMaestra } from './rutinas.types';
 import { AsignacionRutina } from './asignaciones.types';
 import { asignacionAplicaEnFecha, nombreDiaSemana } from './programacion.util';
-import { normalizarNombre, mismoEmpleadoNombre } from './permisos.util';
+import { normalizarNombre, existeEmpleadoEnUsuarios } from './permisos.util';
 import { ConfigTurnos, fechaISO, rutinaPermitidaEnTurno } from './turnos.util';
 import { esDiaDescansoEnFecha, obtenerSemanaISO } from './descansos.util';
 
@@ -219,8 +219,13 @@ export class RobotRutinasV2Service {
       // Solo personas que SIGUEN existiendo en el sistema. Si a alguien lo dieron
       // de baja pero su nombre quedó en la asignación, ya NO se le genera la tarea
       // (antes se creaba un checklist fantasma que nadie podía completar/enviar).
+      //
+      // Usamos `existeEmpleadoEnUsuarios` (tolerante) y NO `mismoEmpleadoNombre`:
+      // este último exige 2+ palabras en común, así que dejaba fuera a personas
+      // reales cuya asignación quedó con el nombre corto (p. ej. "María" en vez
+      // de "María López") y el robot dejaba de generarles sus tareas.
       return (asig.empleadosNombres || [])
-        .filter(n => usuarios.some(u => mismoEmpleadoNombre(u.nombre, n)))
+        .filter(n => existeEmpleadoEnUsuarios(n, usuarios))
         .map(n => ({ nombre: n }));
     }
     // porRol

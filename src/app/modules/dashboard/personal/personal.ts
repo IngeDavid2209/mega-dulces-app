@@ -458,6 +458,38 @@ export class PersonalComponent implements OnInit, OnDestroy {
 
   cerrarModal() { this.isModalOpen = false; this.usuarioEnEdicion = null; this.formTelefono = ''; }
 
+  // ===================== ESPACIO TEC: gestión de miembros =====================
+  /** Panel desplegable de miembros del Espacio TEC. */
+  mostrarPanelTec = false;
+  togglePanelTec() { this.mostrarPanelTec = !this.mostrarPanelTec; }
+
+  /** Usuarios con el privilegio `grupoTec` activo (los que ven el apartado). */
+  get miembrosTec(): any[] {
+    return this.usuarios()
+      .filter(u => u?.grupoTec === true)
+      .sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''));
+  }
+
+  /** Quita el acceso al Espacio TEC (grupoTec: false) sin abrir el modal completo. */
+  async quitarAccesoTec(user: any) {
+    if (this.currentUser?.rol !== 'admin' && !this.currentUser?.puedeAdministrarPersonal) return;
+    const r = await Swal.fire({
+      title: 'Quitar acceso al Espacio TEC',
+      html: `¿Quitarle el acceso a <strong>${user?.nombre || user?.usuario || 'este usuario'}</strong>? Dejará de ver el apartado. Conserva su acceso normal.`,
+      icon: 'warning', showCancelButton: true, confirmButtonText: 'Sí, quitar', cancelButtonText: 'Cancelar', confirmButtonColor: '#DC2626'
+    });
+    if (!r.isConfirmed) return;
+    const docId = user?.idFirestore || user?.uid || user?.id || user?.usuario;
+    if (!docId) { Swal.fire({ icon: 'error', title: 'No se pudo identificar al usuario', confirmButtonColor: '#0F172A' }); return; }
+    try {
+      await setDoc(doc(this.firestore, 'usuarios', docId), { grupoTec: false }, { merge: true });
+      Swal.fire({ icon: 'success', title: 'Acceso quitado', timer: 1400, showConfirmButton: false });
+    } catch (e) {
+      console.error('[personal] quitarAccesoTec', e);
+      Swal.fire({ icon: 'error', title: 'No se pudo quitar el acceso', confirmButtonColor: '#0F172A' });
+    }
+  }
+
   toggleSucursal(sucursal: string) {
     const index = this.formSucursales.indexOf(sucursal);
     if (index > -1) this.formSucursales.splice(index, 1);
@@ -542,8 +574,9 @@ export class PersonalComponent implements OnInit, OnDestroy {
       sucursales: sucursalesFinal,
       areas: areasFinal,
       puedeAdministrarAreas: this.formRol === 'admin' ? true : this.formPuedeAdministrarAreas,
-      // 🎓 Miembro del Grupo TEC (apartado aislado). Si está activo, la app lo
-      // manda a /tec y no aparece en el directorio ni en las listas de la empresa.
+      // 🎓 Acceso al Espacio TEC (privilegio que SUMA el apartado en el menú).
+      // El usuario conserva su acceso normal; sigue apareciendo en el directorio
+      // y en las asignaciones. Solo ve "Espacio TEC" si esto está en true.
       grupoTec: this.formGrupoTec === true,
     };
 

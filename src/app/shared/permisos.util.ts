@@ -155,6 +155,46 @@ export function mismoEmpleadoNombre(a: string | undefined | null, b: string | un
 }
 
 /**
+ * ¿Esta persona (por nombre) SIGUE EXISTIENDO en la lista de usuarios?
+ *
+ * Comparación TOLERANTE pensada solo para filtros de "dado de baja" (el robot
+ * que decide si genera la tarea, o la limpieza de huérfanos). Es más laxa que
+ * `mismoEmpleadoNombre`: además del match exacto y el de 2+ palabras, acepta un
+ * nombre de UNA sola palabra si coincide con el PRIMER nombre del perfil.
+ *
+ * Motivo: una asignación pudo quedar guardada con el nombre corto o ligeramente
+ * distinto al del perfil (p. ej. perfil "María López" vs asignación "María").
+ * `mismoEmpleadoNombre` exige 2 palabras y devolvía `false`, así que el robot
+ * dejaba de generar tareas a personas reales y el botón "Limpiar bajas" las
+ * borraba. Aquí erramos hacia "sí existe": NO generar/NO borrar de menos.
+ */
+export function pareceLaMismaPersona(a: string | undefined | null, b: string | undefined | null): boolean {
+  const na = normalizarNombre(a);
+  const nb = normalizarNombre(b);
+  if (!na || !nb) return false;
+  if (na === nb) return true;
+  const ta = na.split(' ').filter(Boolean);
+  const tb = nb.split(' ').filter(Boolean);
+  const corto = ta.length <= tb.length ? ta : tb;
+  const largo = ta.length <= tb.length ? tb : ta;
+  if (corto.length >= 2) {
+    const setLargo = new Set(largo);
+    return corto.every(t => setLargo.has(t));
+  }
+  // Nombre de una sola palabra: lo damos por la misma persona si es el primer
+  // nombre del otro (evita confundir un apellido suelto con el nombre).
+  return corto.length === 1 && corto[0] === largo[0];
+}
+
+/**
+ * ¿Existe en `usuarios` alguien que parezca ser esta persona (por nombre)?
+ * Azúcar sobre `pareceLaMismaPersona` para los filtros de baja.
+ */
+export function existeEmpleadoEnUsuarios(nombre: string | undefined | null, usuarios: any[]): boolean {
+  return !!nombre && (usuarios || []).some(u => pareceLaMismaPersona(u?.nombre, nombre));
+}
+
+/**
  * ¿Esta persona puede ser ASIGNADA a tareas/rutinas en alguna de las sucursales
  * objetivo? Sirve para los selectores de "a quién asignar".
  *

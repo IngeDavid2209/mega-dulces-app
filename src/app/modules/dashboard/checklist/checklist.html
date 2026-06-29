@@ -1984,6 +1984,8 @@
                   <label>Sucursal</label>
                   <select class="form-input select-input" [(ngModel)]="equipoFormStore">
                     <option value="" disabled>Selecciona una sucursal...</option>
+                    <option [value]="OPCION_TODAS_SUCURSALES">{{ OPCION_TODAS_SUCURSALES }}</option>
+                    <option [value]="OPCION_TODO_MEGA">{{ OPCION_TODO_MEGA }}</option>
                     <option *ngFor="let s of todasLasSucursalesProyecto" [value]="s">{{ s }}</option>
                   </select>
                 </div>
@@ -2002,7 +2004,7 @@
             <!-- PASO 2: INTEGRANTES -->
             <div *ngIf="pasoEquipoWizard === 2" class="eq-step">
               <h4 class="eq-step-title">¿Quiénes integran el equipo?</h4>
-              <p class="eq-step-hint">Selecciona al menos 2 personas de la sucursal <strong>{{ equipoFormStore }}</strong>.</p>
+              <p class="eq-step-hint">Selecciona al menos 2 personas de <strong>{{ ambitoEquipoTexto }}</strong>.</p>
               <div class="eq-field">
                 <input type="text" class="form-input" [(ngModel)]="equipoBusquedaIntegrante"
                        placeholder="Buscar persona...">

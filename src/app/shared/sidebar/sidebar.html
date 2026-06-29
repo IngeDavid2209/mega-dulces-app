@@ -33,9 +33,11 @@
         Agenda Personal
       </a>
 
-      <!-- 🎓 Espacio TEC: solo visible si el admin le activó el privilegio (o es admin) -->
+      <!-- 🎓 Espacio TEC: visible SOLO si el admin le activó el privilegio (grupoTec).
+           Ya NO se muestra a todo admin: un admin que administre el TEC también debe
+           tener el privilegio activado en su propia cuenta para verlo. -->
       <a class="nav-item" routerLink="/tec" routerLinkActive="active"
-         *ngIf="currentUser?.rol === 'admin' || currentUser?.grupoTec"
+         *ngIf="currentUser?.grupoTec === true"
          (click)="onNavClick()">
         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M22 10v6M2 10l10-5 10 5-10 5z"></path>

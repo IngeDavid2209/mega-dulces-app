@@ -7,8 +7,11 @@ import { CanActivateFn, Router } from '@angular/router';
  * el admin activa:
  *  - Sin sesión → login.
  *  - Usuario con el privilegio (grupoTec) → entra.
- *  - Cualquier admin (para administrar/supervisar) → entra.
- *  - Cualquier otro → fuera, a /home.
+ *  - Cualquier otro (incluidos los admins SIN el privilegio) → fuera, a /home.
+ *
+ * Nota: antes cualquier admin entraba. Se quitó porque el apartado debe verse
+ * solo para quien tenga el privilegio activado; un admin que administre el TEC
+ * debe activárselo a sí mismo. La gestión de miembros vive en Personal.
  */
 export const soloTecGuard: CanActivateFn = () => {
   const router = inject(Router);
@@ -18,7 +21,7 @@ export const soloTecGuard: CanActivateFn = () => {
 
   try {
     const u = JSON.parse(sesion);
-    if (u?.grupoTec === true || u?.rol === 'admin') return true;
+    if (u?.grupoTec === true) return true;
   } catch { /* sesión corrupta */ }
 
   router.navigate(['/home']);

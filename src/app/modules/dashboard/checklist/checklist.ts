@@ -6,7 +6,7 @@ import { RouterModule, ActivatedRoute } from '@angular/router';
 import { Firestore, collection, doc, setDoc, getDoc, deleteDoc, onSnapshot, getDocs, query, where } from '@angular/fire/firestore';
 import * as localforage from 'localforage';
 import Swal from 'sweetalert2';
-import { esAdminGlobal, esAdminLimitado, sucursalesPermitidas, esSupervisor, mismoEmpleadoNombre, normalizarNombre, puedeSerAsignado } from '../../../shared/permisos.util';
+import { esAdminGlobal, esAdminLimitado, sucursalesPermitidas, esSupervisor, mismoEmpleadoNombre, existeEmpleadoEnUsuarios, normalizarNombre, puedeSerAsignado } from '../../../shared/permisos.util';
 import { nivelDeCargo } from '../../../shared/nivel-jerarquico.util';
 import { TareaEquipo, FaseEquipo, ItemEquipo, SubtareaEquipo } from '../../../shared/tareas-equipo.types';
 import { esItemHecho, tieneEvidencia } from '../../../shared/item-completado.util';
@@ -151,6 +151,15 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     'Canindo', 'La Piedad Abastos', '8 Esquinas', 'Padre Hidalgo',
     'Morelia Madero', 'Morelia Abastos', 'Yurécuaro', 'Zamora Centro', 'OFICINAS CORPORATIVAS',
     'CAJA GENERAL', 'COMPRAS', 'CONTABILIDAD', 'FINANZAS', 'SISTEMAS', 'RH', 'MKT', 'MANTENIMIENTO'
+  ];
+  // Opciones "abarca-todo" del wizard de Tareas en Equipo. Como valor del <select>
+  // usamos la etiqueta misma (se guarda como `store` informativo del proyecto).
+  readonly OPCION_TODAS_SUCURSALES = 'Todas las sucursales';
+  readonly OPCION_TODO_MEGA = 'Todo Mega Dulces';
+  /** Sucursales "tienda" (físicas), para la opción "Todas las sucursales". */
+  readonly sucursalesTiendaProyecto = [
+    'Canindo', 'La Piedad Abastos', '8 Esquinas', 'Padre Hidalgo',
+    'Morelia Madero', 'Morelia Abastos', 'Yurécuaro', 'Zamora Centro'
   ];
 
   // ===== Tareas de Equipo (proyectos colaborativos en fases) =====
@@ -2357,7 +2366,17 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       return;
     }
     const usuarios = this.usuariosV2 || [];
-    const existe = (nombre: string) => !!nombre && usuarios.some((u: any) => mismoEmpleadoNombre(u.nombre, nombre));
+
+    // 🔒 Guarda crítica: si la lista de usuarios aún no cargó, TODO nombre se
+    // vería como "inexistente" y borraríamos TODAS las pendientes. Abortamos.
+    if (usuarios.length === 0) {
+      Swal.fire({ icon: 'warning', title: 'Espera un momento', text: 'La lista de personal todavía no termina de cargar. Vuelve a intentarlo en unos segundos.', confirmButtonColor: '#0F172A' });
+      return;
+    }
+
+    // Criterio TOLERANTE (existeEmpleadoEnUsuarios): igual que el robot, para no
+    // borrar a personas reales cuya asignación quedó con el nombre corto/distinto.
+    const existe = (nombre: string) => existeEmpleadoEnUsuarios(nombre, usuarios);
 
     // 1) Tareas pendientes (no enviadas, no eliminadas) de gente que ya no existe.
     const huerfanas = this.checklists().filter((c: any) =>
@@ -2582,13 +2601,33 @@ export class ChecklistComponent implements OnInit, OnDestroy {
    * incluyen admins globales ni gente con 'General (Acceso Total)', para que el
    * equipo sea de esa sucursal y no salga medio directorio.
    */
+  /** Texto del ámbito elegido en el wizard de equipo (para los hints). */
+  get ambitoEquipoTexto(): string {
+    if (this.equipoFormStore === this.OPCION_TODO_MEGA || this.equipoFormStore === this.OPCION_TODAS_SUCURSALES) {
+      return this.equipoFormStore;
+    }
+    return 'la sucursal ' + this.equipoFormStore;
+  }
+
   get empleadosParaEquipoWizard(): any[] {
     if (!this.equipoFormStore) return [];
-    const store = normalizarNombre(this.equipoFormStore);
-    let lista = this.empleados().filter(e => {
-      const sucs: string[] = (e.sucursales && e.sucursales.length) ? e.sucursales : (e.sucursal ? [e.sucursal] : []);
-      return sucs.some((s: string) => normalizarNombre(s) === store);
-    });
+    const sucsDe = (e: any): string[] =>
+      (e.sucursales && e.sucursales.length) ? e.sucursales : (e.sucursal ? [e.sucursal] : []);
+    let lista: any[];
+    if (this.equipoFormStore === this.OPCION_TODO_MEGA) {
+      // Todo Mega Dulces: cualquier persona del sistema.
+      lista = this.empleados().slice();
+    } else if (this.equipoFormStore === this.OPCION_TODAS_SUCURSALES) {
+      // Todas las sucursales: personal de las tiendas físicas (o acceso total).
+      const tiendas = new Set(this.sucursalesTiendaProyecto.map(s => normalizarNombre(s)));
+      const comodin = normalizarNombre('General (Acceso Total)');
+      lista = this.empleados().filter(e =>
+        sucsDe(e).some((s: string) => { const n = normalizarNombre(s); return tiendas.has(n) || n === comodin; }));
+    } else {
+      const store = normalizarNombre(this.equipoFormStore);
+      lista = this.empleados().filter(e =>
+        sucsDe(e).some((s: string) => normalizarNombre(s) === store));
+    }
     const t = this.equipoBusquedaIntegrante.trim().toLowerCase();
     if (t) lista = lista.filter(e => (e.nombre || '').toLowerCase().includes(t));
     return lista.sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''));

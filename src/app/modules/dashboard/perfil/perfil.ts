@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router'; 
 import { Auth, updateEmail,verifyBeforeUpdateEmail, updatePassword, reauthenticateWithCredential, EmailAuthProvider } from '@angular/fire/auth';
-import { Firestore, doc, updateDoc } from '@angular/fire/firestore';
+import { Firestore, doc, updateDoc, setDoc } from '@angular/fire/firestore';
 import Swal from 'sweetalert2';
 import { SidebarComponent } from '../../../shared/sidebar/sidebar';
 
@@ -108,9 +108,43 @@ export class PerfilComponent implements OnInit {
   }
 
   async actualizarMisDatos() {
+    const correoActual = this.currentUser?.correo || '';
+    const correoCambia = !!this.formCorreo && this.formCorreo !== correoActual;
+    const passwordCambia = !!this.formPassword;
+    const telefonoCambia = (this.formTelefono || '') !== (this.currentUser?.telefono || '');
+
+    if (passwordCambia && this.formPassword.length < 6) {
+      Swal.fire('Atención', 'La nueva contraseña debe tener al menos 6 caracteres.', 'warning');
+      return;
+    }
+
+    // ── CASO SIMPLE: solo cambió el TELÉFONO ──────────────────────────────
+    // El teléfono es un dato informativo en Firestore: NO requiere Firebase
+    // Auth ni re-autenticación. Antes fallaba porque se exigía sesión de Auth
+    // aunque solo se quisiera cambiar el teléfono.
+    if (!correoCambia && !passwordCambia) {
+      if (!telefonoCambia) {
+        Swal.fire('Sin cambios', 'No modificaste ningún dato.', 'info');
+        return;
+      }
+      const uid = this.miUid();
+      if (!uid) { Swal.fire('Error', 'No se pudo identificar tu usuario.', 'error'); return; }
+      try {
+        await updateDoc(doc(this.firestore, 'usuarios', uid), { telefono: this.formTelefono });
+        this.currentUser.telefono = this.formTelefono;
+        localStorage.setItem('md_sesion_actual', JSON.stringify(this.currentUser));
+        Swal.fire('✅ ¡Éxito!', 'Tu teléfono se actualizó correctamente.', 'success');
+      } catch (e: any) {
+        console.error('[perfil] telefono', e);
+        Swal.fire('❌ Error', 'No se pudo guardar el teléfono. Intenta de nuevo.', 'error');
+      }
+      return;
+    }
+
+    // ── CASO CORREO / CONTRASEÑA: sí requiere Firebase Auth ───────────────
     const user = this.auth.currentUser;
     if (!user) {
-      Swal.fire('Error', 'No hay sesión activa con Firebase Auth.', 'error');
+      Swal.fire('Vuelve a iniciar sesión', 'Para cambiar tu correo o contraseña necesitas tu sesión activa. Cierra sesión, vuelve a entrar e intenta de nuevo. (El teléfono sí puedes cambiarlo sin esto.)', 'info');
       return;
     }
 
@@ -160,6 +194,18 @@ export class PerfilComponent implements OnInit {
 
       await updateDoc(userRef, payload);
 
+      // 4b. SINCRONIZAR EL ÍNDICE DE LOGIN (indice_login/{usuario} → { correo, uid }).
+      // El login por NOMBRE DE USUARIO resuelve el correo desde este índice. Si
+      // cambia el correo y no se actualiza aquí, el login por usuario se rompe.
+      // Lo dejamos apuntando al correo nuevo para que el estado final sea correcto
+      // una vez que el usuario confirme el enlace de verificación.
+      if (correoCambiado && this.currentUser?.usuario) {
+        try {
+          await setDoc(doc(this.firestore, 'indice_login', String(this.currentUser.usuario).trim().toLowerCase()),
+            { correo: this.formCorreo, uid: user.uid });
+        } catch (e) { console.error('[perfil] indice_login', e); }
+      }
+
       // Actualizamos la sesión en la memoria de la computadora
       this.currentUser.correo = this.formCorreo;
       this.currentUser.telefono = this.formTelefono;
@@ -170,7 +216,11 @@ export class PerfilComponent implements OnInit {
 
       // 5. AVISO AL USUARIO
       if (correoCambiado) {
-        Swal.fire('¡Verifica tu correo!', `Hemos enviado un enlace a ${this.formCorreo}. Haz clic en él para confirmar tu nuevo correo. Tus demás datos se guardaron.`, 'info');
+        Swal.fire('¡Confirma tu nuevo correo!',
+          `Enviamos un enlace a ${this.formCorreo}. Ábrelo y haz clic para confirmar el cambio.\n\n` +
+          `IMPORTANTE: hasta que confirmes, sigue iniciando sesión con tu correo ANTERIOR. ` +
+          `Una vez confirmado, usa el nuevo. Tus demás datos ya se guardaron.`,
+          'info');
       } else {
         Swal.fire('✅ ¡Éxito!', 'Tus datos han sido actualizados correctamente.', 'success');
       }

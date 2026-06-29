@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Auth, signInWithEmailAndPassword } from '@angular/fire/auth';
-import { Firestore, collection, getDocs, getDoc, doc, query, where } from '@angular/fire/firestore';
+import { Firestore, collection, getDocs, getDoc, doc, setDoc, query, where } from '@angular/fire/firestore';
 import Swal from 'sweetalert2';
 import { APP_BUILD_SELLO } from '../../shared/version';
 import { NotificacionesService } from '../../services/notificaciones';
@@ -109,6 +109,17 @@ export class LoginComponent {
         });
         this.ingresando = false;
         return;
+      }
+
+      // 🛟 Auto-reparar el índice de login: lo dejamos apuntando al correo REAL
+      // de Firebase Auth. Si alguien cambió su correo (perfil) y no terminó la
+      // verificación, o el índice quedó desincronizado, esto lo corrige solo en
+      // el siguiente inicio de sesión, sin romper el login por nombre de usuario.
+      if (perfil?.usuario && creds.user.email) {
+        try {
+          await setDoc(doc(this.firestore, 'indice_login', String(perfil.usuario).trim().toLowerCase()),
+            { correo: creds.user.email, uid: creds.user.uid });
+        } catch (_) { /* no bloquear el login si falla el índice */ }
       }
 
       localStorage.setItem('md_sesion_actual', JSON.stringify(perfil));

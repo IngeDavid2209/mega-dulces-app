@@ -46,3 +46,9 @@ __screenshots__/
 Thumbs.db
 .vercel
 .env*.local
+
+# Backend local (NO subir: contiene secretos)
+#   service-account.json y .env tienen credenciales de Firebase admin.
+/backend
+.env
+service-account.json

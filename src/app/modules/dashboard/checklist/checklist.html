@@ -320,8 +320,22 @@
           </div>
         </section>
 
+        <!-- 🗂️ Toggle: Pendientes (hoy) / Enviadas (historial últimos 30 días) -->
+        <section class="vista-tabs" *ngIf="vistaEquipo() === 'lista'" style="margin-bottom:14px;">
+          <button class="vista-tab"
+                  [class.vista-tab-active]="vistaHistorial() === 'pendientes'"
+                  (click)="cambiarVistaHistorial('pendientes')">
+            <span class="vista-tab-icon">📋</span> Pendientes
+          </button>
+          <button class="vista-tab"
+                  [class.vista-tab-active]="vistaHistorial() === 'enviadas'"
+                  (click)="cambiarVistaHistorial('enviadas')">
+            <span class="vista-tab-icon">✅</span> Enviadas
+          </button>
+        </section>
+
         <!-- 🎯 Tabs: Mis tareas / Equipo / Todas (solo admin o supervisor) -->
-        <section class="vista-tabs" *ngIf="puedeFiltrarVista && vistaEquipo() === 'lista'">
+        <section class="vista-tabs" *ngIf="puedeFiltrarVista && vistaEquipo() === 'lista' && vistaHistorial() === 'pendientes'">
           <button class="vista-tab"
                   [class.vista-tab-active]="vistaTareas === 'mis'"
                   (click)="cambiarVistaTareas('mis')">
@@ -339,7 +353,7 @@
         </section>
 
         <!-- Cualquier trabajador puede sumar una tarea propia/extra a su día -->
-        <div class="tarea-propia-bar" *ngIf="vistaEquipo() === 'lista'"
+        <div class="tarea-propia-bar" *ngIf="vistaEquipo() === 'lista' && vistaHistorial() === 'pendientes'"
              style="display:flex; justify-content:flex-end; margin:0 0 14px 0;">
           <button class="btn-primary" (click)="abrirModalTareaDia()">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -351,7 +365,7 @@
         </div>
 
         <!-- 🔀 Toggle: agrupar por persona / lista (solo admin-supervisor en "Todas") -->
-        <div class="agrupar-bar" *ngIf="vistaEquipo() === 'lista' && puedeFiltrarVista && vistaTareas === 'todas'">
+        <div class="agrupar-bar" *ngIf="vistaEquipo() === 'lista' && vistaHistorial() === 'pendientes' && puedeFiltrarVista && vistaTareas === 'todas'">
           <button class="agrupar-toggle" [class.on]="agruparPorPersona()" (click)="toggleAgruparPorPersona()">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
@@ -466,7 +480,7 @@
 
         <!-- VISTA AGRUPADA POR PERSONA -->
         <div class="checklist-grupos"
-             *ngIf="vistaEquipo() === 'lista' && agruparPorPersona() && puedeFiltrarVista && vistaTareas === 'todas'">
+             *ngIf="vistaEquipo() === 'lista' && vistaHistorial() === 'pendientes' && agruparPorPersona() && puedeFiltrarVista && vistaTareas === 'todas'">
           <div class="persona-grupo" *ngFor="let g of gruposPorPersona; trackBy: trackByGrupo">
             <button type="button" class="persona-head" (click)="toggleGrupoColapsado(g.nombre)">
               <span class="persona-avatar" [attr.data-nivel]="g.nivel">{{ (g.nombre || '?').charAt(0) | uppercase }}</span>
@@ -486,7 +500,7 @@
 
         <!-- VISTA LISTA (plana por nivel) -->
         <div class="checklist-grid"
-             *ngIf="vistaEquipo() === 'lista' && (!agruparPorPersona() || !puedeFiltrarVista || vistaTareas !== 'todas')">
+             *ngIf="vistaEquipo() === 'lista' && vistaHistorial() === 'pendientes' && (!agruparPorPersona() || !puedeFiltrarVista || vistaTareas !== 'todas')">
           <ng-container *ngFor="let checklist of checklistsOrdenadosPorNivel; let i = index; trackBy: trackByChecklist">
             <!-- Encabezado de la sección Mandos cuando arranca con un mando y hay operativos detrás -->
             <div *ngIf="i === 0 && nivelDelAssigned(checklist.assigned) === 'mando' && checklistsDeOperativos.length > 0"
@@ -505,7 +519,7 @@
         </div>
 
         <!-- Estado vacío (compartido por ambas vistas) -->
-        <div class="checklist-grid" *ngIf="vistaEquipo() === 'lista' && checklistsFiltrados.length === 0">
+        <div class="checklist-grid" *ngIf="vistaEquipo() === 'lista' && vistaHistorial() === 'pendientes' && checklistsFiltrados.length === 0">
           <div class="empty-state">
             <div class="empty-state-icon"><svg width="48" height="48" viewBox="0 0 24 24" fill="none"
                 stroke="currentColor" stroke-width="2">
@@ -528,6 +542,28 @@
             </button>
           </div>
         </div>
+
+        <!-- ✅ HISTORIAL: tareas ENVIADAS (últimos 30 días), solo lectura -->
+        <ng-container *ngIf="vistaEquipo() === 'lista' && vistaHistorial() === 'enviadas'">
+          <div class="checklist-grid" *ngIf="cargandoEnviadas">
+            <div class="empty-state"><h3>Cargando historial…</h3></div>
+          </div>
+          <div class="checklist-grid" *ngIf="!cargandoEnviadas && enviadas().length === 0">
+            <div class="empty-state">
+              <div class="empty-state-icon"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg></div>
+              <h3>Sin tareas enviadas</h3>
+              <p>No hay tareas enviadas en los últimos 30 días.</p>
+            </div>
+          </div>
+          <div class="checklist-grid" *ngIf="!cargandoEnviadas && enviadas().length > 0">
+            <div style="grid-column: 1 / -1; font-size: 12px; font-weight: 700; color: #475569; letter-spacing: .5px; text-transform: uppercase; margin: 0 0 4px 4px;">
+              Enviadas · últimos 30 días ({{ enviadas().length }})
+            </div>
+            <ng-container *ngFor="let checklist of enviadas(); trackBy: trackByChecklist">
+              <ng-container *ngTemplateOutlet="checklistCard; context: { $implicit: checklist }"></ng-container>
+            </ng-container>
+          </div>
+        </ng-container>
       </div>
 
       <!-- Vista de DETALLE (sin cambios respecto al original tuyo) -->

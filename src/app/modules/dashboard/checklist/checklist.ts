@@ -134,6 +134,13 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   checklistToDelete: any = null;
 
   checklists = signal<any[]>([]);
+  // ── Historial de tareas ENVIADAS (últimos 30 días) ──────────────────────
+  // Pestaña aparte dentro del Checklist para consultar lo ya enviado. Se carga
+  // bajo demanda (getDocs) la primera vez que se abre, para no gastar lecturas.
+  vistaHistorial = signal<'pendientes' | 'enviadas'>('pendientes');
+  enviadas = signal<any[]>([]);
+  cargandoEnviadas = false;
+  enviadasCargadas = false;
   empleados = signal<any[]>([]);
   /** Config de turnos de Canindo (manana/tarde). null mientras no carga. */
   configTurnos = signal<ConfigTurnos | null>(null);
@@ -983,6 +990,57 @@ export class ChecklistComponent implements OnInit, OnDestroy {
         new Notification('Mega Dulces Task 🍭', { body: mensaje, vibrate: [200, 100, 200] } as any);
       }
       this.mostrarToast(`⏰ ¡Hora de checar! ${mensaje}`);
+    }
+  }
+
+  /** Cambia entre la vista de pendientes (hoy) y el historial de enviadas. */
+  cambiarVistaHistorial(v: 'pendientes' | 'enviadas') {
+    this.vistaHistorial.set(v);
+    if (v === 'enviadas' && !this.enviadasCargadas) this.cargarEnviadas();
+  }
+
+  /** Carga (bajo demanda) las tareas ENVIADAS de los últimos 30 días, filtradas
+   *  según el alcance de quien mira: trabajador → las suyas; admin limitado /
+   *  supervisor → las de sus sucursales; admin global → todas. */
+  async cargarEnviadas() {
+    this.cargandoEnviadas = true;
+    try {
+      const offset = new Date().getTimezoneOffset() * 60000;
+      const hace30 = new Date(Date.now() - offset - 30 * 86400000).toISOString().split('T')[0];
+      // Solo rango por fecha (campo único → sin índice compuesto). El resto se
+      // filtra en el cliente para no requerir desplegar índices de Firestore.
+      const snap = await getDocs(query(collection(this.firestore, 'checklists'), where('date', '>=', hace30)));
+      const sesion = (() => { try { return JSON.parse(localStorage.getItem('md_sesion_actual') || 'null'); } catch { return null; } })() || this.currentUser;
+      const esGlobal = esAdminGlobal(sesion);
+      const esLimitado = esAdminLimitado(sesion);
+      const supervisor = esSupervisor(sesion);
+      const permitidas = sucursalesPermitidas(sesion) ?? [];
+      const miNombre = sesion?.nombre;
+
+      const lista: any[] = [];
+      snap.forEach(d => {
+        const c = d.data() as any;
+        if (c.enviado !== true) return;            // solo enviadas
+        if (c.eliminado === true || c.archivado === true) return;
+        // Alcance
+        if (esGlobal) { /* ve todas */ }
+        else if (esLimitado || supervisor) { if (!permitidas.includes(c.store)) return; }
+        else { if (!mismoEmpleadoNombre(c.assigned, miNombre)) return; }
+        c.id = d.id;
+        lista.push(c);
+      });
+      // Más recientes primero (por fecha y, dentro del día, por creación).
+      lista.sort((a, b) => {
+        if (a.date !== b.date) return String(b.date).localeCompare(String(a.date));
+        return (b.timestampCreacion || 0) - (a.timestampCreacion || 0);
+      });
+      this.enviadas.set(lista);
+      this.enviadasCargadas = true;
+    } catch (e) {
+      console.error('[checklist] cargarEnviadas', e);
+      this.mostrarToast('No se pudo cargar el historial. Intenta de nuevo.');
+    } finally {
+      this.cargandoEnviadas = false;
     }
   }
 

@@ -840,6 +840,8 @@
     <div class="tec-modal-body">
       <label class="tec-modal-label">Tarea</label>
       <input class="tec-input" type="text" [(ngModel)]="asignadaEdit.name" placeholder="Nombre de la tarea">
+      <label class="tec-modal-label">Fecha</label>
+      <input class="tec-input" type="date" [(ngModel)]="asignadaEdit.fecha">
       <div class="tec-modal-grid">
         <div>
           <label class="tec-modal-label" style="margin-top:0;">Hora de inicio (opcional)</label>
@@ -850,7 +852,7 @@
           <input class="tec-input" type="time" [(ngModel)]="asignadaEdit.horaFin">
         </div>
       </div>
-      <p style="font-size:12px; color:#64748B; margin-top:10px;">El cambio se refleja en el Checklist del empleado.</p>
+      <p style="font-size:12px; color:#64748B; margin-top:10px;">El cambio se refleja en el Checklist del empleado. Si cambias la fecha, la tarea se mueve a ese día.</p>
     </div>
     <div class="tec-modal-foot">
       <span></span>

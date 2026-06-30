@@ -772,6 +772,7 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
     const it0 = t.items && t.items[0];
     this.asignadaEdit = {
       id: t.id, name: t.name || '',
+      fecha: t.date || this.hoyISO(),
       horaInicio: (it0?.horaInicio) || '',
       horaFin: (it0?.horaLimite) || (t.time && t.time !== '23:59' ? t.time : '') || ''
     };
@@ -788,7 +789,8 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
       : it);
     try {
       await updateDoc(doc(this.firestore, 'checklists', this.asignadaEdit.id), {
-        name: nombre, items, time: this.asignadaEdit.horaFin || '23:59'
+        name: nombre, items, time: this.asignadaEdit.horaFin || '23:59',
+        date: this.asignadaEdit.fecha || orig?.date || this.hoyISO()
       });
       this.asignadaEdit = null;
     } catch (e) {

@@ -1,6 +1,6 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterOutlet, Router, NavigationEnd } from '@angular/router';
+import { RouterOutlet, Router, NavigationEnd, NavigationError } from '@angular/router';
 import { Firestore, doc, setDoc, updateDoc, getDoc, onSnapshot, collection, query, where, getDocs } from '@angular/fire/firestore';
 import { Storage, ref, uploadString, getDownloadURL } from '@angular/fire/storage';
 import { SwUpdate, VersionReadyEvent } from '@angular/service-worker';
@@ -48,6 +48,11 @@ export class AppComponent implements OnInit {
 
     // 🔄 AUTO-ACTUALIZACIÓN DE LA PWA INSTALADA 🔄
     this.vigilarActualizaciones();
+
+    // 🛟 RED DE SEGURIDAD: si un apartado lazy (checklist, tec, etc.) no carga
+    // porque el deploy reemplazó su chunk con otro hash, recargamos limpio en
+    // vez de dejar la pantalla muerta/en blanco.
+    this.manejarFallosDeChunk();
 
     // 🔄 SINCRONIZAR SESIÓN EN VIVO con el doc real del usuario en Firestore.
     // Si un admin cambia nombre/sucursales/permisos del usuario, se reflejan al
@@ -160,6 +165,51 @@ export class AppComponent implements OnInit {
         console.log('[sesion] perfil cambio en Firestore — recargando…');
         setTimeout(() => window.location.reload(), 300);
       }
+    });
+  }
+
+  /**
+   * 🛟 Recupera la app cuando un módulo lazy (loadComponent) no se puede cargar.
+   *
+   * Causa típica: se publicó una versión nueva y el servidor reemplazó los chunks
+   * con hash distinto. Una PWA que seguía abierta con la versión vieja intenta
+   * importar el chunk anterior (p. ej. checklist-XXXX.js), el servidor responde
+   * 404 y ese apartado queda en blanco / sin responder. El `unrecoverable` del
+   * Service Worker NO cubre esto (el caché no está corrupto, solo desfasado).
+   *
+   * Solución: detectar ese fallo y recargar UNA sola vez (con candado anti-bucle),
+   * pidiendo antes la última versión al Service Worker. Tras la recarga el cliente
+   * toma el index.html nuevo con los hashes correctos y el apartado abre bien.
+   */
+  private manejarFallosDeChunk() {
+    const esErrorDeChunk = (msg: any): boolean =>
+      /failed to fetch dynamically imported module|error loading dynamically imported module|importing a module script failed|chunkloaderror|dynamically imported module/i
+        .test(String(msg ?? ''));
+
+    const recargarUnaVez = (motivo: string) => {
+      // Candado anti-bucle: no recargar más de una vez cada 20 s.
+      const ahora = Date.now();
+      const ultima = Number(sessionStorage.getItem('md_reload_chunk') || '0');
+      if (ahora - ultima < 20000) return;
+      sessionStorage.setItem('md_reload_chunk', String(ahora));
+      console.warn('[chunk] módulo lazy no disponible — recargando:', motivo);
+      if (this.swUpdate.isEnabled) {
+        this.swUpdate.checkForUpdate()
+          .then(() => this.swUpdate.activateUpdate().catch(() => {}))
+          .finally(() => document.location.reload());
+      } else {
+        document.location.reload();
+      }
+    };
+
+    // 1) Navegación a una ruta lazy cuyo chunk ya no existe.
+    this.router.events
+      .pipe(filter((e): e is NavigationError => e instanceof NavigationError))
+      .subscribe(e => { if (esErrorDeChunk(e.error?.message || e.error)) recargarUnaVez('NavigationError'); });
+
+    // 2) import() que falla fuera del router (rechazo sin manejar).
+    window.addEventListener('unhandledrejection', (ev: PromiseRejectionEvent) => {
+      if (esErrorDeChunk(ev?.reason?.message || ev?.reason)) recargarUnaVez('unhandledrejection');
     });
   }
 

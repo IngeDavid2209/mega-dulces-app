@@ -1682,6 +1682,23 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     }
   }
 
+  /** Frase amigable de cuando se repite una rutina personal (para el toast). */
+  private descripcionRecurrencia(r: any): string {
+    switch (r?.frecuencia) {
+      case 'Diaria': return 'todos los dias';
+      case 'Semanal': {
+        const dia = this.diasSemanaOpc.find(d => d.v === Number(r.diaSemana))?.t || 'el dia elegido';
+        return `cada ${dia.toLowerCase()}`;
+      }
+      case 'Mensual': return `el dia ${r.diaMes} de cada mes`;
+      case 'Anual': {
+        const [mm, dd] = String(r.fechaAnual || '').split('-');
+        return mm && dd ? `cada ${dd}/${mm}` : 'cada ano';
+      }
+      default: return 'cuando toque';
+    }
+  }
+
   private aplicaRutinaPersonalHoy(r: any, hoy: Date): boolean {
     switch (r?.frecuencia) {
       case 'Diaria': return true;
@@ -1773,7 +1790,13 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       await setDoc(doc(this.firestore, 'rutinas_personales', id), r);
       this.isModalTareaDiaOpen = false;
       this.resetCamposTareaDia();
-      this.mostrarToast(' Tarea recurrente creada. Aparecera sola cuando toque.');
+      // Mensaje explicito de CUANDO aparecera: los testers creian que las
+      // recurrentes "no funcionaban" porque (salvo Diaria) no se ven hoy mismo.
+      const aplicaHoy = this.aplicaRutinaPersonalHoy(r, new Date());
+      const cuando = this.descripcionRecurrencia(r);
+      this.mostrarToast(aplicaHoy
+        ? ` Tarea recurrente creada. Ya la agregamos a tu dia de hoy y se repetira ${cuando}.`
+        : ` Tarea recurrente creada. Aparecera sola ${cuando}.`);
     } catch (e) {
       console.error('[rutina-personal] error al guardar', e);
       this.mostrarToast(' Error al crear la tarea recurrente.');
@@ -2170,7 +2193,50 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     this.isModalRutinasOpen = true;
   }
 
-  verDetalle(checklist: any) { this.checklistSeleccionado.set(checklist); this.vistaActual.set('detalle'); }
+  verDetalle(checklist: any) {
+    this.checklistSeleccionado.set(checklist);
+    this.vistaActual.set('detalle');
+    // Si quien abre es Gerencia (y no el mismo trabajador), deja constancia de
+    // que la tarea enviada ya fue revisada -> el empleado lo ve en "Enviadas".
+    this.registrarVistoGerencia(checklist);
+  }
+
+  /** ¿La sesión actual es Gerencia? (puede revisar tareas de otros). */
+  private esGerencia(sesion: any): boolean {
+    return esAdminGlobal(sesion) || esAdminLimitado(sesion) || esSupervisor(sesion) || !!sesion?.puedeCrearChecklists;
+  }
+
+  /** Marca una tarea enviada como "vista por Gerencia" la primera vez que un
+   *  admin/supervisor abre su detalle. No cuenta si la abre el propio empleado. */
+  private async registrarVistoGerencia(checklist: any) {
+    if (!checklist?.id || !checklist.enviado || checklist.vistoPor) return;
+    const sesion = this.currentUser;
+    if (!this.esGerencia(sesion)) return;
+    if (mismoEmpleadoNombre(checklist.assigned, sesion?.nombre)) return; // no es revisión de otro
+    const vistoPor = sesion?.nombre || 'Gerencia';
+    const vistoTimestamp = Date.now();
+    checklist.vistoPor = vistoPor;        // refleja al instante en la UI local
+    checklist.vistoTimestamp = vistoTimestamp;
+    try {
+      await setDoc(doc(this.firestore, 'checklists', checklist.id), { vistoPor, vistoTimestamp }, { merge: true });
+    } catch (e) {
+      console.error('[checklist] registrarVistoGerencia', e);
+    }
+  }
+
+  /** Etiqueta legible del "visto" para mostrar al empleado en sus enviadas. */
+  etiquetaVistoGerencia(checklist: any): string {
+    if (!checklist?.vistoPor) return '';
+    let cuando = '';
+    if (checklist.vistoTimestamp) {
+      try {
+        cuando = ' · ' + new Date(checklist.vistoTimestamp).toLocaleString('es-MX', {
+          day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
+        });
+      } catch { cuando = ''; }
+    }
+    return `Visto por ${checklist.vistoPor}${cuando}`;
+  }
   volverALista() { this.checklistSeleccionado.set(null); this.vistaActual.set('lista'); }
   toggleItem(item: any) { item.checked = !item.checked; this.actualizarEstado(); }
 

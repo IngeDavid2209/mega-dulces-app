@@ -495,7 +495,7 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
   private tareaProyVacia() {
     return {
       id: 'pt_' + Date.now() + Math.random().toString(36).slice(2, 5),
-      texto: '', hecha: false,
+      texto: '', hecha: false, observaciones: '',
       fechaInicio: '', fechaFin: '', horaInicio: '', horaFin: '',
       requiereFoto: false, requiereVariasFotos: false, permiteDocs: false,
       tieneFases: false, fases: [] as any[]

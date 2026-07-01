@@ -297,7 +297,7 @@
             <textarea class="tec-input tec-textarea" [(ngModel)]="nuevoPostTexto" rows="2"
                       placeholder="Escribe un mensaje para el equipo..."></textarea>
             <div style="display:flex; justify-content:flex-end; margin-top:8px;">
-              <button class="tec-btn-primary" (click)="publicarPost()">Publicar</button>
+              <button class="tec-btn-primary" (click)="publicarPost()">Enviar</button>
             </div>
           </div>
         </div>
@@ -743,6 +743,7 @@
           <input type="checkbox" class="pt-check" [checked]="t.hecha" (change)="toggleTareaProyecto(t)" title="Marcar hecha">
           <div class="pt-row-body" (click)="editarTareaProyecto(t)">
             <div class="pt-row-nom">{{ t.texto }}</div>
+            <div class="pt-row-obs" *ngIf="t.observaciones" style="font-size:12px; color:#64748B; margin-top:2px; white-space:pre-wrap;">{{ t.observaciones }}</div>
             <div class="pt-row-meta" *ngIf="t.fechaInicio || t.fechaFin || t.horaInicio || t.requiereFoto || t.requiereVariasFotos || t.permiteDocs || (t.tieneFases && t.fases.length)">
               <span class="pt-chip" *ngIf="t.fechaInicio || t.fechaFin">📅 {{ formatearDia(t.fechaInicio) }}<span *ngIf="t.fechaFin"> → {{ formatearDia(t.fechaFin) }}</span></span>
               <span class="pt-chip" *ngIf="t.horaInicio || t.horaFin">🕒 {{ t.horaInicio }}<span *ngIf="t.horaFin">–{{ t.horaFin }}</span></span>
@@ -799,6 +800,10 @@
           <input class="tec-input" type="time" [(ngModel)]="tareaProyEditor.horaFin">
         </div>
       </div>
+
+      <label class="tec-modal-label">Observaciones</label>
+      <textarea class="tec-input" rows="3" [(ngModel)]="tareaProyEditor.observaciones"
+                placeholder="Notas o indicaciones para esta tarea (opcional)"></textarea>
 
       <label class="tec-modal-label">Evidencia / archivos</label>
       <label class="pt-toggle"><input type="checkbox" [(ngModel)]="tareaProyEditor.requiereFoto"> <span>Requiere foto</span></label>

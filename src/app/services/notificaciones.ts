@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { Messaging, getToken, onMessage } from '@angular/fire/messaging';
 import { Firestore, doc, setDoc } from '@angular/fire/firestore';
+import { getAuth } from '@angular/fire/auth';
 
 /**
  * Servicio de Firebase Cloud Messaging (FCM) — Push notifications a la PWA.
@@ -77,6 +78,39 @@ export class NotificacionesService {
     } catch (error) {
       console.error('[FCM] error al configurar notificaciones:', error);
       return null;
+    }
+  }
+
+  /**
+   * Envía una notificación PUSH VISIBLE a otros usuarios (nueva tarea, mensaje…).
+   * Llama al endpoint /api/notificar con el ID Token del usuario actual.
+   * Es "fire-and-forget": si falla (sin red, sin permiso del server), no rompe
+   * el flujo principal — solo no llega el aviso.
+   *
+   *  destinatarios:
+   *    - uids?:    lista de uids
+   *    - nombres?: lista de nombres (compatibilidad con tokens viejos)
+   *    - grupoTec?: true → además, todos los del grupo TEC
+   */
+  async enviar(opts: {
+    titulo: string;
+    cuerpo: string;
+    url?: string;
+    uids?: string[];
+    nombres?: string[];
+    grupoTec?: boolean;
+  }): Promise<void> {
+    try {
+      const user = getAuth().currentUser;
+      if (!user) return;
+      const idToken = await user.getIdToken();
+      await fetch('/api/notificar', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + idToken, 'Content-Type': 'application/json' },
+        body: JSON.stringify(opts)
+      });
+    } catch (e) {
+      console.warn('[FCM] no se pudo enviar el aviso:', e);
     }
   }
 }

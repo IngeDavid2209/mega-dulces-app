@@ -8,6 +8,7 @@ import Swal from 'sweetalert2';
 
 import { SidebarComponent } from '../shared/sidebar/sidebar';
 import { normalizarNombre } from '../shared/permisos.util';
+import { NotificacionesService } from '../services/notificaciones';
 
 interface Subtarea { id: string; texto: string; hecha: boolean; }
 
@@ -122,6 +123,7 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
 
   private firestore = inject(Firestore);
   private router = inject(Router);
+  private noti = inject(NotificacionesService);
 
   toggleMenu() { this.isMenuOpen = !this.isMenuOpen; }
 
@@ -400,6 +402,13 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
       await addDoc(collection(this.firestore, 'tec_conversaciones'), {
         texto, autor: this.miNombre(), autorUid: this.miUid(),
         creadoEn: Date.now(), respuestas: []
+      });
+      // Aviso push a los demás del grupo TEC (el emisor se excluye en el server).
+      this.noti.enviar({
+        titulo: `Nuevo mensaje de ${this.miNombre()}`,
+        cuerpo: texto,
+        url: '/tec',
+        grupoTec: true
       });
       this.nuevoPostTexto = '';
     } catch (e) {
@@ -743,6 +752,13 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
         }));
       }
       const n = this.empleadosSel.length;
+      // Aviso push a los empleados que recibieron la tarea (antes de limpiar).
+      this.noti.enviar({
+        titulo: 'Nueva tarea asignada',
+        cuerpo: texto,
+        url: '/checklist',
+        nombres: [...this.empleadosSel]
+      });
       this.tareaAsignarTexto = ''; this.tareaAsignarHoraInicio = ''; this.tareaAsignarHoraFin = ''; this.empleadosSel = [];
       this.tareaAsignarFrecuencia = 'unica'; this.tareaAsignarFechaAnual = ''; this.tareaAsignarFecha = '';
       this.tareaAsignarUsarFechas = false; this.tareaAsignarFechaInicio = ''; this.tareaAsignarFechaFin = '';

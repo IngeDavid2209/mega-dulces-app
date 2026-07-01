@@ -23,11 +23,15 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
-// 📡 Llega un push (silencioso) → avisamos a TODAS las pestañas abiertas para
-// que ejecuten checkForUpdate del Service Worker de Angular y recarguen.
+// 📡 Llega un push en background.
+//   - tipo 'actualizacion' → push SILENCIOSO: solo avisamos a las pestañas para
+//     que apliquen la versión nueva (no se muestra notificación).
+//   - cualquier otro (ej. 'aviso') → notificación VISIBLE (nueva tarea, mensaje…).
 messaging.onBackgroundMessage((payload) => {
-  const tipo = payload?.data?.tipo;
-  // Empujamos el evento al cliente principal vía postMessage.
+  const data = (payload && payload.data) || {};
+  const tipo = data.tipo;
+
+  // Siempre avisamos a las pestañas abiertas (el cliente decide qué hacer).
   self.clients
     .matchAll({ type: 'window', includeUncontrolled: true })
     .then((clientes) => {
@@ -35,5 +39,37 @@ messaging.onBackgroundMessage((payload) => {
         try { c.postMessage({ source: 'fcm', tipo, payload }); } catch (_) {}
       }
     });
-  // Push silencioso: NO mostramos notificación visible.
+
+  // Push silencioso de versión: no mostramos nada visible.
+  if (tipo === 'actualizacion') return;
+
+  // Aviso visible: mostramos la notificación.
+  const titulo = data.title || 'Mega Dulces';
+  const opciones = {
+    body: data.body || '',
+    icon: '/icons/icon-192x192.png',
+    badge: '/icons/icon-192x192.png',
+    data: { url: data.url || '/' },
+    tag: data.tag || undefined
+  };
+  return self.registration.showNotification(titulo, opciones);
+});
+
+// 👆 Al tocar la notificación: enfocar una pestaña abierta o abrir la app en la
+// ruta indicada.
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const destino = (event.notification.data && event.notification.data.url) || '/';
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientes) => {
+      for (const c of clientes) {
+        if ('focus' in c) {
+          try { c.navigate(destino); } catch (_) {}
+          return c.focus();
+        }
+      }
+      if (self.clients.openWindow) return self.clients.openWindow(destino);
+      return undefined;
+    })
+  );
 });

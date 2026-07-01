@@ -12,6 +12,7 @@ import { TareaEquipo, FaseEquipo, ItemEquipo, SubtareaEquipo } from '../../../sh
 import { esItemHecho, tieneEvidencia } from '../../../shared/item-completado.util';
 import { obtenerSemanaISO, obtenerNombreDia } from '../../../shared/descansos.util';
 import { RobotRutinasV2Service } from '../../../shared/robot-rutinas-v2.service';
+import { NotificacionesService } from '../../../services/notificaciones';
 import { RutinaMaestra } from '../../../shared/rutinas.types';
 import { AsignacionRutina } from '../../../shared/asignaciones.types';
 import { comprimirImagenSiAplica } from '../../../shared/imagen.util';
@@ -278,6 +279,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   private route = inject(ActivatedRoute);
   private robotV2 = inject(RobotRutinasV2Service);
   private usuariosSvc = inject(UsuariosService);
+  private noti = inject(NotificacionesService);
   private destructoresRadares: (() => void)[] = [];
   private intervalId: any;
 
@@ -3458,6 +3460,14 @@ export class ChecklistComponent implements OnInit, OnDestroy {
 
     urlsWhatsApp.forEach((url, i) => {
       setTimeout(() => { window.open(url, '_blank'); }, i * 800);
+    });
+
+    // Aviso push a los trabajadores a los que se les asignó la tarea.
+    this.noti.enviar({
+      titulo: 'Nueva tarea asignada',
+      cuerpo: this.formName,
+      url: '/checklist',
+      nombres: [...this.formAssigned]
     });
 
     this.mostrarToast(' ✅ ¡Tareas creadas y avisos generados!');

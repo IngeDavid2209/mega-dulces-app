@@ -72,6 +72,19 @@ export class NotificacionesService {
       //    (Si está en background, lo maneja firebase-messaging-sw.js.)
       onMessage(this.messaging, (payload) => {
         window.dispatchEvent(new CustomEvent('fcm-message', { detail: payload }));
+        // Avisos visibles: en primer plano el navegador NO muestra nada solo, así
+        // que lo mostramos nosotros con el registro del SW de FCM.
+        const data: any = payload?.data || {};
+        if (data.tipo === 'aviso' && swReg) {
+          try {
+            swReg.showNotification(data.title || 'Mega Dulces', {
+              body: data.body || '',
+              icon: '/icons/icon-192x192.png',
+              badge: '/icons/icon-192x192.png',
+              data: { url: data.url || '/' }
+            });
+          } catch (_) { /* si el navegador no lo permite, se ignora */ }
+        }
       });
 
       return token;

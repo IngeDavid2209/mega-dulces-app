@@ -439,6 +439,16 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
     try {
       await updateDoc(doc(this.firestore, 'tec_conversaciones', p.id), { respuestas });
       this.respuestaTexto[p.id] = '';
+      // Aviso al autor del mensaje y a quienes ya habian respondido (el emisor
+      // se excluye en el server).
+      const uids = [p.autorUid, ...(p.respuestas || []).map((x: any) => x.autorUid)]
+        .filter(Boolean);
+      this.noti.enviar({
+        titulo: `${this.miNombre()} respondió`,
+        cuerpo: texto,
+        url: '/tec',
+        uids: Array.from(new Set(uids))
+      });
     } catch (e) {
       console.error('[tec] responder', e);
       Swal.fire({ icon: 'error', title: 'No se pudo responder', confirmButtonColor: '#0F172A' });

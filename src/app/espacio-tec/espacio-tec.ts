@@ -762,13 +762,19 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
         }));
       }
       const n = this.empleadosSel.length;
-      // Aviso push a los empleados que recibieron la tarea (antes de limpiar).
-      this.noti.enviar({
-        titulo: 'Nueva tarea asignada',
-        cuerpo: texto,
-        url: '/checklist',
-        nombres: [...this.empleadosSel]
-      });
+      // Aviso push SOLO a destinatarios que sean de Espacio TEC (los demás no
+      // reciben push, como estaban). Nota: "Asignar a personal" apunta a
+      // usuariosEmpresa (no-TEC), así que normalmente no se enviará ninguno.
+      const destinatariosTec = this.empleadosSel.filter(nom =>
+        this.miembrosTec.some(m => normalizarNombre(m.nombre) === normalizarNombre(nom)));
+      if (destinatariosTec.length) {
+        this.noti.enviar({
+          titulo: 'Nueva tarea asignada',
+          cuerpo: texto,
+          url: '/checklist',
+          nombres: destinatariosTec
+        });
+      }
       this.tareaAsignarTexto = ''; this.tareaAsignarHoraInicio = ''; this.tareaAsignarHoraFin = ''; this.empleadosSel = [];
       this.tareaAsignarFrecuencia = 'unica'; this.tareaAsignarFechaAnual = ''; this.tareaAsignarFecha = '';
       this.tareaAsignarUsarFechas = false; this.tareaAsignarFechaInicio = ''; this.tareaAsignarFechaFin = '';

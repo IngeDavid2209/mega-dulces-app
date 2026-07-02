@@ -422,12 +422,12 @@
                   {{ checklist.status === 'en-progreso' ? 'En Progreso' : (checklist.status | titlecase) }}
                 </span>
                 <span class="cl-pill-enviado" *ngIf="checklist.enviado">Enviado</span>
-                <span *ngIf="checklist.enviado && checklist.vistoPor"
+                <span *ngIf="esUsuarioTec && checklist.enviado && checklist.vistoPor"
                       [title]="etiquetaVistoGerencia(checklist)"
                       style="padding:2px 9px; border-radius:999px; background:#DCFCE7; color:#166534; font-size:11px; font-weight:800; white-space:nowrap;">
                   ✓ Visto
                 </span>
-                <span *ngIf="checklist.enviado && !checklist.vistoPor"
+                <span *ngIf="esUsuarioTec && checklist.enviado && !checklist.vistoPor"
                       title="Gerencia aún no la revisa"
                       style="padding:2px 9px; border-radius:999px; background:#F1F5F9; color:#64748B; font-size:11px; font-weight:800; white-space:nowrap;">
                   Sin revisar
@@ -605,7 +605,7 @@
             <span><strong>Departamento:</strong> {{ checklistSeleccionado().store }}</span>
             <span><strong>Fecha:</strong> {{ checklistSeleccionado().date }}</span>
           </div>
-          <div *ngIf="checklistSeleccionado().enviado" style="margin-top:10px;">
+          <div *ngIf="esUsuarioTec && checklistSeleccionado().enviado" style="margin-top:10px;">
             <span *ngIf="checklistSeleccionado().vistoPor"
                   style="display:inline-block; padding:4px 12px; border-radius:999px; background:#DCFCE7; color:#166534; font-size:12.5px; font-weight:700;">
               ✓ {{ etiquetaVistoGerencia(checklistSeleccionado()) }}
@@ -1887,7 +1887,7 @@
               <option value="Mensual">Cada mes</option>
               <option value="Anual">Cada año</option>
             </select>
-            <small *ngIf="tareaDiaFrecuencia !== 'unica' && tareaDiaFrecuencia !== 'Diaria'"
+            <small *ngIf="esUsuarioTec && tareaDiaFrecuencia !== 'unica' && tareaDiaFrecuencia !== 'Diaria'"
                    style="display:block; margin-top:6px; font-size:11.5px; color:#94A3B8;">
               La tarea no aparece hoy: se sumará sola a tu lista el día que toque (cada
               semana, mes o año, según elijas).

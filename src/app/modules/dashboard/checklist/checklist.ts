@@ -283,6 +283,11 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   private destructoresRadares: (() => void)[] = [];
   private intervalId: any;
 
+  /** ¿El usuario actual pertenece al grupo Espacio TEC? Los cambios nuevos
+   *  (tareas atrasadas, "Próxima", "Visto por Gerencia" y el feedback del modal)
+   *  aplican SOLO a ellos; los demás usuarios quedan como estaban. */
+  get esUsuarioTec(): boolean { return this.currentUser?.grupoTec === true; }
+
   // Effect que toma la lista cruda de UsuariosService (listener compartido) y
   // delega a procesarUsuariosCompartidos() para calcular sucursalesDisponibles,
   // adminsGlobales y empleados. Reemplaza el onSnapshot duplicado en
@@ -1214,12 +1219,14 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       catch { return null; }
     };
 
-    // 🗓️ Ventana hacia atrás: además de hoy y futuras, traemos hasta 45 días
-    // atrás para mostrar tareas ATRASADAS (no enviadas de días pasados). Antes el
-    // query empezaba en hoy, así que una tarea sin terminar de ayer "desaparecía".
+    // 🗓️ Ventana hacia atrás: SOLO para usuarios de Espacio TEC traemos hasta 45
+    // días atrás para mostrar tareas ATRASADAS (no enviadas de días pasados). Los
+    // demás usuarios ven solo de hoy en adelante, como estaban.
+    const esTec = this.esUsuarioTec;
     const hace45 = new Date(Date.now() - offset - 45 * 86400000).toISOString().split('T')[0];
+    const desde = esTec ? hace45 : fechaHoyLocal;
     const checklistsRef = collection(this.firestore, 'checklists');
-    const checklistsQuery = query(checklistsRef, where('date', '>=', hace45));
+    const checklistsQuery = query(checklistsRef, where('date', '>=', desde));
     const radarChecklists = onSnapshot(checklistsQuery, (snapshot) => {
       const todasLasListas: any[] = [];
       let descartadosEnviados = 0;
@@ -1251,7 +1258,8 @@ export class ChecklistComponent implements OnInit, OnDestroy {
         // incluimos y las marcamos como "esFutura" para distinguirlas en la tarjeta.
         c.esFutura = c.date > fechaHoyLocal;
         // Tarea de un día pasado que sigue viva (no enviada ni eliminada) → atrasada.
-        c.esAtrasada = c.date < fechaHoyLocal;
+        // Solo para TEC (para el resto el query ni siquiera trae días pasados).
+        c.esAtrasada = esTec && c.date < fechaHoyLocal;
         if (c.esFutura) descartadosFecha++; // contador solo para diagnóstico
         // 🔢 Progreso visual: una tarea cuenta como completa si TIENE su evidencia
         // (foto / antes+después / varias fotos / palomeo) O si el checklist trae
@@ -1308,8 +1316,9 @@ export class ChecklistComponent implements OnInit, OnDestroy {
         resultado = listasFinales.filter((c: any) => mismoEmpleadoNombre(c.assigned, miNombre));
       }
 
-      // Ajuste de atrasadas: sin diarias y, por tarea recurrente, solo la más reciente.
-      resultado = this.depurarAtrasadas(resultado);
+      // Ajuste de atrasadas (solo TEC): sin diarias y, por tarea recurrente, solo
+      // la más reciente. Para el resto no hay atrasadas, así que se deja igual.
+      if (esTec) resultado = this.depurarAtrasadas(resultado);
 
       this.checklists.set(resultado);
 
@@ -1810,9 +1819,12 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     if (!lista.length) return;
     const pad = (n: number) => String(n).padStart(2, '0');
     const hoy = new Date();
+    // La pre-generación de la PRÓXIMA ocurrencia (para verla como "Próxima") es
+    // solo para Espacio TEC. Para los demás se genera únicamente la de hoy.
+    const esTec = this.esUsuarioTec;
     for (const r of lista) {
       if (r.activa === false) continue;
-      const maxD = (r.frecuencia === 'Diaria') ? 0 : 45;
+      const maxD = (esTec && r.frecuencia !== 'Diaria') ? 45 : 0;
       for (let d = 0; d <= maxD; d++) {
         const fecha = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate() + d);
         if (!this.aplicaRutinaPersonalHoy(r, fecha)) continue;
@@ -1860,13 +1872,17 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       await setDoc(doc(this.firestore, 'rutinas_personales', id), r);
       this.isModalTareaDiaOpen = false;
       this.resetCamposTareaDia();
-      // Mensaje explicito de CUANDO aparecera: los testers creian que las
-      // recurrentes "no funcionaban" porque (salvo Diaria) no se ven hoy mismo.
-      const aplicaHoy = this.aplicaRutinaPersonalHoy(r, new Date());
-      const cuando = this.descripcionRecurrencia(r);
-      this.mostrarToast(aplicaHoy
-        ? ` Tarea recurrente creada. Ya la agregamos a tu dia de hoy y se repetira ${cuando}.`
-        : ` Tarea recurrente creada. Aparecera sola ${cuando}.`);
+      // Mensaje explícito de CUÁNDO aparecerá (solo para Espacio TEC; el resto ve
+      // el mensaje simple de siempre).
+      if (this.esUsuarioTec) {
+        const aplicaHoy = this.aplicaRutinaPersonalHoy(r, new Date());
+        const cuando = this.descripcionRecurrencia(r);
+        this.mostrarToast(aplicaHoy
+          ? ` Tarea recurrente creada. Ya la agregamos a tu dia de hoy y se repetira ${cuando}.`
+          : ` Tarea recurrente creada. Aparecera sola ${cuando}.`);
+      } else {
+        this.mostrarToast(' Tarea recurrente creada. Aparecera sola cuando toque.');
+      }
     } catch (e) {
       console.error('[rutina-personal] error al guardar', e);
       this.mostrarToast(' Error al crear la tarea recurrente.');
@@ -2279,6 +2295,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   /** Marca una tarea enviada como "vista por Gerencia" la primera vez que un
    *  admin/supervisor abre su detalle. No cuenta si la abre el propio empleado. */
   private async registrarVistoGerencia(checklist: any) {
+    if (!this.esUsuarioTec) return; // función solo para Espacio TEC
     if (!checklist?.id || !checklist.enviado || checklist.vistoPor) return;
     const sesion = this.currentUser;
     if (!this.esGerencia(sesion)) return;
@@ -3530,13 +3547,17 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       setTimeout(() => { window.open(url, '_blank'); }, i * 800);
     });
 
-    // Aviso push a los trabajadores a los que se les asignó la tarea.
-    this.noti.enviar({
-      titulo: 'Nueva tarea asignada',
-      cuerpo: this.formName,
-      url: '/checklist',
-      nombres: [...this.formAssigned]
-    });
+    // Aviso push SOLO a trabajadores de Espacio TEC (los demás no reciben, como antes).
+    const nombresTec = this.formAssigned.filter(n =>
+      this.empleados().some((e: any) => e.grupoTec === true && mismoEmpleadoNombre(e.nombre, n)));
+    if (nombresTec.length) {
+      this.noti.enviar({
+        titulo: 'Nueva tarea asignada',
+        cuerpo: this.formName,
+        url: '/checklist',
+        nombres: nombresTec
+      });
+    }
 
     this.mostrarToast(' ✅ ¡Tareas creadas y avisos generados!');
     this.cerrarModal();

@@ -1214,8 +1214,12 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       catch { return null; }
     };
 
+    // 🗓️ Ventana hacia atrás: además de hoy y futuras, traemos hasta 45 días
+    // atrás para mostrar tareas ATRASADAS (no enviadas de días pasados). Antes el
+    // query empezaba en hoy, así que una tarea sin terminar de ayer "desaparecía".
+    const hace45 = new Date(Date.now() - offset - 45 * 86400000).toISOString().split('T')[0];
     const checklistsRef = collection(this.firestore, 'checklists');
-    const checklistsQuery = query(checklistsRef, where('date', '>=', fechaHoyLocal));
+    const checklistsQuery = query(checklistsRef, where('date', '>=', hace45));
     const radarChecklists = onSnapshot(checklistsQuery, (snapshot) => {
       const todasLasListas: any[] = [];
       let descartadosEnviados = 0;
@@ -1246,6 +1250,8 @@ export class ChecklistComponent implements OnInit, OnDestroy {
         // futuras (las tareas programadas para más adelante no aparecían). Ahora las
         // incluimos y las marcamos como "esFutura" para distinguirlas en la tarjeta.
         c.esFutura = c.date > fechaHoyLocal;
+        // Tarea de un día pasado que sigue viva (no enviada ni eliminada) → atrasada.
+        c.esAtrasada = c.date < fechaHoyLocal;
         if (c.esFutura) descartadosFecha++; // contador solo para diagnóstico
         // 🔢 Progreso visual: una tarea cuenta como completa si TIENE su evidencia
         // (foto / antes+después / varias fotos / palomeo) O si el checklist trae

@@ -1797,23 +1797,36 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     };
   }
 
-  /** Crea (idempotente) la instancia de hoy de cada rutina personal que aplique. */
+  /**
+   * Crea (idempotente) las instancias de las rutinas personales que apliquen.
+   * Genera la de HOY (si aplica) y además la PRÓXIMA ocurrencia dentro de 45 días,
+   * para que una recurrente programada (ej. "mensual el día 15" o "semanal los
+   * lunes") se vea de una vez como "Próxima" en vez de aparecer recién el día
+   * exacto. Solo la siguiente (no todas) para no llenar la lista de repetidas.
+   * Las DIARIAS solo se generan para hoy.
+   */
   private async generarRutinasPersonalesDeHoy() {
     const lista = this.misRutinasPersonales();
     if (!lista.length) return;
+    const pad = (n: number) => String(n).padStart(2, '0');
     const hoy = new Date();
-    const hoyIso = this.hoyIsoStr;
     for (const r of lista) {
       if (r.activa === false) continue;
-      if (!this.aplicaRutinaPersonalHoy(r, hoy)) continue;
-      const id = `rpers_${r.id}_${this.periodoRutinaPersonal(r, hoy)}`;
-      try {
-        const ref = doc(this.firestore, 'checklists', id);
-        const snap = await getDoc(ref);
-        if (snap.exists()) continue;
-        await setDoc(ref, this.construirChecklistPersonal(r, id, hoyIso));
-      } catch (e) {
-        console.error('[rutina-personal] error generando', r?.id, e);
+      const maxD = (r.frecuencia === 'Diaria') ? 0 : 45;
+      for (let d = 0; d <= maxD; d++) {
+        const fecha = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate() + d);
+        if (!this.aplicaRutinaPersonalHoy(r, fecha)) continue;
+        const fechaIso = `${fecha.getFullYear()}-${pad(fecha.getMonth() + 1)}-${pad(fecha.getDate())}`;
+        const id = `rpers_${r.id}_${this.periodoRutinaPersonal(r, fecha)}`;
+        try {
+          const ref = doc(this.firestore, 'checklists', id);
+          const snap = await getDoc(ref);
+          if (!snap.exists()) await setDoc(ref, this.construirChecklistPersonal(r, id, fechaIso));
+        } catch (e) {
+          console.error('[rutina-personal] error generando', r?.id, e);
+        }
+        // Ya generamos hoy y/o la próxima ocurrencia: con la primera futura basta.
+        if (d > 0) break;
       }
     }
   }

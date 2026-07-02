@@ -27,7 +27,7 @@
         <div>
           <h1 class="rank-title">Ranking de sucursales</h1>
           <p class="rank-sub">Mejor desempeño semanal por sucursal · {{ rangoSemanaTexto() }}</p>
-          <p class="rank-nota">El % es de toda la semana (tareas hechas ÷ total asignadas), no el promedio de los días: por eso un día en 0% no la baja si los otros días hizo bastante. Las sucursales con menos de 5 tareas se listan aparte.</p>
+          <p class="rank-nota">El ranking se ordena por una <strong>puntuación combinada</strong> (cumplimiento + volumen de trabajo), no solo por el %. El % es de toda la semana (tareas hechas ÷ total asignadas), no el promedio de los días: por eso un día en 0% no la baja si los otros días hizo bastante. Las sucursales con menos de {{ minTareasRanking }} tareas asignadas se listan aparte.</p>
         </div>
         <div class="rank-nav">
           <button class="rank-nav-btn" (click)="semanaAnterior()" title="Semana anterior">&larr;</button>
@@ -42,9 +42,13 @@
           <div class="rank-kpi-num">{{ promedioGeneral() }}%</div>
           <div class="rank-kpi-lbl">Promedio general</div>
         </div>
-        <div class="rank-kpi rank-kpi-mejor" *ngIf="mejorSucursal() as mejor">
-          <div class="rank-kpi-num">{{ mejor.promedioSemana }}%</div>
-          <div class="rank-kpi-lbl">Líder: <strong>{{ mejor.sucursal }}</strong></div>
+        <div class="rank-kpi rank-kpi-mejor" *ngIf="mayorCumplimiento() as mc">
+          <div class="rank-kpi-num">{{ mc.promedioSemana }}%</div>
+          <div class="rank-kpi-lbl">Mayor cumplimiento: <strong>{{ mc.sucursal }}</strong></div>
+        </div>
+        <div class="rank-kpi rank-kpi-mejor" *ngIf="mayorVolumen() as mv">
+          <div class="rank-kpi-num">{{ mv.completadosSemana }}</div>
+          <div class="rank-kpi-lbl">Mayor volumen: <strong>{{ mv.sucursal }}</strong></div>
         </div>
         <div class="rank-kpi">
           <div class="rank-kpi-num">{{ ranking().length }}</div>
@@ -71,13 +75,13 @@
               </div>
             </ng-container>
           </div>
-          <div class="rank-col-promedio">% Semana</div>
+          <div class="rank-col-promedio">% Cumplimiento</div>
         </div>
 
         <!-- Filas del ranking -->
         <ng-container *ngFor="let f of ranking(); let i = index">
           <div class="rank-divisor" *ngIf="f.muestraBaja && (i === 0 || !ranking()[i-1].muestraBaja)">
-            ✎ Pocas tareas esta semana — no compiten por el liderazgo
+            ✎ Sucursales con poca carga — menos de {{ minTareasRanking }} tareas asignadas, no compiten por la posición
           </div>
           <div class="rank-row"
                [class.rank-row-top]="!f.muestraBaja && i < 3"
@@ -88,7 +92,7 @@
           <div class="rank-col-sucursal">
             <div class="rank-suc-nombre">
               {{ f.sucursal }}
-              <span class="rank-muestra-baja" *ngIf="f.muestraBaja" title="Pocas tareas esta semana: su porcentaje pesa menos en el ranking">pocas tareas</span>
+              <span class="rank-muestra-baja" *ngIf="f.muestraBaja" title="Poca carga esta semana: no compite en el ranking principal">poca carga</span>
             </div>
             <div class="rank-suc-meta">{{ f.completadosSemana }} de {{ f.totalSemana }} tareas hechas</div>
           </div>
@@ -114,6 +118,11 @@
               {{ f.promedioSemana }}%
             </div>
             <div class="rank-prom-frac">{{ f.completadosSemana }}/{{ f.totalSemana }}</div>
+            <div class="rank-prom-pts" *ngIf="!f.muestraBaja"
+                 style="font-size:11px; color:#64748B; font-weight:700; margin-top:2px;"
+                 title="Puntuación combinada (cumplimiento + volumen) con la que se ordena el ranking">
+              Pts {{ f.scoreRanking }}
+            </div>
           </div>
           </div>
         </ng-container>

@@ -29,8 +29,17 @@ interface RankingFila {
   muestraBaja: boolean;     // pocas tareas en la semana (poco confiable)
 }
 
-/** Tareas mínimas en la semana para competir por el liderazgo (no "pocas tareas"). */
-const UMBRAL_MUESTRA = 5;
+/** Tareas ASIGNADAS mínimas en la semana para competir en el ranking principal.
+ *  Las sucursales por debajo salen a la sección "Sucursales con poca carga"
+ *  (un 100% de 3 tareas no debe encabezar el ranking). Ajusta aquí el mínimo. */
+const MIN_TAREAS_RANKING = 10;
+
+/** Pesos de la PUNTUACIÓN COMBINADA con la que se ordena el ranking.
+ *  Deben sumar 1. Ajusta aquí el balance entre eficiencia y volumen:
+ *   - PESO_CUMPLIMIENTO: qué tanto pesa el % (tareas hechas ÷ asignadas).
+ *   - PESO_VOLUMEN:      qué tanto pesa cuántas tareas completó de verdad. */
+const PESO_CUMPLIMIENTO = 0.6;
+const PESO_VOLUMEN = 0.4;
 
 @Component({
   selector: 'app-ranking-sucursales',
@@ -52,6 +61,9 @@ export class RankingSucursalesComponent implements OnInit, OnDestroy {
 
   /** Fecha "ancla" para calcular la semana (por defecto hoy). */
   fechaAncla = signal<Date>(new Date());
+
+  /** Mínimo de tareas asignadas para competir en el ranking (expuesto al HTML). */
+  readonly minTareasRanking = MIN_TAREAS_RANKING;
 
   private firestore = inject(Firestore);
   private destructores: (() => void)[] = [];
@@ -142,6 +154,26 @@ export class RankingSucursalesComponent implements OnInit, OnDestroy {
     return esItemHecho(it, c);
   }
 
+  /**
+   * PUNTUACIÓN COMBINADA para ORDENAR el ranking (no es el %).
+   * Mezcla eficiencia (cumplimiento) y volumen real de trabajo:
+   *
+   *   puntuacion = (cumplimiento × PESO_CUMPLIMIENTO) + (volumen × PESO_VOLUMEN)
+   *
+   *  - cumplimiento01: tareas hechas ÷ asignadas (0 a 1).
+   *  - hechas:         tareas completadas por la sucursal.
+   *  - maxHechas:      la mayor cantidad de tareas completadas por UNA sucursal
+   *                    esa semana (entre las que compiten en el ranking). Así la
+   *                    que más trabajó vale 1.0 en volumen y el resto se mide
+   *                    contra ella (volumen_normalizado = hechas ÷ maxHechas).
+   *
+   * Devuelve 0..1. Para cambiar el balance, ajusta PESO_CUMPLIMIENTO / PESO_VOLUMEN.
+   */
+  private calcularPuntuacion(cumplimiento01: number, hechas: number, maxHechas: number): number {
+    const volumenNormalizado = maxHechas > 0 ? (hechas / maxHechas) : 0;
+    return (cumplimiento01 * PESO_CUMPLIMIENTO) + (volumenNormalizado * PESO_VOLUMEN);
+  }
+
   /** Ranking ya calculado y ordenado por promedio descendente. */
   ranking = computed<RankingFila[]>(() => {
     const checklists = this.checklistsSemana();
@@ -196,19 +228,36 @@ export class RankingSucursalesComponent implements OnInit, OnDestroy {
       const promedio = totalSemana > 0 ? Math.round((completadosSemana / totalSemana) * 100) : 0;
       filas.push({
         sucursal, dias: diasStat, totalSemana, completadosSemana,
-        promedioSemana: promedio, scoreRanking: 0, muestraBaja: totalSemana < UMBRAL_MUESTRA
+        promedioSemana: promedio, scoreRanking: 0,
+        muestraBaja: totalSemana < MIN_TAREAS_RANKING
       });
     }
 
-    // Orden que se LEE bien: primero las sucursales con suficientes tareas
-    // (compiten por el liderazgo), ordenadas por % de mayor a menor; después,
-    // aparte, las de "pocas tareas" (un 100% de 1 tarea no encabeza el ranking).
+    // Máximo de tareas COMPLETADAS entre las sucursales que compiten (>= mínimo).
+    // Es la referencia del volumen: esa sucursal vale 1.0 y el resto se mide contra ella.
+    const maxHechas = filas
+      .filter(f => !f.muestraBaja)
+      .reduce((m, f) => Math.max(m, f.completadosSemana), 0);
+
+    // Puntuación combinada de cada fila (0..100 para mostrar y ordenar).
+    for (const f of filas) {
+      const cumplimiento01 = f.totalSemana > 0 ? f.completadosSemana / f.totalSemana : 0;
+      f.scoreRanking = Math.round(this.calcularPuntuacion(cumplimiento01, f.completadosSemana, maxHechas) * 100);
+    }
+
+    // Orden: primero las que compiten (>= mínimo), por PUNTUACIÓN combinada de
+    // mayor a menor (ya no por % puro, para no premiar a quien hizo poquito con
+    // buen %). Después, aparte, las de poca carga ordenadas por % (informativo).
+    const porPuntuacion = (a: RankingFila, b: RankingFila) =>
+      b.scoreRanking - a.scoreRanking ||
+      b.completadosSemana - a.completadosSemana ||
+      a.sucursal.localeCompare(b.sucursal);
     const porPorcentaje = (a: RankingFila, b: RankingFila) =>
       b.promedioSemana - a.promedioSemana ||
       b.completadosSemana - a.completadosSemana ||
       a.sucursal.localeCompare(b.sucursal);
 
-    const confiables = filas.filter(f => !f.muestraBaja).sort(porPorcentaje);
+    const confiables = filas.filter(f => !f.muestraBaja).sort(porPuntuacion);
     const pocasTareas = filas.filter(f => f.muestraBaja).sort(porPorcentaje);
     return [...confiables, ...pocasTareas];
   });
@@ -221,10 +270,21 @@ export class RankingSucursalesComponent implements OnInit, OnDestroy {
     return total > 0 ? Math.round((ok / total) * 100) : 0;
   });
 
-  /** Mejor sucursal de la semana (o null si no hay datos). */
-  mejorSucursal = computed<RankingFila | null>(() => {
-    const filas = this.ranking().filter(f => f.totalSemana > 0);
-    return filas.length > 0 ? filas[0] : null;
+  /** MAYOR CUMPLIMIENTO: mejor % entre las que superan el mínimo (compiten). */
+  mayorCumplimiento = computed<RankingFila | null>(() => {
+    const aptas = this.ranking().filter(f => !f.muestraBaja && f.totalSemana > 0);
+    if (aptas.length === 0) return null;
+    return aptas.reduce((mej, f) =>
+      (f.promedioSemana > mej.promedioSemana ||
+        (f.promedioSemana === mej.promedioSemana && f.completadosSemana > mej.completadosSemana))
+        ? f : mej);
+  });
+
+  /** MAYOR VOLUMEN: la sucursal que más tareas completó en la semana. */
+  mayorVolumen = computed<RankingFila | null>(() => {
+    const activas = this.ranking().filter(f => f.completadosSemana > 0);
+    if (activas.length === 0) return null;
+    return activas.reduce((mej, f) => f.completadosSemana > mej.completadosSemana ? f : mej);
   });
 
   // ============================================================================

@@ -50,6 +50,10 @@
           <div class="rank-kpi-num">{{ mv.completadosSemana }}</div>
           <div class="rank-kpi-lbl">Mayor volumen: <strong>{{ mv.sucursal }}</strong></div>
         </div>
+        <div class="rank-kpi rank-kpi-mejor" *ngIf="masConstante() as mk">
+          <div class="rank-kpi-num">{{ mk.diasActivos }}/{{ mk.diasEvaluados }}</div>
+          <div class="rank-kpi-lbl">Más constante: <strong>{{ mk.sucursal }}</strong></div>
+        </div>
         <div class="rank-kpi">
           <div class="rank-kpi-num">{{ ranking().length }}</div>
           <div class="rank-kpi-lbl">Sucursales activas</div>
@@ -94,7 +98,7 @@
               {{ f.sucursal }}
               <span class="rank-muestra-baja" *ngIf="f.muestraBaja" title="Poca carga esta semana: no compite en el ranking principal">poca carga</span>
             </div>
-            <div class="rank-suc-meta">{{ f.completadosSemana }} de {{ f.totalSemana }} tareas hechas</div>
+            <div class="rank-suc-meta">{{ f.completadosSemana }} de {{ f.totalSemana }} tareas hechas · {{ f.diasActivos }}/{{ f.diasEvaluados }} días</div>
           </div>
           <div class="rank-col-dias">
             <div class="rank-dia-cell" *ngFor="let d of f.dias"

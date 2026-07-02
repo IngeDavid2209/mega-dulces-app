@@ -1747,18 +1747,31 @@ export class ChecklistComponent implements OnInit, OnDestroy {
 
   /**
    * Depura las tareas ATRASADAS de la lista para que no se acumulen:
-   *   1) Las DIARIAS atrasadas no se arrastran (solo aparece la de hoy).
-   *   2) De una misma tarea recurrente (semanal/mensual/etc.), solo se muestra
-   *      la atrasada MÁS RECIENTE, no todas las que se saltaron.
-   * Las de hoy/futuras y las únicas no se tocan.
+   *   1) Las de frecuencia alta (DIARIA/SEMANAL/CATORCENAL) no se arrastran como
+   *      atrasadas (se repiten seguido e inundarían la lista); solo se ve la de
+   *      hoy o la próxima. Sí se arrastran las poco frecuentes y las únicas.
+   *   2) De una misma tarea recurrente, solo se muestra la atrasada MÁS RECIENTE.
+   * Las de hoy/futuras no se tocan.
    */
   private depurarAtrasadas(lista: any[]): any[] {
     const SUFIJO_RECUR = /\((Diaria|Semanal|Catorcenal|Mensual|Trimestral)\)\s*$/;
 
-    const esDiaria = (c: any): boolean =>
-      c?.frecuencia === 'Diaria' ||
-      /\(Diaria\)\s*$/.test(c?.name || '') ||
-      (typeof c?.id === 'string' && /^rpers_.*_\d{4}-\d{2}-\d{2}$/.test(c.id));
+    // Mapa id-de-rutina → rutina, para leer la frecuencia REAL (confiable, no
+    // depende de parsear el id de la instancia).
+    const rutinasPorId = new Map<string, any>();
+    for (const r of this.misRutinasPersonales()) rutinasPorId.set(r.id, r);
+
+    // Las frecuencias que se repiten seguido (diaria, semanal, catorcenal) NO se
+    // arrastran como atrasadas: se acumularían e inundarían la lista. Solo se
+    // arrastran las poco frecuentes (mensual/trimestral/anual) y las únicas.
+    const esFrecuente = (c: any): boolean => {
+      let f = c?.frecuencia;
+      if (c?._rutinaPersonalId && rutinasPorId.has(c._rutinaPersonalId)) {
+        f = rutinasPorId.get(c._rutinaPersonalId)?.frecuencia || f;
+      }
+      if (f === 'Diaria' || f === 'Semanal' || f === 'Catorcenal') return true;
+      return /\((Diaria|Semanal|Catorcenal)\)\s*$/.test(c?.name || '');
+    };
 
     // Clave de "serie" para agrupar instancias de la misma tarea recurrente.
     // null = tarea única (no se agrupa; se muestra tal cual).
@@ -1772,7 +1785,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     };
 
     const vigentes = lista.filter(c => !c.esAtrasada);
-    const atrasadas = lista.filter(c => c.esAtrasada && !esDiaria(c)); // (1) fuera diarias
+    const atrasadas = lista.filter(c => c.esAtrasada && !esFrecuente(c)); // (1) fuera diarias/semanales
 
     // (2) por serie recurrente, quedarnos con la de fecha más reciente.
     const mejorPorSerie = new Map<string, any>();

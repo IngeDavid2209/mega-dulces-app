@@ -241,16 +241,20 @@ export class AppComponent implements OnInit {
     this.swUpdate.versionUpdates
       .pipe(filter((e): e is VersionReadyEvent => e.type === 'VERSION_READY'))
       .subscribe(() => {
-        this.swUpdate.activateUpdate().then(() => document.location.reload());
+        // Aplica y recarga SOLA. Recarga aunque activateUpdate falle: al recargar
+        // el navegador toma igualmente la versión nueva del Service Worker.
+        this.swUpdate.activateUpdate()
+          .then(() => document.location.reload())
+          .catch(() => document.location.reload());
       });
 
     // 2) Buscar actualizaciones en TODOS los momentos donde la PWA "despierta":
-    //    - al arrancar, cada 15 min, al volver del background (visibilitychange),
-    //      al recuperar internet (online), y al obtener el foco (focus).
-    //    Antes era cada 30 min; bajado a 15 para detectar más rápido en la PWA.
+    //    - al arrancar, cada 2 min (para que se actualice sola aunque el usuario
+    //      la tenga abierta sin salir), al volver del background
+    //      (visibilitychange), al recuperar internet (online) y al obtener foco.
     const buscar = () => this.swUpdate.checkForUpdate().catch(() => {});
     buscar();
-    setInterval(buscar, 15 * 60 * 1000); // cada 15 min (era 30)
+    setInterval(buscar, 2 * 60 * 1000); // cada 2 min (era 15)
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') buscar();
     });

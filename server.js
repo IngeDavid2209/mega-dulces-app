@@ -45,12 +45,27 @@ app.use('/api', (req, res) => {
 
 // --- App de Angular (archivos estaticos compilados) ---
 const browserDir = path.join(__dirname, 'dist', 'mega-dulces-app', 'browser');
-app.use(express.static(browserDir));
+
+// Archivos que controlan la VERSION de la app: nunca se cachean, para que la PWA
+// detecte y aplique la version nueva sola (sin que el usuario cierre y reabra).
+// El resto (bundles con hash en el nombre) si puede cachearse: son inmutables.
+const SIN_CACHE = new Set([
+  'index.html', 'index.csr.html', 'ngsw.json', 'ngsw-worker.js',
+  'safety-worker.js', 'worker-basic.min.js', 'firebase-messaging-sw.js', 'manifest.webmanifest'
+]);
+app.use(express.static(browserDir, {
+  setHeaders: (res, filePath) => {
+    if (SIN_CACHE.has(path.basename(filePath))) {
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    }
+  }
+}));
 
 // --- Fallback SPA: cualquier ruta que no sea archivo ni /api -> index.html ---
-// (Angular maneja el ruteo del lado del cliente.)
+// (Angular maneja el ruteo del lado del cliente.) Tambien sin cache.
 app.use((req, res) => {
   if (req.method !== 'GET') return res.status(404).json({ error: 'No encontrado' });
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
   res.sendFile(path.join(browserDir, 'index.html'));
 });
 

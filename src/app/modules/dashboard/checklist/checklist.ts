@@ -1308,6 +1308,9 @@ export class ChecklistComponent implements OnInit, OnDestroy {
         resultado = listasFinales.filter((c: any) => mismoEmpleadoNombre(c.assigned, miNombre));
       }
 
+      // Ajuste de atrasadas: sin diarias y, por tarea recurrente, solo la más reciente.
+      resultado = this.depurarAtrasadas(resultado);
+
       this.checklists.set(resultado);
 
       // 🐛 DEBUG para diagnosticar por qué un usuario ve 0 tareas.
@@ -1733,6 +1736,52 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     }
   }
 
+  /**
+   * Depura las tareas ATRASADAS de la lista para que no se acumulen:
+   *   1) Las DIARIAS atrasadas no se arrastran (solo aparece la de hoy).
+   *   2) De una misma tarea recurrente (semanal/mensual/etc.), solo se muestra
+   *      la atrasada MÁS RECIENTE, no todas las que se saltaron.
+   * Las de hoy/futuras y las únicas no se tocan.
+   */
+  private depurarAtrasadas(lista: any[]): any[] {
+    const SUFIJO_RECUR = /\((Diaria|Semanal|Catorcenal|Mensual|Trimestral)\)\s*$/;
+
+    const esDiaria = (c: any): boolean =>
+      c?.frecuencia === 'Diaria' ||
+      /\(Diaria\)\s*$/.test(c?.name || '') ||
+      (typeof c?.id === 'string' && /^rpers_.*_\d{4}-\d{2}-\d{2}$/.test(c.id));
+
+    // Clave de "serie" para agrupar instancias de la misma tarea recurrente.
+    // null = tarea única (no se agrupa; se muestra tal cual).
+    const claveSerie = (c: any): string | null => {
+      if (c?._rutinaPersonalId) return 'rp_' + c._rutinaPersonalId;
+      if (SUFIJO_RECUR.test(c?.name || '')) {
+        const base = (c.name || '').replace(SUFIJO_RECUR, '').trim();
+        return 'mol_' + base + '_' + (c.assigned || '') + '_' + (c.store || '');
+      }
+      return null;
+    };
+
+    const vigentes = lista.filter(c => !c.esAtrasada);
+    const atrasadas = lista.filter(c => c.esAtrasada && !esDiaria(c)); // (1) fuera diarias
+
+    // (2) por serie recurrente, quedarnos con la de fecha más reciente.
+    const mejorPorSerie = new Map<string, any>();
+    const unicas: any[] = [];
+    for (const c of atrasadas) {
+      const clave = claveSerie(c);
+      if (!clave) { unicas.push(c); continue; }
+      const prev = mejorPorSerie.get(clave);
+      if (!prev || String(c.date) > String(prev.date)) mejorPorSerie.set(clave, c);
+    }
+
+    return [...vigentes, ...unicas, ...Array.from(mejorPorSerie.values())]
+      .sort((a, b) => {
+        if (a.date !== b.date) return String(a.date).localeCompare(String(b.date));
+        return (b.timestampCreacion || 0) - (a.timestampCreacion || 0);
+      });
+  }
+
   private construirChecklistPersonal(r: any, id: string, hoyIso: string): any {
     const ahora = Date.now();
     return {
@@ -1743,7 +1792,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       // Si la asignó el Espacio TEC, no es "propia" (el empleado no la edita/borra).
       esTareaPropia: !r.origenTec,
       origenTec: !!r.origenTec,
-      _rutinaPersonalId: r.id, notaEmpleado: '',
+      _rutinaPersonalId: r.id, frecuencia: r.frecuencia || null, notaEmpleado: '',
       items: this.construirItemsPersonal(r.texto, r.actividades || [], r.hora || '')
     };
   }

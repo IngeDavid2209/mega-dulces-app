@@ -211,6 +211,9 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   /** Actividades (sub-items) de la tarea propia: se vuelven items con casilla. */
   tareaDiaActividades: string[] = [];
   nuevaActividadTexto = '';
+  /** Si true, la tarea propia permite adjuntar fotos (varias, cámara o galería),
+   *  de forma OPCIONAL (no obliga a subir para marcarla como hecha). */
+  tareaDiaPermiteFotos = false;
   // Recurrencia de "mi tarea": 'unica' = solo hoy; o se repite con frecuencia.
   tareaDiaFrecuencia: 'unica' | 'Diaria' | 'Semanal' | 'Mensual' | 'Anual' = 'unica';
   tareaDiaDiaSemana = 1;      // 0=Domingo .. 6=Sabado (para Semanal)
@@ -1650,6 +1653,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     this.editandoTareaPropiaId = null;
     this.tareaDiaActividades = [];
     this.nuevaActividadTexto = '';
+    this.tareaDiaPermiteFotos = false;
   }
 
   agregarActividadDia() {
@@ -1669,7 +1673,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
    * Si hay actividades, una casilla por actividad; si no, una sola con el nombre.
    * `previos` permite conservar el estado "marcado" al editar.
    */
-  private construirItemsPersonal(nombreTarea: string, actividades: string[], hora: string, previos?: any[]): any[] {
+  private construirItemsPersonal(nombreTarea: string, actividades: string[], hora: string, previos?: any[], permiteFotos = false): any[] {
     const base = Date.now();
     const lista = (actividades && actividades.length) ? actividades : [nombreTarea];
     return lista.map((txt, i) => {
@@ -1677,10 +1681,14 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       return {
         id: base + i, text: txt,
         requiresPhoto: false, requiresAntesDespues: false, requiresVariasFotos: false,
-        permiteGaleria: false, permiteDocumentos: false,
+        // permiteFotos: adjuntar fotos OPCIONALES (varias). permiteGaleria en true
+        // deja que el botón abra cámara O galería.
+        permiteFotos, permiteGaleria: permiteFotos, permiteDocumentos: false,
         checked: prev?.checked || false,
         photo: null, photoTime: null, photoAntes: null, photoAntesTime: null,
-        photoAntesTimestamp: null, photoDespues: null, photoDespuesTime: null, photos: [],
+        // Conserva las fotos ya adjuntadas al editar la tarea.
+        photoAntesTimestamp: null, photoDespues: null, photoDespuesTime: null,
+        photos: Array.isArray(prev?.photos) ? prev!.photos : [],
         tipo: 'manual', horaInicio: null, horaLimite: hora || null, frecuencia: null
       };
     });
@@ -1815,7 +1823,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       esTareaPropia: !r.origenTec,
       origenTec: !!r.origenTec,
       _rutinaPersonalId: r.id, frecuencia: r.frecuencia || null, notaEmpleado: '',
-      items: this.construirItemsPersonal(r.texto, r.actividades || [], r.hora || '')
+      items: this.construirItemsPersonal(r.texto, r.actividades || [], r.hora || '', undefined, !!r.permiteFotos)
     };
   }
 
@@ -1878,6 +1886,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       diaMes: frecuencia === 'Mensual' ? Number(this.tareaDiaDiaMes) : null,
       fechaAnual,
       actividades: [...this.tareaDiaActividades],
+      permiteFotos: this.tareaDiaPermiteFotos,
       activa: true,
       creadoEn: Date.now()
     };
@@ -1924,6 +1933,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     const esItemUnicoIgualAlNombre = items.length === 1 &&
       (items[0]?.text || '').trim() === (checklist.name || '').trim();
     this.tareaDiaActividades = esItemUnicoIgualAlNombre ? [] : items.map(i => i.text);
+    this.tareaDiaPermiteFotos = !!items[0]?.permiteFotos;
     this.isModalTareaDiaOpen = true;
   }
 
@@ -1935,7 +1945,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       const ref = doc(this.firestore, 'checklists', id);
       const snap = await getDoc(ref);
       const previos = (snap.exists() ? (snap.data() as any).items : null) || [];
-      const items = this.construirItemsPersonal(texto, this.tareaDiaActividades, hora, previos);
+      const items = this.construirItemsPersonal(texto, this.tareaDiaActividades, hora, previos, this.tareaDiaPermiteFotos);
       await setDoc(ref, { name: texto, time: hora || '23:59', items }, { merge: true });
       this.isModalTareaDiaOpen = false;
       this.resetCamposTareaDia();
@@ -2023,7 +2033,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       createdBy: nombre,
       esTareaPropia: true,
       notaEmpleado: '',
-      items: this.construirItemsPersonal(texto, this.tareaDiaActividades, this.tareaDiaHora)
+      items: this.construirItemsPersonal(texto, this.tareaDiaActividades, this.tareaDiaHora, undefined, this.tareaDiaPermiteFotos)
     };
 
     try {

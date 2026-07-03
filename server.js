@@ -36,21 +36,15 @@ app.all('/api/asistente-chat', require('./api/asistente-chat'));
 app.all('/api/tareas-asignadas', require('./api/tareas-asignadas'));
 app.all('/api/notify-update', require('./api/notify-update'));
 app.all('/api/notificar', require('./api/notificar'));
-app.all('/api/db-health', require('./api/db-health'));   // Fase 0: migración a Postgres
-app.all('/api/tec-notas', require('./api/tec-notas'));   // Fase 1: piloto tec_notas en Postgres
-app.all('/api/migrar-tec-notas', require('./api/migrar-tec-notas')); // Fase 1: traslado de datos (admin)
-app.all('/api/areas', require('./api/areas'));           // Fase 2: catalogo areas en Postgres
-app.all('/api/migrar-areas', require('./api/migrar-areas')); // Fase 2: traslado de areas
-app.all('/api/areas-operativas', require('./api/areas-operativas'));         // Fase 2: areas_operativas
-app.all('/api/migrar-areas-operativas', require('./api/migrar-areas-operativas'));
-app.all('/api/tec-conversaciones', require('./api/tec-conversaciones'));     // Fase 3: TEC conversaciones
-app.all('/api/migrar-tec-conversaciones', require('./api/migrar-tec-conversaciones'));
-app.all('/api/tec-grupos', require('./api/tec-grupos'));                     // Fase 3: TEC grupos
-app.all('/api/migrar-tec-grupos', require('./api/migrar-tec-grupos'));
-app.all('/api/tec-tareas', require('./api/tec-tareas'));                     // Fase 3: TEC tablero Kanban
-app.all('/api/migrar-tec-tareas', require('./api/migrar-tec-tareas'));
-app.all('/api/notificaciones', require('./api/notificaciones'));             // Fase 4: campana de alertas
-app.all('/api/migrar-notificaciones', require('./api/migrar-notificaciones'));
+// --- API de datos en Postgres (colecciones migradas: TEC + areas + notificaciones) ---
+app.all('/api/db-health', require('./api/db-health'));
+app.all('/api/tec-notas', require('./api/tec-notas'));
+app.all('/api/areas', require('./api/areas'));
+app.all('/api/areas-operativas', require('./api/areas-operativas'));
+app.all('/api/tec-conversaciones', require('./api/tec-conversaciones'));
+app.all('/api/tec-grupos', require('./api/tec-grupos'));
+app.all('/api/tec-tareas', require('./api/tec-tareas'));
+app.all('/api/notificaciones', require('./api/notificaciones'));
 app.all('/api/cloudinary-cleanup', require('./api/cloudinary-cleanup'));
 
 // Cualquier otra ruta /api que no exista -> 404 claro (no servir el index).

@@ -1,0 +1,33 @@
+import { Injectable } from '@angular/core';
+import { getAuth } from '@angular/fire/auth';
+
+/**
+ * Cliente HTTP autenticado para la API propia (Postgres) durante la migración.
+ * Adjunta el idToken de Firebase (el login sigue en Firebase) en cada llamada.
+ * Se reutiliza para todas las colecciones que se vayan migrando a Postgres.
+ */
+@Injectable({ providedIn: 'root' })
+export class ApiService {
+  private async token(): Promise<string> {
+    const u = getAuth().currentUser;
+    if (!u) throw new Error('Sin sesión activa');
+    return u.getIdToken();
+  }
+
+  private async req(method: string, url: string, body?: any): Promise<any> {
+    const token = await this.token();
+    const res = await fetch(url, {
+      method,
+      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: body != null ? JSON.stringify(body) : undefined,
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error((data && data.error) || ('HTTP ' + res.status));
+    return data;
+  }
+
+  get(url: string) { return this.req('GET', url); }
+  post(url: string, body?: any) { return this.req('POST', url, body); }
+  patch(url: string, body?: any) { return this.req('PATCH', url, body); }
+  del(url: string) { return this.req('DELETE', url); }
+}

@@ -9,6 +9,7 @@ import Swal from 'sweetalert2';
 import { SidebarComponent } from '../shared/sidebar/sidebar';
 import { normalizarNombre } from '../shared/permisos.util';
 import { NotificacionesService } from '../services/notificaciones';
+import { ApiService } from '../shared/api.service';
 
 interface Subtarea { id: string; texto: string; hecha: boolean; }
 
@@ -119,11 +120,14 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
   notaEnEdicionId: string | null = null;
   edicionTitulo = '';
   edicionTexto = '';
-  private radarNotas: (() => void) | null = null;
+  // Notas: migradas a Postgres (API). Ya no usan Firestore en vivo; se refrescan
+  // con un poll ligero + tras cada cambio.
+  private notasPoll: any = null;
 
   private firestore = inject(Firestore);
   private router = inject(Router);
   private noti = inject(NotificacionesService);
+  private api = inject(ApiService);
 
   toggleMenu() { this.isMenuOpen = !this.isMenuOpen; }
 
@@ -136,7 +140,7 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     if (this.radarTareas) { this.radarTareas(); this.radarTareas = null; }
-    if (this.radarNotas) { this.radarNotas(); this.radarNotas = null; }
+    if (this.notasPoll) { clearInterval(this.notasPoll); this.notasPoll = null; }
     if (this.radarPosts) { this.radarPosts(); this.radarPosts = null; }
     if (this.radarGrupos) { this.radarGrupos(); this.radarGrupos = null; }
     if (this.radarUsuarios) { this.radarUsuarios(); this.radarUsuarios = null; }
@@ -159,12 +163,9 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
       this.tablero = nuevo;
     });
 
-    const notasRef = collection(this.firestore, 'tec_notas');
-    this.radarNotas = onSnapshot(query(notasRef), snap => {
-      this.notas = snap.docs
-        .map(d => ({ id: d.id, ...(d.data() as any) }))
-        .sort((a, b) => Number(b.creadoEn || 0) - Number(a.creadoEn || 0));
-    });
+    // Notas: ahora viven en Postgres (API). Cargamos y refrescamos por poll.
+    this.cargarNotas();
+    this.notasPoll = setInterval(() => this.cargarNotas(), 30000);
 
     const postsRef = collection(this.firestore, 'tec_conversaciones');
     this.radarPosts = onSnapshot(query(postsRef), snap => {
@@ -857,18 +858,25 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
     return 'Pendiente';
   }
 
-  // ===================== NOTAS / IDEAS =====================
+  // ===================== NOTAS / IDEAS (Postgres vía API) =====================
+  /** Carga las notas desde /api/tec-notas (ya vienen ordenadas por fecha desc). */
+  async cargarNotas() {
+    try {
+      const r = await this.api.get('/api/tec-notas');
+      this.notas = r.notas || [];
+    } catch (e) {
+      console.error('[tec] cargarNotas', e);
+    }
+  }
+
   async agregarNota() {
     const titulo = this.nuevaNotaTitulo.trim();
     const texto = this.nuevaNotaTexto.trim();
     if (!titulo && !texto) return;
     try {
-      await addDoc(collection(this.firestore, 'tec_notas'), {
-        titulo: titulo || '(Sin título)', texto,
-        autor: this.miNombre(), autorUid: this.miUid(),
-        creadoEn: Date.now(), actualizadoEn: Date.now()
-      });
+      await this.api.post('/api/tec-notas', { titulo, texto, autor: this.miNombre() });
       this.nuevaNotaTitulo = ''; this.nuevaNotaTexto = '';
+      await this.cargarNotas();
     } catch (e) {
       console.error('[tec] agregarNota', e);
       Swal.fire({ icon: 'error', title: 'No se pudo guardar', confirmButtonColor: '#0F172A' });
@@ -878,11 +886,15 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
   cancelarEdicionNota() { this.notaEnEdicionId = null; this.edicionTitulo = ''; this.edicionTexto = ''; }
   async guardarEdicionNota(n: any) {
     try {
-      await updateDoc(doc(this.firestore, 'tec_notas', n.id), {
-        titulo: this.edicionTitulo.trim() || '(Sin título)', texto: this.edicionTexto.trim(), actualizadoEn: Date.now()
+      await this.api.patch('/api/tec-notas', {
+        id: n.id, titulo: this.edicionTitulo.trim(), texto: this.edicionTexto.trim()
       });
       this.cancelarEdicionNota();
-    } catch (e) { console.error('[tec] guardarEdicionNota', e); }
+      await this.cargarNotas();
+    } catch (e) {
+      console.error('[tec] guardarEdicionNota', e);
+      Swal.fire({ icon: 'error', title: 'No se pudo guardar', confirmButtonColor: '#0F172A' });
+    }
   }
   async eliminarNota(n: any) {
     const r = await Swal.fire({
@@ -890,7 +902,13 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
       confirmButtonText: 'Sí, eliminar', cancelButtonText: 'Cancelar', confirmButtonColor: '#DC2626'
     });
     if (!r.isConfirmed) return;
-    try { await deleteDoc(doc(this.firestore, 'tec_notas', n.id)); } catch (e) { console.error('[tec] eliminarNota', e); }
+    try {
+      await this.api.del('/api/tec-notas?id=' + encodeURIComponent(n.id));
+      await this.cargarNotas();
+    } catch (e) {
+      console.error('[tec] eliminarNota', e);
+      Swal.fire({ icon: 'error', title: 'No se pudo eliminar', confirmButtonColor: '#0F172A' });
+    }
   }
 
   // ===================== UTIL =====================

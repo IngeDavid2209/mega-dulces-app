@@ -13,6 +13,7 @@ import { esAdminGlobal, sucursalesPermitidas, esSupervisor, mismoEmpleadoNombre 
 import { nivelDeUsuario } from '../../../shared/nivel-jerarquico.util';
 import { esItemHecho } from '../../../shared/item-completado.util';
 import { UsuariosService } from '../../../shared/usuarios.service';
+import { ApiService } from '../../../shared/api.service';
 
 @Component({
   selector: 'app-home',
@@ -39,6 +40,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
   private firestore = inject(Firestore);
   private router    = inject(Router);
   private usuariosSvc = inject(UsuariosService);
+  private api = inject(ApiService);
   private destructoresRadares: (() => void)[] = [];
   private clockInterval: any = null;
 
@@ -403,20 +405,26 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
       })
     );
 
-    const areasRef = collection(this.firestore, 'areas_operativas');
-    this.destructoresRadares.push(
-      onSnapshot(areasRef, snap => {
-        const arr: any[] = [];
-        snap.forEach(d => arr.push({ ...d.data(), id: d.id }));
-        this.areas.set(arr);
-      })
-    );
+    // areas_operativas migrada a Postgres (API). Poll ligero.
+    this.cargarAreas();
+    const areasPoll = setInterval(() => this.cargarAreas(), 60000);
+    this.destructoresRadares.push(() => clearInterval(areasPoll));
 
     // La lista de usuarios ya la trae UsuariosService (listener compartido).
     // Aquí ya no abrimos un onSnapshot duplicado — el _usuariosEffect arriba
     // se encarga de filtrar por permisos y sucursales del currentUser.
   }
- 
+
+  /** Carga las áreas operativas desde /api/areas-operativas (Postgres). */
+  async cargarAreas() {
+    try {
+      const r = await this.api.get('/api/areas-operativas');
+      this.areas.set(r.areas || []);
+    } catch (e) {
+      console.error('[home] cargarAreas', e);
+    }
+  }
+
   // ================================== CHART.JS ==================================
   cargarChartJS() {
     if ((window as any).Chart) { this.actualizarGrafica(); return; }

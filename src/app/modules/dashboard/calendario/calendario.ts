@@ -1,5 +1,6 @@
 import { Component, signal, OnInit, OnDestroy, inject, effect } from '@angular/core';
 import { UsuariosService } from '../../../shared/usuarios.service';
+import { ApiService } from '../../../shared/api.service';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, Router } from '@angular/router';
@@ -49,6 +50,7 @@ tareasAgendaMes: any[] = [];
   private firestore = inject(Firestore);
   private router = inject(Router);
   private usuariosSvc = inject(UsuariosService);
+  private api = inject(ApiService);
   /** Snapshot dinámico de checklists del mes visible (se recrea al cambiar de mes). */
   private radarChecklistsActivo: (() => void) | null = null;
   private destructores: (() => void)[] = [];
@@ -96,16 +98,25 @@ tareasAgendaMes: any[] = [];
     // _usuariosEffect aplica el filtro por sucursal. Aqui solo abrimos los
     // listeners de las otras colecciones.
 
-    const areasRef = collection(this.firestore, 'areas_operativas');
-    this.destructores.push(onSnapshot(areasRef, (snap) => {
-      const areasNube = snap.docs.map(d => d.data());
-      this.areas.set(areasNube.sort((a: any, b: any) => (a.nombre || '').localeCompare(b.nombre || '')));
-    }));
+    // areas_operativas migrada a Postgres (API). Poll ligero.
+    this.cargarAreas();
+    const areasPoll = setInterval(() => this.cargarAreas(), 60000);
+    this.destructores.push(() => clearInterval(areasPoll));
 
     // 💸 OPTIMIZACIÓN: filtramos checklists al rango del mes visible (±1 mes para
     // amortiguar al navegar rápido entre meses cercanos). Antes traíamos toda la
     // colección histórica → ahora solo ~3 meses de data por conexión.
     this.reconectarChecklistsDelMesVisible();
+  }
+
+  /** Carga las áreas operativas desde /api/areas-operativas (Postgres). */
+  async cargarAreas() {
+    try {
+      const r = await this.api.get('/api/areas-operativas');
+      this.areas.set((r.areas || []).sort((a: any, b: any) => (a.nombre || '').localeCompare(b.nombre || '')));
+    } catch (e) {
+      console.error('[calendario] cargarAreas', e);
+    }
   }
 
   /**

@@ -41,6 +41,8 @@ app.all('/api/tec-notas', require('./api/tec-notas'));   // Fase 1: piloto tec_n
 app.all('/api/migrar-tec-notas', require('./api/migrar-tec-notas')); // Fase 1: traslado de datos (admin)
 app.all('/api/areas', require('./api/areas'));           // Fase 2: catalogo areas en Postgres
 app.all('/api/migrar-areas', require('./api/migrar-areas')); // Fase 2: traslado de areas
+app.all('/api/areas-operativas', require('./api/areas-operativas'));         // Fase 2: areas_operativas
+app.all('/api/migrar-areas-operativas', require('./api/migrar-areas-operativas'));
 app.all('/api/cloudinary-cleanup', require('./api/cloudinary-cleanup'));
 
 // Cualquier otra ruta /api que no exista -> 404 claro (no servir el index).

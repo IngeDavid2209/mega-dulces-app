@@ -1,5 +1,6 @@
 import { Component, signal, OnInit, OnDestroy, inject, effect } from '@angular/core';
 import { UsuariosService } from '../../../shared/usuarios.service';
+import { ApiService } from '../../../shared/api.service';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, Router } from '@angular/router';
@@ -71,6 +72,7 @@ isGuardando = false;
   private firestore = inject(Firestore);
   private router = inject(Router);
   private usuariosSvc = inject(UsuariosService);
+  private api = inject(ApiService);
   private destructoresRadares: (() => void)[] = [];
 
   // Effect: copia la lista del UsuariosService compartido a this.usuarios.
@@ -103,16 +105,23 @@ isGuardando = false;
   }
 
   conectarConLaNube() {
-    const areasRef = collection(this.firestore, 'areas_operativas');
-    const radarAreas = onSnapshot(areasRef, (snapshot) => {
-      const areasNube: any[] = [];
-      snapshot.forEach((doc) => areasNube.push({ ...doc.data(), id: doc.id }));
-      this.areas.set(areasNube.sort((a, b) => a.nombre.localeCompare(b.nombre)));
-    });
-    this.destructoresRadares.push(radarAreas);
+    // areas_operativas migrada a Postgres (API). Poll ligero (cambia poco).
+    this.cargarAreas();
+    const areasPoll = setInterval(() => this.cargarAreas(), 60000);
+    this.destructoresRadares.push(() => clearInterval(areasPoll));
 
     // Usuarios viene de UsuariosService (listener compartido) + _usuariosEffect
     // los copia en this.usuarios. No abrimos onSnapshot duplicado aqui.
+  }
+
+  /** Carga las áreas operativas desde /api/areas-operativas (Postgres). */
+  async cargarAreas() {
+    try {
+      const r = await this.api.get('/api/areas-operativas');
+      this.areas.set((r.areas || []).sort((a: any, b: any) => (a.nombre || '').localeCompare(b.nombre || '')));
+    } catch (e) {
+      console.error('[areas] cargarAreas', e);
+    }
   }
 
   // 🔥 RELOJ BIOLÓGICO: BLOQUEO INTELIGENTE DIARIO O POR FECHA 🔥
@@ -407,12 +416,9 @@ async guardarArea() {
       datosGuardar['fechaModificacion'] = new Date().toISOString();
     }
  
-    // ✅ AHORA SÍ ESPERAMOS A FIRESTORE (await)
-    await setDoc(
-      doc(this.firestore, 'areas_operativas', areaId),
-      datosGuardar,
-      { merge: true }
-    );
+    // Área operativa: ahora vive en Postgres (API). Upsert con merge.
+    await this.api.post('/api/areas-operativas', { id: areaId, ...datosGuardar });
+    await this.cargarAreas();
  
     // Si es un área nueva, asignamos los usuarios seleccionados
     if (!this.areaEditandoId) {
@@ -488,7 +494,10 @@ async guardarArea() {
       Swal.fire('Atención', 'Hay personal en esta área. Quítalos primero.', 'warning'); return;
     }
     const res = await Swal.fire({ title: '¿Borrar?', text: area.nombre, icon: 'warning', showCancelButton: true });
-    if (res.isConfirmed) await deleteDoc(doc(this.firestore, 'areas_operativas', area.id));
+    if (res.isConfirmed) {
+      await this.api.del('/api/areas-operativas?id=' + encodeURIComponent(area.id));
+      await this.cargarAreas();
+    }
   }
 
   abrirAsignacion(area: any, event: Event) {

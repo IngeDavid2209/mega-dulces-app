@@ -10,6 +10,16 @@
   --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
   --shadow-lg: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
   --red: #EF4444;
+
+  /* Acentos por ROL (avatar / badges / riel de la tarjeta) */
+  --admin: #4338CA;  --admin-bg: #EEF0FF;  --admin-bd: #C7CBF7;
+  --mando: #B45309;  --mando-bg: #FEF3C7;  --mando-bd: #FCD98A;
+  --oper:  #0F766E;  --oper-bg:  #D6F3EF;  --oper-bd:  #99E2D9;
+  /* Colores SEMÁNTICOS de conexión (independientes del rol) */
+  --ok: #15803D;    --ok-bg: #DCFCE7;    --ok-bd: #A7F3C4;
+  --idle: #64748B;  --idle-bg: #EEF2F6;  --idle-bd: #DDE3EA;
+  --warn: #B45309;  --warn-bg: #FEF3C7;  --warn-bd: #FCD98A;
+  --danger: #DC2626; --danger-bg: #FEF2F2; --danger-bd: #FBD2D2;
 }
 
 .app-layout {
@@ -1044,8 +1054,116 @@
   .vista-tab-badge { min-width: 20px; height: 20px; font-size: 11px; }
 }
 
-/* ===================== Tarjeta de MANDO ===================== */
+/* ===================== Tarjeta de MANDO (legado, ya no se usa) ===================== */
 .user-card.mando-card {
   border-left: 4px solid #F59E0B;
   background: linear-gradient(180deg, #FFFBEB 0%, #FFFFFF 60%);
+}
+
+/* =====================================================================
+   REDISEÑO DE TARJETA DE USUARIO (directorio + vista por sucursal)
+   Misma tarjeta base en ambas vistas; color por rol; sin contraseña.
+   ===================================================================== */
+.user-card {
+  border-radius: 14px;
+  padding: 18px;
+  gap: 0;
+  position: relative;
+  overflow: hidden;
+}
+/* Riel de color por rol al costado izquierdo (discreto) */
+.user-card.role-admin { --role: var(--admin); --role-bg: var(--admin-bg); --role-fg: var(--admin); --role-bd: var(--admin-bd); }
+.user-card.role-mando { --role: var(--mando); --role-bg: var(--mando-bg); --role-fg: var(--mando); --role-bd: var(--mando-bd); }
+.user-card.role-oper  { --role: var(--oper);  --role-bg: var(--oper-bg);  --role-fg: var(--oper);  --role-bd: var(--oper-bd); }
+.user-card.role-admin::before,
+.user-card.role-mando::before,
+.user-card.role-oper::before {
+  content: ""; position: absolute; top: 0; left: 0; width: 4px; height: 100%;
+  background: var(--role); opacity: .9;
+}
+
+.uc-top { display: flex; gap: 13px; align-items: flex-start; }
+.uc-avatar {
+  width: 46px; height: 46px; border-radius: 12px; flex: none;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 19px; font-weight: 800; letter-spacing: -.5px;
+  background: var(--role-bg, #F1F5F9); color: var(--role-fg, var(--text-main));
+  border: 1px solid var(--role-bd, var(--border));
+}
+.uc-id { flex: 1; min-width: 0; }
+.uc-name { font-size: 16px; font-weight: 700; letter-spacing: -.3px; line-height: 1.25; color: var(--text-main); margin: 1px 0 7px; word-break: break-word; }
+.uc-tags { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+
+.uc-badge {
+  display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700;
+  padding: 3px 9px; border-radius: 7px; border: 1px solid var(--border); background: #F4F6FA; color: var(--text-muted);
+  max-width: 100%;
+}
+.uc-badge svg { width: 12px; height: 12px; flex: none; }
+.uc-badge.role-admin { background: var(--admin-bg); color: var(--admin); border-color: var(--admin-bd); }
+.uc-badge.role-mando { background: var(--mando-bg); color: var(--mando); border-color: var(--mando-bd); }
+.uc-badge.role-oper  { background: var(--oper-bg);  color: var(--oper);  border-color: var(--oper-bd); }
+.uc-mando-flag { display: inline-flex; align-items: center; background: var(--mando); color: #FFF; border-radius: 6px; font-size: 9.5px; font-weight: 800; letter-spacing: .6px; padding: 3px 7px; }
+
+.uc-actions { display: flex; gap: 4px; flex: none; }
+.uc-iconbtn {
+  width: 34px; height: 34px; border-radius: 9px; border: 1px solid transparent; background: transparent;
+  color: #8A97AC; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: .15s;
+}
+.uc-iconbtn svg { width: 17px; height: 17px; }
+.uc-iconbtn:hover { background: #F1F5F9; color: var(--text-main); border-color: var(--border); }
+.uc-iconbtn.danger:hover { background: var(--danger-bg); color: var(--danger); border-color: var(--danger-bd); }
+
+.uc-access { margin-top: 12px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.uc-access-pill { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 999px; border: 1px solid; }
+.uc-access-pill svg { width: 12px; height: 12px; }
+.uc-access-pill.total  { background: var(--admin-bg); color: var(--admin); border-color: var(--admin-bd); }
+.uc-access-pill.scoped { background: #F4F6FA; color: var(--text-muted); border-color: var(--border); }
+
+.uc-conn { display: inline-flex; align-items: center; gap: 7px; font-size: 11px; font-weight: 700; padding: 4px 11px 4px 9px; border-radius: 999px; border: 1px solid transparent; }
+.uc-conn .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.uc-conn.ok   { background: var(--ok-bg);   color: var(--ok);   border-color: var(--ok-bd); }
+.uc-conn.idle { background: var(--idle-bg); color: var(--idle); border-color: var(--idle-bd); }
+.uc-conn.warn { background: var(--warn-bg); color: var(--warn); border-color: var(--warn-bd); }
+.uc-conn.ok .dot   { background: var(--ok); box-shadow: 0 0 0 3px rgba(21,128,61,.18); }
+.uc-conn.idle .dot { background: var(--idle); }
+.uc-conn.warn .dot { background: var(--warn); }
+
+.uc-creds { margin-top: 14px; border: 1px solid var(--border); border-radius: 10px; background: #FAFBFD; padding: 12px 13px; }
+.uc-row { display: flex; gap: 10px; font-size: 12.5px; padding: 3px 0; }
+.uc-row + .uc-row { border-top: 1px dashed var(--border); }
+.uc-label { color: #8A97AC; font-weight: 600; min-width: 62px; flex: none; }
+.uc-val { color: var(--text-main); font-weight: 600; word-break: break-word; }
+.uc-perms { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 11px; padding-top: 11px; border-top: 1px dashed var(--border); }
+.uc-perm { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 6px; background: #FFF; border: 1px solid var(--border-strong, #CBD5E1); color: var(--text-muted); }
+.uc-perm.admin { background: var(--text-main); color: #FFF; border-color: var(--text-main); }
+
+/* Encabezados de sección (Mandos / Operativos) con conteo */
+.sec-head { display: flex; align-items: center; gap: 10px; margin: 4px 0 16px; grid-column: 1 / -1; }
+.sec-head h4 { font-size: 13px; font-weight: 800; letter-spacing: .5px; text-transform: uppercase; color: var(--text-muted); margin: 0; }
+.sec-head.mando h4 { color: var(--mando); }
+.sec-count { font-size: 12px; font-weight: 800; background: #E7ECF3; color: var(--text-muted); border-radius: 999px; padding: 2px 10px; font-variant-numeric: tabular-nums; }
+.sec-rule { flex: 1; height: 1px; background: var(--border); }
+
+/* Menú "Más acciones" de la barra superior */
+.acciones-menu-wrap { position: relative; display: inline-flex; }
+.acciones-menu-overlay { position: fixed; inset: 0; z-index: 40; background: transparent; }
+.acciones-menu {
+  position: absolute; top: calc(100% + 6px); right: 0; z-index: 41;
+  background: #FFF; border: 1px solid var(--border); border-radius: 10px;
+  box-shadow: var(--shadow-lg); padding: 6px; min-width: 240px; display: flex; flex-direction: column;
+}
+.acciones-menu button {
+  display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
+  background: transparent; border: none; border-radius: 7px; padding: 9px 10px;
+  font-size: 13px; font-weight: 500; color: var(--text-main); cursor: pointer; transition: .15s;
+}
+.acciones-menu button:hover { background: #F1F5F9; }
+.acciones-menu button svg { width: 16px; height: 16px; flex: none; color: var(--text-muted); }
+.acciones-menu .menu-sep { height: 1px; background: var(--border); margin: 5px 2px; }
+.acciones-menu .menu-badge { margin-left: auto; font-size: 11px; font-weight: 800; background: #E7ECF3; color: var(--text-muted); border-radius: 999px; padding: 1px 8px; }
+
+@media (max-width: 640px) {
+  .user-card { padding: 16px; }
+  .acciones-menu { min-width: 220px; }
 }

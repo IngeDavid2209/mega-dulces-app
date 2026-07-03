@@ -151,6 +151,15 @@ export class PersonalComponent implements OnInit, OnDestroy {
     if (diffHoras < 24) return `Hace ${diffHoras} ${diffHoras === 1 ? 'hora' : 'hrs'}`;
     return `Hace ${diffDias} ${diffDias === 1 ? 'día' : 'días'}`;
   }
+
+  /** Estado de conexión para el color del indicador de la tarjeta:
+   *   'warn' = nunca ha entrado (ámbar), 'ok' = entró hace poco (verde,
+   *   dentro de 3 días), 'idle' = hace mucho (gris). */
+  estadoConexion(timestamp: number | undefined): 'ok' | 'idle' | 'warn' {
+    if (!timestamp) return 'warn';
+    const tresDias = 3 * 24 * 60 * 60 * 1000;
+    return (Date.now() - timestamp) < tresDias ? 'ok' : 'idle';
+  }
   // =========================================================
 
   conectarConLaNube() {
@@ -462,6 +471,11 @@ export class PersonalComponent implements OnInit, OnDestroy {
   /** Panel desplegable de miembros del Espacio TEC. */
   mostrarPanelTec = false;
   togglePanelTec() { this.mostrarPanelTec = !this.mostrarPanelTec; }
+
+  /** Menú "Más acciones" (agrupa los botones secundarios de la barra superior). */
+  accionesMenuAbierto = false;
+  toggleAccionesMenu() { this.accionesMenuAbierto = !this.accionesMenuAbierto; }
+  cerrarAccionesMenu() { this.accionesMenuAbierto = false; }
 
   /** Usuarios con el privilegio `grupoTec` activo (los que ven el apartado). */
   get miembrosTec(): any[] {

@@ -66,7 +66,8 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
   postEdicionTexto = '';
   respEnEdicion: string | null = null;
   respEdicionTexto = '';
-  private radarPosts: (() => void) | null = null;
+  // Conversaciones: migradas a Postgres (API). Poll ligero.
+  private postsPoll: any = null;
 
   // ---------------- Equipos / Proyectos ----------------
   grupos: any[] = [];
@@ -141,7 +142,7 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
   ngOnDestroy() {
     if (this.radarTareas) { this.radarTareas(); this.radarTareas = null; }
     if (this.notasPoll) { clearInterval(this.notasPoll); this.notasPoll = null; }
-    if (this.radarPosts) { this.radarPosts(); this.radarPosts = null; }
+    if (this.postsPoll) { clearInterval(this.postsPoll); this.postsPoll = null; }
     if (this.radarGrupos) { this.radarGrupos(); this.radarGrupos = null; }
     if (this.radarUsuarios) { this.radarUsuarios(); this.radarUsuarios = null; }
     if (this.radarAsignadas) { this.radarAsignadas(); this.radarAsignadas = null; }
@@ -167,12 +168,9 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
     this.cargarNotas();
     this.notasPoll = setInterval(() => this.cargarNotas(), 30000);
 
-    const postsRef = collection(this.firestore, 'tec_conversaciones');
-    this.radarPosts = onSnapshot(query(postsRef), snap => {
-      this.posts = snap.docs
-        .map(d => ({ id: d.id, ...(d.data() as any), respuestas: Array.isArray((d.data() as any).respuestas) ? (d.data() as any).respuestas : [] }))
-        .sort((a, b) => Number(b.creadoEn || 0) - Number(a.creadoEn || 0));
-    });
+    // Conversaciones: ahora en Postgres (API). Carga + poll.
+    this.cargarPosts();
+    this.postsPoll = setInterval(() => this.cargarPosts(), 30000);
 
     const gruposRef = collection(this.firestore, 'tec_grupos');
     this.radarGrupos = onSnapshot(query(gruposRef), snap => {
@@ -396,14 +394,21 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
     return autorUid === this.miUid() || this.currentUser?.rol === 'admin';
   }
 
+  /** Carga los mensajes desde /api/tec-conversaciones (Postgres). */
+  async cargarPosts() {
+    try {
+      const r = await this.api.get('/api/tec-conversaciones');
+      this.posts = (r.posts || []).map((p: any) => ({ ...p, respuestas: Array.isArray(p.respuestas) ? p.respuestas : [] }));
+    } catch (e) {
+      console.error('[tec] cargarPosts', e);
+    }
+  }
+
   async publicarPost() {
     const texto = this.nuevoPostTexto.trim();
     if (!texto) return;
     try {
-      await addDoc(collection(this.firestore, 'tec_conversaciones'), {
-        texto, autor: this.miNombre(), autorUid: this.miUid(),
-        creadoEn: Date.now(), respuestas: []
-      });
+      await this.api.post('/api/tec-conversaciones', { texto, autor: this.miNombre() });
       // Aviso push a los demás del grupo TEC (el emisor se excluye en el server).
       this.noti.enviar({
         titulo: `Nuevo mensaje de ${this.miNombre()}`,
@@ -412,6 +417,7 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
         grupoTec: true
       });
       this.nuevoPostTexto = '';
+      await this.cargarPosts();
     } catch (e) {
       console.error('[tec] publicarPost', e);
       Swal.fire({ icon: 'error', title: 'No se pudo publicar', confirmButtonColor: '#0F172A' });
@@ -425,8 +431,10 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
       showCancelButton: true, confirmButtonText: 'Sí, eliminar', cancelButtonText: 'Cancelar', confirmButtonColor: '#DC2626'
     });
     if (!r.isConfirmed) return;
-    try { await deleteDoc(doc(this.firestore, 'tec_conversaciones', p.id)); }
-    catch (e) { console.error('[tec] eliminarPost', e); }
+    try {
+      await this.api.del('/api/tec-conversaciones?id=' + encodeURIComponent(p.id));
+      await this.cargarPosts();
+    } catch (e) { console.error('[tec] eliminarPost', e); }
   }
 
   async responder(p: any) {
@@ -438,7 +446,7 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
     };
     const respuestas = [...(p.respuestas || []), resp];
     try {
-      await updateDoc(doc(this.firestore, 'tec_conversaciones', p.id), { respuestas });
+      await this.api.patch('/api/tec-conversaciones', { id: p.id, respuestas });
       this.respuestaTexto[p.id] = '';
       // Aviso al autor del mensaje y a quienes ya habian respondido (el emisor
       // se excluye en el server).
@@ -450,6 +458,7 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
         url: '/tec',
         uids: Array.from(new Set(uids))
       });
+      await this.cargarPosts();
     } catch (e) {
       console.error('[tec] responder', e);
       Swal.fire({ icon: 'error', title: 'No se pudo responder', confirmButtonColor: '#0F172A' });
@@ -459,8 +468,10 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
   async eliminarRespuesta(p: any, r: any) {
     if (!this.puedeBorrar(r.autorUid)) return;
     const respuestas = (p.respuestas || []).filter((x: any) => x.id !== r.id);
-    try { await updateDoc(doc(this.firestore, 'tec_conversaciones', p.id), { respuestas }); }
-    catch (e) { console.error('[tec] eliminarRespuesta', e); }
+    try {
+      await this.api.patch('/api/tec-conversaciones', { id: p.id, respuestas });
+      await this.cargarPosts();
+    } catch (e) { console.error('[tec] eliminarRespuesta', e); }
   }
 
   // Editar mensaje
@@ -470,8 +481,9 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
     const t = this.postEdicionTexto.trim();
     if (!t) return;
     try {
-      await updateDoc(doc(this.firestore, 'tec_conversaciones', p.id), { texto: t, editadoEn: Date.now() });
+      await this.api.patch('/api/tec-conversaciones', { id: p.id, texto: t });
       this.cancelarEdicionPost();
+      await this.cargarPosts();
     } catch (e) { console.error('[tec] editar post', e); }
   }
 
@@ -483,8 +495,9 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
     if (!t) return;
     const respuestas = (p.respuestas || []).map((x: any) => x.id === r.id ? { ...x, texto: t, editadoEn: Date.now() } : x);
     try {
-      await updateDoc(doc(this.firestore, 'tec_conversaciones', p.id), { respuestas });
+      await this.api.patch('/api/tec-conversaciones', { id: p.id, respuestas });
       this.cancelarEdicionResp();
+      await this.cargarPosts();
     } catch (e) { console.error('[tec] editar respuesta', e); }
   }
 

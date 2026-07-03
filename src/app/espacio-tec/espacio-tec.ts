@@ -71,7 +71,8 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
 
   // ---------------- Equipos / Proyectos ----------------
   grupos: any[] = [];
-  private radarGrupos: (() => void) | null = null;
+  // Equipos/Proyectos: migrados a Postgres (API). Poll ligero.
+  private gruposPoll: any = null;
   isGrupoModalOpen = false;
   grupoModal: any = null;        // copia editable
   grupoEsNuevo = false;
@@ -143,7 +144,7 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
     if (this.radarTareas) { this.radarTareas(); this.radarTareas = null; }
     if (this.notasPoll) { clearInterval(this.notasPoll); this.notasPoll = null; }
     if (this.postsPoll) { clearInterval(this.postsPoll); this.postsPoll = null; }
-    if (this.radarGrupos) { this.radarGrupos(); this.radarGrupos = null; }
+    if (this.gruposPoll) { clearInterval(this.gruposPoll); this.gruposPoll = null; }
     if (this.radarUsuarios) { this.radarUsuarios(); this.radarUsuarios = null; }
     if (this.radarAsignadas) { this.radarAsignadas(); this.radarAsignadas = null; }
   }
@@ -172,19 +173,9 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
     this.cargarPosts();
     this.postsPoll = setInterval(() => this.cargarPosts(), 30000);
 
-    const gruposRef = collection(this.firestore, 'tec_grupos');
-    this.radarGrupos = onSnapshot(query(gruposRef), snap => {
-      this.grupos = snap.docs
-        .map(d => {
-          const data = d.data() as any;
-          return {
-            id: d.id, ...data,
-            miembros: Array.isArray(data.miembros) ? data.miembros : [],
-            tareas: Array.isArray(data.tareas) ? data.tareas : [],
-          };
-        })
-        .sort((a, b) => Number(a.creadoEn || 0) - Number(b.creadoEn || 0));
-    });
+    // Equipos/Proyectos: ahora en Postgres (API). Carga + poll.
+    this.cargarGrupos();
+    this.gruposPoll = setInterval(() => this.cargarGrupos(), 30000);
 
     // Personal de la empresa (para asignar tareas por sucursal).
     const usuariosRef = collection(this.firestore, 'usuarios');
@@ -617,32 +608,44 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
     else this.grupoModal.miembros = [...this.grupoModal.miembros, nombre];
   }
 
+  /** Carga los grupos (Equipos/Proyectos) desde /api/tec-grupos (Postgres). */
+  async cargarGrupos() {
+    try {
+      const r = await this.api.get('/api/tec-grupos');
+      this.grupos = (r.grupos || [])
+        .map((g: any) => ({ ...g, miembros: Array.isArray(g.miembros) ? g.miembros : [], tareas: Array.isArray(g.tareas) ? g.tareas : [] }))
+        .sort((a: any, b: any) => Number(a.creadoEn || 0) - Number(b.creadoEn || 0));
+    } catch (e) {
+      console.error('[tec] cargarGrupos', e);
+    }
+  }
+
   async guardarGrupo() {
     if (!this.grupoModal) return;
     const nombre = (this.grupoModal.nombre || '').trim();
     if (!nombre) { Swal.fire({ icon: 'info', title: 'Ponle un nombre', confirmButtonColor: '#0F172A' }); return; }
     try {
+      const payload: any = {
+        tipo: this.grupoModal.tipo, nombre,
+        descripcion: (this.grupoModal.descripcion || '').trim(),
+        color: this.grupoModal.color || '#60A5FA',
+        miembros: this.grupoModal.miembros || [],
+        tareas: this.grupoModal.tareas || [],
+        actualizadoEn: Date.now()
+      };
       if (this.grupoEsNuevo) {
-        await addDoc(collection(this.firestore, 'tec_grupos'), {
-          tipo: this.grupoModal.tipo, nombre,
-          descripcion: (this.grupoModal.descripcion || '').trim(),
-          color: this.grupoModal.color || '#60A5FA',
-          miembros: this.grupoModal.miembros || [],
-          tareas: this.grupoModal.tareas || [],
-          creadoPor: this.miNombre(), creadoPorUid: this.miUid(),
-          creadoEn: Date.now(), actualizadoEn: Date.now()
-        });
+        payload.creadoPor = this.miNombre();
+        payload.creadoPorUid = this.miUid();
+        payload.creadoEn = Date.now();
       } else {
-        await updateDoc(doc(this.firestore, 'tec_grupos', this.grupoModal.id), {
-          nombre,
-          descripcion: (this.grupoModal.descripcion || '').trim(),
-          color: this.grupoModal.color || '#60A5FA',
-          miembros: this.grupoModal.miembros || [],
-          tareas: this.grupoModal.tareas || [],
-          actualizadoEn: Date.now()
-        });
+        payload.id = this.grupoModal.id;
+        payload.creadoPor = this.grupoModal.creadoPor;
+        payload.creadoPorUid = this.grupoModal.creadoPorUid;
+        payload.creadoEn = this.grupoModal.creadoEn;
       }
+      await this.api.post('/api/tec-grupos', payload);
       this.cerrarGrupo();
+      await this.cargarGrupos();
     } catch (e) {
       console.error('[tec] guardarGrupo', e);
       Swal.fire({ icon: 'error', title: 'No se pudo guardar', confirmButtonColor: '#0F172A' });
@@ -656,8 +659,11 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
       showCancelButton: true, confirmButtonText: 'Sí, eliminar', cancelButtonText: 'Cancelar', confirmButtonColor: '#DC2626'
     });
     if (!r.isConfirmed) return;
-    try { await deleteDoc(doc(this.firestore, 'tec_grupos', this.grupoModal.id)); this.cerrarGrupo(); }
-    catch (e) { console.error('[tec] eliminarGrupo', e); }
+    try {
+      await this.api.del('/api/tec-grupos?id=' + encodeURIComponent(this.grupoModal.id));
+      this.cerrarGrupo();
+      await this.cargarGrupos();
+    } catch (e) { console.error('[tec] eliminarGrupo', e); }
   }
 
   /** Primeros N miembros para mostrar avatares; el resto como "+N". */

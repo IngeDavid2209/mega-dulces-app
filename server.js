@@ -45,6 +45,8 @@ app.all('/api/areas-operativas', require('./api/areas-operativas'));         // 
 app.all('/api/migrar-areas-operativas', require('./api/migrar-areas-operativas'));
 app.all('/api/tec-conversaciones', require('./api/tec-conversaciones'));     // Fase 3: TEC conversaciones
 app.all('/api/migrar-tec-conversaciones', require('./api/migrar-tec-conversaciones'));
+app.all('/api/tec-grupos', require('./api/tec-grupos'));                     // Fase 3: TEC grupos
+app.all('/api/migrar-tec-grupos', require('./api/migrar-tec-grupos'));
 app.all('/api/cloudinary-cleanup', require('./api/cloudinary-cleanup'));
 
 // Cualquier otra ruta /api que no exista -> 404 claro (no servir el index).

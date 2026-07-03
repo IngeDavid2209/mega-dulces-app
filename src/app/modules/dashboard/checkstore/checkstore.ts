@@ -8,6 +8,7 @@ import { esAdminGlobal, sucursalesPermitidas } from '../../../shared/permisos.ut
 import { nivelDeCargo } from '../../../shared/nivel-jerarquico.util';
 import { esItemHecho } from '../../../shared/item-completado.util';
 import { UsuariosService } from '../../../shared/usuarios.service';
+import { ApiService } from '../../../shared/api.service';
  
 import { SidebarComponent } from '../../../shared/sidebar/sidebar';
 
@@ -73,6 +74,7 @@ export class CheckstoreComponent implements OnInit, OnDestroy {
  
   private firestore = inject(Firestore);
   private usuariosSvc = inject(UsuariosService);
+  private api = inject(ApiService);
   private destructoresRadares: (() => void)[] = [];
 
   // Effect que toma usuarios del servicio compartido y construye el map nivelPorNombre.
@@ -207,39 +209,45 @@ export class CheckstoreComponent implements OnInit, OnDestroy {
   // ============================================================================
   //  FIRESTORE
   // ============================================================================
-  conectarRadaresNube() {
-    // Radar 1: áreas dinámicas
-    const areasRef = collection(this.firestore, 'areas');
-    const radarAreas = onSnapshot(areasRef, snap => {
-      const areasTemp: any[] = [];
-      snap.forEach(docSnap => {
-        const data = docSnap.data();
-        const nombreArea = (data as any)['nombre'] || (data as any)['name'] || 'Área Desconocida';
-        areasTemp.push({
-          name: nombreArea,
-          location: 'Área Interna',
-          icon: '📍',
-          color: '#D97706',
-          progress: 0, totalChecklists: 0, completedItems: 0, totalItems: 0, alertas: 0
-        });
+  /** Trae las áreas desde /api/areas (Postgres) y las procesa. */
+  async cargarAreas() {
+    try {
+      const r = await this.api.get('/api/areas');
+      this.procesarAreas(r.areas || []);
+    } catch (e) {
+      console.error('[checkstore] cargarAreas', e);
+    }
+  }
+
+  /** Construye las tarjetas de área y actualiza sucursales permitidas + KPIs. */
+  private procesarAreas(areasCrudas: any[]) {
+    const areasTemp = areasCrudas.map(a => ({
+      name: a.nombre || a.name || 'Área Desconocida',
+      location: 'Área Interna',
+      icon: '📍',
+      color: '#D97706',
+      progress: 0, totalChecklists: 0, completedItems: 0, totalItems: 0, alertas: 0
+    }));
+    this.areasDesdeFirebase = areasTemp;
+
+    // Admin global o acceso total: suma TODAS las áreas dinámicas a las permitidas.
+    if (
+      esAdminGlobal(this.currentUser) ||
+      (this.currentUser?.sucursales && this.currentUser?.sucursales.includes('Todas las sucursales'))
+    ) {
+      areasTemp.forEach(a => {
+        if (!this.sucursalesPermitidas.includes(a.name)) this.sucursalesPermitidas.push(a.name);
       });
-      this.areasDesdeFirebase = areasTemp;
- 
-      // Admin global o trabajador con acceso total: agrega TODAS las áreas dinámicas.
-      // Admin limitado y trabajador normal: solo las áreas que coincidan con sus sucursales asignadas.
-      if (
-        esAdminGlobal(this.currentUser) ||
-        (this.currentUser?.sucursales && this.currentUser?.sucursales.includes('Todas las sucursales'))
-      ) {
-        areasTemp.forEach(a => {
-          if (!this.sucursalesPermitidas.includes(a.name)) {
-            this.sucursalesPermitidas.push(a.name);
-          }
-        });
-      }
-      this.procesarMatematicas();
-    });
- 
+    }
+    this.procesarMatematicas();
+  }
+
+  conectarRadaresNube() {
+    // Áreas dinámicas: migradas a Postgres (API). Cambian poco → poll ligero.
+    this.cargarAreas();
+    const areasPoll = setInterval(() => this.cargarAreas(), 60000);
+    this.destructoresRadares.push(() => clearInterval(areasPoll));
+
     // Radar 2: checklists - limitado a los ultimos 7 dias para no traer historico.
     // Checkstore muestra alertas/vencimientos del dia, no necesita meses atras.
     const offsetCs = new Date().getTimezoneOffset() * 60000;
@@ -285,7 +293,6 @@ export class CheckstoreComponent implements OnInit, OnDestroy {
     // Usuarios ya los provee UsuariosService (listener compartido) + _usuariosEffect
     // construye el mapa nivelPorNombre. No abrimos onSnapshot duplicado aqui.
 
-    this.destructoresRadares.push(radarAreas);
     this.destructoresRadares.push(radarChecklists);
   }
 

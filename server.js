@@ -39,6 +39,8 @@ app.all('/api/notificar', require('./api/notificar'));
 app.all('/api/db-health', require('./api/db-health'));   // Fase 0: migración a Postgres
 app.all('/api/tec-notas', require('./api/tec-notas'));   // Fase 1: piloto tec_notas en Postgres
 app.all('/api/migrar-tec-notas', require('./api/migrar-tec-notas')); // Fase 1: traslado de datos (admin)
+app.all('/api/areas', require('./api/areas'));           // Fase 2: catalogo areas en Postgres
+app.all('/api/migrar-areas', require('./api/migrar-areas')); // Fase 2: traslado de areas
 app.all('/api/cloudinary-cleanup', require('./api/cloudinary-cleanup'));
 
 // Cualquier otra ruta /api que no exista -> 404 claro (no servir el index).

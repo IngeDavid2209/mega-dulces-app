@@ -37,6 +37,8 @@ app.all('/api/tareas-asignadas', require('./api/tareas-asignadas'));
 app.all('/api/notify-update', require('./api/notify-update'));
 app.all('/api/notificar', require('./api/notificar'));
 app.all('/api/db-health', require('./api/db-health'));   // Fase 0: migración a Postgres
+app.all('/api/tec-notas', require('./api/tec-notas'));   // Fase 1: piloto tec_notas en Postgres
+app.all('/api/migrar-tec-notas', require('./api/migrar-tec-notas')); // Fase 1: traslado de datos (admin)
 app.all('/api/cloudinary-cleanup', require('./api/cloudinary-cleanup'));
 
 // Cualquier otra ruta /api que no exista -> 404 claro (no servir el index).
@@ -73,4 +75,13 @@ app.use((req, res) => {
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Mega Dulces Task escuchando en el puerto ${PORT}`);
+  // Migracion a Postgres: si hay DATABASE_URL, aplica las migraciones SQL
+  // pendientes al arrancar (crea tablas nuevas). Si no, no hace nada.
+  // No bloquea ni tumba el server si algo falla.
+  try {
+    require('./scripts/db-migrate').migrar().catch((e) =>
+      console.error('[migrate] fallo al aplicar migraciones:', e && e.message));
+  } catch (e) {
+    console.error('[migrate] no se pudo iniciar el runner:', e && e.message);
+  }
 });

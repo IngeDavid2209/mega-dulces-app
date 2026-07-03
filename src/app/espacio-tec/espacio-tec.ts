@@ -47,7 +47,8 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
 
   /** Tarjetas agrupadas por columna (lo que consume el tablero / CDK). */
   tablero: Record<string, any[]> = { porhacer: [], hoy: [], progreso: [], hecho: [] };
-  private radarTareas: (() => void) | null = null;
+  // Kanban: migrado a Postgres (API). Poll ligero.
+  private tareasPoll: any = null;
 
   // Alta rápida inline por columna
   agregandoEnColumna: string | null = null;
@@ -141,7 +142,7 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy() {
-    if (this.radarTareas) { this.radarTareas(); this.radarTareas = null; }
+    if (this.tareasPoll) { clearInterval(this.tareasPoll); this.tareasPoll = null; }
     if (this.notasPoll) { clearInterval(this.notasPoll); this.notasPoll = null; }
     if (this.postsPoll) { clearInterval(this.postsPoll); this.postsPoll = null; }
     if (this.gruposPoll) { clearInterval(this.gruposPoll); this.gruposPoll = null; }
@@ -153,17 +154,9 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
   private miNombre(): string { return this.currentUser?.nombre || this.currentUser?.usuario || 'TEC'; }
 
   private conectar() {
-    const tareasRef = collection(this.firestore, 'tec_tareas');
-    this.radarTareas = onSnapshot(query(tareasRef), snap => {
-      const cards = snap.docs.map(d => this.normalizar({ id: d.id, ...(d.data() as any) }));
-      const nuevo: Record<string, any[]> = { porhacer: [], hoy: [], progreso: [], hecho: [] };
-      for (const c of cards) {
-        const col = nuevo[c.columna] ? c.columna : 'porhacer';
-        nuevo[col].push(c);
-      }
-      for (const k of Object.keys(nuevo)) nuevo[k].sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0));
-      this.tablero = nuevo;
-    });
+    // Kanban: ahora en Postgres (API). Carga + poll.
+    this.cargarTareas();
+    this.tareasPoll = setInterval(() => this.cargarTareas(), 30000);
 
     // Notas: ahora viven en Postgres (API). Cargamos y refrescamos por poll.
     this.cargarNotas();
@@ -280,12 +273,29 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
     return total ? Math.round((hechas / total) * 100) : 0;
   }
 
+  /** Carga las tarjetas del Kanban desde /api/tec-tareas y arma el tablero. */
+  async cargarTareas() {
+    try {
+      const r = await this.api.get('/api/tec-tareas');
+      const cards = (r.tareas || []).map((c: any) => this.normalizar(c));
+      const nuevo: Record<string, any[]> = { porhacer: [], hoy: [], progreso: [], hecho: [] };
+      for (const c of cards) {
+        const col = nuevo[c.columna] ? c.columna : 'porhacer';
+        nuevo[col].push(c);
+      }
+      for (const k of Object.keys(nuevo)) nuevo[k].sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0));
+      this.tablero = nuevo;
+    } catch (e) {
+      console.error('[tec] cargarTareas', e);
+    }
+  }
+
   async agregarCard(colId: string) {
     const titulo = this.nuevoCardTexto.trim();
     if (!titulo) { this.agregandoEnColumna = null; return; }
     const orden = (this.tablero[colId]?.length || 0);
     try {
-      await addDoc(collection(this.firestore, 'tec_tareas'), {
+      await this.api.post('/api/tec-tareas', {
         titulo, columna: colId, orden,
         color: '#E2E8F0', asignado: '', fechaLimite: '',
         fechaInicio: '', fechaFin: '', usarFechas: false,
@@ -295,6 +305,7 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
       });
       this.nuevoCardTexto = '';
       this.agregandoEnColumna = null;
+      await this.cargarTareas();
     } catch (e) {
       console.error('[tec] agregarCard', e);
       Swal.fire({ icon: 'error', title: 'No se pudo agregar', confirmButtonColor: '#0F172A' });
@@ -313,13 +324,13 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
     }
   }
 
-  /** Reescribe columna + orden de todas las tarjetas de una columna. */
+  /** Reescribe columna + orden de todas las tarjetas de una columna (vía API). */
   private async persistirColumna(colId: string) {
     const lista = this.tablero[colId] || [];
     await Promise.all(lista.map((c, i) => {
-      c.columna = colId; c.orden = i;
-      return updateDoc(doc(this.firestore, 'tec_tareas', c.id), { columna: colId, orden: i, actualizadoEn: Date.now() })
-        .catch(e => console.error('[tec] persistir', e));
+      c.columna = colId; c.orden = i; c.actualizadoEn = Date.now();
+      // Se envía la tarjeta completa (el upsert sobrescribe el documento).
+      return this.api.post('/api/tec-tareas', c).catch(e => console.error('[tec] persistir', e));
     }));
   }
 
@@ -348,7 +359,9 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
     const titulo = (this.tarjeta.titulo || '').trim();
     if (!titulo) { Swal.fire({ icon: 'info', title: 'Ponle un título a la tarjeta', confirmButtonColor: '#0F172A' }); return; }
     try {
-      await updateDoc(doc(this.firestore, 'tec_tareas', this.tarjeta.id), {
+      // Se envía la tarjeta completa (conserva columna/orden/creadoEn) con los cambios.
+      await this.api.post('/api/tec-tareas', {
+        ...this.tarjeta,
         titulo,
         color: this.tarjeta.color || '#E2E8F0',
         asignado: this.tarjeta.asignado || '',
@@ -360,6 +373,7 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
         actualizadoEn: Date.now()
       });
       this.cerrarTarjeta();
+      await this.cargarTareas();
     } catch (e) {
       console.error('[tec] guardarTarjeta', e);
       Swal.fire({ icon: 'error', title: 'No se pudo guardar', confirmButtonColor: '#0F172A' });
@@ -374,8 +388,9 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
     });
     if (!r.isConfirmed) return;
     try {
-      await deleteDoc(doc(this.firestore, 'tec_tareas', this.tarjeta.id));
+      await this.api.del('/api/tec-tareas?id=' + encodeURIComponent(this.tarjeta.id));
       this.cerrarTarjeta();
+      await this.cargarTareas();
     } catch (e) { console.error('[tec] eliminarTarjeta', e); }
   }
 

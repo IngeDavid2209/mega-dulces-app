@@ -47,6 +47,8 @@ app.all('/api/tec-conversaciones', require('./api/tec-conversaciones'));     // 
 app.all('/api/migrar-tec-conversaciones', require('./api/migrar-tec-conversaciones'));
 app.all('/api/tec-grupos', require('./api/tec-grupos'));                     // Fase 3: TEC grupos
 app.all('/api/migrar-tec-grupos', require('./api/migrar-tec-grupos'));
+app.all('/api/tec-tareas', require('./api/tec-tareas'));                     // Fase 3: TEC tablero Kanban
+app.all('/api/migrar-tec-tareas', require('./api/migrar-tec-tareas'));
 app.all('/api/cloudinary-cleanup', require('./api/cloudinary-cleanup'));
 
 // Cualquier otra ruta /api que no exista -> 404 claro (no servir el index).

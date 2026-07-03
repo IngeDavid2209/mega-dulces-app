@@ -13,6 +13,7 @@ import { esItemHecho, tieneEvidencia } from '../../../shared/item-completado.uti
 import { obtenerSemanaISO, obtenerNombreDia } from '../../../shared/descansos.util';
 import { RobotRutinasV2Service } from '../../../shared/robot-rutinas-v2.service';
 import { NotificacionesService } from '../../../services/notificaciones';
+import { ApiService } from '../../../shared/api.service';
 import { RutinaMaestra } from '../../../shared/rutinas.types';
 import { AsignacionRutina } from '../../../shared/asignaciones.types';
 import { comprimirImagenSiAplica } from '../../../shared/imagen.util';
@@ -283,6 +284,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   private robotV2 = inject(RobotRutinasV2Service);
   private usuariosSvc = inject(UsuariosService);
   private noti = inject(NotificacionesService);
+  private api = inject(ApiService);
   private destructoresRadares: (() => void)[] = [];
   private intervalId: any;
 
@@ -1404,19 +1406,22 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     });
     this.destructoresRadares.push(radarTareasEquipo);
 
-    const notiRef = collection(this.firestore, 'notificaciones');
-    const radarNotificaciones = onSnapshot(notiRef, (snapshot) => {
-      const misNotis: any[] = [];
-      snapshot.forEach(docSnap => {
-        const data = docSnap.data();
-        if (data['empleado'] === this.currentUser?.nombre && data['leido'] === false) {
-          misNotis.push({ id: docSnap.id, ...data });
-        }
-      });
-      misNotis.sort((a, b) => a.timestamp - b.timestamp);
-      this.notificacionesPendientes.set(misNotis);
-    });
-    this.destructoresRadares.push(radarNotificaciones);
+    // Notificaciones (campana): migradas a Postgres (API). Poll cada 20s.
+    this.cargarNotificaciones();
+    const notiPoll = setInterval(() => this.cargarNotificaciones(), 20000);
+    this.destructoresRadares.push(() => clearInterval(notiPoll));
+  }
+
+  /** Carga las alertas NO leídas del usuario actual desde /api/notificaciones. */
+  async cargarNotificaciones() {
+    const nombre = this.currentUser?.nombre;
+    if (!nombre) return;
+    try {
+      const r = await this.api.get('/api/notificaciones?empleado=' + encodeURIComponent(nombre));
+      this.notificacionesPendientes.set(r.notificaciones || []);
+    } catch (e) {
+      console.error('[checklist] cargarNotificaciones', e);
+    }
   }
 
   abrirModalNotificacion(empleadoNombre: string) {
@@ -1432,21 +1437,22 @@ export class ChecklistComponent implements OnInit, OnDestroy {
 
   async enviarNotificacion() {
     if (!this.mensajeNotificacion.trim()) { alert('Por favor escribe un mensaje.'); return; }
-    const notiId = 'noti_' + Date.now();
-    const payload = {
-      empleado: this.empleadoParaNotificar, mensaje: this.mensajeNotificacion,
-      de: this.currentUser?.nombre || 'Gerencia', leido: false, timestamp: Date.now()
-    };
     try {
-      await setDoc(doc(this.firestore, 'notificaciones', notiId), payload);
+      await this.api.post('/api/notificaciones', {
+        empleado: this.empleadoParaNotificar,
+        mensaje: this.mensajeNotificacion,
+        de: this.currentUser?.nombre || 'Gerencia'
+      });
       this.mostrarToast(` 🔔 ¡Zumbido enviado a ${this.empleadoParaNotificar}!`);
       this.cerrarModalNotificacion();
     } catch (error) { alert('Error al enviar la alerta.'); }
   }
 
   async marcarNotificacionComoLeida(noti: any) {
-    try { await setDoc(doc(this.firestore, 'notificaciones', noti.id), { leido: true }, { merge: true }); }
-    catch (error) { console.error("Error cerrando notificación", error); }
+    // Optimista: la quitamos de la lista y marcamos leída en la API.
+    this.notificacionesPendientes.set(this.notificacionesPendientes().filter(n => n.id !== noti.id));
+    try { await this.api.patch('/api/notificaciones', { id: noti.id }); }
+    catch (error) { console.error('Error cerrando notificación', error); }
   }
 
   getPrimerasTareas(checklist: any): any[] {

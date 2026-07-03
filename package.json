@@ -41,6 +41,7 @@
     "jspdf-autotable": "^5.0.7",
     "localforage": "^1.10.0",
     "nodemailer": "^8.0.4",
+    "pg": "^8.13.1",
     "rxjs": "~7.8.0",
     "sweetalert2": "^11.26.24",
     "tslib": "^2.3.0",

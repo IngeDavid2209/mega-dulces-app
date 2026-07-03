@@ -36,6 +36,7 @@ app.all('/api/asistente-chat', require('./api/asistente-chat'));
 app.all('/api/tareas-asignadas', require('./api/tareas-asignadas'));
 app.all('/api/notify-update', require('./api/notify-update'));
 app.all('/api/notificar', require('./api/notificar'));
+app.all('/api/db-health', require('./api/db-health'));   // Fase 0: migración a Postgres
 app.all('/api/cloudinary-cleanup', require('./api/cloudinary-cleanup'));
 
 // Cualquier otra ruta /api que no exista -> 404 claro (no servir el index).

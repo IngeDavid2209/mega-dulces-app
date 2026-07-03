@@ -40,9 +40,30 @@ detecta automaticamente. No hay que tocar comandos.
 | `CLOUDINARY_API_KEY`       | Limpieza de fotos                      | El mismo valor que esta en Vercel |
 | `CLOUDINARY_API_SECRET`    | Limpieza de fotos                      | El mismo valor que esta en Vercel |
 | `ASISTENTE_MODELO`         | (Opcional) modelo de IA a usar         | Dejar vacio = `claude-opus-4-8`. Poner `claude-haiku-4-5` para abaratar ~5x. |
+| `DATABASE_URL`             | Conexion a Postgres (migracion en curso) | La da el servicio Postgres de Railway (ver abajo). Si no existe, la app sigue funcionando con Firebase. |
 
 > `FIREBASE_SERVICE_ACCOUNT` es un JSON largo en una sola variable: pega el
 > contenido completo (incluyendo las llaves `{ }`) tal cual.
+
+---
+
+## Base de datos Postgres (migracion por fases, en curso)
+
+Estamos migrando de Firestore a Postgres **por fases**; ambas conviven. Mientras
+`DATABASE_URL` no exista, la app sigue 100% en Firebase (nada se rompe).
+
+**Para crear el Postgres (lo hace el dueno de la cuenta de Railway):**
+1. En el proyecto de Railway (el mismo donde vive el servicio **MDTask**):
+   **New -> Database -> Add PostgreSQL**. (O por CLI: `railway add --database postgres`.)
+2. En el servicio **MDTask** -> pestana **Variables** -> agregar una variable de
+   referencia: `DATABASE_URL = ${{Postgres.DATABASE_URL}}`
+   (asi MDTask usa la conexion **interna** del proyecto, sin costo de salida ni SSL).
+3. Redeploy de MDTask. Verificar en el navegador:
+   `https://mdtask-production.up.railway.app/api/db-health`
+   - Antes de configurar: `{ "configured": false }`
+   - Ya conectado: `{ "ok": true, "configured": true, "ahora": ... }`
+
+> Recomendado: activar **backups automaticos** del Postgres desde el dia 1.
 
 ---
 

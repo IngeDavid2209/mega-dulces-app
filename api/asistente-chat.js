@@ -665,7 +665,99 @@ async function llamarClaude(apiKey, modelo, system, messages) {
 }
 
 // ---------------------------------------------------------------------------
-// Handler
+// Contexto + bucle REUTILIZABLES (compartidos por el endpoint web y el webhook
+// de WhatsApp). El endpoint web identifica al usuario por token de Firebase; el
+// webhook lo identifica por su numero de telefono. Ambos arman `ctx` y llaman a
+// procesarChat(). Asi la logica de herramientas y permisos es una sola.
+// ---------------------------------------------------------------------------
+
+// Carga usuarios + config de turnos y arma el contexto de un usuario YA identificado.
+async function construirContexto(db, uid, perfil, opts) {
+  opts = opts || {};
+  const usuariosSnap = await db.collection('usuarios').get();
+  const usuarios = usuariosSnap.docs.map(d => ({ id: d.id, ...(d.data() || {}) }));
+  let configTurnos = null;
+  try {
+    const ct = await db.collection('config').doc('turnos').get();
+    if (ct.exists) configTurnos = ct.data();
+  } catch (e) { /* sin config => sin restriccion */ }
+  return {
+    uid, perfil, usuarios, configTurnos,
+    nombre: perfil.nombre || perfil.correo || 'Usuario',
+    esAdmin: perfil.rol === 'admin',
+    fechaHoy: String(opts.fechaHoy || '').trim(),
+    diaSemana: String(opts.diaSemana || '').trim()
+  };
+}
+
+// System prompt segun el rol: admin = acceso total; colaborador = solo lo suyo.
+function construirSystem(ctx) {
+  const sucs = sucursalesPermitidas(ctx);
+  const reglaAcceso = ctx.esAdmin
+    ? '- El usuario es administrador con ACCESO TOTAL: puedes consultar tareas de cualquier persona (consultar_tareas con "persona") y estadisticas de cualquier sucursal o de toda la operacion (estadisticas con "sucursal"). No digas que algo es solo personal o que no puedes por sucursal: usa los parametros.'
+    : '- El usuario es un COLABORADOR (no administrador): solo puede ver y gestionar SUS propias tareas (consultar_tareas sin "persona", completar_tarea, editar_tarea, eliminar_tarea, resumen_hoy). NO puede crear checklists ni rutinas ni asignar tareas a otros; si lo pide, explicale con amabilidad que eso lo hace un administrador.';
+  return [
+    'Eres el asistente de Mega Dulces Task, una app de tareas para una dulceria.',
+    `Hablas con ${ctx.nombre}${ctx.esAdmin ? ' (administrador)' : ''}.`,
+    `Hoy es ${ctx.fechaHoy || '(desconocido)'}${ctx.diaSemana ? ' (' + ctx.diaSemana + ')' : ''}.`,
+    '',
+    'Puedes gestionar TAREAS, crear RUTINAS recurrentes y dar INFORMACION, usando las herramientas.',
+    'Contexto para rutinas:',
+    '- Sucursales disponibles: ' + (sucs.length ? sucs.join(', ') : '(ninguna)') + '.',
+    '- Roles validos: ' + ROLES.join(', ') + '.',
+    '- Frecuencias: ' + FRECUENCIAS.join(', ') + '. Dias: ' + DIAS.join(', ') + '.',
+    '',
+    'Reglas:',
+    reglaAcceso,
+    '- CONFIRMA ANTES DE ESCRIBIR: antes de crear o asignar (agregar_tarea individual o en grupo, crear_checklist y crear_rutina) RESUME en una frase que haras y a quien, y pide confirmacion. Ej: "Voy a crear el checklist [nombre] para [persona] en [sucursal] el [fecha] con estos items: ... ¿Confirmo?". Llama la herramienta SOLO despues de que el usuario diga si/confirme. Si menciona a una persona y no estas 100% seguro de quien es, di a quien entendiste y pide que confirme. Para consultas, resumenes y estadisticas (solo lectura) NO pidas confirmacion: hazlo directo.',
+    '- CREAR siempre es un CHECKLIST: para crear cualquier cosa usa crear_checklist (escribe en la coleccion checklists, NUNCA en la agenda). Arma los items de lo que el admin dicte: una tarea suelta = item tipo "manual"; una rutina (ej. "todos los lunes...") = item tipo "rutina" con frecuencia y dia_semana. Pide nombre, persona, sucursal, fecha e items si faltan, antes de confirmar.',
+    '- Usa las herramientas para EJECUTAR de verdad; no digas que hiciste algo sin llamarlas.',
+    '- Para completar/editar/eliminar una tarea, primero usa consultar_tareas para obtener el id.',
+    '- Para crear_rutina necesitas: nombre, frecuencia, sucursales y modo (porRol con rol_objetivo, o porPersonas con personas). Si falta algo, preguntalo corto antes de crear.',
+    '- TURNOS (Canindo): algunas personas solo pueden recibir tareas dentro de su turno (manana/tarde). Si crear_checklist devuelve que la persona esta "fuera de turno", NO insistas: explicale al admin que esta fuera de su horario y que, si por necesidad debe trabajar otro turno, puede registrar una excepcion en la pantalla de Turnos de Canindo.',
+    '- Resuelve fechas relativas a YYYY-MM-DD usando la fecha de hoy.',
+    '- Responde SIEMPRE en espanol, breve y claro. Confirma lo hecho en una frase.',
+    '- Si una accion falla, dilo con amabilidad y ofrece reintentar.'
+  ].join('\n');
+}
+
+// Corre el bucle de herramientas de Claude. Muta `messages` (agrega el historial)
+// y devuelve { respuesta, acciones, messages }.
+async function procesarChat({ apiKey, modelo, db, ctx, messages }) {
+  const system = construirSystem(ctx);
+  const acciones = [];
+  let respuestaTexto = '', data;
+
+  for (let i = 0; i < MAX_ITERACIONES; i++) {
+    data = await llamarClaude(apiKey, modelo, system, messages);
+    messages.push({ role: 'assistant', content: data.content });
+
+    if (data.stop_reason === 'tool_use') {
+      const toolResults = [];
+      for (const block of (data.content || [])) {
+        if (block.type !== 'tool_use') continue;
+        let resultado;
+        console.log('[asistente] herramienta:', block.name, '| datos:', JSON.stringify(block.input || {}));
+        try { resultado = await ejecutarHerramienta(db, ctx, block.name, block.input); }
+        catch (e) { resultado = { ok: false, mensaje: (e && e.message) || 'Error ejecutando la herramienta.' }; }
+        console.log('[asistente] resultado:', JSON.stringify(resultado));
+        if (resultado && resultado.ok) acciones.push({ herramienta: block.name, ...resultado });
+        toolResults.push({ type: 'tool_result', tool_use_id: block.id, content: JSON.stringify(resultado), is_error: !(resultado && resultado.ok) });
+      }
+      messages.push({ role: 'user', content: toolResults });
+      continue;
+    }
+
+    respuestaTexto = (data.content || []).filter(b => b && b.type === 'text').map(b => b.text).join('\n').trim();
+    break;
+  }
+
+  if (!respuestaTexto) respuestaTexto = 'Listo.';
+  return { respuesta: respuestaTexto, acciones, messages };
+}
+
+// ---------------------------------------------------------------------------
+// Handler (endpoint web: POST /api/asistente-chat, autenticado con Firebase)
 // ---------------------------------------------------------------------------
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -683,8 +775,7 @@ module.exports = async (req, res) => {
     const decoded = await admin.auth().verifyIdToken(idToken);
 
     const db = admin.firestore();
-    const perfilSnap = await db.collection('usuarios').doc(decoded.uid).get();
-    const perfil = perfilSnap.data() || {};
+    const perfil = (await db.collection('usuarios').doc(decoded.uid).get()).data() || {};
 
     const body = req.body || {};
     const messages = Array.isArray(body.messages) ? body.messages : [];
@@ -694,81 +785,17 @@ module.exports = async (req, res) => {
     if (!apiKey) return res.status(500).json({ error: 'Falta ANTHROPIC_API_KEY en las variables de entorno.' });
     const modelo = process.env.ASISTENTE_MODELO || 'claude-opus-4-8';
 
-    // Cargar usuarios UNA vez (se reutiliza en resolverPersona, sucursales, etc.)
-    const usuariosSnap = await db.collection('usuarios').get();
-    const usuarios = usuariosSnap.docs.map(d => ({ id: d.id, ...(d.data() || {}) }));
-
-    // Config de turnos de Canindo (para bloquear asignaciones fuera de turno).
-    let configTurnos = null;
-    try {
-      const ct = await db.collection('config').doc('turnos').get();
-      if (ct.exists) configTurnos = ct.data();
-    } catch (e) { /* sin config => sin restriccion */ }
-
-    const ctx = {
-      uid: decoded.uid, perfil, usuarios, configTurnos,
-      nombre: perfil.nombre || perfil.correo || 'Usuario',
-      esAdmin: perfil.rol === 'admin',
-      fechaHoy: String(body.fechaHoy || '').trim(),
-      diaSemana: String(body.diaSemana || '').trim()
-    };
-    const sucs = sucursalesPermitidas(ctx);
-
-    const system = [
-      'Eres el asistente de Mega Dulces Task, una app de tareas para una dulceria.',
-      `Hablas con ${ctx.nombre}${ctx.esAdmin ? ' (administrador)' : ''}.`,
-      `Hoy es ${ctx.fechaHoy || '(desconocido)'}${ctx.diaSemana ? ' (' + ctx.diaSemana + ')' : ''}.`,
-      '',
-      'Puedes gestionar TAREAS, crear RUTINAS recurrentes y dar INFORMACION, usando las herramientas.',
-      'Contexto para rutinas:',
-      '- Sucursales disponibles: ' + (sucs.length ? sucs.join(', ') : '(ninguna)') + '.',
-      '- Roles validos: ' + ROLES.join(', ') + '.',
-      '- Frecuencias: ' + FRECUENCIAS.join(', ') + '. Dias: ' + DIAS.join(', ') + '.',
-      '',
-      'Reglas:',
-      '- El usuario es administrador con ACCESO TOTAL: puedes consultar tareas de cualquier persona (consultar_tareas con "persona") y estadisticas de cualquier sucursal o de toda la operacion (estadisticas con "sucursal"). No digas que algo es solo personal o que no puedes por sucursal: usa los parametros.',
-      '- CONFIRMA ANTES DE ESCRIBIR: antes de crear o asignar (agregar_tarea individual o en grupo, crear_checklist y crear_rutina) RESUME en una frase que haras y a quien, y pide confirmacion. Ej: "Voy a crear el checklist [nombre] para [persona] en [sucursal] el [fecha] con estos items: ... ¿Confirmo?". Llama la herramienta SOLO despues de que el usuario diga si/confirme. Si menciona a una persona y no estas 100% seguro de quien es, di a quien entendiste y pide que confirme. Para consultas, resumenes y estadisticas (solo lectura) NO pidas confirmacion: hazlo directo.',
-      '- CREAR siempre es un CHECKLIST: para crear cualquier cosa usa crear_checklist (escribe en la coleccion checklists, NUNCA en la agenda). Arma los items de lo que el admin dicte: una tarea suelta = item tipo "manual"; una rutina (ej. "todos los lunes...") = item tipo "rutina" con frecuencia y dia_semana. Pide nombre, persona, sucursal, fecha e items si faltan, antes de confirmar.',
-      '- Usa las herramientas para EJECUTAR de verdad; no digas que hiciste algo sin llamarlas.',
-      '- Para completar/editar/eliminar una tarea, primero usa consultar_tareas para obtener el id.',
-      '- Para crear_rutina necesitas: nombre, frecuencia, sucursales y modo (porRol con rol_objetivo, o porPersonas con personas). Si falta algo, preguntalo corto antes de crear.',
-      '- TURNOS (Canindo): algunas personas solo pueden recibir tareas dentro de su turno (manana/tarde). Si crear_checklist devuelve que la persona esta "fuera de turno", NO insistas: explicale al admin que esta fuera de su horario y que, si por necesidad debe trabajar otro turno, puede registrar una excepcion en la pantalla de Turnos de Canindo.',
-      '- Resuelve fechas relativas a YYYY-MM-DD usando la fecha de hoy.',
-      '- Responde SIEMPRE en espanol, breve y claro. Confirma lo hecho en una frase.',
-      '- Si una accion falla, dilo con amabilidad y ofrece reintentar.'
-    ].join('\n');
-
-    const acciones = [];
-    let respuestaTexto = '', data;
-
-    for (let i = 0; i < MAX_ITERACIONES; i++) {
-      data = await llamarClaude(apiKey, modelo, system, messages);
-      messages.push({ role: 'assistant', content: data.content });
-
-      if (data.stop_reason === 'tool_use') {
-        const toolResults = [];
-        for (const block of (data.content || [])) {
-          if (block.type !== 'tool_use') continue;
-          let resultado;
-          console.log('[asistente-chat] herramienta:', block.name, '| datos:', JSON.stringify(block.input || {}));
-          try { resultado = await ejecutarHerramienta(db, ctx, block.name, block.input); }
-          catch (e) { resultado = { ok: false, mensaje: (e && e.message) || 'Error ejecutando la herramienta.' }; }
-          console.log('[asistente-chat] resultado:', JSON.stringify(resultado));
-          if (resultado && resultado.ok) acciones.push({ herramienta: block.name, ...resultado });
-          toolResults.push({ type: 'tool_result', tool_use_id: block.id, content: JSON.stringify(resultado), is_error: !(resultado && resultado.ok) });
-        }
-        messages.push({ role: 'user', content: toolResults });
-        continue;
-      }
-
-      respuestaTexto = (data.content || []).filter(b => b && b.type === 'text').map(b => b.text).join('\n').trim();
-      break;
-    }
-
-    if (!respuestaTexto) respuestaTexto = 'Listo.';
-    return res.status(200).json({ respuesta: respuestaTexto, acciones, messages });
+    const ctx = await construirContexto(db, decoded.uid, perfil, { fechaHoy: body.fechaHoy, diaSemana: body.diaSemana });
+    const salida = await procesarChat({ apiKey, modelo, db, ctx, messages });
+    return res.status(200).json(salida);
   } catch (e) {
     console.error('[asistente-chat] error:', e && e.message, e && e.detalle);
     return res.status(500).json({ error: (e && e.message) || 'Error interno' });
   }
 };
+
+// Exponer las piezas reutilizables para el webhook de WhatsApp (que identifica
+// al usuario por telefono en vez de por token de Firebase).
+module.exports.inicializar = inicializar;
+module.exports.construirContexto = construirContexto;
+module.exports.procesarChat = procesarChat;

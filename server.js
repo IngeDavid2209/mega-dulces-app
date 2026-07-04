@@ -26,13 +26,19 @@ const express = require('express');
 const app = express();
 
 // Parseo de JSON en el body (Vercel lo hacia solo; aqui hay que activarlo).
-app.use(express.json({ limit: '2mb' }));
+// `verify` guarda el cuerpo CRUDO en req.rawBody: lo necesita el webhook de
+// WhatsApp para validar la firma (HMAC) del evento. No cambia el parseo normal.
+app.use(express.json({
+  limit: '2mb',
+  verify: (req, _res, buf) => { req.rawBody = buf; },
+}));
 
 // --- Rutas del backend (mismas funciones que usaba Vercel) ---
 // Se montan con app.all para que tambien reciban OPTIONS (las funciones ya
 // manejan el metodo y el CORS internamente).
 app.all('/api/asistente-voz', require('./api/asistente-voz'));
 app.all('/api/asistente-chat', require('./api/asistente-chat'));
+app.all('/api/whatsapp-webhook', require('./api/whatsapp-webhook'));
 app.all('/api/tareas-asignadas', require('./api/tareas-asignadas'));
 app.all('/api/notify-update', require('./api/notify-update'));
 app.all('/api/notificar', require('./api/notificar'));

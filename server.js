@@ -44,6 +44,10 @@ app.all('/api/notify-update', require('./api/notify-update'));
 app.all('/api/notificar', require('./api/notificar'));
 // --- API de datos en Postgres (colecciones migradas: TEC + areas + notificaciones) ---
 app.all('/api/db-health', require('./api/db-health'));
+// Etapa 1 FERROCARRIL: usuarios + agenda (endpoints listos; el frontend aún usa Firestore hasta el cutover).
+app.all('/api/usuarios', require('./api/usuarios'));
+app.all('/api/usuarios-agenda', require('./api/usuarios-agenda'));
+app.all('/api/login-usuario', require('./api/login-usuario')); // público (resuelve usuario->correo en el login)
 app.all('/api/tec-notas', require('./api/tec-notas'));
 app.all('/api/areas', require('./api/areas'));
 app.all('/api/areas-operativas', require('./api/areas-operativas'));

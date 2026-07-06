@@ -91,7 +91,8 @@ async function procesarMensaje(msg) {
 
   // Contexto del usuario identificado (mismos permisos que en la web) + asistente.
   const { fechaHoy, diaSemana } = fechaMexico();
-  const ctx = await construirContexto(db, yo.id, yo, { fechaHoy, diaSemana });
+  // Reutilizamos la lista de usuarios ya cargada (evita una 2ª lectura a Firestore).
+  const ctx = await construirContexto(db, yo.id, yo, { fechaHoy, diaSemana, usuarios });
 
   let respuesta;
   try {

@@ -674,8 +674,13 @@ async function llamarClaude(apiKey, modelo, system, messages) {
 // Carga usuarios + config de turnos y arma el contexto de un usuario YA identificado.
 async function construirContexto(db, uid, perfil, opts) {
   opts = opts || {};
-  const usuariosSnap = await db.collection('usuarios').get();
-  const usuarios = usuariosSnap.docs.map(d => ({ id: d.id, ...(d.data() || {}) }));
+  // Si quien llama ya cargo la lista de usuarios (ej. el webhook de WhatsApp la
+  // usa para identificar por telefono), la reutilizamos para no leerla 2 veces.
+  let usuarios = Array.isArray(opts.usuarios) ? opts.usuarios : null;
+  if (!usuarios) {
+    const usuariosSnap = await db.collection('usuarios').get();
+    usuarios = usuariosSnap.docs.map(d => ({ id: d.id, ...(d.data() || {}) }));
+  }
   let configTurnos = null;
   try {
     const ct = await db.collection('config').doc('turnos').get();

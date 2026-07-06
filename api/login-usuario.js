@@ -22,7 +22,7 @@ module.exports = async (req, res) => {
     const entrada = String(req.query?.usuario || '').trim().toLowerCase();
     if (!entrada) return res.status(400).json({ error: 'Falta usuario.' });
     const r = await query(
-      'select correo from usuarios where lower(usuario) = $1 or lower(correo) = $1 limit 1',
+      'select correo from mdtask_usuarios where lower(usuario) = $1 or lower(correo) = $1 limit 1',
       [entrada]
     );
     return res.json({ correo: (r.rows[0] && r.rows[0].correo) || '' });

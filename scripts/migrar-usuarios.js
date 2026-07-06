@@ -44,7 +44,7 @@ async function main() {
     const { cols, datos } = desglosarUsuario(u);
     const ahora = Date.now();
     await query(
-      `insert into usuarios (id, usuario, correo, nombre, rol, telefono, alcance, cargo, activo, creado_en, actualizado_en, datos)
+      `insert into mdtask_usuarios (id, usuario, correo, nombre, rol, telefono, alcance, cargo, activo, creado_en, actualizado_en, datos)
        values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$10,$11)
        on conflict (id) do update set
          usuario=excluded.usuario, correo=excluded.correo, nombre=excluded.nombre,
@@ -64,7 +64,7 @@ async function main() {
       const tDatos = { ...d };
       ['texto', 'completada', 'fecha', 'prioridad', 'fechaCreacion', 'completadaEn', 'id'].forEach(k => delete tDatos[k]);
       await query(
-        `insert into usuarios_agenda (id, uid, texto, completada, fecha, prioridad, fecha_creacion, completada_en, datos)
+        `insert into mdtask_agenda (id, uid, texto, completada, fecha, prioridad, fecha_creacion, completada_en, datos)
          values ($1,$2,$3,$4,$5,$6,$7,$8,$9)
          on conflict (id) do update set
            uid=excluded.uid, texto=excluded.texto, completada=excluded.completada,

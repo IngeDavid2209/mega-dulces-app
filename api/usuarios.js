@@ -59,14 +59,14 @@ module.exports = async (req, res) => {
       if (tel) {
         const d = String(tel).replace(/\D/g, '').slice(-10);
         const r = await query(
-          `select * from usuarios
+          `select * from mdtask_usuarios
              where right(regexp_replace(coalesce(telefono,''), '[^0-9]', '', 'g'), 10) = $1
              limit 1`,
           [d]
         );
         return res.json({ usuario: r.rows[0] ? fila(r.rows[0]) : null });
       }
-      const r = await query('select * from usuarios order by nombre asc');
+      const r = await query('select * from mdtask_usuarios order by nombre asc');
       return res.json({ usuarios: r.rows.map(fila) });
     }
 
@@ -78,7 +78,7 @@ module.exports = async (req, res) => {
       const ahora = Date.now();
       // Upsert (como setDoc): inserta o reemplaza; creado_en se conserva al actualizar.
       const r = await query(
-        `insert into usuarios (id, usuario, correo, nombre, rol, telefono, alcance, cargo, activo, creado_en, actualizado_en, datos)
+        `insert into mdtask_usuarios (id, usuario, correo, nombre, rol, telefono, alcance, cargo, activo, creado_en, actualizado_en, datos)
          values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$10,$11)
          on conflict (id) do update set
            usuario = excluded.usuario, correo = excluded.correo, nombre = excluded.nombre,
@@ -97,14 +97,14 @@ module.exports = async (req, res) => {
       const b = req.body || {};
       const id = String(b.id || b.uid || '').trim();
       if (!id) return res.status(400).json({ error: 'Falta id.' });
-      const cur = await query('select * from usuarios where id = $1', [id]);
+      const cur = await query('select * from mdtask_usuarios where id = $1', [id]);
       if (cur.rowCount === 0) return res.status(404).json({ error: 'Usuario no encontrado.' });
       const actual = cur.rows[0];
       const { cols, datos } = desglosar(b);
       const val = (k) => (k in cols ? cols[k] : actual[k]);
       const mergedDatos = { ...(actual.datos || {}), ...datos };
       const r = await query(
-        `update usuarios set usuario=$2, correo=$3, nombre=$4, rol=$5, telefono=$6,
+        `update mdtask_usuarios set usuario=$2, correo=$3, nombre=$4, rol=$5, telefono=$6,
            alcance=$7, cargo=$8, activo=$9, actualizado_en=$10, datos=$11 where id=$1 returning *`,
         [id, val('usuario'), val('correo'), val('nombre'), val('rol'), val('telefono'),
          val('alcance'), val('cargo'), ('activo' in cols ? cols.activo : actual.activo),
@@ -116,7 +116,7 @@ module.exports = async (req, res) => {
     if (req.method === 'DELETE') {
       const id = req.query?.id || (req.body || {}).id;
       if (!id) return res.status(400).json({ error: 'Falta id.' });
-      await query('delete from usuarios where id = $1', [String(id)]);
+      await query('delete from mdtask_usuarios where id = $1', [String(id)]);
       return res.json({ ok: true });
     }
 

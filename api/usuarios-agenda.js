@@ -52,7 +52,7 @@ module.exports = async (req, res) => {
   try {
     if (req.method === 'GET') {
       const uid = req.query?.uid || user.uid; // por defecto, las del propio usuario
-      const r = await query('select * from usuarios_agenda where uid = $1 order by fecha_creacion asc', [String(uid)]);
+      const r = await query('select * from mdtask_agenda where uid = $1 order by fecha_creacion asc', [String(uid)]);
       return res.json({ tareas: r.rows.map(fila) });
     }
 
@@ -65,7 +65,7 @@ module.exports = async (req, res) => {
       const id = String(b.id || crypto.randomUUID());
       const ahora = b.fechaCreacion != null ? Number(b.fechaCreacion) : Date.now();
       const r = await query(
-        `insert into usuarios_agenda (id, uid, texto, completada, fecha, prioridad, fecha_creacion, completada_en, datos)
+        `insert into mdtask_agenda (id, uid, texto, completada, fecha, prioridad, fecha_creacion, completada_en, datos)
          values ($1,$2,$3,$4,$5,$6,$7,$8,$9) returning *`,
         [id, uid, String(cols.texto), !!cols.completada, String(cols.fecha || ''),
          String(cols.prioridad || ''), ahora, (b.completadaEn != null ? Number(b.completadaEn) : null),
@@ -78,14 +78,14 @@ module.exports = async (req, res) => {
       const b = req.body || {};
       const id = String(b.id || '').trim();
       if (!id) return res.status(400).json({ error: 'Falta id.' });
-      const cur = await query('select * from usuarios_agenda where id = $1', [id]);
+      const cur = await query('select * from mdtask_agenda where id = $1', [id]);
       if (cur.rowCount === 0) return res.status(404).json({ error: 'Tarea no encontrada.' });
       const actual = cur.rows[0];
       const { cols, datos } = desglosar(b);
       const val = (k) => (k in cols ? cols[k] : actual[k]);
       const mergedDatos = { ...(actual.datos || {}), ...datos };
       const r = await query(
-        `update usuarios_agenda set texto=$2, completada=$3, fecha=$4, prioridad=$5,
+        `update mdtask_agenda set texto=$2, completada=$3, fecha=$4, prioridad=$5,
            completada_en=$6, datos=$7 where id=$1 returning *`,
         [id, String(val('texto') || ''), ('completada' in cols ? !!cols.completada : actual.completada),
          String(val('fecha') || ''), String(val('prioridad') || ''),
@@ -98,7 +98,7 @@ module.exports = async (req, res) => {
     if (req.method === 'DELETE') {
       const id = req.query?.id || (req.body || {}).id;
       if (!id) return res.status(400).json({ error: 'Falta id.' });
-      await query('delete from usuarios_agenda where id = $1', [String(id)]);
+      await query('delete from mdtask_agenda where id = $1', [String(id)]);
       return res.json({ ok: true });
     }
 

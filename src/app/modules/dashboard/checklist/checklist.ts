@@ -159,7 +159,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   readonly todasLasSucursalesProyecto = [
     'Canindo', 'La Piedad Abastos', '8 Esquinas', 'Padre Hidalgo',
     'Morelia Madero', 'Morelia Abastos', 'Yurécuaro', 'Zamora Centro', 'OFICINAS CORPORATIVAS',
-    'CAJA GENERAL', 'COMPRAS', 'CONTABILIDAD', 'FINANZAS', 'SISTEMAS', 'RH', 'MKT', 'MANTENIMIENTO'
+    'CAJA GENERAL', 'COMPRAS', 'CONTABILIDAD', 'FINANZAS', 'SISTEMAS', 'RH', 'MKT', 'MANTENIMIENTO', 'CEDIS'
   ];
   // Opciones "abarca-todo" del wizard de Tareas en Equipo. Como valor del <select>
   // usamos la etiqueta misma (se guarda como `store` informativo del proyecto).
@@ -315,7 +315,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   private sucursalesAdministrativas = [
     'ADMINISTRADORES DEL SISTEMA',
     'OFICINAS CORPORATIVAS', 'CAJA GENERAL', 'COMPRAS', 'CONTABILIDAD',
-    'FINANZAS', 'SISTEMAS', 'RH', 'MKT', 'MANTENIMIENTO'
+    'FINANZAS', 'SISTEMAS', 'RH', 'MKT', 'MANTENIMIENTO', 'CEDIS'
   ];
 
   // ============================================================================
@@ -1077,7 +1077,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     const todasLasSucursales = [
       'ADMINISTRADORES DEL SISTEMA', 'Canindo', 'La Piedad Abastos', '8 Esquinas', 'Padre Hidalgo',
       'Morelia Madero', 'Morelia Abastos', 'Yurécuaro', 'Zamora Centro', 'OFICINAS CORPORATIVAS',
-      'CAJA GENERAL', 'COMPRAS', 'CONTABILIDAD', 'FINANZAS', 'SISTEMAS', 'RH', 'MKT', 'MANTENIMIENTO'
+      'CAJA GENERAL', 'COMPRAS', 'CONTABILIDAD', 'FINANZAS', 'SISTEMAS', 'RH', 'MKT', 'MANTENIMIENTO', 'CEDIS'
     ];
 
     // Version VIVA del usuario actual (no la stale del localStorage).

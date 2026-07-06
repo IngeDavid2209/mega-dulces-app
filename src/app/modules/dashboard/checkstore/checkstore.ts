@@ -62,7 +62,8 @@ export class CheckstoreComponent implements OnInit, OnDestroy {
     { name: 'SISTEMAS',              location: 'Soporte y TI',                icon: '💻' },
     { name: 'RH',                    location: 'Recursos Humanos',            icon: '👥' },
     { name: 'MKT',                   location: 'Mercadotecnia y Publicidad',  icon: '📢' },
-    { name: 'MANTENIMIENTO',         location: 'Soporte de Infraestructura',  icon: '🛠️' }
+    { name: 'MANTENIMIENTO',         location: 'Soporte de Infraestructura',  icon: '🛠️' },
+    { name: 'CEDIS',                 location: 'Centro de Distribución',      icon: '🏭' }
   ];
  
   // Bufer de datos de Firebase

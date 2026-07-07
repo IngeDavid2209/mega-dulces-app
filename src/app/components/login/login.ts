@@ -3,7 +3,6 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Auth, signInWithEmailAndPassword } from '@angular/fire/auth';
-import { Firestore, collection, getDocs, getDoc, doc, setDoc, query, where } from '@angular/fire/firestore';
 import Swal from 'sweetalert2';
 import { APP_BUILD_SELLO } from '../../shared/version';
 import { NotificacionesService } from '../../services/notificaciones';
@@ -24,7 +23,6 @@ export class LoginComponent {
   readonly buildSello = APP_BUILD_SELLO;
 
   private auth = inject(Auth);
-  private firestore = inject(Firestore);
   private router = inject(Router);
   private notificaciones = inject(NotificacionesService);
 
@@ -44,34 +42,19 @@ export class LoginComponent {
     try {
       const entrada = this.usuario.trim();
 
-      // 1. Resolver el CORREO sin descargar toda la base de usuarios.
+      // 1. Resolver el CORREO (FERROCARRIL: desde Postgres, endpoint PÚBLICO).
       //    - Si escribió un correo (contiene @), se usa directo.
-      //    - Si escribió su usuario, se consulta SOLO su entrada en el índice
-      //      público mínimo `indice_login/{usuario}` → { correo }.
+      //    - Si escribió su usuario, se consulta /api/login-usuario (sin token,
+      //      porque aún no hay sesión). Devuelve solo el correo.
       let correoParaFirebase = '';
       if (entrada.includes('@')) {
         correoParaFirebase = entrada;
       } else {
-        const idxSnap = await getDoc(doc(this.firestore, 'indice_login', entrada.toLowerCase()));
-        if (idxSnap.exists()) correoParaFirebase = (idxSnap.data() as any).correo || '';
-
-        // 🛟 Fallback de compatibilidad: si el índice aún no está poblado,
-        // resolvemos el correo buscando en la colección usuarios (como antes).
-        // Funciona mientras las reglas lo permitan; una vez poblado el índice y
-        // activadas las reglas estrictas, esta rama deja de usarse.
-        if (!correoParaFirebase) {
-          try {
-            const qs = await getDocs(collection(this.firestore, 'usuarios'));
-            qs.forEach(d => {
-              if (correoParaFirebase) return;
-              const u = d.data() as any;
-              const usr = (u.usuario || '').toLowerCase();
-              if (usr === entrada.toLowerCase() || (u.correo || '').toLowerCase() === entrada.toLowerCase()) {
-                correoParaFirebase = u.correo || '';
-              }
-            });
-          } catch (_) { /* reglas estrictas activas: usar el índice */ }
-        }
+        try {
+          const res = await fetch('/api/login-usuario?usuario=' + encodeURIComponent(entrada.toLowerCase()));
+          const data = await res.json().catch(() => ({}));
+          correoParaFirebase = (data && data.correo) || '';
+        } catch (_) { /* sin red: el correo queda vacío y se avisa abajo */ }
       }
 
       if (!correoParaFirebase) {
@@ -88,17 +71,17 @@ export class LoginComponent {
       // 2. Autenticar con Firebase Auth (aquí se valida la contraseña real).
       const creds = await signInWithEmailAndPassword(this.auth, correoParaFirebase, this.password);
 
-      // 3. Ya autenticados, leemos el perfil del usuario (rol/permisos).
-      //    Primero por uid (docs nuevos). Fallback por correo (docs antiguos).
+      // 3. Ya autenticados, leemos el perfil (rol/permisos) desde Postgres
+      //    (/api/usuarios?id=), con el idToken recién obtenido.
       let perfil: any = null;
-      const porUid = await getDoc(doc(this.firestore, 'usuarios', creds.user.uid));
-      if (porUid.exists()) {
-        perfil = { uid: creds.user.uid, ...(porUid.data() as any) };
-      } else {
-        const q = query(collection(this.firestore, 'usuarios'), where('correo', '==', correoParaFirebase));
-        const qs = await getDocs(q);
-        qs.forEach(d => { if (!perfil) perfil = { uid: d.id, ...(d.data() as any) }; });
-      }
+      try {
+        const tok = await creds.user.getIdToken();
+        const res = await fetch('/api/usuarios?id=' + encodeURIComponent(creds.user.uid), {
+          headers: { 'Authorization': 'Bearer ' + tok }
+        });
+        const data = await res.json().catch(() => ({}));
+        if (data && data.usuario) perfil = { ...data.usuario, uid: creds.user.uid };
+      } catch (_) { /* perfil queda null → se maneja abajo */ }
 
       if (!perfil) {
         Swal.fire({
@@ -109,17 +92,6 @@ export class LoginComponent {
         });
         this.ingresando = false;
         return;
-      }
-
-      // 🛟 Auto-reparar el índice de login: lo dejamos apuntando al correo REAL
-      // de Firebase Auth. Si alguien cambió su correo (perfil) y no terminó la
-      // verificación, o el índice quedó desincronizado, esto lo corrige solo en
-      // el siguiente inicio de sesión, sin romper el login por nombre de usuario.
-      if (perfil?.usuario && creds.user.email) {
-        try {
-          await setDoc(doc(this.firestore, 'indice_login', String(perfil.usuario).trim().toLowerCase()),
-            { correo: creds.user.email, uid: creds.user.uid });
-        } catch (_) { /* no bloquear el login si falla el índice */ }
       }
 
       localStorage.setItem('md_sesion_actual', JSON.stringify(perfil));

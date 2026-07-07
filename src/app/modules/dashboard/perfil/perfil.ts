@@ -3,9 +3,10 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router'; 
 import { Auth, updateEmail,verifyBeforeUpdateEmail, updatePassword, reauthenticateWithCredential, EmailAuthProvider } from '@angular/fire/auth';
-import { Firestore, doc, updateDoc, setDoc } from '@angular/fire/firestore';
+import { Firestore, doc, updateDoc } from '@angular/fire/firestore';
 import Swal from 'sweetalert2';
 import { SidebarComponent } from '../../../shared/sidebar/sidebar';
+import { ApiService } from '../../../shared/api.service';
 
 @Component({
   selector: 'app-perfil',
@@ -17,6 +18,7 @@ import { SidebarComponent } from '../../../shared/sidebar/sidebar';
 export class PerfilComponent implements OnInit {
   private auth = inject(Auth);
   private firestore = inject(Firestore);
+  private api = inject(ApiService); // FERROCARRIL: dual-write a Postgres
 
   isMenuOpen = false;
   currentUser: any = null;
@@ -83,6 +85,7 @@ export class PerfilComponent implements OnInit {
     try {
       const dataUrl = await this.redimensionar(file);
       await updateDoc(doc(this.firestore, 'usuarios', uid), { fotoPerfil: dataUrl });
+      await this.api.patch('/api/usuarios', { id: uid, fotoPerfil: dataUrl }).catch(e => console.error('[perfil] sync PG foto', e));
       this.currentUser.fotoPerfil = dataUrl;
       localStorage.setItem('md_sesion_actual', JSON.stringify(this.currentUser));
       Swal.fire('✅ Listo', 'Tu foto de perfil se actualizó.', 'success');
@@ -102,6 +105,7 @@ export class PerfilComponent implements OnInit {
     if (!r.isConfirmed) return;
     try {
       await updateDoc(doc(this.firestore, 'usuarios', uid), { fotoPerfil: '' });
+      await this.api.patch('/api/usuarios', { id: uid, fotoPerfil: '' }).catch(e => console.error('[perfil] sync PG foto', e));
       this.currentUser.fotoPerfil = '';
       localStorage.setItem('md_sesion_actual', JSON.stringify(this.currentUser));
     } catch (e) { console.error('[perfil] quitarFoto', e); }
@@ -131,6 +135,7 @@ export class PerfilComponent implements OnInit {
       if (!uid) { Swal.fire('Error', 'No se pudo identificar tu usuario.', 'error'); return; }
       try {
         await updateDoc(doc(this.firestore, 'usuarios', uid), { telefono: this.formTelefono });
+        await this.api.patch('/api/usuarios', { id: uid, telefono: this.formTelefono }).catch(e => console.error('[perfil] sync PG tel', e));
         this.currentUser.telefono = this.formTelefono;
         localStorage.setItem('md_sesion_actual', JSON.stringify(this.currentUser));
         Swal.fire('✅ ¡Éxito!', 'Tu teléfono se actualizó correctamente.', 'success');
@@ -193,18 +198,9 @@ export class PerfilComponent implements OnInit {
       }
 
       await updateDoc(userRef, payload);
-
-      // 4b. SINCRONIZAR EL ÍNDICE DE LOGIN (indice_login/{usuario} → { correo, uid }).
-      // El login por NOMBRE DE USUARIO resuelve el correo desde este índice. Si
-      // cambia el correo y no se actualiza aquí, el login por usuario se rompe.
-      // Lo dejamos apuntando al correo nuevo para que el estado final sea correcto
-      // una vez que el usuario confirme el enlace de verificación.
-      if (correoCambiado && this.currentUser?.usuario) {
-        try {
-          await setDoc(doc(this.firestore, 'indice_login', String(this.currentUser.usuario).trim().toLowerCase()),
-            { correo: this.formCorreo, uid: user.uid });
-        } catch (e) { console.error('[perfil] indice_login', e); }
-      }
+      // Dual-write a Postgres (mismos campos). El correo se sincroniza aquí para
+      // que el login por usuario (/api/login-usuario) resuelva el correo nuevo.
+      await this.api.patch('/api/usuarios', { id: user.uid, ...payload }).catch(e => console.error('[perfil] sync PG datos', e));
 
       // Actualizamos la sesión en la memoria de la computadora
       this.currentUser.correo = this.formCorreo;

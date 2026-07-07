@@ -1,5 +1,6 @@
 import { Component, signal, OnInit, OnDestroy, inject, effect } from '@angular/core';
 import { UsuariosService } from '../../../shared/usuarios.service';
+import { ApiService } from '../../../shared/api.service';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, Router } from '@angular/router';
@@ -103,6 +104,7 @@ export class PersonalComponent implements OnInit, OnDestroy {
   private firestore = inject(Firestore);
   private router = inject(Router);
   private usuariosSvc = inject(UsuariosService);
+  private api = inject(ApiService); // FERROCARRIL: dual-write a Postgres
   private destructoresRadares: (() => void)[] = [];
 
   // Effect: replica la lista del UsuariosService compartido en el signal local
@@ -497,6 +499,8 @@ export class PersonalComponent implements OnInit, OnDestroy {
     if (!docId) { Swal.fire({ icon: 'error', title: 'No se pudo identificar al usuario', confirmButtonColor: '#0F172A' }); return; }
     try {
       await setDoc(doc(this.firestore, 'usuarios', docId), { grupoTec: false }, { merge: true });
+      await this.api.patch('/api/usuarios', { id: docId, grupoTec: false }).catch(e => console.error('[personal] sync PG', e));
+      this.usuariosSvc.refrescar();
       Swal.fire({ icon: 'success', title: 'Acceso quitado', timer: 1400, showConfirmButton: false });
     } catch (e) {
       console.error('[personal] quitarAccesoTec', e);
@@ -702,6 +706,7 @@ export class PersonalComponent implements OnInit, OnDestroy {
         // Guardamos en Firestore (siempre)
         await setDoc(doc(this.firestore, 'usuarios', docId), payload, { merge: true });
         await this.guardarIndiceLogin(payload.usuario, payload.correo, docId, this.usuarioEnEdicion?.usuario);
+        await this.api.patch('/api/usuarios', { id: docId, ...payload }).catch(e => console.error('[personal] sync PG editar', e));
 
       } else {
         // 🔥 FIX CRÍTICO: createUserWithEmailAndPassword desloguea al admin actual
@@ -716,6 +721,7 @@ export class PersonalComponent implements OnInit, OnDestroy {
           const creds = await createUserSecondary(tempAuth, this.formCorreo, this.formPassword);
           await setDoc(doc(this.firestore, 'usuarios', creds.user.uid), { ...payload, uid: creds.user.uid });
           await this.guardarIndiceLogin(payload.usuario, payload.correo, creds.user.uid);
+          await this.api.post('/api/usuarios', { id: creds.user.uid, ...payload, uid: creds.user.uid }).catch(e => console.error('[personal] sync PG crear', e));
           // Cerramos sesión y limpiamos la app temporal — el admin sigue logueado normal.
           await signOutSecondary(tempAuth);
         } finally {
@@ -724,6 +730,7 @@ export class PersonalComponent implements OnInit, OnDestroy {
       }
 
       this.cerrarModal();
+      this.usuariosSvc.refrescar(); // refresca la lista compartida (ya no es en vivo)
       Swal.fire({ icon: 'success', title: '¡Guardado!', text: 'El usuario se ha guardado correctamente.', confirmButtonColor: '#0F172A' });
 
     }
@@ -820,6 +827,7 @@ export class PersonalComponent implements OnInit, OnDestroy {
       if (!docId) { fail++; continue; }
       try {
         await setDoc(doc(this.firestore, 'usuarios', docId), { cargo: mapa[u.cargo] }, { merge: true });
+        await this.api.patch('/api/usuarios', { id: docId, cargo: mapa[u.cargo] }).catch(e => console.error('[personal] sync PG cargo', e));
         ok++;
       } catch { fail++; }
     }
@@ -1080,6 +1088,7 @@ export class PersonalComponent implements OnInit, OnDestroy {
         try {
           const docId = s.perfil.idFirestore || s.perfil.uid || s.perfil.usuario;
           await setDoc(doc(this.firestore, 'usuarios', docId), { nombre: s.nombreNuevo }, { merge: true });
+          await this.api.patch('/api/usuarios', { id: docId, nombre: s.nombreNuevo }).catch(e => console.error('[personal] sync PG nombre', e));
           exitosos++;
         } catch (e) {
           console.error('[autoCorregir]', s.nombreActual, e);
@@ -1171,6 +1180,8 @@ export class PersonalComponent implements OnInit, OnDestroy {
         
         // deleteDoc ya lo tienes importado arriba, así que esto funcionará directo
         await deleteDoc(doc(this.firestore, 'usuarios', docId));
+        await this.api.del('/api/usuarios?id=' + encodeURIComponent(docId)).catch(e => console.error('[personal] sync PG borrar', e));
+        this.usuariosSvc.refrescar();
 
         // Sácalo de las asignaciones de rutinas "por personas" para que el robot
         // no le siga generando tareas fantasma que nadie puede completar/enviar.

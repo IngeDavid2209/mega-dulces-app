@@ -431,6 +431,7 @@ async guardarArea() {
             { areas: nuevasAreas },
             { merge: true }
           );
+          await this.api.patch('/api/usuarios', { id: u.idFirestore, areas: nuevasAreas }).catch(e => console.error('[areas] sync PG', e));
         }
       }
  
@@ -448,6 +449,7 @@ async guardarArea() {
               { areas: misAreas },
               { merge: true }
             );
+            await this.api.patch('/api/usuarios', { id: miId, areas: misAreas }).catch(e => console.error('[areas] sync PG', e));
           }
         }
       }
@@ -531,6 +533,9 @@ async guardarArea() {
 
     // MODO OFFLINE PARA ASIGNAR/DESASIGNAR PERSONAL
     setDoc(doc(this.firestore, 'usuarios', u.idFirestore), { areas: nuevasAreas }, { merge: true });
+    this.api.patch('/api/usuarios', { id: u.idFirestore, areas: nuevasAreas }).catch(e => console.error('[areas] sync PG', e));
+    u.areas = nuevasAreas; // reflejo inmediato en la UI (ya no hay listener en vivo)
+    this.usuariosSvc.refrescar();
   }
 
   trackByIndex(index: number, obj: any): any { return index; }

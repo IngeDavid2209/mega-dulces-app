@@ -8,6 +8,7 @@ import { Auth } from '@angular/fire/auth';
 import { SidebarComponent } from '../shared/sidebar/sidebar';
 import { esAdmin, esAdminGlobal, sucursalesPermitidas, normalizarNombre } from '../shared/permisos.util';
 import { detectarRecomendaciones, Recomendacion } from '../shared/recomendaciones-rutinas.util';
+import { ApiService } from '../shared/api.service';
 
 @Component({
   selector: 'app-agenda',
@@ -52,6 +53,7 @@ export class AgendaComponent implements OnInit, OnDestroy {
   private auth = inject(Auth);
   private firestore = inject(Firestore);
   private router = inject(Router);
+  private api = inject(ApiService); // FERROCARRIL: usuarios desde Postgres
 
   ngOnInit() {
     const sesion = localStorage.getItem('md_sesion_actual');
@@ -76,12 +78,8 @@ export class AgendaComponent implements OnInit, OnDestroy {
 
   async cargarListaPersonal() {
     try {
-      const usersRef = collection(this.firestore, 'usuarios');
-      const snapshot = await getDocs(query(usersRef));
-      let lista = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data() as any
-      }));
+      const r = await this.api.get('/api/usuarios');
+      let lista = (r.usuarios || []).map((u: any) => ({ id: u.id || u.uid, ...u }));
 
       // 🔥 Admin LIMITADO: solo trabajadores de sus sucursales (excluye otros admins)
       if (!esAdminGlobal(this.currentUser)) {

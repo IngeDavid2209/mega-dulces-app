@@ -6,6 +6,7 @@ import { Firestore, collection, getDocs, getDoc, doc, deleteDoc, setDoc, query, 
 import { sucursalesPermitidas } from '../shared/permisos.util';
 import { nivelDeCargo } from '../shared/nivel-jerarquico.util';
 import { esItemHecho } from '../shared/item-completado.util';
+import { ApiService } from '../shared/api.service';
 
 // jsPDF, jspdf-autotable, exceljs y html2canvas se cargan SOLO cuando el usuario
 // pide Exportar (PDF/Excel) o Reporte visual. Antes se importaban al inicio y
@@ -60,6 +61,7 @@ export class ReportesComponent implements OnInit, OnDestroy {
 
   private firestore = inject(Firestore);
   private route = inject(ActivatedRoute);
+  private api = inject(ApiService); // FERROCARRIL: usuarios desde Postgres
   private busquedaSub: any = null;
 
   @HostListener('document:click', ['$event'])
@@ -183,13 +185,8 @@ export class ReportesComponent implements OnInit, OnDestroy {
   }
 
   async cargarEmpleados() {
-    const usuariosRef = collection(this.firestore, 'usuarios');
-    const snapshot = await getDocs(usuariosRef);
-    const lista: any[] = [];
-    snapshot.forEach(doc => {
-      const data = doc.data();
-      if (data['rol'] === 'trabajador') lista.push(data);
-    });
+    const r = await this.api.get('/api/usuarios');
+    const lista = (r.usuarios || []).filter((u: any) => u.rol === 'trabajador');
     this.empleados.set(lista);
   }
 
@@ -231,10 +228,9 @@ export class ReportesComponent implements OnInit, OnDestroy {
       const permitidas = sucursalesPermitidas(this.currentUser); // null = todas
       const enScope = (store: string) => permitidas === null || permitidas.includes(store);
 
-      // --- PERSONAL ---
-      const usnap = await getDocs(collection(this.firestore, 'usuarios'));
-      const usuarios: any[] = [];
-      usnap.forEach(d => usuarios.push({ id: d.id, ...(d.data() as any) }));
+      // --- PERSONAL --- (FERROCARRIL: desde Postgres)
+      const ru = await this.api.get('/api/usuarios');
+      const usuarios: any[] = (ru.usuarios || []).map((u: any) => ({ id: u.id || u.uid, ...u }));
       const personalEnScope = usuarios.filter(u =>
         u.rol === 'trabajador' && (permitidas === null || this.repSucsDe(u).some(s => permitidas.includes(s)))
       );

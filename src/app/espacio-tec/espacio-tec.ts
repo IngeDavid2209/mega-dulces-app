@@ -89,7 +89,7 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
   usuariosEmpresa: any[] = [];
   /** Usuarios con acceso al Espacio TEC (privilegio grupoTec). */
   miembrosTec: any[] = [];
-  private radarUsuarios: (() => void) | null = null;
+  private usuariosPoll: any = null; // FERROCARRIL: poll de usuarios desde Postgres
   sucursalSel = '';
   empleadosSel: string[] = [];
   tareaAsignarTexto = '';
@@ -146,7 +146,7 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
     if (this.notasPoll) { clearInterval(this.notasPoll); this.notasPoll = null; }
     if (this.postsPoll) { clearInterval(this.postsPoll); this.postsPoll = null; }
     if (this.gruposPoll) { clearInterval(this.gruposPoll); this.gruposPoll = null; }
-    if (this.radarUsuarios) { this.radarUsuarios(); this.radarUsuarios = null; }
+    if (this.usuariosPoll) { clearInterval(this.usuariosPoll); this.usuariosPoll = null; }
     if (this.radarAsignadas) { this.radarAsignadas(); this.radarAsignadas = null; }
   }
 
@@ -170,24 +170,27 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
     this.cargarGrupos();
     this.gruposPoll = setInterval(() => this.cargarGrupos(), 30000);
 
-    // Personal de la empresa (para asignar tareas por sucursal).
-    const usuariosRef = collection(this.firestore, 'usuarios');
-    this.radarUsuarios = onSnapshot(query(usuariosRef), snap => {
-      const todos = snap.docs.map(d => ({ id: d.id, ...(d.data() as any) }));
-      // Incluye trabajadores Y admins: los "encargados de sucursal" tienen cuenta
-      // admin (alcance por sucursales) y deben poder recibir tareas del TEC.
-      // Antes solo se incluían trabajadores, por eso los encargados no aparecían.
-      this.usuariosEmpresa = todos.filter(u => (u.rol === 'trabajador' || u.rol === 'admin') && !u.grupoTec);
-      this.miembrosTec = todos
-        .filter(u => u.grupoTec === true)
-        .sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''));
-    });
+    // Personal de la empresa (FERROCARRIL: desde Postgres, poll cada 30s).
+    this.cargarUsuariosTec();
+    this.usuariosPoll = setInterval(() => this.cargarUsuariosTec(), 30000);
 
     // Tareas asignadas por el TEC a personal (para el resumen).
     const chkRef = collection(this.firestore, 'checklists');
     this.radarAsignadas = onSnapshot(query(chkRef, where('origenTec', '==', true)), snap => {
       this.tecAsignadas = snap.docs.map(d => ({ id: d.id, ...(d.data() as any) }));
     }, err => console.error('[tec] asignadas', err));
+  }
+
+  /** FERROCARRIL: personal de la empresa desde Postgres (reemplaza el onSnapshot). */
+  private async cargarUsuariosTec() {
+    try {
+      const r = await this.api.get('/api/usuarios');
+      const todos = (r.usuarios || []).map((u: any) => ({ id: u.id || u.uid, ...u }));
+      this.usuariosEmpresa = todos.filter((u: any) => (u.rol === 'trabajador' || u.rol === 'admin') && !u.grupoTec);
+      this.miembrosTec = todos
+        .filter((u: any) => u.grupoTec === true)
+        .sort((a: any, b: any) => (a.nombre || '').localeCompare(b.nombre || ''));
+    } catch (e) { console.error('[tec] cargarUsuariosTec', e); }
   }
 
   // ===================== RESUMEN (Inicio) =====================

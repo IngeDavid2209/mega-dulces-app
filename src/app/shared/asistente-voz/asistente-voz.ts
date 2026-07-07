@@ -5,6 +5,7 @@ import { Firestore, collection, addDoc, getDocs, query } from '@angular/fire/fir
 import { Auth } from '@angular/fire/auth';
 
 import { esAdminGlobal, sucursalesPermitidas } from '../permisos.util';
+import { ApiService } from '../api.service';
 
 /**
  * Asistente de voz - FASE 1: Crear tareas hablando.
@@ -33,6 +34,7 @@ export class AsistenteVozComponent implements OnDestroy {
   private auth = inject(Auth);
   private firestore = inject(Firestore);
   private zone = inject(NgZone);
+  private api = inject(ApiService); // FERROCARRIL: usuarios desde Postgres
 
   /** cerrado | idle | escuchando | procesando | confirmar | guardando | listo | info | error | noSoportado */
   estado: string = 'cerrado';
@@ -382,9 +384,8 @@ export class AsistenteVozComponent implements OnDestroy {
   // admin global ve a todos; admin limitado, solo personal de sus sucursales.
   private async cargarAsignables(): Promise<void> {
     const usuario = this.obtenerUsuario();
-    const usersRef = collection(this.firestore, 'usuarios');
-    const snap = await getDocs(query(usersRef));
-    let lista = snap.docs.map(d => ({ id: d.id, ...(d.data() as any) }));
+    const r = await this.api.get('/api/usuarios');
+    let lista = (r.usuarios || []).map((u: any) => ({ id: u.id || u.uid, ...u }));
 
     if (!esAdminGlobal(usuario)) {
       const permitidas = sucursalesPermitidas(usuario);

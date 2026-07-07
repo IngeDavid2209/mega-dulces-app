@@ -1,13 +1,14 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterOutlet, Router, NavigationEnd, NavigationError } from '@angular/router';
-import { Firestore, doc, setDoc, updateDoc, getDoc, onSnapshot, collection, query, where, getDocs } from '@angular/fire/firestore';
+import { Firestore, doc, updateDoc, getDoc } from '@angular/fire/firestore';
 import { Storage, ref, uploadString, getDownloadURL } from '@angular/fire/storage';
 import { SwUpdate, VersionReadyEvent } from '@angular/service-worker';
 import { filter } from 'rxjs/operators';
 import * as localforage from 'localforage';
 
 import { AsistenteChatComponent } from './shared/asistente-chat/asistente-chat';
+import { ApiService } from './shared/api.service';
 
 @Component({
   selector: 'app-root',
@@ -26,6 +27,7 @@ export class AppComponent implements OnInit {
   private storage = inject(Storage);
   private swUpdate = inject(SwUpdate);
   private router = inject(Router);
+  private api = inject(ApiService); // FERROCARRIL: usuarios en Postgres
 
   /** Relee la sesión y decide si el usuario actual es admin. */
   private actualizarEsAdmin() {
@@ -59,19 +61,17 @@ export class AppComponent implements OnInit {
     // instante sin tener que cerrar sesión.
     this.sincronizarSesion();
 
-    // 🔥 FUNCIÓN DEL LATIDO (SE MANTIENE INTACTA) 🔥
+    // 🔥 LATIDO DE PRESENCIA 🔥 (FERROCARRIL: ahora a Postgres, no Firestore)
     const enviarLatido = () => {
       const sesion = localStorage.getItem('md_sesion_actual');
-      if (sesion) {
-        const currentUser = JSON.parse(sesion);
-        const docId = currentUser.idFirestore || currentUser.uid || currentUser.usuario;
-        
-        if (docId) {
-          const userRef = doc(this.firestore, 'usuarios', docId);
-          setDoc(userRef, { ultimoLatido: Date.now() }, { merge: true })
-            .catch(() => console.log('Sin red para latido'));
-        }
-      }
+      if (!sesion) return;
+      let currentUser: any;
+      try { currentUser = JSON.parse(sesion); } catch { return; }
+      const docId = currentUser.uid || currentUser.idFirestore || currentUser.id;
+      if (!docId) return;
+      // PATCH ligero: solo actualiza ultimoLatido en mdtask_usuarios.
+      this.api.patch('/api/usuarios', { id: docId, ultimoLatido: Date.now() })
+        .catch(() => { /* sin red o sin sesión: ignorar */ });
     };
 
     enviarLatido();
@@ -107,47 +107,29 @@ export class AppComponent implements OnInit {
     let sesion: any;
     try { sesion = JSON.parse(raw); } catch { return; }
 
-    // 1) Resolver el docId real del usuario en Firestore.
-    //    Primero por uid/idFirestore (lo habitual). Si no existe, fallback por
-    //    'usuario' login (cubre cuentas viejas o cuando el doc se renombro).
-    let docId: string | null = sesion?.uid || sesion?.idFirestore || null;
-    if (docId) {
-      const probe = await getDoc(doc(this.firestore, 'usuarios', docId));
-      if (!probe.exists()) docId = null;
-    }
-    if (!docId && sesion?.usuario) {
-      try {
-        const q = query(collection(this.firestore, 'usuarios'), where('usuario', '==', sesion.usuario));
-        const qs = await getDocs(q);
-        qs.forEach(d => { if (!docId) docId = d.id; });
-      } catch (e) { /* sin conexion: no podemos resolver */ }
-    }
+    // FERROCARRIL: el perfil vive en Postgres. Se resuelve por uid (que el login
+    // ya deja en la sesión). Si no hay uid, no podemos sincronizar (los permisos
+    // del localStorage siguen usándose tal cual).
+    const docId: string | null = sesion?.uid || sesion?.idFirestore || null;
     if (!docId) {
-      console.warn('[sesion] no se pudo localizar el doc del usuario en Firestore. ' +
-        'Los permisos del localStorage podrian estar desactualizados. ' +
-        `usuario=${sesion?.usuario} uid=${sesion?.uid}`);
+      console.warn('[sesion] sesión sin uid; no se puede sincronizar el perfil desde Postgres. ' +
+        `usuario=${sesion?.usuario}`);
       return;
     }
 
-    // 2) Si el localStorage no tenia uid valido, lo guardamos ahora para que
-    //    el resto del flujo lo encuentre.
-    if (!sesion.uid && !sesion.idFirestore) {
-      sesion = { ...sesion, uid: docId };
-      localStorage.setItem('md_sesion_actual', JSON.stringify(sesion));
-    }
-
-    // 3) Subscribirse al doc real y sincronizar cualquier cambio.
-    onSnapshot(doc(this.firestore, 'usuarios', docId), snap => {
-      if (!snap.exists()) return;
-      const fresco: any = { ...snap.data(), uid: docId };
+    // Poll del perfil real y sincronización de cambios (antes era onSnapshot).
+    const revisar = async () => {
+      let fresco: any;
+      try {
+        const r = await this.api.get('/api/usuarios?id=' + encodeURIComponent(docId));
+        fresco = r && r.usuario;
+      } catch (e) { return; /* sin red: reintenta en el próximo ciclo */ }
+      if (!fresco) return;
+      fresco.uid = fresco.uid || docId;
 
       const anteriorRaw = localStorage.getItem('md_sesion_actual') || '{}';
       let anterior: any = {};
       try { anterior = JSON.parse(anteriorRaw); } catch {}
-
-      if (JSON.stringify(fresco) === JSON.stringify(anterior)) return;
-
-      localStorage.setItem('md_sesion_actual', JSON.stringify(fresco));
 
       // Cambio crítico → recarga para que todas las pantallas tomen los nuevos permisos.
       const camposCriticos = ['nombre', 'rol', 'alcance', 'cargo'];
@@ -160,12 +142,20 @@ export class AppComponent implements OnInit {
         'puedeAdministrarPersonal', 'puedeVerCalendario', 'puedeAdministrarAreas'
       ];
       const permisoCambio = permisos.some(p => !!anterior[p] !== !!fresco[p]);
+      const huboCambioCritico = campoCriticoCambio || sucCambio || areasCambio || permisoCambio;
 
-      if (campoCriticoCambio || sucCambio || areasCambio || permisoCambio) {
-        console.log('[sesion] perfil cambio en Firestore — recargando…');
+      // Guardar solo si algo cambió (evita escrituras innecesarias en cada ciclo).
+      const cambioAlgo = JSON.stringify(fresco) !== JSON.stringify(anterior);
+      if (cambioAlgo) localStorage.setItem('md_sesion_actual', JSON.stringify(fresco));
+
+      if (huboCambioCritico) {
+        console.log('[sesion] perfil cambió — recargando…');
         setTimeout(() => window.location.reload(), 300);
       }
-    });
+    };
+
+    revisar();
+    setInterval(revisar, 60000); // cada 60s (antes era en vivo con onSnapshot)
   }
 
   /**

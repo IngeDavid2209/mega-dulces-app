@@ -54,6 +54,12 @@ module.exports = async (req, res) => {
 
   try {
     if (req.method === 'GET') {
+      // Buscar uno por id (uid). Lo usa la sincronización de sesión (app.ts).
+      const idBuscado = req.query?.id;
+      if (idBuscado) {
+        const r = await query('select * from mdtask_usuarios where id = $1', [String(idBuscado)]);
+        return res.json({ usuario: r.rows[0] ? fila(r.rows[0]) : null });
+      }
       // Buscar uno por teléfono (últimos 10 dígitos, sin importar formato).
       const tel = req.query?.telefono;
       if (tel) {

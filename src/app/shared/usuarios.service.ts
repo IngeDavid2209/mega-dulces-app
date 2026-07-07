@@ -1,60 +1,67 @@
 import { Injectable, inject, signal } from '@angular/core';
-import { Firestore, collection, onSnapshot, Unsubscribe } from '@angular/fire/firestore';
+import { ApiService } from './api.service';
 
 /**
- * UsuariosService — listener UNICO y compartido sobre la coleccion `usuarios`.
+ * UsuariosService — fuente UNICA y compartida de la lista de `usuarios`.
  *
- * Antes cada componente abria su propio onSnapshot sobre `usuarios`. Con 10+
- * pantallas que necesitan la lista (home, checklist, personal, calendario,
- * checkstore, estadisticas, etc.), eso multiplicaba las lecturas a Firestore
- * por el numero de pantallas abiertas, sumando rapidamente miles de lecturas
- * por minuto.
+ * MIGRACION FERROCARRIL (Etapa 1): antes usaba un onSnapshot en tiempo real
+ * sobre TODA la coleccion Firestore `usuarios`. Como el heartbeat de presencia
+ * escribe cada 60s por usuario, cada escritura disparaba una relectura de todos
+ * los docs para todos los clientes -> miles de lecturas/min (principal causa de
+ * agotar la cuota). Ahora lee de Postgres via /api/usuarios con un POLL ligero
+ * (cada 30s), compartido por refcount. Se pierde el "tiempo real" estricto a
+ * cambio de una fraccion de las lecturas (mismo criterio que el Espacio TEC).
  *
- * Ahora todos los componentes piden el mismo signal compartido. El listener
- * unico se levanta cuando el primer componente llama `iniciar()` y se cierra
- * cuando el ultimo llama `detener()` (refcount interno). Asi solo se paga 1
- * suscripcion en vez de N, sin perder tiempo real.
- *
- * Uso en componentes:
- *   private usuariosSvc = inject(UsuariosService);
- *   ngOnInit() { this.usuariosSvc.iniciar(); }
- *   ngOnDestroy() { this.usuariosSvc.detener(); }
- *   // y leer la lista con this.usuariosSvc.usuarios()
+ * El interfaz publico NO cambia: los componentes siguen usando
+ * `usuarios()`, `iniciar()`, `detener()`, `buscarPorUsuario()`, `buscarPorId()`.
+ * Nuevo: `refrescar()` para forzar recarga inmediata tras crear/editar/borrar.
  */
 @Injectable({ providedIn: 'root' })
 export class UsuariosService {
-  private firestore = inject(Firestore);
+  private api = inject(ApiService);
   private _usuarios = signal<any[]>([]);
   /** Signal readonly con la lista actual de usuarios. */
   usuarios = this._usuarios.asReadonly();
 
-  private unsub: Unsubscribe | null = null;
+  private timer: any = null;
   private suscriptores = 0;
-  /** Fecha del ultimo snapshot recibido (para diagnostico). */
+  private cargando = false;
+  private readonly INTERVALO_MS = 30000; // 30s (mismo criterio que TEC)
+  /** Fecha de la ultima carga recibida (para diagnostico). */
   ultimaActualizacion = signal<number>(0);
 
   /** Llamar al cargar un componente que necesite la lista. Idempotente. */
   iniciar(): void {
     this.suscriptores++;
-    if (this.unsub) return; // ya esta corriendo
-
-    const ref = collection(this.firestore, 'usuarios');
-    this.unsub = onSnapshot(ref, (snap) => {
-      const arr: any[] = [];
-      snap.forEach(d => arr.push({ ...d.data(), id: d.id, uid: d.id }));
-      this._usuarios.set(arr);
-      this.ultimaActualizacion.set(Date.now());
-    }, (err) => {
-      console.error('[UsuariosService] Error en onSnapshot:', err);
-    });
+    if (this.timer) return; // ya esta corriendo
+    this.cargar();                                   // primera carga inmediata
+    this.timer = setInterval(() => this.cargar(), this.INTERVALO_MS);
   }
 
-  /** Llamar al destruir un componente. Decrementa refcount y cierra el listener cuando llegue a 0. */
+  /** Llamar al destruir un componente. Cierra el poll cuando el refcount llega a 0. */
   detener(): void {
     this.suscriptores = Math.max(0, this.suscriptores - 1);
-    if (this.suscriptores === 0 && this.unsub) {
-      this.unsub();
-      this.unsub = null;
+    if (this.suscriptores === 0 && this.timer) {
+      clearInterval(this.timer);
+      this.timer = null;
+    }
+  }
+
+  /** Fuerza una recarga inmediata (usar tras crear/editar/borrar un usuario). */
+  refrescar(): void { this.cargar(); }
+
+  private async cargar(): Promise<void> {
+    if (this.cargando) return; // evita solaparse si una carga tarda
+    this.cargando = true;
+    try {
+      const r = await this.api.get('/api/usuarios');
+      const arr = (r.usuarios || []).map((u: any) => ({ ...u, id: u.id || u.uid, uid: u.uid || u.id }));
+      this._usuarios.set(arr);
+      this.ultimaActualizacion.set(Date.now());
+    } catch (e) {
+      console.error('[UsuariosService] Error al cargar usuarios:', e);
+    } finally {
+      this.cargando = false;
     }
   }
 

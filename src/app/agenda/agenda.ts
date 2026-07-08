@@ -2,7 +2,7 @@ import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, Router } from '@angular/router';
-import { Firestore, collection, query, onSnapshot, addDoc, doc, updateDoc, deleteDoc, getDocs, getDoc, setDoc, where } from '@angular/fire/firestore';
+import { Firestore, collection, query, addDoc, doc, updateDoc, deleteDoc, getDocs, getDoc, setDoc, where } from '@angular/fire/firestore';
 import { Auth } from '@angular/fire/auth';
 
 import { SidebarComponent } from '../shared/sidebar/sidebar';
@@ -18,12 +18,12 @@ import { ApiService } from '../shared/api.service';
   styleUrls: ['./agenda.css']
 })
 export class AgendaComponent implements OnInit, OnDestroy {
-  /** Unsubscribe del snapshot activo (se reemplaza cada vez que se cambia de usuario). */
-  private radarAgenda: (() => void) | null = null;
+  /** Timer del poll de la agenda (FERROCARRIL: antes era un onSnapshot de Firestore). */
+  private radarAgenda: any = null;
 
   ngOnDestroy() {
-    // 🔥 Cierra el snapshot al salir para evitar memory leak
-    if (this.radarAgenda) { this.radarAgenda(); this.radarAgenda = null; }
+    // Cierra el poll al salir para evitar fugas.
+    if (this.radarAgenda) { clearInterval(this.radarAgenda); this.radarAgenda = null; }
   }
 
   isMenuOpen = false;
@@ -107,26 +107,27 @@ export class AgendaComponent implements OnInit, OnDestroy {
   cargarAgenda() {
     const userId = this.usuarioSeleccionado;
     if (!userId) return;
+    // FERROCARRIL: cerramos el poll anterior antes de abrir otro.
+    if (this.radarAgenda) { clearInterval(this.radarAgenda); this.radarAgenda = null; }
+    this.recargarAgenda();
+    this.radarAgenda = setInterval(() => this.recargarAgenda(), 20000);
+  }
 
-    // 🔥 FIX MEMORY LEAK: cerrar el snapshot anterior antes de abrir uno nuevo.
-    // Antes cada cambio de usuario creaba un listener nuevo SIN cerrar el viejo.
-    if (this.radarAgenda) { this.radarAgenda(); this.radarAgenda = null; }
-
-    const agendaRef = collection(this.firestore, `usuarios/${userId}/agenda`);
-
-    this.radarAgenda = onSnapshot(query(agendaRef), (snapshot) => {
-      this.tareasPersonales = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data() as any
-      })).sort((a: any, b: any) => {
-        // Las que tienen fecha van primero, en orden cronológico (lo más próximo
-        // arriba); las sin fecha después, por fecha de creación (más reciente).
+  // Lee la agenda del usuario seleccionado desde Postgres (antes onSnapshot Firestore).
+  private async recargarAgenda() {
+    const userId = this.usuarioSeleccionado;
+    if (!userId) return;
+    try {
+      const r = await this.api.get('/api/usuarios-agenda?uid=' + encodeURIComponent(userId));
+      this.tareasPersonales = (r.tareas || []).sort((a: any, b: any) => {
+        // Las que tienen fecha van primero (más próxima arriba); las sin fecha,
+        // por fecha de creación (más reciente).
         if (a.fecha && b.fecha) return a.fecha.localeCompare(b.fecha);
         if (a.fecha && !b.fecha) return -1;
         if (!a.fecha && b.fecha) return 1;
         return (b.fechaCreacion || 0) - (a.fechaCreacion || 0);
       });
-    });
+    } catch (e) { console.error('[agenda] recargar', e); }
   }
 
   // ➕ Alta rápida: crea la tarea directo con la prioridad/frecuencia elegidas.
@@ -137,12 +138,15 @@ export class AgendaComponent implements OnInit, OnDestroy {
     const userId = this.usuarioSeleccionado || this.miPropioId();
     if (!userId) return;
     try {
-      await addDoc(collection(this.firestore, `usuarios/${userId}/agenda`), {
+      const nueva = {
         texto, completada: false, fechaCreacion: Date.now(), fecha: '',
         prioridad: this.nuevaPrioridad, frecuencia: this.nuevaFrecuencia,
         instrucciones: '', comentarios: '', adjunto: null
-      });
+      };
+      const ref = await addDoc(collection(this.firestore, `usuarios/${userId}/agenda`), nueva);
+      await this.api.post('/api/usuarios-agenda', { id: ref.id, uid: userId, ...nueva }).catch(e => console.error('[agenda] sync PG', e));
       this.nuevaTareaTexto = '';
+      await this.recargarAgenda();
     } catch (error) {
       console.error('Error creando tarea', error);
     }
@@ -212,12 +216,15 @@ export class AgendaComponent implements OnInit, OnDestroy {
     const userId = this.miPropioId();
     if (!userId) return;
     try {
-      await addDoc(collection(this.firestore, `usuarios/${userId}/agenda`), {
+      const nueva = {
         texto: r.nombre, completada: false, fechaCreacion: Date.now(), fecha: '',
         prioridad: 'media', frecuencia: this.frecRecoAAgenda(r.frecuencia),
         instrucciones: '', comentarios: '', adjunto: null
-      });
+      };
+      const ref = await addDoc(collection(this.firestore, `usuarios/${userId}/agenda`), nueva);
+      await this.api.post('/api/usuarios-agenda', { id: ref.id, uid: userId, ...nueva }).catch(e => console.error('[agenda] sync PG', e));
       this.recomendaciones = this.recomendaciones.filter(x => x.clave !== r.clave);
+      await this.recargarAgenda();
     } catch (e) { console.error('[agenda reco] a mi agenda', e); }
   }
 
@@ -316,8 +323,11 @@ export class AgendaComponent implements OnInit, OnDestroy {
     if (!userId) return;
 
     try {
+      const nuevoEstado = !tarea.completada;
       const docRef = doc(this.firestore, `usuarios/${userId}/agenda/${tarea.id}`);
-      await updateDoc(docRef, { completada: !tarea.completada });
+      await updateDoc(docRef, { completada: nuevoEstado });
+      await this.api.patch('/api/usuarios-agenda', { id: tarea.id, completada: nuevoEstado, completadaEn: nuevoEstado ? Date.now() : null }).catch(e => console.error('[agenda] sync PG', e));
+      tarea.completada = nuevoEstado; // reflejo inmediato
     } catch (error) {
       console.error("Error actualizando tarea", error);
     }
@@ -333,6 +343,8 @@ export class AgendaComponent implements OnInit, OnDestroy {
       try {
         const docRef = doc(this.firestore, `usuarios/${userId}/agenda/${tareaId}`);
         await deleteDoc(docRef);
+        await this.api.del('/api/usuarios-agenda?id=' + encodeURIComponent(tareaId)).catch(e => console.error('[agenda] sync PG', e));
+        await this.recargarAgenda();
       } catch (error) {
         console.error("Error eliminando tarea", error);
       }
@@ -355,23 +367,27 @@ export class AgendaComponent implements OnInit, OnDestroy {
 
     try {
       if (this.tareaActiva.esNueva) {
-        // CREACIÓN: Guardar nueva tarea en Firebase
-        const { esNueva, ...tareaParaGuardar } = this.tareaActiva;
-        await addDoc(collection(this.firestore, `usuarios/${userId}/agenda`), tareaParaGuardar);
-        this.nuevaTareaTexto = ''; 
+        // CREACIÓN: Firestore + Postgres (dual-write, mismo id).
+        const { esNueva, id, ...tareaParaGuardar } = this.tareaActiva;
+        const ref = await addDoc(collection(this.firestore, `usuarios/${userId}/agenda`), tareaParaGuardar);
+        await this.api.post('/api/usuarios-agenda', { id: ref.id, uid: userId, ...tareaParaGuardar }).catch(e => console.error('[agenda] sync PG', e));
+        this.nuevaTareaTexto = '';
       } else {
-        // ACTUALIZACIÓN: Guardar cambios en tarea existente
-        const docRef = doc(this.firestore, `usuarios/${userId}/agenda/${this.tareaActiva.id}`);
-        await updateDoc(docRef, {
+        // ACTUALIZACIÓN: Firestore + Postgres.
+        const cambios = {
           texto: this.tareaActiva.texto,
           fecha: this.tareaActiva.fecha || '',
           prioridad: this.tareaActiva.prioridad || 'media',
           frecuencia: this.tareaActiva.frecuencia || 'unica',
           instrucciones: this.tareaActiva.instrucciones || '',
           comentarios: this.tareaActiva.comentarios || ''
-        });
+        };
+        const docRef = doc(this.firestore, `usuarios/${userId}/agenda/${this.tareaActiva.id}`);
+        await updateDoc(docRef, cambios);
+        await this.api.patch('/api/usuarios-agenda', { id: this.tareaActiva.id, ...cambios }).catch(e => console.error('[agenda] sync PG', e));
       }
       this.cerrarDetalle();
+      await this.recargarAgenda();
     } catch (error) {
       console.error('Error al guardar:', error);
       alert('Hubo un error al procesar la solicitud.');

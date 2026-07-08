@@ -356,7 +356,7 @@ export class AsistenteVozComponent implements OnDestroy {
 
     this.estado = 'guardando';
     try {
-      await addDoc(collection(this.firestore, `usuarios/${userId}/agenda`), {
+      const tarea = {
         texto,
         completada: false,
         fechaCreacion: Date.now(),
@@ -366,7 +366,9 @@ export class AsistenteVozComponent implements OnDestroy {
         adjunto: null,
         creadaPorVoz: true,
         ...(destino ? { asignadaPor: usuario?.nombre || usuario?.correo || 'Un jefe' } : {})
-      });
+      };
+      const ref = await addDoc(collection(this.firestore, `usuarios/${userId}/agenda`), tarea);
+      await this.api.post('/api/usuarios-agenda', { id: ref.id, uid: userId, ...tarea }).catch(e => console.error('[voz] sync PG', e));
 
       this.estado = 'listo';
       const frase = destino
@@ -527,7 +529,7 @@ export class AsistenteVozComponent implements OnDestroy {
 
     this.estado = 'guardando';
     try {
-      await addDoc(collection(this.firestore, `usuarios/${destino.id}/agenda`), {
+      const tarea = {
         texto,
         completada: false,
         fechaCreacion: Date.now(),
@@ -537,7 +539,9 @@ export class AsistenteVozComponent implements OnDestroy {
         adjunto: null,
         creadaPorVoz: true,
         asignadaPor: usuario?.nombre || usuario?.correo || 'Un jefe'
-      });
+      };
+      const ref = await addDoc(collection(this.firestore, `usuarios/${destino.id}/agenda`), tarea);
+      await this.api.post('/api/usuarios-agenda', { id: ref.id, uid: destino.id, ...tarea }).catch(e => console.error('[voz] sync PG', e));
 
       const nombre = destino.nombre || destino.correo || 'la persona';
       this.respuestaIA = `Listo, le asigne a ${nombre}: ${texto}.`;
@@ -560,9 +564,9 @@ export class AsistenteVozComponent implements OnDestroy {
     }
 
     try {
-      const agendaRef = collection(this.firestore, `usuarios/${userId}/agenda`);
-      const snap = await getDocs(query(agendaRef));
-      const todas = snap.docs.map(d => ({ id: d.id, ...(d.data() as any) }));
+      // FERROCARRIL: agenda desde Postgres.
+      const rAg = await this.api.get('/api/usuarios-agenda?uid=' + encodeURIComponent(userId));
+      const todas = (rAg.tareas || []) as any[];
       const hoy = this.hoyISO();
 
       let lista: any[] = [];

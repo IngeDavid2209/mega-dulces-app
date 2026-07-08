@@ -261,9 +261,9 @@ async generarCalendario() {
 
     // 2. Traemos la agenda completa una sola vez para este mes (Optimizado)
     if (userId) {
-      const agendaRef = collection(this.firestore, `usuarios/${userId}/agenda`);
-      const snap = await getDocs(query(agendaRef));
-      this.tareasAgendaMes = snap.docs.map(doc => ({ ...doc.data() as any }));
+      // FERROCARRIL: agenda desde Postgres.
+      const r = await this.api.get('/api/usuarios-agenda?uid=' + encodeURIComponent(userId));
+      this.tareasAgendaMes = (r.tareas || []).map((t: any) => ({ ...t }));
     }
 
     for (let i = 0; i < primerDia; i++) { grid.push(null); }
@@ -333,10 +333,9 @@ async generarCalendario() {
     if (!userIdToFetch) return;
 
     try {
-      const agendaRef = collection(this.firestore, `usuarios/${userIdToFetch}/agenda`);
-      const snapshot = await getDocs(query(agendaRef));
-
-      const todasLasTareas = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as any }));
+      // FERROCARRIL: agenda desde Postgres.
+      const r = await this.api.get('/api/usuarios-agenda?uid=' + encodeURIComponent(userIdToFetch));
+      const todasLasTareas = (r.tareas || []) as any[];
 
       // Filtramos las que coincidan exactamente con la fecha que se abrió
       this.tareasPersonalesDelDia = todasLasTareas.filter(t => {

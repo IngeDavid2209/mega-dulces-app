@@ -3,13 +3,16 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, Router } from '@angular/router';
 import { DragDropModule, CdkDragDrop, moveItemInArray, transferArrayItem } from '@angular/cdk/drag-drop';
-import { Firestore, addDoc, doc, setDoc, updateDoc, deleteDoc } from '@angular/fire/firestore';
+import { Firestore, addDoc, doc, getDoc, setDoc, updateDoc, deleteDoc } from '@angular/fire/firestore';
 import Swal from 'sweetalert2';
 
 import { SidebarComponent } from '../shared/sidebar/sidebar';
 import { normalizarNombre } from '../shared/permisos.util';
 import { NotificacionesService } from '../services/notificaciones';
 import { ApiService } from '../shared/api.service';
+import { obtenerSemanaISO } from '../shared/descansos.util';
+import { resolverAsignadoTarea, mapaNombreAUid } from '../shared/reasignacion-turnos.util';
+import { ConfigTurnos } from '../shared/turnos.util';
 
 interface Subtarea { id: string; texto: string; hecha: boolean; }
 
@@ -759,6 +762,8 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
 
     this.asignando = true;
     const hoy = this.hoyISO();
+    const avisosReasig: string[] = [];
+    const nombresFinalesTec: string[] = [];
     try {
       if (recurrente) {
         // Recurrente: se guarda una rutina_personal por empleado (con su uid).
@@ -782,19 +787,47 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
             .then(() => this.api.guardar('/api/rutinas-personales', { ...r, id: String(rid) }));
         }));
       } else {
+        // Reasignacion por turno/descanso (igual que rutinas): si el elegido no
+        // esta disponible para la fecha/hora, la tarea pasa al primer disponible
+        // de la sucursal. Precargamos config de turnos + descansos de la semana.
+        const fechaTareaStr = usarRango ? (this.tareaAsignarFechaInicio || hoy) : (this.tareaAsignarFecha || hoy);
+        const fechaTareaDate = new Date(fechaTareaStr + 'T12:00:00');
+        const horaTarea = this.tareaAsignarHoraFin || '23:59';
+        let configTurnos: ConfigTurnos | null = null;
+        try {
+          const ct = await getDoc(doc(this.firestore, 'config', 'turnos'));
+          if (ct.exists()) configTurnos = ct.data() as ConfigTurnos;
+        } catch { /* sin config -> sin restriccion de turno */ }
+        let descansosSemana: any[] = [];
+        try {
+          const resp = await this.api.get('/api/descansos-semanales?semanaISO=' + encodeURIComponent(obtenerSemanaISO(fechaTareaDate)));
+          descansosSemana = resp?.items || [];
+        } catch (e) { console.error('[tec] descansos', e); }
+        const nombreAUid = mapaNombreAUid(this.usuariosEmpresa);
+        const yaUsados = new Set<string>();
+
         await Promise.all(this.empleadosSel.map((nombre, i) => {
-          const id = `tec_${normalizarNombre(nombre).replace(/\s+/g, '_')}_${Date.now()}_${i}`;
-          // Con rango, la tarea cae en la fecha de inicio (o hoy si no se puso).
-          const fechaTarea = usarRango ? (this.tareaAsignarFechaInicio || hoy) : (this.tareaAsignarFecha || hoy);
+          const resol = resolverAsignadoTarea({
+            nombre, sucursal: this.sucursalSel, fecha: fechaTareaDate, hora: horaTarea,
+            usuarios: this.usuariosEmpresa, configTurnos, descansosSemana, nombreAUid, yaUsados,
+          });
+          const asignadoFinal = resol.nombreFinal;
+          nombresFinalesTec.push(asignadoFinal);
+          if (resol.reasignado) avisosReasig.push(`"${resol.original}" no estaba disponible (turno/descanso); la tarea pasó a "${asignadoFinal}".`);
+          else if (resol.sinReemplazo) avisosReasig.push(`"${resol.original}" no está disponible y no hubo reemplazo en ${this.sucursalSel}.`);
+
+          const id = `tec_${normalizarNombre(asignadoFinal).replace(/\s+/g, '_')}_${Date.now()}_${i}`;
           const checklist: any = {
             id, timestampCreacion: Date.now(),
-            name: texto, assigned: nombre, store: this.sucursalSel,
-            date: fechaTarea,
+            name: texto, assigned: asignadoFinal, assignedUid: nombreAUid.get(normalizarNombre(asignadoFinal)) || null,
+            store: this.sucursalSel,
+            date: fechaTareaStr,
             fechaInicio: usarRango ? (this.tareaAsignarFechaInicio || '') : '',
             fechaFin: usarRango ? (this.tareaAsignarFechaFin || '') : '',
             time: this.tareaAsignarHoraFin || '23:59',
             status: 'pendiente', enviado: false,
             createdBy: this.miNombre(), origenTec: true, notaEmpleado: '',
+            ...(resol.reasignado ? { reasignadoTurno: true, asignadoOriginal: resol.original } : {}),
             items: [{
               id: Date.now() + i, text: texto,
               requiresPhoto: false, requiresAntesDespues: false, requiresVariasFotos: false,
@@ -813,7 +846,8 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
       // Aviso push SOLO a destinatarios que sean de Espacio TEC (los demás no
       // reciben push, como estaban). Nota: "Asignar a personal" apunta a
       // usuariosEmpresa (no-TEC), así que normalmente no se enviará ninguno.
-      const destinatariosTec = this.empleadosSel.filter(nom =>
+      const nombresParaNoti = nombresFinalesTec.length ? nombresFinalesTec : this.empleadosSel;
+      const destinatariosTec = nombresParaNoti.filter(nom =>
         this.miembrosTec.some(m => normalizarNombre(m.nombre) === normalizarNombre(nom)));
       if (destinatariosTec.length) {
         this.noti.enviar({
@@ -829,7 +863,16 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
       const detalle = recurrente
         ? `Tarea ${frecuencia.toLowerCase()} asignada a ${n} ${n === 1 ? 'persona' : 'personas'} de ${this.sucursalSel}.`
         : `Se asignó a ${n} ${n === 1 ? 'persona' : 'personas'} de ${this.sucursalSel}.`;
-      Swal.fire({ icon: 'success', title: 'Tarea asignada', text: detalle, confirmButtonColor: '#0F172A' });
+      if (avisosReasig.length) {
+        await Swal.fire({
+          icon: 'info', title: 'Tarea asignada (con reasignación)',
+          html: `${detalle}<ul style="text-align:left;margin:12px 0;padding-left:22px;font-size:13px">` +
+            avisosReasig.map(a => `<li>${a}</li>`).join('') + `</ul>`,
+          confirmButtonColor: '#0F172A'
+        });
+      } else {
+        Swal.fire({ icon: 'success', title: 'Tarea asignada', text: detalle, confirmButtonColor: '#0F172A' });
+      }
     } catch (e) {
       console.error('[tec] asignarTareaSucursal', e);
       Swal.fire({ icon: 'error', title: 'No se pudo asignar', confirmButtonColor: '#0F172A' });

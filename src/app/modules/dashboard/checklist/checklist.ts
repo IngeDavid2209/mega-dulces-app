@@ -18,6 +18,7 @@ import { RutinaMaestra } from '../../../shared/rutinas.types';
 import { AsignacionRutina } from '../../../shared/asignaciones.types';
 import { comprimirImagenSiAplica } from '../../../shared/imagen.util';
 import { ConfigTurnos, EvaluacionTurno, evaluarAsignacion, etiquetaTurno } from '../../../shared/turnos.util';
+import { resolverAsignadoTarea, mapaNombreAUid } from '../../../shared/reasignacion-turnos.util';
 
 import { SidebarComponent } from '../../../shared/sidebar/sidebar';
 
@@ -3490,43 +3491,28 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // 🕐 VALIDACIÓN DE TURNO (Canindo): no se puede asignar a alguien fuera de su
-    // turno. La excepción la registra un admin de Canindo en la pantalla de Turnos.
-    const fueraDeTurno = this.formAssigned
-      .map(nombre => this.empleados().find(e => e.nombre === nombre))
-      .filter(emp => emp)
-      .map(emp => ({ emp, ev: this.estadoTurnoEmpleado(emp) }))
-      .filter(x => x.ev && !x.ev.permitido);
-    if (fueraDeTurno.length > 0) {
-      const html = `Estas personas estan <strong>fuera de su turno</strong> ahora mismo, no se les puede asignar:` +
-        `<ul style="text-align:left; margin:12px 0; padding-left:24px;">` +
-        fueraDeTurno.map(x => `<li>${x.emp.nombre} <small>(turno ${etiquetaTurno(x.ev!.turno)})</small></li>`).join('') +
-        `</ul>Si por necesidad debe trabajar en otro turno, registra una <strong>excepcion</strong> en la pantalla de Turnos.`;
-      await Swal.fire({ title: 'Fuera de turno', html, icon: 'error', confirmButtonText: 'Entendido', confirmButtonColor: '#0F172A' });
-      return;
-    }
-
-    // 🔴 VALIDACIÓN DE DÍA DE DESCANSO
+    // 🔁 REASIGNACIÓN AUTOMÁTICA POR TURNO/DESCANSO (igual que las rutinas).
+    // Antes: si alguien estaba fuera de turno se BLOQUEABA, y si descansaba se
+    // ADVERTÍA. Ahora, si el asignado no está disponible para la fecha/hora de la
+    // tarea, se reasigna al primer disponible de la misma sucursal. Precargamos
+    // turnos (signal ya cargado) + descansos de la semana de la fecha.
     const offsetTz = new Date().getTimezoneOffset() * 60000;
     const fechaCheckStr = tareasValidas[0].date ||
       new Date(Date.now() - offsetTz).toISOString().split('T')[0];
-    const conflictosDescanso = await this.verificarConflictosDescanso(this.formAssigned, fechaCheckStr);
-    if (conflictosDescanso.length > 0) {
-      const html = `Los siguientes trabajadores tienen <strong>día de descanso</strong> el ${fechaCheckStr}:` +
-        `<ul style="text-align:left; margin: 12px 0; padding-left: 24px;">` +
-        conflictosDescanso.map((n: string) => `<li>${n}</li>`).join('') +
-        `</ul>¿Asignarles la tarea de todas formas?`;
-      const res = await Swal.fire({
-        title: '📅 Día de descanso detectado',
-        html,
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonText: 'Sí, asignar igual',
-        cancelButtonText: 'Cancelar',
-        confirmButtonColor: '#0F172A'
-      });
-      if (!res.isConfirmed) return;
-    }
+    const fechaTarea = new Date(fechaCheckStr + 'T12:00:00');
+    const horaTarea = tareasValidas[0].time || '23:59';
+    let descansosSemana: any[] = [];
+    try {
+      const semana = obtenerSemanaISO(fechaTarea);
+      const respDesc = await this.api.get('/api/descansos-semanales?semanaISO=' + encodeURIComponent(semana));
+      descansosSemana = respDesc?.items || [];
+    } catch (e) { console.error('[reasignacion] descansos', e); }
+    const usuariosReasig = this.empleados();
+    const nombreAUidReasig = mapaNombreAUid(usuariosReasig);
+    const configTurnosReasig = this.configTurnos();
+    const yaUsadosReasig = new Set<string>();
+    const avisosReasig: string[] = [];
+    const nombresFinales: string[] = [];
 
     const urlsWhatsApp: string[] = [];
     const offsetGlobal = new Date().getTimezoneOffset() * 60000;
@@ -3555,15 +3541,30 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       return;
     }
 
-    this.formAssigned.forEach((empleadoNombre, index) => {
+    let idxReasig = 0;
+    for (const empleadoNombre of this.formAssigned) {
+      const index = idxReasig++;
       const uniqueId = Date.now() + index;
       const hoy = hoyGlobal;
+
+      // Reasigna al primer disponible de la sucursal si el elegido no puede
+      // (fuera de turno o descansa) para la fecha/hora de la tarea.
+      const resol = resolverAsignadoTarea({
+        nombre: empleadoNombre, sucursal: this.formStore, fecha: fechaTarea, hora: horaTarea,
+        usuarios: usuariosReasig, configTurnos: configTurnosReasig, descansosSemana,
+        nombreAUid: nombreAUidReasig, yaUsados: yaUsadosReasig,
+      });
+      const asignadoFinal = resol.nombreFinal;
+      nombresFinales.push(asignadoFinal);
+      if (resol.reasignado) avisosReasig.push(`"${resol.original}" no estaba disponible (turno/descanso); la tarea pasó a "${asignadoFinal}".`);
+      else if (resol.sinReemplazo) avisosReasig.push(`"${resol.original}" no está disponible y no hubo reemplazo en ${this.formStore}; quedó asignada a "${resol.original}".`);
 
       const checklistTareas: any = {
         id: uniqueId,
         timestampCreacion: Date.now(),
         name: this.formName,
-        assigned: empleadoNombre,
+        assigned: asignadoFinal,
+        assignedUid: nombreAUidReasig.get(normalizarNombre(asignadoFinal)) || null,
         store: this.formStore,
         date: tareasValidas[0].date || hoy,
         time: tareasValidas[0].time || '23:59',
@@ -3589,10 +3590,14 @@ export class ChecklistComponent implements OnInit, OnDestroy {
         };
       }
 
+      if (resol.reasignado) {
+        checklistTareas.reasignadoTurno = true;
+        checklistTareas.asignadoOriginal = resol.original;
+      }
       this.guardarEnLaNube(checklistTareas);
 
       if (this.notificarPorWhatsApp) {
-        const datosEmpleado = this.empleados().find(e => e.nombre === empleadoNombre);
+        const datosEmpleado = this.empleados().find(e => e.nombre === asignadoFinal);
         let telefono = datosEmpleado?.telefono || '';
         telefono = telefono.replace(/[\s\- \(\) ]/g, '');
         if (telefono.startsWith('+')) telefono = telefono.slice(1);
@@ -3601,7 +3606,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
           const urlApp = 'https://mdtask-production.up.railway.app';
           const mensaje =
             `*Mega Dulces Task* 🍭\n\n` +
-            `¡Hola *${this.limpiarEmojis(empleadoNombre)}*!\n` +
+            `¡Hola *${this.limpiarEmojis(asignadoFinal)}*!\n` +
             `Se te ha asignado un nuevo checklist: *${this.limpiarEmojis(this.formName)}*\n\n` +
             ` 📅 Fecha: ${checklistTareas.date}\n` +
             ` ⏰ Hora Límite: ${this.formatearHora(checklistTareas.time)}\n\n` +
@@ -3612,16 +3617,17 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       }
 
       if (this.notificarPorCorreo) {
-        this.enviarAvisoPorCorreo(empleadoNombre, this.formName);
+        this.enviarAvisoPorCorreo(asignadoFinal, this.formName);
       }
-    });
+    }
 
     urlsWhatsApp.forEach((url, i) => {
       setTimeout(() => { window.open(url, '_blank'); }, i * 800);
     });
 
-    // Aviso push SOLO a trabajadores de Espacio TEC (los demás no reciben, como antes).
-    const nombresTec = this.formAssigned.filter(n =>
+    // Aviso push SOLO a trabajadores de Espacio TEC. Usa los nombres FINALES
+    // (tras la posible reasignación por turno/descanso), no los originales.
+    const nombresTec = nombresFinales.filter(n =>
       this.empleados().some((e: any) => e.grupoTec === true && mismoEmpleadoNombre(e.nombre, n)));
     if (nombresTec.length) {
       this.noti.enviar({
@@ -3632,7 +3638,18 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       });
     }
 
-    this.mostrarToast(' ✅ ¡Tareas creadas y avisos generados!');
+    // Si hubo reasignaciones por turno/descanso, avisar al admin qué cambió.
+    if (avisosReasig.length) {
+      await Swal.fire({
+        title: 'Tareas reasignadas por turno/descanso',
+        html: `Se crearon las tareas. Algunas se reasignaron:` +
+          `<ul style="text-align:left;margin:12px 0;padding-left:22px;font-size:13px">` +
+          avisosReasig.map(a => `<li>${a}</li>`).join('') + `</ul>`,
+        icon: 'info', confirmButtonColor: '#0F172A'
+      });
+    } else {
+      this.mostrarToast(' ✅ ¡Tareas creadas y avisos generados!');
+    }
     this.cerrarModal();
   }
 

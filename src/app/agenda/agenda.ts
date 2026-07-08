@@ -2,7 +2,7 @@ import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, Router } from '@angular/router';
-import { Firestore, collection, addDoc, doc, updateDoc, deleteDoc, getDoc, setDoc } from '@angular/fire/firestore';
+import { Firestore, collection, addDoc, doc, updateDoc, deleteDoc, setDoc } from '@angular/fire/firestore';
 import { Auth } from '@angular/fire/auth';
 
 import { SidebarComponent } from '../shared/sidebar/sidebar';
@@ -157,8 +157,9 @@ export class AgendaComponent implements OnInit, OnDestroy {
   // ============================================================================
   private async cargarConfigReco() {
     try {
-      const snap = await getDoc(doc(this.firestore, 'config', 'recomendaciones'));
-      const data = snap.exists() ? (snap.data() as any) : {};
+      // FERROCARRIL Etapa 9 (config): recomendaciones desde Postgres (antes getDoc).
+      const resp = await this.api.get('/api/config?id=recomendaciones').catch(() => null);
+      const data = resp?.item || {};
       this.recoHabilitadas = data.sucursalesHabilitadas || [];
       this.recoDescartadas = data.descartadas || [];
     } catch (e) { console.error('[agenda reco] config', e); }
@@ -254,6 +255,8 @@ export class AgendaComponent implements OnInit, OnDestroy {
     const nuevas = Array.from(new Set([...this.recoDescartadas, r.clave]));
     try {
       await setDoc(doc(this.firestore, 'config', 'recomendaciones'), { descartadas: nuevas }, { merge: true });
+      // FERROCARRIL Etapa 9 (config): dual-write a Postgres.
+      await this.api.parchar('/api/config', 'recomendaciones', { descartadas: nuevas });
       this.recoDescartadas = nuevas;
       this.recomendaciones = this.recomendaciones.filter(x => x.clave !== r.clave);
     } catch (e) { console.error('[agenda reco] descartar', e); }

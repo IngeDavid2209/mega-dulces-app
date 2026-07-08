@@ -3,7 +3,7 @@ import { UsuariosService } from '../../../shared/usuarios.service';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, ActivatedRoute } from '@angular/router';
-import { Firestore, doc, setDoc, deleteDoc, onSnapshot } from '@angular/fire/firestore';
+import { Firestore, doc, setDoc, deleteDoc } from '@angular/fire/firestore';
 import * as localforage from 'localforage';
 import Swal from 'sweetalert2';
 import { esAdminGlobal, esAdminLimitado, sucursalesPermitidas, esSupervisor, mismoEmpleadoNombre, existeEmpleadoEnUsuarios, normalizarNombre, puedeSerAsignado } from '../../../shared/permisos.util';
@@ -1189,10 +1189,15 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     this.destructoresRadares.push(() => clearInterval(idRadarAsignaciones));
 
     // 🕐 Config de turnos de Canindo: para bloquear asignaciones fuera de turno.
-    const radarTurnos = onSnapshot(doc(this.firestore, 'config', 'turnos'), (snap) => {
-      this.configTurnos.set(snap.exists() ? (snap.data() as ConfigTurnos) : null);
-    });
-    this.destructoresRadares.push(radarTurnos);
+    // FERROCARRIL Etapa 9 (config): turnos desde Postgres (poll; antes onSnapshot).
+    const recargarTurnos = async () => {
+      const resp = await this.api.get('/api/config?id=turnos').catch(() => null);
+      if (!resp) return;
+      this.configTurnos.set((resp.item as ConfigTurnos) || null);
+    };
+    recargarTurnos();
+    const idRadarTurnos = setInterval(recargarTurnos, 20000);
+    this.destructoresRadares.push(() => clearInterval(idRadarTurnos));
 
     // 🔁 Tareas recurrentes personales del usuario: las regenera para hoy si aplican.
     const miUid = this.miUid();

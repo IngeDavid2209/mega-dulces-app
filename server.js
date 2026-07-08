@@ -56,6 +56,8 @@ app.all('/api/moldes-checklists', require('./api/moldes-checklists'));
 app.all('/api/descansos-semanales', require('./api/descansos-semanales'));
 app.all('/api/tareas-equipo', require('./api/tareas-equipo'));
 app.all('/api/rutinas-personales', require('./api/rutinas-personales'));
+// Etapa 9 FERROCARRIL: config (turnos, recomendaciones).
+app.all('/api/config', require('./api/config'));
 app.all('/api/login-usuario', require('./api/login-usuario')); // público (resuelve usuario->correo en el login)
 app.all('/api/tec-notas', require('./api/tec-notas'));
 app.all('/api/areas', require('./api/areas'));

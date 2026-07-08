@@ -3,7 +3,6 @@ import { UsuariosService } from '../../../shared/usuarios.service';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, Router } from '@angular/router';
-import { Firestore, onSnapshot, doc } from '@angular/fire/firestore';
 
 import { ApiService } from '../../../shared/api.service';
 import { SidebarComponent } from '../../../shared/sidebar/sidebar';
@@ -125,7 +124,6 @@ export class ProgramacionRutinasComponent implements OnInit, OnDestroy {
     'FINANZAS', 'SISTEMAS', 'RH', 'MKT', 'MANTENIMIENTO', 'CEDIS'
   ];
 
-  private firestore = inject(Firestore);
   private api = inject(ApiService);
   private router = inject(Router);
   private usuariosSvc = inject(UsuariosService);
@@ -208,9 +206,15 @@ export class ProgramacionRutinasComponent implements OnInit, OnDestroy {
     const idDescansos = setInterval(recargarDescansos, 20000);
     this.radarDescansos = () => clearInterval(idDescansos);
 
-    this.radarTurnos = onSnapshot(doc(this.firestore, 'config', 'turnos'), snap => {
-      this.configTurnos.set(snap.exists() ? (snap.data() as ConfigTurnos) : null);
-    });
+    // FERROCARRIL Etapa 9 (config): turnos desde Postgres (poll; antes onSnapshot).
+    const recargarTurnos = async () => {
+      const resp = await this.api.get('/api/config?id=turnos').catch(() => null);
+      if (!resp) return;
+      this.configTurnos.set((resp.item as ConfigTurnos) || null);
+    };
+    recargarTurnos();
+    const idTurnos = setInterval(recargarTurnos, 20000);
+    this.radarTurnos = () => clearInterval(idTurnos);
 
     // Usuarios viene de UsuariosService (listener compartido) + _usuariosEffect.
   }

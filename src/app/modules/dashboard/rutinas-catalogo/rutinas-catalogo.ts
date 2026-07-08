@@ -22,7 +22,6 @@ import {
 import { PLANTILLAS_BASE, PlantillaRutina } from '../../../shared/plantillas-rutinas';
 import { normalizarNombre, esAdmin, esAdminGlobal, sucursalesPermitidas } from '../../../shared/permisos.util';
 import { detectarRecomendaciones, Recomendacion } from '../../../shared/recomendaciones-rutinas.util';
-import { getDoc } from '@angular/fire/firestore';
 
 @Component({
   selector: 'app-rutinas-catalogo',
@@ -86,8 +85,9 @@ export class RutinasCatalogoComponent implements OnInit, OnDestroy {
 
   private async cargarConfigReco() {
     try {
-      const snap = await getDoc(doc(this.firestore, 'config', 'recomendaciones'));
-      const data = snap.exists() ? (snap.data() as any) : {};
+      // FERROCARRIL Etapa 9 (config): recomendaciones desde Postgres (antes getDoc).
+      const resp = await this.api.get('/api/config?id=recomendaciones').catch(() => null);
+      const data = resp?.item || {};
       this.recoHabilitadas.set(data.sucursalesHabilitadas || []);
       this.recoDescartadas = data.descartadas || [];
     } catch (e) {
@@ -171,6 +171,8 @@ export class RutinasCatalogoComponent implements OnInit, OnDestroy {
     const nuevas = Array.from(new Set([...this.recoDescartadas, r.clave]));
     try {
       await setDoc(doc(this.firestore, 'config', 'recomendaciones'), { descartadas: nuevas }, { merge: true });
+      // FERROCARRIL Etapa 9 (config): dual-write a Postgres.
+      await this.api.parchar('/api/config', 'recomendaciones', { descartadas: nuevas });
       this.recoDescartadas = nuevas;
       this.recomendaciones.set(this.recomendaciones().filter(x => x.clave !== r.clave));
     } catch (e: any) {
@@ -193,9 +195,10 @@ export class RutinasCatalogoComponent implements OnInit, OnDestroy {
   async guardarRecoConfig() {
     this.guardandoRecoConfig = true;
     try {
-      await setDoc(doc(this.firestore, 'config', 'recomendaciones'),
-        { sucursalesHabilitadas: this.recoHabilitadas(), actualizadoPor: this.currentUser?.nombre || '', actualizadoEn: Date.now() },
-        { merge: true });
+      const payloadReco = { sucursalesHabilitadas: this.recoHabilitadas(), actualizadoPor: this.currentUser?.nombre || '', actualizadoEn: Date.now() };
+      await setDoc(doc(this.firestore, 'config', 'recomendaciones'), payloadReco, { merge: true });
+      // FERROCARRIL Etapa 9 (config): dual-write a Postgres.
+      await this.api.parchar('/api/config', 'recomendaciones', payloadReco);
       this.isModalRecoConfigOpen = false;
       this.yaAnalizado = false; // forzar re-análisis con el nuevo alcance
       Swal.fire({ toast: true, position: 'top-end', showConfirmButton: false, timer: 2200, icon: 'success', title: 'Sucursales actualizadas' });

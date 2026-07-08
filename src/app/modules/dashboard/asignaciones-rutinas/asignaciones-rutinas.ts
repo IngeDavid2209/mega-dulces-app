@@ -3,7 +3,7 @@ import { UsuariosService } from '../../../shared/usuarios.service';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, Router, ActivatedRoute } from '@angular/router';
-import { Firestore, onSnapshot, doc, setDoc, deleteDoc } from '@angular/fire/firestore';
+import { Firestore, doc, setDoc, deleteDoc } from '@angular/fire/firestore';
 import Swal from 'sweetalert2';
 
 import { ApiService } from '../../../shared/api.service';
@@ -294,9 +294,15 @@ export class AsignacionesRutinasComponent implements OnInit, OnDestroy {
     this.radarDescansos = () => clearInterval(idDesc);
 
     // Config de turnos de Canindo (para detectar fuera de turno).
-    this.radarTurnos = onSnapshot(doc(this.firestore, 'config', 'turnos'), snap => {
-      this.configTurnos.set(snap.exists() ? (snap.data() as ConfigTurnos) : null);
-    });
+    // FERROCARRIL Etapa 9 (config): turnos desde Postgres (poll; antes onSnapshot).
+    const recargarTurnos = async () => {
+      const resp = await this.api.get('/api/config?id=turnos').catch(() => null);
+      if (!resp) return;
+      this.configTurnos.set((resp.item as ConfigTurnos) || null);
+    };
+    recargarTurnos();
+    const idTurnos = setInterval(recargarTurnos, 20000);
+    this.radarTurnos = () => clearInterval(idTurnos);
 
     // Usuarios viene de UsuariosService (listener compartido) + _usuariosEffect.
   }

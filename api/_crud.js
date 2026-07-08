@@ -105,7 +105,7 @@ function crearCrud(cfg) {
         const placeholders = valores.map((_, i) => `$${i + 1}`).join(',');
         const sets = COL_LIST.map(c => `${c}=excluded.${c}`).concat('datos=excluded.datos').join(', ');
         const r = await query(
-          `insert into ${cfg.tabla} (id, ${COL_LIST.join(', ')}, datos)
+          `insert into ${cfg.tabla} (${['id', ...COL_LIST, 'datos'].join(', ')})
            values (${placeholders})
            on conflict (id) do update set ${sets}
            returning *`,
@@ -129,7 +129,7 @@ function crearCrud(cfg) {
           const placeholders = valores.map((_, i) => `$${i + 1}`).join(',');
           const sets = COL_LIST.map(c => `${c}=excluded.${c}`).concat('datos=excluded.datos').join(', ');
           const r = await query(
-            `insert into ${cfg.tabla} (id, ${COL_LIST.join(', ')}, datos)
+            `insert into ${cfg.tabla} (${['id', ...COL_LIST, 'datos'].join(', ')})
              values (${placeholders}) on conflict (id) do update set ${sets} returning *`,
             valores
           );

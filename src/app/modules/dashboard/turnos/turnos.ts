@@ -2,11 +2,12 @@ import { Component, signal, OnInit, OnDestroy, inject, effect, computed } from '
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, Router } from '@angular/router';
-import { Firestore, doc, onSnapshot, setDoc } from '@angular/fire/firestore';
+import { Firestore, doc, setDoc } from '@angular/fire/firestore';
 import Swal from 'sweetalert2';
 
 import { SidebarComponent } from '../../../shared/sidebar/sidebar';
 import { UsuariosService } from '../../../shared/usuarios.service';
+import { ApiService } from '../../../shared/api.service';
 import { esAdminDeCanindo, normalizarNombre } from '../../../shared/permisos.util';
 import {
   ConfigTurnos, Turno, ExcepcionTurno, MiembroTurno,
@@ -38,6 +39,7 @@ export class TurnosComponent implements OnInit, OnDestroy {
   private firestore = inject(Firestore);
   private router = inject(Router);
   private usuariosSvc = inject(UsuariosService);
+  private api = inject(ApiService);
   private destructores: (() => void)[] = [];
 
   // Config en edicion (copia local editable).
@@ -117,10 +119,12 @@ export class TurnosComponent implements OnInit, OnDestroy {
   }
 
   private cargarConfig() {
-    const ref = doc(this.firestore, 'config', 'turnos');
-    const unsub = onSnapshot(ref, (snap) => {
-      if (snap.exists()) {
-        const data = snap.data() as ConfigTurnos;
+    // FERROCARRIL Etapa 9 (config): turnos desde Postgres (poll; antes onSnapshot).
+    const recargarTurnos = async () => {
+      const resp = await this.api.get('/api/config?id=turnos').catch(() => null);
+      if (!resp) return;
+      const data = (resp.item || null) as ConfigTurnos | null;
+      if (data) {
         // Mezcla con defaults para tolerar documentos viejos / campos faltantes.
         this.config.set({ ...configTurnosPorDefecto(), ...data,
           horarios: { ...configTurnosPorDefecto().horarios, ...(data.horarios || {}) },
@@ -131,8 +135,10 @@ export class TurnosComponent implements OnInit, OnDestroy {
       } else {
         this.config.set(configTurnosPorDefecto());
       }
-    });
-    this.destructores.push(unsub);
+    };
+    recargarTurnos();
+    const idTurnos = setInterval(recargarTurnos, 20000);
+    this.destructores.push(() => clearInterval(idTurnos));
   }
 
   // === Setters simples (los templates de Angular no soportan spread) ===
@@ -219,6 +225,8 @@ export class TurnosComponent implements OnInit, OnDestroy {
         actualizadoEn: Date.now(),
       };
       await setDoc(doc(this.firestore, 'config', 'turnos'), payload, { merge: true });
+      // FERROCARRIL Etapa 9 (config): dual-write a Postgres.
+      await this.api.parchar('/api/config', 'turnos', payload);
       Swal.fire({ icon: 'success', title: 'Turnos guardados', timer: 1400, showConfirmButton: false });
     } catch (err: any) {
       Swal.fire('Error al guardar', err?.message || String(err), 'error');

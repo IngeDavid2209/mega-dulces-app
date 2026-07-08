@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, Router } from '@angular/router';
 import { DragDropModule, CdkDragDrop, moveItemInArray, transferArrayItem } from '@angular/cdk/drag-drop';
-import { Firestore, addDoc, doc, getDoc, setDoc, updateDoc, deleteDoc } from '@angular/fire/firestore';
+import { Firestore, addDoc, doc, setDoc, updateDoc, deleteDoc } from '@angular/fire/firestore';
 import Swal from 'sweetalert2';
 
 import { SidebarComponent } from '../shared/sidebar/sidebar';
@@ -795,8 +795,9 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
         const horaTarea = this.tareaAsignarHoraFin || '23:59';
         let configTurnos: ConfigTurnos | null = null;
         try {
-          const ct = await getDoc(doc(this.firestore, 'config', 'turnos'));
-          if (ct.exists()) configTurnos = ct.data() as ConfigTurnos;
+          // FERROCARRIL Etapa 9 (config): turnos desde Postgres (antes getDoc).
+          const respCt = await this.api.get('/api/config?id=turnos').catch(() => null);
+          if (respCt?.item) configTurnos = respCt.item as ConfigTurnos;
         } catch { /* sin config -> sin restriccion de turno */ }
         let descansosSemana: any[] = [];
         try {

@@ -17,7 +17,7 @@
  */
 
 import { Injectable, inject } from '@angular/core';
-import { Firestore, doc, getDoc, setDoc } from '@angular/fire/firestore';
+import { Firestore, doc, setDoc } from '@angular/fire/firestore';
 
 import { RutinaMaestra, TareaRutinaMaestra } from './rutinas.types';
 import { AsignacionRutina } from './asignaciones.types';
@@ -62,8 +62,9 @@ export class RobotRutinasV2Service {
     // cae fuera de su turno. Mapa nombre->uid para resolver al destinatario.
     let configTurnos: ConfigTurnos | null = null;
     try {
-      const ct = await getDoc(doc(this.firestore, 'config', 'turnos'));
-      if (ct.exists()) configTurnos = ct.data() as ConfigTurnos;
+      // FERROCARRIL Etapa 9 (config): turnos desde Postgres (antes getDoc).
+      const respCt = await this.api.get('/api/config?id=turnos').catch(() => null);
+      if (respCt?.item) configTurnos = respCt.item as ConfigTurnos;
     } catch { /* sin config => sin restriccion */ }
     const diaISO = fechaISO(fecha);
     // Mapa nombre->uid (siempre, lo usan turnos y descansos).

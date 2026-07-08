@@ -1,6 +1,4 @@
 import { Injectable, inject, signal, computed } from '@angular/core';
-import { Firestore, onSnapshot, doc } from '@angular/fire/firestore';
-
 import { ApiService } from './api.service';
 import { UsuariosService } from './usuarios.service';
 import { analizarConflictos } from './conflictos-rutinas.util';
@@ -16,7 +14,6 @@ import { RutinaMaestra } from './rutinas.types';
  */
 @Injectable({ providedIn: 'root' })
 export class ConflictosRutinasService {
-  private firestore = inject(Firestore);
   private api = inject(ApiService);
   private usuariosSvc = inject(UsuariosService);
   private refs = 0;
@@ -79,9 +76,15 @@ export class ConflictosRutinasService {
     const idDescansos = setInterval(recargarDescansos, 20000);
     this.unsub.push(() => clearInterval(idDescansos));
 
-    this.unsub.push(onSnapshot(doc(this.firestore, 'config', 'turnos'), s => {
-      this.configTurnos.set(s.exists() ? (s.data() as ConfigTurnos) : null);
-    }));
+    // FERROCARRIL Etapa 9 (config): turnos desde Postgres (poll; antes onSnapshot).
+    const recargarTurnos = async () => {
+      const resp = await this.api.get('/api/config?id=turnos').catch(() => null);
+      if (!resp) return;
+      this.configTurnos.set((resp.item as ConfigTurnos) || null);
+    };
+    recargarTurnos();
+    const idTurnos = setInterval(recargarTurnos, 20000);
+    this.unsub.push(() => clearInterval(idTurnos));
   }
 
   detener() {

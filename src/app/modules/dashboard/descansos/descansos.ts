@@ -3,9 +3,10 @@ import { UsuariosService } from '../../../shared/usuarios.service';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, Router } from '@angular/router';
-import { Firestore, collection, onSnapshot, doc, setDoc, deleteDoc } from '@angular/fire/firestore';
+import { Firestore, doc, setDoc, deleteDoc } from '@angular/fire/firestore';
 import Swal from 'sweetalert2';
 
+import { ApiService } from '../../../shared/api.service';
 import { SidebarComponent } from '../../../shared/sidebar/sidebar';
 import { esAdminGlobal, sucursalesPermitidas } from '../../../shared/permisos.util';
 import {
@@ -45,6 +46,7 @@ export class DescansosComponent implements OnInit, OnDestroy {
   sucursalesDisponibles = signal<string[]>([]);
 
   private firestore = inject(Firestore);
+  private api = inject(ApiService);
   private router = inject(Router);
   private usuariosSvc = inject(UsuariosService);
   private destructores: (() => void)[] = [];
@@ -83,13 +85,18 @@ export class DescansosComponent implements OnInit, OnDestroy {
   conectarConLaNube() {
     // Usuarios viene de UsuariosService (listener compartido) + _usuariosEffect.
 
-    const descansosRef = collection(this.firestore, 'descansos_semanales');
-    const radarDesc = onSnapshot(descansosRef, snap => {
+    // FERROCARRIL: poll a Postgres (antes onSnapshot).
+    const recargarDescansos = async () => {
+      const resp = await this.api.get('/api/descansos-semanales').catch((e: any) => { console.error('[descansos] poll', e); return null; });
+      if (!resp) return;
+      const items: any[] = resp.items || [];
       const lista: any[] = [];
-      snap.forEach(d => lista.push({ ...d.data(), idFirestore: d.id }));
+      items.forEach((data: any) => lista.push({ ...data, idFirestore: data.id }));
       this.descansos.set(lista);
-    });
-    this.destructores.push(radarDesc);
+    };
+    recargarDescansos();
+    const idDesc = setInterval(recargarDescansos, 20000);
+    this.destructores.push(() => clearInterval(idDesc));
   }
 
   // ============================================================================
@@ -233,9 +240,13 @@ export class DescansosComponent implements OnInit, OnDestroy {
       if (diasFinales.length === 0) {
         // Sin días: borramos el documento para no dejar basura
         await deleteDoc(doc(this.firestore, 'descansos_semanales', docId));
+        // FERROCARRIL: dual-write a Postgres (best-effort).
+        this.api.borrar('/api/descansos-semanales', docId);
       } else {
         const { idFirestore, ...sinId } = payload;
         await setDoc(doc(this.firestore, 'descansos_semanales', docId), sinId, { merge: true });
+        // FERROCARRIL: dual-write a Postgres (best-effort).
+        this.api.parchar('/api/descansos-semanales', docId, sinId);
       }
     } catch (e) {
       console.error('Error al guardar descanso:', e);

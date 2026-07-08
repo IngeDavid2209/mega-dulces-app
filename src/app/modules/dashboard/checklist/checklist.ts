@@ -3,7 +3,7 @@ import { UsuariosService } from '../../../shared/usuarios.service';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, ActivatedRoute } from '@angular/router';
-import { Firestore, collection, doc, setDoc, getDoc, deleteDoc, onSnapshot, getDocs, query, where } from '@angular/fire/firestore';
+import { Firestore, doc, setDoc, deleteDoc, onSnapshot } from '@angular/fire/firestore';
 import * as localforage from 'localforage';
 import Swal from 'sweetalert2';
 import { esAdminGlobal, esAdminLimitado, sucursalesPermitidas, esSupervisor, mismoEmpleadoNombre, existeEmpleadoEnUsuarios, normalizarNombre, puedeSerAsignado } from '../../../shared/permisos.util';
@@ -1154,39 +1154,38 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     // El effect _usuariosEffect llama procesarUsuariosCompartidos() cada vez que
     // se actualiza. No abrimos onSnapshot duplicado aqui.
 
-    const moldesRef = collection(this.firestore, 'moldes_checklists');
-    const radarMoldes = onSnapshot(moldesRef, (snapshot) => {
-      const moldesActivos: any[] = [];
-      snapshot.forEach(docSnap => moldesActivos.push(docSnap.data()));
-      this.ejecutarRobotRutinas(moldesActivos);
-    });
-    this.destructoresRadares.push(radarMoldes);
+    // FERROCARRIL Etapa 5: moldes_checklists desde Postgres (poll; antes onSnapshot).
+    const recargarMoldes = async () => {
+      const resp = await this.api.get('/api/moldes-checklists').catch((e: any) => { console.error('[checklist] poll moldes', e); return null; });
+      if (!resp) return;
+      this.ejecutarRobotRutinas(resp.items || []);
+    };
+    recargarMoldes();
+    const idRadarMoldes = setInterval(recargarMoldes, 20000);
+    this.destructoresRadares.push(() => clearInterval(idRadarMoldes));
 
-    // 🤖 ROBOT V2 (Fase 4): escucha catalogo_rutinas + asignaciones_rutinas
-    // y genera checklists desde el modelo nuevo. Convive con el V1.
-    const catalogoRef = collection(this.firestore, 'catalogo_rutinas');
-    const radarCatalogo = onSnapshot(catalogoRef, (snapshot) => {
-      const arr: RutinaMaestra[] = [];
-      snapshot.forEach(d => {
-        const data = d.data() as any;
-        if (data.activa !== false) arr.push({ ...data, id: d.id });
-      });
-      this.catalogoV2 = arr;
+    // 🤖 ROBOT V2 (Fase 4): catalogo_rutinas + asignaciones_rutinas para generar
+    // checklists desde el modelo nuevo. Convive con el V1.
+    // FERROCARRIL Etapa 4: desde Postgres (poll; antes onSnapshot).
+    const recargarCatalogoV2 = async () => {
+      const resp = await this.api.get('/api/catalogo-rutinas').catch((e: any) => { console.error('[checklist] poll catalogo', e); return null; });
+      if (!resp) return;
+      this.catalogoV2 = (resp.items || []).filter((d: any) => d.activa !== false) as RutinaMaestra[];
       this.dispararRobotV2();
-    });
-    this.destructoresRadares.push(radarCatalogo);
+    };
+    recargarCatalogoV2();
+    const idRadarCatalogo = setInterval(recargarCatalogoV2, 20000);
+    this.destructoresRadares.push(() => clearInterval(idRadarCatalogo));
 
-    const asignacionesRef = collection(this.firestore, 'asignaciones_rutinas');
-    const radarAsignaciones = onSnapshot(asignacionesRef, (snapshot) => {
-      const arr: AsignacionRutina[] = [];
-      snapshot.forEach(d => {
-        const data = d.data() as any;
-        if (data.activa !== false) arr.push({ ...data, id: d.id });
-      });
-      this.asignacionesV2 = arr;
+    const recargarAsignacionesV2 = async () => {
+      const resp = await this.api.get('/api/asignaciones-rutinas').catch((e: any) => { console.error('[checklist] poll asignaciones', e); return null; });
+      if (!resp) return;
+      this.asignacionesV2 = (resp.items || []).filter((d: any) => d.activa !== false) as AsignacionRutina[];
       this.dispararRobotV2();
-    });
-    this.destructoresRadares.push(radarAsignaciones);
+    };
+    recargarAsignacionesV2();
+    const idRadarAsignaciones = setInterval(recargarAsignacionesV2, 20000);
+    this.destructoresRadares.push(() => clearInterval(idRadarAsignaciones));
 
     // 🕐 Config de turnos de Canindo: para bloquear asignaciones fuera de turno.
     const radarTurnos = onSnapshot(doc(this.firestore, 'config', 'turnos'), (snap) => {
@@ -1197,14 +1196,17 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     // 🔁 Tareas recurrentes personales del usuario: las regenera para hoy si aplican.
     const miUid = this.miUid();
     if (miUid) {
-      const rpQuery = query(collection(this.firestore, 'rutinas_personales'), where('uid', '==', miUid));
-      const radarRP = onSnapshot(rpQuery, (snap) => {
-        const arr: any[] = [];
-        snap.forEach(d => arr.push({ id: d.id, ...(d.data() || {}) }));
-        this.misRutinasPersonales.set(arr);
+      // FERROCARRIL Etapa 8: rutinas_personales del usuario desde Postgres (poll).
+      const recargarRP = async () => {
+        const resp = await this.api.get('/api/rutinas-personales?uid=' + encodeURIComponent(miUid))
+          .catch((e: any) => { console.error('[checklist] poll rutinas personales', e); return null; });
+        if (!resp) return;
+        this.misRutinasPersonales.set(resp.items || []);
         this.generarRutinasPersonalesDeHoy();
-      });
-      this.destructoresRadares.push(radarRP);
+      };
+      recargarRP();
+      const idRadarRP = setInterval(recargarRP, 20000);
+      this.destructoresRadares.push(() => clearInterval(idRadarRP));
     }
 
     // 📅 SOLO HOY: el trabajador ve únicamente las tareas del día de hoy.
@@ -1368,8 +1370,10 @@ export class ChecklistComponent implements OnInit, OnDestroy {
 
     // Radar de Tareas de Equipo (colección separada `tareas_equipo`).
     // Cada usuario solo ve las tareas donde es integrante, jefe o admin.
-    const tareasEquipoRef = collection(this.firestore, 'tareas_equipo');
-    const radarTareasEquipo = onSnapshot(tareasEquipoRef, (snapshot) => {
+    // FERROCARRIL Etapa 7: tareas_equipo desde Postgres (poll; antes onSnapshot).
+    const recargarTareasEquipo = async () => {
+      const resp = await this.api.get('/api/tareas-equipo').catch((e: any) => { console.error('[checklist] poll tareas equipo', e); return null; });
+      if (!resp) return;
       const sesion = leerSesion() || this.currentUser;
       const esGlobal = esAdminGlobal(sesion);
       const esLimitado = esAdminLimitado(sesion);
@@ -1377,9 +1381,8 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       const miNombre = sesion?.nombre;
 
       const arr: TareaEquipo[] = [];
-      snapshot.forEach(d => {
-        const data = d.data() as any;
-        const tarea: TareaEquipo = { ...data, id: d.id };
+      (resp.items || []).forEach((data: any) => {
+        const tarea: TareaEquipo = { ...data, id: data.id };
         if (tarea.cerrado === true && esAdminGlobal(sesion) === false) {
           // Trabajadores y admins limitados no ven proyectos cerrados (limpieza visual)
           return;
@@ -1408,8 +1411,10 @@ export class ChecklistComponent implements OnInit, OnDestroy {
         const actualizado = arr.find(t => t.id === sel.id);
         if (actualizado) this.tareaEquipoSeleccionada.set(actualizado);
       }
-    });
-    this.destructoresRadares.push(radarTareasEquipo);
+    };
+    recargarTareasEquipo();
+    const idRadarTareasEquipo = setInterval(recargarTareasEquipo, 20000);
+    this.destructoresRadares.push(() => clearInterval(idRadarTareasEquipo));
 
     // Notificaciones (campana): migradas a Postgres (API). Poll cada 20s.
     this.cargarNotificaciones();
@@ -1913,6 +1918,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     };
     try {
       await setDoc(doc(this.firestore, 'rutinas_personales', id), r);
+      await this.api.guardar('/api/rutinas-personales', { ...r, id: String(id) }); // FERROCARRIL Etapa 8
       this.isModalTareaDiaOpen = false;
       this.resetCamposTareaDia();
       // Mensaje explícito de CUÁNDO aparecerá (solo para Espacio TEC; el resto ve
@@ -2008,6 +2014,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     if (!res.isConfirmed) return;
     try {
       await deleteDoc(doc(this.firestore, 'rutinas_personales', r.id));
+      await this.api.borrar('/api/rutinas-personales', r.id); // FERROCARRIL Etapa 8
       this.mostrarToast(' Tarea recurrente eliminada.');
     } catch (e) {
       this.mostrarToast(' Error al eliminar.');
@@ -2106,13 +2113,13 @@ export class ChecklistComponent implements OnInit, OnDestroy {
           }
         }
 
-        // 2) Borrado físico del molde V1.
-        const moldesRef = collection(this.firestore, 'moldes_checklists');
-        const moldesSnap = await getDocs(moldesRef);
-        for (const mDoc of moldesSnap.docs) {
-          const mData = mDoc.data() as any;
+        // 2) Borrado físico del molde V1. FERROCARRIL Etapa 5: lista desde Postgres + dual-write.
+        const moldesResp = await this.api.get('/api/moldes-checklists');
+        const moldesFilas: any[] = moldesResp?.items || [];
+        for (const mData of moldesFilas) {
           if (targetName.includes(mData.name) && mData.assigned === targetAssigned) {
-            await deleteDoc(doc(this.firestore, 'moldes_checklists', mDoc.id));
+            await deleteDoc(doc(this.firestore, 'moldes_checklists', String(mData.id)));
+            await this.api.borrar('/api/moldes-checklists', mData.id);
           }
         }
 
@@ -2123,18 +2130,23 @@ export class ChecklistComponent implements OnInit, OnDestroy {
         // - Si queda con 0 empleados, o es porRol, marcamos `activa: false`.
         if (checklist._v2 && checklist._asignacionId) {
           const asigRef = doc(this.firestore, 'asignaciones_rutinas', checklist._asignacionId);
-          const asigSnap = await getDoc(asigRef);
-          if (asigSnap.exists()) {
-            const a = asigSnap.data() as any;
+          // FERROCARRIL Etapa 4: leer asignación desde Postgres + dual-write.
+          const asigResp = await this.api.get('/api/asignaciones-rutinas?id=' + encodeURIComponent(String(checklist._asignacionId)));
+          const a = asigResp?.item;
+          if (a) {
+            const asigId = String(checklist._asignacionId);
             if (a.modoAsignacion === 'porPersonas' && Array.isArray(a.empleadosNombres)) {
               const sinEste = a.empleadosNombres.filter((n: string) => n !== targetAssigned);
               if (sinEste.length > 0) {
                 await setDoc(asigRef, { empleadosNombres: sinEste }, { merge: true });
+                await this.api.parchar('/api/asignaciones-rutinas', asigId, { empleadosNombres: sinEste });
               } else {
                 await setDoc(asigRef, { activa: false, empleadosNombres: [] }, { merge: true });
+                await this.api.parchar('/api/asignaciones-rutinas', asigId, { activa: false, empleadosNombres: [] });
               }
             } else {
               await setDoc(asigRef, { activa: false }, { merge: true });
+              await this.api.parchar('/api/asignaciones-rutinas', asigId, { activa: false });
             }
           }
         }
@@ -2284,12 +2296,11 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     this.isEditMode = true;
     const targetName = checklist.name.replace(/ \((Diaria|Semanal|Catorcenal|Mensual|Trimestral)\)$/, '').trim();
     const targetAssigned = checklist.assigned;
-    const moldesRef = collection(this.firestore, 'moldes_checklists');
-    const moldesSnap = await getDocs(moldesRef);
+    // FERROCARRIL Etapa 5: moldes desde Postgres (antes getDocs Firestore).
+    const moldesResp = await this.api.get('/api/moldes-checklists');
     let rutinasEncontradas: any[] = [];
     let sucursalOriginal = '';
-    moldesSnap.forEach((mDoc) => {
-      const mData = mDoc.data();
+    (moldesResp?.items || []).forEach((mData: any) => {
       if (mData['name'] === targetName && mData['assigned'] === targetAssigned) {
         sucursalOriginal = mData['store'];
         if (mData['items'] && Array.isArray(mData['items'])) {
@@ -2647,20 +2658,18 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       c.assigned && c.enviado !== true && c.eliminado !== true && !existe(c.assigned));
 
     // 2) Asignaciones 'por personas' que conservan nombres inexistentes.
-    let asigSnap: any = null;
-    try { asigSnap = await getDocs(collection(this.firestore, 'asignaciones_rutinas')); }
+    // FERROCARRIL Etapa 4: asignaciones desde Postgres.
+    let asigItems: any[] = [];
+    try { asigItems = (await this.api.get('/api/asignaciones-rutinas'))?.items || []; }
     catch (e) { console.error('[limpiarHuerfanas] asignaciones', e); }
     const asigACambiar: { id: string; cambios: any }[] = [];
-    if (asigSnap) {
-      for (const d of asigSnap.docs) {
-        const a = d.data() as any;
-        if (a.modoAsignacion !== 'porPersonas' || !Array.isArray(a.empleadosNombres)) continue;
-        const restantes = a.empleadosNombres.filter((n: string) => existe(n));
-        if (restantes.length === a.empleadosNombres.length) continue;
-        const cambios: any = { empleadosNombres: restantes };
-        if (restantes.length === 0) cambios.activa = false;
-        asigACambiar.push({ id: d.id, cambios });
-      }
+    for (const a of asigItems) {
+      if (a.modoAsignacion !== 'porPersonas' || !Array.isArray(a.empleadosNombres)) continue;
+      const restantes = a.empleadosNombres.filter((n: string) => existe(n));
+      if (restantes.length === a.empleadosNombres.length) continue;
+      const cambios: any = { empleadosNombres: restantes };
+      if (restantes.length === 0) cambios.activa = false;
+      asigACambiar.push({ id: a.id, cambios });
     }
 
     if (huerfanas.length === 0 && asigACambiar.length === 0) {
@@ -2685,7 +2694,11 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       catch (e) { console.error('[limpiarHuerfanas] checklist', c.id, e); }
     }
     for (const a of asigACambiar) {
-      try { await setDoc(doc(this.firestore, 'asignaciones_rutinas', a.id), a.cambios, { merge: true }); okA++; }
+      try {
+        await setDoc(doc(this.firestore, 'asignaciones_rutinas', a.id), a.cambios, { merge: true });
+        await this.api.parchar('/api/asignaciones-rutinas', a.id, a.cambios); // FERROCARRIL Etapa 4
+        okA++;
+      }
       catch (e) { console.error('[limpiarHuerfanas] asignacion', a.id, e); }
     }
     Swal.fire({ icon: 'success', title: 'Limpieza lista', html: `Se eliminaron <strong>${okT}</strong> tarea(s) y se corrigieron <strong>${okA}</strong> asignación(es).`, confirmButtonColor: '#0F172A' });
@@ -2981,6 +2994,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     };
     try {
       await setDoc(doc(this.firestore, 'tareas_equipo', id), tarea);
+      await this.api.guardar('/api/tareas-equipo', { ...tarea, id: String(id) }); // FERROCARRIL Etapa 7
       this.mostrarToast(' Proyecto en equipo creado.');
       this.cerrarModalEquipo();
     } catch (e) {
@@ -3050,6 +3064,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     item.completada = !item.completada;
     item.completadaEn = item.completada ? Date.now() : undefined;
     await setDoc(doc(this.firestore, 'tareas_equipo', t.id), { fases: fresca.fases }, { merge: true });
+    await this.api.parchar('/api/tareas-equipo', t.id, { fases: fresca.fases }); // FERROCARRIL Etapa 7
   }
 
   /** Fotos de un item de equipo (junta la foto legacy `photo` con el arreglo `photos`). */
@@ -3102,6 +3117,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     for (const u of urls) item.photos.push({ url: u, time });
 
     await setDoc(doc(this.firestore, 'tareas_equipo', t.id), { fases: fresca.fases }, { merge: true });
+    await this.api.parchar('/api/tareas-equipo', t.id, { fases: fresca.fases }); // FERROCARRIL Etapa 7
     this.mostrarToast(` ✓ ${urls.length} foto(s) subida(s)`);
     event.target.value = '';
   }
@@ -3119,6 +3135,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     if (item.photo === url) item.photo = '';
     if (Array.isArray(item.photos)) item.photos = item.photos.filter((p: any) => p.url !== url);
     await setDoc(doc(this.firestore, 'tareas_equipo', t.id), { fases: fresca.fases }, { merge: true });
+    await this.api.parchar('/api/tareas-equipo', t.id, { fases: fresca.fases }); // FERROCARRIL Etapa 7
     this.mostrarToast(' Foto eliminada');
   }
 
@@ -3138,6 +3155,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     sub.completadaPor = sub.completada ? this.currentUser?.nombre : undefined;
     sub.completadaEn = sub.completada ? Date.now() : undefined;
     await setDoc(doc(this.firestore, 'tareas_equipo', t.id), { fases: fresca.fases }, { merge: true });
+    await this.api.parchar('/api/tareas-equipo', t.id, { fases: fresca.fases }); // FERROCARRIL Etapa 7
   }
 
   /** Jefe agrega una tarea nueva en la fase activa, asignada a un integrante. */
@@ -3163,6 +3181,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       agregadaEn: Date.now()
     });
     await setDoc(doc(this.firestore, 'tareas_equipo', t.id), { fases: fresca.fases }, { merge: true });
+    await this.api.parchar('/api/tareas-equipo', t.id, { fases: fresca.fases }); // FERROCARRIL Etapa 7
     this.nuevoItemTexto = '';
     this.nuevoItemHoraLimite = '';
     this.nuevoItemRequiresPhoto = false;
@@ -3211,6 +3230,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       agregadaEn: Date.now()
     });
     await setDoc(doc(this.firestore, 'tareas_equipo', t.id), { fases: fresca.fases }, { merge: true });
+    await this.api.parchar('/api/tareas-equipo', t.id, { fases: fresca.fases }); // FERROCARRIL Etapa 7
     this.nuevaTareaPropiaTexto = '';
     this.nuevaTareaPropiaHora = '';
     this.agregandoTareaPropiaFaseId = null;
@@ -3233,6 +3253,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     };
     item.subtareas.push(sub);
     await setDoc(doc(this.firestore, 'tareas_equipo', t.id), { fases: fresca.fases }, { merge: true });
+    await this.api.parchar('/api/tareas-equipo', t.id, { fases: fresca.fases }); // FERROCARRIL Etapa 7
     this.nuevaSubtareaTexto = '';
     this.agregandoSubtareaItemId = null;
   }
@@ -3266,6 +3287,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       siguiente.iniciadaEn = Date.now();
     }
     await setDoc(doc(this.firestore, 'tareas_equipo', t.id), { fases: fresca.fases }, { merge: true });
+    await this.api.parchar('/api/tareas-equipo', t.id, { fases: fresca.fases }); // FERROCARRIL Etapa 7
     this.mostrarToast(siguiente ? ` Fase cerrada. Inicia: ${siguiente.nombre}` : ' Última fase cerrada.');
   }
 
@@ -3287,17 +3309,17 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       confirmButtonColor: '#0F172A'
     });
     if (!r.isConfirmed) return;
-    await setDoc(doc(this.firestore, 'tareas_equipo', t.id),
-      { cerrado: true, cerradoEn: Date.now() }, { merge: true });
+    const cierreEquipo = { cerrado: true, cerradoEn: Date.now() };
+    await setDoc(doc(this.firestore, 'tareas_equipo', t.id), cierreEquipo, { merge: true });
+    await this.api.parchar('/api/tareas-equipo', t.id, cierreEquipo); // FERROCARRIL Etapa 7
     this.volverDeEquipoDetalle();
   }
 
   /** Lee el doc fresco antes de mutar (evita race conditions con el snapshot). */
   private async obtenerTareaEquipoFresca(id: string): Promise<TareaEquipo | null> {
-    const ref = doc(this.firestore, 'tareas_equipo', id);
-    const snap = await getDoc(ref);
-    if (!snap.exists()) return null;
-    return { ...(snap.data() as any), id } as TareaEquipo;
+    // FERROCARRIL Etapa 7: lee la tarea fresca desde Postgres (antes getDoc Firestore).
+    const resp = await this.api.get('/api/tareas-equipo?id=' + encodeURIComponent(String(id))).catch(() => null);
+    return resp?.item ? ({ ...resp.item, id } as TareaEquipo) : null;
   }
 
   /** Navegación vista detalle equipo. */
@@ -3402,11 +3424,9 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       const semana = obtenerSemanaISO(fecha);
       const nombreDia = obtenerNombreDia(fecha);
 
-      const descansosRef = collection(this.firestore, 'descansos_semanales');
-      const q = query(descansosRef, where('semanaISO', '==', semana));
-      const snap = await getDocs(q);
-      const docs: any[] = [];
-      snap.forEach(d => docs.push(d.data()));
+      // FERROCARRIL Etapa 6: descansos de la semana desde Postgres (antes getDocs).
+      const respDesc = await this.api.get('/api/descansos-semanales?semanaISO=' + encodeURIComponent(semana));
+      const docs: any[] = respDesc?.items || [];
 
       const conflictos: string[] = [];
       for (const nombre of empleadosNombres) {
@@ -3753,12 +3773,12 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       const nombreViejo = this.formNameRutinaOriginal || this.formNameRutina;
       const assignedViejo = this.formAssignedRutinaOriginal || this.formAssignedRutina[0];
 
-      const moldesRef = collection(this.firestore, 'moldes_checklists');
-      const moldesSnap = await getDocs(moldesRef);
-      for (const mDoc of moldesSnap.docs) {
-        const mData = mDoc.data() as any;
+      // FERROCARRIL Etapa 5: moldes desde Postgres + dual-write del borrado.
+      const moldesRespRen = await this.api.get('/api/moldes-checklists');
+      for (const mData of (moldesRespRen?.items || [])) {
         if (mData.name === nombreViejo && mData.assigned === assignedViejo) {
-          await deleteDoc(doc(this.firestore, 'moldes_checklists', mDoc.id));
+          await deleteDoc(doc(this.firestore, 'moldes_checklists', String(mData.id)));
+          await this.api.borrar('/api/moldes-checklists', mData.id);
         }
       }
       const chkRespRename = await this.api.get('/api/checklists');
@@ -3793,6 +3813,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
           items: JSON.parse(JSON.stringify(rutinasPorFrecuencia[llaveGrupo]))
         };
         setDoc(doc(this.firestore, 'moldes_checklists', moldeId), nuevoMolde);
+        this.api.guardar('/api/moldes-checklists', nuevoMolde); // FERROCARRIL Etapa 5
       });
     });
     this.mostrarToast(this.isEditMode ? ' 🔄 ¡Bloque actualizado!' : ' 🔄 ¡Bloque guardado!');

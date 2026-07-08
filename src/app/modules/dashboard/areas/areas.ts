@@ -4,7 +4,7 @@ import { ApiService } from '../../../shared/api.service';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, Router } from '@angular/router';
-import { Firestore, collection, onSnapshot, doc, setDoc, deleteDoc, getDocs, query, where } from '@angular/fire/firestore';
+import { Firestore, doc, setDoc } from '@angular/fire/firestore';
 import Swal from 'sweetalert2';
 
 import { SidebarComponent } from '../../../shared/sidebar/sidebar';
@@ -592,11 +592,9 @@ async guardarArea() {
       const semana = obtenerSemanaISO(fecha);
       const nombreDia = obtenerNombreDia(fecha);
 
-      const descansosRef = collection(this.firestore, 'descansos_semanales');
-      const q = query(descansosRef, where('semanaISO', '==', semana));
-      const snap = await getDocs(q);
-      const docs: any[] = [];
-      snap.forEach(d => docs.push(d.data()));
+      // FERROCARRIL: descansos_semanales desde Postgres (?semanaISO), resp.items
+      const resp = await this.api.get('/api/descansos-semanales?semanaISO=' + encodeURIComponent(semana));
+      const docs: any[] = (resp?.items) || [];
 
       const conflictos: string[] = [];
       for (const nombre of empleadosNombres) {
@@ -748,6 +746,8 @@ async guardarArea() {
         };
         // 🔥 MODO OFFLINE PARA RUTINAS 🔥
         setDoc(doc(this.firestore, 'moldes_checklists', moldeId), nuevoMolde);
+        // FERROCARRIL: dual-write del molde a Postgres
+        await this.api.guardar('/api/moldes-checklists', { ...nuevoMolde, id: String(moldeId) });
       }
     }
 

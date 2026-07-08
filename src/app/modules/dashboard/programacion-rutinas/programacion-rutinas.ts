@@ -3,8 +3,9 @@ import { UsuariosService } from '../../../shared/usuarios.service';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, Router } from '@angular/router';
-import { Firestore, collection, onSnapshot, doc } from '@angular/fire/firestore';
+import { Firestore, onSnapshot, doc } from '@angular/fire/firestore';
 
+import { ApiService } from '../../../shared/api.service';
 import { SidebarComponent } from '../../../shared/sidebar/sidebar';
 import { RutinasNavComponent } from '../../../shared/rutinas-nav/rutinas-nav';
 import { esAdminGlobal, sucursalesPermitidas } from '../../../shared/permisos.util';
@@ -125,6 +126,7 @@ export class ProgramacionRutinasComponent implements OnInit, OnDestroy {
   ];
 
   private firestore = inject(Firestore);
+  private api = inject(ApiService);
   private router = inject(Router);
   private usuariosSvc = inject(UsuariosService);
   private radarAsignaciones: (() => void) | null = null;
@@ -163,29 +165,49 @@ export class ProgramacionRutinasComponent implements OnInit, OnDestroy {
   }
 
   conectarConLaNube() {
-    const refAsig = collection(this.firestore, 'asignaciones_rutinas');
-    this.radarAsignaciones = onSnapshot(refAsig, snap => {
+    // FERROCARRIL: poll a Postgres (antes onSnapshot).
+    const recargarAsignaciones = async () => {
+      const resp = await this.api.get('/api/asignaciones-rutinas').catch((e: any) => { console.error('[programacion-rutinas] poll asignaciones', e); return null; });
+      if (!resp) return;
+      const items: any[] = resp.items || [];
       const arr: AsignacionRutina[] = [];
-      snap.forEach(d => {
-        const data = d.data() as any;
-        if (data.activa !== false) arr.push({ ...data, id: d.id });
+      items.forEach((data: any) => {
+        if (data.activa !== false) arr.push({ ...data, id: data.id });
       });
       this.asignaciones.set(arr);
-    });
+    };
+    recargarAsignaciones();
+    const idAsignaciones = setInterval(recargarAsignaciones, 20000);
+    this.radarAsignaciones = () => clearInterval(idAsignaciones);
 
     // Catálogo (para hora de la rutina).
-    this.radarCatalogo = onSnapshot(collection(this.firestore, 'catalogo_rutinas'), snap => {
+    // FERROCARRIL: poll a Postgres (antes onSnapshot).
+    const recargarCatalogo = async () => {
+      const resp = await this.api.get('/api/catalogo-rutinas').catch((e: any) => { console.error('[programacion-rutinas] poll catalogo', e); return null; });
+      if (!resp) return;
+      const items: any[] = resp.items || [];
       const arr: RutinaMaestra[] = [];
-      snap.forEach(d => arr.push({ ...(d.data() as any), id: d.id }));
+      items.forEach((data: any) => arr.push({ ...data, id: data.id }));
       this.catalogo.set(arr);
-    });
+    };
+    recargarCatalogo();
+    const idCatalogo = setInterval(recargarCatalogo, 20000);
+    this.radarCatalogo = () => clearInterval(idCatalogo);
 
     // Descansos y turnos (para colorear conflictos en la matriz).
-    this.radarDescansos = onSnapshot(collection(this.firestore, 'descansos_semanales'), snap => {
+    // FERROCARRIL: poll a Postgres (antes onSnapshot).
+    const recargarDescansos = async () => {
+      const resp = await this.api.get('/api/descansos-semanales').catch((e: any) => { console.error('[programacion-rutinas] poll descansos', e); return null; });
+      if (!resp) return;
+      const items: any[] = resp.items || [];
       const arr: any[] = [];
-      snap.forEach(d => arr.push({ ...(d.data() as any), id: d.id }));
+      items.forEach((data: any) => arr.push({ ...data, id: data.id }));
       this.descansos.set(arr);
-    });
+    };
+    recargarDescansos();
+    const idDescansos = setInterval(recargarDescansos, 20000);
+    this.radarDescansos = () => clearInterval(idDescansos);
+
     this.radarTurnos = onSnapshot(doc(this.firestore, 'config', 'turnos'), snap => {
       this.configTurnos.set(snap.exists() ? (snap.data() as ConfigTurnos) : null);
     });

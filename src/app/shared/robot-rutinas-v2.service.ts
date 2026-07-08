@@ -17,7 +17,7 @@
  */
 
 import { Injectable, inject } from '@angular/core';
-import { Firestore, doc, getDoc, setDoc, collection, getDocs, query, where } from '@angular/fire/firestore';
+import { Firestore, doc, getDoc, setDoc } from '@angular/fire/firestore';
 
 import { RutinaMaestra, TareaRutinaMaestra } from './rutinas.types';
 import { AsignacionRutina } from './asignaciones.types';
@@ -77,8 +77,9 @@ export class RobotRutinasV2Service {
     let descansosSemana: any[] = [];
     try {
       const sem = obtenerSemanaISO(fecha);
-      const snap = await getDocs(query(collection(this.firestore, 'descansos_semanales'), where('semanaISO', '==', sem)));
-      descansosSemana = snap.docs.map(d => d.data());
+      // FERROCARRIL: descansos_semanales desde Postgres (?semanaISO), resp.items
+      const resp = await this.api.get('/api/descansos-semanales?semanaISO=' + encodeURIComponent(sem));
+      descansosSemana = resp?.items || [];
     } catch { /* sin descansos => no se omite a nadie por descanso */ }
 
     for (const asig of asignaciones) {

@@ -2,7 +2,7 @@ import { Component, signal, OnInit, OnDestroy, inject, computed } from '@angular
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, Router } from '@angular/router';
-import { Firestore, collection, onSnapshot, doc, setDoc, deleteDoc } from '@angular/fire/firestore';
+import { Firestore, doc, setDoc, deleteDoc } from '@angular/fire/firestore';
 import Swal from 'sweetalert2';
 
 import { ApiService } from '../../../shared/api.service';
@@ -154,6 +154,8 @@ export class RutinasCatalogoComponent implements OnInit, OnDestroy {
     };
     try {
       await setDoc(doc(this.firestore, 'catalogo_rutinas', id), payload);
+      // FERROCARRIL Etapa 4: dual-write a Postgres
+      await this.api.guardar('/api/catalogo-rutinas', { ...payload, id: String(id) });
       this.recomendaciones.set(this.recomendaciones().filter(x => x.clave !== r.clave));
       // Encadena a Asignación: ahí se elige A QUIÉN y se configura quién suple si
       // alguien descansa (reasignar automatico + backups). Pre-llena sucursales.
@@ -247,6 +249,8 @@ export class RutinasCatalogoComponent implements OnInit, OnDestroy {
           ...r, id, activa: true, creadoPor: yo, creadoEn: ahora
         };
         await setDoc(doc(this.firestore, 'catalogo_rutinas', id), payload);
+        // FERROCARRIL Etapa 4: dual-write a Postgres
+        await this.api.guardar('/api/catalogo-rutinas', { ...payload, id: String(id) });
       }
       Swal.fire({
         toast: true, position: 'top-end', showConfirmButton: false, timer: 2800,
@@ -319,13 +323,20 @@ export class RutinasCatalogoComponent implements OnInit, OnDestroy {
   }
 
   conectarConLaNube() {
-    const ref = collection(this.firestore, 'catalogo_rutinas');
-    this.radarRutinas = onSnapshot(ref, snap => {
+    // FERROCARRIL Etapa 4: catalogo_rutinas desde Postgres (poll; antes onSnapshot).
+    const poll = async () => {
+      const resp = await this.api.get('/api/catalogo-rutinas')
+        .catch((e: any) => { console.error('[catalogo] poll', e); return null; });
+      if (!resp) return;
+      const items: any[] = resp.items || [];
       const arr: RutinaMaestra[] = [];
-      snap.forEach(d => arr.push({ ...(d.data() as any), id: d.id }));
+      items.forEach((data: any) => arr.push({ ...data, id: data.id }));
       arr.sort((a, b) => a.nombre.localeCompare(b.nombre));
       this.rutinas.set(arr);
-    });
+    };
+    poll();
+    const id = setInterval(poll, 20000);
+    this.radarRutinas = () => clearInterval(id);
   }
 
   // ============================================================================
@@ -551,6 +562,8 @@ export class RutinasCatalogoComponent implements OnInit, OnDestroy {
 
     try {
       await setDoc(doc(this.firestore, 'catalogo_rutinas', id), payload, { merge: true });
+      // FERROCARRIL Etapa 4: dual-write a Postgres
+      await this.api.parchar('/api/catalogo-rutinas', id, payload);
       this.cerrarWizard();
       Swal.fire({
         toast: true, position: 'top-end', showConfirmButton: false, timer: 2500,
@@ -584,6 +597,8 @@ export class RutinasCatalogoComponent implements OnInit, OnDestroy {
     };
     try {
       await setDoc(doc(this.firestore, 'catalogo_rutinas', id), copia);
+      // FERROCARRIL Etapa 4: dual-write a Postgres
+      await this.api.guardar('/api/catalogo-rutinas', { ...copia, id: String(id) });
       Swal.fire({
         toast: true, position: 'top-end', showConfirmButton: false, timer: 2500,
         icon: 'success', title: 'Rutina duplicada'
@@ -607,6 +622,8 @@ export class RutinasCatalogoComponent implements OnInit, OnDestroy {
     if (!confirma.isConfirmed) return;
     try {
       await setDoc(doc(this.firestore, 'catalogo_rutinas', r.id), { activa: false }, { merge: true });
+      // FERROCARRIL Etapa 4: dual-write a Postgres
+      await this.api.parchar('/api/catalogo-rutinas', r.id, { activa: false });
       await this.cancelarChecklistsDeRutina(r.id);
     } catch (e: any) {
       Swal.fire('Error', e.message || 'No se pudo archivar.', 'error');
@@ -617,6 +634,8 @@ export class RutinasCatalogoComponent implements OnInit, OnDestroy {
     event.stopPropagation();
     try {
       await setDoc(doc(this.firestore, 'catalogo_rutinas', r.id), { activa: true }, { merge: true });
+      // FERROCARRIL Etapa 4: dual-write a Postgres
+      await this.api.parchar('/api/catalogo-rutinas', r.id, { activa: true });
       Swal.fire({
         toast: true, position: 'top-end', showConfirmButton: false, timer: 2000,
         icon: 'success', title: 'Rutina restaurada'
@@ -640,6 +659,8 @@ export class RutinasCatalogoComponent implements OnInit, OnDestroy {
     if (!confirma.isConfirmed) return;
     try {
       await deleteDoc(doc(this.firestore, 'catalogo_rutinas', r.id));
+      // FERROCARRIL Etapa 4: dual-write a Postgres
+      await this.api.borrar('/api/catalogo-rutinas', r.id);
       await this.cancelarChecklistsDeRutina(r.id);
     } catch (e: any) {
       Swal.fire('Error', e.message || 'No se pudo eliminar.', 'error');

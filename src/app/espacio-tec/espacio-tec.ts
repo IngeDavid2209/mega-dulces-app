@@ -777,7 +777,9 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
             fechaAnual, actividades: [], activa: true,
             origenTec: true, createdBy: this.miNombre(), creadoEn: Date.now()
           };
-          return setDoc(doc(this.firestore, 'rutinas_personales', rid), r);
+          // FERROCARRIL: dual-write de la rutina personal a Postgres (mismo id).
+          return setDoc(doc(this.firestore, 'rutinas_personales', rid), r)
+            .then(() => this.api.guardar('/api/rutinas-personales', { ...r, id: String(rid) }));
         }));
       } else {
         await Promise.all(this.empleadosSel.map((nombre, i) => {

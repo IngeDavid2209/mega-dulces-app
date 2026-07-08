@@ -24,10 +24,11 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, Router } from '@angular/router';
 import {
-  Firestore, collection, onSnapshot, doc, setDoc, getDoc
+  Firestore, doc, setDoc
 } from '@angular/fire/firestore';
 import Swal from 'sweetalert2';
 
+import { ApiService } from '../../../shared/api.service'; // FERROCARRIL: lecturas/dual-write a Postgres
 import { SidebarComponent } from '../../../shared/sidebar/sidebar';
 import { esAdminGlobal } from '../../../shared/permisos.util';
 import {
@@ -69,8 +70,9 @@ export class MigracionRutinasComponent implements OnInit, OnDestroy {
   ultimaCorrida = signal<{ exitosos: number; saltados: number; errores: number } | null>(null);
 
   private firestore = inject(Firestore);
+  private api = inject(ApiService); // FERROCARRIL
   private router = inject(Router);
-  private radarMoldes: (() => void) | null = null;
+  private radarMoldes: any = null;
 
   ngOnInit() {
     const sesion = localStorage.getItem('md_sesion_actual');
@@ -84,17 +86,19 @@ export class MigracionRutinasComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy() {
-    if (this.radarMoldes) { this.radarMoldes(); this.radarMoldes = null; }
+    if (this.radarMoldes) { clearInterval(this.radarMoldes); this.radarMoldes = null; }
   }
 
   conectarConLaNube() {
-    const refMoldes = collection(this.firestore, 'moldes_checklists');
-    this.radarMoldes = onSnapshot(refMoldes, snap => {
-      const arr: MoldeLegacy[] = [];
-      snap.forEach(d => arr.push({ ...(d.data() as any), id: d.id }));
+    // FERROCARRIL: moldes_checklists desde Postgres. Sin onSnapshot: poll cada 20s.
+    const cargar = async () => {
+      const resp = await this.api.get('/api/moldes-checklists').catch(() => null);
+      const arr: MoldeLegacy[] = ((resp?.items) || []).map((data: any) => ({ ...data, id: data.id }));
       arr.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
       this.moldes.set(arr);
-    });
+    };
+    cargar();
+    this.radarMoldes = setInterval(cargar, 20000);
   }
 
   // ============================================================================
@@ -237,7 +241,13 @@ export class MigracionRutinasComponent implements OnInit, OnDestroy {
     // --- Verificar que no exista ya (por si hubo migración previa fallida) ---
     const refRut = doc(this.firestore, 'catalogo_rutinas', rutinaId);
     const refAsig = doc(this.firestore, 'asignaciones_rutinas', asignacionId);
-    const [snapRut, snapAsig] = await Promise.all([getDoc(refRut), getDoc(refAsig)]);
+    // FERROCARRIL: existencia leída desde Postgres (resp.item)
+    const [respRut, respAsig] = await Promise.all([
+      this.api.get('/api/catalogo-rutinas?id=' + encodeURIComponent(String(rutinaId))).catch(() => null),
+      this.api.get('/api/asignaciones-rutinas?id=' + encodeURIComponent(String(asignacionId))).catch(() => null)
+    ]);
+    const existeRut = !!respRut?.item;
+    const existeAsig = !!respAsig?.item;
 
     // --- 1. Construir RUTINA MAESTRA ---
     const tareas: TareaRutinaMaestra[] = (molde.items || []).map((it: any, idx: number) => ({
@@ -303,15 +313,23 @@ export class MigracionRutinasComponent implements OnInit, OnDestroy {
 
     // --- 3. Escribir TODO (solo si no existían ya) ---
     const escrituras: Promise<any>[] = [];
-    if (!snapRut.exists()) escrituras.push(setDoc(refRut, rutinaMaestra));
-    if (!snapAsig.exists()) escrituras.push(setDoc(refAsig, asignacion));
+    if (!existeRut) escrituras.push(setDoc(refRut, rutinaMaestra));
+    if (!existeAsig) escrituras.push(setDoc(refAsig, asignacion));
     await Promise.all(escrituras);
+    // FERROCARRIL: dual-write de la creación a Postgres
+    if (!existeRut) await this.api.guardar('/api/catalogo-rutinas', { ...rutinaMaestra });
+    if (!existeAsig) await this.api.guardar('/api/asignaciones-rutinas', { ...asignacion });
 
     // --- 4. Marcar el molde como migrado + pausado ---
     await setDoc(doc(this.firestore, 'moldes_checklists', molde.id), {
       _migradoA: { rutinaId, asignacionId, migradoEn: ahora },
       _pausadoPorMigracion: true
     }, { merge: true });
+    // FERROCARRIL: dual-write del merge del molde a Postgres
+    await this.api.parchar('/api/moldes-checklists', molde.id, {
+      _migradoA: { rutinaId, asignacionId, migradoEn: ahora },
+      _pausadoPorMigracion: true
+    });
 
     return true;
   }
@@ -349,11 +367,19 @@ export class MigracionRutinasComponent implements OnInit, OnDestroy {
         deleteDoc(doc(this.firestore, 'catalogo_rutinas', rutinaId)),
         deleteDoc(doc(this.firestore, 'asignaciones_rutinas', asignacionId))
       ]);
+      // FERROCARRIL: borrado también en Postgres
+      await this.api.borrar('/api/catalogo-rutinas', rutinaId);
+      await this.api.borrar('/api/asignaciones-rutinas', asignacionId);
       // Limpiar marcas del molde
       await setDoc(doc(this.firestore, 'moldes_checklists', molde.id), {
         _migradoA: null,
         _pausadoPorMigracion: false
       }, { merge: true });
+      // FERROCARRIL: dual-write del merge (limpieza) a Postgres
+      await this.api.parchar('/api/moldes-checklists', molde.id, {
+        _migradoA: null,
+        _pausadoPorMigracion: false
+      });
       Swal.fire('Revertido ✅', 'El molde volvió a su estado original.', 'success');
     } catch (e: any) {
       Swal.fire('Error', e?.message || 'No se pudo revertir.', 'error');

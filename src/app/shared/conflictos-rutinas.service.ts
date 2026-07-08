@@ -1,6 +1,7 @@
 import { Injectable, inject, signal, computed } from '@angular/core';
-import { Firestore, collection, onSnapshot, doc } from '@angular/fire/firestore';
+import { Firestore, onSnapshot, doc } from '@angular/fire/firestore';
 
+import { ApiService } from './api.service';
 import { UsuariosService } from './usuarios.service';
 import { analizarConflictos } from './conflictos-rutinas.util';
 import { rangoDias } from './programacion.util';
@@ -16,6 +17,7 @@ import { RutinaMaestra } from './rutinas.types';
 @Injectable({ providedIn: 'root' })
 export class ConflictosRutinasService {
   private firestore = inject(Firestore);
+  private api = inject(ApiService);
   private usuariosSvc = inject(UsuariosService);
   private refs = 0;
   private unsub: (() => void)[] = [];
@@ -38,21 +40,45 @@ export class ConflictosRutinasService {
     this.refs++;
     if (this.refs > 1) return;
     this.usuariosSvc.iniciar();
-    this.unsub.push(onSnapshot(collection(this.firestore, 'asignaciones_rutinas'), s => {
+    // FERROCARRIL: poll a Postgres (antes onSnapshot).
+    const recargarAsignaciones = async () => {
+      const resp = await this.api.get('/api/asignaciones-rutinas').catch((e: any) => { console.error('[conflictos-rutinas.service] poll asignaciones', e); return null; });
+      if (!resp) return;
+      const items: any[] = resp.items || [];
       const a: AsignacionRutina[] = [];
-      s.forEach(d => { const x = d.data() as any; if (x.activa !== false) a.push({ ...x, id: d.id }); });
+      items.forEach((x: any) => { if (x.activa !== false) a.push({ ...x, id: x.id }); });
       this.asignaciones.set(a);
-    }));
-    this.unsub.push(onSnapshot(collection(this.firestore, 'catalogo_rutinas'), s => {
+    };
+    recargarAsignaciones();
+    const idAsignaciones = setInterval(recargarAsignaciones, 20000);
+    this.unsub.push(() => clearInterval(idAsignaciones));
+
+    // FERROCARRIL: poll a Postgres (antes onSnapshot).
+    const recargarCatalogo = async () => {
+      const resp = await this.api.get('/api/catalogo-rutinas').catch((e: any) => { console.error('[conflictos-rutinas.service] poll catalogo', e); return null; });
+      if (!resp) return;
+      const items: any[] = resp.items || [];
       const a: RutinaMaestra[] = [];
-      s.forEach(d => a.push({ ...(d.data() as any), id: d.id }));
+      items.forEach((x: any) => a.push({ ...x, id: x.id }));
       this.catalogo.set(a);
-    }));
-    this.unsub.push(onSnapshot(collection(this.firestore, 'descansos_semanales'), s => {
+    };
+    recargarCatalogo();
+    const idCatalogo = setInterval(recargarCatalogo, 20000);
+    this.unsub.push(() => clearInterval(idCatalogo));
+
+    // FERROCARRIL: poll a Postgres (antes onSnapshot).
+    const recargarDescansos = async () => {
+      const resp = await this.api.get('/api/descansos-semanales').catch((e: any) => { console.error('[conflictos-rutinas.service] poll descansos', e); return null; });
+      if (!resp) return;
+      const items: any[] = resp.items || [];
       const a: any[] = [];
-      s.forEach(d => a.push({ ...(d.data() as any), id: d.id }));
+      items.forEach((x: any) => a.push({ ...x, id: x.id }));
       this.descansos.set(a);
-    }));
+    };
+    recargarDescansos();
+    const idDescansos = setInterval(recargarDescansos, 20000);
+    this.unsub.push(() => clearInterval(idDescansos));
+
     this.unsub.push(onSnapshot(doc(this.firestore, 'config', 'turnos'), s => {
       this.configTurnos.set(s.exists() ? (s.data() as ConfigTurnos) : null);
     }));

@@ -50,4 +50,24 @@ export class ApiService {
     try { await this.del('/api/checklists?id=' + encodeURIComponent(String(id))); }
     catch (e) { console.error('[checklists] sync PG (borrar)', e); }
   }
+
+  // ── Helpers genéricos de dual-write (Etapas 4-8 FERROCARRIL) ──────────────
+  // Para catalogo-rutinas, asignaciones-rutinas, moldes-checklists,
+  // descansos-semanales, tareas-equipo y rutinas-personales. Best-effort:
+  // si Postgres falla no rompen el flujo (Firestore ya quedó escrito).
+  /** Upsert completo (como setDoc). `obj` debe incluir `id`. */
+  async guardar(endpoint: string, obj: any): Promise<void> {
+    try { await this.post(endpoint, obj); }
+    catch (e) { console.error('[sync PG] guardar', endpoint, e); }
+  }
+  /** Edición parcial/merge (como updateDoc / setDoc merge). */
+  async parchar(endpoint: string, id: any, campos: any): Promise<void> {
+    try { await this.patch(endpoint, { id: String(id), ...campos }); }
+    catch (e) { console.error('[sync PG] parchar', endpoint, e); }
+  }
+  /** Borrado físico (como deleteDoc). */
+  async borrar(endpoint: string, id: any): Promise<void> {
+    try { await this.del(endpoint + '?id=' + encodeURIComponent(String(id))); }
+    catch (e) { console.error('[sync PG] borrar', endpoint, e); }
+  }
 }

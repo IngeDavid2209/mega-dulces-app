@@ -49,6 +49,13 @@ app.all('/api/usuarios', require('./api/usuarios'));
 app.all('/api/usuarios-agenda', require('./api/usuarios-agenda'));
 // Etapa 3 FERROCARRIL: checklists (el mayor lector). Frontend con dual-write.
 app.all('/api/checklists', require('./api/checklists'));
+// Etapas 4-8 FERROCARRIL: resto de colecciones (CRUD generado por api/_crud.js).
+app.all('/api/catalogo-rutinas', require('./api/catalogo-rutinas'));
+app.all('/api/asignaciones-rutinas', require('./api/asignaciones-rutinas'));
+app.all('/api/moldes-checklists', require('./api/moldes-checklists'));
+app.all('/api/descansos-semanales', require('./api/descansos-semanales'));
+app.all('/api/tareas-equipo', require('./api/tareas-equipo'));
+app.all('/api/rutinas-personales', require('./api/rutinas-personales'));
 app.all('/api/login-usuario', require('./api/login-usuario')); // público (resuelve usuario->correo en el login)
 app.all('/api/tec-notas', require('./api/tec-notas'));
 app.all('/api/areas', require('./api/areas'));

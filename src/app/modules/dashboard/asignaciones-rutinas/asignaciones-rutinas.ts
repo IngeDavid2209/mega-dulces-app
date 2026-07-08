@@ -3,7 +3,7 @@ import { UsuariosService } from '../../../shared/usuarios.service';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, Router, ActivatedRoute } from '@angular/router';
-import { Firestore, collection, onSnapshot, doc, setDoc, deleteDoc } from '@angular/fire/firestore';
+import { Firestore, onSnapshot, doc, setDoc, deleteDoc } from '@angular/fire/firestore';
 import Swal from 'sweetalert2';
 
 import { ApiService } from '../../../shared/api.service';
@@ -132,6 +132,8 @@ export class AsignacionesRutinasComponent implements OnInit, OnDestroy {
     try {
       await setDoc(doc(this.firestore, 'asignaciones_rutinas', asig.id),
         { excepciones: [...previas, nueva] }, { merge: true });
+      // FERROCARRIL Etapa 4: dual-write a Postgres
+      await this.api.parchar('/api/asignaciones-rutinas', asig.id, { excepciones: [...previas, nueva] });
       Swal.fire({
         toast: true, position: 'top-end', showConfirmButton: false, timer: 2400, icon: 'success',
         title: reemplazo ? `Reasignado a ${reemplazo}` : 'Conflicto omitido'
@@ -243,33 +245,53 @@ export class AsignacionesRutinasComponent implements OnInit, OnDestroy {
 
   conectarConLaNube() {
     // Catálogo (solo activas)
-    const refCat = collection(this.firestore, 'catalogo_rutinas');
-    this.radarCatalogo = onSnapshot(refCat, snap => {
+    // FERROCARRIL Etapa 4: catalogo_rutinas desde Postgres (poll; antes onSnapshot).
+    const pollCatalogo = async () => {
+      const resp = await this.api.get('/api/catalogo-rutinas')
+        .catch((e: any) => { console.error('[catalogo] poll', e); return null; });
+      if (!resp) return;
+      const items: any[] = resp.items || [];
       const arr: RutinaMaestra[] = [];
-      snap.forEach(d => {
-        const data = d.data() as any;
-        if (data.activa !== false) arr.push({ ...data, id: d.id });
+      items.forEach((data: any) => {
+        if (data.activa !== false) arr.push({ ...data, id: data.id });
       });
       arr.sort((a, b) => a.nombre.localeCompare(b.nombre));
       this.catalogo.set(arr);
-    });
+    };
+    pollCatalogo();
+    const idCat = setInterval(pollCatalogo, 20000);
+    this.radarCatalogo = () => clearInterval(idCat);
 
     // Asignaciones
-    const refAsig = collection(this.firestore, 'asignaciones_rutinas');
-    this.radarAsignaciones = onSnapshot(refAsig, snap => {
+    // FERROCARRIL Etapa 4: asignaciones_rutinas desde Postgres (poll; antes onSnapshot).
+    const pollAsignaciones = async () => {
+      const resp = await this.api.get('/api/asignaciones-rutinas')
+        .catch((e: any) => { console.error('[asignaciones] poll', e); return null; });
+      if (!resp) return;
+      const items: any[] = resp.items || [];
       const arr: AsignacionRutina[] = [];
-      snap.forEach(d => arr.push({ ...(d.data() as any), id: d.id }));
+      items.forEach((data: any) => arr.push({ ...data, id: data.id }));
       arr.sort((a, b) => (b.creadoEn || 0) - (a.creadoEn || 0));
       this.asignaciones.set(arr);
-    });
+    };
+    pollAsignaciones();
+    const idAsig = setInterval(pollAsignaciones, 20000);
+    this.radarAsignaciones = () => clearInterval(idAsig);
 
     // Días de descanso (para detectar conflictos).
-    const refDesc = collection(this.firestore, 'descansos_semanales');
-    this.radarDescansos = onSnapshot(refDesc, snap => {
+    // FERROCARRIL Etapa 4: descansos_semanales desde Postgres (poll; antes onSnapshot).
+    const pollDescansos = async () => {
+      const resp = await this.api.get('/api/descansos-semanales')
+        .catch((e: any) => { console.error('[descansos] poll', e); return null; });
+      if (!resp) return;
+      const items: any[] = resp.items || [];
       const arr: any[] = [];
-      snap.forEach(d => arr.push({ ...(d.data() as any), id: d.id }));
+      items.forEach((data: any) => arr.push({ ...data, id: data.id }));
       this.descansos.set(arr);
-    });
+    };
+    pollDescansos();
+    const idDesc = setInterval(pollDescansos, 20000);
+    this.radarDescansos = () => clearInterval(idDesc);
 
     // Config de turnos de Canindo (para detectar fuera de turno).
     this.radarTurnos = onSnapshot(doc(this.firestore, 'config', 'turnos'), snap => {
@@ -610,6 +632,8 @@ export class AsignacionesRutinasComponent implements OnInit, OnDestroy {
 
     try {
       await setDoc(doc(this.firestore, 'asignaciones_rutinas', id), payload, { merge: true });
+      // FERROCARRIL Etapa 4: dual-write a Postgres
+      await this.api.parchar('/api/asignaciones-rutinas', id, payload);
       this.cerrarWizard();
       Swal.fire({
         toast: true, position: 'top-end', showConfirmButton: false, timer: 2500,
@@ -644,6 +668,8 @@ export class AsignacionesRutinasComponent implements OnInit, OnDestroy {
     if (!confirma.isConfirmed) return;
     try {
       await setDoc(doc(this.firestore, 'asignaciones_rutinas', a.id), { activa: !a.activa }, { merge: true });
+      // FERROCARRIL Etapa 4: dual-write a Postgres
+      await this.api.parchar('/api/asignaciones-rutinas', a.id, { activa: !a.activa });
     } catch (e: any) {
       Swal.fire('Error', e.message || 'No se pudo cambiar el estado.', 'error');
     }
@@ -663,6 +689,8 @@ export class AsignacionesRutinasComponent implements OnInit, OnDestroy {
     if (!confirma.isConfirmed) return;
     try {
       await deleteDoc(doc(this.firestore, 'asignaciones_rutinas', a.id));
+      // FERROCARRIL Etapa 4: dual-write a Postgres
+      await this.api.borrar('/api/asignaciones-rutinas', a.id);
       // 🗑️ Cancelar las tareas que esta asignación ya había generado y siguen
       // pendientes, para que no queden estancadas contando como sin hacer.
       await this.cancelarChecklistsPendientes(a.id);

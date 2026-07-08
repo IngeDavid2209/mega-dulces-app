@@ -2,7 +2,7 @@ import { Component, signal, OnInit, OnDestroy, inject, HostListener } from '@ang
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, ActivatedRoute } from '@angular/router';
-import { Firestore, collection, getDocs, getDoc, doc, deleteDoc, setDoc } from '@angular/fire/firestore';
+import { Firestore, doc, deleteDoc, setDoc } from '@angular/fire/firestore';
 import { sucursalesPermitidas } from '../shared/permisos.util';
 import { nivelDeCargo } from '../shared/nivel-jerarquico.util';
 import { esItemHecho } from '../shared/item-completado.util';
@@ -537,13 +537,14 @@ export class ReportesComponent implements OnInit, OnDestroy {
       }
 
       // 2) Borrado físico del molde V1.
-      const moldesRef = collection(this.firestore, 'moldes_checklists');
-      const moldesSnap = await getDocs(moldesRef);
+      // FERROCARRIL: lista de moldes desde Postgres (resp.items) + dual-write del borrado.
+      const moldesResp = await this.api.get('/api/moldes-checklists');
+      const moldesItems: any[] = moldesResp?.items || [];
       let moldesBorrados = 0;
-      for (const mDoc of moldesSnap.docs) {
-        const mData = mDoc.data() as any;
+      for (const mData of moldesItems) {
         if (targetName.includes(mData.name) && mData.assigned === targetAssigned) {
-          await deleteDoc(doc(this.firestore, 'moldes_checklists', mDoc.id));
+          await deleteDoc(doc(this.firestore, 'moldes_checklists', mData.id));
+          await this.api.borrar('/api/moldes-checklists', mData.id);
           moldesBorrados++;
         }
       }
@@ -552,18 +553,23 @@ export class ReportesComponent implements OnInit, OnDestroy {
       let asignacionTocada = false;
       if (c._v2 && c._asignacionId) {
         const asigRef = doc(this.firestore, 'asignaciones_rutinas', c._asignacionId);
-        const asigSnap = await getDoc(asigRef);
-        if (asigSnap.exists()) {
-          const a = asigSnap.data() as any;
+        // FERROCARRIL: existencia/lectura desde Postgres (resp.item)
+        const asigResp = await this.api.get('/api/asignaciones-rutinas?id=' + encodeURIComponent(String(c._asignacionId)));
+        if (asigResp?.item) {
+          const a = asigResp.item as any;
           if (a.modoAsignacion === 'porPersonas' && Array.isArray(a.empleadosNombres)) {
             const sinEste = a.empleadosNombres.filter((n: string) => n !== targetAssigned);
             if (sinEste.length > 0) {
               await setDoc(asigRef, { empleadosNombres: sinEste }, { merge: true });
+              // FERROCARRIL: dual-write del merge a Postgres
+              await this.api.parchar('/api/asignaciones-rutinas', c._asignacionId, { empleadosNombres: sinEste });
             } else {
               await setDoc(asigRef, { activa: false, empleadosNombres: [] }, { merge: true });
+              await this.api.parchar('/api/asignaciones-rutinas', c._asignacionId, { activa: false, empleadosNombres: [] });
             }
           } else {
             await setDoc(asigRef, { activa: false }, { merge: true });
+            await this.api.parchar('/api/asignaciones-rutinas', c._asignacionId, { activa: false });
           }
           asignacionTocada = true;
         }

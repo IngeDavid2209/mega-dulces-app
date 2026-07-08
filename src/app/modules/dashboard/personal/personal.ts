@@ -4,7 +4,7 @@ import { ApiService } from '../../../shared/api.service';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, Router } from '@angular/router';
-import { Firestore, collection, doc, setDoc, deleteDoc, onSnapshot, getDocs } from '@angular/fire/firestore';
+import { Firestore, doc, setDoc, deleteDoc } from '@angular/fire/firestore';
 import {
   getAuth,
   verifyBeforeUpdateEmail,
@@ -1205,16 +1205,19 @@ export class PersonalComponent implements OnInit, OnDestroy {
   private async limpiarAsignacionesDe(nombre: string): Promise<number> {
     if (!nombre) return 0;
     try {
-      const snap = await getDocs(collection(this.firestore, 'asignaciones_rutinas'));
+      // FERROCARRIL: asignaciones_rutinas desde Postgres (resp.items)
+      const resp = await this.api.get('/api/asignaciones-rutinas');
+      const items: any[] = resp?.items || [];
       let modificadas = 0;
-      for (const d of snap.docs) {
-        const a = d.data() as any;
+      for (const a of items) {
         if (a.modoAsignacion !== 'porPersonas' || !Array.isArray(a.empleadosNombres)) continue;
         const restantes = a.empleadosNombres.filter((n: string) => !mismoEmpleadoNombre(n, nombre));
         if (restantes.length === a.empleadosNombres.length) continue; // no estaba
         const cambios: any = { empleadosNombres: restantes };
         if (restantes.length === 0) cambios.activa = false;
-        await setDoc(doc(this.firestore, 'asignaciones_rutinas', d.id), cambios, { merge: true });
+        await setDoc(doc(this.firestore, 'asignaciones_rutinas', a.id), cambios, { merge: true });
+        // FERROCARRIL: dual-write del merge a Postgres
+        await this.api.parchar('/api/asignaciones-rutinas', a.id, cambios);
         modificadas++;
       }
       return modificadas;

@@ -2,7 +2,7 @@ import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, Router } from '@angular/router';
-import { Firestore, collection, addDoc, doc, updateDoc, deleteDoc, getDocs, getDoc, setDoc } from '@angular/fire/firestore';
+import { Firestore, collection, addDoc, doc, updateDoc, deleteDoc, getDoc, setDoc } from '@angular/fire/firestore';
 import { Auth } from '@angular/fire/auth';
 
 import { SidebarComponent } from '../shared/sidebar/sidebar';
@@ -192,9 +192,9 @@ export class AgendaComponent implements OnInit, OnDestroy {
       filas.forEach((c: any) => { if (c.store && visSet.has(normalizarNombre(c.store))) checklists.push(c); });
 
       // Catálogo (para excluir lo ya configurado).
-      const catSnap = await getDocs(collection(this.firestore, 'catalogo_rutinas'));
-      const catalogo: any[] = [];
-      catSnap.forEach(d => catalogo.push({ ...(d.data() as any), id: d.id }));
+      // FERROCARRIL: catalogo_rutinas desde Postgres (resp.items)
+      const catResp = await this.api.get('/api/catalogo-rutinas');
+      const catalogo: any[] = (catResp?.items || []).map((data: any) => ({ ...data, id: data.id }));
 
       this.recomendaciones = detectarRecomendaciones({
         checklists, catalogo, descartadas: this.recoDescartadas, diasVentana: 30
@@ -236,13 +236,16 @@ export class AgendaComponent implements OnInit, OnDestroy {
     const ahora = Date.now();
     const id = 'rutina_' + ahora;
     try {
-      await setDoc(doc(this.firestore, 'catalogo_rutinas', id), {
+      const nuevaRutina = {
         id, nombre: r.nombre, tipo: 'operacion', descripcion: 'Sugerida por patrón de uso.',
         frecuencia: r.frecuencia, horaInicio: '', horaLimite: '',
         responsableSugerido: 'Encargado', nivelCritico: 'importante',
         tareas: [{ id: 'ti_' + ahora, text: r.nombre, requiresPhoto: false, requiresAntesDespues: false, requiresVariasFotos: false, permiteGaleria: false, permiteDocumentos: false }],
         activa: true, creadoPor: yo, creadoEn: ahora
-      });
+      };
+      await setDoc(doc(this.firestore, 'catalogo_rutinas', id), nuevaRutina);
+      // FERROCARRIL: dual-write de la creación a Postgres
+      await this.api.guardar('/api/catalogo-rutinas', { ...nuevaRutina, id: String(id) });
       this.recomendaciones = this.recomendaciones.filter(x => x.clave !== r.clave);
     } catch (e) { console.error('[agenda reco] crear rutina', e); }
   }

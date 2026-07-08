@@ -1,7 +1,7 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterOutlet, Router, NavigationEnd, NavigationError } from '@angular/router';
-import { Firestore, doc, updateDoc, getDoc } from '@angular/fire/firestore';
+import { Firestore, doc, updateDoc } from '@angular/fire/firestore';
 import { Storage, ref, uploadString, getDownloadURL } from '@angular/fire/storage';
 import { SwUpdate, VersionReadyEvent } from '@angular/service-worker';
 import { filter } from 'rxjs/operators';
@@ -293,10 +293,11 @@ export class AppComponent implements OnInit {
 
           // 🛠️ CIRUGÍA LÁSER: Actualización de arreglos en Firestore
           const docRef = doc(this.firestore, 'checklists', item.idTarea);
-          const docSnap = await getDoc(docRef); // Descargamos el documento completo
+          // FERROCARRIL Etapa 3: leemos el checklist desde Postgres
+          const resp = await this.api.get('/api/checklists?id=' + encodeURIComponent(String(item.idTarea)));
+          const checklistData = resp?.checklist;
 
-          if (docSnap.exists()) {
-            const checklistData = docSnap.data();
+          if (checklistData) {
             const itemsArray = checklistData['items'] || [];
 
             // Modificamos el ítem específico dentro del arreglo
@@ -306,6 +307,8 @@ export class AppComponent implements OnInit {
 
               // Subimos el arreglo completo ya modificado
               await updateDoc(docRef, { items: itemsArray });
+              // FERROCARRIL Etapa 3: dual-write del arreglo items a Postgres
+              await this.api.patchChecklist(String(item.idTarea), { items: itemsArray });
               console.log(`📸 Foto sincronizada con éxito: Tarea ${item.idTarea}`);
             }
           }

@@ -662,6 +662,8 @@ async guardarArea() {
       };
       // 🔥 MODO OFFLINE PARA TAREAS 🔥
       setDoc(doc(this.firestore, 'checklists', uniqueId.toString()), checklistTareas);
+      // FERROCARRIL Etapa 3: dual-write del checklist a Postgres
+      await this.api.guardarChecklist({ ...checklistTareas, id: uniqueId.toString() });
     }
 
     this.cerrarModalTarea();

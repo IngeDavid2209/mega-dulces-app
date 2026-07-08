@@ -25,6 +25,7 @@ import { asignacionAplicaEnFecha, nombreDiaSemana } from './programacion.util';
 import { normalizarNombre, existeEmpleadoEnUsuarios } from './permisos.util';
 import { ConfigTurnos, fechaISO, rutinaPermitidaEnTurno } from './turnos.util';
 import { esDiaDescansoEnFecha, obtenerSemanaISO } from './descansos.util';
+import { ApiService } from './api.service'; // FERROCARRIL Etapa 3
 
 /** Hooks opcionales que recibe el robot (lógica que vive en el componente). */
 export interface RobotV2Hooks {
@@ -35,6 +36,7 @@ export interface RobotV2Hooks {
 @Injectable({ providedIn: 'root' })
 export class RobotRutinasV2Service {
   private firestore = inject(Firestore);
+  private api = inject(ApiService); // FERROCARRIL Etapa 3: checklists en Postgres
 
   /**
    * Genera los checklists que corresponden a la fecha dada (por defecto: hoy).
@@ -146,8 +148,10 @@ export class RobotRutinasV2Service {
           const checklistId = this.idemKey(asig.id, periodo, sucursal, nombreFinal);
 
           const ref = doc(this.firestore, 'checklists', checklistId);
-          const snap = await getDoc(ref);
-          if (snap.exists()) continue;
+          // FERROCARRIL Etapa 3: idempotencia leyendo el checklist desde Postgres
+          const existe = await this.api.get('/api/checklists?id=' + encodeURIComponent(String(checklistId)))
+            .then((r: any) => !!r?.checklist).catch(() => false);
+          if (existe) continue;
 
           const payload = this.armarChecklist({
             checklistId, asig, rutina, sucursal, destinatario: nombreFinal,
@@ -156,6 +160,8 @@ export class RobotRutinasV2Service {
           });
 
           await setDoc(ref, payload);
+          // FERROCARRIL Etapa 3: dual-write del checklist del día a Postgres
+          await this.api.guardarChecklist(payload);
           creados++;
         }
       }

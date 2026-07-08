@@ -2,11 +2,10 @@ import { Component, signal, computed, OnInit, OnDestroy, inject } from '@angular
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
-import { Firestore, collection, onSnapshot, query, where } from '@angular/fire/firestore';
-
 import { SidebarComponent } from '../../../shared/sidebar/sidebar';
 import { esAdminGlobal, sucursalesPermitidas } from '../../../shared/permisos.util';
 import { esItemHecho } from '../../../shared/item-completado.util';
+import { ApiService } from '../../../shared/api.service';
 
 interface DiaStat {
   fechaISO: string;     // YYYY-MM-DD
@@ -75,7 +74,7 @@ export class RankingSucursalesComponent implements OnInit, OnDestroy {
   /** Mínimo de tareas asignadas para competir en el ranking (expuesto al HTML). */
   readonly minTareasRanking = MIN_TAREAS_RANKING;
 
-  private firestore = inject(Firestore);
+  private api = inject(ApiService);
   private destructores: (() => void)[] = [];
 
   // ============================================================================
@@ -140,19 +139,23 @@ export class RankingSucursalesComponent implements OnInit, OnDestroy {
     const dias = this.diasDeLaSemana();
     const desdeISO = this.toYmd(dias[0]);
     const hastaISO = this.toYmd(dias[6]);
-    const refColl = collection(this.firestore, 'checklists');
-    const q = query(refColl, where('date', '>=', desdeISO), where('date', '<=', hastaISO));
-    const unsub = onSnapshot(q, (snap) => {
+    // FERROCARRIL Etapa 3: antes onSnapshot(checklists); ahora poll a Postgres.
+    const recargar = async () => {
+      const resp = await this.api.get('/api/checklists?desde=' + encodeURIComponent(desdeISO) + '&hasta=' + encodeURIComponent(hastaISO))
+        .catch((e: any) => { console.error('[ranking-sucursales] poll PG', e); return null; });
+      if (!resp) { this.cargando.set(false); return; }
+      const filas: any[] = resp.checklists || [];
       const arr: any[] = [];
-      snap.forEach(d => {
-        const data = d.data() as any;
-        if (data.eliminado === true || data.archivado === true) return;
-        arr.push({ ...data, id: d.id });
+      filas.forEach((c: any) => {
+        if (c.eliminado === true || c.archivado === true) return;
+        arr.push({ ...c });
       });
       this.checklistsSemana.set(arr);
       this.cargando.set(false);
-    });
-    this.destructores.push(unsub);
+    };
+    recargar();
+    const idPoll = setInterval(recargar, 20000);
+    this.destructores.push(() => clearInterval(idPoll));
   }
 
   // ============================================================================

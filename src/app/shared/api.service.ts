@@ -30,4 +30,24 @@ export class ApiService {
   post(url: string, body?: any) { return this.req('POST', url, body); }
   patch(url: string, body?: any) { return this.req('PATCH', url, body); }
   del(url: string) { return this.req('DELETE', url); }
+
+  // ── Helpers de dual-write para `checklists` (Etapa 3 FERROCARRIL) ──────────
+  // Best-effort: si Postgres falla NO rompen el flujo (Firestore ya quedó
+  // escrito y el dato se recupera en el recopiado). Centralizan el endpoint y
+  // el manejo de error para no repetirlo en los ~20 sitios de escritura.
+  /** Upsert completo de un checklist (como setDoc). `obj` debe incluir `id`. */
+  async guardarChecklist(obj: any): Promise<void> {
+    try { await this.post('/api/checklists', obj); }
+    catch (e) { console.error('[checklists] sync PG (guardar)', e); }
+  }
+  /** Edición parcial/merge de un checklist (como updateDoc / setDoc merge). */
+  async patchChecklist(id: any, campos: any): Promise<void> {
+    try { await this.patch('/api/checklists', { id: String(id), ...campos }); }
+    catch (e) { console.error('[checklists] sync PG (patch)', e); }
+  }
+  /** Borrado FÍSICO de un checklist (para el deleteDoc de reportes). */
+  async borrarChecklist(id: any): Promise<void> {
+    try { await this.del('/api/checklists?id=' + encodeURIComponent(String(id))); }
+    catch (e) { console.error('[checklists] sync PG (borrar)', e); }
+  }
 }

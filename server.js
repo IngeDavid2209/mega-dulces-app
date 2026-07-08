@@ -47,6 +47,8 @@ app.all('/api/db-health', require('./api/db-health'));
 // Etapa 1 FERROCARRIL: usuarios + agenda (endpoints listos; el frontend aún usa Firestore hasta el cutover).
 app.all('/api/usuarios', require('./api/usuarios'));
 app.all('/api/usuarios-agenda', require('./api/usuarios-agenda'));
+// Etapa 3 FERROCARRIL: checklists (el mayor lector). Frontend con dual-write.
+app.all('/api/checklists', require('./api/checklists'));
 app.all('/api/login-usuario', require('./api/login-usuario')); // público (resuelve usuario->correo en el login)
 app.all('/api/tec-notas', require('./api/tec-notas'));
 app.all('/api/areas', require('./api/areas'));

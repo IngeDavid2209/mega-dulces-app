@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, Router } from '@angular/router';
 import { DragDropModule, CdkDragDrop, moveItemInArray, transferArrayItem } from '@angular/cdk/drag-drop';
-import { Firestore, collection, query, where, onSnapshot, addDoc, doc, setDoc, updateDoc, deleteDoc } from '@angular/fire/firestore';
+import { Firestore, addDoc, doc, setDoc, updateDoc, deleteDoc } from '@angular/fire/firestore';
 import Swal from 'sweetalert2';
 
 import { SidebarComponent } from '../shared/sidebar/sidebar';
@@ -175,10 +175,16 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
     this.usuariosPoll = setInterval(() => this.cargarUsuariosTec(), 30000);
 
     // Tareas asignadas por el TEC a personal (para el resumen).
-    const chkRef = collection(this.firestore, 'checklists');
-    this.radarAsignadas = onSnapshot(query(chkRef, where('origenTec', '==', true)), snap => {
-      this.tecAsignadas = snap.docs.map(d => ({ id: d.id, ...(d.data() as any) }));
-    }, err => console.error('[tec] asignadas', err));
+    // FERROCARRIL Etapa 3: tareas origenTec desde Postgres (poll; antes onSnapshot).
+    const recargarAsignadas = async () => {
+      const resp = await this.api.get('/api/checklists?origenTec=true')
+        .catch((e: any) => { console.error('[tec] asignadas', e); return null; });
+      if (!resp) return;
+      this.tecAsignadas = resp.checklists || [];
+    };
+    recargarAsignadas();
+    const idAsignadas = setInterval(recargarAsignadas, 20000);
+    this.radarAsignadas = () => clearInterval(idAsignadas);
   }
 
   /** FERROCARRIL: personal de la empresa desde Postgres (reemplaza el onSnapshot). */
@@ -796,7 +802,9 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
               tipo: 'manual', horaInicio: this.tareaAsignarHoraInicio || null, horaLimite: this.tareaAsignarHoraFin || null, frecuencia: null
             }]
           };
-          return setDoc(doc(this.firestore, 'checklists', id), checklist);
+          // FERROCARRIL Etapa 3: dual-write (Firestore + Postgres, mismo id).
+          return setDoc(doc(this.firestore, 'checklists', id), checklist)
+            .then(() => this.api.guardarChecklist(checklist));
         }));
       }
       const n = this.empleadosSel.length;
@@ -858,10 +866,14 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
       ? { ...it, text: nombre, horaInicio: this.asignadaEdit.horaInicio || null, horaLimite: this.asignadaEdit.horaFin || null }
       : it);
     try {
-      await updateDoc(doc(this.firestore, 'checklists', this.asignadaEdit.id), {
+      // FERROCARRIL Etapa 3: dual-write de la edición.
+      const idAsig = String(this.asignadaEdit.id);
+      const cambiosAsig = {
         name: nombre, items, time: this.asignadaEdit.horaFin || '23:59',
         date: this.asignadaEdit.fecha || orig?.date || this.hoyISO()
-      });
+      };
+      await updateDoc(doc(this.firestore, 'checklists', idAsig), cambiosAsig);
+      await this.api.patchChecklist(idAsig, cambiosAsig);
       this.asignadaEdit = null;
     } catch (e) {
       console.error('[tec] guardarAsignada', e);
@@ -875,7 +887,10 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
       showCancelButton: true, confirmButtonText: 'Sí, quitar', cancelButtonText: 'Cancelar', confirmButtonColor: '#DC2626'
     });
     if (!r.isConfirmed) return;
-    try { await updateDoc(doc(this.firestore, 'checklists', t.id), { eliminado: true }); }
+    try {
+      await updateDoc(doc(this.firestore, 'checklists', t.id), { eliminado: true });
+      await this.api.patchChecklist(String(t.id), { eliminado: true }); // FERROCARRIL Etapa 3
+    }
     catch (e) { console.error('[tec] eliminarAsignada', e); }
   }
 

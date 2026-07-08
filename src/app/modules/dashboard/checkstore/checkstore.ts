@@ -3,7 +3,6 @@ import { Component, signal, computed, OnInit, OnDestroy, inject, effect } from '
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
-import { Firestore, collection, onSnapshot, query, where } from '@angular/fire/firestore';
 import { esAdminGlobal, sucursalesPermitidas } from '../../../shared/permisos.util';
 import { nivelDeCargo } from '../../../shared/nivel-jerarquico.util';
 import { esItemHecho } from '../../../shared/item-completado.util';
@@ -73,7 +72,6 @@ export class CheckstoreComponent implements OnInit, OnDestroy {
   // y nos permite clasificar los `assigned` de cada checklist sin recargar usuarios.
   private nivelPorNombre = new Map<string, 'mando' | 'operativo'>();
  
-  private firestore = inject(Firestore);
   private usuariosSvc = inject(UsuariosService);
   private api = inject(ApiService);
   private destructoresRadares: (() => void)[] = [];
@@ -253,17 +251,19 @@ export class CheckstoreComponent implements OnInit, OnDestroy {
     // Checkstore muestra alertas/vencimientos del dia, no necesita meses atras.
     const offsetCs = new Date().getTimezoneOffset() * 60000;
     const hace7Cs = new Date(Date.now() - 7 * 86_400_000 - offsetCs).toISOString().split('T')[0];
-    const checklistsRef = collection(this.firestore, 'checklists');
-    const checklistsQuery = query(checklistsRef, where('date', '>=', hace7Cs));
-    const radarChecklists = onSnapshot(checklistsQuery, snap => {
+    // FERROCARRIL Etapa 3: antes onSnapshot(checklists); ahora poll a Postgres.
+    const recargarChecklists = async () => {
+      const resp = await this.api.get('/api/checklists?desde=' + encodeURIComponent(hace7Cs))
+        .catch((e: any) => { console.error('[checkstore] poll PG', e); return null; });
+      if (!resp) return;
+      const filas: any[] = resp.checklists || [];
       const checklistsTemp: any[] = [];
       const ahora = Date.now();
       const limite24h = 24 * 60 * 60 * 1000;
       const offset = new Date().getTimezoneOffset() * 60000;
       const fechaHoyLocal = new Date(Date.now() - offset).toISOString().split('T')[0];
  
-      snap.forEach(docSnap => {
-        const c: any = docSnap.data();
+      filas.forEach((c: any) => {
         if (c.eliminado === true || c.archivado === true) return;
         const tiempoCreacion = typeof c.id === 'number' ? c.id : (c.timestampCreacion || ahora);
         if (c.date === fechaHoyLocal || (ahora - tiempoCreacion) <= limite24h) {
@@ -288,13 +288,14 @@ export class CheckstoreComponent implements OnInit, OnDestroy {
  
       this.checklistsDesdeFirebase = Array.from(listasSinClones.values());
       this.procesarMatematicas();
-    });
+    };
+    recargarChecklists();
+    const idPollChecklists = setInterval(recargarChecklists, 20000);
+    this.destructoresRadares.push(() => clearInterval(idPollChecklists));
  
     // Radar 3: usuarios → carga el cargo de cada empleado para clasificar
     // Usuarios ya los provee UsuariosService (listener compartido) + _usuariosEffect
     // construye el mapa nivelPorNombre. No abrimos onSnapshot duplicado aqui.
-
-    this.destructoresRadares.push(radarChecklists);
   }
 
   /** Versión ligera de normalización: lowercase + sin tildes + colapsa espacios.

@@ -2,12 +2,13 @@ import { Component, signal, computed, OnInit, OnDestroy, inject } from '@angular
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
-import { Firestore, collection, getDocs, query, where, writeBatch, doc, serverTimestamp } from '@angular/fire/firestore';
+import { Firestore, writeBatch, doc, serverTimestamp } from '@angular/fire/firestore';
 import Swal from 'sweetalert2';
 
 import { SidebarComponent } from '../../../shared/sidebar/sidebar';
 import { esAdminGlobal, sucursalesPermitidas } from '../../../shared/permisos.util';
 import { tieneEvidencia } from '../../../shared/item-completado.util';
+import { ApiService } from '../../../shared/api.service';
 
 interface ItemConFotos {
   texto: string;
@@ -116,6 +117,7 @@ export class CierreMensualComponent implements OnInit, OnDestroy {
   });
 
   private firestore = inject(Firestore);
+  private api = inject(ApiService); // FERROCARRIL Etapa 3: checklists desde Postgres
 
   ngOnInit() {
     const sesion = localStorage.getItem('md_sesion_actual');
@@ -167,17 +169,16 @@ export class CierreMensualComponent implements OnInit, OnDestroy {
     try {
       const desde = this.primerDiaDelMes(this.mesSeleccionado());
       const hasta = this.ultimoDiaDelMes(this.mesSeleccionado());
-      const ref = collection(this.firestore, 'checklists');
-      const q = query(ref, where('date', '>=', desde), where('date', '<=', hasta));
-      const snap = await getDocs(q);
+      // FERROCARRIL Etapa 3: rango del mes desde Postgres (antes getDocs Firestore).
+      const resp = await this.api.get('/api/checklists?desde=' + encodeURIComponent(desde) + '&hasta=' + encodeURIComponent(hasta));
+      const filas: any[] = resp?.checklists || [];
 
       const permitidas = sucursalesPermitidas(this.currentUser);
       const arr: any[] = [];
-      snap.forEach(d => {
-        const data = d.data() as any;
+      filas.forEach((data: any) => {
         if (data.eliminado === true) return;
         if (permitidas !== null && !permitidas.includes(data.store)) return;
-        arr.push({ ...data, id: d.id });
+        arr.push(data);
       });
       this.checklistsDelMes.set(arr);
     } catch (e) {
@@ -1177,6 +1178,10 @@ export class CierreMensualComponent implements OnInit, OnDestroy {
           }, { merge: true });
         }
         await batch.commit();
+        // FERROCARRIL Etapa 3: replica el archivado en Postgres (serverTimestamp -> epoch ms).
+        for (const c of slice) {
+          await this.api.patchChecklist(String(c.id), { archivado: true, archivadoEn: Date.now(), archivadoPor: adminNombre, archivadoMes: yyyymm });
+        }
         hechos += slice.length;
         this.archivarProgreso.set(`${hechos} / ${total}`);
       }
@@ -1415,6 +1420,12 @@ export class CierreMensualComponent implements OnInit, OnDestroy {
         }
       }
       if (checklistsMarcados > 0) await batch.commit();
+      // FERROCARRIL Etapa 3: replica fotosBorradas en Postgres (serverTimestamp -> epoch ms).
+      for (const t of tareas) {
+        if (t.publicIds.every(pid => borradosOk.has(pid))) {
+          await this.api.patchChecklist(String(t.checklistId), { fotosBorradas: true, fotosBorradasEn: Date.now(), fotosBorradasCount: t.publicIds.length });
+        }
+      }
 
       // Refrescar memoria local
       this.checklistsDelMes.update(arr => arr.map(c => {

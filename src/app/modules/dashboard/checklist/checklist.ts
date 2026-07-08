@@ -1021,7 +1021,8 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       const hace30 = new Date(Date.now() - offset - 30 * 86400000).toISOString().split('T')[0];
       // Solo rango por fecha (campo único → sin índice compuesto). El resto se
       // filtra en el cliente para no requerir desplegar índices de Firestore.
-      const snap = await getDocs(query(collection(this.firestore, 'checklists'), where('date', '>=', hace30)));
+      const respEnv = await this.api.get('/api/checklists?desde=' + encodeURIComponent(hace30));
+      const filas: any[] = respEnv?.checklists || [];
       const sesion = (() => { try { return JSON.parse(localStorage.getItem('md_sesion_actual') || 'null'); } catch { return null; } })() || this.currentUser;
       const esGlobal = esAdminGlobal(sesion);
       const esLimitado = esAdminLimitado(sesion);
@@ -1030,15 +1031,13 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       const miNombre = sesion?.nombre;
 
       const lista: any[] = [];
-      snap.forEach(d => {
-        const c = d.data() as any;
+      filas.forEach((c: any) => {
         if (c.enviado !== true) return;            // solo enviadas
         if (c.eliminado === true || c.archivado === true) return;
         // Alcance
         if (esGlobal) { /* ve todas */ }
         else if (esLimitado || supervisor) { if (!permitidas.includes(c.store)) return; }
         else { if (!mismoEmpleadoNombre(c.assigned, miNombre)) return; }
-        c.id = d.id;
         lista.push(c);
       });
       // Más recientes primero (por fecha y, dentro del día, por creación).
@@ -1230,9 +1229,14 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     const esTec = this.esUsuarioTec;
     const hace45 = new Date(Date.now() - offset - 45 * 86400000).toISOString().split('T')[0];
     const desde = esTec ? hace45 : fechaHoyLocal;
-    const checklistsRef = collection(this.firestore, 'checklists');
-    const checklistsQuery = query(checklistsRef, where('date', '>=', desde));
-    const radarChecklists = onSnapshot(checklistsQuery, (snapshot) => {
+    // FERROCARRIL Etapa 3: antes onSnapshot(checklists, where date>=desde); ahora
+    // poll periódico a Postgres (GET /api/checklists?desde=..). La lógica de
+    // post-proceso (filtros por rol, dedup, progreso, diagnóstico) queda IGUAL.
+    const recargarChecklists = async () => {
+      const resp = await this.api.get('/api/checklists?desde=' + encodeURIComponent(desde))
+        .catch((e: any) => { console.error('[checklist] poll PG', e); return null; });
+      if (!resp) return;
+      const filas: any[] = resp.checklists || [];
       const todasLasListas: any[] = [];
       let descartadosEnviados = 0;
       let descartadosEliminados = 0;
@@ -1244,9 +1248,8 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       const muestraEliminados: { id: string; assigned: string; name: string }[] = [];
       const todosAssignedHoy = new Set<string>();
 
-      snapshot.forEach(docSnap => {
-        const c = docSnap.data() as any;
-        const docId = docSnap.id;
+      filas.forEach((c: any) => {
+        const docId = c.id;
         if (c.date === fechaHoyLocal && c.assigned) todosAssignedHoy.add(c.assigned);
         if (c.eliminado === true || c.archivado === true) {
           descartadosEliminados++;
@@ -1358,8 +1361,10 @@ export class ChecklistComponent implements OnInit, OnDestroy {
         }
         this.cantidadPendientesAnterior = pendientesActuales;
       }
-    });
-    this.destructoresRadares.push(radarChecklists);
+    };
+    recargarChecklists();
+    const idRadarChecklists = setInterval(recargarChecklists, 20000);
+    this.destructoresRadares.push(() => clearInterval(idRadarChecklists));
 
     // Radar de Tareas de Equipo (colección separada `tareas_equipo`).
     // Cada usuario solo ve las tareas donde es integrante, jefe o admin.
@@ -1616,8 +1621,10 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       const llavePeriodo = this.obtenerLlavePeriodo(molde.frecuencia, fechaActual);
       const checklistId = `${molde.id}_${llavePeriodo}`;
       const docRef = doc(this.firestore, 'checklists', checklistId);
-      const docSnap = await getDoc(docRef);
-      if (!docSnap.exists()) {
+      // FERROCARRIL: verificación de existencia (idempotencia) contra Postgres.
+      const yaExiste = await this.api.get('/api/checklists?id=' + encodeURIComponent(checklistId))
+        .then((r: any) => !!r?.checklist).catch(() => false);
+      if (!yaExiste) {
         const nuevoChecklist = {
           id: checklistId, timestampCreacion: Date.now(), name: `${molde.name} (${molde.frecuencia})`,
           assigned: molde.assigned, store: molde.store, date: fechaString, time: '23:59',
@@ -1630,6 +1637,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
           }))
         };
         await setDoc(docRef, nuevoChecklist);
+        await this.api.guardarChecklist(nuevoChecklist);
       }
     }
   }
@@ -1637,6 +1645,8 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   async guardarEnLaNube(checklist: any) {
     try { await setDoc(doc(this.firestore, 'checklists', checklist.id.toString()), checklist, { merge: true }); }
     catch (error) { console.error("Error: ", error); }
+    // Dual-write FERROCARRIL: mismo id en Postgres (upsert completo). Best-effort.
+    await this.api.guardarChecklist({ ...checklist, id: checklist.id.toString() });
   }
 
   // ==========================================================================
@@ -1859,8 +1869,13 @@ export class ChecklistComponent implements OnInit, OnDestroy {
         const id = `rpers_${r.id}_${this.periodoRutinaPersonal(r, fecha)}`;
         try {
           const ref = doc(this.firestore, 'checklists', id);
-          const snap = await getDoc(ref);
-          if (!snap.exists()) await setDoc(ref, this.construirChecklistPersonal(r, id, fechaIso));
+          const existe = await this.api.get('/api/checklists?id=' + encodeURIComponent(id))
+            .then((x: any) => !!x?.checklist).catch(() => false);
+          if (!existe) {
+            const nuevo = this.construirChecklistPersonal(r, id, fechaIso);
+            await setDoc(ref, nuevo);
+            await this.api.guardarChecklist(nuevo);
+          }
         } catch (e) {
           console.error('[rutina-personal] error generando', r?.id, e);
         }
@@ -1949,10 +1964,11 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     const hora = this.tareaDiaHora || '';
     try {
       const ref = doc(this.firestore, 'checklists', id);
-      const snap = await getDoc(ref);
-      const previos = (snap.exists() ? (snap.data() as any).items : null) || [];
+      const prevResp = await this.api.get('/api/checklists?id=' + encodeURIComponent(id)).catch(() => null);
+      const previos = (prevResp?.checklist?.items) || [];
       const items = this.construirItemsPersonal(texto, this.tareaDiaActividades, hora, previos, this.tareaDiaPermiteFotos);
       await setDoc(ref, { name: texto, time: hora || '23:59', items }, { merge: true });
+      await this.api.patchChecklist(id, { name: texto, time: hora || '23:59', items });
       this.isModalTareaDiaOpen = false;
       this.resetCamposTareaDia();
       this.mostrarToast(' Tarea actualizada.');
@@ -1973,6 +1989,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     if (!res.isConfirmed) return;
     try {
       await setDoc(doc(this.firestore, 'checklists', String(checklist.id)), { eliminado: true }, { merge: true });
+      await this.api.patchChecklist(String(checklist.id), { eliminado: true });
       this.mostrarToast(' Tarea eliminada.');
     } catch (e) {
       console.error('[eliminarTareaPropia]', e);
@@ -2080,12 +2097,12 @@ export class ChecklistComponent implements OnInit, OnDestroy {
         const targetAssigned = checklist.assigned;
 
         // 1) Soft-delete de TODOS los checklists ya generados con este nombre+assigned.
-        const checklistsRef = collection(this.firestore, 'checklists');
-        const chkSnap = await getDocs(checklistsRef);
-        for (const cDoc of chkSnap.docs) {
-          const cData = cDoc.data() as any;
+        const chkResp = await this.api.get('/api/checklists');
+        const chkFilas: any[] = chkResp?.checklists || [];
+        for (const cData of chkFilas) {
           if ((cData.name || '').startsWith(targetName) && cData.assigned === targetAssigned) {
-            await setDoc(doc(this.firestore, 'checklists', cDoc.id), { eliminado: true }, { merge: true });
+            await setDoc(doc(this.firestore, 'checklists', String(cData.id)), { eliminado: true }, { merge: true });
+            await this.api.patchChecklist(String(cData.id), { eliminado: true });
           }
         }
 
@@ -2238,6 +2255,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     for (const item of lista) {
       try {
         await setDoc(doc(this.firestore, 'checklists', item.id), { enviado: false }, { merge: true });
+        await this.api.patchChecklist(String(item.id), { enviado: false });
         ok++;
       } catch (e) { console.error('[reabrirMisTareasEnviadas]', e); fail++; }
     }
@@ -2335,6 +2353,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     checklist.vistoTimestamp = vistoTimestamp;
     try {
       await setDoc(doc(this.firestore, 'checklists', checklist.id), { vistoPor, vistoTimestamp }, { merge: true });
+      await this.api.patchChecklist(String(checklist.id), { vistoPor, vistoTimestamp });
     } catch (e) {
       console.error('[checklist] registrarVistoGerencia', e);
     }
@@ -2658,7 +2677,11 @@ export class ChecklistComponent implements OnInit, OnDestroy {
 
     let okT = 0, okA = 0;
     for (const c of huerfanas) {
-      try { await setDoc(doc(this.firestore, 'checklists', String(c.id)), { eliminado: true }, { merge: true }); okT++; }
+      try {
+        await setDoc(doc(this.firestore, 'checklists', String(c.id)), { eliminado: true }, { merge: true });
+        await this.api.patchChecklist(String(c.id), { eliminado: true });
+        okT++;
+      }
       catch (e) { console.error('[limpiarHuerfanas] checklist', c.id, e); }
     }
     for (const a of asigACambiar) {
@@ -3504,6 +3527,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
         subtareas: JSON.parse(JSON.stringify(this.fasesTemporales))
       };
       await setDoc(doc(this.firestore, 'checklists', this.editandoChecklistId), payload, { merge: true });
+      await this.api.patchChecklist(this.editandoChecklistId, payload);
       this.mostrarToast(' ✅ Tarea actualizada');
       this.cerrarModal();
       this.isEditandoTarea = false;
@@ -3632,11 +3656,13 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     if (tareasValidas.length === 0) { alert('Agrega tareas.'); return; }
 
     try {
-      await setDoc(doc(this.firestore, 'checklists', actual.id.toString()), {
+      const cambiosEdit = {
         name: this.formName, assigned: this.formAssigned[0], store: this.formStore,
         items: tareasValidas,
         subtareas: this.fasesTemporales
-      }, { merge: true });
+      };
+      await setDoc(doc(this.firestore, 'checklists', actual.id.toString()), cambiosEdit, { merge: true });
+      await this.api.patchChecklist(actual.id.toString(), cambiosEdit);
 
       this.mostrarToast(' ✏️ ¡Tarea actualizada con éxito!');
       actual.name = this.formName; actual.assigned = this.formAssigned[0]; actual.store = this.formStore;
@@ -3735,12 +3761,12 @@ export class ChecklistComponent implements OnInit, OnDestroy {
           await deleteDoc(doc(this.firestore, 'moldes_checklists', mDoc.id));
         }
       }
-      const chkRef = collection(this.firestore, 'checklists');
-      const chkSnap = await getDocs(chkRef);
-      for (const cDoc of chkSnap.docs) {
-        const cData = cDoc.data() as any;
+      const chkRespRename = await this.api.get('/api/checklists');
+      const chkFilasRename: any[] = chkRespRename?.checklists || [];
+      for (const cData of chkFilasRename) {
         if ((cData.name || '').startsWith(nombreViejo) && cData.assigned === assignedViejo && !cData.enviado) {
-          await setDoc(doc(this.firestore, 'checklists', cDoc.id), { eliminado: true }, { merge: true });
+          await setDoc(doc(this.firestore, 'checklists', String(cData.id)), { eliminado: true }, { merge: true });
+          await this.api.patchChecklist(String(cData.id), { eliminado: true });
         }
       }
     }

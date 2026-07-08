@@ -2,7 +2,7 @@ import { Component, signal, OnInit, OnDestroy, inject, HostListener } from '@ang
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, ActivatedRoute } from '@angular/router';
-import { Firestore, collection, getDocs, getDoc, doc, deleteDoc, setDoc, query, where } from '@angular/fire/firestore';
+import { Firestore, collection, getDocs, getDoc, doc, deleteDoc, setDoc } from '@angular/fire/firestore';
 import { sucursalesPermitidas } from '../shared/permisos.util';
 import { nivelDeCargo } from '../shared/nivel-jerarquico.util';
 import { esItemHecho } from '../shared/item-completado.util';
@@ -256,19 +256,17 @@ export class ReportesComponent implements OnInit, OnDestroy {
         .sort((a, b) => b.total - a.total || a.sucursal.localeCompare(b.sucursal));
 
       // --- TAREAS (rango) ---
-      let qChk;
-      if (this.repRango === 'todo') {
-        qChk = collection(this.firestore, 'checklists');
-      } else {
+      // FERROCARRIL Etapa 3: checklists desde Postgres (antes getDocs de Firestore).
+      let urlChk = '/api/checklists';
+      if (this.repRango !== 'todo') {
         const desde = new Date();
         if (this.repRango === 'semana') desde.setDate(desde.getDate() - 7);
         else desde.setDate(1); // mes actual
-        qChk = query(collection(this.firestore, 'checklists'), where('date', '>=', this.repToYmd(desde)));
+        urlChk += '?desde=' + encodeURIComponent(this.repToYmd(desde));
       }
-      const csnap = await getDocs(qChk as any);
+      const respChk = await this.api.get(urlChk);
       const checklists: any[] = [];
-      csnap.forEach(d => {
-        const c = d.data() as any;
+      (respChk?.checklists || []).forEach((c: any) => {
         if (c.eliminado === true || c.archivado === true) return;
         if (!c.store || !enScope(c.store)) return;
         checklists.push(c);
@@ -434,18 +432,13 @@ export class ReportesComponent implements OnInit, OnDestroy {
     // filtrábamos en cliente; ahora Firestore solo nos manda los del rango pedido.
     // Auditoría es búsqueda histórica, no necesita realtime.
     try {
-      const checklistsRef = collection(this.firestore, 'checklists');
-      const q = query(
-        checklistsRef,
-        where('date', '>=', this.fechaInicio),
-        where('date', '<=', this.fechaFin)
-      );
-      const snapshot = await getDocs(q);
+      // FERROCARRIL Etapa 3: rango de fechas desde Postgres (antes getDocs Firestore).
+      const respAud = await this.api.get('/api/checklists?desde=' + encodeURIComponent(this.fechaInicio) + '&hasta=' + encodeURIComponent(this.fechaFin));
+      const filasAud: any[] = respAud?.checklists || [];
 
       const listasSinClones = new Map();
 
-      snapshot.forEach(docSnap => {
-        const c = docSnap.data() as any;
+      filasAud.forEach((c: any) => {
         if (c.eliminado === true || c.archivado === true) return;
 
         // 🔥 Admin limitado: descarta cualquier checklist que NO sea de sus sucursales
@@ -531,13 +524,14 @@ export class ReportesComponent implements OnInit, OnDestroy {
       const meta = { eliminado: true, eliminadoPor: this.currentUser?.nombre || 'admin', eliminadoEn: Date.now() };
 
       // 1) Soft-delete del checklist actual y duplicados con mismo nombre+assigned.
-      const chkRef = collection(this.firestore, 'checklists');
-      const chkSnap = await getDocs(chkRef);
+      // FERROCARRIL Etapa 3: lista desde Postgres + dual-write del soft-delete.
+      const chkRespDel = await this.api.get('/api/checklists');
+      const chkFilasDel: any[] = chkRespDel?.checklists || [];
       let softDeleted = 0;
-      for (const cDoc of chkSnap.docs) {
-        const cData = cDoc.data() as any;
+      for (const cData of chkFilasDel) {
         if ((cData.name || '').startsWith(targetName) && cData.assigned === targetAssigned) {
-          await setDoc(doc(this.firestore, 'checklists', cDoc.id), meta, { merge: true });
+          await setDoc(doc(this.firestore, 'checklists', String(cData.id)), meta, { merge: true });
+          await this.api.patchChecklist(String(cData.id), meta);
           softDeleted++;
         }
       }
@@ -628,6 +622,7 @@ export class ReportesComponent implements OnInit, OnDestroy {
         for (const checklist of this.resultados()) {
           const docId = checklist.id.toString();
           await deleteDoc(doc(this.firestore, 'checklists', docId));
+          await this.api.borrarChecklist(docId); // FERROCARRIL Etapa 3: borra también en Postgres
         }
         Swal.fire({ icon: 'success', title: 'Limpieza Total', text: 'Historial eliminado con éxito.', confirmButtonColor: '#0F172A' });
       } catch (error) {

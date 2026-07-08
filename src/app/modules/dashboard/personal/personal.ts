@@ -4,7 +4,7 @@ import { ApiService } from '../../../shared/api.service';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, Router } from '@angular/router';
-import { Firestore, collection, doc, setDoc, deleteDoc, onSnapshot, getDocs, query, where } from '@angular/fire/firestore';
+import { Firestore, collection, doc, setDoc, deleteDoc, onSnapshot, getDocs } from '@angular/fire/firestore';
 import {
   getAuth,
   verifyBeforeUpdateEmail,
@@ -859,8 +859,9 @@ export class PersonalComponent implements OnInit, OnDestroy {
       const hace7 = new Date(Date.now() - offset);
       hace7.setDate(hace7.getDate() - 7);
       const desdeISO = hace7.toISOString().split('T')[0];
-      const q = query(collection(this.firestore, 'checklists'), where('date', '>=', desdeISO));
-      const snap = await getDocs(q);
+      // FERROCARRIL Etapa 3: checklists desde Postgres
+      const resp = await this.api.get('/api/checklists?desde=' + encodeURIComponent(desdeISO));
+      const filas: any[] = resp?.checklists || [];
 
       // Sucursales del admin actual (si es limitado/global)
       const permitidasUser = sucursalesPermitidas(this.currentUser);
@@ -877,8 +878,7 @@ export class PersonalComponent implements OnInit, OnDestroy {
 
       // Recolectar assigned únicos de los checklists relevantes
       const tareasPorAssigned = new Map<string, { sucursales: Set<string>, total: number }>();
-      snap.forEach(d => {
-        const c = d.data() as any;
+      filas.forEach((c: any) => {
         if (c.eliminado === true || c.enviado === true || c.archivado === true) return;
         if (permitidasUser !== null && !permitidasUser.includes(c.store)) return;
         const a = (c.assigned || '').trim();
@@ -984,8 +984,9 @@ export class PersonalComponent implements OnInit, OnDestroy {
       const hace7 = new Date(Date.now() - offset);
       hace7.setDate(hace7.getDate() - 7);
       const desdeISO = hace7.toISOString().split('T')[0];
-      const q = query(collection(this.firestore, 'checklists'), where('date', '>=', desdeISO));
-      const snap = await getDocs(q);
+      // FERROCARRIL Etapa 3: checklists desde Postgres
+      const resp = await this.api.get('/api/checklists?desde=' + encodeURIComponent(desdeISO));
+      const filas: any[] = resp?.checklists || [];
 
       const permitidasUser = sucursalesPermitidas(this.currentUser);
       const usuariosVisibles = this.usuarios().filter(u => u.rol === 'trabajador' && (
@@ -1001,8 +1002,7 @@ export class PersonalComponent implements OnInit, OnDestroy {
 
       // Recolectar assigned únicos de checklists activos
       const assignedsHuerfanos = new Set<string>();
-      snap.forEach(d => {
-        const c = d.data() as any;
+      filas.forEach((c: any) => {
         if (c.eliminado === true || c.enviado === true || c.archivado === true) return;
         if (permitidasUser !== null && !permitidasUser.includes(c.store)) return;
         const a = (c.assigned || '').trim();

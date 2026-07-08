@@ -3,9 +3,10 @@ import { UsuariosService } from '../../../shared/usuarios.service';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, Router, ActivatedRoute } from '@angular/router';
-import { Firestore, collection, onSnapshot, doc, setDoc, deleteDoc, getDocs, query, where } from '@angular/fire/firestore';
+import { Firestore, collection, onSnapshot, doc, setDoc, deleteDoc } from '@angular/fire/firestore';
 import Swal from 'sweetalert2';
 
+import { ApiService } from '../../../shared/api.service';
 import { SidebarComponent } from '../../../shared/sidebar/sidebar';
 import { RutinasNavComponent } from '../../../shared/rutinas-nav/rutinas-nav';
 import { esAdminGlobal, sucursalesPermitidas, puedeSerAsignado, normalizarNombre } from '../../../shared/permisos.util';
@@ -189,6 +190,7 @@ export class AsignacionesRutinasComponent implements OnInit, OnDestroy {
   private router = inject(Router);
   private route = inject(ActivatedRoute);
   private usuariosSvc = inject(UsuariosService);
+  private api = inject(ApiService); // FERROCARRIL Etapa 3: checklists desde/hacia Postgres
   private radarCatalogo: (() => void) | null = null;
   private radarAsignaciones: (() => void) | null = null;
   private radarDescansos: (() => void) | null = null;
@@ -675,13 +677,15 @@ export class AsignacionesRutinasComponent implements OnInit, OnDestroy {
    */
   private async cancelarChecklistsPendientes(asignacionId: string) {
     try {
-      const q = query(collection(this.firestore, 'checklists'), where('_asignacionId', '==', asignacionId));
-      const snap = await getDocs(q);
+      // FERROCARRIL Etapa 3: checklists desde Postgres
+      const resp = await this.api.get('/api/checklists?asignacionId=' + encodeURIComponent(asignacionId));
+      const filas: any[] = resp?.checklists || [];
       const ops: Promise<any>[] = [];
-      snap.forEach(d => {
-        const c = d.data() as any;
+      filas.forEach((c: any) => {
         if (c.enviado === true || c.eliminado === true || c.archivado === true) return; // no tocar enviados, borrados ni archivados
-        ops.push(setDoc(doc(this.firestore, 'checklists', d.id), { eliminado: true }, { merge: true }));
+        ops.push(setDoc(doc(this.firestore, 'checklists', c.id), { eliminado: true }, { merge: true }));
+        // FERROCARRIL Etapa 3: dual-write a Postgres
+        ops.push(this.api.patchChecklist(String(c.id), { eliminado: true }));
       });
       await Promise.all(ops);
     } catch (e) {

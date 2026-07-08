@@ -6,7 +6,6 @@ import {
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, Router } from '@angular/router';
-import { Firestore, collection, onSnapshot, query, where } from '@angular/fire/firestore';
 
 import { SidebarComponent } from '../../../shared/sidebar/sidebar';
 import { esAdminGlobal, sucursalesPermitidas, esSupervisor, mismoEmpleadoNombre } from '../../../shared/permisos.util';
@@ -37,7 +36,6 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
   // Para trabajador puro siempre es 'mis' (ya no ve nada más).
   vistaTareas = signal<'mis' | 'equipo' | 'todas'>('todas');
  
-  private firestore = inject(Firestore);
   private router    = inject(Router);
   private usuariosSvc = inject(UsuariosService);
   private api = inject(ApiService);
@@ -361,49 +359,52 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
     const offsetDays = hace7Dias.getTimezoneOffset() * 60000;
     const desdeISO = new Date(hace7Dias.getTime() - offsetDays).toISOString().split('T')[0];
 
-    const checklistsRef = collection(this.firestore, 'checklists');
-    const checklistsQuery = query(checklistsRef, where('date', '>=', desdeISO));
-    this.destructoresRadares.push(
-      onSnapshot(checklistsQuery, snap => {
-        // Recalculamos permisos cada vez (currentUser podría haberse actualizado).
-        const sesion = leerSesion() || this.currentUser;
-        const permitidas = sucursalesPermitidas(sesion);
-        const esGlobal = esAdminGlobal(sesion);
-        // Supervisor = trabajador con flags de admin + sucursales asignadas.
-        // En el dashboard se comporta como admin limitado (ve su sucursal completa),
-        // no como trabajador puro (que solo ve sus propias tareas).
-        const supervisor = esSupervisor(sesion);
-        const esTrabajadorPuro = sesion?.rol === 'trabajador' && !supervisor;
-        const miNombre = sesion?.nombre;
+    // FERROCARRIL Etapa 3: antes onSnapshot(checklists); ahora poll a Postgres.
+    const recargarChecklists = async () => {
+      const resp = await this.api.get('/api/checklists?desde=' + encodeURIComponent(desdeISO))
+        .catch((e: any) => { console.error('[home] poll PG', e); return null; });
+      if (!resp) return;
+      const filas: any[] = resp.checklists || [];
+      // Recalculamos permisos cada vez (currentUser podría haberse actualizado).
+      const sesion = leerSesion() || this.currentUser;
+      const permitidas = sucursalesPermitidas(sesion);
+      const esGlobal = esAdminGlobal(sesion);
+      // Supervisor = trabajador con flags de admin + sucursales asignadas.
+      // En el dashboard se comporta como admin limitado (ve su sucursal completa),
+      // no como trabajador puro (que solo ve sus propias tareas).
+      const supervisor = esSupervisor(sesion);
+      const esTrabajadorPuro = sesion?.rol === 'trabajador' && !supervisor;
+      const miNombre = sesion?.nombre;
 
-        let arr: any[] = [];
-        snap.forEach(d => {
-          const data = d.data() as any;
-          if (data.eliminado === true || data.archivado === true) return;
-          arr.push({ ...data, id: d.id });
-        });
-        const totalCrudo = arr.length;
+      let arr: any[] = [];
+      filas.forEach((c: any) => {
+        if (c.eliminado === true || c.archivado === true) return;
+        arr.push({ ...c });
+      });
+      const totalCrudo = arr.length;
 
-        if (esTrabajadorPuro) {
-          // Match tolerante: cubre perfiles con apellido extra/de menos vs assigned.
-          arr = arr.filter(c => mismoEmpleadoNombre(c.assigned, miNombre));
-        } else if (!esGlobal && permitidas !== null) {
-          // admin limitado O supervisor → filtra por sucursales
-          arr = arr.filter(c => permitidas.includes(c.store));
-        }
+      if (esTrabajadorPuro) {
+        // Match tolerante: cubre perfiles con apellido extra/de menos vs assigned.
+        arr = arr.filter(c => mismoEmpleadoNombre(c.assigned, miNombre));
+      } else if (!esGlobal && permitidas !== null) {
+        // admin limitado O supervisor → filtra por sucursales
+        arr = arr.filter(c => permitidas.includes(c.store));
+      }
 
-        // 🐛 DEBUG temporal: ver en consola por qué un admin/supervisor ve 0.
-        console.log('[DBG dashboard]', {
-          usuario: sesion?.usuario, rol: sesion?.rol, alcance: sesion?.alcance,
-          sucursales: sesion?.sucursales, esGlobal, supervisor, permitidas,
-          checklistsCrudos: totalCrudo, despuesFiltro: arr.length,
-          sucursalesUnicasEnDatos: Array.from(new Set(arr.map(c => c.store)))
-        });
+      // DEBUG temporal: ver en consola por qué un admin/supervisor ve 0.
+      console.log('[DBG dashboard]', {
+        usuario: sesion?.usuario, rol: sesion?.rol, alcance: sesion?.alcance,
+        sucursales: sesion?.sucursales, esGlobal, supervisor, permitidas,
+        checklistsCrudos: totalCrudo, despuesFiltro: arr.length,
+        sucursalesUnicasEnDatos: Array.from(new Set(arr.map(c => c.store)))
+      });
 
-        this.checklists.set(arr);
-        setTimeout(() => this.actualizarGrafica(), 100);
-      })
-    );
+      this.checklists.set(arr);
+      setTimeout(() => this.actualizarGrafica(), 100);
+    };
+    recargarChecklists();
+    const idPollChecklists = setInterval(recargarChecklists, 20000);
+    this.destructoresRadares.push(() => clearInterval(idPollChecklists));
 
     // areas_operativas migrada a Postgres (API). Poll ligero.
     this.cargarAreas();

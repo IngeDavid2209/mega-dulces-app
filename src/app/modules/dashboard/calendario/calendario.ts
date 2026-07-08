@@ -4,8 +4,6 @@ import { ApiService } from '../../../shared/api.service';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, Router } from '@angular/router';
-// 🔥 Agregué getDocs y query para que pueda ir por la agenda personal
-import { Firestore, collection, onSnapshot, getDocs, query, where } from '@angular/fire/firestore';
 import Swal from 'sweetalert2';
 import { esAdminGlobal, sucursalesPermitidas, normalizarNombre } from '../../../shared/permisos.util';
 
@@ -47,7 +45,6 @@ tareasAgendaMes: any[] = [];
   fotoAmpliada = signal<string | null>(null);
   fechaBuscada = '';
 
-  private firestore = inject(Firestore);
   private router = inject(Router);
   private usuariosSvc = inject(UsuariosService);
   private api = inject(ApiService);
@@ -136,17 +133,14 @@ tareasAgendaMes: any[] = [];
     const desdeISO = new Date(inicio.getTime() - offset).toISOString().split('T')[0];
     const hastaISO = new Date(fin.getTime() - offset).toISOString().split('T')[0];
 
-    const checklistsRef = collection(this.firestore, 'checklists');
-    const q = query(
-      checklistsRef,
-      where('date', '>=', desdeISO),
-      where('date', '<=', hastaISO)
-    );
+    // FERROCARRIL Etapa 3: antes onSnapshot(checklists); ahora poll a Postgres.
+    const recargar = async () => {
+      const resp = await this.api.get('/api/checklists?desde=' + encodeURIComponent(desdeISO) + '&hasta=' + encodeURIComponent(hastaISO))
+        .catch((e: any) => { console.error('[calendario] poll PG', e); return null; });
+      if (!resp) return;
+      let lista = (resp.checklists || []).filter((c: any) => !c.eliminado && !c.archivado);
 
-    this.radarChecklistsActivo = onSnapshot(q, (snap) => {
-      let lista = snap.docs.map(d => d.data()).filter((c: any) => !c.eliminado && !c.archivado);
-
-      // 🔥 Admin limitado: solo ve checklists de sus sucursales
+      // Admin limitado: solo ve checklists de sus sucursales
       if (!esAdminGlobal(this.currentUser)) {
         const permitidas = sucursalesPermitidas(this.currentUser);
         if (permitidas !== null) {
@@ -156,7 +150,10 @@ tareasAgendaMes: any[] = [];
 
       this.checklistsGlobales = lista;
       this.generarCalendario();
-    });
+    };
+    recargar();
+    const idPoll = setInterval(recargar, 20000);
+    this.radarChecklistsActivo = () => clearInterval(idPoll);
   }
 
   get empleadosFiltrados() {

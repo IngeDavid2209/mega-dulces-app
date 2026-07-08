@@ -2,7 +2,7 @@ import { Component, signal, computed, OnInit, OnDestroy, inject, effect } from '
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { Firestore, collection, onSnapshot, query, where } from '@angular/fire/firestore';
+import { ApiService } from '../../../shared/api.service';
 import { esAdminGlobal, sucursalesPermitidas, normalizarNombre } from '../../../shared/permisos.util';
 import { nivelDeCargo } from '../../../shared/nivel-jerarquico.util';
 import { esItemHecho } from '../../../shared/item-completado.util';
@@ -72,7 +72,7 @@ export class EstadisticasComponent implements OnInit, OnDestroy {
     { dias: 0,  label: 'Todo' }
   ];
 
-  private firestore = inject(Firestore);
+  private api = inject(ApiService);
   private usuariosSvc = inject(UsuariosService);
   private destructoresRadares: (() => void)[] = [];
 
@@ -139,21 +139,23 @@ export class EstadisticasComponent implements OnInit, OnDestroy {
 
     // ⏰ Radar específico para retrasos: query filtrada → solo trae docs con
     // entregaConRetraso === true. Reduce muchísimo reads vs traer TODO el histórico.
-    const queryRetrasos = query(
-      collection(this.firestore, 'checklists'),
-      where('entregaConRetraso', '==', true)
-    );
-    const radarRetrasos = onSnapshot(queryRetrasos, (snapshot) => {
+    // FERROCARRIL Etapa 3: antes onSnapshot(checklists); ahora poll a Postgres.
+    const recargarRetrasos = async () => {
+      const resp = await this.api.get('/api/checklists?entregaConRetraso=true')
+        .catch((e: any) => { console.error('[estadisticas] poll PG retrasos', e); return null; });
+      if (!resp) return;
+      const filas: any[] = resp.checklists || [];
       const arr: any[] = [];
-      snapshot.forEach(d => {
-        const data: any = d.data();
-        if (data.eliminado === true || data.archivado === true) return;
-        if (!this.sucursalesPermitidas.includes(data.store)) return; // respeta scope del admin
-        arr.push(data);
+      filas.forEach((c: any) => {
+        if (c.eliminado === true || c.archivado === true) return;
+        if (!this.sucursalesPermitidas.includes(c.store)) return; // respeta scope del admin
+        arr.push(c);
       });
       this.retrasosCrudos.set(arr);
-    });
-    this.destructoresRadares.push(radarRetrasos);
+    };
+    recargarRetrasos();
+    const idPollRetrasos = setInterval(recargarRetrasos, 20000);
+    this.destructoresRadares.push(() => clearInterval(idPollRetrasos));
 
     // Optimizacion de lecturas: limitamos la query a los ultimos 7 dias.
     // Estadisticas usa todo lo de "hoy" para mostrar el resumen diario; no necesita
@@ -161,18 +163,19 @@ export class EstadisticasComponent implements OnInit, OnDestroy {
     // algun momento queremos rango mas grande, pasamos el filtro como signal.
     const offsetQuery = new Date().getTimezoneOffset() * 60000;
     const hace7 = new Date(Date.now() - 7 * 86_400_000 - offsetQuery).toISOString().split('T')[0];
-    const checklistsRef = collection(this.firestore, 'checklists');
-    const checklistsQuery = query(checklistsRef, where('date', '>=', hace7));
-    const radarChecklists = onSnapshot(checklistsQuery, (snapshot) => {
+    // FERROCARRIL Etapa 3: antes onSnapshot(checklists); ahora poll a Postgres.
+    const recargarChecklists = async () => {
+      const resp = await this.api.get('/api/checklists?desde=' + encodeURIComponent(hace7))
+        .catch((e: any) => { console.error('[estadisticas] poll PG', e); return null; });
+      if (!resp) return;
+      const filas: any[] = resp.checklists || [];
       const listasCrudas: any[] = [];
 
-      // 🔥 REGLA ESTRICTA DE HOY: Para que las estadísticas no arrastren fantasmas de ayer
+      // REGLA ESTRICTA DE HOY: Para que las estadísticas no arrastren fantasmas de ayer
       const offset = new Date().getTimezoneOffset() * 60000;
       const fechaHoyLocal = new Date(Date.now() - offset).toISOString().split('T')[0];
 
-      snapshot.forEach(docSnap => {
-        const c: any = docSnap.data();
-        
+      filas.forEach((c: any) => {
         if (c.eliminado === true || c.archivado === true) return;
 
         // SOLO contamos las rutinas que estén etiquetadas con la fecha de HOY
@@ -201,8 +204,10 @@ export class EstadisticasComponent implements OnInit, OnDestroy {
       this.todosLosChecklists = Array.from(listasSinClones.values());
       this.calcularEstadisticasGenerales();
       this.calcularEstadisticasEmpleados();
-    });
-    this.destructoresRadares.push(radarChecklists);
+    };
+    recargarChecklists();
+    const idPollChecklists = setInterval(recargarChecklists, 20000);
+    this.destructoresRadares.push(() => clearInterval(idPollChecklists));
   }
 
   calcularEstadisticasGenerales() {

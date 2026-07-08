@@ -2,7 +2,7 @@ import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, Router } from '@angular/router';
-import { Firestore, collection, query, addDoc, doc, updateDoc, deleteDoc, getDocs, getDoc, setDoc, where } from '@angular/fire/firestore';
+import { Firestore, collection, addDoc, doc, updateDoc, deleteDoc, getDocs, getDoc, setDoc } from '@angular/fire/firestore';
 import { Auth } from '@angular/fire/auth';
 
 import { SidebarComponent } from '../shared/sidebar/sidebar';
@@ -185,9 +185,11 @@ export class AgendaComponent implements OnInit, OnDestroy {
       const off = hace30.getTimezoneOffset() * 60000;
       const desde = new Date(hace30.getTime() - off).toISOString().split('T')[0];
 
-      const snap = await getDocs(query(collection(this.firestore, 'checklists'), where('date', '>=', desde)));
+      // FERROCARRIL Etapa 3: checklists desde Postgres
+      const resp = await this.api.get('/api/checklists?desde=' + encodeURIComponent(desde));
+      const filas: any[] = resp?.checklists || [];
       const checklists: any[] = [];
-      snap.forEach(d => { const c = d.data() as any; if (c.store && visSet.has(normalizarNombre(c.store))) checklists.push(c); });
+      filas.forEach((c: any) => { if (c.store && visSet.has(normalizarNombre(c.store))) checklists.push(c); });
 
       // Catálogo (para excluir lo ya configurado).
       const catSnap = await getDocs(collection(this.firestore, 'catalogo_rutinas'));

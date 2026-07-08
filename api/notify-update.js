@@ -5,6 +5,7 @@
 //   FIREBASE_SERVICE_ACCOUNT = JSON completo del service account de Firebase.
 
 const admin = require('firebase-admin');
+const { query } = require('./db'); // FERROCARRIL Etapa 10: usuarios/tokens desde Postgres
 
 let inicializado = false;
 function inicializar() {
@@ -33,21 +34,21 @@ module.exports = async (req, res) => {
     if (!idToken) return res.status(401).json({ error: 'Falta Authorization Bearer token' });
 
     const decoded = await admin.auth().verifyIdToken(idToken);
-    const perfilSnap = await admin.firestore().collection('usuarios').doc(decoded.uid).get();
-    const perfil = perfilSnap.data() || {};
-    if (perfil.rol !== 'admin') {
+    const pr = await query('select rol from mdtask_usuarios where id = $1', [decoded.uid]);
+    const perfilRol = pr.rows[0] ? pr.rows[0].rol : null;
+    if (perfilRol !== 'admin') {
       return res.status(403).json({ error: 'Solo administradores pueden enviar push de actualización.' });
     }
 
-    // 2) Cargar todos los tokens FCM
-    const tokensSnap = await admin.firestore().collection('usuarios_tokens').get();
+    // 2) Cargar todos los tokens FCM (desde Postgres)
+    const tokensRes = await query('select id, token from mdtask_usuarios_tokens');
     const tokens = [];
     const idsPorToken = new Map();
-    tokensSnap.forEach(d => {
-      const t = (d.data() || {}).token;
+    tokensRes.rows.forEach(row => {
+      const t = row.token;
       if (typeof t === 'string' && t.length > 20) {
         tokens.push(t);
-        idsPorToken.set(t, d.id);
+        idsPorToken.set(t, String(row.id));
       }
     });
 
@@ -81,12 +82,10 @@ module.exports = async (req, res) => {
 
     // 4) Limpiar tokens muertos (no bloqueante)
     if (tokensInvalidos.length > 0) {
-      const batch = admin.firestore().batch();
-      tokensInvalidos.forEach(t => {
+      for (const t of tokensInvalidos) {
         const id = idsPorToken.get(t);
-        if (id) batch.delete(admin.firestore().collection('usuarios_tokens').doc(id));
-      });
-      batch.commit().catch(() => {});
+        if (id) await query('delete from mdtask_usuarios_tokens where id = $1', [String(id)]).catch(() => {});
+      }
     }
 
     return res.json({

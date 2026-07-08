@@ -18,6 +18,7 @@
 // Variables de entorno: FIREBASE_SERVICE_ACCOUNT.
 
 const admin = require('firebase-admin');
+const { query } = require('./db'); // FERROCARRIL Etapa 10: usuarios/tokens desde Postgres
 
 let inicializado = false;
 function inicializar() {
@@ -51,8 +52,6 @@ module.exports = async (req, res) => {
     const decoded = await admin.auth().verifyIdToken(idToken);
     const emisorUid = decoded.uid;
 
-    const db = admin.firestore();
-
     // 2) Leer parámetros
     const body = req.body || {};
     const titulo = String(body.titulo || '').trim();
@@ -65,11 +64,10 @@ module.exports = async (req, res) => {
 
     // 3) grupoTec → sumar uids y nombres de todos los del grupo.
     if (body.grupoTec === true) {
-      const tecSnap = await db.collection('usuarios').where('grupoTec', '==', true).get();
-      tecSnap.forEach(d => {
-        uidsDestino.add(String(d.id));
-        const n = (d.data() || {}).nombre;
-        if (n) nombresDestino.add(norm(n));
+      const tecRows = await query("select id, nombre from mdtask_usuarios where datos->>'grupoTec' = 'true'");
+      tecRows.rows.forEach(u => {
+        uidsDestino.add(String(u.id));
+        if (u.nombre) nombresDestino.add(norm(u.nombre));
       });
     }
 
@@ -79,17 +77,16 @@ module.exports = async (req, res) => {
 
     // 4) Buscar tokens que coincidan (por id de doc, por uid, o por nombre).
     //    Nunca al emisor.
-    const tokensSnap = await db.collection('usuarios_tokens').get();
+    const tokensRes = await query('select id, uid, usuario, token from mdtask_usuarios_tokens');
     const tokens = [];
     const idsPorToken = new Map();
-    tokensSnap.forEach(d => {
-      const data = d.data() || {};
-      const t = data.token;
+    tokensRes.rows.forEach(row => {
+      const t = row.token;
       if (typeof t !== 'string' || t.length <= 20) return;
 
-      const docUid = data.uid ? String(data.uid) : '';
-      const docId = String(d.id);
-      const docNombre = norm(data.usuario);
+      const docUid = row.uid ? String(row.uid) : '';
+      const docId = String(row.id);
+      const docNombre = norm(row.usuario);
 
       const esEmisor = (docUid && docUid === emisorUid) || docId === emisorUid;
       if (esEmisor) return;
@@ -142,12 +139,10 @@ module.exports = async (req, res) => {
 
     // 6) Limpiar tokens muertos (no bloqueante).
     if (tokensInvalidos.length > 0) {
-      const batch = db.batch();
-      tokensInvalidos.forEach(t => {
+      for (const t of tokensInvalidos) {
         const id = idsPorToken.get(t);
-        if (id) batch.delete(db.collection('usuarios_tokens').doc(id));
-      });
-      batch.commit().catch(() => {});
+        if (id) await query('delete from mdtask_usuarios_tokens where id = $1', [String(id)]).catch(() => {});
+      }
     }
 
     return res.json({ ok: true, enviados: exitosos, fallidos, tokensLimpiados: tokensInvalidos.length });

@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { Messaging, getToken, onMessage } from '@angular/fire/messaging';
 import { Firestore, doc, setDoc } from '@angular/fire/firestore';
 import { getAuth } from '@angular/fire/auth';
+import { ApiService } from '../shared/api.service';
 
 /**
  * Servicio de Firebase Cloud Messaging (FCM) — Push notifications a la PWA.
@@ -20,6 +21,7 @@ const VAPID_PUBLIC_KEY = 'BltRm5eYik-A2jdDOiS3nukAh41n47mYwdpfw9L_IRFUZ2L6OSEDNA
 export class NotificacionesService {
   private messaging = inject(Messaging);
   private firestore = inject(Firestore);
+  private api = inject(ApiService); // FERROCARRIL Etapa 10: token FCM tambien a Postgres
 
   /**
    * Pide permiso de notificaciones, obtiene el token FCM y lo guarda en
@@ -60,13 +62,16 @@ export class NotificacionesService {
       // 5. Guardamos el token. Lo indexamos por uid si lo hay (estable),
       //    si no, por nombre (compatibilidad con el modelo viejo).
       const docId = uid || usuarioNombre;
-      await setDoc(doc(this.firestore, 'usuarios_tokens', docId), {
+      const tokenDoc = {
         token,
         usuario: usuarioNombre,
         uid: uid || null,
         actualizado: Date.now(),
         userAgent: navigator.userAgent
-      }, { merge: true });
+      };
+      await setDoc(doc(this.firestore, 'usuarios_tokens', docId), tokenDoc, { merge: true });
+      // FERROCARRIL Etapa 10: dual-write del token a Postgres (mismo id).
+      await this.api.guardar('/api/usuarios-tokens', { id: docId, ...tokenDoc });
 
       // 6. Cuando llega un push y la app está EN PRIMER PLANO, onMessage dispara aquí.
       //    (Si está en background, lo maneja firebase-messaging-sw.js.)

@@ -2102,8 +2102,9 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     // bundle. Ahora exige rol de administrador. La protección real vive en las
     // Firestore Security Rules (Fase 2).
     if (this.currentUser?.rol !== 'admin') { alert(' ⚠️ Solo un administrador puede eliminar checklists.'); return; }
-    const confirmar = confirm(` ⚠️ ¿Borrar "${this.checklistToDelete.name}" definitivamente?\n\nLa rutina dejará de generarse en días futuros.`);
-    if (confirmar) {
+    // La confirmación ya la dio el usuario en el modal "Confirmar eliminación".
+    // No pedimos un segundo confirm() ni mostramos alert() de éxito: basta ese modal.
+    {
       try {
         const checklist = this.checklistToDelete;
         const targetName = checklist.name.replace(/ \((Diaria|Semanal|Catorcenal|Mensual|Trimestral)\)$/, '').trim();
@@ -2157,10 +2158,10 @@ export class ChecklistComponent implements OnInit, OnDestroy {
           }
         }
 
-        alert(' 🗑️ Tarea/rutina eliminada definitivamente.');
+        this.mostrarToast(' Tarea/rutina eliminada definitivamente.');
       } catch (error) {
         console.error('[confirmarEliminacion]', error);
-        alert(' ❌ Error al eliminar.');
+        this.mostrarToast(' Error al eliminar.');
       }
     }
     this.cerrarPasswordModal();
@@ -3767,6 +3768,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     if (!this.formNameRutina || this.formAssignedRutina.length === 0) { alert('Faltan datos.'); return; }
     const rutinasValidas = this.formRutinas.filter(rutina => rutina.text.trim() !== '').map((rutina, i) => ({
       id: Date.now() + 1000 + i,
+    
       text: rutina.text,
       requiresPhoto: rutina.requiresPhoto,
       requiresAntesDespues: rutina.requiresAntesDespues || false,

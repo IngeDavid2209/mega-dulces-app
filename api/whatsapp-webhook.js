@@ -11,8 +11,7 @@
 //   WHATSAPP_APP_SECRET (opcional), ANTHROPIC_API_KEY, ASISTENTE_MODELO (opcional),
 //   FIREBASE_SERVICE_ACCOUNT
 
-const admin = require('firebase-admin');
-const { inicializar, construirContexto, procesarChat } = require('./asistente-chat');
+const { construirContexto, procesarChat, pgUsuarios, pgConversacionGet, pgConversacionSet } = require('./asistente-chat');
 const { enviarMensaje, ultimos10, validarFirma, extraerMensaje } = require('./whatsapp');
 
 const DIAS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
@@ -40,9 +39,6 @@ function recortarHistorial(messages) {
 
 // Procesa un mensaje entrante (async, despues de haber respondido 200 a Meta).
 async function procesarMensaje(msg) {
-  inicializar();
-  const db = admin.firestore();
-
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) { console.error('[wa-webhook] Falta ANTHROPIC_API_KEY.'); return; }
   const modelo = process.env.ASISTENTE_MODELO || 'claude-opus-4-8';
@@ -56,8 +52,7 @@ async function procesarMensaje(msg) {
 
   // Identificar al usuario por su telefono (ultimos 10 digitos, sin importar formato).
   const objetivo = ultimos10(msg.from);
-  const usuariosSnap = await db.collection('usuarios').get();
-  const usuarios = usuariosSnap.docs.map(d => ({ id: d.id, ...(d.data() || {}) }));
+  const usuarios = await pgUsuarios();
   const yo = usuarios.find(u => u.telefono && ultimos10(u.telefono) === objetivo);
 
   if (!yo) {
@@ -67,11 +62,9 @@ async function procesarMensaje(msg) {
     return;
   }
 
-  const convRef = db.collection('wa_conversaciones').doc(objetivo);
-
   // Comando para reiniciar el hilo.
   if (COMANDOS_RESET.includes(texto.toLowerCase())) {
-    await convRef.set({ messages: [], actualizado: Date.now(), uid: yo.id, telefono: objetivo });
+    await pgConversacionSet(objetivo, { messages: [], uid: yo.id });
     await enviarMensaje(msg.from, 'Listo, empezamos de nuevo 🧹. ¿En qué te ayudo?');
     return;
   }
@@ -79,11 +72,10 @@ async function procesarMensaje(msg) {
   // Cargar historial (se reinicia si estuvo inactivo demasiado tiempo).
   let messages = [];
   try {
-    const snap = await convRef.get();
-    if (snap.exists) {
-      const d = snap.data() || {};
-      const inactivo = Date.now() - (d.actualizado || 0) > HORAS_RESET * 3600 * 1000;
-      if (!inactivo && Array.isArray(d.messages)) messages = d.messages;
+    const conv = await pgConversacionGet(objetivo);
+    if (conv) {
+      const inactivo = Date.now() - (conv.actualizado || 0) > HORAS_RESET * 3600 * 1000;
+      if (!inactivo && Array.isArray(conv.messages)) messages = conv.messages;
     }
   } catch (e) { /* si falla la lectura, arrancamos con historial vacio */ }
 
@@ -92,11 +84,11 @@ async function procesarMensaje(msg) {
   // Contexto del usuario identificado (mismos permisos que en la web) + asistente.
   const { fechaHoy, diaSemana } = fechaMexico();
   // Reutilizamos la lista de usuarios ya cargada (evita una 2ª lectura a Firestore).
-  const ctx = await construirContexto(db, yo.id, yo, { fechaHoy, diaSemana, usuarios });
+  const ctx = await construirContexto(null, yo.id, yo, { fechaHoy, diaSemana, usuarios });
 
   let respuesta;
   try {
-    const salida = await procesarChat({ apiKey, modelo, db, ctx, messages });
+    const salida = await procesarChat({ apiKey, modelo, db: null, ctx, messages });
     respuesta = salida.respuesta;
     messages = recortarHistorial(salida.messages);
   } catch (e) {
@@ -106,7 +98,7 @@ async function procesarMensaje(msg) {
   }
 
   // Guardar hilo y responder por WhatsApp.
-  try { await convRef.set({ messages, actualizado: Date.now(), uid: yo.id, telefono: objetivo }); }
+  try { await pgConversacionSet(objetivo, { messages, uid: yo.id }); }
   catch (e) { console.error('[wa-webhook] no se guardo el hilo:', e && e.message); }
 
   await enviarMensaje(msg.from, respuesta);

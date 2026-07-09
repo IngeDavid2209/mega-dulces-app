@@ -13,7 +13,13 @@
 //   ANTHROPIC_API_KEY, FIREBASE_SERVICE_ACCOUNT, ASISTENTE_MODELO (opcional)
 
 const admin = require('firebase-admin');
+const crypto = require('crypto');
+const { query } = require('./db');
 
+// firebase-admin solo se usa ya para VERIFICAR el idToken del endpoint web
+// (Firebase Auth, ajeno a la cuota de Firestore). TODOS los datos del asistente
+// (usuarios, agenda, checklists, rutinas, config, hilo del bot) viven en Postgres
+// tras la migración FERROCARRIL; el bot ya NO toca Firestore.
 let inicializado = false;
 function inicializar() {
   if (inicializado) return;
@@ -23,6 +29,213 @@ function inicializar() {
     admin.initializeApp({ credential: admin.credential.cert(JSON.parse(raw)) });
   }
   inicializado = true;
+}
+
+// ---------------------------------------------------------------------------
+// CAPA DE DATOS (Postgres) — reproduce el mapeo columna/jsonb de los endpoints
+// api/usuarios.js, usuarios-agenda.js, checklists.js y _crud.js, pero consultando
+// Postgres DIRECTO con query() (server-side, sin idToken). Si cambia el esquema
+// de esos endpoints, refléjalo aquí también.
+// ---------------------------------------------------------------------------
+
+// -- usuarios (mdtask_usuarios) -> objeto estilo Firestore (igual que usuarios.js) --
+function usuarioFila(r) {
+  const datos = r.datos || {};
+  return {
+    uid: r.id, id: r.id,
+    usuario: r.usuario || '', correo: r.correo || '', nombre: r.nombre || '',
+    rol: r.rol || '', telefono: r.telefono || '', alcance: r.alcance || '',
+    cargo: r.cargo || '', activo: r.activo !== false,
+    creadoEn: r.creado_en != null ? Number(r.creado_en) : null,
+    actualizadoEn: r.actualizado_en != null ? Number(r.actualizado_en) : null,
+    ...datos,
+  };
+}
+async function pgUsuarios() {
+  const r = await query('select * from mdtask_usuarios order by nombre asc');
+  return r.rows.map(usuarioFila);
+}
+async function pgUsuarioPorId(id) {
+  const r = await query('select * from mdtask_usuarios where id = $1', [String(id)]);
+  return r.rows[0] ? usuarioFila(r.rows[0]) : null;
+}
+
+// -- config (mdtask_config) leído por id; todo el doc vive en `datos` --
+async function pgConfig(id) {
+  const r = await query('select * from mdtask_config where id = $1', [String(id)]);
+  return r.rows[0] ? (r.rows[0].datos || {}) : null;
+}
+
+// -- agenda personal (mdtask_agenda) (igual que usuarios-agenda.js) --
+const AGENDA_COLS = new Set(['texto', 'completada', 'fecha', 'prioridad']);
+const AGENDA_IGNORAR = new Set(['id', 'uid', 'fechaCreacion', 'completadaEn', 'fecha_creacion', 'completada_en']);
+function agendaFila(r) {
+  const datos = r.datos || {};
+  return {
+    id: r.id, uid: r.uid,
+    texto: r.texto || '', completada: !!r.completada,
+    fecha: r.fecha || '', prioridad: r.prioridad || '',
+    fechaCreacion: r.fecha_creacion != null ? Number(r.fecha_creacion) : null,
+    completadaEn: r.completada_en != null ? Number(r.completada_en) : null,
+    ...datos,
+  };
+}
+async function pgAgendaList(uid) {
+  const r = await query('select * from mdtask_agenda where uid = $1 order by fecha_creacion asc', [String(uid)]);
+  return r.rows.map(agendaFila);
+}
+async function pgAgendaAdd(uid, doc) {
+  const cols = {}, datos = {};
+  for (const [k, v] of Object.entries(doc || {})) {
+    if (AGENDA_IGNORAR.has(k)) continue;
+    if (AGENDA_COLS.has(k)) cols[k] = v; else datos[k] = v;
+  }
+  const id = crypto.randomUUID();
+  await query(
+    `insert into mdtask_agenda (id, uid, texto, completada, fecha, prioridad, fecha_creacion, completada_en, datos)
+     values ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+    [id, String(uid), String(cols.texto || ''), !!cols.completada, String(cols.fecha || ''),
+     String(cols.prioridad || ''), doc.fechaCreacion != null ? Number(doc.fechaCreacion) : Date.now(),
+     doc.completadaEn != null ? Number(doc.completadaEn) : null, JSON.stringify(datos)]
+  );
+  return id;
+}
+// Actualiza una tarea de la agenda del PROPIO usuario (scope por uid). Mezcla
+// las claves de `datos`. Devuelve true si existía. `colChanges` usa nombres de
+// columna; `datosChanges` va al jsonb.
+async function pgAgendaUpdate(id, uid, colChanges, datosChanges) {
+  const cur = await query('select * from mdtask_agenda where id = $1 and uid = $2', [String(id), String(uid)]);
+  if (cur.rowCount === 0) return false;
+  const actual = cur.rows[0];
+  const val = (c) => (c in colChanges ? colChanges[c] : actual[c]);
+  const mergedDatos = { ...(actual.datos || {}), ...(datosChanges || {}) };
+  await query(
+    `update mdtask_agenda set texto=$2, completada=$3, fecha=$4, prioridad=$5, completada_en=$6, datos=$7
+       where id=$1`,
+    [String(id), String(val('texto') || ''),
+     ('completada' in colChanges ? !!colChanges.completada : actual.completada),
+     String(val('fecha') || ''), String(val('prioridad') || ''),
+     ('completada_en' in colChanges ? colChanges.completada_en : actual.completada_en),
+     JSON.stringify(mergedDatos)]
+  );
+  return true;
+}
+async function pgAgendaDelete(id, uid) {
+  const r = await query('delete from mdtask_agenda where id = $1 and uid = $2', [String(id), String(uid)]);
+  return r.rowCount > 0;
+}
+
+// -- checklists (mdtask_checklists) (igual que checklists.js) --
+const CK_MAP = {
+  name: 'name', assigned: 'assigned', assignedUid: 'assigned_uid', store: 'store',
+  date: 'fecha', time: 'hora', status: 'status',
+  enviado: 'enviado', eliminado: 'eliminado', archivado: 'archivado',
+  origenTec: 'origen_tec', entregaConRetraso: 'entrega_con_retraso',
+  createdBy: 'created_by', timestampCreacion: 'timestamp_creacion',
+  _asignacionId: 'asignacion_id', _catalogoRutinaId: 'catalogo_rutina_id',
+};
+const CK_BOOL = new Set(['enviado', 'eliminado', 'archivado', 'origen_tec', 'entrega_con_retraso']);
+const CK_COL_LIST = ['name', 'assigned', 'assigned_uid', 'store', 'fecha', 'hora', 'status',
+  'enviado', 'eliminado', 'archivado', 'origen_tec', 'entrega_con_retraso',
+  'created_by', 'timestamp_creacion', 'asignacion_id', 'catalogo_rutina_id'];
+function ckValorCol(col, v) {
+  if (v === undefined) return null;
+  if (CK_BOOL.has(col)) return !!v;
+  if (col === 'timestamp_creacion') return v != null ? Number(v) : null;
+  if (v === null) return null;
+  return String(v);
+}
+function checklistFila(r) {
+  const datos = r.datos || {};
+  return {
+    ...datos,
+    id: r.id,
+    name: r.name || '', assigned: r.assigned || '', assignedUid: r.assigned_uid || null,
+    store: r.store || '', date: r.fecha || '', time: r.hora || '',
+    status: r.status || 'pendiente',
+    enviado: !!r.enviado, eliminado: !!r.eliminado, archivado: !!r.archivado,
+    origenTec: !!r.origen_tec, entregaConRetraso: !!r.entrega_con_retraso,
+    createdBy: r.created_by || '',
+    timestampCreacion: r.timestamp_creacion != null ? Number(r.timestamp_creacion) : null,
+    _asignacionId: r.asignacion_id || null, _catalogoRutinaId: r.catalogo_rutina_id || null,
+  };
+}
+async function pgChecklistUpsert(id, obj) {
+  const cols = {}, datos = {};
+  for (const [k, v] of Object.entries(obj || {})) {
+    if (k === 'id') continue;
+    const col = CK_MAP[k];
+    if (col) cols[col] = v; else datos[k] = v;
+  }
+  const valores = [String(id), ...CK_COL_LIST.map(c => ckValorCol(c, cols[c])), JSON.stringify(datos)];
+  const placeholders = valores.map((_, i) => `$${i + 1}`).join(',');
+  const sets = CK_COL_LIST.map(c => `${c}=excluded.${c}`).concat('datos=excluded.datos').join(', ');
+  await query(
+    `insert into mdtask_checklists (id, ${CK_COL_LIST.join(', ')}, datos)
+     values (${placeholders})
+     on conflict (id) do update set ${sets}`,
+    valores
+  );
+}
+async function pgChecklistsPorFecha(fecha) {
+  const r = await query('select * from mdtask_checklists where fecha = $1', [String(fecha)]);
+  return r.rows.map(checklistFila);
+}
+
+// -- CRUD genérico (catalogo_rutinas / asignaciones_rutinas) (igual que _crud.js) --
+function crudFila(r, map, boolCols, numCols) {
+  const o = { ...(r.datos || {}), id: r.id };
+  for (const [campo, col] of Object.entries(map)) {
+    let v = r[col];
+    if (boolCols.has(col)) v = !!v;
+    else if (numCols.has(col)) v = v != null ? Number(v) : null;
+    o[campo] = v;
+  }
+  return o;
+}
+async function pgCrudUpsert(tabla, map, boolCols, numCols, id, obj) {
+  const COL_LIST = Object.values(map);
+  const cols = {}, datos = {};
+  for (const [k, v] of Object.entries(obj || {})) {
+    if (k === 'id') continue;
+    const col = map[k];
+    if (col) cols[col] = v; else datos[k] = v;
+  }
+  const valorCol = (col, v) => {
+    if (v === undefined || v === null) return null;
+    if (boolCols.has(col)) return !!v;
+    if (numCols.has(col)) return Number(v);
+    return String(v);
+  };
+  const valores = [String(id), ...COL_LIST.map(c => valorCol(c, cols[c])), JSON.stringify(datos)];
+  const placeholders = valores.map((_, i) => `$${i + 1}`).join(',');
+  const sets = COL_LIST.map(c => `${c}=excluded.${c}`).concat('datos=excluded.datos').join(', ');
+  await query(
+    `insert into ${tabla} (${['id', ...COL_LIST, 'datos'].join(', ')})
+     values (${placeholders}) on conflict (id) do update set ${sets}`,
+    valores
+  );
+}
+const ASIG_MAP = { catalogoRutinaId: 'catalogo_rutina_id', nombreRutina: 'nombre_rutina', modoAsignacion: 'modo_asignacion', activa: 'activa', creadoEn: 'creado_en' };
+async function pgAsignacionesList() {
+  const r = await query('select * from mdtask_asignaciones_rutinas order by creado_en desc');
+  return r.rows.map(row => crudFila(row, ASIG_MAP, new Set(['activa']), new Set(['creado_en'])));
+}
+
+// -- hilo de conversación del bot (mdtask_wa_conversaciones) --
+async function pgConversacionGet(id) {
+  const r = await query('select * from mdtask_wa_conversaciones where id = $1', [String(id)]);
+  if (!r.rows[0]) return null;
+  const row = r.rows[0];
+  return { messages: Array.isArray(row.messages) ? row.messages : [], actualizado: row.actualizado != null ? Number(row.actualizado) : 0, uid: row.uid || null };
+}
+async function pgConversacionSet(id, { messages, uid }) {
+  await query(
+    `insert into mdtask_wa_conversaciones (id, uid, actualizado, messages)
+     values ($1,$2,$3,$4)
+     on conflict (id) do update set uid=excluded.uid, actualizado=excluded.actualizado, messages=excluded.messages`,
+    [String(id), uid != null ? String(uid) : null, Date.now(), JSON.stringify(Array.isArray(messages) ? messages : [])]
+  );
 }
 
 const MAX_ITERACIONES = 8;
@@ -213,9 +426,6 @@ const TOOLS = [
 function normaliza(s) {
   return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
 }
-function agendaRef(db, uid) {
-  return db.collection('usuarios').doc(uid).collection('agenda');
-}
 function esAdminGlobal(perfil) {
   const alc = (perfil.alcance || '').toLowerCase();
   return perfil.rol === 'admin' && (alc === 'global' || alc === '' || (perfil.sucursales || []).includes('General (Acceso Total)'));
@@ -347,7 +557,7 @@ async function ejecutarHerramienta(db, ctx, nombre, input) {
       const rol = input.para_rol ? (ROLES.find(r => normaliza(r) === normaliza(input.para_rol)) || input.para_rol) : null;
       const destinatarios = personalAsignable(ctx, { sucursal: input.para_sucursal, rol });
       if (destinatarios.length === 0) return { ok: false, mensaje: 'No encontre personal que coincida con ese grupo en tus sucursales.' };
-      for (const u of destinatarios) await agendaRef(db, u.id).add(construirDoc(ctx.nombre));
+      for (const u of destinatarios) await pgAgendaAdd(u.id, construirDoc(ctx.nombre));
       const partes = [];
       if (input.para_todos) partes.push('todo tu personal');
       if (rol) partes.push('rol ' + rol);
@@ -365,8 +575,8 @@ async function ejecutarHerramienta(db, ctx, nombre, input) {
       }
       uidDestino = r.user.id; etiqueta = r.user.nombre || r.user.correo;
     }
-    const ref = await agendaRef(db, uidDestino).add(construirDoc(uidDestino !== ctx.uid ? ctx.nombre : null));
-    return { ok: true, id: ref.id, mensaje: `Tarea creada en ${etiqueta}.` };
+    const nuevoId = await pgAgendaAdd(uidDestino, construirDoc(uidDestino !== ctx.uid ? ctx.nombre : null));
+    return { ok: true, id: nuevoId, mensaje: `Tarea creada en ${etiqueta}.` };
   }
 
   if (nombre === 'consultar_tareas') {
@@ -380,8 +590,7 @@ async function ejecutarHerramienta(db, ctx, nombre, input) {
       }
       uidConsulta = r.user.id;
     }
-    const snap = await agendaRef(db, uidConsulta).get();
-    let lista = snap.docs.map(d => ({ id: d.id, ...(d.data() || {}) }));
+    let lista = await pgAgendaList(uidConsulta);
     if (filtro === 'hoy') lista = lista.filter(t => !t.completada && t.fecha === hoy);
     else if (filtro === 'vencidas') lista = lista.filter(t => !t.completada && t.fecha && t.fecha < hoy);
     else if (filtro === 'todas') { /* todas */ }
@@ -392,28 +601,31 @@ async function ejecutarHerramienta(db, ctx, nombre, input) {
 
   if (nombre === 'completar_tarea') {
     if (!input.id) return { ok: false, mensaje: 'Falta el id.' };
-    await agendaRef(db, ctx.uid).doc(input.id).update({ completada: true, completadaEn: Date.now() });
+    const ok = await pgAgendaUpdate(input.id, ctx.uid, { completada: true, completada_en: Date.now() }, {});
+    if (!ok) return { ok: false, mensaje: 'No encontre esa tarea en tu agenda.' };
     return { ok: true, mensaje: 'Tarea completada.' };
   }
 
   if (nombre === 'editar_tarea') {
     if (!input.id) return { ok: false, mensaje: 'Falta el id.' };
-    const c = {};
-    if (input.titulo != null) c.texto = input.titulo;
-    if (input.fecha != null) { c.fecha = input.fecha; c.fechaInicio = input.fecha; }
-    if (input.hora_inicio != null) c.horaInicio = input.hora_inicio;
-    if (input.fecha_fin != null) c.fechaFin = input.fecha_fin;
-    if (input.hora_fin != null) c.horaFin = input.hora_fin;
-    if (input.prioridad != null) c.prioridad = input.prioridad;
-    if (input.instrucciones != null) c.instrucciones = input.instrucciones;
-    if (!Object.keys(c).length) return { ok: false, mensaje: 'No indicaste que cambiar.' };
-    await agendaRef(db, ctx.uid).doc(input.id).update(c);
+    const cols = {}, datos = {};
+    if (input.titulo != null) cols.texto = input.titulo;
+    if (input.fecha != null) { cols.fecha = input.fecha; datos.fechaInicio = input.fecha; }
+    if (input.hora_inicio != null) datos.horaInicio = input.hora_inicio;
+    if (input.fecha_fin != null) datos.fechaFin = input.fecha_fin;
+    if (input.hora_fin != null) datos.horaFin = input.hora_fin;
+    if (input.prioridad != null) cols.prioridad = input.prioridad;
+    if (input.instrucciones != null) datos.instrucciones = input.instrucciones;
+    if (!Object.keys(cols).length && !Object.keys(datos).length) return { ok: false, mensaje: 'No indicaste que cambiar.' };
+    const ok = await pgAgendaUpdate(input.id, ctx.uid, cols, datos);
+    if (!ok) return { ok: false, mensaje: 'No encontre esa tarea en tu agenda.' };
     return { ok: true, mensaje: 'Tarea actualizada.' };
   }
 
   if (nombre === 'eliminar_tarea') {
     if (!input.id) return { ok: false, mensaje: 'Falta el id.' };
-    await agendaRef(db, ctx.uid).doc(input.id).delete();
+    const ok = await pgAgendaDelete(input.id, ctx.uid);
+    if (!ok) return { ok: false, mensaje: 'No encontre esa tarea en tu agenda.' };
     return { ok: true, mensaje: 'Tarea eliminada.' };
   }
 
@@ -479,7 +691,7 @@ async function ejecutarHerramienta(db, ctx, nombre, input) {
       time: input.hora_limite || '23:59', status: 'pendiente', enviado: false,
       createdBy: ctx.nombre, notaEmpleado: '', items, subtareas: []
     };
-    await db.collection('checklists').doc(id).set(checklist, { merge: true });
+    await pgChecklistUpsert(id, checklist);
 
     // WhatsApp: enlace wa.me con mensaje listo (el admin lo envia con un toque).
     let tel = String(r.user.telefono || '').replace(/[^\d]/g, '');
@@ -536,28 +748,30 @@ async function ejecutarHerramienta(db, ctx, nombre, input) {
 
     // 1) Plantilla en el catalogo
     const tareasTxt = Array.isArray(input.tareas) && input.tareas.length ? input.tareas : [nombreR];
-    const catRef = db.collection('catalogo_rutinas').doc();
-    await catRef.set({
-      id: catRef.id, nombre: nombreR,
-      tipo: TIPOS.includes(input.tipo) ? input.tipo : 'operacion',
-      descripcion: '',
-      frecuencia,
-      diaSemana: dias[0] || '',
-      diaMes: input.dia_mes || null,
-      horaInicio: input.hora_inicio || '', horaLimite: input.hora_limite || '',
-      responsableSugerido: rolObjetivo || 'Encargado',
-      nivelCritico: NIVELES.includes(input.nivel_critico) ? input.nivel_critico : 'importante',
-      tareas: tareasTxt.map((t, i) => ({
-        id: 't' + i + '_' + ahora, text: String(t),
-        requiresPhoto: false, requiresAntesDespues: false, requiresVariasFotos: false,
-        permiteGaleria: true, permiteDocumentos: true
-      })),
-      activa: true, creadoPor: ctx.nombre, creadoEn: ahora
-    });
+    const catId = crypto.randomUUID();
+    await pgCrudUpsert('mdtask_catalogo_rutinas',
+      { nombre: 'nombre', tipo: 'tipo', frecuencia: 'frecuencia', activa: 'activa', creadoPor: 'creado_por', creadoEn: 'creado_en' },
+      new Set(['activa']), new Set(['creado_en']), catId, {
+        id: catId, nombre: nombreR,
+        tipo: TIPOS.includes(input.tipo) ? input.tipo : 'operacion',
+        descripcion: '',
+        frecuencia,
+        diaSemana: dias[0] || '',
+        diaMes: input.dia_mes || null,
+        horaInicio: input.hora_inicio || '', horaLimite: input.hora_limite || '',
+        responsableSugerido: rolObjetivo || 'Encargado',
+        nivelCritico: NIVELES.includes(input.nivel_critico) ? input.nivel_critico : 'importante',
+        tareas: tareasTxt.map((t, i) => ({
+          id: 't' + i + '_' + ahora, text: String(t),
+          requiresPhoto: false, requiresAntesDespues: false, requiresVariasFotos: false,
+          permiteGaleria: true, permiteDocumentos: true
+        })),
+        activa: true, creadoPor: ctx.nombre, creadoEn: ahora
+      });
 
     // 2) Asignacion(es). Para Semanal/Catorcenal con varios dias, una por dia.
     const base = {
-      catalogoRutinaId: catRef.id, nombreRutina: nombreR,
+      catalogoRutinaId: catId, nombreRutina: nombreR,
       sucursales, modoAsignacion: modo, frecuencia,
       horaInicio: input.hora_inicio || '', horaLimite: input.hora_limite || '',
       fechaInicio: ctx.fechaHoy || '', fechaFin: null,
@@ -566,18 +780,17 @@ async function ejecutarHerramienta(db, ctx, nombre, input) {
     if (modo === 'porRol') base.rolObjetivo = rolObjetivo; else base.empleadosNombres = empleadosNombres;
     if (frecuencia === 'Mensual' || frecuencia === 'Trimestral') base.diaMes = input.dia_mes || 1;
 
+    const crearAsignacion = async (extra) => {
+      const aid = crypto.randomUUID();
+      await pgCrudUpsert('mdtask_asignaciones_rutinas', ASIG_MAP,
+        new Set(['activa']), new Set(['creado_en']), aid, { id: aid, ...base, ...extra });
+    };
     let creadas = 0;
     if ((frecuencia === 'Semanal' || frecuencia === 'Catorcenal') && dias.length) {
-      for (const d of dias) {
-        const aref = db.collection('asignaciones_rutinas').doc();
-        await aref.set({ id: aref.id, ...base, diaSemana: d });
-        creadas++;
-      }
+      for (const d of dias) { await crearAsignacion({ diaSemana: d }); creadas++; }
     } else {
-      const aref = db.collection('asignaciones_rutinas').doc();
       const extra = (frecuencia === 'Semanal' || frecuencia === 'Catorcenal') ? { diaSemana: dias[0] || 'Lunes' } : {};
-      await aref.set({ id: aref.id, ...base, ...extra });
-      creadas++;
+      await crearAsignacion(extra); creadas++;
     }
 
     const aQuien = modo === 'porRol' ? `rol ${rolObjetivo}` : empleadosNombres.join(', ');
@@ -586,8 +799,7 @@ async function ejecutarHerramienta(db, ctx, nombre, input) {
 
   // ---- INFO ----
   if (nombre === 'consultar_rutinas') {
-    const snap = await db.collection('asignaciones_rutinas').get();
-    let lista = snap.docs.map(d => ({ id: d.id, ...(d.data() || {}) })).filter(a => a.activa !== false);
+    let lista = (await pgAsignacionesList()).filter(a => a.activa !== false);
     if (input.sucursal) lista = lista.filter(a => (a.sucursales || []).some(s => normaliza(s) === normaliza(input.sucursal)));
     return {
       ok: true, total: lista.length,
@@ -601,8 +813,7 @@ async function ejecutarHerramienta(db, ctx, nombre, input) {
 
   if (nombre === 'resumen_hoy') {
     const hoy = ctx.fechaHoy;
-    const snap = await agendaRef(db, ctx.uid).get();
-    const todas = snap.docs.map(d => ({ id: d.id, ...(d.data() || {}) }));
+    const todas = await pgAgendaList(ctx.uid);
     const deHoy = todas.filter(t => !t.completada && t.fecha === hoy);
     const vencidas = todas.filter(t => !t.completada && t.fecha && t.fecha < hoy);
     return {
@@ -617,8 +828,7 @@ async function ejecutarHerramienta(db, ctx, nombre, input) {
     let checklists = null;
     const fecha = input.fecha || ctx.fechaHoy;
     if (fecha) {
-      const cs = await db.collection('checklists').where('date', '==', fecha).get();
-      let docs = cs.docs.map(d => d.data() || {}).filter(c => !c.eliminado && !c.archivado);
+      let docs = (await pgChecklistsPorFecha(fecha)).filter(c => !c.eliminado && !c.archivado);
       if (input.sucursal) {
         const s = normaliza(input.sucursal);
         docs = docs.filter(c => { const st = normaliza(c.store || ''); return st === s || st.includes(s) || s.includes(st); });
@@ -634,8 +844,7 @@ async function ejecutarHerramienta(db, ctx, nombre, input) {
     // Estadisticas personales del usuario.
     const dias = input.dias && input.dias > 0 ? input.dias : 7;
     const desde = Date.now() - dias * 24 * 60 * 60 * 1000;
-    const snap = await agendaRef(db, ctx.uid).get();
-    const todas = snap.docs.map(d => d.data() || {});
+    const todas = await pgAgendaList(ctx.uid);
     const mis_tareas = {
       ventana_dias: dias,
       completadas_en_ventana: todas.filter(t => t.completada && (t.completadaEn || 0) >= desde).length,
@@ -671,20 +880,18 @@ async function llamarClaude(apiKey, modelo, system, messages) {
 // procesarChat(). Asi la logica de herramientas y permisos es una sola.
 // ---------------------------------------------------------------------------
 
-// Carga usuarios + config de turnos y arma el contexto de un usuario YA identificado.
+// Carga usuarios + config de turnos y arma el contexto de un usuario YA
+// identificado. (El parametro `db` queda por compatibilidad de firma; los datos
+// se leen de Postgres, ya no de Firestore.)
 async function construirContexto(db, uid, perfil, opts) {
   opts = opts || {};
   // Si quien llama ya cargo la lista de usuarios (ej. el webhook de WhatsApp la
   // usa para identificar por telefono), la reutilizamos para no leerla 2 veces.
   let usuarios = Array.isArray(opts.usuarios) ? opts.usuarios : null;
-  if (!usuarios) {
-    const usuariosSnap = await db.collection('usuarios').get();
-    usuarios = usuariosSnap.docs.map(d => ({ id: d.id, ...(d.data() || {}) }));
-  }
+  if (!usuarios) usuarios = await pgUsuarios();
   let configTurnos = null;
   try {
-    const ct = await db.collection('config').doc('turnos').get();
-    if (ct.exists) configTurnos = ct.data();
+    configTurnos = await pgConfig('turnos');
   } catch (e) { /* sin config => sin restriccion */ }
   return {
     uid, perfil, usuarios, configTurnos,
@@ -779,8 +986,8 @@ module.exports = async (req, res) => {
     if (!idToken) return res.status(401).json({ error: 'Falta Authorization Bearer token' });
     const decoded = await admin.auth().verifyIdToken(idToken);
 
-    const db = admin.firestore();
-    const perfil = (await db.collection('usuarios').doc(decoded.uid).get()).data() || {};
+    // Perfil del usuario desde Postgres (los datos ya no viven en Firestore).
+    const perfil = (await pgUsuarioPorId(decoded.uid)) || {};
 
     const body = req.body || {};
     const messages = Array.isArray(body.messages) ? body.messages : [];
@@ -790,8 +997,8 @@ module.exports = async (req, res) => {
     if (!apiKey) return res.status(500).json({ error: 'Falta ANTHROPIC_API_KEY en las variables de entorno.' });
     const modelo = process.env.ASISTENTE_MODELO || 'claude-opus-4-8';
 
-    const ctx = await construirContexto(db, decoded.uid, perfil, { fechaHoy: body.fechaHoy, diaSemana: body.diaSemana });
-    const salida = await procesarChat({ apiKey, modelo, db, ctx, messages });
+    const ctx = await construirContexto(null, decoded.uid, perfil, { fechaHoy: body.fechaHoy, diaSemana: body.diaSemana });
+    const salida = await procesarChat({ apiKey, modelo, db: null, ctx, messages });
     return res.status(200).json(salida);
   } catch (e) {
     console.error('[asistente-chat] error:', e && e.message, e && e.detalle);
@@ -804,3 +1011,7 @@ module.exports = async (req, res) => {
 module.exports.inicializar = inicializar;
 module.exports.construirContexto = construirContexto;
 module.exports.procesarChat = procesarChat;
+// Datos en Postgres que el webhook necesita (identidad por telefono + hilo).
+module.exports.pgUsuarios = pgUsuarios;
+module.exports.pgConversacionGet = pgConversacionGet;
+module.exports.pgConversacionSet = pgConversacionSet;

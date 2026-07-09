@@ -61,6 +61,8 @@ app.all('/api/config', require('./api/config'));
 // Etapa 10 FERROCARRIL: tokens FCM (el envio sigue siendo FCM; el dato en Postgres).
 app.all('/api/usuarios-tokens', require('./api/usuarios-tokens'));
 app.all('/api/login-usuario', require('./api/login-usuario')); // público (resuelve usuario->correo en el login)
+app.all('/api/login', require('./api/login')); // público (auth propia: valida contraseña y emite JWT)
+app.all('/api/cambiar-password', require('./api/cambiar-password')); // cambio de contraseña (bcrypt)
 app.all('/api/tec-notas', require('./api/tec-notas'));
 app.all('/api/areas', require('./api/areas'));
 app.all('/api/areas-operativas', require('./api/areas-operativas'));

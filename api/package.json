@@ -4,8 +4,11 @@
   "private": true,
   "description": "Funciones serverless de Vercel para Mega Dulces Task",
   "dependencies": {
-    "firebase-admin": "^13.7.0",
+    "bcryptjs": "^2.4.3",
     "cloudinary": "^2.5.1",
+    "firebase-admin": "^13.7.0",
+    "firebase-scrypt": "^2.2.0",
+    "jsonwebtoken": "^9.0.2",
     "pg": "^8.13.1"
   }
 }

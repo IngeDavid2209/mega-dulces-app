@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { getAuth } from '@angular/fire/auth';
+import { getAuth, onAuthStateChanged, type User } from '@angular/fire/auth';
 
 /**
  * Cliente HTTP autenticado para la API propia (Postgres) durante la migración.
@@ -9,7 +9,17 @@ import { getAuth } from '@angular/fire/auth';
 @Injectable({ providedIn: 'root' })
 export class ApiService {
   private async token(): Promise<string> {
-    const u = getAuth().currentUser;
+    const auth = getAuth();
+    let u = auth.currentUser;
+    // Tras un reload (F5/PWA update), Firebase restaura la sesión persistida de
+    // forma ASÍNCRONA. Si consultamos antes de que termine, currentUser es null
+    // y toda la vista queda vacía. Esperamos el primer estado de auth resuelto.
+    if (!u) {
+      u = await new Promise<User | null>((resolve) => {
+        const unsub = onAuthStateChanged(auth, (usr) => { unsub(); resolve(usr); },
+          () => { unsub(); resolve(null); });
+      });
+    }
     if (!u) throw new Error('Sin sesión activa');
     return u.getIdToken();
   }

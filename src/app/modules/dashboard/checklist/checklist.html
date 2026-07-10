@@ -274,7 +274,7 @@
                         <circle cx="12" cy="13" r="4"></circle>
                       </svg>
                       {{ fotosItemEquipo(item).length > 0 ? 'Agregar fotos' : (item.requiresPhoto ? 'Subir fotos (requerido)' : 'Subir fotos') }}
-                      <input type="file" accept="image/*" multiple hidden
+                      <input type="file" accept="image/*" capture="environment" multiple hidden
                              (change)="subirFotosItemEquipo($event, proyecto, fase.id, item.id)">
                     </label>
                   </div>
@@ -738,7 +738,7 @@
                   {{ item.permiteDocumentos ? 'Adjuntar Documento' : 'Adjuntar Evidencia' }}
                   <input type="file"
                     [accept]="item.permiteDocumentos ? 'image/*, application/pdf, .xls, .xlsx, .doc, .docx, .csv' : 'image/*'"
-                    [attr.capture]="null"
+                    [attr.capture]="item.permiteDocumentos ? null : 'environment'"
                     (change)="onFileSelected($event, item, 'photo')" style="display: none;">
                 </label>
                 <div class="preview-wrap-mini" *ngIf="item.photo">
@@ -790,7 +790,7 @@
                       </svg>
                       Tomar foto ANTES
                       <input type="file" accept="image/*"
-                        [attr.capture]="null"
+                        capture="environment"
                         (change)="onFileSelected($event, item, 'photoAntes')" style="display: none;">
                     </label>
 
@@ -848,7 +848,7 @@
                       </svg>
                       Tomar foto DESPUÉS
                       <input type="file" accept="image/*"
-                        [attr.capture]="null"
+                        capture="environment"
                         (change)="onFileSelected($event, item, 'photoDespues')" style="display: none;">
                     </label>
 
@@ -904,7 +904,7 @@
                     </svg>
                     {{ (item.photos || []).length === 0 ? 'Agregar primera foto' : 'Agregar otra foto' }}
                     <input type="file" accept="image/*"
-                      [attr.capture]="null"
+                      capture="environment"
                       (change)="onMultiplePhotoSelected($event, item)" style="display: none;">
                   </label>
                 </div>
@@ -1122,7 +1122,7 @@
                         <circle cx="12" cy="13" r="4"></circle>
                       </svg>
                       Subir foto del problema
-                      <input type="file" accept="image/*" (change)="onMantFotoChange($event)" hidden>
+                      <input type="file" accept="image/*" capture="environment" (change)="onMantFotoChange($event)" hidden>
                     </label>
                     <span class="mant-foto-hint">El técnico la verá antes de salir.</span>
                   </div>

@@ -98,6 +98,13 @@ export class LoginComponent {
       this.usuario = '';
       this.password = '';
 
+      // 🛡️ Pedir almacenamiento persistente en este gesto del usuario (el momento
+      // más confiable para que el navegador lo conceda). Evita que el navegador
+      // borre la sesión bajo presión de espacio y bote al usuario al login.
+      try {
+        if (navigator.storage?.persist) await navigator.storage.persist();
+      } catch (_) { /* no soportado: se reintenta al abrir la app */ }
+
       // 🔔 Registrar el token FCM de este dispositivo (sin bloquear el login si
       // el usuario rechaza permisos o el navegador no soporta push).
       this.notificaciones.solicitarPermisos(perfil.nombre, creds.user.uid).catch(() => {});

@@ -2538,6 +2538,16 @@ export class ChecklistComponent implements OnInit, OnDestroy {
         };
         const colaActual: any[] = (await localforage.getItem('md_fotos_offline')) || [];
         colaActual.push(fotoEstancada);
+        // 🛡️ Tope de la cola: cada foto es base64 (cientos de KB). Si el usuario
+        // acumula muchas (señal mala), IndexedDB puede llenar el cupo del sitio y
+        // el navegador desaloja TODO el origen — incluida la sesión — botándolo
+        // al login. Nos quedamos con las MÁS RECIENTES y avisamos si descartamos.
+        const TOPE_COLA = 40;
+        if (colaActual.length > TOPE_COLA) {
+          const descartadas = colaActual.length - TOPE_COLA;
+          colaActual.splice(0, descartadas);
+          console.warn(`[fotos-offline] cola llena: se descartaron ${descartadas} foto(s) antiguas para no llenar el almacenamiento.`);
+        }
         await localforage.setItem('md_fotos_offline', colaActual);
         this.actualizarEstado();
         resolve();

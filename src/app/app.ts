@@ -41,6 +41,14 @@ export class AppComponent implements OnInit {
   }
 
   ngOnInit() {
+    // 🛡️ ALMACENAMIENTO PERSISTENTE: pedimos al navegador que NO borre los datos
+    // del sitio bajo presión de espacio. Sin esto, en móviles (sobre todo iOS)
+    // cuando la cola de fotos offline (base64 en IndexedDB) llena el cupo, el
+    // navegador desaloja TODO el origen de golpe — incluida la sesión
+    // (md_sesion_actual) y la sesión de Firebase — y al usuario lo manda al
+    // login solo, justo cuando trabaja con tareas de fotos.
+    this.asegurarAlmacenamientoPersistente();
+
     // Mostrar/ocultar el asistente de voz según el rol, y re-evaluar en cada
     // navegación (cubre login, logout y cambios de pantalla).
     this.actualizarEsAdmin();
@@ -85,6 +93,35 @@ export class AppComponent implements OnInit {
 
     if (navigator.onLine) {
       this.sincronizarFotosOffline();
+    }
+  }
+
+  /**
+   * 🛡️ Solicita almacenamiento persistente para que el navegador no borre
+   * localStorage/IndexedDB del sitio cuando el dispositivo se queda sin espacio.
+   *
+   * Problema que resuelve: varios usuarios (los de peor señal) que suben tareas
+   * CON FOTOS eran mandados al login solos. Causa: cuando Cloudinary falla, la
+   * foto se guarda completa en base64 en la cola offline (IndexedDB). Al
+   * acumularse, el origen supera su cupo y el navegador desaloja TODO su
+   * almacenamiento — incluida la sesión — dejando al usuario en el login.
+   *
+   * `navigator.storage.persist()` marca el almacenamiento como "persistente":
+   * el navegador ya no lo borra bajo presión de espacio. En PWAs instaladas
+   * suele concederse solo; pedirlo explícitamente cubre también el navegador.
+   * Best-effort: si el API no existe o se rechaza, no rompe nada.
+   */
+  private async asegurarAlmacenamientoPersistente() {
+    try {
+      if (!('storage' in navigator) || !navigator.storage?.persist) return;
+      const yaPersistente = navigator.storage.persisted
+        ? await navigator.storage.persisted()
+        : false;
+      if (yaPersistente) return;
+      const concedido = await navigator.storage.persist();
+      console.log(`[storage] persistente=${concedido}`);
+    } catch (e) {
+      console.warn('[storage] no se pudo solicitar persistencia', e);
     }
   }
 

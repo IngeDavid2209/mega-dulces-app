@@ -294,6 +294,16 @@ export class ChecklistComponent implements OnInit, OnDestroy {
    *  aplican SOLO a ellos; los demás usuarios quedan como estaban. */
   get esUsuarioTec(): boolean { return this.currentUser?.grupoTec === true; }
 
+  /** ¿El usuario actual es Ubaldo (mantenimiento)? A él SIEMPRE se le permite
+   *  elegir foto de galería o tomarla al instante, sin importar la opción de la
+   *  tarea (no se le fuerza la cámara con capture="environment"). */
+  get esUbaldoMantenimiento(): boolean {
+    const u = this.currentUser;
+    if (!u) return false;
+    const nombre = (u.nombre || u.usuario || '').toLowerCase();
+    return nombre.includes('ubaldo');
+  }
+
   // Effect que toma la lista cruda de UsuariosService (listener compartido) y
   // delega a procesarUsuariosCompartidos() para calcular sucursalesDisponibles,
   // adminsGlobales y empleados. Reemplaza el onSnapshot duplicado en

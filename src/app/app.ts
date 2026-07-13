@@ -9,6 +9,7 @@ import * as localforage from 'localforage';
 
 import { AsistenteChatComponent } from './shared/asistente-chat/asistente-chat';
 import { ApiService } from './shared/api.service';
+import { NotificacionesService } from './services/notificaciones';
 
 @Component({
   selector: 'app-root',
@@ -28,6 +29,7 @@ export class AppComponent implements OnInit {
   private swUpdate = inject(SwUpdate);
   private router = inject(Router);
   private api = inject(ApiService); // FERROCARRIL: usuarios en Postgres
+  private notificaciones = inject(NotificacionesService);
 
   /** Relee la sesión y decide si el usuario actual es admin. */
   private actualizarEsAdmin() {
@@ -68,6 +70,13 @@ export class AppComponent implements OnInit {
     // Si un admin cambia nombre/sucursales/permisos del usuario, se reflejan al
     // instante sin tener que cerrar sesión.
     this.sincronizarSesion();
+
+    // 🔔 RE-REGISTRAR EL TOKEN FCM al abrir la app (no solo en el login). Los
+    // usuarios casi nunca cierran sesión (la PWA la mantiene), así que el
+    // registro del token —y su dual-write a Postgres— casi nunca se re-ejecutaba
+    // y la tabla de tokens quedaba vacía/obsoleta. Al hacerlo en cada arranque
+    // mantenemos Postgres poblado y los tokens frescos para el push.
+    this.reRegistrarTokenPush();
 
     // 🔥 LATIDO DE PRESENCIA 🔥 (FERROCARRIL: ahora a Postgres, no Firestore)
     const enviarLatido = () => {
@@ -123,6 +132,33 @@ export class AppComponent implements OnInit {
     } catch (e) {
       console.warn('[storage] no se pudo solicitar persistencia', e);
     }
+  }
+
+  /**
+   * 🔔 Re-registra el token FCM del dispositivo al abrir la app, para mantener
+   * poblada y fresca la tabla de tokens (mdtask_usuarios_tokens en Postgres).
+   *
+   * Problema que resuelve: `solicitarPermisos()` solo se llamaba en el login
+   * explícito. Como los usuarios casi nunca cierran sesión (la PWA la mantiene),
+   * el token no se volvía a registrar y su dual-write a Postgres casi nunca
+   * corría — la tabla quedaba vacía y los push (avisos de tarea, "actualizar")
+   * no llegaban a nadie.
+   *
+   * Solo se ejecuta si el permiso YA está concedido: así NO mostramos el prompt
+   * de notificaciones en cada arranque (el prompt inicial se queda en el login).
+   * `solicitarPermisos` es idempotente (upsert por id) y refresca el token.
+   */
+  private reRegistrarTokenPush() {
+    try {
+      if (!('Notification' in window) || Notification.permission !== 'granted') return;
+      const raw = localStorage.getItem('md_sesion_actual');
+      if (!raw) return;
+      const u = JSON.parse(raw);
+      const nombre = u?.nombre;
+      const uid = u?.uid || u?.idFirestore || u?.id;
+      if (!nombre) return;
+      this.notificaciones.solicitarPermisos(nombre, uid).catch(() => { /* best-effort */ });
+    } catch { /* noop */ }
   }
 
   /**

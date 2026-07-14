@@ -45,10 +45,19 @@ export class ApiService {
   // Best-effort: si Postgres falla NO rompen el flujo (Firestore ya quedó
   // escrito y el dato se recupera en el recopiado). Centralizan el endpoint y
   // el manejo de error para no repetirlo en los ~20 sitios de escritura.
-  /** Upsert completo de un checklist (como setDoc). `obj` debe incluir `id`. */
+  /** Upsert completo de un checklist (como setDoc). `obj` debe incluir `id`.
+   * Con reintentos: el checklist es el dato crítico de la entrega. Si el POST
+   * falla y no reintentamos, Postgres se queda con el estado viejo y el poll de
+   * 20 s repinta la tarea como "no hecha" (el usuario ve que se borró su avance).
+   * 3 intentos con espera creciente cubren parpadeos de red / cold-starts. */
   async guardarChecklist(obj: any): Promise<void> {
-    try { await this.post('/api/checklists', obj); }
-    catch (e) { console.error('[checklists] sync PG (guardar)', e); }
+    for (let intento = 1; intento <= 3; intento++) {
+      try { await this.post('/api/checklists', obj); return; }
+      catch (e) {
+        if (intento === 3) { console.error('[checklists] sync PG (guardar) FALLO tras 3 intentos', e); return; }
+        await new Promise(r => setTimeout(r, 800 * intento));
+      }
+    }
   }
   /** Edición parcial/merge de un checklist (como updateDoc / setDoc merge). */
   async patchChecklist(id: any, campos: any): Promise<void> {

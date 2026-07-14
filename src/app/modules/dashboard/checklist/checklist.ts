@@ -1643,8 +1643,11 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       const checklistId = `${molde.id}_${llavePeriodo}`;
       const docRef = doc(this.firestore, 'checklists', checklistId);
       // FERROCARRIL: verificación de existencia (idempotencia) contra Postgres.
+      // ⚠️ FAIL-SAFE: si la consulta FALLA, asumimos que SÍ existe para NO recrear
+      // (y así no pisar con items vacíos un checklist ya entregado). Ver comentario
+      // equivalente en robot-rutinas-v2.service.ts.
       const yaExiste = await this.api.get('/api/checklists?id=' + encodeURIComponent(checklistId))
-        .then((r: any) => !!r?.checklist).catch(() => false);
+        .then((r: any) => !!r?.checklist).catch(() => true);
       if (!yaExiste) {
         const nuevoChecklist = {
           id: checklistId, timestampCreacion: Date.now(), name: `${molde.name} (${molde.frecuencia})`,

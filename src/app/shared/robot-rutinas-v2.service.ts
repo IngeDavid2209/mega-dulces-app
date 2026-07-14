@@ -150,9 +150,14 @@ export class RobotRutinasV2Service {
           const checklistId = this.idemKey(asig.id, periodo, sucursal, nombreFinal);
 
           const ref = doc(this.firestore, 'checklists', checklistId);
-          // FERROCARRIL Etapa 3: idempotencia leyendo el checklist desde Postgres
+          // FERROCARRIL Etapa 3: idempotencia leyendo el checklist desde Postgres.
+          // ⚠️ FAIL-SAFE: si la consulta de existencia FALLA (parpadeo de red, 500,
+          // cold-start del serverless), NO debemos asumir que no existe: al recrearlo
+          // sobreescribiríamos con items vacíos un checklist YA ENTREGADO (upsert), y
+          // el trabajador vería "se borró su progreso". Ante la duda, asumimos que SÍ
+          // existe y NO recreamos. Si de verdad faltaba, se creará en el siguiente ciclo.
           const existe = await this.api.get('/api/checklists?id=' + encodeURIComponent(String(checklistId)))
-            .then((r: any) => !!r?.checklist).catch(() => false);
+            .then((r: any) => !!r?.checklist).catch(() => true);
           if (existe) continue;
 
           const payload = this.armarChecklist({

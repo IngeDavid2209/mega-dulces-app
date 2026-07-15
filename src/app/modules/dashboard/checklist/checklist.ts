@@ -1893,8 +1893,12 @@ export class ChecklistComponent implements OnInit, OnDestroy {
         const id = `rpers_${r.id}_${this.periodoRutinaPersonal(r, fecha)}`;
         try {
           const ref = doc(this.firestore, 'checklists', id);
+          // FAIL-SAFE: si la consulta de existencia FALLA (parpadeo de red en el
+          // celular del trabajador), NO recrear: asumimos que existe para no pisar
+          // con una rutina personal vacia la que el trabajador ya completo. Ver los
+          // robots V1/V2 con el mismo criterio.
           const existe = await this.api.get('/api/checklists?id=' + encodeURIComponent(id))
-            .then((x: any) => !!x?.checklist).catch(() => false);
+            .then((x: any) => !!x?.checklist).catch(() => true);
           if (!existe) {
             const nuevo = this.construirChecklistPersonal(r, id, fechaIso);
             await setDoc(ref, nuevo);

@@ -6,6 +6,7 @@ import { SidebarComponent } from '../../../shared/sidebar/sidebar';
 import { esAdminGlobal, sucursalesPermitidas } from '../../../shared/permisos.util';
 import { esItemHecho } from '../../../shared/item-completado.util';
 import { ApiService } from '../../../shared/api.service';
+import { guardarListaCache, leerListaCache } from '../../../shared/lista-cache.util';
 
 interface DiaStat {
   fechaISO: string;     // YYYY-MM-DD
@@ -67,6 +68,9 @@ export class RankingSucursalesComponent implements OnInit, OnDestroy {
   private checklistsSemana = signal<any[]>([]);
   /** Indicador visual de carga. */
   cargando = signal<boolean>(true);
+  /** 📡 true cuando el último poll falló por red: se muestra el último ranking
+   *  bueno (cache) con un aviso en vez de una tabla vacía. */
+  sinConexion = signal<boolean>(false);
 
   /** Fecha "ancla" para calcular la semana (por defecto hoy). */
   fechaAncla = signal<Date>(new Date());
@@ -140,10 +144,23 @@ export class RankingSucursalesComponent implements OnInit, OnDestroy {
     const desdeISO = this.toYmd(dias[0]);
     const hastaISO = this.toYmd(dias[6]);
     // FERROCARRIL Etapa 3: antes onSnapshot(checklists); ahora poll a Postgres.
+    const claveCache = 'ranking_' + desdeISO;
+    const claveUsuario = String(this.currentUser?.uid || this.currentUser?.id || this.currentUser?.usuario || 'anon');
     const recargar = async () => {
       const resp = await this.api.get('/api/checklists?desde=' + encodeURIComponent(desdeISO) + '&hasta=' + encodeURIComponent(hastaISO))
         .catch((e: any) => { console.error('[ranking-sucursales] poll PG', e); return null; });
-      if (!resp) { this.cargando.set(false); return; }
+      if (!resp) {
+        // Falló por red: no vaciar el ranking. Marcamos sin conexión y, si no hay
+        // nada cargado, hidratamos desde el último ranking bueno de esta semana.
+        this.sinConexion.set(true);
+        if (this.checklistsSemana().length === 0) {
+          const cache = leerListaCache(claveCache, claveUsuario);
+          if (cache && cache.length) this.checklistsSemana.set(cache);
+        }
+        this.cargando.set(false);
+        return;
+      }
+      this.sinConexion.set(false);
       const filas: any[] = resp.checklists || [];
       const arr: any[] = [];
       filas.forEach((c: any) => {
@@ -151,8 +168,15 @@ export class RankingSucursalesComponent implements OnInit, OnDestroy {
         arr.push({ ...c });
       });
       this.checklistsSemana.set(arr);
+      guardarListaCache(claveCache, claveUsuario, arr);
       this.cargando.set(false);
     };
+    // Hidratación inmediata desde cache (evita tabla vacía al abrir/recargar con
+    // mala señal); el primer poll la refresca al responder.
+    if (this.checklistsSemana().length === 0) {
+      const cacheInicial = leerListaCache(claveCache, claveUsuario);
+      if (cacheInicial && cacheInicial.length) this.checklistsSemana.set(cacheInicial);
+    }
     recargar();
     const idPoll = setInterval(recargar, 20000);
     this.destructores.push(() => clearInterval(idPoll));

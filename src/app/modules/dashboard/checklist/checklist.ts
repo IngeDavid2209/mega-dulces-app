@@ -19,6 +19,7 @@ import { AsignacionRutina } from '../../../shared/asignaciones.types';
 import { comprimirImagenSiAplica } from '../../../shared/imagen.util';
 import { ConfigTurnos, EvaluacionTurno, evaluarAsignacion, etiquetaTurno } from '../../../shared/turnos.util';
 import { resolverAsignadoTarea, mapaNombreAUid } from '../../../shared/reasignacion-turnos.util';
+import { guardarListaCache, leerListaCache } from '../../../shared/lista-cache.util';
 
 import { SidebarComponent } from '../../../shared/sidebar/sidebar';
 
@@ -137,6 +138,10 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   checklistToDelete: any = null;
 
   checklists = signal<any[]>([]);
+  // 📡 true cuando el último poll a la nube falló por red: la vista sigue
+  // mostrando la última lista buena (cache) y enseña un aviso "Sin conexión"
+  // en vez de una lista vacía que parezca "se borraron las tareas".
+  sinConexion = signal<boolean>(false);
   // ── Historial de tareas ENVIADAS (últimos 30 días) ──────────────────────
   // Pestaña aparte dentro del Checklist para consultar lo ya enviado. Se carga
   // bajo demanda (getDocs) la primera vez que se abre, para no gastar lecturas.
@@ -1250,10 +1255,22 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     // FERROCARRIL Etapa 3: antes onSnapshot(checklists, where date>=desde); ahora
     // poll periódico a Postgres (GET /api/checklists?desde=..). La lógica de
     // post-proceso (filtros por rol, dedup, progreso, diagnóstico) queda IGUAL.
+    const claveUsuario = (s: any) => String(s?.uid || s?.id || s?.usuario || 'anon');
     const recargarChecklists = async () => {
       const resp = await this.api.get('/api/checklists?desde=' + encodeURIComponent(desde))
         .catch((e: any) => { console.error('[checklist] poll PG', e); return null; });
-      if (!resp) return;
+      if (!resp) {
+        // Falló por red: NO vaciar. Marcamos sin conexión y, si aún no tenemos
+        // nada en pantalla (p.ej. recién se abrió/recargó la vista), hidratamos
+        // desde la última lista buena guardada para no mostrar vacío.
+        this.sinConexion.set(true);
+        if (this.checklists().length === 0) {
+          const cache = leerListaCache('checklists', claveUsuario(leerSesion() || this.currentUser));
+          if (cache && cache.length) this.checklists.set(cache);
+        }
+        return;
+      }
+      this.sinConexion.set(false);
       const filas: any[] = resp.checklists || [];
       const todasLasListas: any[] = [];
       let descartadosEnviados = 0;
@@ -1347,6 +1364,9 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       if (esTec) resultado = this.depurarAtrasadas(resultado);
 
       this.checklists.set(resultado);
+      // 💾 Guardamos la lista buena para poder mostrarla si un próximo poll falla
+      // por red (evita la pantalla vacía que parece "se borraron las tareas").
+      guardarListaCache('checklists', claveUsuario(sesion), resultado);
 
       // 🐛 DEBUG para diagnosticar por qué un usuario ve 0 tareas.
       // Guardamos en `ultimoDiagnostico` para mostrar inline (móvil sin consola).
@@ -1380,6 +1400,13 @@ export class ChecklistComponent implements OnInit, OnDestroy {
         this.cantidadPendientesAnterior = pendientesActuales;
       }
     };
+    // Hidratación inmediata desde la última lista buena: si la vista se acaba de
+    // abrir/recargar, se pinta al instante (aunque haya mala señal) y el primer
+    // poll la refresca en cuanto responda la nube.
+    if (this.checklists().length === 0) {
+      const cacheInicial = leerListaCache('checklists', claveUsuario(leerSesion() || this.currentUser));
+      if (cacheInicial && cacheInicial.length) this.checklists.set(cacheInicial);
+    }
     recargarChecklists();
     const idRadarChecklists = setInterval(recargarChecklists, 20000);
     this.destructoresRadares.push(() => clearInterval(idRadarChecklists));

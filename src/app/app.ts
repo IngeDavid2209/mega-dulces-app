@@ -254,6 +254,14 @@ export class AppComponent implements OnInit {
       const ahora = Date.now();
       const ultima = Number(sessionStorage.getItem('md_reload_chunk') || '0');
       if (ahora - ultima < 20000) return;
+      // Offline: recargar NO baja el chunk que falta; dejaría la app en blanco.
+      // Esperamos a tener red y reintentamos una vez.
+      if (!navigator.onLine) {
+        console.warn('[chunk] offline — recarga diferida:', motivo);
+        const alVolver = () => { window.removeEventListener('online', alVolver); recargarUnaVez(motivo); };
+        window.addEventListener('online', alVolver);
+        return;
+      }
       sessionStorage.setItem('md_reload_chunk', String(ahora));
       console.warn('[chunk] módulo lazy no disponible — recargando:', motivo);
       if (this.swUpdate.isEnabled) {
@@ -294,6 +302,19 @@ export class AppComponent implements OnInit {
    * Nota: solo corre en producción. En `ng serve` / build dev el Service Worker
    * está deshabilitado, así que swUpdate.isEnabled es false y esto no hace nada.
    */
+  /**
+   * 📡 Recarga la página, pero SOLO si hay conexión. Si está offline, difiere la
+   * recarga hasta el evento 'online'. Motivo: recargar sin red deja la app en
+   * blanco (no puede bajar el index/chunks nuevos ni traer datos), que es justo
+   * lo que hacía ver "todo vacío" con mala señal. Mejor esperar a tener internet.
+   */
+  private recargarSiHayRed(motivo: string) {
+    if (navigator.onLine) { document.location.reload(); return; }
+    console.warn('[app] recarga diferida (offline):', motivo);
+    const alVolver = () => { window.removeEventListener('online', alVolver); document.location.reload(); };
+    window.addEventListener('online', alVolver);
+  }
+
   private vigilarActualizaciones() {
     if (!this.swUpdate.isEnabled) return;
 
@@ -307,8 +328,8 @@ export class AppComponent implements OnInit {
         // Aplica y recarga SOLA. Recarga aunque activateUpdate falle: al recargar
         // el navegador toma igualmente la versión nueva del Service Worker.
         this.swUpdate.activateUpdate()
-          .then(() => document.location.reload())
-          .catch(() => document.location.reload());
+          .then(() => this.recargarSiHayRed('version-ready'))
+          .catch(() => this.recargarSiHayRed('version-ready'));
       });
 
     // 2) Buscar actualizaciones en TODOS los momentos donde la PWA "despierta":
@@ -342,8 +363,9 @@ export class AppComponent implements OnInit {
       if (tipo === 'actualizacion') buscar();
     });
 
-    // 3) Caché corrupto / irrecuperable → recargar limpio desde el servidor (sin avisar).
-    this.swUpdate.unrecoverable.subscribe(() => document.location.reload());
+    // 3) Caché corrupto / irrecuperable → recargar limpio desde el servidor (sin
+    //    avisar), pero solo si hay red (offline no se puede bajar nada limpio).
+    this.swUpdate.unrecoverable.subscribe(() => this.recargarSiHayRed('unrecoverable'));
   }
 
   // 🔥 FUNCIÓN DE SINCRONIZACIÓN CORREGIDA PARA ARREGLOS 🔥

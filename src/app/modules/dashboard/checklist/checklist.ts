@@ -142,6 +142,10 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   // mostrando la última lista buena (cache) y enseña un aviso "Sin conexión"
   // en vez de una lista vacía que parezca "se borraron las tareas".
   sinConexion = signal<boolean>(false);
+  // ✉️ true mientras se sube un checklist a la nube: muestra "Enviando…" para
+  // que el usuario sepa que su envío está en curso (sobre todo con mala señal) y
+  // no crea que la tarea desapareció. Con tope de tiempo para no colgarse.
+  enviando = signal<boolean>(false);
   // ── Historial de tareas ENVIADAS (últimos 30 días) ──────────────────────
   // Pestaña aparte dentro del Checklist para consultar lo ya enviado. Se carga
   // bajo demanda (getDocs) la primera vez que se abre, para no gastar lecturas.
@@ -2837,7 +2841,8 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   }
 
   /** Envío real al cloud. Si `motivo` viene, marca el checklist como retraso justificado. */
-  private realizarEnvioFinal(actual: any, motivo: any | null) {
+  private async realizarEnvioFinal(actual: any, motivo: any | null) {
+    if (this.enviando()) return; // evita doble envío por doble toque
     actual.enviado = true;
     const ahora = new Date();
     actual.horaEnvio = ahora.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
@@ -2845,7 +2850,18 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       actual.entregaConRetraso = true;
       actual.motivoRetraso = motivo;
     }
-    this.guardarEnLaNube(actual);
+    // Mostramos "Enviando…" mientras sube. Con TOPE de 6s para no colgar la UI si
+    // la red está muy mala: si no termina a tiempo, seguimos (guardarEnLaNube
+    // sigue reintentando en segundo plano y Firestore sincroniza al reconectar).
+    this.enviando.set(true);
+    try {
+      await Promise.race([
+        this.guardarEnLaNube(actual),
+        new Promise<void>(res => setTimeout(res, 6000))
+      ]);
+    } finally {
+      this.enviando.set(false);
+    }
     const txt = motivo
       ? ' ✅ ¡Enviado con justificante de retraso!'
       : ' ✅ ¡Checklist enviado correctamente!';

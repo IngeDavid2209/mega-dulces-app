@@ -14,23 +14,44 @@ export class ApiService {
     // Tras un reload (F5/PWA update), Firebase restaura la sesión persistida de
     // forma ASÍNCRONA. Si consultamos antes de que termine, currentUser es null
     // y toda la vista queda vacía. Esperamos el primer estado de auth resuelto.
+    // Con TIMEOUT: si el observer no resuelve (red lenta), no colgamos la request
+    // para siempre; reintentamos con lo que haya en currentUser en ese momento.
     if (!u) {
       u = await new Promise<User | null>((resolve) => {
-        const unsub = onAuthStateChanged(auth, (usr) => { unsub(); resolve(usr); },
-          () => { unsub(); resolve(null); });
+        let listo = false;
+        const cerrar = (v: User | null) => { if (!listo) { listo = true; try { unsub(); } catch { } resolve(v); } };
+        const unsub = onAuthStateChanged(auth, (usr) => cerrar(usr), () => cerrar(null));
+        setTimeout(() => cerrar(auth.currentUser), 8000);
       });
     }
     if (!u) throw new Error('Sin sesión activa');
+    // getIdToken() sin forzar: devuelve el token en cache si aún es válido (no
+    // pega a la red salvo que esté por expirar). Evita que un refresh de token
+    // por red tumbe cada petición con mala señal.
     return u.getIdToken();
   }
 
-  private async req(method: string, url: string, body?: any): Promise<any> {
+  private async req(method: string, url: string, body?: any, reintentosRed = 2): Promise<any> {
     const token = await this.token();
-    const res = await fetch(url, {
-      method,
-      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
-      body: body != null ? JSON.stringify(body) : undefined,
-    });
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        method,
+        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+        body: body != null ? JSON.stringify(body) : undefined,
+      });
+    } catch (e) {
+      // Error de RED (fetch lanza TypeError cuando no hay respuesta del server:
+      // sin señal, DNS, cold-start caído). Solo para GET (idempotente) reintentamos
+      // un par de veces con backoff corto, para que un parpadeo no tire el poll y
+      // deje la vista vacía. Las escrituras NO se reintentan aquí (guardarChecklist
+      // ya tiene su propio reintento y no queremos duplicar envíos).
+      if (method === 'GET' && reintentosRed > 0) {
+        await new Promise(r => setTimeout(r, 700 * (3 - reintentosRed)));
+        return this.req(method, url, body, reintentosRed - 1);
+      }
+      throw e;
+    }
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error((data && data.error) || ('HTTP ' + res.status));
     return data;

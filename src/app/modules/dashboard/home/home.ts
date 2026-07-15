@@ -13,6 +13,7 @@ import { nivelDeUsuario } from '../../../shared/nivel-jerarquico.util';
 import { esItemHecho } from '../../../shared/item-completado.util';
 import { UsuariosService } from '../../../shared/usuarios.service';
 import { ApiService } from '../../../shared/api.service';
+import { guardarListaCache, leerListaCache } from '../../../shared/lista-cache.util';
 
 @Component({
   selector: 'app-home',
@@ -28,6 +29,9 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
   isMenuOpen = false;
  
   checklists = signal<any[]>([]);
+  // 📡 true cuando el último poll falló por red: se muestra la última lista
+  // buena (cache) con un aviso, en vez de un dashboard vacío.
+  sinConexion = signal<boolean>(false);
   areas      = signal<any[]>([]);
   usuarios   = signal<any[]>([]);
   horaActual = signal<Date>(new Date());
@@ -360,10 +364,21 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
     const desdeISO = new Date(hace7Dias.getTime() - offsetDays).toISOString().split('T')[0];
 
     // FERROCARRIL Etapa 3: antes onSnapshot(checklists); ahora poll a Postgres.
+    const claveUsuario = (s: any) => String(s?.uid || s?.id || s?.usuario || 'anon');
     const recargarChecklists = async () => {
       const resp = await this.api.get('/api/checklists?desde=' + encodeURIComponent(desdeISO))
         .catch((e: any) => { console.error('[home] poll PG', e); return null; });
-      if (!resp) return;
+      if (!resp) {
+        // Falló por red: no vaciar el dashboard. Marcamos sin conexión y, si no
+        // hay nada en pantalla, hidratamos desde la última lista buena.
+        this.sinConexion.set(true);
+        if (this.checklists().length === 0) {
+          const cache = leerListaCache('dashboard', claveUsuario(leerSesion() || this.currentUser));
+          if (cache && cache.length) { this.checklists.set(cache); setTimeout(() => this.actualizarGrafica(), 100); }
+        }
+        return;
+      }
+      this.sinConexion.set(false);
       const filas: any[] = resp.checklists || [];
       // Recalculamos permisos cada vez (currentUser podría haberse actualizado).
       const sesion = leerSesion() || this.currentUser;
@@ -400,8 +415,16 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
       });
 
       this.checklists.set(arr);
+      // 💾 Guardamos la lista buena para pintarla si un próximo poll falla por red.
+      guardarListaCache('dashboard', claveUsuario(sesion), arr);
       setTimeout(() => this.actualizarGrafica(), 100);
     };
+    // Hidratación inmediata desde cache (evita dashboard vacío tras recargar con
+    // mala señal); el primer poll lo refresca al responder.
+    if (this.checklists().length === 0) {
+      const cacheInicial = leerListaCache('dashboard', claveUsuario(leerSesion() || this.currentUser));
+      if (cacheInicial && cacheInicial.length) this.checklists.set(cacheInicial);
+    }
     recargarChecklists();
     const idPollChecklists = setInterval(recargarChecklists, 20000);
     this.destructoresRadares.push(() => clearInterval(idPollChecklists));

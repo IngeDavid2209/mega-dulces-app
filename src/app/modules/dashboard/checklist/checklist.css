@@ -3616,3 +3616,6 @@
 .eq-item-foto-btn { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; font-size: 12.5px; font-weight: 600; color: #1E40AF; background: #EEF2FF; border: 1px solid #C7D2FE; border-radius: 8px; padding: 6px 12px; }
 .eq-item-foto-btn:hover { background: #E0E7FF; }
 .eq-item-foto-btn.requerida { color: #B91C1C; background: #FEF2F2; border-color: #FECACA; }
+
+/* Spinner del overlay "Enviando..." */
+@keyframes md-spin { to { transform: rotate(360deg); } }

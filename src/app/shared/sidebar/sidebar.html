@@ -46,10 +46,10 @@
         Espacio TEC
       </a>
 
-      <!-- 🚗 Flotilla: reservas de vehiculos. Visible para el grupo autorizado
-           (grupoFlotilla) o cualquier admin (que ademas aprueba/administra). -->
+      <!-- 🚗 Flotilla: reservas de vehiculos. Visible SOLO para los usuarios
+           designados (grupoFlotilla). Los admins NO lo ven por ser admin. -->
       <a class="nav-item" routerLink="/flotilla" routerLinkActive="active"
-         *ngIf="currentUser?.grupoFlotilla === true || currentUser?.rol === 'admin'"
+         *ngIf="currentUser?.grupoFlotilla === true"
          (click)="onNavClick()"
          title="Aparta un vehiculo de la empresa y revisa el itinerario">
         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

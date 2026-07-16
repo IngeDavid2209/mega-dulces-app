@@ -3,11 +3,13 @@ import { CanActivateFn, Router } from '@angular/router';
 
 /**
  * Guard del modulo /flotilla (reservas de vehiculos de la empresa).
- * Es una seccion gateada por el privilegio `grupoFlotilla` que el admin activa
- * (mismo modelo que el Espacio TEC / grupoTec):
+ * Es una seccion gateada EXCLUSIVAMENTE por el privilegio `grupoFlotilla`, que
+ * solo se le activa a los usuarios designados (mismo modelo que el Espacio TEC /
+ * grupoTec). OJO: los admins NO entran por ser admin; tambien necesitan tener
+ * `grupoFlotilla: true` en su perfil. Asi el modulo queda visible solo para la
+ * gente que David indique, no para cualquier administrador.
  *  - Sin sesion              -> login.
  *  - grupoFlotilla === true  -> entra.
- *  - Admin (rol 'admin')     -> entra (para poder aprobar y administrar coches).
  *  - Cualquier otro          -> fuera, a /home.
  */
 export const flotillaGuard: CanActivateFn = () => {
@@ -18,7 +20,7 @@ export const flotillaGuard: CanActivateFn = () => {
 
   try {
     const u = JSON.parse(sesion);
-    if (u?.grupoFlotilla === true || u?.rol === 'admin') return true;
+    if (u?.grupoFlotilla === true) return true;
   } catch { /* sesion corrupta */ }
 
   router.navigate(['/home']);

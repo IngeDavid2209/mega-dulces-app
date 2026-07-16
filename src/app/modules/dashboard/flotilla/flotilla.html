@@ -1,0 +1,239 @@
+<div class="app-layout">
+  <header class="header">
+    <div class="header-left">
+      <button class="btn-menu-mobile" (click)="toggleMenu()">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="3" y1="12" x2="21" y2="12"></line>
+          <line x1="3" y1="6" x2="21" y2="6"></line>
+          <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+      </button>
+      <div class="header-logo-wrap" style="background: transparent !important; width: auto; padding: 0 4px;">
+        <img src="https://static.wixstatic.com/media/fd397e_0fd82a1ecec84a118ceeb603b493f25a~mv2.png" style="height: 36px;">
+      </div>
+      <div class="header-brand">Mega Dulces<small>Flotilla</small></div>
+    </div>
+  </header>
+
+  <div class="main-wrapper">
+    <div class="mobile-overlay" *ngIf="isMenuOpen" (click)="toggleMenu()"></div>
+    <app-sidebar [currentUser]="currentUser" [isMenuOpen]="isMenuOpen" (closeMenu)="isMenuOpen = false"></app-sidebar>
+
+    <div class="content">
+      <!-- Encabezado -->
+      <div class="flt-header">
+        <div>
+          <h1 class="flt-title">Flotilla de vehiculos</h1>
+          <p class="flt-sub">Aparta un coche, revisa el itinerario y evita que se lo lleven sin permiso.</p>
+        </div>
+        <button class="flt-btn-primary" (click)="vista.set('apartar')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+          Apartar vehiculo
+        </button>
+      </div>
+
+      <!-- Pestañas -->
+      <div class="flt-tabs">
+        <button class="flt-tab" [class.active]="vista() === 'itinerario'" (click)="vista.set('itinerario')">Itinerario</button>
+        <button class="flt-tab" [class.active]="vista() === 'apartar'" (click)="vista.set('apartar')">Apartar</button>
+        @if (esAdmin) {
+          <button class="flt-tab" [class.active]="vista() === 'solicitudes'" (click)="vista.set('solicitudes')">
+            Solicitudes
+            @if (pendientes().length) { <span class="flt-badge">{{ pendientes().length }}</span> }
+          </button>
+          <button class="flt-tab" [class.active]="vista() === 'vehiculos'" (click)="vista.set('vehiculos')">Vehiculos</button>
+        }
+      </div>
+
+      @if (cargando()) {
+        <div class="flt-empty">Cargando...</div>
+      }
+
+      <!-- ═══════════════ ITINERARIO ═══════════════ -->
+      @if (!cargando() && vista() === 'itinerario') {
+        <div class="flt-filtros">
+          <label>Sucursal:</label>
+          <select [(ngModel)]="filtroSucursal">
+            <option value="">Todas</option>
+            @for (s of sucursales(); track s) { <option [value]="s">{{ s }}</option> }
+          </select>
+        </div>
+
+        @if (!vehiculosItinerario().length) {
+          <div class="flt-empty">No hay vehiculos registrados.
+            @if (esAdmin) { <button class="flt-link" (click)="vista.set('vehiculos')">Agrega el primero</button> }
+          </div>
+        }
+
+        <div class="flt-grid">
+          @for (v of vehiculosItinerario(); track v.id) {
+            <div class="flt-card">
+              <div class="flt-card-top">
+                <div>
+                  <div class="flt-veh-nombre">{{ v.nombre }}</div>
+                  @if (v.sucursal) { <div class="flt-veh-suc">{{ v.sucursal }}</div> }
+                  @if (v.placa) { <div class="flt-veh-placa">Placa: {{ v.placa }}</div> }
+                </div>
+                @if (ocupadaAhora(v.id)) {
+                  <span class="pill pill-ocupado">En uso</span>
+                } @else {
+                  <span class="pill pill-libre">Libre</span>
+                }
+              </div>
+
+              @if (ocupadaAhora(v.id); as oc) {
+                <div class="flt-uso-actual">
+                  Ahora lo tiene <b>{{ oc.solicitante }}</b> · regresa {{ fmtRango(oc) }}
+                </div>
+              }
+
+              <div class="flt-prox">
+                <div class="flt-prox-titulo">Proximas salidas</div>
+                @if (!proximas(v.id).length) {
+                  <div class="flt-prox-vacio">Sin reservas proximas.</div>
+                }
+                @for (r of proximas(v.id); track r.id) {
+                  <div class="flt-prox-item">
+                    <span class="flt-prox-fecha">{{ fmtRango(r) }}</span>
+                    <span class="flt-prox-quien">{{ r.solicitante }}</span>
+                    @if (r.destino) { <span class="flt-prox-destino">→ {{ r.destino }}</span> }
+                  </div>
+                }
+              </div>
+
+              <button class="flt-btn-outline" (click)="formVehiculoId = v.id; vista.set('apartar')">Apartar este</button>
+            </div>
+          }
+        </div>
+
+        <!-- Mis reservas -->
+        @if (misReservas().length) {
+          <h2 class="flt-h2">Mis reservas</h2>
+          <div class="flt-lista">
+            @for (r of misReservas(); track r.id) {
+              <div class="flt-row">
+                <span [class]="estatusClase(r.estatus)">{{ r.estatus }}</span>
+                <span class="flt-row-veh">{{ nombreVehiculo(r.vehiculoId) }}</span>
+                <span class="flt-row-fecha">{{ fmtRango(r) }}</span>
+                @if (r.destino) { <span class="flt-row-destino">{{ r.destino }}</span> }
+                <button class="flt-btn-mini danger" (click)="cancelar(r)">Cancelar</button>
+              </div>
+            }
+          </div>
+        }
+      }
+
+      <!-- ═══════════════ APARTAR ═══════════════ -->
+      @if (!cargando() && vista() === 'apartar') {
+        <div class="flt-form-card">
+          <h2 class="flt-h2">Apartar un vehiculo</h2>
+          <p class="flt-hint">Tu solicitud queda pendiente hasta que un administrador la apruebe.</p>
+
+          <label class="flt-label">Vehiculo</label>
+          <select class="flt-input" [(ngModel)]="formVehiculoId">
+            <option value="">Elige un vehiculo...</option>
+            @for (v of vehiculosActivos(); track v.id) {
+              <option [value]="v.id">{{ v.nombre }}{{ v.sucursal ? ' — ' + v.sucursal : '' }}</option>
+            }
+          </select>
+
+          <label class="flt-label">Fecha</label>
+          <input class="flt-input" type="date" [(ngModel)]="formFecha">
+
+          <div class="flt-row-2">
+            <div>
+              <label class="flt-label">Hora de salida</label>
+              <input class="flt-input" type="time" [(ngModel)]="formHoraSalida">
+            </div>
+            <div>
+              <label class="flt-label">Hora de regreso</label>
+              <input class="flt-input" type="time" [(ngModel)]="formHoraRegreso">
+            </div>
+          </div>
+
+          <label class="flt-label">Destino</label>
+          <input class="flt-input" type="text" [(ngModel)]="formDestino" placeholder="Ej. Bodega centro / banco / proveedor">
+
+          <label class="flt-label">Motivo</label>
+          <input class="flt-input" type="text" [(ngModel)]="formMotivo" placeholder="Ej. entrega de pedido">
+
+          <div class="flt-form-actions">
+            <button class="flt-btn-ghost" (click)="vista.set('itinerario')">Cancelar</button>
+            <button class="flt-btn-primary" [disabled]="enviando" (click)="solicitar()">
+              {{ enviando ? 'Enviando...' : 'Enviar solicitud' }}
+            </button>
+          </div>
+        </div>
+      }
+
+      <!-- ═══════════════ SOLICITUDES (admin) ═══════════════ -->
+      @if (!cargando() && vista() === 'solicitudes' && esAdmin) {
+        <h2 class="flt-h2">Solicitudes pendientes</h2>
+        @if (!pendientes().length) {
+          <div class="flt-empty">No hay solicitudes pendientes.</div>
+        }
+        <div class="flt-lista">
+          @for (r of pendientes(); track r.id) {
+            <div class="flt-solicitud">
+              <div class="flt-sol-info">
+                <div class="flt-sol-veh">{{ nombreVehiculo(r.vehiculoId) }}</div>
+                <div class="flt-sol-quien"><b>{{ r.solicitante }}</b>{{ r.sucursal ? ' · ' + r.sucursal : '' }}</div>
+                <div class="flt-sol-fecha">{{ fmtRango(r) }}</div>
+                @if (r.destino) { <div class="flt-sol-linea">Destino: {{ r.destino }}</div> }
+                @if (r.motivo) { <div class="flt-sol-linea">Motivo: {{ r.motivo }}</div> }
+              </div>
+              <div class="flt-sol-acciones">
+                <button class="flt-btn-mini ok" (click)="aprobar(r)">Aprobar</button>
+                <button class="flt-btn-mini danger" (click)="rechazar(r)">Rechazar</button>
+              </div>
+            </div>
+          }
+        </div>
+      }
+
+      <!-- ═══════════════ VEHICULOS (admin) ═══════════════ -->
+      @if (!cargando() && vista() === 'vehiculos' && esAdmin) {
+        <div class="flt-form-card">
+          <h2 class="flt-h2">Agregar vehiculo</h2>
+          <label class="flt-label">Nombre / descripcion</label>
+          <input class="flt-input" type="text" [(ngModel)]="vehNombre" placeholder="Ej. Nissan NP300 blanca">
+          <div class="flt-row-2">
+            <div>
+              <label class="flt-label">Sucursal</label>
+              <input class="flt-input" type="text" [(ngModel)]="vehSucursal" placeholder="Ej. Matriz">
+            </div>
+            <div>
+              <label class="flt-label">Placa (opcional)</label>
+              <input class="flt-input" type="text" [(ngModel)]="vehPlaca" placeholder="Ej. ABC-1234">
+            </div>
+          </div>
+          <div class="flt-form-actions">
+            <button class="flt-btn-primary" [disabled]="guardandoVehiculo" (click)="crearVehiculo()">
+              {{ guardandoVehiculo ? 'Guardando...' : 'Agregar' }}
+            </button>
+          </div>
+        </div>
+
+        <h2 class="flt-h2">Catalogo ({{ vehiculos().length }})</h2>
+        <div class="flt-lista">
+          @for (v of vehiculos(); track v.id) {
+            <div class="flt-row">
+              <span class="flt-row-veh">{{ v.nombre }}</span>
+              <span class="flt-row-suc">{{ v.sucursal }}</span>
+              <span [class]="v.activo !== false ? 'pill pill-libre' : 'pill pill-rechazada'">
+                {{ v.activo !== false ? 'Activo' : 'Inactivo' }}
+              </span>
+              <button class="flt-btn-mini" (click)="alternarActivo(v)">
+                {{ v.activo !== false ? 'Desactivar' : 'Activar' }}
+              </button>
+              <button class="flt-btn-mini danger" (click)="eliminarVehiculo(v)">Eliminar</button>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  </div>
+</div>

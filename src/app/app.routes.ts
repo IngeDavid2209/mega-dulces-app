@@ -3,6 +3,7 @@ import { Routes } from '@angular/router';
 import { CalendarioComponent } from './modules/dashboard/calendario/calendario';
 import { authGuard } from './services/auth.guard';
 import { soloTecGuard } from './services/tec.guard';
+import { flotillaGuard } from './services/flotilla.guard';
 import { AgendaComponent } from './agenda/agenda';
 
 export const routes: Routes = [
@@ -127,6 +128,13 @@ export const routes: Routes = [
     path: 'tec',
     canActivate: [soloTecGuard],
     loadComponent: () => import('./espacio-tec/espacio-tec').then(m => m.EspacioTecComponent)
+  },
+
+  // 🚗 FLOTILLA — reservas/itinerario de los vehiculos de la empresa (gateado por grupoFlotilla)
+  {
+    path: 'flotilla',
+    canActivate: [flotillaGuard],
+    loadComponent: () => import('./modules/dashboard/flotilla/flotilla').then(m => m.FlotillaComponent)
   },
 
   

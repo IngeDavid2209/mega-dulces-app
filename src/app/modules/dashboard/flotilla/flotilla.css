@@ -1,0 +1,190 @@
+/* ============================================================================
+   MODULO FLOTILLA — reservas / itinerario de vehiculos.
+   Reutiliza el "shell" (header + sidebar + content) de los demas paneles.
+   ============================================================================ */
+
+/* ---------- LAYOUT BASE (shell) ---------- */
+.app-layout {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background-color: #F8FAFC;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+.header {
+  height: 60px;
+  background: white;
+  border-bottom: 1px solid #E2E8F0;
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  justify-content: space-between;
+  z-index: 10;
+}
+.header-left { display: flex; align-items: center; gap: 15px; }
+.header-brand {
+  font-weight: 700; font-size: 16px; color: #0F172A;
+  display: flex; flex-direction: column; line-height: 1.2;
+}
+.header-brand small { font-size: 11px; color: #64748B; font-weight: 500; }
+.main-wrapper { display: flex; flex: 1; overflow: hidden; position: relative; }
+.content { flex: 1; padding: 30px; overflow-y: auto; }
+.btn-menu-mobile {
+  display: none; background: transparent; border: none; color: #0F172A; cursor: pointer;
+}
+.mobile-overlay {
+  display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.4); z-index: 15;
+}
+
+/* ---------- ENCABEZADO ---------- */
+.flt-header {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 22px 26px; margin-bottom: 20px;
+  background: linear-gradient(135deg, #FFFFFF 0%, #F8FAFF 100%);
+  border: 1px solid #E2E8F0; border-left: 4px solid #0F172A; border-radius: 14px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 24px -12px rgba(15, 23, 42, 0.15);
+  flex-wrap: wrap;
+}
+.flt-title { font-size: 24px; font-weight: 800; color: #0F172A; margin: 0 0 4px; }
+.flt-sub { font-size: 13px; color: #64748B; margin: 0; }
+
+/* ---------- PESTAÑAS ---------- */
+.flt-tabs { display: flex; gap: 6px; margin-bottom: 22px; flex-wrap: wrap; }
+.flt-tab {
+  border: 1px solid #E2E8F0; background: #fff; color: #475569;
+  padding: 9px 16px; border-radius: 10px; font-weight: 600; font-size: 14px; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 8px; transition: all .15s;
+}
+.flt-tab:hover { border-color: #CBD5E1; }
+.flt-tab.active { background: #0F172A; color: #fff; border-color: #0F172A; }
+.flt-badge {
+  background: #DC2626; color: #fff; border-radius: 999px; font-size: 11px;
+  padding: 1px 7px; font-weight: 700;
+}
+
+/* ---------- GRID DE VEHICULOS ---------- */
+.flt-filtros { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+.flt-filtros label { font-size: 13px; color: #475569; font-weight: 600; }
+.flt-filtros select {
+  border: 1px solid #E2E8F0; border-radius: 8px; padding: 7px 10px; font-size: 14px; background: #fff;
+}
+.flt-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px;
+}
+.flt-card {
+  background: #fff; border: 1px solid #E2E8F0; border-radius: 14px; padding: 18px;
+  display: flex; flex-direction: column; gap: 12px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+.flt-card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.flt-veh-nombre { font-weight: 700; font-size: 16px; color: #0F172A; }
+.flt-veh-suc { font-size: 12px; color: #64748B; margin-top: 2px; }
+.flt-veh-placa { font-size: 11px; color: #94A3B8; margin-top: 2px; }
+.flt-uso-actual {
+  background: #FEF2F2; border: 1px solid #FECACA; color: #991B1B;
+  border-radius: 8px; padding: 8px 10px; font-size: 12.5px;
+}
+.flt-prox-titulo { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: #94A3B8; font-weight: 700; margin-bottom: 6px; }
+.flt-prox-vacio { font-size: 13px; color: #94A3B8; }
+.flt-prox-item {
+  display: flex; flex-wrap: wrap; gap: 6px; align-items: baseline;
+  font-size: 13px; padding: 5px 0; border-bottom: 1px dashed #F1F5F9;
+}
+.flt-prox-fecha { font-weight: 600; color: #0F172A; }
+.flt-prox-quien { color: #475569; }
+.flt-prox-destino { color: #64748B; font-style: italic; }
+
+/* ---------- PILDORAS DE ESTATUS ---------- */
+.pill {
+  display: inline-block; padding: 3px 10px; border-radius: 999px;
+  font-size: 11.5px; font-weight: 700; text-transform: capitalize; white-space: nowrap;
+}
+.pill-libre { background: #ECFDF5; color: #047857; }
+.pill-ocupado { background: #FEF2F2; color: #B91C1C; }
+.pill-pendiente { background: #FFFBEB; color: #B45309; }
+.pill-aprobada { background: #ECFDF5; color: #047857; }
+.pill-rechazada { background: #F1F5F9; color: #64748B; }
+.pill-cancelada { background: #F1F5F9; color: #64748B; }
+
+/* ---------- LISTAS / FILAS ---------- */
+.flt-h2 { font-size: 18px; font-weight: 800; color: #0F172A; margin: 28px 0 12px; }
+.flt-lista { display: flex; flex-direction: column; gap: 8px; }
+.flt-row {
+  background: #fff; border: 1px solid #E2E8F0; border-radius: 10px;
+  padding: 12px 14px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+}
+.flt-row-veh { font-weight: 700; color: #0F172A; }
+.flt-row-suc { color: #64748B; font-size: 13px; }
+.flt-row-fecha { color: #475569; font-size: 13px; }
+.flt-row-destino { color: #64748B; font-size: 13px; font-style: italic; }
+
+.flt-solicitud {
+  background: #fff; border: 1px solid #E2E8F0; border-left: 4px solid #F59E0B; border-radius: 12px;
+  padding: 14px 16px; display: flex; justify-content: space-between; align-items: center; gap: 14px; flex-wrap: wrap;
+}
+.flt-sol-veh { font-weight: 700; color: #0F172A; font-size: 15px; }
+.flt-sol-quien { color: #334155; font-size: 13.5px; margin-top: 2px; }
+.flt-sol-fecha { color: #475569; font-size: 13px; margin-top: 2px; }
+.flt-sol-linea { color: #64748B; font-size: 12.5px; margin-top: 2px; }
+.flt-sol-acciones { display: flex; gap: 8px; }
+
+/* ---------- FORMULARIO ---------- */
+.flt-form-card {
+  background: #fff; border: 1px solid #E2E8F0; border-radius: 14px; padding: 24px;
+  max-width: 620px; box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+.flt-hint { font-size: 13px; color: #64748B; margin: 0 0 16px; }
+.flt-label { display: block; font-size: 13px; font-weight: 600; color: #334155; margin: 14px 0 5px; }
+.flt-input {
+  width: 100%; border: 1px solid #E2E8F0; border-radius: 9px; padding: 10px 12px;
+  font-size: 14px; box-sizing: border-box; background: #fff;
+}
+.flt-input:focus { outline: none; border-color: #0F172A; box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.08); }
+.flt-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.flt-form-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 22px; }
+
+/* ---------- BOTONES ---------- */
+.flt-btn-primary {
+  background: #0F172A; color: #fff; border: none; border-radius: 10px;
+  padding: 10px 18px; font-weight: 700; font-size: 14px; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 8px;
+}
+.flt-btn-primary:hover { background: #1E293B; }
+.flt-btn-primary:disabled { opacity: .6; cursor: default; }
+.flt-btn-outline {
+  background: #fff; color: #0F172A; border: 1px solid #CBD5E1; border-radius: 9px;
+  padding: 8px 14px; font-weight: 600; font-size: 13px; cursor: pointer; margin-top: auto;
+}
+.flt-btn-outline:hover { background: #F8FAFC; }
+.flt-btn-ghost {
+  background: transparent; color: #64748B; border: 1px solid transparent; border-radius: 9px;
+  padding: 10px 16px; font-weight: 600; font-size: 14px; cursor: pointer;
+}
+.flt-btn-ghost:hover { background: #F1F5F9; }
+.flt-btn-mini {
+  border: 1px solid #CBD5E1; background: #fff; color: #334155; border-radius: 8px;
+  padding: 6px 12px; font-weight: 600; font-size: 13px; cursor: pointer;
+}
+.flt-btn-mini:hover { background: #F8FAFC; }
+.flt-btn-mini.ok { background: #059669; color: #fff; border-color: #059669; }
+.flt-btn-mini.ok:hover { background: #047857; }
+.flt-btn-mini.danger { background: #fff; color: #B91C1C; border-color: #FCA5A5; }
+.flt-btn-mini.danger:hover { background: #FEF2F2; }
+.flt-link {
+  background: none; border: none; color: #0F172A; font-weight: 700; text-decoration: underline; cursor: pointer;
+}
+
+/* ---------- VACIOS ---------- */
+.flt-empty {
+  background: #fff; border: 1px dashed #CBD5E1; border-radius: 12px;
+  padding: 28px; text-align: center; color: #64748B; font-size: 14px;
+}
+
+/* ---------- RESPONSIVE ---------- */
+@media (max-width: 768px) {
+  .content { padding: 16px; }
+  .btn-menu-mobile { display: block; }
+  .mobile-overlay { display: block; }
+  .flt-row-2 { grid-template-columns: 1fr; }
+  .flt-grid { grid-template-columns: 1fr; }
+}

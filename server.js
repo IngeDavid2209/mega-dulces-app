@@ -71,6 +71,9 @@ app.all('/api/tec-grupos', require('./api/tec-grupos'));
 app.all('/api/tec-tareas', require('./api/tec-tareas'));
 app.all('/api/notificaciones', require('./api/notificaciones'));
 app.all('/api/cloudinary-cleanup', require('./api/cloudinary-cleanup'));
+// --- Modulo FLOTILLA: catalogo de vehiculos + reservas/itinerario ---
+app.all('/api/vehiculos', require('./api/vehiculos'));
+app.all('/api/reservas-vehiculos', require('./api/reservas-vehiculos'));
 
 // Cualquier otra ruta /api que no exista -> 404 claro (no servir el index).
 app.use('/api', (req, res) => {

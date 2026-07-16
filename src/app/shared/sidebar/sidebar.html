@@ -46,6 +46,21 @@
         Espacio TEC
       </a>
 
+      <!-- 🚗 Flotilla: reservas de vehiculos. Visible para el grupo autorizado
+           (grupoFlotilla) o cualquier admin (que ademas aprueba/administra). -->
+      <a class="nav-item" routerLink="/flotilla" routerLinkActive="active"
+         *ngIf="currentUser?.grupoFlotilla === true || currentUser?.rol === 'admin'"
+         (click)="onNavClick()"
+         title="Aparta un vehiculo de la empresa y revisa el itinerario">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 13l2-5a2 2 0 0 1 1.9-1.4h10.2A2 2 0 0 1 19 8l2 5"></path>
+          <path d="M5 13h14v4a1 1 0 0 1-1 1h-1a1 1 0 0 1-1-1v-1H8v1a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1z"></path>
+          <circle cx="7.5" cy="15.5" r="0.5"></circle>
+          <circle cx="16.5" cy="15.5" r="0.5"></circle>
+        </svg>
+        Flotilla
+      </a>
+
       <a class="nav-item" routerLink="/turnos" routerLinkActive="active"
          *ngIf="esAdminCanindo"
          (click)="onNavClick()"

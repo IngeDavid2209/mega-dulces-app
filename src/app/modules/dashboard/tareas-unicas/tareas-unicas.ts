@@ -7,6 +7,7 @@ import { Auth } from '@angular/fire/auth';
 
 import { SidebarComponent } from '../../../shared/sidebar/sidebar';
 import { esAdminGlobal, sucursalesPermitidas } from '../../../shared/permisos.util';
+import { cerrarSesionSegura } from '../../../shared/sesion.util';
 import { ApiService } from '../../../shared/api.service';
 
 @Component({
@@ -252,8 +253,8 @@ export class TareasUnicasComponent implements OnInit, OnDestroy {
   }
 
   toggleMenu() { this.isMenuOpen = !this.isMenuOpen; }
-  cerrarSesion() {
-    localStorage.removeItem('md_sesion_actual');
+  async cerrarSesion() {
+    await cerrarSesionSegura(); // cierra Firebase + borra sesión local
     this.router.navigate(['/login']);
   }
 }

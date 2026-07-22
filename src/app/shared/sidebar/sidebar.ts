@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { APP_BUILD_SELLO } from '../version';
 import { esAdminDeCanindo } from '../permisos.util';
+import { cerrarSesionSegura } from '../sesion.util';
 import { ConflictosRutinasService } from '../conflictos-rutinas.service';
 
 /**
@@ -61,8 +62,8 @@ export class SidebarComponent implements OnInit, OnDestroy {
     this.closeMenu.emit();
   }
 
-  cerrarSesion() {
-    localStorage.removeItem('md_sesion_actual');
+  async cerrarSesion() {
+    await cerrarSesionSegura(); // cierra Firebase + borra sesión local
     this.router.navigate(['/login']);
   }
 }

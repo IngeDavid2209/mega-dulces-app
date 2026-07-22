@@ -6,6 +6,7 @@ import { FormsModule } from '@angular/forms';
 import { RouterModule, Router } from '@angular/router';
 import Swal from 'sweetalert2';
 import { esAdminGlobal, sucursalesPermitidas, normalizarNombre } from '../../../shared/permisos.util';
+import { cerrarSesionSegura } from '../../../shared/sesion.util';
 
 import { SidebarComponent } from '../../../shared/sidebar/sidebar';
 
@@ -352,8 +353,8 @@ async generarCalendario() {
     this.diaSeleccionado.set(null);
   }
 
-  cerrarSesion() {
-    localStorage.removeItem('md_sesion_actual');
+  async cerrarSesion() {
+    await cerrarSesionSegura(); // cierra Firebase + borra sesión local
     this.router.navigate(['/login']);
   }
 

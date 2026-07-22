@@ -1100,12 +1100,17 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     ];
 
     // Version VIVA del usuario actual (no la stale del localStorage).
-    const yoVivo = todosLosUsuarios.find((u: any) =>
-      (this.currentUser?.usuario && u.usuario === this.currentUser.usuario) ||
-      (this.currentUser?.uid && u.uid === this.currentUser.uid)
-    ) || this.currentUser;
-    if (yoVivo && yoVivo !== this.currentUser) {
-      this.currentUser = { ...this.currentUser, ...yoVivo };
+    // IMPORTANTE: identificamos SOLO por `uid` (identidad estable). NUNCA por
+    // `usuario` a secas: si dos cuentas comparten nombre de usuario (o viene
+    // vacío), el match traía a OTRA persona y sobrescribía `md_sesion_actual`
+    // con su perfil — ese era el bug de "la app se abre en otra cuenta sola".
+    // Si no hay uid o no hay match confiable, dejamos la sesión intacta.
+    const miUid = this.currentUser?.uid;
+    const yoVivoReal = miUid ? todosLosUsuarios.find((u: any) => u.uid === miUid) : null;
+    const yoVivo = yoVivoReal || this.currentUser;
+    // Solo persistimos cuando el match fue por uid (confiable).
+    if (yoVivoReal && yoVivoReal !== this.currentUser) {
+      this.currentUser = { ...this.currentUser, ...yoVivoReal };
       try { localStorage.setItem('md_sesion_actual', JSON.stringify(this.currentUser)); } catch (e) { /* noop */ }
     }
 

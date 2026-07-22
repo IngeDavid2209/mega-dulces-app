@@ -62,6 +62,90 @@ async function enviarMensaje(telefono, texto) {
   }
 }
 
+// Envia un mensaje de PLANTILLA (template) aprobada. Es la unica forma de
+// iniciar una conversacion "en frio" (fuera de la ventana de 24h de atencion).
+// `variables` son los valores para {{1}}, {{2}}, ... del cuerpo, en orden.
+async function enviarPlantilla(telefono, nombrePlantilla, idioma, variables) {
+  const token = process.env.WHATSAPP_TOKEN;
+  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+  if (!token || !phoneNumberId) {
+    console.error('[whatsapp] Faltan WHATSAPP_TOKEN o WHATSAPP_PHONE_NUMBER_ID; no se envia la plantilla.');
+    return null;
+  }
+  const url = `https://graph.facebook.com/${GRAPH_VERSION}/${phoneNumberId}/messages`;
+  const params = (Array.isArray(variables) ? variables : []).map(v => ({
+    type: 'text', text: String(v == null ? '' : v).slice(0, 1024),
+  }));
+  const cuerpo = {
+    messaging_product: 'whatsapp',
+    recipient_type: 'individual',
+    to: normalizarTelefono(telefono),
+    type: 'template',
+    template: {
+      name: String(nombrePlantilla || ''),
+      language: { code: String(idioma || 'es_MX') },
+      components: params.length ? [{ type: 'body', parameters: params }] : [],
+    },
+  };
+  try {
+    const r = await fetch(url, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(cuerpo),
+    });
+    const datos = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      console.error(`[whatsapp] Envio de plantilla fallo (HTTP ${r.status}):`, JSON.stringify(datos));
+      return null;
+    }
+    return datos;
+  } catch (err) {
+    console.error('[whatsapp] No se pudo enviar la plantilla:', err.message);
+    return null;
+  }
+}
+
+// Envia un mensaje interactivo que le PIDE al usuario compartir su ubicacion.
+// WhatsApp muestra el boton nativo "Enviar ubicacion"; cuando el usuario lo usa,
+// llega un mensaje entrante de tipo `location` (ver extraerMensaje).
+async function enviarSolicitudUbicacion(telefono, texto) {
+  const token = process.env.WHATSAPP_TOKEN;
+  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+  if (!token || !phoneNumberId) {
+    console.error('[whatsapp] Faltan WHATSAPP_TOKEN o WHATSAPP_PHONE_NUMBER_ID; no se pide ubicacion.');
+    return null;
+  }
+  const url = `https://graph.facebook.com/${GRAPH_VERSION}/${phoneNumberId}/messages`;
+  const cuerpo = {
+    messaging_product: 'whatsapp',
+    recipient_type: 'individual',
+    to: normalizarTelefono(telefono),
+    type: 'interactive',
+    interactive: {
+      type: 'location_request_message',
+      body: { text: String(texto || 'Compárteme tu ubicación 📍').slice(0, 1024) },
+      action: { name: 'send_location' },
+    },
+  };
+  try {
+    const r = await fetch(url, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(cuerpo),
+    });
+    const datos = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      console.error(`[whatsapp] Solicitud de ubicacion fallo (HTTP ${r.status}):`, JSON.stringify(datos));
+      // Fallback: al menos manda el texto para que el usuario sepa que hacer.
+      return enviarMensaje(telefono, texto);
+    }
+    return datos;
+  } catch (err) {
+    console.error('[whatsapp] No se pudo pedir la ubicacion:', err.message);
+    return enviarMensaje(telefono, texto);
+  }
+}
+
 // Valida la firma del webhook (X-Hub-Signature-256) con el APP SECRET.
 // Necesita el cuerpo CRUDO (req.rawBody, capturado por express.json verify).
 // Si no hay WHATSAPP_APP_SECRET configurado, no valida (devuelve true) para no
@@ -89,6 +173,15 @@ function extraerMensaje(body) {
     if (!msg) return null;
     const from = msg.from; // ej. 5213521231708
     if (msg.type === 'text') return { from, tipo: 'text', texto: msg.text?.body || '' };
+    if (msg.type === 'location' && msg.location) {
+      return {
+        from, tipo: 'location', texto: '',
+        ubicacion: {
+          lat: msg.location.latitude, lng: msg.location.longitude,
+          nombre: msg.location.name || '', direccion: msg.location.address || '',
+        },
+      };
+    }
     // Otros tipos (audio, imagen, etc.) por ahora se reportan sin texto.
     return { from, tipo: msg.type, texto: '' };
   } catch (e) {
@@ -96,4 +189,4 @@ function extraerMensaje(body) {
   }
 }
 
-module.exports = { normalizarTelefono, ultimos10, enviarMensaje, validarFirma, extraerMensaje };
+module.exports = { normalizarTelefono, ultimos10, enviarMensaje, enviarPlantilla, enviarSolicitudUbicacion, validarFirma, extraerMensaje };

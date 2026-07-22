@@ -11,8 +11,9 @@
 //   WHATSAPP_APP_SECRET (opcional), ANTHROPIC_API_KEY, ASISTENTE_MODELO (opcional),
 //   FIREBASE_SERVICE_ACCOUNT
 
-const { construirContexto, procesarChat, pgUsuarios, pgConversacionGet, pgConversacionSet } = require('./asistente-chat');
-const { enviarMensaje, ultimos10, validarFirma, extraerMensaje } = require('./whatsapp');
+const { construirContexto, procesarChat, pgUsuarios, pgConversacionGet, pgConversacionSet, registrarUbicacion } = require('./asistente-chat');
+const { enviarMensaje, enviarSolicitudUbicacion, ultimos10, validarFirma, extraerMensaje } = require('./whatsapp');
+const { resolverPorWhatsapp } = require('./flotilla-notificar');
 
 const DIAS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 const HORAS_RESET = 3;         // reinicia el hilo tras N horas de inactividad
@@ -37,18 +38,37 @@ function recortarHistorial(messages) {
   return ini < messages.length ? messages.slice(ini) : messages.slice(-MAX_HISTORIAL);
 }
 
+// Hora HH:mm en zona de Mexico (para confirmar salida/regreso).
+function horaMexico(epoch) {
+  return new Intl.DateTimeFormat('es-MX', { timeZone: 'America/Mexico_City', hour: '2-digit', minute: '2-digit' }).format(new Date(Number(epoch || Date.now())));
+}
+
 // Procesa un mensaje entrante (async, despues de haber respondido 200 a Meta).
 async function procesarMensaje(msg) {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) { console.error('[wa-webhook] Falta ANTHROPIC_API_KEY.'); return; }
   const modelo = process.env.ASISTENTE_MODELO || 'claude-opus-4-8';
 
-  // Solo texto por ahora.
-  if (msg.tipo !== 'text' || !String(msg.texto || '').trim()) {
-    await enviarMensaje(msg.from, 'Por ahora solo entiendo mensajes de *texto*. Escríbeme qué necesitas 🙂');
+  // Tipos soportados: texto (asistente) y ubicacion (flotilla: salida/regreso).
+  if (msg.tipo !== 'text' && msg.tipo !== 'location') {
+    await enviarMensaje(msg.from, 'Por ahora solo entiendo mensajes de *texto* y *ubicación*. Escríbeme qué necesitas 🙂');
     return;
   }
-  const texto = msg.texto.trim();
+  if (msg.tipo === 'text' && !String(msg.texto || '').trim()) {
+    await enviarMensaje(msg.from, 'Escríbeme qué necesitas 🙂');
+    return;
+  }
+
+  // FLOTILLA: si el mensaje es "aprobar/rechazar <CODIGO>", lo resuelve el modulo
+  // de flotilla (autoriza por telefono) y NO pasa al asistente de IA. Se checa
+  // antes de identificar al usuario, porque un aprobador podria no estar
+  // registrado como usuario y aun asi tener permiso por su numero.
+  if (msg.tipo === 'text') {
+    let respFlotilla = null;
+    try { respFlotilla = await resolverPorWhatsapp(msg.from, msg.texto); }
+    catch (e) { console.error('[wa-webhook] flotilla:', e && e.message); }
+    if (respFlotilla) { await enviarMensaje(msg.from, respFlotilla); return; }
+  }
 
   // Identificar al usuario por su telefono (ultimos 10 digitos, sin importar formato).
   const objetivo = ultimos10(msg.from);
@@ -61,6 +81,31 @@ async function procesarMensaje(msg) {
       'Pídele a tu encargado(a) que registre tu WhatsApp en tu perfil de la app y vuelve a escribirme.');
     return;
   }
+
+  // ── UBICACION entrante (respuesta a "comparte tu ubicacion" de salida/regreso) ──
+  if (msg.tipo === 'location') {
+    if (!msg.ubicacion || msg.ubicacion.lat == null) {
+      await enviarMensaje(msg.from, 'No pude leer tu ubicación 😕. Inténtalo de nuevo con el botón de *Ubicación*.');
+      return;
+    }
+    let res;
+    try { res = await registrarUbicacion(yo.id, msg.ubicacion); }
+    catch (e) { console.error('[wa-webhook] error registrando ubicacion:', e && e.message); res = null; }
+    if (!res) { await enviarMensaje(msg.from, 'Uy, no pude guardar tu ubicación 😕. Inténtalo de nuevo en un momento.'); return; }
+    if (!res.ok) {
+      await enviarMensaje(msg.from, 'Recibí tu ubicación, pero ahora mismo no tienes ninguna salida o regreso esperándola. Si vas a usar un coche, dime "voy a usar [coche]".');
+      return;
+    }
+    const veh = res.reserva.vehiculo || 'el vehículo';
+    const hora = horaMexico(res.punto && res.punto.hora);
+    const texto = res.accion === 'salida'
+      ? `¡Listo! Registré tu *salida* con ${veh} 🚗 a las ${hora} desde tu ubicación. Cuando regreses, avísame "ya lo entregué".`
+      : `¡Gracias! Registré el *regreso* de ${veh} 🅿️ a las ${hora}. Uso cerrado. 👍`;
+    await enviarMensaje(msg.from, texto);
+    return;
+  }
+
+  const texto = msg.texto.trim();
 
   // Comando para reiniciar el hilo.
   if (COMANDOS_RESET.includes(texto.toLowerCase())) {
@@ -84,13 +129,16 @@ async function procesarMensaje(msg) {
   // Contexto del usuario identificado (mismos permisos que en la web) + asistente.
   const { fechaHoy, diaSemana } = fechaMexico();
   // Reutilizamos la lista de usuarios ya cargada (evita una 2ª lectura a Firestore).
-  const ctx = await construirContexto(null, yo.id, yo, { fechaHoy, diaSemana, usuarios });
+  const ctx = await construirContexto(null, yo.id, yo, { fechaHoy, diaSemana, usuarios, canal: 'whatsapp' });
 
-  let respuesta;
+  let respuesta, pideUbicacion = false;
   try {
     const salida = await procesarChat({ apiKey, modelo, db: null, ctx, messages });
     respuesta = salida.respuesta;
     messages = recortarHistorial(salida.messages);
+    // Si una herramienta (registrar_salida/regreso) pidio ubicacion, mandamos el
+    // boton nativo de WhatsApp en vez de un texto normal.
+    pideUbicacion = (salida.acciones || []).some(a => a && a.requiere_ubicacion);
   } catch (e) {
     console.error('[wa-webhook] error del asistente:', e && e.message, e && e.detalle);
     await enviarMensaje(msg.from, 'Uy, tuve un problema procesando tu mensaje 😕. Inténtalo de nuevo en un momento.');
@@ -101,7 +149,8 @@ async function procesarMensaje(msg) {
   try { await pgConversacionSet(objetivo, { messages, uid: yo.id }); }
   catch (e) { console.error('[wa-webhook] no se guardo el hilo:', e && e.message); }
 
-  await enviarMensaje(msg.from, respuesta);
+  if (pideUbicacion) await enviarSolicitudUbicacion(msg.from, respuesta);
+  else await enviarMensaje(msg.from, respuesta);
 }
 
 // ---------------------------------------------------------------------------

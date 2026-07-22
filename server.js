@@ -118,4 +118,12 @@ app.listen(PORT, () => {
   } catch (e) {
     console.error('[migrate] no se pudo iniciar el runner:', e && e.message);
   }
+
+  // FLOTILLA: poll de escalamiento de solicitudes por WhatsApp (avisa al 1er
+  // aprobador, escala al 2do a los 2 min y recuerda a ambos hasta el tope).
+  try {
+    require('./api/flotilla-notificar').iniciarPoll();
+  } catch (e) {
+    console.error('[flotilla] no se pudo iniciar el poll:', e && e.message);
+  }
 });

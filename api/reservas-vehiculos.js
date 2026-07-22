@@ -146,6 +146,11 @@ module.exports = async (req, res) => {
         });
       }
 
+      // ¿Es una solicitud NUEVA? (para disparar el aviso por WhatsApp solo al crearla,
+      // no al editarla). Se checa antes del upsert.
+      const previo = await query('select id from reservas_vehiculos where id = $1', [id]);
+      const esNueva = previo.rowCount === 0;
+
       const { cols, datos } = desglosar({ ...b, estatus });
       const valores = [id, ...COLS.map(c => valorCol(c, cols[c])), JSON.stringify(datos)];
       const placeholders = valores.map((_, i) => `$${i + 1}`).join(',');
@@ -157,7 +162,15 @@ module.exports = async (req, res) => {
          returning *`,
         valores
       );
-      return res.json({ item: fila(r.rows[0]) });
+      const item = fila(r.rows[0]);
+
+      // Nueva solicitud pendiente -> avisar por WhatsApp al 1er aprobador y arrancar
+      // el escalamiento (best-effort: no bloquea ni rompe la respuesta al cliente).
+      if (esNueva && item.estatus === 'pendiente') {
+        try { require('./flotilla-notificar').iniciarEscalacion(item).catch(() => {}); }
+        catch (e) { console.error('[reservas-vehiculos] no se pudo iniciar escalacion:', e && e.message); }
+      }
+      return res.json({ item });
     }
 
     // ── MERGE PARCIAL (aprobar / rechazar / cancelar) ───────────────────────

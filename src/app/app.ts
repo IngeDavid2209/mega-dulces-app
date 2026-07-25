@@ -6,12 +6,10 @@ import { Storage, ref, uploadString, getDownloadURL } from '@angular/fire/storag
 import { SwUpdate, VersionReadyEvent } from '@angular/service-worker';
 import { filter } from 'rxjs/operators';
 import * as localforage from 'localforage';
-import Swal from 'sweetalert2';
 
 import { AsistenteChatComponent } from './shared/asistente-chat/asistente-chat';
 import { ApiService } from './shared/api.service';
 import { NotificacionesService } from './services/notificaciones';
-import { cerrarSesionSegura } from './shared/sesion.util';
 
 @Component({
   selector: 'app-root',
@@ -80,13 +78,24 @@ export class AppComponent implements OnInit {
     // mantenemos Postgres poblado y los tokens frescos para el push.
     this.reRegistrarTokenPush();
 
-    // 🔒 SEGURIDAD EN DISPOSITIVOS COMPARTIDOS 🔒
-    // Dos capas para que nadie termine trabajando en la cuenta de otra persona
-    // (tablets de sucursal que se pasan de mano en mano):
-    //   1) Cierre de sesión automático tras inactividad prolongada.
-    //   2) Confirmación "¿Eres tú?" al abrir la app o al volver tras un rato.
-    this.vigilarInactividad();
-    this.vigilarIdentidadCompartida();
+    // 🔒 NOTA DE SEGURIDAD DE SESIÓN (leer antes de reactivar nada) 🔒
+    // El 22/07/2026 se agregaron aquí dos capas pensadas para tablets de sucursal
+    // compartidas: (1) cierre automático de sesión por 30 min de inactividad y
+    // (2) diálogo "¿Eres tú?" al abrir la app o al volver tras 8 min en segundo
+    // plano. Se aplicaron a TODOS los dispositivos y sacaron de la sesión a
+    // muchísima gente que trabaja en su propio celular: apagan la pantalla, se
+    // van a trabajar, el temporizador sigue corriendo en segundo plano y al
+    // volver ya están en el login. El "¿Eres tú?" además se repetía casi cada
+    // vez que se reabría la PWA (la marca vivía en sessionStorage, que se borra
+    // al cerrarla) y su botón "No, cambiar de usuario" sacaba a quien le picara
+    // por error. Se retiraron el 24/07/2026 — están en el commit 3adf8f8 si
+    // algún día se necesitan, pero SOLO detrás de una marca de "dispositivo
+    // compartido" y nunca activas por defecto.
+    //
+    // Lo que SÍ se conserva de ese fix (y es el arreglo de fondo): cerrar la
+    // sesión de Firebase junto con la local (cerrarSesionSegura en
+    // shared/sesion.util.ts) e identificar al usuario del checklist por uid y
+    // nunca por nombre.
 
     // 🔥 LATIDO DE PRESENCIA 🔥 (FERROCARRIL: ahora a Postgres, no Firestore)
     const enviarLatido = () => {
@@ -141,123 +150,6 @@ export class AppComponent implements OnInit {
       console.log(`[storage] persistente=${concedido}`);
     } catch (e) {
       console.warn('[storage] no se pudo solicitar persistencia', e);
-    }
-  }
-
-  // ── 🔒 Seguridad de sesión en dispositivos compartidos ────────────────────
-  // Umbrales (fáciles de ajustar):
-  //   INACTIVIDAD: sin ningún toque/tecla/scroll durante este tiempo → se cierra
-  //   la sesión sola. Cualquier interacción reinicia el conteo, así que a quien
-  //   está trabajando NO lo saca.
-  //   AUSENCIA: si la app estuvo en segundo plano (pantalla apagada / cambió de
-  //   app) más de este tiempo, al volver pedimos confirmar identidad. Cubre el
-  //   handoff típico: dejan la tablet, la toma otra persona.
-  private readonly INACTIVIDAD_MS = 30 * 60 * 1000; // 30 min
-  private readonly AUSENCIA_MS = 8 * 60 * 1000;     // 8 min
-  private ultimaActividad = Date.now();
-  private ocultoDesde = 0;
-  private confirmandoIdentidad = false;
-
-  /** ¿Hay una sesión local activa en este momento? */
-  private haySesion(): boolean {
-    try { return !!localStorage.getItem('md_sesion_actual'); } catch { return false; }
-  }
-  /** Nombre (o usuario) de la sesión local, para los mensajes. */
-  private nombreSesion(): string | null {
-    try {
-      const u = JSON.parse(localStorage.getItem('md_sesion_actual') || 'null');
-      return (u && (u.nombre || u.usuario)) || null;
-    } catch { return null; }
-  }
-
-  /**
-   * 🔒 CIERRE POR INACTIVIDAD. Registra la última interacción del usuario y, cada
-   * minuto, si pasó el umbral SIN actividad y hay sesión, la cierra de forma
-   * segura (Firebase + local) y manda al login. Evita que una tablet quede
-   * abierta en la cuenta de alguien que ya se fue.
-   */
-  private vigilarInactividad() {
-    const marcar = () => { this.ultimaActividad = Date.now(); };
-    ['click', 'touchstart', 'pointerdown', 'keydown', 'scroll'].forEach(ev =>
-      window.addEventListener(ev, marcar, { passive: true }));
-    // Volver al primer plano cuenta como actividad (no cerrar por estar en background).
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible') marcar();
-    });
-
-    setInterval(() => {
-      if (!this.haySesion()) return;                 // sin sesión: el login manda
-      if (this.confirmandoIdentidad) return;         // hay un diálogo abierto
-      if (Date.now() - this.ultimaActividad < this.INACTIVIDAD_MS) return;
-      this.cerrarPorInactividad();
-    }, 60 * 1000);
-  }
-
-  private async cerrarPorInactividad() {
-    if (!this.haySesion()) return;
-    try { sessionStorage.removeItem('md_ident_confirmada'); } catch { /* noop */ }
-    await cerrarSesionSegura();
-    await this.router.navigate(['/login']);
-    Swal.fire({
-      icon: 'info',
-      title: 'Sesión cerrada',
-      text: 'Cerramos tu sesión por inactividad. Vuelve a entrar para continuar.',
-      confirmButtonColor: '#0F172A',
-    });
-  }
-
-  /**
-   * 🔒 CONFIRMAR IDENTIDAD ("¿Eres tú?"). Se dispara:
-   *   - al arrancar la app con una sesión ya abierta (reapertura de la PWA), una
-   *     sola vez por sesión del navegador (sobrevive a las recargas automáticas
-   *     por actualización, así que no molesta en cada deploy), y
-   *   - al volver al primer plano tras estar oculta más de AUSENCIA_MS.
-   * Si el usuario dice que NO es él, cerramos sesión y lo mandamos al login.
-   */
-  private vigilarIdentidadCompartida() {
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'hidden') { this.ocultoDesde = Date.now(); return; }
-      if (this.ocultoDesde && (Date.now() - this.ocultoDesde >= this.AUSENCIA_MS)) {
-        this.confirmarIdentidad();
-      }
-      this.ocultoDesde = 0;
-    });
-
-    // Arranque con sesión ya abierta: confirmar una vez por sesión del navegador.
-    let yaConfirmada = false;
-    try { yaConfirmada = sessionStorage.getItem('md_ident_confirmada') === '1'; } catch { /* noop */ }
-    if (this.haySesion() && !yaConfirmada) this.confirmarIdentidad();
-  }
-
-  private async confirmarIdentidad() {
-    if (this.confirmandoIdentidad) return;           // no apilar diálogos
-    if (!this.haySesion()) return;                   // sin sesión: nada que confirmar
-    if (this.router.url.startsWith('/login')) return;
-    const nombre = this.nombreSesion();
-    if (!nombre) return;
-
-    this.confirmandoIdentidad = true;
-    const r = await Swal.fire({
-      icon: 'question',
-      title: `¿Eres ${nombre}?`,
-      text: 'Confirma tu identidad para seguir en tu cuenta.',
-      showCancelButton: true,
-      confirmButtonText: 'Sí, soy yo',
-      cancelButtonText: 'No, cambiar de usuario',
-      confirmButtonColor: '#0F172A',
-      cancelButtonColor: '#b91c1c',
-      allowOutsideClick: false,
-      allowEscapeKey: false,
-    });
-    this.confirmandoIdentidad = false;
-
-    if (r.isConfirmed) {
-      try { sessionStorage.setItem('md_ident_confirmada', '1'); } catch { /* noop */ }
-      this.ultimaActividad = Date.now();             // no cerrar por inactividad justo después
-    } else {
-      try { sessionStorage.removeItem('md_ident_confirmada'); } catch { /* noop */ }
-      await cerrarSesionSegura();
-      await this.router.navigate(['/login']);
     }
   }
 

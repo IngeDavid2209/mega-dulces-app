@@ -1383,15 +1383,10 @@ export class CierreMensualComponent implements OnInit, OnDestroy {
 
       for (let i = 0; i < todosLosIds.length; i += CHUNK) {
         const slice = todosLosIds.slice(i, i + CHUNK);
-        const resp = await fetch('/api/cloudinary-cleanup', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ publicIds: slice })
-        });
-        const data = await resp.json().catch(() => ({}));
-        if (!resp.ok) {
-          throw new Error(data?.error || `Error HTTP ${resp.status} del endpoint cloudinary-cleanup.`);
-        }
+        // Va por ApiService para que lleve el token: el endpoint exige admin
+        // autenticado (borra fotos de forma irreversible). Si falla, api.post
+        // lanza con el mensaje del servidor y NO reintenta el POST.
+        const data = await this.api.post('/api/cloudinary-cleanup', { publicIds: slice });
         const deleted = (data && data.deleted) || {};
         for (const pid of slice) {
           const estado = deleted[pid];

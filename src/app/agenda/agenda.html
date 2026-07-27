@@ -41,6 +41,7 @@
             {{ tarea.texto }}
             <small class="pl-item-fecha" *ngIf="tarea.fecha" [class.venc]="estaVencida(tarea)">· {{ esHoy(tarea.fecha) ? 'hoy' : formatearFecha(tarea.fecha) }}</small>
             <small class="pl-item-frec" *ngIf="tarea.frecuencia && tarea.frecuencia !== 'unica'">· {{ etiquetaFrecuencia(tarea.frecuencia) }}</small>
+            <small class="pl-item-frec" *ngIf="cuentaAdjuntos(tarea) as nAdj">· {{ nAdj }} archivo{{ nAdj === 1 ? '' : 's' }}</small>
           </span>
           <button class="pl-item-del" (click)="eliminarTarea(tarea.id, $event)" title="Eliminar">✕</button>
         </div>
@@ -221,21 +222,46 @@
             📎 Archivos y Evidencias
           </label>
 
-          <div *ngIf="tareaActiva.adjunto" style="margin-bottom: 15px;">
-            <img [src]="tareaActiva.adjunto" style="max-width: 150px; border-radius: 8px; border: 1px solid #E2E8F0;">
+          <div *ngIf="tareaActiva.adjuntos?.length"
+            style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px;">
+            <div *ngFor="let a of tareaActiva.adjuntos; let i = index"
+              style="display: flex; align-items: center; gap: 10px; background: white; border: 1px solid #E2E8F0; border-radius: 8px; padding: 8px 10px;">
+
+              <img *ngIf="esImagen(a)" [src]="a.url" alt=""
+                style="width: 40px; height: 40px; object-fit: cover; border-radius: 6px; border: 1px solid #E2E8F0; flex-shrink: 0;">
+
+              <span *ngIf="!esImagen(a)"
+                style="width: 40px; height: 40px; border-radius: 6px; background: #EFF6FF; color: #1D4ED8; font-size: 10px; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                {{ extensionArchivo(a) }}
+              </span>
+
+              <a [href]="a.url" target="_blank" rel="noopener" [title]="a.nombre"
+                style="flex: 1; min-width: 0; font-size: 13px; font-weight: 600; color: #0F172A; text-decoration: none;">
+                <span
+                  style="display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ a.nombre }}</span>
+                <small style="font-weight: 500; color: #94A3B8;">{{ pesoLegible(a.tamano) }}</small>
+              </a>
+
+              <button type="button" (click)="quitarAdjunto(i)" title="Quitar archivo"
+                style="background: none; border: none; color: #94A3B8; font-size: 20px; cursor: pointer; line-height: 1; padding: 0 4px;">&times;</button>
+            </div>
           </div>
 
-          <button
-            style="background: white; border: 1px solid #CBD5E1; padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: 600; color: #0F172A; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+          <label
+            style="background: white; border: 1px solid #CBD5E1; padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: 600; color: #0F172A; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;"
+            [style.opacity]="subiendoArchivos > 0 ? 0.6 : 1">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
               <polyline points="17 8 12 3 7 8"></polyline>
               <line x1="12" y1="3" x2="12" y2="15"></line>
             </svg>
-            Subir Foto / Archivo
-          </button>
-          <p style="font-size: 11px; color: #94A3B8; margin-top: 6px; margin-bottom: 0;">*La funcionalidad de subir
-            archivo se activará en el próximo paso.</p>
+            {{ subiendoArchivos > 0 ? 'Subiendo...' : 'Subir archivo' }}
+            <input type="file" multiple hidden [disabled]="subiendoArchivos > 0"
+              (change)="adjuntarArchivos($event)">
+          </label>
+          <p style="font-size: 11px; color: #94A3B8; margin-top: 8px; margin-bottom: 0;">
+            Cualquier tipo de archivo: PDF, Excel, Word, CSV, imágenes, ZIP. Hasta {{ MAX_ARCHIVO_MB }} MB cada uno.
+          </p>
         </div>
 
         <div>
@@ -253,7 +279,9 @@
         style="padding: 16px 24px; border-top: 1px solid #E2E8F0; display: flex; justify-content: flex-end; gap: 10px; background: #F8FAFC; border-bottom-left-radius: 16px; border-bottom-right-radius: 16px;">
         <button (click)="cerrarDetalle()"
           style="background: white; border: 1px solid #CBD5E1; padding: 10px 20px; border-radius: 8px; font-weight: 600; color: #475569; cursor: pointer;">Cancelar</button>
-        <button (click)="guardarDetalles()"
+        <button (click)="guardarDetalles()" [disabled]="subiendoArchivos > 0"
+          [style.opacity]="subiendoArchivos > 0 ? 0.6 : 1"
+          [style.cursor]="subiendoArchivos > 0 ? 'not-allowed' : 'pointer'"
           style="background: #2563EB; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 600; color: white; cursor: pointer; display: flex; align-items: center; gap: 6px;">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>

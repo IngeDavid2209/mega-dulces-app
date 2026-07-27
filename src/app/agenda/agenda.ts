@@ -9,6 +9,7 @@ import { SidebarComponent } from '../shared/sidebar/sidebar';
 import { esAdmin, esAdminGlobal, sucursalesPermitidas, normalizarNombre } from '../shared/permisos.util';
 import { detectarRecomendaciones, Recomendacion } from '../shared/recomendaciones-rutinas.util';
 import { ApiService } from '../shared/api.service';
+import { comprimirImagenSiAplica } from '../shared/imagen.util';
 
 @Component({
   selector: 'app-agenda',
@@ -48,6 +49,12 @@ export class AgendaComponent implements OnInit, OnDestroy {
 
   // Variable para el Modal de Detalles
   tareaActiva: any = null;
+
+  // ----- Adjuntos de la tarea (cualquier formato: PDF, Excel, Word, imagen...) -----
+  /** Cuántas subidas hay en vuelo; mientras sea > 0 no se deja guardar. */
+  subiendoArchivos = 0;
+  /** Tope por archivo. Cloudinary rechaza los pesados en subida sin firma. */
+  readonly MAX_ARCHIVO_MB = 10;
 
   // Inyecciones
   private auth = inject(Auth);
@@ -141,7 +148,7 @@ export class AgendaComponent implements OnInit, OnDestroy {
       const nueva = {
         texto, completada: false, fechaCreacion: Date.now(), fecha: '',
         prioridad: this.nuevaPrioridad, frecuencia: this.nuevaFrecuencia,
-        instrucciones: '', comentarios: '', adjunto: null
+        instrucciones: '', comentarios: '', adjunto: null, adjuntos: []
       };
       const ref = await addDoc(collection(this.firestore, `usuarios/${userId}/agenda`), nueva);
       await this.api.post('/api/usuarios-agenda', { id: ref.id, uid: userId, ...nueva }).catch(e => console.error('[agenda] sync PG', e));
@@ -222,7 +229,7 @@ export class AgendaComponent implements OnInit, OnDestroy {
       const nueva = {
         texto: r.nombre, completada: false, fechaCreacion: Date.now(), fecha: '',
         prioridad: 'media', frecuencia: this.frecRecoAAgenda(r.frecuencia),
-        instrucciones: '', comentarios: '', adjunto: null
+        instrucciones: '', comentarios: '', adjunto: null, adjuntos: []
       };
       const ref = await addDoc(collection(this.firestore, `usuarios/${userId}/agenda`), nueva);
       await this.api.post('/api/usuarios-agenda', { id: ref.id, uid: userId, ...nueva }).catch(e => console.error('[agenda] sync PG', e));
@@ -307,7 +314,7 @@ export class AgendaComponent implements OnInit, OnDestroy {
   nuevaEnDia(iso: string) {
     this.tareaActiva = {
       texto: '', completada: false, fechaCreacion: Date.now(), fecha: iso,
-      prioridad: 'media', frecuencia: 'unica', instrucciones: '', comentarios: '', adjunto: null,
+      prioridad: 'media', frecuencia: 'unica', instrucciones: '', comentarios: '', adjunto: null, adjuntos: [],
       esNueva: true
     };
   }
@@ -361,16 +368,146 @@ export class AgendaComponent implements OnInit, OnDestroy {
 
   // 🔥 2. Funciones del Modal de Detalles
   abrirDetalle(tarea: any) {
-    this.tareaActiva = { ...tarea, esNueva: false }; // Clonamos para edición
+    // Clonamos para edición. Los adjuntos se normalizan a lista para poder
+    // manejar varios archivos y no romper las tareas viejas de un solo `adjunto`.
+    this.tareaActiva = { ...tarea, adjuntos: this.normalizarAdjuntos(tarea), esNueva: false };
   }
 
   cerrarDetalle() {
     this.tareaActiva = null;
   }
 
+  // ============================================================================
+  // ADJUNTOS: cualquier tipo de archivo (PDF, Excel, Word, CSV, imagen, ZIP...)
+  // ============================================================================
+
+  /**
+   * Las tareas antiguas guardaban una sola imagen en `adjunto`. Aquí lo pasamos
+   * a la lista `adjuntos` para que la vista sea una sola, sin perder lo viejo.
+   */
+  private normalizarAdjuntos(tarea: any): any[] {
+    if (Array.isArray(tarea?.adjuntos)) return tarea.adjuntos.map((a: any) => ({ ...a }));
+    if (tarea?.adjunto) {
+      return [{
+        url: tarea.adjunto,
+        nombre: this.nombreDesdeUrl(tarea.adjunto),
+        tipo: '', tamano: 0,
+        subidoEn: tarea.fechaCreacion || Date.now(),
+      }];
+    }
+    return [];
+  }
+
+  /** Saca el nombre del archivo de una URL, para los adjuntos viejos que no lo traían. */
+  private nombreDesdeUrl(url: string): string {
+    try {
+      const limpia = String(url).split('?')[0];
+      const ultimo = limpia.substring(limpia.lastIndexOf('/') + 1);
+      return decodeURIComponent(ultimo) || 'Adjunto';
+    } catch { return 'Adjunto'; }
+  }
+
+  /** Cuántos archivos trae una tarea (para el indicador de la lista). */
+  cuentaAdjuntos(tarea: any): number {
+    if (Array.isArray(tarea?.adjuntos)) return tarea.adjuntos.length;
+    return tarea?.adjunto ? 1 : 0;
+  }
+
+  /** Sube uno o varios archivos elegidos y los agrega a la tarea abierta. */
+  async adjuntarArchivos(event: any) {
+    const input = event?.target as HTMLInputElement;
+    const elegidos: File[] = Array.from(input?.files || []);
+    if (!elegidos.length || !this.tareaActiva) return;
+    if (!Array.isArray(this.tareaActiva.adjuntos)) this.tareaActiva.adjuntos = [];
+
+    const fallidos: string[] = [];
+    for (const original of elegidos) {
+      if (original.size > this.MAX_ARCHIVO_MB * 1024 * 1024) {
+        fallidos.push(`${original.name} (pasa de ${this.MAX_ARCHIVO_MB} MB)`);
+        continue;
+      }
+      this.subiendoArchivos++;
+      try {
+        // Las imágenes se comprimen para no gastar datos; PDF, Excel, Word y
+        // el resto de formatos pasan intactos.
+        const archivo = await comprimirImagenSiAplica(original);
+        const url = await this.subirArchivo(archivo);
+        if (!url) { fallidos.push(original.name); continue; }
+        this.tareaActiva.adjuntos.push({
+          url,
+          nombre: original.name,
+          tipo: original.type || '',
+          tamano: archivo.size,
+          subidoEn: Date.now(),
+        });
+      } catch (e) {
+        console.error('[agenda] adjuntar', e);
+        fallidos.push(original.name);
+      } finally {
+        this.subiendoArchivos--;
+      }
+    }
+
+    if (input) input.value = ''; // permite volver a elegir el mismo archivo
+    if (fallidos.length) {
+      alert('No se pudieron subir estos archivos:\n\n' + fallidos.join('\n') +
+        '\n\nRevisa tu conexión e inténtalo de nuevo.');
+    }
+  }
+
+  /** Sube a Cloudinary. El endpoint 'auto' acepta cualquier formato, no solo imágenes. */
+  private async subirArchivo(archivo: File): Promise<string | null> {
+    const formData = new FormData();
+    formData.append('file', archivo);
+    formData.append('upload_preset', 'fotos_mega');
+    try {
+      const resp = await fetch('https://api.cloudinary.com/v1_1/duherjgyg/auto/upload', {
+        method: 'POST', body: formData
+      });
+      const data = await resp.json();
+      return data?.secure_url || null;
+    } catch (e) {
+      console.error('[agenda] subir archivo', e);
+      return null;
+    }
+  }
+
+  quitarAdjunto(i: number) {
+    if (!Array.isArray(this.tareaActiva?.adjuntos)) return;
+    this.tareaActiva.adjuntos.splice(i, 1);
+  }
+
+  /** ¿Se puede mostrar como miniatura? */
+  esImagen(a: any): boolean {
+    if (String(a?.tipo || '').startsWith('image/')) return true;
+    // Probamos nombre Y url: los adjuntos viejos no traen nombre de archivo.
+    const patron = /\.(png|jpe?g|gif|webp|bmp|heic|avif)(\?|$)/i;
+    return patron.test(String(a?.nombre || '')) || patron.test(String(a?.url || ''));
+  }
+
+  /** Etiqueta corta del formato (PDF, XLSX, DOCX...) para los que no son imagen. */
+  extensionArchivo(a: any): string {
+    const nombre = String(a?.nombre || a?.url || '').split('?')[0];
+    const m = nombre.match(/\.([a-z0-9]{1,5})$/i);
+    return m ? m[1].toUpperCase() : 'DOC';
+  }
+
+  pesoLegible(bytes: number): string {
+    const n = Number(bytes) || 0;
+    if (n <= 0) return '';
+    if (n < 1024) return n + ' B';
+    if (n < 1024 * 1024) return Math.round(n / 1024) + ' KB';
+    return (n / (1024 * 1024)).toFixed(1) + ' MB';
+  }
+
   async guardarDetalles() {
     if (!this.tareaActiva) return;
-    const userId = this.usuarioSeleccionado || this.miPropioId(); 
+    // Si hay archivos a medio subir, esperamos: guardar ahora los perdería.
+    if (this.subiendoArchivos > 0) {
+      alert('Espera a que terminen de subir los archivos.');
+      return;
+    }
+    const userId = this.usuarioSeleccionado || this.miPropioId();
     if (!userId) return;
 
     try {
@@ -388,7 +525,8 @@ export class AgendaComponent implements OnInit, OnDestroy {
           prioridad: this.tareaActiva.prioridad || 'media',
           frecuencia: this.tareaActiva.frecuencia || 'unica',
           instrucciones: this.tareaActiva.instrucciones || '',
-          comentarios: this.tareaActiva.comentarios || ''
+          comentarios: this.tareaActiva.comentarios || '',
+          adjuntos: this.tareaActiva.adjuntos || []
         };
         const docRef = doc(this.firestore, `usuarios/${userId}/agenda/${this.tareaActiva.id}`);
         await updateDoc(docRef, cambios);

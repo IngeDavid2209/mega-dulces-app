@@ -134,6 +134,7 @@ export class AgendaComponent implements OnInit, OnDestroy {
         if (!a.fecha && b.fecha) return 1;
         return (b.fechaCreacion || 0) - (a.fechaCreacion || 0);
       });
+      this.recalcularGrupos();
     } catch (e) { console.error('[agenda] recargar', e); }
   }
 
@@ -148,7 +149,7 @@ export class AgendaComponent implements OnInit, OnDestroy {
       const nueva = {
         texto, completada: false, fechaCreacion: Date.now(), fecha: '',
         prioridad: this.nuevaPrioridad, frecuencia: this.nuevaFrecuencia,
-        instrucciones: '', comentarios: '', adjunto: null, adjuntos: []
+        estado: 'pendiente', instrucciones: '', comentarios: '', adjunto: null, adjuntos: []
       };
       const ref = await addDoc(collection(this.firestore, `usuarios/${userId}/agenda`), nueva);
       await this.api.post('/api/usuarios-agenda', { id: ref.id, uid: userId, ...nueva }).catch(e => console.error('[agenda] sync PG', e));
@@ -229,7 +230,7 @@ export class AgendaComponent implements OnInit, OnDestroy {
       const nueva = {
         texto: r.nombre, completada: false, fechaCreacion: Date.now(), fecha: '',
         prioridad: 'media', frecuencia: this.frecRecoAAgenda(r.frecuencia),
-        instrucciones: '', comentarios: '', adjunto: null, adjuntos: []
+        estado: 'pendiente', instrucciones: '', comentarios: '', adjunto: null, adjuntos: []
       };
       const ref = await addDoc(collection(this.firestore, `usuarios/${userId}/agenda`), nueva);
       await this.api.post('/api/usuarios-agenda', { id: ref.id, uid: userId, ...nueva }).catch(e => console.error('[agenda] sync PG', e));
@@ -314,14 +315,203 @@ export class AgendaComponent implements OnInit, OnDestroy {
   nuevaEnDia(iso: string) {
     this.tareaActiva = {
       texto: '', completada: false, fechaCreacion: Date.now(), fecha: iso,
-      prioridad: 'media', frecuencia: 'unica', instrucciones: '', comentarios: '', adjunto: null, adjuntos: [],
+      prioridad: 'media', frecuencia: 'unica', estado: 'pendiente', instrucciones: '', comentarios: '', adjunto: null, adjuntos: [],
       esNueva: true
     };
   }
 
+  // ============================================================================
+  // ESTADOS: pendiente -> haciendo -> hecha
+  //
+  // Las tareas viejas solo traen `completada` (booleano). `estadoDe` las traduce
+  // para que la vista sea una sola. Al guardar mantenemos AMBOS campos en
+  // sincronia: el calendario, el robot y otras vistas siguen leyendo
+  // `completada`, y romperlo se llevaria mas que la agenda.
+  // ============================================================================
+  estadoDe(t: any): 'pendiente' | 'haciendo' | 'hecha' {
+    const e = String(t?.estado || '');
+    if (e === 'pendiente' || e === 'haciendo' || e === 'hecha') return e;
+    return t?.completada ? 'hecha' : 'pendiente';
+  }
+
+  etiquetaEstado(t: any): string {
+    const e = this.estadoDe(t);
+    return e === 'hecha' ? 'Hecha' : e === 'haciendo' ? 'Haciendo' : 'Por hacer';
+  }
+
+  /** Texto del tooltip: dice a que estado pasa al tocarla. */
+  tituloEstado(t: any): string {
+    const e = this.estadoDe(t);
+    if (e === 'pendiente') return 'Marcar como que la estas haciendo';
+    if (e === 'haciendo') return 'Marcar como hecha';
+    return 'Regresar a por hacer';
+  }
+
+  /** Un toque en la casilla avanza al siguiente estado y da la vuelta. */
+  async cicloEstado(tarea: any, event?: Event) {
+    if (event) event.stopPropagation();
+    const userId = this.usuarioSeleccionado;
+    if (!userId) return;
+
+    const actual = this.estadoDe(tarea);
+    const siguiente = actual === 'pendiente' ? 'haciendo' : actual === 'haciendo' ? 'hecha' : 'pendiente';
+    const completada = siguiente === 'hecha';
+
+    // Reflejo inmediato; si el guardado falla lo revertimos para no mentir.
+    const previo = { estado: tarea.estado, completada: tarea.completada };
+    tarea.estado = siguiente;
+    tarea.completada = completada;
+    this.recalcularGrupos();
+
+    try {
+      const docRef = doc(this.firestore, `usuarios/${userId}/agenda/${tarea.id}`);
+      await updateDoc(docRef, { estado: siguiente, completada });
+      await this.api.patch('/api/usuarios-agenda', {
+        id: tarea.id, estado: siguiente, completada,
+        completadaEn: completada ? Date.now() : null,
+      }).catch(e => console.error('[agenda] sync PG', e));
+    } catch (error) {
+      tarea.estado = previo.estado;
+      tarea.completada = previo.completada;
+      this.recalcularGrupos();
+      console.error('[agenda] no se pudo cambiar el estado', error);
+    }
+  }
+
   // ----- Listas separadas + contadores -----
-  get pendientes(): any[] { return this.tareasPersonales.filter(t => !t.completada); }
-  get completadas(): any[] { return this.tareasPersonales.filter(t => t.completada); }
+  get pendientes(): any[] { return this.tareasPersonales.filter(t => this.estadoDe(t) === 'pendiente'); }
+  get enCurso(): any[] { return this.tareasPersonales.filter(t => this.estadoDe(t) === 'haciendo'); }
+  get completadas(): any[] { return this.tareasPersonales.filter(t => this.estadoDe(t) === 'hecha'); }
+
+  // ============================================================================
+  // AGRUPADO POR DIA (hoja izquierda)
+  //
+  // Se calcula al cargar y al cambiar un estado, NO en un getter: un getter se
+  // reevalua en cada ciclo de deteccion y devolveria arreglos nuevos, lo que
+  // hace que *ngFor reconstruya la lista completa cada vez.
+  // ============================================================================
+  /** Bloques activos: atrasadas, hoy, lo que viene y sin fecha. */
+  grupos: any[] = [];
+  /** Días ya cerrados. Van aparte y plegados: es historial, no trabajo por hacer. */
+  historial: any[] = [];
+
+  /** Un día del historial se abre al tocarlo; arrancan todos cerrados. */
+  private historialAbierto = new Set<string>();
+  verTodoHistorial = false;
+  readonly TOPE_HISTORIAL = 5;
+
+  get historialVisible(): any[] {
+    return this.verTodoHistorial ? this.historial : this.historial.slice(0, this.TOPE_HISTORIAL);
+  }
+  get hayMasHistorial(): boolean { return this.historial.length > this.TOPE_HISTORIAL; }
+  diaAbierto(clave: string): boolean { return this.historialAbierto.has(clave); }
+  alternarDia(clave: string) {
+    if (this.historialAbierto.has(clave)) this.historialAbierto.delete(clave);
+    else this.historialAbierto.add(clave);
+  }
+
+  trackGrupo = (_: number, g: any) => g.clave;
+  trackTarea = (_: number, t: any) => t.id;
+
+  private ordenEstado(t: any): number {
+    const e = this.estadoDe(t);
+    return e === 'haciendo' ? 0 : e === 'pendiente' ? 1 : 2;
+  }
+
+  /** Ordena dentro del dia: primero lo que se esta haciendo, al final lo hecho. */
+  private ordenarTareas(lista: any[]): any[] {
+    const prioridad: any = { alta: 0, media: 1, baja: 2 };
+    return [...lista].sort((a, b) => {
+      const e = this.ordenEstado(a) - this.ordenEstado(b);
+      if (e !== 0) return e;
+      const p = (prioridad[a.prioridad] ?? 1) - (prioridad[b.prioridad] ?? 1);
+      if (p !== 0) return p;
+      return (a.fechaCreacion || 0) - (b.fechaCreacion || 0);
+    });
+  }
+
+  private armarGrupo(clave: string, titulo: string, subtitulo: string, tareas: any[], tipo: string, iso = ''): any {
+    const total = tareas.length;
+    const hechas = tareas.filter(t => this.estadoDe(t) === 'hecha').length;
+    const haciendo = tareas.filter(t => this.estadoDe(t) === 'haciendo').length;
+    return {
+      clave, titulo, subtitulo, tipo, iso,
+      tareas: this.ordenarTareas(tareas),
+      total, hechas, haciendo,
+      pct: total ? Math.round((hechas / total) * 100) : 0,
+      esHoy: iso !== '' && iso === this.hoyISO(),
+      cerrado: total > 0 && hechas === total,
+    };
+  }
+
+  /** Reconstruye los bloques de la hoja izquierda a partir de tareasPersonales. */
+  recalcularGrupos() {
+    const hoy = this.hoyISO();
+    const lista = this.tareasPersonales || [];
+    const grupos: any[] = [];
+
+    // Sin nada en la agenda no armamos bloques: se muestra solo el mensaje de
+    // hoja vacia, para no sacar un "Hoy" solitario debajo del aviso.
+    if (lista.length === 0) { this.grupos = []; this.historial = []; return; }
+
+    const conFecha = lista.filter(t => !!t.fecha);
+    const sinFecha = lista.filter(t => !t.fecha);
+
+    // 1) Atrasadas: dia ya pasado y siguen abiertas. Van arriba porque urgen.
+    const atrasadas = conFecha.filter(t => t.fecha < hoy && this.estadoDe(t) !== 'hecha');
+    if (atrasadas.length) {
+      grupos.push(this.armarGrupo('atrasadas', 'Atrasadas', '', atrasadas, 'atrasadas'));
+    }
+
+    // 2) Hoy y lo que viene, un bloque por dia en orden ascendente.
+    const porDia = new Map<string, any[]>();
+    for (const t of conFecha) {
+      if (t.fecha < hoy) continue;
+      if (!porDia.has(t.fecha)) porDia.set(t.fecha, []);
+      porDia.get(t.fecha)!.push(t);
+    }
+    // Si hoy no tiene tareas igual mostramos el bloque, para que se vea el dia.
+    if (!porDia.has(hoy)) porDia.set(hoy, []);
+
+    for (const iso of [...porDia.keys()].sort()) {
+      const tareas = porDia.get(iso)!;
+      if (iso !== hoy && tareas.length === 0) continue;
+      grupos.push(this.armarGrupo(
+        'dia-' + iso, this.tituloDia(iso), this.formatearFecha(iso), tareas, 'dia', iso
+      ));
+    }
+
+    // 3) Sin fecha asignada.
+    if (sinFecha.length) {
+      grupos.push(this.armarGrupo('sin-fecha', 'Sin fecha', '', sinFecha, 'sin-fecha'));
+    }
+
+    this.grupos = grupos;
+
+    // 4) Historial: dias anteriores ya cerrados. Es el "que he hecho". Va en su
+    //    propia lista, del mas reciente al mas viejo, y plegado: con muchos dias
+    //    de trabajo esto llega a decenas de bloques y taparia el resumen.
+    const pasadas = conFecha.filter(t => t.fecha < hoy && this.estadoDe(t) === 'hecha');
+    const porDiaPasado = new Map<string, any[]>();
+    for (const t of pasadas) {
+      if (!porDiaPasado.has(t.fecha)) porDiaPasado.set(t.fecha, []);
+      porDiaPasado.get(t.fecha)!.push(t);
+    }
+    this.historial = [...porDiaPasado.keys()].sort().reverse().map(iso =>
+      this.armarGrupo('pasado-' + iso, this.formatearFecha(iso), '', porDiaPasado.get(iso)!, 'pasado', iso)
+    );
+  }
+
+  /** "Hoy", "Mañana" o el día tal cual para el encabezado del bloque. */
+  private tituloDia(iso: string): string {
+    if (iso === this.hoyISO()) return 'Hoy';
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    const off = d.getTimezoneOffset() * 60000;
+    const manana = new Date(d.getTime() - off).toISOString().split('T')[0];
+    if (iso === manana) return 'Mañana';
+    return this.formatearFecha(iso);
+  }
 
   readonly prioridades = [
     { v: 'alta', t: 'Alta' }, { v: 'media', t: 'Media' }, { v: 'baja', t: 'Baja' }
@@ -331,22 +521,6 @@ export class AgendaComponent implements OnInit, OnDestroy {
   ];
   etiquetaPrioridad(p: string): string { return this.prioridades.find(x => x.v === p)?.t || ''; }
   etiquetaFrecuencia(f: string): string { return this.frecuencias.find(x => x.v === f)?.t || ''; }
-
-  async toggleTarea(tarea: any) {
-    
-    const userId = this.usuarioSeleccionado; 
-    if (!userId) return;
-
-    try {
-      const nuevoEstado = !tarea.completada;
-      const docRef = doc(this.firestore, `usuarios/${userId}/agenda/${tarea.id}`);
-      await updateDoc(docRef, { completada: nuevoEstado });
-      await this.api.patch('/api/usuarios-agenda', { id: tarea.id, completada: nuevoEstado, completadaEn: nuevoEstado ? Date.now() : null }).catch(e => console.error('[agenda] sync PG', e));
-      tarea.completada = nuevoEstado; // reflejo inmediato
-    } catch (error) {
-      console.error("Error actualizando tarea", error);
-    }
-  }
 
   async eliminarTarea(tareaId: string, event?: Event) {
     if (event) event.stopPropagation();
@@ -552,7 +726,7 @@ export class AgendaComponent implements OnInit, OnDestroy {
     catch { return iso; }
   }
   esHoy(iso: string | undefined): boolean { return !!iso && iso === this.hoyISO(); }
-  estaVencida(t: any): boolean { return !!t?.fecha && !t?.completada && t.fecha < this.hoyISO(); }
+  estaVencida(t: any): boolean { return !!t?.fecha && this.estadoDe(t) !== 'hecha' && t.fecha < this.hoyISO(); }
 
   // Layout
   toggleMenu() { this.isMenuOpen = !this.isMenuOpen; }

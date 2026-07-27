@@ -30,16 +30,22 @@
       <!-- ╔══════════ AGENDA ESTILO PLANNER / SCRAPBOOK ══════════╗ -->
 
       <!-- Plantilla de fila de pendiente (lista estilo libreta) -->
-      <ng-template #filaTarea let-tarea>
-        <div class="pl-item" [class.done]="tarea.completada">
-          <button class="pl-check" (click)="toggleTarea(tarea)"
-            [class.on]="tarea.completada" [attr.aria-label]="tarea.completada ? 'Desmarcar' : 'Completar'">
-            <svg *ngIf="tarea.completada" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+      <ng-template #filaTarea let-tarea let-ocultarFecha="ocultarFecha">
+        <div class="pl-item" [class.done]="estadoDe(tarea) === 'hecha'"
+          [class.curso]="estadoDe(tarea) === 'haciendo'">
+          <button class="pl-check" (click)="cicloEstado(tarea, $event)"
+            [class.on]="estadoDe(tarea) === 'hecha'"
+            [class.curso]="estadoDe(tarea) === 'haciendo'"
+            [title]="tituloEstado(tarea)"
+            [attr.aria-label]="etiquetaEstado(tarea) + '. ' + tituloEstado(tarea)">
+            <svg *ngIf="estadoDe(tarea) === 'hecha'" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            <span class="pl-check-curso" *ngIf="estadoDe(tarea) === 'haciendo'"></span>
           </button>
           <span class="pl-item-dot" [ngClass]="'pr-' + (tarea.prioridad || 'media')"></span>
           <span class="pl-item-txt" (click)="abrirDetalle(tarea)">
             {{ tarea.texto }}
-            <small class="pl-item-fecha" *ngIf="tarea.fecha" [class.venc]="estaVencida(tarea)">· {{ esHoy(tarea.fecha) ? 'hoy' : formatearFecha(tarea.fecha) }}</small>
+            <small class="pl-item-curso" *ngIf="estadoDe(tarea) === 'haciendo'">· haciendo</small>
+            <small class="pl-item-fecha" *ngIf="tarea.fecha && !ocultarFecha" [class.venc]="estaVencida(tarea)">· {{ esHoy(tarea.fecha) ? 'hoy' : formatearFecha(tarea.fecha) }}</small>
             <small class="pl-item-frec" *ngIf="tarea.frecuencia && tarea.frecuencia !== 'unica'">· {{ etiquetaFrecuencia(tarea.frecuencia) }}</small>
             <small class="pl-item-frec" *ngIf="cuentaAdjuntos(tarea) as nAdj">· {{ nAdj }} archivo{{ nAdj === 1 ? '' : 's' }}</small>
           </span>
@@ -91,21 +97,64 @@
           <!-- Lista en hoja de libreta -->
           <div class="pl-hoja">
             <div class="pl-resumen">
-              <span>{{ pendientes.length }} pendientes</span> · <span>{{ completadas.length }} hechas</span>
+              <span>{{ pendientes.length }} por hacer</span>
+              <span *ngIf="enCurso.length"> · <b class="pl-res-curso">{{ enCurso.length }} haciendo</b></span>
+              · <span>{{ completadas.length }} hechas</span>
             </div>
 
             <div *ngIf="tareasPersonales.length === 0" class="pl-vacio">
               ✎ Aún nada por aquí. Anota tu primer pendiente arriba.
             </div>
 
-            <ng-container *ngFor="let tarea of pendientes">
-              <ng-container *ngTemplateOutlet="filaTarea; context: { $implicit: tarea }"></ng-container>
-            </ng-container>
+            <!-- Un bloque por día: encabezado, avance y sus tareas -->
+            <div class="pl-grupo" *ngFor="let g of grupos; trackBy: trackGrupo"
+              [class.atrasado]="g.tipo === 'atrasadas'"
+              [class.hoy]="g.esHoy">
 
-            <div *ngIf="completadas.length > 0" class="pl-hechas-sep">Hechas</div>
-            <ng-container *ngFor="let tarea of completadas">
-              <ng-container *ngTemplateOutlet="filaTarea; context: { $implicit: tarea }"></ng-container>
-            </ng-container>
+              <div class="pl-grupo-head">
+                <span class="pl-grupo-titulo">{{ g.titulo }}</span>
+                <span class="pl-grupo-sub" *ngIf="g.subtitulo && g.titulo !== g.subtitulo">{{ g.subtitulo }}</span>
+                <span class="pl-grupo-cuenta" *ngIf="g.total">
+                  <ng-container *ngIf="g.tipo === 'atrasadas'">{{ g.total }} sin cerrar</ng-container>
+                  <ng-container *ngIf="g.tipo !== 'atrasadas'">{{ g.hechas }} de {{ g.total }}</ng-container>
+                </span>
+              </div>
+
+              <div class="pl-grupo-barra" *ngIf="g.total && g.tipo !== 'atrasadas'">
+                <span [style.width.%]="g.pct" [class.lleno]="g.cerrado"></span>
+              </div>
+
+              <div class="pl-grupo-libre" *ngIf="!g.total">Sin nada agendado</div>
+
+              <ng-container *ngFor="let tarea of g.tareas; trackBy: trackTarea">
+                <ng-container *ngTemplateOutlet="filaTarea; context: { $implicit: tarea, ocultarFecha: g.tipo === 'dia' }"></ng-container>
+              </ng-container>
+            </div>
+
+            <!-- Historial: días ya cerrados, plegados. Se abre el que interese. -->
+            <div class="pl-hist" *ngIf="historial.length">
+              <div class="pl-hechas-sep">Ya hecho</div>
+
+              <div class="pl-hist-dia" *ngFor="let g of historialVisible; trackBy: trackGrupo">
+                <button class="pl-hist-head" (click)="alternarDia(g.clave)"
+                  [attr.aria-expanded]="diaAbierto(g.clave)">
+                  <span class="pl-hist-flecha" [class.abierta]="diaAbierto(g.clave)">›</span>
+                  <span class="pl-hist-fecha">{{ g.titulo }}</span>
+                  <span class="pl-hist-cuenta">{{ g.total }} hecha{{ g.total === 1 ? '' : 's' }}</span>
+                </button>
+
+                <div class="pl-hist-cuerpo" *ngIf="diaAbierto(g.clave)">
+                  <ng-container *ngFor="let tarea of g.tareas; trackBy: trackTarea">
+                    <ng-container *ngTemplateOutlet="filaTarea; context: { $implicit: tarea, ocultarFecha: true }"></ng-container>
+                  </ng-container>
+                </div>
+              </div>
+
+              <button class="pl-hist-mas" *ngIf="hayMasHistorial"
+                (click)="verTodoHistorial = !verTodoHistorial">
+                {{ verTodoHistorial ? 'Ver menos' : 'Ver los ' + historial.length + ' días' }}
+              </button>
+            </div>
           </div>
 
           <div class="pl-sticker">★ stickers</div>

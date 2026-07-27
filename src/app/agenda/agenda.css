@@ -293,10 +293,81 @@
 .pl-vacio { font-family: 'Caveat', cursive; font-size: 22px; color: #b9ab8e; text-align: center; padding: 40px 10px; }
 .pl-hechas-sep { font-family: 'Patrick Hand', sans-serif; font-size: 13px; color: #9a8e76; margin: 14px 0 4px; border-top: 1px dashed #e2d6bd; padding-top: 8px; }
 
+.pl-res-curso { color: #c98a2e; font-weight: 700; }
+
+/* ── Bloques por día (resumen de actividad) ────────────────────────────── */
+.pl-grupo { margin: 0 0 14px; }
+.pl-grupo:last-child { margin-bottom: 0; }
+.pl-grupo-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 2px; }
+.pl-grupo-titulo {
+  font-family: 'Caveat', cursive; font-size: 22px; color: #6b5f47; line-height: 1.1;
+}
+.pl-grupo-sub { font-family: 'Patrick Hand', sans-serif; font-size: 13px; color: #b0a488; }
+.pl-grupo-cuenta {
+  font-family: 'Patrick Hand', sans-serif; font-size: 13px; color: #9a8e76;
+  margin-left: auto; flex-shrink: 0; white-space: nowrap;
+}
+.pl-grupo-libre {
+  font-family: 'Patrick Hand', sans-serif; font-size: 14px; color: #c0b49a;
+  padding: 4px 2px 2px;
+}
+
+/* Barra de avance del día */
+.pl-grupo-barra {
+  height: 5px; background: #efe6d2; border-radius: 3px; overflow: hidden;
+  margin: 4px 0 6px;
+}
+.pl-grupo-barra > span {
+  display: block; height: 100%; background: #f3c244; border-radius: 3px;
+  transition: width .25s ease;
+}
+.pl-grupo-barra > span.lleno { background: #8fd9c0; }
+
+/* El día de hoy resalta con una pestaña de color al costado */
+.pl-grupo.hoy { border-left: 3px solid #8fd9c0; padding-left: 9px; margin-left: -12px; }
+.pl-grupo.hoy .pl-grupo-titulo { color: #3f7f6b; }
+
+/* Atrasadas: rojo suave, para que salten a la vista */
+.pl-grupo.atrasado { border-left: 3px solid #ef6b83; padding-left: 9px; margin-left: -12px; }
+.pl-grupo.atrasado .pl-grupo-titulo { color: #c2405a; }
+.pl-grupo.atrasado .pl-grupo-cuenta { color: #d9536b; }
+
+/* ── Historial plegable ("Ya hecho") ──────────────────────────────────── */
+.pl-hist { margin-top: 10px; }
+.pl-hist-dia { border-bottom: 1px dashed #eaddc4; }
+.pl-hist-dia:last-of-type { border-bottom: none; }
+.pl-hist-head {
+  width: 100%; display: flex; align-items: center; gap: 8px;
+  background: transparent; border: none; cursor: pointer;
+  padding: 6px 2px; text-align: left;
+  font-family: 'Patrick Hand', sans-serif; font-size: 15px; color: #8d8269;
+}
+.pl-hist-head:hover { color: #5f5642; }
+.pl-hist-flecha {
+  display: inline-block; color: #bfb298; font-size: 16px; line-height: 1;
+  transition: transform .18s ease; flex-shrink: 0;
+}
+.pl-hist-flecha.abierta { transform: rotate(90deg); }
+.pl-hist-fecha { flex: 1; min-width: 0; }
+.pl-hist-cuenta { color: #8fd9c0; font-size: 13px; flex-shrink: 0; }
+.pl-hist-cuerpo { padding: 0 0 6px 18px; }
+.pl-hist-cuerpo .pl-item { opacity: .72; }
+.pl-hist-mas {
+  background: transparent; border: none; cursor: pointer; margin-top: 6px;
+  font-family: 'Patrick Hand', sans-serif; font-size: 14px; color: #a89a7d;
+  text-decoration: underline dotted; padding: 2px;
+}
+.pl-hist-mas:hover { color: #6b5f47; }
+
 .pl-item { display: flex; align-items: center; gap: 10px; padding: 7px 2px; border-bottom: 1.5px dashed #eaddc4; }
 .pl-item:last-child { border-bottom: none; }
 .pl-check { width: 22px; height: 22px; flex-shrink: 0; border-radius: 6px; border: 2px solid #c9bd9f; background: #fff; cursor: pointer; display: grid; place-items: center; padding: 0; }
 .pl-check.on { background: #8fd9c0; border-color: #8fd9c0; }
+/* Estado "haciendo": casilla ambar con un punto dentro */
+.pl-check.curso { border-color: #f3c244; background: #fff8e4; }
+.pl-check-curso { width: 9px; height: 9px; border-radius: 50%; background: #e5a92b; display: block; }
+.pl-item.curso .pl-item-txt { color: #2f3b43; font-weight: 700; }
+.pl-item-curso { color: #c98a2e; font-size: 14px; font-weight: 700; }
 .pl-item-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
 .pl-item-dot.pr-alta { background: #ef6b83; }
 .pl-item-dot.pr-media { background: #f3c244; }

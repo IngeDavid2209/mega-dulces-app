@@ -58,9 +58,25 @@ module.exports = async function handler(req, res) {
     return res.status(403).json({ error: 'Solo un administrador puede borrar fotos.' });
   }
 
-  const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
-  const apiKey = process.env.CLOUDINARY_API_KEY;
-  const apiSecret = process.env.CLOUDINARY_API_SECRET;
+  let cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+  let apiKey = process.env.CLOUDINARY_API_KEY;
+  let apiSecret = process.env.CLOUDINARY_API_SECRET;
+
+  // Alternativa de un solo paso: CLOUDINARY_URL tal como la copia el panel de
+  // Cloudinary (cloudinary://<api_key>:<api_secret>@<cloud_name>). El panel ya
+  // no permite revelar el secret suelto, solo copiar esta cadena completa.
+  // Las variables sueltas, si existen, tienen prioridad.
+  if ((!cloudName || !apiKey || !apiSecret) && process.env.CLOUDINARY_URL) {
+    const m = String(process.env.CLOUDINARY_URL).trim()
+      .match(/^cloudinary:\/\/([^:]+):([^@]+)@(.+)$/);
+    if (m) {
+      apiKey = apiKey || m[1];
+      apiSecret = apiSecret || m[2];
+      cloudName = cloudName || m[3];
+    } else {
+      console.error('[cloudinary-cleanup] CLOUDINARY_URL con formato invalido');
+    }
+  }
 
   if (!cloudName || !apiKey || !apiSecret) {
     // Produccion corre en Railway (no en Vercel): las variables se configuran
@@ -73,7 +89,8 @@ module.exports = async function handler(req, res) {
     console.error('[cloudinary-cleanup] faltan variables de entorno:', faltan.join(', '));
     return res.status(500).json({
       error: 'No se puede borrar: falta configurar ' + faltan.join(', ') +
-        ' en las variables de entorno del servidor. Las fotos NO se borraron.'
+        ' (o CLOUDINARY_URL) en las variables de entorno del servidor.' +
+        ' Las fotos NO se borraron.'
     });
   }
 

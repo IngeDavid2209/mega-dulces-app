@@ -227,7 +227,21 @@ async function pgConversacionGet(id) {
   const r = await query('select * from mdtask_wa_conversaciones where id = $1', [String(id)]);
   if (!r.rows[0]) return null;
   const row = r.rows[0];
-  return { messages: Array.isArray(row.messages) ? row.messages : [], actualizado: row.actualizado != null ? Number(row.actualizado) : 0, uid: row.uid || null };
+  return {
+    messages: Array.isArray(row.messages) ? row.messages : [],
+    actualizado: row.actualizado != null ? Number(row.actualizado) : 0,
+    uid: row.uid || null,
+    invitado: row.invitado || null, // identidad de invitado (número no registrado)
+  };
+}
+// Guarda/actualiza SOLO la identidad de invitado del hilo (sin tocar messages).
+async function pgConversacionInvitadoSet(id, invitado) {
+  await query(
+    `insert into mdtask_wa_conversaciones (id, actualizado, messages, invitado)
+     values ($1,$2,'[]'::jsonb,$3)
+     on conflict (id) do update set invitado=excluded.invitado, actualizado=excluded.actualizado`,
+    [String(id), Date.now(), JSON.stringify(invitado || null)]
+  );
 }
 async function pgConversacionSet(id, { messages, uid }) {
   await query(
@@ -236,6 +250,109 @@ async function pgConversacionSet(id, { messages, uid }) {
      on conflict (id) do update set uid=excluded.uid, actualizado=excluded.actualizado, messages=excluded.messages`,
     [String(id), uid != null ? String(uid) : null, Date.now(), JSON.stringify(Array.isArray(messages) ? messages : [])]
   );
+}
+
+// -- FLOTILLA: vehiculos + reservas_vehiculos (mismo mapeo que api/vehiculos.js
+//    y api/reservas-vehiculos.js, pero consultando Postgres DIRECTO). OJO: estas
+//    dos tablas NO llevan el prefijo mdtask_ (asi estan creadas en 020/021). --
+const RES_COLS = ['vehiculo_id', 'usuario_uid', 'desde', 'hasta', 'estatus'];
+const RES_MAP = { vehiculoId: 'vehiculo_id', usuarioUid: 'usuario_uid', desde: 'desde', hasta: 'hasta', estatus: 'estatus' };
+const RES_NUM = new Set(['desde', 'hasta']);
+
+function vehiculoFila(r) {
+  return { id: r.id, nombre: r.nombre || '', sucursal: r.sucursal || '', activo: r.activo !== false, ...(r.datos || {}) };
+}
+function reservaFila(r) {
+  const o = { ...(r.datos || {}), id: r.id };
+  o.vehiculoId = r.vehiculo_id;
+  o.usuarioUid = r.usuario_uid;
+  o.desde = r.desde != null ? Number(r.desde) : null;
+  o.hasta = r.hasta != null ? Number(r.hasta) : null;
+  o.estatus = r.estatus;
+  return o;
+}
+function resValCol(c, v) { if (v === undefined || v === null) return null; return RES_NUM.has(c) ? Number(v) : String(v); }
+
+async function pgVehiculosList() {
+  const r = await query('select * from vehiculos order by nombre asc');
+  return r.rows.map(vehiculoFila);
+}
+async function pgReservasList({ usuarioUid, vehiculoId, estatus } = {}) {
+  const conds = [], params = [];
+  if (usuarioUid) { params.push(String(usuarioUid)); conds.push(`usuario_uid=$${params.length}`); }
+  if (vehiculoId) { params.push(String(vehiculoId)); conds.push(`vehiculo_id=$${params.length}`); }
+  if (estatus) { params.push(String(estatus)); conds.push(`estatus=$${params.length}`); }
+  const where = conds.length ? 'where ' + conds.join(' and ') : '';
+  const r = await query(`select * from reservas_vehiculos ${where} order by desde asc`, params);
+  return r.rows.map(reservaFila);
+}
+async function pgReservaGet(id) {
+  const r = await query('select * from reservas_vehiculos where id = $1', [String(id)]);
+  return r.rows[0] ? reservaFila(r.rows[0]) : null;
+}
+// Anti-choque: primera reserva APROBADA del mismo vehiculo que se traslape con
+// [desde, hasta) (igual que buscarChoque en reservas-vehiculos.js).
+async function pgReservaChoque(vehiculoId, desde, hasta, exceptId) {
+  const r = await query(
+    `select * from reservas_vehiculos
+      where vehiculo_id = $1 and estatus = 'aprobada' and desde < $3 and hasta > $2 and id <> $4
+      order by desde asc limit 1`,
+    [String(vehiculoId), Number(desde), Number(hasta), String(exceptId || '')]
+  );
+  return r.rows[0] ? reservaFila(r.rows[0]) : null;
+}
+// Crea/reemplaza una reserva (datos = jsonb completo, sin merge).
+async function pgReservaUpsert(doc) {
+  const cols = {}, datos = {};
+  for (const [k, v] of Object.entries(doc || {})) { if (k === 'id') continue; const c = RES_MAP[k]; if (c) cols[c] = v; else datos[k] = v; }
+  const valores = [String(doc.id), ...RES_COLS.map(c => resValCol(c, cols[c])), JSON.stringify(datos)];
+  const ph = valores.map((_, i) => `$${i + 1}`).join(',');
+  const sets = RES_COLS.map(c => `${c}=excluded.${c}`).concat('datos=excluded.datos').join(', ');
+  const r = await query(
+    `insert into reservas_vehiculos (id, ${RES_COLS.join(', ')}, datos) values (${ph})
+     on conflict (id) do update set ${sets} returning *`, valores);
+  return reservaFila(r.rows[0]);
+}
+// Merge parcial: mezcla claves de `datos` (una clave con valor null la borra del
+// jsonb en la practica: datos->>clave devuelve NULL) y opcionalmente columnas.
+async function pgReservaMergeDatos(id, datosChanges, colChanges) {
+  const cur = await query('select * from reservas_vehiculos where id = $1', [String(id)]);
+  if (cur.rowCount === 0) return null;
+  const actual = cur.rows[0];
+  const cc = colChanges || {};
+  const finalCol = (c) => (c in cc ? resValCol(c, cc[c]) : actual[c]);
+  const merged = { ...(actual.datos || {}), ...(datosChanges || {}) };
+  const sets = RES_COLS.map((c, i) => `${c}=$${i + 2}`).concat(`datos=$${RES_COLS.length + 2}`).join(', ');
+  const valores = [String(id), ...RES_COLS.map(finalCol), JSON.stringify(merged)];
+  const r = await query(`update reservas_vehiculos set ${sets} where id=$1 returning *`, valores);
+  return reservaFila(r.rows[0]);
+}
+// Reserva del usuario que quedo ESPERANDO que comparta su ubicacion (salida/regreso).
+async function pgReservaEsperandoUbicacion(uid) {
+  const r = await query(
+    `select * from reservas_vehiculos
+      where usuario_uid = $1 and datos->>'esperandoUbicacion' is not null
+      order by desde desc limit 1`, [String(uid)]);
+  return r.rows[0] ? reservaFila(r.rows[0]) : null;
+}
+// Finaliza la captura de ubicacion: mueve salidaPendiente/regresoPendiente a
+// salida/regreso con el punto compartido y limpia el flag. Lo usa el webhook al
+// recibir un mensaje de tipo `location`.
+async function registrarUbicacion(uid, ubicacion) {
+  const r = await pgReservaEsperandoUbicacion(uid);
+  if (!r) return { ok: false, sinPendiente: true };
+  const accion = r.esperandoUbicacion; // 'salida' | 'regreso'
+  const prev = accion === 'salida' ? r.salidaPendiente : r.regresoPendiente;
+  const punto = {
+    lat: ubicacion.lat, lng: ubicacion.lng,
+    direccion: ubicacion.direccion || ubicacion.nombre || '',
+    hora: (prev && prev.hora) || Date.now(),
+  };
+  const cambios = { esperandoUbicacion: null };
+  if (accion === 'salida') { cambios.salida = punto; cambios.salidaPendiente = null; }
+  else { cambios.regreso = punto; cambios.regresoPendiente = null; }
+  await pgReservaMergeDatos(r.id, cambios);
+  return { ok: true, accion, reserva: { id: r.id, vehiculo: r.vehiculoNombre || '', destino: r.destino || '' }, punto };
 }
 
 const MAX_ITERACIONES = 8;
@@ -417,6 +534,67 @@ const TOOLS = [
       },
       required: []
     }
+  },
+
+  // --- INVITADOS (números no registrados) ---
+  {
+    name: 'identificar_invitado',
+    description: 'Guarda el NOMBRE y APELLIDO de una persona que NO está registrada en el sistema, para poder atenderla como invitada. Úsala SOLO cuando el usuario es invitado y te da su nombre completo.',
+    input_schema: { type: 'object', properties: { nombre: { type: 'string', description: 'Nombre y apellido completos.' } }, required: ['nombre'] }
+  },
+
+  // --- FLOTILLA (vehiculos) ---
+  {
+    name: 'consultar_vehiculos',
+    description: 'Lista los vehiculos de la empresa y su estado AHORA (libre o en uso, por quien, y proximas reservas). Usala cuando pregunten que coches hay o cuales estan disponibles.',
+    input_schema: { type: 'object', properties: { sucursal: { type: 'string', description: 'Filtrar por sucursal. Opcional.' } }, required: [] }
+  },
+  {
+    name: 'apartar_vehiculo',
+    description: 'Aparta (reserva) un vehiculo en un rango de horas. Crea una solicitud PENDIENTE que un encargado debe aprobar. CONFIRMA los datos antes de llamarla.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        vehiculo: { type: 'string', description: 'Nombre del vehiculo (ej. "Nissan NP300 blanca").' },
+        fecha: { type: 'string', description: 'YYYY-MM-DD de la salida. Por defecto hoy.' },
+        hora_salida: { type: 'string', description: 'HH:mm de salida.' },
+        hora_regreso: { type: 'string', description: 'HH:mm de regreso.' },
+        fecha_regreso: { type: 'string', description: 'YYYY-MM-DD del regreso si es otro dia. Por defecto igual a fecha.' },
+        destino: { type: 'string', description: 'A donde va. Opcional pero recomendado.' },
+        motivo: { type: 'string', description: 'Motivo del uso. Opcional.' }
+      },
+      required: ['vehiculo', 'hora_salida', 'hora_regreso']
+    }
+  },
+  {
+    name: 'consultar_mis_reservas',
+    description: 'Muestra MIS reservas de vehiculos (pendientes, aprobadas y las que tengo en uso). Usala antes de cancelar para conocer el id.',
+    input_schema: { type: 'object', properties: {}, required: [] }
+  },
+  {
+    name: 'cancelar_reserva',
+    description: 'Cancela una reserva de vehiculo. Requiere id (de consultar_mis_reservas). Solo puedes cancelar las tuyas.',
+    input_schema: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] }
+  },
+  {
+    name: 'registrar_salida',
+    description: 'Registra que el usuario YA VA A SALIR con un vehiculo que tiene APROBADO ("ya voy a usar el coche", "voy a salir con la camioneta"). El sistema le pedira su UBICACION para dejar registrada la salida. Si tiene varias reservas aprobadas, pasa "vehiculo".',
+    input_schema: { type: 'object', properties: { vehiculo: { type: 'string', description: 'Nombre del vehiculo, si tiene varios apartados.' } }, required: [] }
+  },
+  {
+    name: 'registrar_regreso',
+    description: 'Registra que el usuario YA REGRESO / entrego un vehiculo que tiene en uso ("ya lo entregue", "ya regrese el coche"). El sistema le pedira su UBICACION de regreso y cierra el uso.',
+    input_schema: { type: 'object', properties: { vehiculo: { type: 'string', description: 'Nombre del vehiculo, si tiene varios en uso.' } }, required: [] }
+  },
+  {
+    name: 'reservas_pendientes',
+    description: 'ADMIN: lista las solicitudes de vehiculos PENDIENTES de aprobar. Usala antes de aprobar/rechazar para conocer el id.',
+    input_schema: { type: 'object', properties: {}, required: [] }
+  },
+  {
+    name: 'aprobar_reserva',
+    description: 'ADMIN: aprueba o rechaza una solicitud de vehiculo. Requiere id (de reservas_pendientes). aprobar=false para rechazar.',
+    input_schema: { type: 'object', properties: { id: { type: 'string' }, aprobar: { type: 'boolean', description: 'true=aprobar (por defecto), false=rechazar.' }, motivo: { type: 'string', description: 'Motivo del rechazo. Opcional.' } }, required: ['id'] }
   }
 ];
 
@@ -533,11 +711,76 @@ function personalAsignable(ctx, opts) {
   });
 }
 
+// Nombre legible de un usuario por su uid (usa la lista ya cargada en ctx).
+function nombreUsuario(ctx, uid) {
+  const u = (ctx.usuarios || []).find(x => x.id === uid || x.uid === uid);
+  return u ? (u.nombre || u.correo || 'alguien') : 'alguien';
+}
+// Empareja un nombre dictado con un vehiculo del catalogo. { vehiculo, ambiguos }.
+function resolverVehiculo(vehiculos, nombre) {
+  const objetivo = normaliza(nombre);
+  if (!objetivo) return { vehiculo: null, ambiguos: [] };
+  const exacto = vehiculos.find(v => normaliza(v.nombre) === objetivo);
+  if (exacto) return { vehiculo: exacto, ambiguos: [] };
+  const contiene = vehiculos.filter(v => { const n = normaliza(v.nombre); return n && (n.includes(objetivo) || objetivo.includes(n)); });
+  if (contiene.length === 1) return { vehiculo: contiene[0], ambiguos: [] };
+  if (contiene.length > 1) return { vehiculo: null, ambiguos: contiene.map(v => v.nombre) };
+  const palabras = objetivo.split(/\s+/).filter(Boolean);
+  const cand = vehiculos.filter(v => { const toks = normaliza(v.nombre).split(/\s+/); return palabras.some(p => toks.some(t => palabrasParecidas(p, t))); });
+  if (cand.length === 1) return { vehiculo: cand[0], ambiguos: [] };
+  if (cand.length > 1) return { vehiculo: null, ambiguos: cand.map(v => v.nombre) };
+  return { vehiculo: null, ambiguos: [] };
+}
+// fecha (YYYY-MM-DD) + hora (HH:mm) en hora de Mexico -> epoch ms.
+// Mexico ya no aplica horario de verano (UTC-6 todo el ano) => offset fijo.
+function epochDeMx(fecha, hora) {
+  const f = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(fecha || '').trim());
+  const h = /^(\d{1,2}):(\d{2})$/.exec(String(hora || '').trim());
+  if (!f || !h) return null;
+  const iso = `${f[1]}-${f[2]}-${f[3]}T${String(h[1]).padStart(2, '0')}:${h[2]}:00-06:00`;
+  const t = new Date(iso).getTime();
+  return isNaN(t) ? null : t;
+}
+function fmtMx(epoch) {
+  if (epoch == null) return '';
+  return new Intl.DateTimeFormat('es-MX', { timeZone: 'America/Mexico_City', dateStyle: 'medium', timeStyle: 'short' }).format(new Date(Number(epoch)));
+}
+function fmtHoraMx(epoch) {
+  if (epoch == null) return '';
+  return new Intl.DateTimeFormat('es-MX', { timeZone: 'America/Mexico_City', hour: '2-digit', minute: '2-digit' }).format(new Date(Number(epoch)));
+}
+
 // ---------------------------------------------------------------------------
 // Ejecutores
 // ---------------------------------------------------------------------------
 async function ejecutarHerramienta(db, ctx, nombre, input) {
   input = input || {};
+
+  // ---- INVITADO (número no registrado): solo flotilla, y solo tras identificarse ----
+  if (ctx.esInvitado) {
+    const PERMITIDAS_INVITADO = new Set([
+      'identificar_invitado', 'consultar_vehiculos', 'apartar_vehiculo',
+      'consultar_mis_reservas', 'cancelar_reserva', 'registrar_salida', 'registrar_regreso',
+    ]);
+    if (!ctx.invitadoNombre && nombre !== 'identificar_invitado') {
+      return { ok: false, mensaje: 'Antes de continuar necesito tu *nombre y apellido*. ¿Cómo te llamas?' };
+    }
+    if (!PERMITIDAS_INVITADO.has(nombre)) {
+      return { ok: false, mensaje: 'Como invitado solo puedo ayudarte con los *vehículos*: ver coches, apartar y registrar salida/regreso. Lo demás es solo para personal de MD Task.' };
+    }
+  }
+
+  if (nombre === 'identificar_invitado') {
+    if (!ctx.esInvitado) return { ok: false, mensaje: 'Ya estás identificado.' };
+    const n = String(input.nombre || '').trim().replace(/\s+/g, ' ');
+    const palabras = n.split(' ').filter(w => (w.match(/\p{L}/gu) || []).length >= 2);
+    if (n.length < 3 || palabras.length < 2) {
+      return { ok: false, mensaje: 'Necesito tu *nombre y apellido* completos para poder ayudarte. ¿Cómo te llamas?' };
+    }
+    if (ctx.convKey) await pgConversacionInvitadoSet(ctx.convKey, { nombre: n, telefono: ctx.telefono || '', identificadoEn: Date.now() });
+    ctx.invitadoNombre = n; ctx.nombre = n; // ya identificado en esta misma conversación
+    return { ok: true, invitado_nombre: n, mensaje: `Gracias, ${n}. Ya te puedo ayudar con los vehículos 🚗.` };
+  }
 
   // ---- TAREAS ----
   if (nombre === 'agregar_tarea') {
@@ -853,6 +1096,150 @@ async function ejecutarHerramienta(db, ctx, nombre, input) {
     return { ok: true, checklists, mis_tareas };
   }
 
+  // ---- FLOTILLA (vehiculos) ----
+  if (nombre === 'consultar_vehiculos') {
+    let vehiculos = (await pgVehiculosList()).filter(v => v.activo !== false);
+    if (input.sucursal) {
+      const s = normaliza(input.sucursal);
+      vehiculos = vehiculos.filter(v => { const x = normaliza(v.sucursal || ''); return x === s || x.includes(s) || s.includes(x); });
+    }
+    const ahora = Date.now();
+    const reservas = await pgReservasList({});
+    const lista = vehiculos.map(v => {
+      const rs = reservas.filter(r => r.vehiculoId === v.id);
+      const enUso = rs.find(r => r.estatus === 'aprobada' && r.salida && !r.regreso);
+      const activaAhora = rs.find(r => r.estatus === 'aprobada' && r.desde <= ahora && r.hasta > ahora);
+      const quien = enUso || activaAhora;
+      const proximas = rs.filter(r => r.estatus === 'aprobada' && r.desde > ahora)
+        .slice(0, 3).map(r => ({ de: nombreUsuario(ctx, r.usuarioUid), desde: fmtMx(r.desde), hasta: fmtHoraMx(r.hasta) }));
+      return {
+        nombre: v.nombre, sucursal: v.sucursal,
+        estado: quien ? 'en uso' : 'libre',
+        usa_ahora: quien ? nombreUsuario(ctx, quien.usuarioUid) : null,
+        proximas
+      };
+    });
+    return { ok: true, total: lista.length, vehiculos: lista };
+  }
+
+  if (nombre === 'apartar_vehiculo') {
+    const vehiculos = (await pgVehiculosList()).filter(v => v.activo !== false);
+    const rv = resolverVehiculo(vehiculos, input.vehiculo);
+    if (!rv.vehiculo) {
+      if (rv.ambiguos.length) return { ok: false, mensaje: `¿Cuál vehículo? Coinciden: ${rv.ambiguos.join(', ')}.` };
+      return { ok: false, mensaje: `No encontré el vehículo "${input.vehiculo || ''}". Pregúntame "¿qué coches hay?" para ver la lista.` };
+    }
+    const fecha = input.fecha || ctx.fechaHoy;
+    const desde = epochDeMx(fecha, input.hora_salida);
+    const hasta = epochDeMx(input.fecha_regreso || fecha, input.hora_regreso);
+    if (desde == null || hasta == null) return { ok: false, mensaje: 'Necesito fecha y horas válidas de salida y regreso (formato HH:mm).' };
+    if (!(hasta > desde)) return { ok: false, mensaje: 'La hora de regreso debe ser posterior a la de salida.' };
+    const conflicto = await pgReservaChoque(rv.vehiculo.id, desde, hasta, '');
+    if (conflicto) return { ok: false, mensaje: `Ese vehículo ya está apartado de ${fmtMx(conflicto.desde)} a ${fmtHoraMx(conflicto.hasta)} (${nombreUsuario(ctx, conflicto.usuarioUid)}). Elige otro horario u otro coche.` };
+    const id = crypto.randomUUID();
+    const item = await pgReservaUpsert({
+      id, vehiculoId: rv.vehiculo.id, usuarioUid: ctx.uid, desde, hasta, estatus: 'pendiente',
+      vehiculoNombre: rv.vehiculo.nombre, sucursal: rv.vehiculo.sucursal, solicitante: ctx.nombre, solicitanteUid: ctx.uid,
+      destino: input.destino || '', motivo: input.motivo || '', creadaEn: Date.now(), origen: 'whatsapp'
+    });
+    // Avisar por WhatsApp a los aprobadores y arrancar el escalamiento. Igual que
+    // el endpoint web (reservas-vehiculos.js): una reserva creada por el BOT no
+    // pasa por ese endpoint, asi que hay que dispararlo aqui tambien. Best-effort.
+    try { require('./flotilla-notificar').iniciarEscalacion(item).catch(() => {}); }
+    catch (e) { console.error('[apartar_vehiculo] no se pudo iniciar escalacion:', e && e.message); }
+    return { ok: true, id, mensaje: `Solicitud registrada: ${rv.vehiculo.nombre}, ${fmtMx(desde)} → ${fmtHoraMx(hasta)}${input.destino ? `, destino ${input.destino}` : ''}. Queda *pendiente* de que un encargado la apruebe; te avisaré cuando pase.` };
+  }
+
+  if (nombre === 'consultar_mis_reservas') {
+    const ahora = Date.now();
+    const vmap = Object.fromEntries((await pgVehiculosList()).map(v => [v.id, v.nombre]));
+    let rs = await pgReservasList({ usuarioUid: ctx.uid });
+    rs = rs.filter(r => r.estatus !== 'rechazada' && r.estatus !== 'cancelada' &&
+      (r.estatus === 'pendiente' || r.hasta > ahora || (r.salida && !r.regreso)));
+    return {
+      ok: true, total: rs.length,
+      reservas: rs.map(r => ({
+        id: r.id, vehiculo: r.vehiculoNombre || vmap[r.vehiculoId] || '?',
+        desde: fmtMx(r.desde), hasta: fmtHoraMx(r.hasta), estatus: r.estatus,
+        en_uso: !!(r.salida && !r.regreso), destino: r.destino || ''
+      }))
+    };
+  }
+
+  if (nombre === 'cancelar_reserva') {
+    if (!input.id) return { ok: false, mensaje: 'Falta el id de la reserva (usa consultar_mis_reservas).' };
+    const r = await pgReservaGet(input.id);
+    if (!r) return { ok: false, mensaje: 'No encontré esa reserva.' };
+    if (r.usuarioUid !== ctx.uid && !ctx.esAdmin) return { ok: false, mensaje: 'Solo puedes cancelar tus propias reservas.' };
+    await pgReservaMergeDatos(input.id, { canceladaEn: Date.now(), canceladaPor: ctx.nombre }, { estatus: 'cancelada' });
+    return { ok: true, mensaje: 'Reserva cancelada.' };
+  }
+
+  if (nombre === 'registrar_salida') {
+    const rs = await pgReservasList({ usuarioUid: ctx.uid, estatus: 'aprobada' });
+    let cand = rs.filter(r => !r.salida);
+    if (input.vehiculo) {
+      const rv = resolverVehiculo(await pgVehiculosList(), input.vehiculo);
+      if (rv.vehiculo) cand = cand.filter(r => r.vehiculoId === rv.vehiculo.id);
+    }
+    if (cand.length === 0) return { ok: false, mensaje: 'No tienes ninguna reserva *aprobada* lista para salir. Primero aparta el coche y espera a que tu encargado la apruebe.' };
+    const ahora = Date.now();
+    cand.sort((a, b) => Math.abs(a.desde - ahora) - Math.abs(b.desde - ahora));
+    const r = cand[0];
+    await pgReservaMergeDatos(r.id, { esperandoUbicacion: 'salida', salidaPendiente: { hora: Date.now() } });
+    const vname = r.vehiculoNombre || 'el vehículo';
+    return { ok: true, requiere_ubicacion: true, accion: 'salida', reserva_id: r.id, mensaje: `¡Va! Para dejar registrada tu salida con *${vname}*, compárteme tu *ubicación* 📍 (toca el clip 📎 → Ubicación → Enviar tu ubicación actual).` };
+  }
+
+  if (nombre === 'registrar_regreso') {
+    const rs = await pgReservasList({ usuarioUid: ctx.uid, estatus: 'aprobada' });
+    let cand = rs.filter(r => r.salida && !r.regreso);
+    if (input.vehiculo) {
+      const rv = resolverVehiculo(await pgVehiculosList(), input.vehiculo);
+      if (rv.vehiculo) cand = cand.filter(r => r.vehiculoId === rv.vehiculo.id);
+    }
+    if (cand.length === 0) return { ok: false, mensaje: 'No veo ningún vehículo que tengas ahorita en uso. Si ya lo tenías fuera, avísale a tu encargado.' };
+    const r = cand[0];
+    await pgReservaMergeDatos(r.id, { esperandoUbicacion: 'regreso', regresoPendiente: { hora: Date.now() } });
+    const vname = r.vehiculoNombre || 'el vehículo';
+    return { ok: true, requiere_ubicacion: true, accion: 'regreso', reserva_id: r.id, mensaje: `Perfecto, para cerrar el uso de *${vname}* compárteme tu *ubicación* 📍 de regreso (clip 📎 → Ubicación).` };
+  }
+
+  if (nombre === 'reservas_pendientes') {
+    if (!require('./flotilla-notificar').esAprobador(ctx.telefono)) {
+      return { ok: false, mensaje: 'Solo los encargados autorizados (por su número) pueden ver o aprobar las solicitudes de vehículos.' };
+    }
+    const vmap = Object.fromEntries((await pgVehiculosList()).map(v => [v.id, v.nombre]));
+    const rs = await pgReservasList({ estatus: 'pendiente' });
+    return {
+      ok: true, total: rs.length,
+      pendientes: rs.map(r => ({
+        id: r.id, vehiculo: r.vehiculoNombre || vmap[r.vehiculoId] || '?',
+        de: r.solicitante || nombreUsuario(ctx, r.usuarioUid),
+        desde: fmtMx(r.desde), hasta: fmtHoraMx(r.hasta), destino: r.destino || ''
+      }))
+    };
+  }
+
+  if (nombre === 'aprobar_reserva') {
+    if (!require('./flotilla-notificar').esAprobador(ctx.telefono)) {
+      return { ok: false, mensaje: 'Solo los encargados autorizados (por su número) pueden aprobar o rechazar reservas.' };
+    }
+    if (!input.id) return { ok: false, mensaje: 'Falta el id (usa reservas_pendientes).' };
+    const r = await pgReservaGet(input.id);
+    if (!r) return { ok: false, mensaje: 'No encontré esa solicitud.' };
+    if (r.usuarioUid === ctx.uid) return { ok: false, mensaje: 'No puedes aprobar tu *propia* solicitud. Debe autorizarla otro encargado.' };
+    const aprobar = input.aprobar !== false;
+    if (aprobar) {
+      const conflicto = await pgReservaChoque(r.vehiculoId, r.desde, r.hasta, r.id);
+      if (conflicto) return { ok: false, mensaje: `No puedo aprobar: choca con otra reserva ya aprobada de ${nombreUsuario(ctx, conflicto.usuarioUid)} (${fmtMx(conflicto.desde)} → ${fmtHoraMx(conflicto.hasta)}).` };
+      await pgReservaMergeDatos(input.id, { aprobadoPor: ctx.nombre, aprobadaEn: Date.now() }, { estatus: 'aprobada' });
+      return { ok: true, mensaje: `Reserva de ${r.vehiculoNombre || 'vehículo'} aprobada.` };
+    }
+    await pgReservaMergeDatos(input.id, { rechazadaPor: ctx.nombre, motivoRechazo: input.motivo || '' }, { estatus: 'rechazada' });
+    return { ok: true, mensaje: 'Reserva rechazada.' };
+  }
+
   return { ok: false, mensaje: 'Herramienta desconocida: ' + nombre };
 }
 
@@ -897,6 +1284,12 @@ async function construirContexto(db, uid, perfil, opts) {
     uid, perfil, usuarios, configTurnos,
     nombre: perfil.nombre || perfil.correo || 'Usuario',
     esAdmin: perfil.rol === 'admin',
+    canal: opts.canal || 'web', // 'whatsapp' | 'web' — solo por WhatsApp se puede compartir ubicacion
+    // INVITADO: número no registrado en MD Task. Acceso SOLO a flotilla.
+    esInvitado: !!opts.esInvitado,
+    invitadoNombre: opts.invitadoNombre || null, // null = aún no nos ha dado su nombre
+    convKey: opts.convKey || null,               // clave del hilo (para guardar la identidad)
+    telefono: opts.telefono || null,
     fechaHoy: String(opts.fechaHoy || '').trim(),
     diaSemana: String(opts.diaSemana || '').trim()
   };
@@ -904,6 +1297,40 @@ async function construirContexto(db, uid, perfil, opts) {
 
 // System prompt segun el rol: admin = acceso total; colaborador = solo lo suyo.
 function construirSystem(ctx) {
+  // INVITADO sin identificar: SOLO pedir nombre y apellido, sin dejarlo continuar.
+  if (ctx.esInvitado && !ctx.invitadoNombre) {
+    return [
+      'Eres el asistente de Mega Dulces Task por WhatsApp.',
+      'Quien te escribe NO está registrado en el sistema y todavía no sabes quién es.',
+      'Tu ÚNICA tarea ahora es conseguir su NOMBRE y APELLIDO completos.',
+      'Reglas ESTRICTAS:',
+      '- Salúdalo breve y pídele su nombre y apellido.',
+      '- NO uses ninguna herramienta ni lo ayudes con NADA (coches, tareas, etc.) hasta que te dé su nombre COMPLETO (nombre y apellido).',
+      '- En cuanto te dé un nombre y apellido válidos, llama a la herramienta identificar_invitado con ese nombre.',
+      '- Si te escribe cualquier otra cosa sin darte su nombre, vuelve a pedírselo con amabilidad. NO lo dejes continuar sin nombre.',
+      '- Responde SIEMPRE en español, breve.'
+    ].join('\n');
+  }
+  // INVITADO ya identificado: acceso SOLO a flotilla (vehículos).
+  if (ctx.esInvitado) {
+    return [
+      'Eres el asistente de flotilla de Mega Dulces Task por WhatsApp.',
+      `Hablas con ${ctx.nombre}, que NO es personal de MD Task (invitado).`,
+      `Hoy es ${ctx.fechaHoy || '(desconocido)'}${ctx.diaSemana ? ' (' + ctx.diaSemana + ')' : ''}.`,
+      '',
+      'SOLO puedes ayudarle con VEHÍCULOS: ver coches (consultar_vehiculos), apartar (apartar_vehiculo), ver/cancelar sus reservas (consultar_mis_reservas, cancelar_reserva) y registrar salida/regreso (registrar_salida, registrar_regreso).',
+      'NO tiene tareas, checklists ni rutinas. Si pide algo de eso, dile con amabilidad que eso es solo para personal registrado de MD Task.',
+      '',
+      'Reglas de flotilla:',
+      '- Apartar CONFIRMA antes: resume vehículo, fecha, hora de salida y regreso y destino, y pide confirmación. La reserva queda PENDIENTE de que un encargado la apruebe.',
+      '- Para salir con un coche debe estar APROBADO. "ya voy a usar el coche" -> registrar_salida; "ya lo entregué" -> registrar_regreso.',
+      '- Al registrar salida o regreso se le pedirá su UBICACIÓN por WhatsApp (obligatoria). Solo dile que comparta su ubicación; el botón aparece automáticamente. NO des por hecha la salida/regreso hasta que la comparta.',
+      '- Muestra fechas/horas tal como vienen de las herramientas; no inventes horarios.',
+      '- Resuelve fechas relativas a YYYY-MM-DD usando la fecha de hoy.',
+      '- Responde SIEMPRE en español, breve y claro.'
+    ].join('\n');
+  }
+
   const sucs = sucursalesPermitidas(ctx);
   const reglaAcceso = ctx.esAdmin
     ? '- El usuario es administrador con ACCESO TOTAL: puedes consultar tareas de cualquier persona (consultar_tareas con "persona") y estadisticas de cualquier sucursal o de toda la operacion (estadisticas con "sucursal"). No digas que algo es solo personal o que no puedes por sucursal: usa los parametros.'
@@ -927,6 +1354,16 @@ function construirSystem(ctx) {
     '- Para completar/editar/eliminar una tarea, primero usa consultar_tareas para obtener el id.',
     '- Para crear_rutina necesitas: nombre, frecuencia, sucursales y modo (porRol con rol_objetivo, o porPersonas con personas). Si falta algo, preguntalo corto antes de crear.',
     '- TURNOS (Canindo): algunas personas solo pueden recibir tareas dentro de su turno (manana/tarde). Si crear_checklist devuelve que la persona esta "fuera de turno", NO insistas: explicale al admin que esta fuera de su horario y que, si por necesidad debe trabajar otro turno, puede registrar una excepcion en la pantalla de Turnos de Canindo.',
+    '',
+    'FLOTILLA (vehiculos):',
+    '- Cualquier colaborador puede: ver los coches (consultar_vehiculos), APARTAR uno (apartar_vehiculo), ver/cancelar SUS reservas (consultar_mis_reservas, cancelar_reserva) y registrar su salida/regreso (registrar_salida, registrar_regreso).',
+    '- Apartar CONFIRMA antes: resume vehiculo, fecha, hora de salida y regreso y destino, y pide confirmacion. La reserva nace PENDIENTE y el sistema avisa AUTOMATICAMENTE a los encargados autorizados para que la aprueben; NO hace falta que tu hagas nada mas.',
+    '- APROBAR/RECHAZAR solicitudes SOLO lo pueden hacer los encargados autorizados (por su numero de WhatsApp), y NUNCA el propio solicitante. NO ofrezcas aprobar las reservas del usuario ni uses aprobar_reserva por el; si te lo pide, explicale que su solicitud ya fue enviada a los encargados y que ellos la autorizan. Las herramientas reservas_pendientes/aprobar_reserva solo funcionan si quien escribe es un encargado autorizado.',
+    '- Para salir con un coche debe estar APROBADO. "ya voy a usar el coche/la camioneta" -> registrar_salida; "ya lo entregue/regrese" -> registrar_regreso.',
+    ctx.canal === 'whatsapp'
+      ? '- Al registrar salida o regreso, el sistema le pedira su UBICACION por WhatsApp (es obligatoria para dejar constancia). Solo dile con naturalidad que comparta su ubicacion; el boton para enviarla aparece automaticamente. NO registres la salida/regreso como hecha hasta que comparta la ubicacion.'
+      : '- Registrar salida/regreso con ubicacion se hace desde WhatsApp (ahi el colaborador comparte su ubicacion). Desde aqui solo consulta o gestiona reservas.',
+    '- Muestra fechas/horas ya formateadas tal como vienen de las herramientas; no inventes horarios.',
     '- Resuelve fechas relativas a YYYY-MM-DD usando la fecha de hoy.',
     '- Responde SIEMPRE en espanol, breve y claro. Confirma lo hecho en una frase.',
     '- Si una accion falla, dilo con amabilidad y ofrece reintentar.'
@@ -1015,3 +1452,7 @@ module.exports.procesarChat = procesarChat;
 module.exports.pgUsuarios = pgUsuarios;
 module.exports.pgConversacionGet = pgConversacionGet;
 module.exports.pgConversacionSet = pgConversacionSet;
+// Flotilla: finalizar captura de ubicacion cuando llega un mensaje `location`.
+module.exports.registrarUbicacion = registrarUbicacion;
+// Expuesto para pruebas/arneses server-side (no lo usa el flujo normal).
+module.exports.ejecutarHerramienta = ejecutarHerramienta;

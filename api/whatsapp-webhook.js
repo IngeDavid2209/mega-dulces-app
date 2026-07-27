@@ -75,21 +75,36 @@ async function procesarMensaje(msg) {
   const usuarios = await pgUsuarios();
   const yo = usuarios.find(u => u.telefono && ultimos10(u.telefono) === objetivo);
 
-  if (!yo) {
-    await enviarMensaje(msg.from,
-      'Hola 👋 No encuentro tu número en el sistema de *Mega Dulces Task*.\n' +
-      'Pídele a tu encargado(a) que registre tu WhatsApp en tu perfil de la app y vuelve a escribirme.');
-    return;
+  // Resolver IDENTIDAD. Si el número NO está registrado en MD Task, se atiende
+  // como INVITADO (no crea cuenta): se le pide nombre y apellido y solo puede
+  // usar la flotilla. La identidad de invitado se guarda en el hilo.
+  let identidad;
+  if (yo) {
+    identidad = { uid: yo.id, nombre: yo.nombre || yo.correo || 'Usuario', perfil: yo, esInvitado: false, invitadoNombre: null };
+  } else {
+    let invitado = null;
+    try { const c = await pgConversacionGet(objetivo); invitado = c && c.invitado; } catch (e) { /* sin identidad guardada */ }
+    const invitadoNombre = invitado && invitado.nombre ? invitado.nombre : null;
+    identidad = {
+      uid: 'wa-' + objetivo,
+      nombre: invitadoNombre || 'Invitado',
+      perfil: { nombre: invitadoNombre || '', rol: 'invitado' },
+      esInvitado: true, invitadoNombre,
+    };
   }
 
   // ── UBICACION entrante (respuesta a "comparte tu ubicacion" de salida/regreso) ──
   if (msg.tipo === 'location') {
+    if (identidad.esInvitado && !identidad.invitadoNombre) {
+      await enviarMensaje(msg.from, 'Antes necesito saber quién eres. Dime tu *nombre y apellido*, por favor 🙂');
+      return;
+    }
     if (!msg.ubicacion || msg.ubicacion.lat == null) {
       await enviarMensaje(msg.from, 'No pude leer tu ubicación 😕. Inténtalo de nuevo con el botón de *Ubicación*.');
       return;
     }
     let res;
-    try { res = await registrarUbicacion(yo.id, msg.ubicacion); }
+    try { res = await registrarUbicacion(identidad.uid, msg.ubicacion); }
     catch (e) { console.error('[wa-webhook] error registrando ubicacion:', e && e.message); res = null; }
     if (!res) { await enviarMensaje(msg.from, 'Uy, no pude guardar tu ubicación 😕. Inténtalo de nuevo en un momento.'); return; }
     if (!res.ok) {
@@ -109,7 +124,7 @@ async function procesarMensaje(msg) {
 
   // Comando para reiniciar el hilo.
   if (COMANDOS_RESET.includes(texto.toLowerCase())) {
-    await pgConversacionSet(objetivo, { messages: [], uid: yo.id });
+    await pgConversacionSet(objetivo, { messages: [], uid: identidad.uid });
     await enviarMensaje(msg.from, 'Listo, empezamos de nuevo 🧹. ¿En qué te ayudo?');
     return;
   }
@@ -126,10 +141,13 @@ async function procesarMensaje(msg) {
 
   messages.push({ role: 'user', content: texto });
 
-  // Contexto del usuario identificado (mismos permisos que en la web) + asistente.
+  // Contexto del usuario (registrado) o del invitado (solo flotilla) + asistente.
   const { fechaHoy, diaSemana } = fechaMexico();
-  // Reutilizamos la lista de usuarios ya cargada (evita una 2ª lectura a Firestore).
-  const ctx = await construirContexto(null, yo.id, yo, { fechaHoy, diaSemana, usuarios, canal: 'whatsapp' });
+  const ctx = await construirContexto(null, identidad.uid, identidad.perfil, {
+    fechaHoy, diaSemana, usuarios, canal: 'whatsapp',
+    esInvitado: identidad.esInvitado, invitadoNombre: identidad.invitadoNombre,
+    convKey: objetivo, telefono: objetivo,
+  });
 
   let respuesta, pideUbicacion = false;
   try {
@@ -146,7 +164,7 @@ async function procesarMensaje(msg) {
   }
 
   // Guardar hilo y responder por WhatsApp.
-  try { await pgConversacionSet(objetivo, { messages, uid: yo.id }); }
+  try { await pgConversacionSet(objetivo, { messages, uid: identidad.uid }); }
   catch (e) { console.error('[wa-webhook] no se guardo el hilo:', e && e.message); }
 
   if (pideUbicacion) await enviarSolicitudUbicacion(msg.from, respuesta);
@@ -174,6 +192,11 @@ module.exports = async (req, res) => {
       console.warn('[wa-webhook] firma invalida; se ignora el evento.');
       return res.sendStatus(403);
     }
+    // TEMP DIAGNÓSTICO: registrar eventos de ESTADO (entrega/fallo) de mensajes.
+    try {
+      const val = req.body?.entry?.[0]?.changes?.[0]?.value;
+      if (val?.statuses?.length) console.log('[wa-webhook] STATUS:', JSON.stringify(val.statuses));
+    } catch (e) { /* noop */ }
     const msg = extraerMensaje(req.body || {});
     // Responder 200 de inmediato para que Meta no reintente; procesar aparte.
     res.sendStatus(200);

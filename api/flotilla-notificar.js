@@ -47,6 +47,14 @@ function paraEnviar(num) {
   return n.length === 10 ? '52' + n : n;
 }
 
+// ¿Este telefono es un APROBADOR autorizado? (unica fuente de verdad de quien
+// puede autorizar solicitudes de vehiculos, tanto por chat como por codigo).
+function esAprobador(telefono) {
+  if (!telefono) return false;
+  const t = ultimos10(String(telefono));
+  return APROBADORES.some(a => ultimos10(a) === t);
+}
+
 // Rango de fecha/hora legible en zona de Mexico.
 function fmtHorario(desde, hasta) {
   if (desde == null || hasta == null) return 'sin horario';
@@ -219,20 +227,25 @@ async function resolverPorWhatsapp(from, texto) {
   }
   if (!row) return `No encontre una solicitud *pendiente* con el codigo *${codigo}*. Puede que ya la hayan atendido.`;
 
-  // Autorizacion por telefono: numero en la cadena de aprobadores, o admin.
+  // Autorizacion SOLO por telefono aprobador (FLOTILLA_APROBADORES). El rol de
+  // admin NO da permiso de autorizar vehiculos: solo los numeros configurados.
   const objetivo = ultimos10(from);
-  const autorizados = new Set(APROBADORES.map(ultimos10));
-  let autorizado = autorizados.has(objetivo);
-  let nombreAprobador = null;
+  if (!esAprobador(objetivo)) {
+    return 'Este numero no esta autorizado para aprobar o rechazar solicitudes de vehiculos. Solo pueden hacerlo los encargados designados.';
+  }
+  // Nadie puede aprobar su PROPIA solicitud (aunque sea aprobador).
+  let quienUid = null, nombreAprobador = null;
   try {
     const u = await query(
-      `select nombre, rol from mdtask_usuarios
+      `select id, nombre from mdtask_usuarios
         where right(regexp_replace(coalesce(telefono,''), '[^0-9]', '', 'g'), 10) = $1 limit 1`,
       [objetivo]
     );
-    if (u.rows[0]) { nombreAprobador = u.rows[0].nombre || null; if (u.rows[0].rol === 'admin') autorizado = true; }
-  } catch { /* si falla, queda la autorizacion por numero */ }
-  if (!autorizado) return 'Este numero no esta autorizado para aprobar o rechazar solicitudes de vehiculos.';
+    if (u.rows[0]) { quienUid = u.rows[0].id; nombreAprobador = u.rows[0].nombre || null; }
+  } catch { /* solo para mostrar el nombre */ }
+  if (row.usuario_uid && (row.usuario_uid === quienUid || row.usuario_uid === 'wa-' + objetivo)) {
+    return 'No puedes aprobar tu *propia* solicitud. Debe autorizarla otro encargado.';
+  }
 
   const datos = row.datos || {};
   const veh = await nombreVehiculo(row.vehiculo_id);
@@ -258,4 +271,4 @@ async function resolverPorWhatsapp(from, texto) {
   }
 }
 
-module.exports = { iniciarEscalacion, procesarEscalaciones, iniciarPoll, resolverPorWhatsapp };
+module.exports = { iniciarEscalacion, procesarEscalaciones, iniciarPoll, resolverPorWhatsapp, esAprobador };

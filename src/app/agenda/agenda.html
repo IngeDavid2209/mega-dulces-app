@@ -256,7 +256,7 @@
               <line x1="12" y1="3" x2="12" y2="15"></line>
             </svg>
             {{ subiendoArchivos > 0 ? 'Subiendo...' : 'Subir archivo' }}
-            <input type="file" multiple hidden [disabled]="subiendoArchivos > 0"
+            <input type="file" multiple style="display: none;" [disabled]="subiendoArchivos > 0"
               (change)="adjuntarArchivos($event)">
           </label>
           <p style="font-size: 11px; color: #94A3B8; margin-top: 8px; margin-bottom: 0;">

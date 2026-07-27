@@ -36,9 +36,9 @@ detecta automaticamente. No hay que tocar comandos.
 |----------------------------|----------------------------------------|------------------|
 | `ANTHROPIC_API_KEY`        | Asistente de voz (IA de Claude)        | platform.claude.com -> API Keys (crear una nueva) |
 | `FIREBASE_SERVICE_ACCOUNT` | Validar sesion + notificaciones push   | El MISMO JSON que ya esta en Vercel (Settings -> Environment Variables -> revelar y copiar) |
-| `CLOUDINARY_CLOUD_NAME`    | Limpieza de fotos                      | El mismo valor que esta en Vercel (`duherjgyg`) |
-| `CLOUDINARY_API_KEY`       | Limpieza de fotos                      | El mismo valor que esta en Vercel |
-| `CLOUDINARY_API_SECRET`    | Limpieza de fotos                      | El mismo valor que esta en Vercel |
+| `CLOUDINARY_CLOUD_NAME`    | Limpieza de fotos                      | Es `duherjgyg` (el mismo que usa la app para subir) |
+| `CLOUDINARY_API_KEY`       | Limpieza de fotos                      | console.cloudinary.com -> Settings -> API Keys. OJO: NO estan en Vercel, hay que sacarlas del panel de Cloudinary |
+| `CLOUDINARY_API_SECRET`    | Limpieza de fotos                      | Igual que la API Key (boton de revelar). Sin estas tres, el boton "Borrar fotos" del Cierre Mensual falla |
 | `ASISTENTE_MODELO`         | (Opcional) modelo de IA a usar         | Dejar vacio = `claude-opus-4-8`. Poner `claude-haiku-4-5` para abaratar ~5x. |
 | `DATABASE_URL`             | Conexion a Postgres (migracion en curso) | La da el servicio Postgres de Railway (ver abajo). Si no existe, la app sigue funcionando con Firebase. |
 

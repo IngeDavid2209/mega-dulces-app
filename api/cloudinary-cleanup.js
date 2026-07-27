@@ -33,8 +33,17 @@ module.exports = async function handler(req, res) {
   const apiSecret = process.env.CLOUDINARY_API_SECRET;
 
   if (!cloudName || !apiKey || !apiSecret) {
+    // Produccion corre en Railway (no en Vercel): las variables se configuran
+    // en el servicio MDTask. Decimos cual falta para no adivinar.
+    const faltan = [
+      !cloudName ? 'CLOUDINARY_CLOUD_NAME' : null,
+      !apiKey ? 'CLOUDINARY_API_KEY' : null,
+      !apiSecret ? 'CLOUDINARY_API_SECRET' : null,
+    ].filter(Boolean);
+    console.error('[cloudinary-cleanup] faltan variables de entorno:', faltan.join(', '));
     return res.status(500).json({
-      error: 'Faltan credenciales en variables de entorno de Vercel (CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET).'
+      error: 'No se puede borrar: falta configurar ' + faltan.join(', ') +
+        ' en las variables de entorno del servidor. Las fotos NO se borraron.'
     });
   }
 

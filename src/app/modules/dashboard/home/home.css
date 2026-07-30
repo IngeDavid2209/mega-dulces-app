@@ -706,3 +706,482 @@
   .vista-tab-icon { font-size: 14px; }
   .vista-tab-badge { min-width: 20px; height: 20px; font-size: 11px; }
 }
+
+/* =================================================================
+   CENTRO DE MANDO ESTRATEGICO
+   Estilos del rediseno del home. Van al final para ganarle a las
+   reglas viejas sin tener que borrarlas (las clases hero-*, kpi-* y
+   row-grid siguen ahi por si otra pantalla las reutiliza).
+   ================================================================= */
+
+/* ---------- Barra superior oscura ---------- */
+.header.mando-header {
+  background: linear-gradient(90deg, #0B1220 0%, #16233D 55%, #0B1220 100%) !important;
+  border-bottom: 1px solid #1E293B !important;
+  height: 62px;
+  position: relative;
+}
+
+.mando-titulo-barra {
+  font-size: 14.5px;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: #E2E8F0 !important;
+  line-height: 1.15;
+  margin-left: 4px;
+}
+
+.mando-titulo-barra small {
+  display: block;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  text-transform: none;
+  color: #94A3B8 !important;
+}
+
+.mando-logo {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+}
+
+.mando-logo img {
+  height: 34px;
+  width: auto;
+  object-fit: contain;
+}
+
+.mando-usuario {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.mando-usuario-texto {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  min-width: 0;
+}
+
+.mando-usuario-cargo {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: #93C5FD;
+}
+
+.mando-usuario-nombre {
+  font-size: 13px;
+  font-weight: 700;
+  color: #F1F5F9;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 180px;
+}
+
+.mando-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid #334155;
+  background: linear-gradient(135deg, #2563EB, #1E3A8A);
+  color: #FFFFFF;
+  font-size: 12.5px;
+  font-weight: 800;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.mando-avatar:hover { border-color: #60A5FA; }
+
+/* ---------- Aviso de sin conexion ---------- */
+.aviso-offline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #FEF3C7;
+  border: 1px solid #F59E0B;
+  color: #92400E;
+  padding: 8px 12px;
+  border-radius: 10px;
+  margin-bottom: 14px;
+  font-size: 13.5px;
+}
+
+/* ---------- Encabezado del panorama ---------- */
+.panorama-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding-bottom: 14px;
+  margin-bottom: 18px;
+  border-bottom: 2px solid #E2E8F0;
+}
+
+.panorama-titulo {
+  font-size: 21px;
+  font-weight: 800;
+  color: #0F172A;
+  line-height: 1.2;
+  letter-spacing: -0.2px;
+}
+
+.panorama-sub {
+  display: inline-block;
+  margin-left: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: #2563EB;
+  vertical-align: middle;
+}
+
+.panorama-saludo {
+  font-size: 13px;
+  color: #64748B;
+  margin-top: 4px;
+}
+
+.panorama-fecha {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font-size: 12.5px;
+  color: #64748B;
+}
+
+.panorama-fecha-dia { font-weight: 600; text-transform: capitalize; }
+.panorama-fecha-hora { font-size: 18px; font-weight: 800; color: #0F172A; }
+
+/* ---------- Tarjetas de aguja ---------- */
+.gauge-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.gauge-card {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 14px;
+  padding: 14px 16px 12px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+  display: flex;
+  flex-direction: column;
+}
+
+.gauge-grupo {
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: #94A3B8;
+  margin-bottom: 2px;
+}
+
+.gauge-titulo {
+  font-size: 14px;
+  font-weight: 800;
+  color: #1E293B;
+  margin-bottom: 6px;
+}
+
+.gauge-cuerpo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.gauge-svg { width: 84px; height: 50px; flex-shrink: 0; }
+
+.gauge-pista {
+  fill: none;
+  stroke: #EEF2F7;
+  stroke-width: 9;
+  stroke-linecap: round;
+}
+
+.gauge-valor {
+  fill: none;
+  stroke-width: 9;
+  stroke-linecap: round;
+  transition: stroke-dasharray 0.5s ease;
+}
+
+.gauge-lectura { display: flex; flex-direction: column; min-width: 0; }
+
+.gauge-numero {
+  font-size: 26px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.5px;
+}
+
+.gauge-numero-nulo { font-size: 15px; color: #94A3B8; }
+
+.gauge-detalle {
+  font-size: 11.5px;
+  color: #64748B;
+  margin-top: 3px;
+  line-height: 1.3;
+}
+
+.gauge-nota {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px dashed #E2E8F0;
+  font-size: 11px;
+  color: #94A3B8;
+  line-height: 1.35;
+}
+
+/* ---------- Cinta de conteos ---------- */
+.cinta {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 1px;
+  background: #E2E8F0;
+  border: 1px solid #E2E8F0;
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 18px;
+}
+
+.cinta-item {
+  background: #FFFFFF;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cinta-valor {
+  font-size: 20px;
+  font-weight: 800;
+  color: #0F172A;
+  line-height: 1;
+}
+
+.cinta-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  color: #94A3B8;
+}
+
+.cinta-extra { font-size: 10.5px; color: #94A3B8; font-weight: 600; }
+.cinta-item-alerta .cinta-valor { color: #EF4444; }
+
+/* ---------- Rejillas del tablero ---------- */
+.mando-grid { display: grid; gap: 14px; margin-bottom: 14px; }
+.mando-grid-mapa      { grid-template-columns: 1fr 1.15fr; }
+.mando-grid-tendencia { grid-template-columns: 1.5fr 1fr; }
+.mando-grid-tres      { grid-template-columns: repeat(3, 1fr); }
+
+.panel-hint {
+  font-size: 11px;
+  font-weight: 600;
+  color: #94A3B8;
+}
+
+/* ---------- Segmentado Todas / Sucursales ---------- */
+.seg {
+  display: inline-flex;
+  background: #F1F5F9;
+  border: 1px solid #E2E8F0;
+  border-radius: 8px;
+  padding: 2px;
+  gap: 2px;
+}
+
+.seg-btn {
+  border: none;
+  background: transparent;
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #64748B;
+  cursor: pointer;
+}
+
+.seg-btn-on {
+  background: #FFFFFF;
+  color: #1E3A8A;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.12);
+}
+
+/* ---------- Tabla de rendimiento ---------- */
+.tabla-rend { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+
+.tabla-rend thead th {
+  text-align: left;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: #94A3B8;
+  padding: 0 8px 8px;
+  border-bottom: 1px solid #E2E8F0;
+  white-space: nowrap;
+}
+
+.tabla-rend .th-num { text-align: center; }
+
+.tabla-rend tbody td {
+  padding: 9px 8px;
+  border-bottom: 1px solid #F1F5F9;
+  vertical-align: middle;
+}
+
+.tabla-rend tbody tr:hover { background: #F8FAFC; }
+
+.rend-nombre { font-weight: 700; color: #1E293B; }
+.rend-sub { font-size: 11px; color: #94A3B8; margin-top: 1px; }
+
+.pill {
+  display: inline-block;
+  min-width: 46px;
+  text-align: center;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 800;
+  color: #FFFFFF;
+}
+
+.pill-suave {
+  background: #F1F5F9 !important;
+  border: 1px solid #E2E8F0;
+}
+
+.chip {
+  display: inline-block;
+  padding: 3px 9px;
+  border-radius: 6px;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+}
+
+.chip-ok   { background: #ECFDF5; color: #047857; border: 1px solid #A7F3D0; }
+.chip-warn { background: #FFFBEB; color: #B45309; border: 1px solid #FDE68A; }
+.chip-bad  { background: #FEF2F2; color: #B91C1C; border: 1px solid #FECACA; }
+.chip-nulo { background: #F8FAFC; color: #64748B; border: 1px solid #E2E8F0; }
+
+.tabla-pie {
+  margin-top: 10px;
+  font-size: 10.5px;
+  color: #94A3B8;
+  line-height: 1.4;
+}
+
+/* ---------- Reconocimientos ---------- */
+.reco-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border: 1px solid #E2E8F0;
+  border-radius: 10px;
+  margin-bottom: 8px;
+  background: #F8FAFC;
+}
+
+.reco-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #10B981, #047857);
+  color: #FFFFFF;
+  font-size: 12px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.reco-nombre { font-size: 13px; font-weight: 700; color: #1E293B; }
+.reco-detalle { font-size: 11.5px; color: #64748B; }
+
+.reco-sucursales, .reco-top { margin-top: 12px; }
+
+.reco-sucursales-titulo {
+  display: block;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: #94A3B8;
+  margin-bottom: 6px;
+}
+
+.mando-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.mando-chip {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #047857;
+  background: #ECFDF5;
+  border: 1px solid #A7F3D0;
+  border-radius: 999px;
+  padding: 3px 10px;
+}
+
+/* ---------- Responsive ---------- */
+@media screen and (max-width: 1280px) {
+  .gauge-grid { grid-template-columns: repeat(2, 1fr); }
+  .cinta { grid-template-columns: repeat(3, 1fr); }
+  .mando-grid-mapa,
+  .mando-grid-tendencia { grid-template-columns: 1fr; }
+  .mando-grid-tres { grid-template-columns: 1fr 1fr; }
+}
+
+@media screen and (max-width: 768px) {
+  .mando-logo { display: none; }
+  .header.mando-header { height: 58px; }
+  .mando-titulo-barra { font-size: 12px; letter-spacing: 0.3px; }
+  .mando-titulo-barra small { display: none !important; }
+  .header-right.mando-usuario { display: flex !important; }
+  .mando-usuario-texto { display: none; }
+
+  .panorama-titulo { font-size: 17px; }
+  .panorama-sub { display: block; margin-left: 0; margin-top: 3px; }
+  .panorama-head { align-items: flex-start; }
+  .panorama-fecha { align-items: flex-start; }
+  .panorama-fecha-hora { font-size: 15px; }
+
+  .gauge-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .gauge-card { padding: 12px; }
+  .gauge-svg { width: 66px; height: 40px; }
+  .gauge-numero { font-size: 20px; }
+  .gauge-titulo { font-size: 12.5px; }
+  .gauge-nota { display: none; }
+
+  .cinta { grid-template-columns: repeat(2, 1fr); }
+  .mando-grid-tres { grid-template-columns: 1fr; }
+
+  .tabla-rend { font-size: 11.5px; }
+  .tabla-rend thead th { font-size: 9px; }
+}
+
+@media screen and (max-width: 480px) {
+  .gauge-cuerpo { flex-direction: column; align-items: flex-start; gap: 4px; }
+  .gauge-svg { width: 100%; height: 44px; }
+  .cinta-valor { font-size: 17px; }
+}
+

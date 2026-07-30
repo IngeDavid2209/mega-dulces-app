@@ -10,15 +10,19 @@ import { RouterModule, Router } from '@angular/router';
 import { SidebarComponent } from '../../../shared/sidebar/sidebar';
 import { esAdminGlobal, sucursalesPermitidas, esSupervisor, mismoEmpleadoNombre } from '../../../shared/permisos.util';
 import { nivelDeUsuario } from '../../../shared/nivel-jerarquico.util';
-import { esItemHecho } from '../../../shared/item-completado.util';
+import { esItemHecho, tieneEvidencia } from '../../../shared/item-completado.util';
 import { UsuariosService } from '../../../shared/usuarios.service';
 import { ApiService } from '../../../shared/api.service';
 import { guardarListaCache, leerListaCache } from '../../../shared/lista-cache.util';
+import { MapaSucursalesComponent, PuntoMapa } from './mapa-sucursales';
+import {
+  UBICACIONES_SUCURSALES, tieneCoordenadas, sucursalesSinUbicar, esSucursalComercial
+} from '../../../shared/sucursales-ubicaciones.util';
 
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, SidebarComponent],
+  imports: [CommonModule, FormsModule, RouterModule, SidebarComponent, MapaSucursalesComponent],
   templateUrl: './home.html',
   styleUrls: ['./home.css']
 })
@@ -196,6 +200,316 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
     return 'kpi-bad';
   });
  
+  // ==================================================================
+  // MÉTRICAS DEL CENTRO DE MANDO
+  // Las cuatro tarjetas de arriba miden cosas que EXISTEN en la base:
+  // entrega, cumplimiento, puntualidad y evidencia fotográfica. Ninguna
+  // se inventa ni se rellena con promedios de relleno: si no hay de dónde
+  // calcularlas, devuelven null y la tarjeta dice "Sin datos".
+  // ==================================================================
+
+  /** ¿Este item exige foto (simple, antes/después o varias)? */
+  private pideEvidencia(it: any): boolean {
+    return !!(it?.requiresPhoto || it?.requiresAntesDespues || it?.requiresVariasFotos);
+  }
+
+  /** "14:30" (hora límite, 24h) → minutos desde medianoche. null si no se puede leer. */
+  private minutosDe24h(txt: any): number | null {
+    if (typeof txt !== 'string' || !txt.includes(':')) return null;
+    const [h, m] = txt.trim().split(':').map(Number);
+    if (!Number.isFinite(h) || !Number.isFinite(m)) return null;
+    return h * 60 + m;
+  }
+
+  /** "02:35 PM" (sello de la foto, 12h en-US) → minutos desde medianoche. */
+  private minutosDe12h(txt: any): number | null {
+    if (typeof txt !== 'string') return null;
+    const m = txt.trim().toUpperCase().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/);
+    if (!m) return null;
+    let h = Number(m[1]);
+    const min = Number(m[2]);
+    if (!Number.isFinite(h) || !Number.isFinite(min)) return null;
+    if (m[3] === 'PM' && h !== 12) h += 12;
+    if (m[3] === 'AM' && h === 12) h = 0;
+    return h * 60 + min;
+  }
+
+  /**
+   * Recorre los checklists de hoy UNA sola vez y saca todos los contadores.
+   * Cada porcentaje lleva su propio denominador: así una tarjeta sin base
+   * (por ejemplo, ninguna tarea con hora límite) puede decir "sin datos" en
+   * vez de mentir con un 0% o un 100%.
+   */
+  private agregadoHoy = computed(() => {
+    let items = 0, hechos = 0;
+    let pidenEvidencia = 0, conEvidencia = 0;
+    let medibles = 0, aTiempo = 0;
+    let checklists = 0, enviados = 0;
+
+    for (const c of this.checklistsHoy()) {
+      if (c.eliminado === true || c.archivado === true) continue;
+      checklists++;
+      if (c.enviado === true) enviados++;
+
+      for (const it of (c.items || [])) {
+        items++;
+        if (this.itemHecho(it, c)) hechos++;
+
+        if (this.pideEvidencia(it)) {
+          pidenEvidencia++;
+          if (tieneEvidencia(it)) conEvidencia++;
+        }
+
+        // Puntualidad: solo items con evidencia REAL sellada con hora y con
+        // hora límite. Los justificados no entran (no hay hora que comparar).
+        const limite = this.minutosDe24h(it.horaLimite || it.time);
+        const sello = this.minutosDe12h(it.photoTime);
+        if (limite !== null && sello !== null && tieneEvidencia(it)) {
+          medibles++;
+          if (sello <= limite) aTiempo++;
+        }
+      }
+    }
+
+    return { items, hechos, pidenEvidencia, conEvidencia, medibles, aTiempo, checklists, enviados };
+  });
+
+  private porcentaje(parte: number, total: number): number | null {
+    if (!total) return null;
+    return Math.round((parte / total) * 100);
+  }
+
+  /** Checklists ya entregados por el colaborador, sobre los del día. */
+  porcentajeEntrega = computed(() => {
+    const a = this.agregadoHoy();
+    return this.porcentaje(a.enviados, a.checklists);
+  });
+
+  /** De las tareas con hora límite y foto sellada, cuántas se hicieron a tiempo. */
+  porcentajePuntualidad = computed(() => {
+    const a = this.agregadoHoy();
+    return this.porcentaje(a.aTiempo, a.medibles);
+  });
+
+  /** De las tareas que exigen foto, cuántas la tienen de verdad. */
+  porcentajeEvidencia = computed(() => {
+    const a = this.agregadoHoy();
+    return this.porcentaje(a.conEvidencia, a.pidenEvidencia);
+  });
+
+  /** Texto chico bajo cada tarjeta: de dónde sale el número. */
+  detalleEntrega = computed(() => {
+    const a = this.agregadoHoy();
+    return `${a.enviados} de ${a.checklists} checklists`;
+  });
+  detallePuntualidad = computed(() => {
+    const a = this.agregadoHoy();
+    return a.medibles ? `${a.aTiempo} de ${a.medibles} con hora límite` : 'Ninguna tarea con hora límite';
+  });
+  detalleEvidencia = computed(() => {
+    const a = this.agregadoHoy();
+    return a.pidenEvidencia ? `${a.conEvidencia} de ${a.pidenEvidencia} fotos requeridas` : 'Ninguna tarea pide foto';
+  });
+  detalleCumplimiento = computed(() => {
+    const a = this.agregadoHoy();
+    return `${a.hechos} de ${a.items} tareas`;
+  });
+
+  /**
+   * Cumplimiento en versión "nullable" para la tarjeta: sin tareas programadas
+   * no es 0% (eso se leería como fracaso), es que no hay nada que medir.
+   */
+  cumplimientoTarjeta = computed(() => {
+    const a = this.agregadoHoy();
+    return this.porcentaje(a.hechos, a.items);
+  });
+
+  /** Las cuatro tarjetas de arriba. Cada una dice qué mide y de dónde sale. */
+  tarjetasMando = computed(() => [
+    {
+      titulo: 'Checklists entregados',
+      grupo: 'Productividad y eficiencia operativa',
+      valor: this.porcentajeEntrega(),
+      detalle: this.detalleEntrega(),
+      nota: 'Checklists que el colaborador ya cerró y envió'
+    },
+    {
+      titulo: 'Cumplimiento de tareas',
+      grupo: 'Productividad y eficiencia operativa',
+      valor: this.cumplimientoTarjeta(),
+      detalle: this.detalleCumplimiento(),
+      nota: 'Tareas hechas sobre las programadas del día'
+    },
+    {
+      titulo: 'Puntualidad',
+      grupo: 'Calidad de la ejecución',
+      valor: this.porcentajePuntualidad(),
+      detalle: this.detallePuntualidad(),
+      nota: 'Terminadas antes de su hora límite'
+    },
+    {
+      titulo: 'Evidencia fotográfica',
+      grupo: 'Calidad de la ejecución',
+      valor: this.porcentajeEvidencia(),
+      detalle: this.detalleEvidencia(),
+      nota: 'Fotos entregadas donde la tarea las exige'
+    }
+  ]);
+
+  /** Semáforo compartido por todas las tarjetas y tablas. */
+  nivelDe(pct: number | null): 'ok' | 'warn' | 'bad' | 'nulo' {
+    if (pct === null) return 'nulo';
+    if (pct >= 80) return 'ok';
+    if (pct >= 50) return 'warn';
+    return 'bad';
+  }
+
+  colorDeNivel(pct: number | null): string {
+    switch (this.nivelDe(pct)) {
+      case 'ok':   return '#10B981';
+      case 'warn': return '#F59E0B';
+      case 'bad':  return '#EF4444';
+      default:     return '#94A3B8';
+    }
+  }
+
+  /** Etiqueta del estado, en lugar del "estado de ánimo" que no se mide. */
+  etiquetaDe(pct: number | null): string {
+    switch (this.nivelDe(pct)) {
+      case 'ok':   return 'En meta';
+      case 'warn': return 'En riesgo';
+      case 'bad':  return 'Crítico';
+      default:     return 'Sin datos';
+    }
+  }
+
+  // ---- Geometría del arco de las gráficas de aguja (semicírculo r=42) ----
+  readonly largoArco = Math.round(Math.PI * 42);
+
+  /** Longitud del trazo relleno para un porcentaje dado. */
+  arcoDe(pct: number | null): number {
+    if (pct === null) return 0;
+    return (Math.max(0, Math.min(100, pct)) / 100) * this.largoArco;
+  }
+
+  // ==================================================================
+  // RENDIMIENTO POR SUCURSAL (el bloque "por equipo / división")
+  // ==================================================================
+  filtroRendimiento = signal<'todas' | 'comerciales'>('todas');
+
+  cambiarFiltroRendimiento(f: 'todas' | 'comerciales') {
+    this.filtroRendimiento.set(f);
+  }
+
+  /** Una fila por sucursal, con sus tres métricas reales y su estado. */
+  rendimientoPorSucursal = computed(() => {
+    const acc: Record<string, any> = {};
+
+    for (const c of this.checklistsHoy()) {
+      if (c.eliminado === true || c.archivado === true) continue;
+      const store = c.store;
+      if (!store) continue;
+
+      if (!acc[store]) {
+        acc[store] = {
+          nombre: store, items: 0, hechos: 0,
+          pidenEvidencia: 0, conEvidencia: 0,
+          medibles: 0, aTiempo: 0, checklists: 0
+        };
+      }
+      const s = acc[store];
+      s.checklists++;
+
+      for (const it of (c.items || [])) {
+        s.items++;
+        if (this.itemHecho(it, c)) s.hechos++;
+
+        if (this.pideEvidencia(it)) {
+          s.pidenEvidencia++;
+          if (tieneEvidencia(it)) s.conEvidencia++;
+        }
+
+        const limite = this.minutosDe24h(it.horaLimite || it.time);
+        const sello = this.minutosDe12h(it.photoTime);
+        if (limite !== null && sello !== null && tieneEvidencia(it)) {
+          s.medibles++;
+          if (sello <= limite) s.aTiempo++;
+        }
+      }
+    }
+
+    let filas = Object.values(acc).map((s: any) => ({
+      nombre: s.nombre,
+      checklists: s.checklists,
+      hechos: s.hechos,
+      total: s.items,
+      cumplimiento: this.porcentaje(s.hechos, s.items),
+      puntualidad: this.porcentaje(s.aTiempo, s.medibles),
+      evidencia: this.porcentaje(s.conEvidencia, s.pidenEvidencia)
+    }));
+
+    if (this.filtroRendimiento() === 'comerciales') {
+      filas = filas.filter(f => esSucursalComercial(f.nombre));
+    }
+
+    // Peor primero: al director le interesa dónde meter mano, no quién va bien.
+    return filas.sort((a, b) => (a.cumplimiento ?? 101) - (b.cumplimiento ?? 101));
+  });
+
+  // ==================================================================
+  // MAPA REAL DE SUCURSALES
+  // ==================================================================
+  /** Sucursales con coordenadas confirmadas, cruzadas con el desempeño de hoy. */
+  puntosMapa = computed<PuntoMapa[]>(() => {
+    const porNombre = new Map<string, any>(
+      this.rendimientoPorSucursal().map(f => [f.nombre, f])
+    );
+    const permitidas = sucursalesPermitidas(this.currentUser);
+    const esGlobal = esAdminGlobal(this.currentUser);
+
+    return UBICACIONES_SUCURSALES
+      .filter(u => tieneCoordenadas(u))
+      .filter(u => esGlobal || permitidas === null || permitidas.includes(u.nombre))
+      .map(u => {
+        const f = porNombre.get(u.nombre);
+        return {
+          nombre: u.nombre,
+          direccion: u.direccion,
+          ciudad: u.ciudad,
+          lat: u.lat as number,
+          lng: u.lng as number,
+          cumplimiento: f?.cumplimiento ?? 0,
+          hechas: f?.hechos ?? 0,
+          total: f?.total ?? 0,
+          sinActividad: !f || !f.total
+        };
+      });
+  });
+
+  /** Sucursales que aún no tienen coordenadas: se dicen en voz alta. */
+  sucursalesPendientesMapa = computed(() => sucursalesSinUbicar());
+
+  // ==================================================================
+  // RECONOCIMIENTOS (reemplaza los "hitos" inventados del boceto)
+  // ==================================================================
+  /** Colaboradores que cerraron el día completo. Dato real, no simbólico. */
+  reconocimientos = computed(() => {
+    return this.topEmpleados()
+      .filter(e => e.porcentaje === 100 && e.total >= 3)
+      .slice(0, 4)
+      .map(e => ({
+        nombre: e.nombre,
+        detalle: `${e.total} tareas completas, sin pendientes`
+      }));
+  });
+
+  /** Sucursales al 100% hoy, con al menos un checklist. */
+  sucursalesPerfectas = computed(() =>
+    this.rendimientoPorSucursal()
+      .filter(s => s.cumplimiento === 100 && s.total > 0)
+      .map(s => s.nombre)
+  );
+
   // ------- Top empleados (hoy) -------
   topEmpleados = computed(() => {
     const stats: Record<string, any> = {};
@@ -296,9 +610,9 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
       .slice(0, 8);
   });
  
-  // ------- Tendencia 7 días -------
+  // ------- Tendencia 7 días (tres series reales) -------
   tendencia7Dias = computed(() => {
-    const dias: { fecha: string, porcentaje: number }[] = [];
+    const dias: { fecha: string, porcentaje: number, puntualidad: number, evidencia: number }[] = [];
     const hoy = this.horaActual();
     for (let i = 6; i >= 0; i--) {
       const d = new Date(hoy);
@@ -306,16 +620,33 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
       const offset = d.getTimezoneOffset() * 60000;
       const fechaISO = new Date(d.getTime() - offset).toISOString().split('T')[0];
       const checks = this.checklists().filter(c => c.date === fechaISO);
- 
+
       let total = 0, completadas = 0;
+      let pidenEvidencia = 0, conEvidencia = 0;
+      let medibles = 0, aTiempo = 0;
+
       checks.forEach(c => (c.items || []).forEach((it: any) => {
         total++;
         if (this.itemHecho(it, c)) completadas++;
+
+        if (this.pideEvidencia(it)) {
+          pidenEvidencia++;
+          if (tieneEvidencia(it)) conEvidencia++;
+        }
+
+        const limite = this.minutosDe24h(it.horaLimite || it.time);
+        const sello = this.minutosDe12h(it.photoTime);
+        if (limite !== null && sello !== null && tieneEvidencia(it)) {
+          medibles++;
+          if (sello <= limite) aTiempo++;
+        }
       }));
- 
+
       dias.push({
         fecha: d.toLocaleDateString('es-MX', { weekday: 'short' }).replace('.', ''),
-        porcentaje: total > 0 ? Math.round((completadas / total) * 100) : 0
+        porcentaje: total > 0 ? Math.round((completadas / total) * 100) : 0,
+        puntualidad: medibles > 0 ? Math.round((aTiempo / medibles) * 100) : 0,
+        evidencia: pidenEvidencia > 0 ? Math.round((conEvidencia / pidenEvidencia) * 100) : 0
       });
     }
     return dias;
@@ -465,27 +796,42 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
     const datos = this.tendencia7Dias();
     if (this.trendChart) this.trendChart.destroy();
  
+    const serie = (label: string, valores: number[], color: string, relleno: boolean) => ({
+      label,
+      data: valores,
+      borderColor: color,
+      backgroundColor: relleno ? 'rgba(30, 58, 138, 0.10)' : 'transparent',
+      borderWidth: relleno ? 3 : 2,
+      borderDash: relleno ? [] : [5, 4],
+      fill: relleno,
+      tension: 0.4,
+      pointBackgroundColor: color,
+      pointRadius: 4,
+      pointHoverRadius: 7
+    });
+
     this.trendChart = new Chart(this.trendChartCanvas.nativeElement, {
       type: 'line',
       data: {
         labels: datos.map(d => d.fecha),
-        datasets: [{
-          label: '% Cumplimiento',
-          data: datos.map(d => d.porcentaje),
-          borderColor: '#1E3A8A',
-          backgroundColor: 'rgba(30, 58, 138, 0.12)',
-          borderWidth: 3,
-          fill: true,
-          tension: 0.4,
-          pointBackgroundColor: '#1E3A8A',
-          pointRadius: 5,
-          pointHoverRadius: 7
-        }]
+        datasets: [
+          serie('Cumplimiento', datos.map(d => d.porcentaje), '#1E3A8A', true),
+          serie('Puntualidad', datos.map(d => d.puntualidad), '#0EA5E9', false),
+          serie('Evidencia', datos.map(d => d.evidencia), '#8B5CF6', false)
+        ]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: {
+            display: true,
+            position: 'bottom',
+            labels: { boxWidth: 12, boxHeight: 12, usePointStyle: true, font: { size: 11 } }
+          },
+          tooltip: { callbacks: { label: (ctx: any) => `${ctx.dataset.label}: ${ctx.parsed.y}%` } }
+        },
         scales: {
           y: { beginAtZero: true, max: 100, ticks: { callback: (v: any) => v + '%' } },
           x: { grid: { display: false } }

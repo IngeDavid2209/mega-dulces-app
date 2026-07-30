@@ -1185,3 +1185,15 @@
   .cinta-valor { font-size: 17px; }
 }
 
+
+/* El asistente flotante vive pegado abajo a la derecha y tapaba el ultimo
+   boton de Herramientas de gestion. Le dejamos aire al final del tablero. */
+.content { padding-bottom: 84px !important; }
+
+/* Marco desplazable de la tabla de rendimiento (para pantallas angostas). */
+.tabla-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.tabla-scroll .tabla-rend { min-width: 460px; }

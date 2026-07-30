@@ -18,6 +18,17 @@
  * invirtieron los dos numeros.
  */
 
+/**
+ * Que tan fino es el pin. Se muestra en el popup del mapa: nadie debe leer un
+ * pin aproximado como si alguien hubiera ido a pararse en la puerta.
+ *   exacta    = el geocodificador encontro el numero de la casa
+ *   calle     = cayo en la calle correcta de la ciudad correcta (puede estar a
+ *               una cuadra o dos del local)
+ *   localidad = solo el centro de la colonia o del pueblo
+ *   pendiente = sin coordenadas; no se pinta
+ */
+export type PrecisionUbicacion = 'exacta' | 'calle' | 'localidad' | 'pendiente';
+
 export interface UbicacionSucursal {
   /** Debe coincidir EXACTO con el nombre en areas_operativas y en checklist.store. */
   nombre: string;
@@ -27,23 +38,89 @@ export interface UbicacionSucursal {
   ciudad: string;
   lat: number | null;
   lng: number | null;
+  precision: PrecisionUbicacion;
 }
 
 /**
  * Catalogo de ubicaciones. El orden es el mismo que el de los catalogos de
  * sucursales que ya usan checklist/areas/estadisticas.
+ *
+ * Direcciones: las dio David el 2026-07-30.
+ * Coordenadas: geocodificadas con Nominatim (OpenStreetMap) el 2026-07-30. Tres
+ * direcciones NO se pudieron resolver de forma confiable y quedan en pendiente:
+ * el geocodificador devolvia otra ciudad o candidatos a kilometros de distancia.
+ * Para completarlas: Google Maps, click derecho sobre el local, copiar el par de
+ * numeros, pegarlo aqui y cambiar precision a 'exacta'.
+ *
+ * OJO con el amarre nombre-direccion: cuatro se confirmaron por el propio texto
+ * de la direccion (Padre Hidalgo, Abastos de La Piedad, Canindo y Madero). Las
+ * otras cuatro las deduje y estan marcadas abajo; David tiene que confirmarlas.
  */
 export const UBICACIONES_SUCURSALES: UbicacionSucursal[] = [
-  { nombre: 'Canindo',              direccion: '', ciudad: '', lat: null, lng: null },
-  { nombre: 'La Piedad Abastos',    direccion: '', ciudad: '', lat: null, lng: null },
-  { nombre: '8 Esquinas',           direccion: '', ciudad: '', lat: null, lng: null },
-  { nombre: 'Padre Hidalgo',        direccion: '', ciudad: '', lat: null, lng: null },
-  { nombre: 'Morelia Madero',       direccion: '', ciudad: '', lat: null, lng: null },
-  { nombre: 'Morelia Abastos',      direccion: '', ciudad: '', lat: null, lng: null },
-  { nombre: 'Yurécuaro',            direccion: '', ciudad: '', lat: null, lng: null },
-  { nombre: 'Zamora Centro',        direccion: '', ciudad: '', lat: null, lng: null },
-  { nombre: 'OFICINAS CORPORATIVAS', direccion: '', ciudad: '', lat: null, lng: null },
-  { nombre: 'CEDIS',                direccion: '', ciudad: '', lat: null, lng: null }
+  {
+    nombre: 'Canindo',
+    direccion: 'Block P Bodega 6, Canindo, 59757 Zamora de Hidalgo, Mich.',
+    ciudad: 'Zamora de Hidalgo',
+    lat: 19.940424, lng: -102.243942, precision: 'localidad'
+  },
+  {
+    // PENDIENTE de coordenadas: el geocodificador mandaba esta calle a San Luis Potosi.
+    nombre: 'La Piedad Abastos',
+    direccion: 'Abastos, Av. Mariano Jiménez 1582, Peña, 59389 La Piedad de Cabadas, Mich.',
+    ciudad: 'La Piedad de Cabadas',
+    lat: null, lng: null, precision: 'pendiente'
+  },
+  {
+    // DEDUCIDA: la unica direccion del centro de La Piedad. Confirmar con David.
+    nombre: '8 Esquinas',
+    direccion: 'Pino Suárez 259, Centro, 59300 La Piedad de Cabadas, Mich.',
+    ciudad: 'La Piedad de Cabadas',
+    lat: 20.343058, lng: -102.024619, precision: 'calle'
+  },
+  {
+    nombre: 'Padre Hidalgo',
+    direccion: 'Av Padre Hidalgo 322, Sta Ana Pacueco, 36910 Santa Ana Pacueco, Gto.',
+    ciudad: 'Santa Ana Pacueco',
+    lat: 20.346363, lng: -102.018444, precision: 'exacta'
+  },
+  {
+    // PENDIENTE: Madero Poniente es larguisima; los candidatos quedaban a 13 km
+    // uno del otro y ninguno en el CP 58189 de la colonia Vicente Guerrero.
+    nombre: 'Morelia Madero',
+    direccion: 'Av Francisco I. Madero Pte 3600, Vicente Guerrero, 58189 Morelia, Mich.',
+    ciudad: 'Morelia',
+    lat: null, lng: null, precision: 'pendiente'
+  },
+  {
+    // DEDUCIDA por eliminacion (la otra direccion de Morelia es la de Madero).
+    nombre: 'Morelia Abastos',
+    direccion: 'Soledad Gutiérrez de Figaredo 510, 58218 Morelia, Mich.',
+    ciudad: 'Morelia',
+    lat: 19.716158, lng: -101.162958, precision: 'calle'
+  },
+  {
+    // DEDUCIDA por el CP 59250. PENDIENTE de coordenadas: la calle "Miguel
+    // Hidalgo" de Yurecuaro aparecia a 6 km del centro del pueblo.
+    nombre: 'Yurécuaro',
+    direccion: 'Sr. Cura Don Miguel Hidalgo 22, Centro, 59250 Centro, Mich.',
+    ciudad: 'Yurécuaro',
+    lat: null, lng: null, precision: 'pendiente'
+  },
+  {
+    // DEDUCIDA: es la direccion de Zamora que no es la bodega de Canindo.
+    nombre: 'Zamora Centro',
+    direccion: 'C. Dámaso Cárdenas 7, Jardines de Catedral, 59670 Zamora de Hidalgo, Mich.',
+    ciudad: 'Zamora de Hidalgo',
+    lat: 19.977305, lng: -102.286743, precision: 'calle'
+  },
+  {
+    nombre: 'OFICINAS CORPORATIVAS',
+    direccion: '', ciudad: '', lat: null, lng: null, precision: 'pendiente'
+  },
+  {
+    nombre: 'CEDIS',
+    direccion: '', ciudad: '', lat: null, lng: null, precision: 'pendiente'
+  }
 ];
 
 /**

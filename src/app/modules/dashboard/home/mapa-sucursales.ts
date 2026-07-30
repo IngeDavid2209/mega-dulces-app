@@ -16,6 +16,8 @@ export interface PuntoMapa {
   total: number;
   /** true cuando la sucursal no reporto ninguna tarea hoy (pin gris, no rojo). */
   sinActividad: boolean;
+  /** Que tan fino es el pin: 'exacta' | 'calle' | 'localidad'. */
+  precision: string;
 }
 
 /**
@@ -192,6 +194,11 @@ export class MapaSucursalesComponent implements AfterViewInit, OnChanges, OnDest
   private mapa: any = null;
   private capaPines: any = null;
   private listo = false;
+  // ngAfterViewInit y ngOnChanges llegan casi juntos, y entre medias hay dos
+  // awaits (el tick del *ngIf y la bajada de Leaflet). Sin este candado los dos
+  // pasaban el `if (this.listo)` con listo=false todavia y Leaflet tronaba con
+  // "Map container is already initialized".
+  private iniciando = false;
 
   ngAfterViewInit() { this.intentarDibujar(); }
 
@@ -215,29 +222,37 @@ export class MapaSucursalesComponent implements AfterViewInit, OnChanges, OnDest
   }
 
   private async intentarDibujar() {
-    if (this.listo || this.puntos.length === 0) return;
-    // El *ngIf recien creo el div: esperamos un tick para tener el elemento.
-    await new Promise(r => setTimeout(r, 0));
-    if (!this.contenedor) return;
+    if (this.listo || this.iniciando || this.puntos.length === 0) return;
+    this.iniciando = true;
+    try {
+      // El *ngIf recien creo el div: esperamos un tick para tener el elemento.
+      await new Promise(r => setTimeout(r, 0));
+      if (!this.contenedor) return;
 
-    const L = await this.cargarLeaflet().catch(() => null);
-    if (!L) { this.error.set(true); return; }
+      const L = await this.cargarLeaflet().catch(() => null);
+      if (!L) { this.error.set(true); return; }
 
-    this.error.set(false);
-    this.mapa = L.map(this.contenedor.nativeElement, {
-      zoomControl: true,
-      scrollWheelZoom: false,   // que la rueda no secuestre el scroll del tablero
-      attributionControl: true
-    });
+      // Pudo destruirse el componente mientras bajaba Leaflet.
+      if (!this.contenedor) return;
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 18,
-      attribution: '&copy; OpenStreetMap'
-    }).addTo(this.mapa);
+      this.error.set(false);
+      this.mapa = L.map(this.contenedor.nativeElement, {
+        zoomControl: true,
+        scrollWheelZoom: false,   // que la rueda no secuestre el scroll del tablero
+        attributionControl: true
+      });
 
-    this.capaPines = L.layerGroup().addTo(this.mapa);
-    this.listo = true;
-    this.pintarPines();
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 18,
+        attribution: '&copy; OpenStreetMap'
+      }).addTo(this.mapa);
+
+      this.capaPines = L.layerGroup().addTo(this.mapa);
+      this.listo = true;
+      this.pintarPines();
+    } finally {
+      this.iniciando = false;
+    }
   }
 
   private pintarPines() {
@@ -261,10 +276,18 @@ export class MapaSucursalesComponent implements AfterViewInit, OnChanges, OnDest
         ? 'Sin tareas reportadas hoy'
         : `${p.cumplimiento}% de cumplimiento &middot; ${p.hechas} de ${p.total} tareas`;
 
+      // Solo avisamos cuando el pin NO es exacto: si lo es, no hay nada que aclarar.
+      const aviso = p.precision === 'calle'
+        ? 'Pin aproximado: calle correcta, puede estar a una cuadra'
+        : p.precision === 'localidad'
+          ? 'Pin aproximado: centro de la colonia'
+          : '';
+
       marcador.bindPopup(
         `<strong>${this.limpiar(p.nombre)}</strong><br>` +
         (p.direccion ? `<span style="color:#64748B">${this.limpiar(p.direccion)}</span><br>` : '') +
-        `<span style="color:${color}; font-weight:700">${detalle}</span>`
+        `<span style="color:${color}; font-weight:700">${detalle}</span>` +
+        (aviso ? `<br><span style="color:#B45309; font-size:11px">${aviso}</span>` : '')
       );
       marcador.bindTooltip(this.limpiar(p.nombre), { direction: 'top' });
 

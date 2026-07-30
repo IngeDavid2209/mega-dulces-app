@@ -168,7 +168,10 @@
               Sin actividad registrada hoy.
             </div>
 
-            <table class="tabla-rend" *ngIf="rendimientoPorSucursal().length > 0">
+            <!-- En celular la tabla no cabe: se desplaza dentro de su propio
+                 marco en vez de recortar la columna de Estado. -->
+            <div class="tabla-scroll" *ngIf="rendimientoPorSucursal().length > 0">
+            <table class="tabla-rend">
               <thead>
                 <tr>
                   <th>Área</th>
@@ -182,20 +185,26 @@
                 <tr *ngFor="let f of rendimientoPorSucursal()">
                   <td>
                     <div class="rend-nombre">{{ f.nombre }}</div>
-                    <div class="rend-sub">{{ f.checklists }} checklists · {{ f.hechos }}/{{ f.total }}</div>
+                    <div class="rend-sub">
+                      {{ f.checklists }} {{ f.checklists === 1 ? 'checklist' : 'checklists' }} ·
+                      {{ f.hechos }}/{{ f.total }}
+                    </div>
                   </td>
                   <td class="th-num">
-                    <span class="pill" [style.background]="colorDeNivel(f.cumplimiento)">
+                    <span class="pill" [style.background]="colorDeNivel(f.cumplimiento)"
+                          [title]="f.baseCumplimiento">
                       {{ f.cumplimiento === null ? '—' : f.cumplimiento + '%' }}
                     </span>
                   </td>
                   <td class="th-num">
-                    <span class="pill pill-suave" [style.color]="colorDeNivel(f.puntualidad)">
+                    <span class="pill pill-suave" [style.color]="colorDeNivel(f.puntualidad)"
+                          [title]="f.basePuntualidad">
                       {{ f.puntualidad === null ? '—' : f.puntualidad + '%' }}
                     </span>
                   </td>
                   <td class="th-num">
-                    <span class="pill pill-suave" [style.color]="colorDeNivel(f.evidencia)">
+                    <span class="pill pill-suave" [style.color]="colorDeNivel(f.evidencia)"
+                          [title]="f.baseEvidencia">
                       {{ f.evidencia === null ? '—' : f.evidencia + '%' }}
                     </span>
                   </td>
@@ -205,6 +214,7 @@
                 </tr>
               </tbody>
             </table>
+            </div>
             <p class="tabla-pie">
               Un guion significa que no hay base para calcular esa columna
               (por ejemplo, tareas sin hora límite o que no piden foto).
@@ -283,8 +293,7 @@
               <div class="alert-content">
                 <div class="alert-title">{{ a.tarea }}</div>
                 <div class="alert-meta">
-                  <span>{{ a.empleado }}</span>
-                  <span>{{ a.sucursal }}</span>
+                  <span>{{ a.empleado }} · {{ a.sucursal }}</span>
                 </div>
                 <div class="alert-time">Vencida desde las {{ a.limite }}</div>
               </div>

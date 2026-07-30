@@ -88,9 +88,12 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
  
   fechaFormateada = computed(() => {
     const d = this.horaActual();
-    return d.toLocaleDateString('es-MX', {
+    const txt = d.toLocaleDateString('es-MX', {
       weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
     });
+    // Solo la primera letra en mayúscula. Con CSS capitalize salía
+    // "Jueves, 30 De Julio De 2026", que se lee mal.
+    return txt.charAt(0).toUpperCase() + txt.slice(1);
   });
  
   horaFormateada = computed(() =>
@@ -445,7 +448,12 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
       total: s.items,
       cumplimiento: this.porcentaje(s.hechos, s.items),
       puntualidad: this.porcentaje(s.aTiempo, s.medibles),
-      evidencia: this.porcentaje(s.conEvidencia, s.pidenEvidencia)
+      evidencia: this.porcentaje(s.conEvidencia, s.pidenEvidencia),
+      // Base de cada porcentaje, para el tooltip. Un 100% de una sola tarea no
+      // dice lo mismo que un 100% de treinta, y el director merece verlo.
+      baseCumplimiento: `${s.hechos} de ${s.items} tareas`,
+      basePuntualidad: s.medibles ? `${s.aTiempo} de ${s.medibles} con hora límite` : 'Sin tareas con hora límite',
+      baseEvidencia: s.pidenEvidencia ? `${s.conEvidencia} de ${s.pidenEvidencia} fotos requeridas` : 'Ninguna tarea pide foto'
     }));
 
     if (this.filtroRendimiento() === 'comerciales') {
@@ -481,13 +489,20 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
           cumplimiento: f?.cumplimiento ?? 0,
           hechas: f?.hechos ?? 0,
           total: f?.total ?? 0,
-          sinActividad: !f || !f.total
+          sinActividad: !f || !f.total,
+          precision: u.precision
         };
       });
   });
 
-  /** Sucursales que aún no tienen coordenadas: se dicen en voz alta. */
-  sucursalesPendientesMapa = computed(() => sucursalesSinUbicar());
+  /**
+   * Sucursales que aún no tienen coordenadas: se dicen en voz alta, para que
+   * nadie crea que el mapa muestra toda la operación. Solo las comerciales:
+   * las áreas administrativas no son puntos de venta y solo harían ruido.
+   */
+  sucursalesPendientesMapa = computed(() =>
+    sucursalesSinUbicar().filter(n => esSucursalComercial(n))
+  );
 
   // ==================================================================
   // RECONOCIMIENTOS (reemplaza los "hitos" inventados del boceto)
@@ -796,13 +811,17 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
     const datos = this.tendencia7Dias();
     if (this.trendChart) this.trendChart.destroy();
  
-    const serie = (label: string, valores: number[], color: string, relleno: boolean) => ({
+    // Cada serie con su propio trazo: es muy común que dos coincidan (si todas
+    // las tareas del día piden foto, evidencia == cumplimiento) y con el mismo
+    // guionado una tapaba a la otra y parecía que faltaba una línea.
+    const serie = (label: string, valores: number[], color: string,
+                   relleno: boolean, guion: number[]) => ({
       label,
       data: valores,
       borderColor: color,
       backgroundColor: relleno ? 'rgba(30, 58, 138, 0.10)' : 'transparent',
       borderWidth: relleno ? 3 : 2,
-      borderDash: relleno ? [] : [5, 4],
+      borderDash: guion,
       fill: relleno,
       tension: 0.4,
       pointBackgroundColor: color,
@@ -815,9 +834,9 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
       data: {
         labels: datos.map(d => d.fecha),
         datasets: [
-          serie('Cumplimiento', datos.map(d => d.porcentaje), '#1E3A8A', true),
-          serie('Puntualidad', datos.map(d => d.puntualidad), '#0EA5E9', false),
-          serie('Evidencia', datos.map(d => d.evidencia), '#8B5CF6', false)
+          serie('Cumplimiento', datos.map(d => d.porcentaje), '#1E3A8A', true, []),
+          serie('Puntualidad', datos.map(d => d.puntualidad), '#0EA5E9', false, [6, 4]),
+          serie('Evidencia', datos.map(d => d.evidencia), '#8B5CF6', false, [2, 3])
         ]
       },
       options: {

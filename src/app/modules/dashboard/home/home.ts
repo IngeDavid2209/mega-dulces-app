@@ -13,7 +13,9 @@ import { nivelDeUsuario } from '../../../shared/nivel-jerarquico.util';
 import { esItemHecho, tieneEvidencia } from '../../../shared/item-completado.util';
 import { UsuariosService } from '../../../shared/usuarios.service';
 import { ApiService } from '../../../shared/api.service';
-import { guardarListaCache, leerListaCache } from '../../../shared/lista-cache.util';
+import {
+  guardarListaCache, leerListaCacheConEdad, textoAntiguedad
+} from '../../../shared/lista-cache.util';
 import { MapaSucursalesComponent, PuntoMapa } from './mapa-sucursales';
 import {
   UBICACIONES_SUCURSALES, tieneCoordenadas, sucursalesSinUbicar, esSucursalComercial
@@ -36,6 +38,10 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
   // 📡 true cuando el último poll falló por red: se muestra la última lista
   // buena (cache) con un aviso, en vez de un dashboard vacío.
   sinConexion = signal<boolean>(false);
+  // 🕒 De cuándo son los datos que se están mostrando ('hace 5 minutos'). Vacío
+  // cuando vienen frescos de la nube. Sin esto, el aviso decía "datos guardados"
+  // sin aclarar si eran de hace un minuto o de la mañana.
+  edadDatos = signal<string>('');
   areas      = signal<any[]>([]);
   usuarios   = signal<any[]>([]);
   horaActual = signal<Date>(new Date());
@@ -719,12 +725,17 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
         // hay nada en pantalla, hidratamos desde la última lista buena.
         this.sinConexion.set(true);
         if (this.checklists().length === 0) {
-          const cache = leerListaCache('dashboard', claveUsuario(leerSesion() || this.currentUser));
-          if (cache && cache.length) { this.checklists.set(cache); setTimeout(() => this.actualizarGrafica(), 100); }
+          const cache = leerListaCacheConEdad('dashboard', claveUsuario(leerSesion() || this.currentUser));
+          if (cache && cache.lista.length) {
+            this.checklists.set(cache.lista);
+            this.edadDatos.set(textoAntiguedad(cache.edadMinutos));
+            setTimeout(() => this.actualizarGrafica(), 100);
+          }
         }
         return;
       }
       this.sinConexion.set(false);
+      this.edadDatos.set('');   // ya son datos frescos de la nube
       const filas: any[] = resp.checklists || [];
       // Recalculamos permisos cada vez (currentUser podría haberse actualizado).
       const sesion = leerSesion() || this.currentUser;
@@ -768,8 +779,11 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
     // Hidratación inmediata desde cache (evita dashboard vacío tras recargar con
     // mala señal); el primer poll lo refresca al responder.
     if (this.checklists().length === 0) {
-      const cacheInicial = leerListaCache('dashboard', claveUsuario(leerSesion() || this.currentUser));
-      if (cacheInicial && cacheInicial.length) this.checklists.set(cacheInicial);
+      const cacheInicial = leerListaCacheConEdad('dashboard', claveUsuario(leerSesion() || this.currentUser));
+      if (cacheInicial && cacheInicial.lista.length) {
+        this.checklists.set(cacheInicial.lista);
+        this.edadDatos.set(textoAntiguedad(cacheInicial.edadMinutos));
+      }
     }
     recargarChecklists();
     const idPollChecklists = setInterval(recargarChecklists, 20000);

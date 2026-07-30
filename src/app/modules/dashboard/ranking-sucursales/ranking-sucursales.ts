@@ -154,7 +154,11 @@ export class RankingSucursalesComponent implements OnInit, OnDestroy {
         // nada cargado, hidratamos desde el último ranking bueno de esta semana.
         this.sinConexion.set(true);
         if (this.checklistsSemana().length === 0) {
-          const cache = leerListaCache(claveCache, claveUsuario);
+          // Una semana de vida, no un dia: la clave ya incluye la semana
+          // (`ranking_<desde>`), asi que un ranking de anteayer sigue siendo el
+          // de esta semana. Con el tope de 24h por defecto se habria descartado
+          // y la vista saldria vacia, que es justo lo que queriamos evitar.
+          const cache = leerListaCache(claveCache, claveUsuario, 24 * 7);
           if (cache && cache.length) this.checklistsSemana.set(cache);
         }
         this.cargando.set(false);
@@ -174,7 +178,7 @@ export class RankingSucursalesComponent implements OnInit, OnDestroy {
     // Hidratación inmediata desde cache (evita tabla vacía al abrir/recargar con
     // mala señal); el primer poll la refresca al responder.
     if (this.checklistsSemana().length === 0) {
-      const cacheInicial = leerListaCache(claveCache, claveUsuario);
+      const cacheInicial = leerListaCache(claveCache, claveUsuario, 24 * 7);
       if (cacheInicial && cacheInicial.length) this.checklistsSemana.set(cacheInicial);
     }
     recargar();

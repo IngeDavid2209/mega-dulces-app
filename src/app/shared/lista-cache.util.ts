@@ -29,12 +29,73 @@ export function guardarListaCache(clave: string, usuarioId: string, lista: any[]
   } catch { /* cupo lleno / modo privado: ignorar */ }
 }
 
-/** Lee la ultima lista buena, o null si no hay. Nunca lanza. */
-export function leerListaCache(clave: string, usuarioId: string): any[] | null {
+/**
+ * Cuantas horas se considera utilizable una lista guardada.
+ *
+ * Se guardaba la hora (`t`) desde el principio pero nadie la leia, asi que una
+ * lista de hace dias se podia pintar como si fuera de hoy. Un dia es el limite
+ * natural: las tareas son diarias, y un checklist de ayer en la pantalla de hoy
+ * es informacion falsa, no informacion vieja.
+ */
+const HORAS_VALIDAS = 24;
+
+/** Lista guardada junto con su antiguedad, para poder decirla en pantalla. */
+export interface ListaCacheada {
+  lista: any[];
+  /** Minutos desde que se guardo. 0 si el registro no traia hora. */
+  edadMinutos: number;
+}
+
+/**
+ * Lee la ultima lista buena con su antiguedad, o null si no hay o si ya expiro.
+ * Nunca lanza.
+ *
+ * `maxHoras` permite alargar la vida a datos que no son del dia: el ranking
+ * semanal, por ejemplo, sigue siendo valido dos dias despues porque su clave ya
+ * incluye la semana.
+ */
+export function leerListaCacheConEdad(
+  clave: string, usuarioId: string, maxHoras: number = HORAS_VALIDAS
+): ListaCacheada | null {
   try {
-    const raw = localStorage.getItem(PREFIJO + clave + '_' + (usuarioId || 'anon'));
+    const llave = PREFIJO + clave + '_' + (usuarioId || 'anon');
+    const raw = localStorage.getItem(llave);
     if (!raw) return null;
+
     const obj = JSON.parse(raw);
-    return Array.isArray(obj?.lista) ? obj.lista : null;
+    if (!Array.isArray(obj?.lista)) return null;
+
+    const guardadoEn = Number(obj?.t);
+    if (Number.isFinite(guardadoEn) && guardadoEn > 0) {
+      const edadMs = Date.now() - guardadoEn;
+      // Reloj del dispositivo movido hacia atras: no lo tratamos como del futuro.
+      const edad = Math.max(0, edadMs);
+      if (edad > maxHoras * 3600_000) {
+        // Vencida: la soltamos para no volver a evaluarla ni ocupar cupo.
+        try { localStorage.removeItem(llave); } catch { }
+        return null;
+      }
+      return { lista: obj.lista, edadMinutos: Math.floor(edad / 60000) };
+    }
+
+    // Registro viejo sin hora (de antes de este cambio): lo aceptamos una vez,
+    // sin poder decir su edad. El proximo guardado ya trae `t`.
+    return { lista: obj.lista, edadMinutos: 0 };
   } catch { return null; }
+}
+
+/** Lee la ultima lista buena, o null si no hay o ya expiro. Nunca lanza. */
+export function leerListaCache(
+  clave: string, usuarioId: string, maxHoras: number = HORAS_VALIDAS
+): any[] | null {
+  return leerListaCacheConEdad(clave, usuarioId, maxHoras)?.lista ?? null;
+}
+
+/** Texto corto para el aviso: "hace 3 minutos", "hace 2 horas". */
+export function textoAntiguedad(edadMinutos: number): string {
+  if (edadMinutos < 1) return 'hace un momento';
+  if (edadMinutos === 1) return 'hace 1 minuto';
+  if (edadMinutos < 60) return `hace ${edadMinutos} minutos`;
+  const horas = Math.floor(edadMinutos / 60);
+  return horas === 1 ? 'hace 1 hora' : `hace ${horas} horas`;
 }

@@ -52,6 +52,17 @@ export class ApiService {
       }
       throw e;
     }
+    // Respuesta que SÍ llegó, pero de una puerta intermedia caída. Railway
+    // devuelve 502/503/504 (con cuerpo HTML, no JSON) mientras el contenedor
+    // despierta o se reinicia por un deploy, y eso dura unos segundos. Antes
+    // caía derecho al modo "sin conexión" aunque la red del usuario estuviera
+    // perfecta. Mismo criterio que el fallo de red: solo GET, que es idempotente.
+    const puertaCaida = res.status === 502 || res.status === 503 || res.status === 504;
+    if (puertaCaida && method === 'GET' && reintentosRed > 0) {
+      await new Promise(r => setTimeout(r, 700 * (3 - reintentosRed)));
+      return this.req(method, url, body, reintentosRed - 1);
+    }
+
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error((data && data.error) || ('HTTP ' + res.status));
     return data;

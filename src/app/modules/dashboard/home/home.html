@@ -45,7 +45,10 @@
       <!-- Aviso de sin conexión: el tablero muestra los últimos datos guardados -->
       <div *ngIf="sinConexion()" class="aviso-offline">
         <strong>Sin conexión</strong>
-        <span>Mostrando datos guardados. Se actualizarán solos al volver el internet.</span>
+        <span>
+          Mostrando datos guardados<span *ngIf="edadDatos()"> {{ edadDatos() }}</span>.
+          Se actualizarán solos al volver el internet.
+        </span>
       </div>
 
       <!-- ---------- Encabezado del panorama ---------- -->

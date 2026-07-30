@@ -19,7 +19,9 @@ import { AsignacionRutina } from '../../../shared/asignaciones.types';
 import { comprimirImagenSiAplica } from '../../../shared/imagen.util';
 import { ConfigTurnos, EvaluacionTurno, evaluarAsignacion, etiquetaTurno } from '../../../shared/turnos.util';
 import { resolverAsignadoTarea, mapaNombreAUid } from '../../../shared/reasignacion-turnos.util';
-import { guardarListaCache, leerListaCache } from '../../../shared/lista-cache.util';
+import {
+  guardarListaCache, leerListaCacheConEdad, textoAntiguedad
+} from '../../../shared/lista-cache.util';
 
 import { SidebarComponent } from '../../../shared/sidebar/sidebar';
 
@@ -142,6 +144,10 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   // mostrando la última lista buena (cache) y enseña un aviso "Sin conexión"
   // en vez de una lista vacía que parezca "se borraron las tareas".
   sinConexion = signal<boolean>(false);
+  // 🕒 De cuándo son las tareas que se muestran ('hace 5 minutos'). Vacío cuando
+  // vienen frescas de la nube. Antes el aviso no aclaraba la antigüedad, y una
+  // lista guardada se leía igual que una recién traída.
+  edadDatos = signal<string>('');
   // ✉️ true mientras se sube un checklist a la nube: muestra "Enviando…" para
   // que el usuario sepa que su envío está en curso (sobre todo con mala señal) y
   // no crea que la tarea desapareció. Con tope de tiempo para no colgarse.
@@ -1274,12 +1280,16 @@ export class ChecklistComponent implements OnInit, OnDestroy {
         // desde la última lista buena guardada para no mostrar vacío.
         this.sinConexion.set(true);
         if (this.checklists().length === 0) {
-          const cache = leerListaCache('checklists', claveUsuario(leerSesion() || this.currentUser));
-          if (cache && cache.length) this.checklists.set(cache);
+          const cache = leerListaCacheConEdad('checklists', claveUsuario(leerSesion() || this.currentUser));
+          if (cache && cache.lista.length) {
+            this.checklists.set(cache.lista);
+            this.edadDatos.set(textoAntiguedad(cache.edadMinutos));
+          }
         }
         return;
       }
       this.sinConexion.set(false);
+      this.edadDatos.set('');   // datos frescos de la nube
       const filas: any[] = resp.checklists || [];
       const todasLasListas: any[] = [];
       let descartadosEnviados = 0;
@@ -1413,8 +1423,11 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     // abrir/recargar, se pinta al instante (aunque haya mala señal) y el primer
     // poll la refresca en cuanto responda la nube.
     if (this.checklists().length === 0) {
-      const cacheInicial = leerListaCache('checklists', claveUsuario(leerSesion() || this.currentUser));
-      if (cacheInicial && cacheInicial.length) this.checklists.set(cacheInicial);
+      const cacheInicial = leerListaCacheConEdad('checklists', claveUsuario(leerSesion() || this.currentUser));
+      if (cacheInicial && cacheInicial.lista.length) {
+        this.checklists.set(cacheInicial.lista);
+        this.edadDatos.set(textoAntiguedad(cacheInicial.edadMinutos));
+      }
     }
     recargarChecklists();
     const idRadarChecklists = setInterval(recargarChecklists, 20000);

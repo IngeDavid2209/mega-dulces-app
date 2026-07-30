@@ -1,4 +1,4 @@
-
+﻿
 /* ================== VARIABLES ================== */
 :root {
   --primary-navy: #1E3A8A;
@@ -860,7 +860,7 @@
   color: #64748B;
 }
 
-.panorama-fecha-dia { font-weight: 600; text-transform: capitalize; }
+.panorama-fecha-dia { font-weight: 600; }
 .panorama-fecha-hora { font-size: 18px; font-weight: 800; color: #0F172A; }
 
 /* ---------- Tarjetas de aguja ---------- */

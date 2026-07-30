@@ -1197,3 +1197,36 @@
 }
 
 .tabla-scroll .tabla-rend { min-width: 460px; }
+
+/* ---------- Aviso de sucursales sin reportar ---------- */
+.aviso-sin-reportar {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  background: #FEF2F2;
+  border: 1px solid #FECACA;
+  border-left: 4px solid #EF4444;
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-bottom: 14px;
+  font-size: 13px;
+  color: #7F1D1D;
+}
+
+.aviso-sin-reportar strong { font-weight: 800; }
+.aviso-sin-reportar span { color: #B91C1C; font-weight: 600; }
+
+/* Fila de la tabla de una sucursal que no abrio nada hoy. */
+.fila-sin-reportar { background: #FFFBFB; }
+.fila-sin-reportar:hover { background: #FEF2F2 !important; }
+.fila-sin-reportar .rend-nombre { color: #B91C1C; }
+
+.rend-sub-alerta { color: #DC2626 !important; font-weight: 700; }
+
+.chip-sin-reportar {
+  background: #FEF2F2;
+  color: #B91C1C;
+  border: 1px solid #FCA5A5;
+}
+

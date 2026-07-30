@@ -18,7 +18,8 @@ import {
 } from '../../../shared/lista-cache.util';
 import { MapaSucursalesComponent, PuntoMapa } from './mapa-sucursales';
 import {
-  UBICACIONES_SUCURSALES, tieneCoordenadas, sucursalesSinUbicar, esSucursalComercial
+  UBICACIONES_SUCURSALES, SUCURSALES_COMERCIALES, tieneCoordenadas,
+  sucursalesSinUbicar, esSucursalComercial
 } from '../../../shared/sucursales-ubicaciones.util';
 
 @Component({
@@ -447,17 +448,43 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
       }
     }
 
+    // ------------------------------------------------------------------
+    // Sucursales que NO reportaron nada hoy: hay que meterlas a fuerza.
+    //
+    // Antes la tabla se armaba solo con lo que traían los checklists, asi que
+    // una sucursal en cero simplemente no aparecia: se borraba del panel en
+    // silencio. Al reves de lo que necesita un director, porque una sucursal
+    // que no reporto en todo el dia es la primera que hay que ver.
+    //
+    // Solo las comerciales del catalogo, y respetando el alcance del usuario:
+    // un admin de una sola sucursal no tiene por que ver las demas.
+    // ------------------------------------------------------------------
+    const permitidas = sucursalesPermitidas(this.currentUser);
+    const esGlobal = esAdminGlobal(this.currentUser);
+    for (const nombre of SUCURSALES_COMERCIALES) {
+      if (acc[nombre]) continue;
+      if (!esGlobal && permitidas !== null && !permitidas.includes(nombre)) continue;
+      acc[nombre] = {
+        nombre, items: 0, hechos: 0, pidenEvidencia: 0, conEvidencia: 0,
+        medibles: 0, aTiempo: 0, checklists: 0
+      };
+    }
+
     let filas = Object.values(acc).map((s: any) => ({
       nombre: s.nombre,
       checklists: s.checklists,
       hechos: s.hechos,
       total: s.items,
+      /** Ni un solo checklist hoy. No es 0% de cumplimiento: es que no hay nada. */
+      sinReportar: s.checklists === 0,
       cumplimiento: this.porcentaje(s.hechos, s.items),
       puntualidad: this.porcentaje(s.aTiempo, s.medibles),
       evidencia: this.porcentaje(s.conEvidencia, s.pidenEvidencia),
       // Base de cada porcentaje, para el tooltip. Un 100% de una sola tarea no
       // dice lo mismo que un 100% de treinta, y el director merece verlo.
-      baseCumplimiento: `${s.hechos} de ${s.items} tareas`,
+      baseCumplimiento: s.checklists === 0
+        ? 'Sin checklists hoy'
+        : `${s.hechos} de ${s.items} tareas`,
       basePuntualidad: s.medibles ? `${s.aTiempo} de ${s.medibles} con hora límite` : 'Sin tareas con hora límite',
       baseEvidencia: s.pidenEvidencia ? `${s.conEvidencia} de ${s.pidenEvidencia} fotos requeridas` : 'Ninguna tarea pide foto'
     }));
@@ -466,9 +493,26 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
       filas = filas.filter(f => esSucursalComercial(f.nombre));
     }
 
-    // Peor primero: al director le interesa dónde meter mano, no quién va bien.
-    return filas.sort((a, b) => (a.cumplimiento ?? 101) - (b.cumplimiento ?? 101));
+    // Las que no reportaron van ARRIBA: es la peor noticia del tablero y no
+    // puede quedar sepultada al final. Despues, peor cumplimiento primero: al
+    // director le interesa donde meter mano, no quien va bien.
+    return filas.sort((a, b) => {
+      if (a.sinReportar !== b.sinReportar) return a.sinReportar ? -1 : 1;
+      return (a.cumplimiento ?? 101) - (b.cumplimiento ?? 101);
+    });
   });
+
+  /**
+   * Sucursales comerciales que no han abierto un solo checklist hoy.
+   *
+   * Se avisa arriba del tablero, no solo como una fila más de la tabla: es la
+   * peor noticia posible del día y no debería haber que buscarla.
+   */
+  sucursalesSinReportar = computed(() =>
+    this.rendimientoPorSucursal()
+      .filter(f => f.sinReportar && esSucursalComercial(f.nombre))
+      .map(f => f.nombre)
+  );
 
   // ==================================================================
   // MAPA REAL DE SUCURSALES

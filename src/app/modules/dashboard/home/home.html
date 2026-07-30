@@ -68,6 +68,17 @@
         </div>
       </section>
 
+      <!-- Sucursales que no abrieron un solo checklist hoy. Se dice arriba, no
+           escondido en una fila de la tabla. -->
+      <div *ngIf="sucursalesSinReportar().length > 0" class="aviso-sin-reportar">
+        <strong>
+          {{ sucursalesSinReportar().length }}
+          {{ sucursalesSinReportar().length === 1 ? 'sucursal' : 'sucursales' }}
+          sin reportar hoy
+        </strong>
+        <span>{{ sucursalesSinReportar().join(', ') }}</span>
+      </div>
+
       <!-- ---------- Tabs Mis tareas / Todas (admin y supervisor) ---------- -->
       <section class="vista-tabs" *ngIf="puedeFiltrarVista()">
         <button class="vista-tab"
@@ -185,12 +196,15 @@
                 </tr>
               </thead>
               <tbody>
-                <tr *ngFor="let f of rendimientoPorSucursal()">
+                <tr *ngFor="let f of rendimientoPorSucursal()" [class.fila-sin-reportar]="f.sinReportar">
                   <td>
                     <div class="rend-nombre">{{ f.nombre }}</div>
-                    <div class="rend-sub">
+                    <div class="rend-sub" *ngIf="!f.sinReportar">
                       {{ f.checklists }} {{ f.checklists === 1 ? 'checklist' : 'checklists' }} ·
                       {{ f.hechos }}/{{ f.total }}
+                    </div>
+                    <div class="rend-sub rend-sub-alerta" *ngIf="f.sinReportar">
+                      Ningún checklist hoy
                     </div>
                   </td>
                   <td class="th-num">
@@ -212,7 +226,10 @@
                     </span>
                   </td>
                   <td>
-                    <span class="chip chip-{{ nivelDe(f.cumplimiento) }}">{{ etiquetaDe(f.cumplimiento) }}</span>
+                    <span class="chip chip-sin-reportar" *ngIf="f.sinReportar">Sin reportar</span>
+                    <span class="chip chip-{{ nivelDe(f.cumplimiento) }}" *ngIf="!f.sinReportar">
+                      {{ etiquetaDe(f.cumplimiento) }}
+                    </span>
                   </td>
                 </tr>
               </tbody>

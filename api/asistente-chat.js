@@ -67,6 +67,21 @@ async function pgUsuarioPorId(id) {
   const r = await query('select * from mdtask_usuarios where id = $1', [String(id)]);
   return r.rows[0] ? usuarioFila(r.rows[0]) : null;
 }
+// Ultimos 10 digitos de un telefono (misma normalizacion que whatsapp.js::ultimos10,
+// para comparar sin importar lada ni formato).
+function ultimos10Tel(numero) {
+  const n = String(numero || '').replace(/\D/g, '');
+  return n.length >= 10 ? n.slice(-10) : n;
+}
+// Guarda el telefono en el PERFIL (columna propia de mdtask_usuarios). Es el dato
+// con el que el bot identifica a la persona en WhatsApp.
+async function pgUsuarioSetTelefono(id, telefono) {
+  const r = await query(
+    'update mdtask_usuarios set telefono = $2, actualizado_en = $3 where id = $1 returning id',
+    [String(id), String(telefono), Date.now()]
+  );
+  return r.rowCount > 0;
+}
 
 // -- config (mdtask_config) leído por id; todo el doc vive en `datos` --
 async function pgConfig(id) {
@@ -757,6 +772,30 @@ const TOOLS = [
   },
   { name: 'eliminar_tarea', description: 'Elimina una tarea. Requiere id (de consultar_tareas).', input_schema: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] } },
 
+  // --- PERSONAL: telefono (sin el, el bot no le puede avisar a nadie) ---
+  {
+    name: 'registrar_telefono',
+    description: 'Guarda o corrige el TELEFONO de WhatsApp de una persona del personal. Usala cuando el usuario te dicte un numero ("el numero de Fatima es 352..."). Sin telefono el bot no le puede avisar de sus tareas ni ella puede usar el bot. Requiere permiso de administrar personal.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        persona: { type: 'string', description: 'Nombre de la persona.' },
+        telefono: { type: 'string', description: 'Numero tal como lo dicto el usuario (10 digitos de Mexico; se aceptan espacios, guiones o +52).' },
+        reemplazar: { type: 'boolean', description: 'true SOLO si ya tenia otro numero distinto y el usuario confirmo que quiere cambiarlo.' }
+      },
+      required: ['persona', 'telefono']
+    }
+  },
+  {
+    name: 'personal_sin_telefono',
+    description: 'Lista al personal que NO tiene telefono registrado (por eso no recibe avisos ni puede usar el bot). Usala cuando pregunten a quien le falta el numero.',
+    input_schema: {
+      type: 'object',
+      properties: { sucursal: { type: 'string', description: 'Filtrar por una sucursal. Opcional.' } },
+      required: []
+    }
+  },
+
   // --- ENTREGA DE TAREAS (los checklists que le toca hacer al colaborador) ---
   {
     name: 'mis_pendientes',
@@ -1255,6 +1294,74 @@ async function ejecutarHerramienta(db, ctx, nombre, input) {
     return { ok: true, mensaje: 'Tarea eliminada.' };
   }
 
+  // ---- PERSONAL: telefono ----
+  if (nombre === 'registrar_telefono') {
+    // Permiso: quien administra personal (o admin). Es un dato del PERFIL, no una tarea.
+    if (!ctx.esAdmin && ctx.perfil.puedeAdministrarPersonal !== true) {
+      return { ok: false, mensaje: 'No tienes permiso para editar los datos del personal. Ese permiso (*Administrar personal*) lo activa un administrador.' };
+    }
+    const r = resolverPersona(ctx, input.persona);
+    if (!r.user) {
+      if (r.ambiguos.length) return { ok: false, mensaje: `Hay varias personas que coinciden con "${input.persona}": ${r.ambiguos.slice(0, 6).join(', ')}. ¿A cual?` };
+      return { ok: false, mensaje: `No encontre a "${input.persona}" en el personal.` };
+    }
+    if (!enMiAlcance(ctx, r.user)) {
+      return { ok: false, mensaje: `${r.user.nombre || 'Esa persona'} no esta en tus sucursales, no puedes editar sus datos.` };
+    }
+
+    // Normalizacion: se guardan 10 digitos (Mexico), tolerando +52 / 521 / espacios.
+    const crudo = String(input.telefono || '').replace(/\D/g, '');
+    const tel = /^52\d{10}$/.test(crudo) ? crudo.slice(2)
+      : /^521\d{10}$/.test(crudo) ? crudo.slice(3)
+        : crudo;
+    if (tel.length !== 10) {
+      return { ok: false, mensaje: `"${input.telefono}" no parece un numero de 10 digitos. Dictamelo completo con lada (ej. 352 157 2972).` };
+    }
+
+    // NO duplicados: el bot identifica por telefono, dos perfiles con el mismo
+    // numero harian que uno de los dos nunca sea reconocido.
+    const dueno = ctx.usuarios.find(u => u.id !== r.user.id && u.telefono && ultimos10Tel(u.telefono) === tel);
+    if (dueno) {
+      return { ok: false, mensaje: `Ese numero ya esta registrado en el perfil de ${dueno.nombre || dueno.correo}. Un numero no puede estar en dos personas (el bot identifica por telefono). Verifica cual es el correcto.` };
+    }
+
+    const actual = ctx.usuarios.find(u => u.id === r.user.id) || r.user;
+    const anterior = String(actual.telefono || '');
+    if (anterior && ultimos10Tel(anterior) === tel) {
+      return { ok: true, sin_cambios: true, mensaje: `${r.user.nombre} ya tenia registrado ese numero (${tel}).` };
+    }
+    if (anterior && !input.reemplazar) {
+      return {
+        ok: false, requiere_confirmacion: true, telefono_actual: anterior, telefono_nuevo: tel,
+        mensaje: `${r.user.nombre} ya tiene el numero ${anterior}. Preguntale al usuario si lo reemplaza por ${tel}; si dice que si, vuelve a llamar con reemplazar=true.`
+      };
+    }
+
+    await pgUsuarioSetTelefono(r.user.id, tel);
+    r.user.telefono = tel; actual.telefono = tel;  // refresca la lista en memoria
+    return {
+      ok: true, persona: r.user.nombre, telefono: tel, reemplazo: !!anterior,
+      mensaje: `Listo, registre el ${tel} para ${r.user.nombre}. Ya le puedo avisar de sus tareas por WhatsApp`
+        + ' (el primer aviso en frio necesita la plantilla aprobada; si ella le escribe al bot, le llega de inmediato).'
+    };
+  }
+
+  if (nombre === 'personal_sin_telefono') {
+    // Es informacion del personal: solo para quien tiene vista de gestion.
+    if (!ctx.esGestor) return { ok: false, mensaje: 'Esa informacion del personal la ve un administrador o tu encargado.' };
+    const permitidas = esAdminGlobal(ctx.perfil) ? null : sucursalesPermitidas(ctx);
+    let gente = ctx.usuarios.filter(u => (u.rol === 'trabajador' || u.rol === 'admin') && u.activo !== false && !String(u.telefono || '').trim());
+    if (permitidas) gente = gente.filter(u => sucursalesDe(u).some(s => permitidas.some(p => normaliza(p) === normaliza(s))));
+    if (input.sucursal) gente = gente.filter(u => sucursalesDe(u).some(s => normaliza(s) === normaliza(input.sucursal)));
+    return {
+      ok: true, total: gente.length,
+      personas: gente.slice(0, 40).map(u => ({ nombre: u.nombre || u.correo, sucursales: sucursalesDe(u) })),
+      mensaje: gente.length
+        ? `${gente.length} persona(s) sin telefono registrado: no reciben avisos ni pueden usar el bot. Dictame los numeros y los doy de alta.`
+        : 'Todo el personal de tu alcance ya tiene telefono registrado.'
+    };
+  }
+
   // ---- ENTREGA DE TAREAS (checklists asignados al colaborador) ----
   if (nombre === 'mis_pendientes') {
     let uid = ctx.uid, quien = ctx.nombre, deOtro = false;
@@ -1506,7 +1613,7 @@ async function ejecutarHerramienta(db, ctx, nombre, input) {
         + (avisado ? ` Ya le avise a ${assigned} por WhatsApp.`
           : avisosOff ? ' (Los avisos automaticos por WhatsApp estan apagados ahora mismo, asi que no se le notifico.)'
             : tieneTel ? ' (No pude mandarle el WhatsApp; revisa la plantilla o el numero.)'
-              : ' (Ojo: esa persona no tiene telefono registrado, no le pude avisar por WhatsApp.)')
+              : ` (Ojo: ${assigned} NO tiene telefono registrado, asi que no le pude avisar. Si me dictas su numero lo doy de alta con registrar_telefono y a partir de ahi ya le llegan los avisos.)`)
     };
   }
 
@@ -1947,6 +2054,7 @@ function construirSystem(ctx) {
     '- Para crear_rutina necesitas: nombre, frecuencia, sucursales y modo (porRol con rol_objetivo, o porPersonas con personas). Si falta algo, preguntalo corto antes de crear.',
     '- TURNOS (Canindo): algunas personas solo pueden recibir tareas dentro de su turno (manana/tarde). Si crear_checklist devuelve que la persona esta "fuera de turno", NO insistas: explicale al admin que esta fuera de su horario y que, si por necesidad debe trabajar otro turno, puede registrar una excepcion en la pantalla de Turnos de Canindo.',
     '- Al crear un checklist el sistema le AVISA SOLO por WhatsApp a la persona asignada. No le digas al admin que lo reenvie a mano; si el aviso no salio (avisado=false), dilo tal cual.',
+    '- TELEFONO: sin numero registrado esa persona NO recibe avisos ni puede usar el bot. Si te dictan un numero ("el de Fatima es 352..."), NO lo ignores: confirma el nombre y el numero en una frase y usa registrar_telefono. Si te preguntan a quien le falta, usa personal_sin_telefono.',
     '',
     'ENTREGAR TAREAS (lo que el colaborador tiene que hacer hoy):',
     '- "que tengo que hacer", "mis tareas", "que me falta" -> mis_pendientes. Cada item viene NUMERADO: usa esos numeros al hablar ("1. barrer, 2. vitrina").',

@@ -153,7 +153,7 @@ async function procesarMensaje(msg) {
     }
 
     let res;
-    try { res = await registrarFotoEvidencia(objetivo, subida.url); }
+    try { res = await registrarFotoEvidencia(objetivo, subida.url, identidad); }
     catch (e) { console.error('[wa-webhook] error guardando evidencia:', e && e.message); res = null; }
     if (!res || !res.ok) {
       await enviarMensaje(msg.from, 'Guardé la foto pero ya no encontré la tarea que la esperaba 😕. Dime otra vez cuál entregas.');
@@ -161,16 +161,29 @@ async function procesarMensaje(msg) {
     }
 
     const tarea = res.item.texto;
-    const ck = res.checklist;
+    const fila = res.fila || { total: 1, hechas: 1, restantes: 0 };
+    const varias = fila.total > 1;
     let respuesta;
+
     if (res.fase === 'antes') {
       respuesta = `Guardé la foto de *ANTES* de "${tarea}" 📷. Ahora mándame la de *DESPUÉS*.`;
-    } else if (res.fase === 'varias') {
-      respuesta = `Guardé la foto de "${tarea}" 📷 (${res.totalFotos} en total). Puedes mandar más o decirme *listo*.`;
+    } else if (res.faltaOtra) {
+      respuesta = `Guardé la foto de "${tarea}" 📷 (${res.totalFotos} en total). Puedes mandar otra o decirme *listo*.`;
+    } else if (res.siguiente) {
+      // Va en fila: se lleva la cuenta para que sepa cuánto le queda.
+      respuesta = `✅ ${fila.hechas} de ${fila.total} — guardé la de "${tarea}".\nAhora mándame la de *${res.siguiente.texto}*`
+        + (res.siguiente.fase === 'antes' ? ' (primero la de ANTES).' : '.');
+    } else if ((res.entregados || []).length) {
+      // Se acabó la fila y ya se entregó todo lo que quedó completo.
+      const n = res.entregados.length;
+      respuesta = `✅ ${fila.hechas} de ${fila.total} — guardé la de "${tarea}".\n\n`
+        + `🎉 ¡Terminaste! Ya entregué ${n === 1 ? 'tu tarea' : `tus ${n} tareas`}. Que tengas buen día 👋`;
     } else if (res.todosHechos) {
-      respuesta = `¡Listo! Guardé la evidencia de "${tarea}" ✅. Ya completaste las ${ck.total} tareas de "${ck.nombre}". ¿Lo envío? Contéstame *enviar*.`;
+      respuesta = varias
+        ? `✅ ${fila.hechas} de ${fila.total} — guardé la de "${tarea}". Ya no te falta ninguna foto; dime *enviar* y las entrego.`
+        : `¡Listo! Guardé la evidencia de "${tarea}" ✅. Ya completaste "${res.checklist.nombre}". ¿Lo envío? Contéstame *enviar*.`;
     } else {
-      respuesta = `¡Listo! Guardé la evidencia de "${tarea}" ✅. Te faltan ${ck.pendientes} de ${ck.total} en "${ck.nombre}".`;
+      respuesta = `¡Listo! Guardé la evidencia de "${tarea}" ✅. Te faltan ${res.checklist.pendientes} de ${res.checklist.total} en "${res.checklist.nombre}".`;
     }
     await enviarMensaje(msg.from, respuesta);
     return;

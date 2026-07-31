@@ -236,7 +236,10 @@ async function pgChecklistsDeUsuario({ uid, nombre, desde, hasta, incluirEnviado
   if (nombre) { params.push(String(nombre)); ident.push(`lower(coalesce(assigned,'')) = lower($${params.length})`); }
   if (!ident.length) return [];
 
-  const orden = 'order by fecha asc, hora asc';
+  // `id` en el orden: sin el, dos checklists con la misma fecha y hora podrian
+  // salir en distinto orden entre dos consultas y la NUMERACION que ve el
+  // colaborador ("ya hice la 3") apuntaria a otra tarea.
+  const orden = 'order by fecha asc, hora asc, id asc';
   const r = await query(
     `select * from mdtask_checklists where ${comunes.join(' and ')} and (${ident.join(' or ')}) ${orden}`, params);
   if (r.rowCount > 0 || !nombre) return r.rows.map(checklistFila);
@@ -581,6 +584,71 @@ function horaEnvioMx() {
   }).format(new Date());
 }
 
+/**
+ * LISTA PLANA DE TAREAS del dia (la vista que necesita quien trabaja por RUTINAS).
+ *
+ * Motivo: las tareas recurrentes llegan como MUCHOS checklists de UN item cada
+ * uno (hoy 144 de 179). Para la persona son "sus 17 tareas", no 17 checklists,
+ * y numerarlas 1..N por checklist las volvia todas "la 1".
+ *
+ * La numeracion incluye las tareas YA HECHAS a proposito: si solo contara las
+ * pendientes, al cerrar la 1 todas se recorrerian y "ya hice la 3" apuntaria a
+ * otra cosa. Numerando todo, los numeros aguantan toda la conversacion.
+ */
+async function tareasPlanas(ctx, { uid, nombre, fecha } = {}) {
+  const filtros = fecha
+    ? { desde: fecha, hasta: fecha }
+    : { desde: restarDiasISO(ctx.fechaHoy, DIAS_ARRASTRE) || undefined, hasta: ctx.fechaHoy || undefined };
+  const checklists = await pgChecklistsDeUsuario({
+    uid: uid || ctx.uid, nombre: nombre || ctx.nombre, ...filtros,
+  });
+  const tareas = [];
+  for (const ck of checklists) {
+    const items = Array.isArray(ck.items) ? ck.items : [];
+    items.forEach((it, i) => {
+      tareas.push({
+        n: tareas.length + 1,
+        texto: String(it.text || '(sin nombre)'),
+        hecho: itemHecho(it),
+        pide_foto: itemPideEvidencia(it) ? modoEvidencia(it) : null,
+        hora_limite: it.horaLimite || it.time || ck.time || null,
+        vencida: itemVencido(it, ck.date),
+        sucursal: ck.store || '',
+        checklist: ck.name || '',
+        checklist_id: ck.id,
+        item_id: it.id,
+        _idx: i,
+      });
+    });
+  }
+  return { checklists, tareas };
+}
+
+/**
+ * Marca un checklist como ENTREGADO (enviado=true + horaEnvio), con su
+ * justificante si va con retraso, y avisa a quien lo asigno. Una sola definicion
+ * para la entrega de uno y la de todos.
+ * `quien` es { uid, nombre } (el ctx normal, o una identidad minima cuando el
+ * envio lo dispara la ultima foto de la fila, fuera de Claude).
+ */
+async function marcarEnviado(quien, ck, { categoria, comentario, nota } = {}) {
+  if (categoria) {
+    ck.entregaConRetraso = true;
+    ck.motivoRetraso = { categoria, comentario: comentario || '', reportadoPor: quien.nombre, timestamp: Date.now() };
+  }
+  if (nota) ck.notaEmpleado = String(nota).trim();
+  ck.enviado = true;
+  ck.horaEnvio = horaEnvioMx();
+  ck.enviadoPor = 'whatsapp';
+  ck.enviadoEn = Date.now();
+  recalcularStatus(ck);
+  await pgChecklistUpsert(ck.id, ck);
+  // Avisar a quien lo asigno (mejor esfuerzo: nunca tumba la entrega).
+  try { await require('./tareas-notificar').avisarEntrega(ck, quien); }
+  catch (e) { console.error('[entrega] no se pudo avisar al admin:', e && e.message); }
+  return ck;
+}
+
 // Resuelve sobre QUE checklist se va a trabajar: el que digan por id, o el unico
 // que la persona tenga pendiente. Devuelve { ck } o { error, opciones }.
 async function resolverChecklistDestino(ctx, checklistId) {
@@ -611,37 +679,48 @@ async function resolverChecklistDestino(ctx, checklistId) {
  * Cloudinary, igual que registrarUbicacion() en flotilla.
  * Devuelve { ok, sinPendiente?, item, checklist, fase, faltaOtra, todosHechos }.
  */
-async function registrarFotoEvidencia(convKey, urlFoto) {
+async function registrarFotoEvidencia(convKey, urlFoto, identidad) {
   if (!convKey || !urlFoto) return { ok: false, sinPendiente: true };
   const esp = await pgConversacionEsperandoGet(convKey);
-  if (!esp || esp.tipo !== 'foto' || !esp.checklistId) return { ok: false, sinPendiente: true };
+  if (!esp || esp.tipo !== 'foto') return { ok: false, sinPendiente: true };
 
-  const ck = await pgChecklistGet(esp.checklistId);
+  // Formato con FILA (varias tareas con foto, una tras otra) o el de una sola
+  // tarea (compatibilidad con lo que quedara apuntado antes de este cambio).
+  const enFila = Array.isArray(esp.cola) && esp.cola.length > 0;
+  const cola = enFila ? esp.cola : [{ checklistId: esp.checklistId, itemId: esp.itemId, texto: esp.itemTexto, modo: esp.modo, fase: esp.fase }];
+  let cursor = enFila ? Number(esp.idx || 0) : 0;
+  if (cursor >= cola.length) { await pgConversacionEsperandoSet(convKey, null); return { ok: false, sinPendiente: true }; }
+  const actual = cola[cursor];
+  if (!actual || !actual.checklistId) return { ok: false, sinPendiente: true };
+
+  const ck = await pgChecklistGet(actual.checklistId);
   if (!ck) {
     await pgConversacionEsperandoSet(convKey, null);
     return { ok: false, sinPendiente: true };
   }
   const items = Array.isArray(ck.items) ? ck.items : [];
-  const idx = items.findIndex(it => String(it.id) === String(esp.itemId));
+  const idx = items.findIndex(it => String(it.id) === String(actual.itemId));
   if (idx < 0) {
     await pgConversacionEsperandoSet(convKey, null);
     return { ok: false, sinPendiente: true };
   }
 
+  const modoActual = actual.modo || 'simple';
+  const faseActual = actual.fase || null;
   const it = items[idx];
   const ahora = Date.now();
   const hora = fmtHoraMx(ahora);
   let fase = null, faltaOtra = false;
 
-  if (esp.modo === 'antesDespues') {
-    if (esp.fase === 'antes') {
+  if (modoActual === 'antesDespues') {
+    if (faseActual === 'antes') {
       it.photoAntes = urlFoto; it.photoAntesTime = hora; it.photoAntesTimestamp = ahora;
       fase = 'antes'; faltaOtra = true;
     } else {
       it.photoDespues = urlFoto; it.photoDespuesTime = hora;
       fase = 'despues';
     }
-  } else if (esp.modo === 'varias') {
+  } else if (modoActual === 'varias') {
     it.photos = Array.isArray(it.photos) ? it.photos : [];
     it.photos.push({ url: urlFoto, time: hora, timestamp: ahora });
     fase = 'varias';
@@ -655,23 +734,68 @@ async function registrarFotoEvidencia(convKey, urlFoto) {
   recalcularStatus(ck);
   await pgChecklistUpsert(ck.id, ck);
 
-  // Antes/despues: seguimos esperando la segunda foto. Varias fotos: seguimos
-  // abiertos para las que quiera mandar. Simple: ya no esperamos nada.
-  if (esp.modo === 'antesDespues' && fase === 'antes') {
-    await pgConversacionEsperandoSet(convKey, { ...esp, fase: 'despues', pedidoEn: ahora });
-  } else if (esp.modo === 'varias') {
-    await pgConversacionEsperandoSet(convKey, { ...esp, pedidoEn: ahora });
+  // ¿Esta tarea ya quedo lista, o todavia le falta otra foto?
+  const estaListo = itemHecho(it);
+  const sigueEnLaMisma = (modoActual === 'antesDespues' && fase === 'antes') || (modoActual === 'varias' && !estaListo);
+
+  let siguiente = null, entregados = [];
+  if (sigueEnLaMisma) {
+    // Misma tarea: se guarda la fase que toca (la foto de DESPUES).
+    const nuevaCola = cola.slice();
+    nuevaCola[cursor] = { ...actual, fase: fase === 'antes' ? 'despues' : actual.fase };
+    await pgConversacionEsperandoSet(convKey, { tipo: 'foto', cola: nuevaCola, idx: cursor, pedidoEn: ahora });
   } else {
-    await pgConversacionEsperandoSet(convKey, null);
+    cursor += 1;
+    if (cursor < cola.length) {
+      siguiente = cola[cursor];
+      await pgConversacionEsperandoSet(convKey, { tipo: 'foto', cola, idx: cursor, pedidoEn: ahora });
+    } else {
+      // FIN DE LA FILA: ya no falta ninguna foto. Se entrega TODO lo que quedo
+      // completo y a tiempo, no solo los de la fila: en un dia de rutinas tambien
+      // quedaron cerradas las tareas que NO pedian foto, y dejarlas sin enviar
+      // seria entregar a medias. Lo que va con RETRASO no se manda solo, porque
+      // necesita que la persona de el motivo (misma regla que la app).
+      await pgConversacionEsperandoSet(convKey, null);
+      const quien = { uid: identidad && identidad.uid ? identidad.uid : ck.assignedUid || '', nombre: (identidad && identidad.nombre) || ck.assigned || '' };
+      const hoyISO = ahoraMexico().fechaISO;
+      let candidatos = [];
+      try {
+        candidatos = await pgChecklistsDeUsuario({
+          uid: quien.uid || undefined, nombre: quien.nombre || undefined,
+          desde: restarDiasISO(hoyISO, DIAS_ARRASTRE) || undefined, hasta: hoyISO,
+        });
+      } catch (e) { console.error('[entrega] no pude leer los pendientes:', e && e.message); }
+      // Respaldo: si la consulta falla, al menos los de la propia fila.
+      if (!candidatos.length) {
+        const ids = Array.from(new Set(cola.map(c => String(c.checklistId))));
+        for (const id of ids) {
+          const c = String(id) === String(ck.id) ? ck : await pgChecklistGet(id);
+          if (c) candidatos.push(c);
+        }
+      }
+      for (const c of candidatos) {
+        if (!c || c.enviado) continue;
+        const its = Array.isArray(c.items) ? c.items : [];
+        if (!its.length || !its.every(itemHecho)) continue;
+        if (checklistConRetraso(c)) continue;          // necesita justificante
+        await marcarEnviado(quien, c, {});
+        entregados.push({ id: c.id, nombre: c.name || '' });
+      }
+    }
   }
 
   const pendientes = items.filter(i => !itemHecho(i)).length;
   return {
-    ok: true, fase, faltaOtra,
+    ok: true, fase, faltaOtra: sigueEnLaMisma,
     totalFotos: Array.isArray(it.photos) ? it.photos.length : (subida(it.photo) ? 1 : 0),
-    item: { n: idx + 1, texto: String(it.text || '') },
+    item: { n: actual.n || idx + 1, texto: String(it.text || '') },
     checklist: { id: ck.id, nombre: ck.name || '', status: ck.status, pendientes, total: items.length },
     todosHechos: pendientes === 0,
+    // Progreso de la FILA de fotos (lo usa el webhook para ir contando). `cursor`
+    // solo avanza cuando una tarea queda cerrada, asi que es el numero de listas.
+    fila: { hechas: cursor, total: cola.length, restantes: Math.max(0, cola.length - cursor) },
+    siguiente: siguiente ? { texto: siguiente.texto, fase: siguiente.fase, n: siguiente.n } : null,
+    entregados,
   };
 }
 
@@ -811,25 +935,28 @@ const TOOLS = [
   },
   {
     name: 'entregar_item',
-    description: 'Marca UNA tarea (item) de un checklist como hecha. Si el item pide foto de evidencia, NO se cierra: devuelve requiere_foto y hay que pedirle al colaborador que mande la foto por WhatsApp (la siguiente imagen que envie se guarda sola en ese item).',
+    description: 'Marca tareas como hechas. Acepta UNA ("ya hice la 2"), VARIAS ("ya hice la 1, 3 y 7" -> tareas:["1","3","7"]) o TODAS ("ya termine todo" -> todas:true). Los numeros son los de la lista de mis_pendientes. Las tareas que piden foto NO se cierran aqui: entran a una fila y hay que pedirle las fotos una por una (cada imagen que mande se guarda sola en la que toca).',
     input_schema: {
       type: 'object',
       properties: {
-        item: { type: 'string', description: 'Numero del item tal como lo dio mis_pendientes ("2"), o su texto.' },
-        checklist_id: { type: 'string', description: 'Id del checklist. Si la persona solo tiene uno pendiente, se puede omitir.' }
+        item: { type: 'string', description: 'Una tarea: su numero ("2") o su texto.' },
+        tareas: { type: 'array', items: { type: 'string' }, description: 'Varias tareas por numero o texto. Ej. ["1","3","7"].' },
+        todas: { type: 'boolean', description: 'true = todas las tareas pendientes del dia.' },
+        checklist_id: { type: 'string', description: 'Solo si te refieres a un checklist concreto y su numeracion interna.' }
       },
-      required: ['item']
+      required: []
     }
   },
   {
     name: 'enviar_checklist',
-    description: 'ENVIA el checklist ya trabajado (es el acto de entregarlo; queda en el historial del admin). Si faltan items, avisa que falta y solo lo manda si el colaborador confirma con forzar=true. Si alguna hora limite ya paso, exige justificante (categoria + comentario).',
+    description: 'ENTREGA lo trabajado (es el acto de enviarlo; queda en el historial del admin). Con todos=true envia TODO lo que ya este completo (lo normal en quien trabaja por rutinas y tiene muchos checklists). Si faltan tareas avisa cuales y solo manda si el colaborador confirma con forzar=true. Si ya paso la hora limite exige justificante (categoria + comentario).',
     input_schema: {
       type: 'object',
       properties: {
-        checklist_id: { type: 'string', description: 'Id del checklist. Si solo tiene uno pendiente, se puede omitir.' },
-        forzar: { type: 'boolean', description: 'true = enviar aunque falten items (solo despues de que el colaborador lo confirme).' },
-        categoria: { type: 'string', enum: CATEGORIAS_RETRASO, description: 'Motivo del retraso. Obligatorio si el checklist va con retraso.' },
+        todos: { type: 'boolean', description: 'true = enviar todos los checklists que ya esten completos.' },
+        checklist_id: { type: 'string', description: 'Id de uno en concreto. Si solo tiene uno pendiente, se puede omitir.' },
+        forzar: { type: 'boolean', description: 'true = enviar aunque falten tareas (solo despues de que el colaborador lo confirme).' },
+        categoria: { type: 'string', enum: CATEGORIAS_RETRASO, description: 'Motivo del retraso. Obligatorio si va con retraso.' },
         comentario: { type: 'string', description: 'Explicacion del retraso (minimo 5 caracteres). Obligatorio si va con retraso.' },
         nota: { type: 'string', description: 'Nota opcional del colaborador para el admin (queda como notaEmpleado).' }
       },
@@ -996,7 +1123,6 @@ function esAdminGlobal(perfil) {
 function sucursalesDe(u) {
   return u.sucursales || (u.sucursal ? [u.sucursal] : []);
 }
-// Sucursales a las que este admin puede asignar.
 // ---------------------------------------------------------------------------
 // PERMISOS — espejo de src/app/shared/permisos.util.ts. El bot NO inventa roles:
 // usa los MISMOS del perfil de la app (rol, alcance, sucursales y los flags
@@ -1030,6 +1156,7 @@ function enMiAlcance(ctx, user) {
   const permitidas = sucursalesPermitidas(ctx);
   return sucursalesDe(user).some(s => permitidas.some(p => normaliza(p) === normaliza(s)));
 }
+// Sucursales en las que este usuario puede operar (todas, si es admin global).
 function sucursalesPermitidas(ctx) {
   if (esAdminGlobal(ctx.perfil)) {
     const set = new Set();
@@ -1377,75 +1504,201 @@ async function ejecutarHerramienta(db, ctx, nombre, input) {
       if (!enMiAlcance(ctx, r.user)) return { ok: false, mensaje: `${r.user.nombre || 'Esa persona'} no esta en tus sucursales, no puedo mostrarte sus tareas.` };
       uid = r.user.id; quien = r.user.nombre || r.user.correo; deOtro = true;
     }
-    const filtros = input.fecha
-      ? { desde: input.fecha, hasta: input.fecha }
-      // hoy y lo que arrastra sin enviar (acotado a DIAS_ARRASTRE)
-      : { desde: restarDiasISO(ctx.fechaHoy, DIAS_ARRASTRE) || undefined, hasta: ctx.fechaHoy || undefined };
-    const lista = await pgChecklistsDeUsuario({ uid, nombre: quien, ...filtros });
+    const { checklists: lista, tareas } = await tareasPlanas(ctx, { uid, nombre: quien, fecha: input.fecha });
     if (!lista.length) {
       return {
-        ok: true, total: 0, checklists: [],
-        mensaje: deOtro ? `${quien} no tiene checklists por entregar${input.fecha ? ' el ' + input.fecha : ''}.`
-          : `No tienes checklists por entregar${input.fecha ? ' el ' + input.fecha : ''} 🎉`
+        ok: true, total: 0, checklists: [], tareas: [],
+        mensaje: deOtro ? `${quien} no tiene tareas por entregar${input.fecha ? ' el ' + input.fecha : ''}.`
+          : `No tienes tareas por entregar${input.fecha ? ' el ' + input.fecha : ''} 🎉`
       };
     }
     const vistas = lista.map(vistaChecklist);
-    const pendientes = vistas.reduce((n, v) => n + (v.total - v.hechos), 0);
-    return { ok: true, de: quien, total: vistas.length, items_pendientes: pendientes, checklists: vistas };
+    const pendientes = tareas.filter(t => !t.hecho);
+    const conFoto = pendientes.filter(t => t.pide_foto).length;
+    return {
+      ok: true, de: quien,
+      // `tareas` es la lista que se le debe leer al colaborador: numerada de
+      // corrido, sin importar en cuantos checklists vengan repartidas.
+      tareas: tareas.map(({ _idx, item_id, ...t }) => t),
+      total_tareas: tareas.length, pendientes: pendientes.length, con_foto: conFoto,
+      checklists: vistas, total: vistas.length,
+      mensaje: pendientes.length === 0
+        ? `${deOtro ? quien + ' ya' : 'Ya'} tiene todo hecho; falta enviarlo.`
+        : `${pendientes.length} tarea(s) pendiente(s)${conFoto ? `, ${conFoto} con foto` : ''}. Leele la lista con SUS numeros.`
+    };
   }
 
   if (nombre === 'entregar_item') {
-    const r = await resolverChecklistDestino(ctx, input.checklist_id);
-    if (r.error) return { ok: false, mensaje: r.error, opciones: r.opciones };
-    const ck = r.ck;
-    const items = Array.isArray(ck.items) ? ck.items : [];
-    const { idx, ambiguos } = resolverItem(ck, input.item);
-    if (idx < 0) {
-      if (ambiguos.length) return { ok: false, mensaje: `¿Cual de estas? ${ambiguos.join(' | ')}` };
-      return { ok: false, mensaje: `No encontre esa tarea en "${ck.name}".`, checklist: vistaChecklist(ck) };
-    }
-    const it = items[idx];
-    if (itemHecho(it)) {
-      return { ok: true, ya_estaba: true, mensaje: `"${it.text}" ya estaba lista.`, checklist: vistaChecklist(ck) };
-    }
+    // Puede venir: una tarea ("item"), varias ("tareas": ["1","3","7"]) o todas.
+    const refs = [];
+    if (Array.isArray(input.tareas)) refs.push(...input.tareas);
+    if (input.item != null && String(input.item).trim()) refs.push(input.item);
+    const quiereTodas = input.todas === true
+      || refs.some(x => ['todas', 'todo', 'todos'].includes(normaliza(x)));
 
-    // Pide EVIDENCIA: no se cierra aqui. Queda apuntado que esperamos la foto y
-    // el webhook la guarda cuando llegue la imagen (igual que la ubicacion en flotilla).
-    if (itemPideEvidencia(it)) {
-      const modo = modoEvidencia(it);
-      if (!ctx.convKey) {
-        return { ok: false, mensaje: `"${it.text}" necesita foto de evidencia, y la foto se manda por WhatsApp o desde la app. Desde aqui no puedo cerrarla.` };
+    // Con checklist_id explicito y una sola referencia, se trabaja DENTRO de ese
+    // checklist (numeracion local, como antes). Si no, se usa la lista PLANA del
+    // dia, que es la que ve quien tiene muchas tareas de rutina.
+    const local = !!input.checklist_id && !quiereTodas && refs.length <= 1;
+    let objetivo = [];   // [{ ck, idx }]
+    const cache = new Map();
+    const cargar = async (id) => {
+      if (!cache.has(String(id))) {
+        const ck = await pgChecklistGet(String(id));
+        cache.set(String(id), ck);
       }
-      await pgConversacionEsperandoSet(ctx.convKey, {
-        tipo: 'foto', checklistId: ck.id, itemId: it.id, itemTexto: String(it.text || ''),
-        modo, fase: modo === 'antesDespues' ? 'antes' : null, pedidoEn: Date.now(),
-      });
-      return {
-        ok: true, requiere_foto: modo, checklist_id: ck.id,
-        item: { n: idx + 1, texto: String(it.text || '') },
-        mensaje: modo === 'antesDespues'
-          ? `"${it.text}" pide foto ANTES y foto DESPUES. Pidele la foto de ANTES; la siguiente imagen que mande se guarda ahi.`
-          : modo === 'varias'
-            ? `"${it.text}" pide varias fotos. Pidele que las mande; cada imagen que envie se guarda en esa tarea.`
-            : `"${it.text}" pide foto de evidencia. Pidele que la mande por WhatsApp; la siguiente imagen se guarda ahi y la tarea queda lista.`
-      };
+      return cache.get(String(id));
+    };
+
+    if (local) {
+      const r = await resolverChecklistDestino(ctx, input.checklist_id);
+      if (r.error) return { ok: false, mensaje: r.error, opciones: r.opciones };
+      cache.set(String(r.ck.id), r.ck);
+      const { idx, ambiguos } = resolverItem(r.ck, refs[0]);
+      if (idx < 0) {
+        if (ambiguos.length) return { ok: false, mensaje: `¿Cual de estas? ${ambiguos.join(' | ')}` };
+        return { ok: false, mensaje: `No encontre esa tarea en "${r.ck.name}".`, checklist: vistaChecklist(r.ck) };
+      }
+      objetivo.push({ ck: r.ck, idx });
+    } else {
+      const { tareas } = await tareasPlanas(ctx, {});
+      if (!tareas.length) return { ok: false, mensaje: 'No tienes tareas pendientes por entregar.' };
+      const elegidas = [];
+      if (quiereTodas) {
+        elegidas.push(...tareas.filter(t => !t.hecho));
+        if (!elegidas.length) return { ok: true, ya_estaba: true, mensaje: 'Ya tenias todas hechas; solo falta enviarlas.' };
+      } else {
+        for (const ref of refs) {
+          const txt = String(ref).trim();
+          const num = /^#?(\d{1,3})$/.exec(txt);
+          let t = null;
+          if (num) t = tareas.find(x => x.n === parseInt(num[1], 10));
+          else {
+            const obj = normaliza(txt);
+            const cands = tareas.filter(x => { const n = normaliza(x.texto); return n === obj || n.includes(obj) || obj.includes(n); });
+            if (cands.length > 1) return { ok: false, mensaje: `"${txt}" coincide con varias: ${cands.slice(0, 6).map(c => c.n + '. ' + c.texto).join(' | ')}. ¿Cual?` };
+            t = cands[0] || null;
+          }
+          if (!t) return { ok: false, mensaje: `No encontre la tarea "${txt}" en tu lista. Vuelve a leerle sus pendientes con mis_pendientes.` };
+          elegidas.push(t);
+        }
+      }
+      for (const t of elegidas) {
+        const ck = await cargar(t.checklist_id);
+        if (!ck || !esMiChecklist(ctx, ck)) continue;
+        if (ck.enviado) continue;
+        objetivo.push({ ck, idx: t._idx, n: t.n });
+      }
+      if (!objetivo.length) return { ok: false, mensaje: 'Esas tareas ya se enviaron o no son tuyas.' };
     }
 
-    it.checked = true; it.checkedEn = Date.now(); it.checkedPor = 'whatsapp';
-    ck.items = items;
-    recalcularStatus(ck);
-    await pgChecklistUpsert(ck.id, ck);
-    const faltan = items.filter(i => !itemHecho(i)).length;
+    // Reparto: lo que no pide foto se cierra ya; lo que pide foto entra a la COLA.
+    const cerradas = [], yaEstaban = [], cola = [];
+    for (const { ck, idx, n } of objetivo) {
+      const items = Array.isArray(ck.items) ? ck.items : [];
+      const it = items[idx];
+      if (!it) continue;
+      const etiqueta = { n: n || idx + 1, texto: String(it.text || ''), checklist_id: ck.id };
+      if (itemHecho(it)) { yaEstaban.push(etiqueta); continue; }
+      if (itemPideEvidencia(it)) {
+        const modo = modoEvidencia(it);
+        if (!ctx.convKey) {
+          return { ok: false, mensaje: `"${it.text}" necesita foto de evidencia, y la foto se manda por WhatsApp o desde la app. Desde aqui no puedo cerrarla.` };
+        }
+        cola.push({ checklistId: ck.id, itemId: it.id, texto: String(it.text || ''), modo, fase: modo === 'antesDespues' ? 'antes' : null, n: etiqueta.n });
+        continue;
+      }
+      it.checked = true; it.checkedEn = Date.now(); it.checkedPor = 'whatsapp';
+      ck.items = items;
+      cerradas.push(etiqueta);
+    }
+
+    // Un solo guardado por checklist tocado.
+    for (const ck of new Set(cerradas.map(c => cache.get(String(c.checklist_id))))) {
+      if (!ck) continue;
+      recalcularStatus(ck);
+      await pgChecklistUpsert(ck.id, ck);
+    }
+
+    // La COLA de fotos vive en la conversacion: cada imagen que llegue cierra la
+    // siguiente de la fila (lo hace el webhook con registrarFotoEvidencia).
+    if (cola.length) {
+      await pgConversacionEsperandoSet(ctx.convKey, { tipo: 'foto', cola, idx: 0, pedidoEn: Date.now() });
+    }
+
+    const { tareas: despues } = await tareasPlanas(ctx, {});
+    const faltan = despues.filter(t => !t.hecho).length;
+    const primera = cola[0];
     return {
-      ok: true, checklist_id: ck.id, item: { n: idx + 1, texto: String(it.text || '') },
-      pendientes: faltan, total: items.length, status: ck.status,
-      mensaje: faltan === 0
-        ? `Listo "${it.text}". Ya completaste las ${items.length} tareas de "${ck.name}": pregúntale si lo envia (enviar_checklist).`
-        : `Listo "${it.text}". Te faltan ${faltan} de ${items.length} en "${ck.name}".`
+      ok: true,
+      cerradas, ya_estaban: yaEstaban,
+      requiere_foto: cola.length ? (cola.length === 1 ? cola[0].modo : 'varias_tareas') : null,
+      fotos_en_cola: cola.length,
+      siguiente_foto: primera ? { n: primera.n, texto: primera.texto, fase: primera.fase } : null,
+      pendientes: faltan,
+      mensaje: [
+        cerradas.length ? `Cerre ${cerradas.length} tarea(s): ${cerradas.map(c => c.texto).join(', ')}.` : '',
+        yaEstaban.length ? `${yaEstaban.length} ya estaban listas.` : '',
+        cola.length === 1
+          ? `Falta la FOTO de "${primera.texto}"${primera.fase === 'antes' ? ' (primero la de ANTES)' : ''}: pidesela y la siguiente imagen que mande se guarda ahi.`
+          : cola.length > 1
+            ? `Quedan ${cola.length} tareas que piden FOTO. Pidele que te las mande UNA POR UNA en ese orden; empieza con "${primera.texto}". Yo las voy colocando y te confirmo cada una.`
+            : '',
+        !cola.length && faltan === 0 ? 'Ya no le falta nada: preguntale si lo envia (enviar_checklist con todos=true).' : '',
+      ].filter(Boolean).join(' ')
     };
   }
 
   if (nombre === 'enviar_checklist') {
+    // --- ENVIAR TODO lo que ya este completo (el caso de quien trabaja por rutinas
+    //     y arrastra muchos checklists de una sola tarea cada uno) ---
+    if (input.todos === true) {
+      const { checklists } = await tareasPlanas(ctx, {});
+      if (!checklists.length) return { ok: false, mensaje: 'No tienes nada pendiente por enviar.' };
+      const completo = (ck) => { const it = ck.items || []; return it.length > 0 && it.every(itemHecho); };
+      const subiendo = checklists.some(ck => (ck.items || []).some(i => i.photo === 'subiendo...' || i.photoAntes === 'subiendo...' || i.photoDespues === 'subiendo...'));
+      if (subiendo) return { ok: false, mensaje: 'Hay una foto subiendo todavia. Espera unos segundos e intenta de nuevo.' };
+
+      const listos = checklists.filter(completo);
+      const incompletos = checklists.filter(ck => !completo(ck));
+      const aEnviar = input.forzar ? checklists : listos;
+      if (!aEnviar.length) {
+        const queFalta = incompletos.slice(0, 8).flatMap(ck => (ck.items || []).filter(i => !itemHecho(i)).map(i => `${i.text} (${itemFalta(i)})`));
+        return {
+          ok: false, confirmar: true, faltan: queFalta, total_faltan: incompletos.length,
+          mensaje: `Todavia no hay nada completo para enviar. Falta: ${queFalta.join('; ')}. Si aun asi quiere entregar lo que hay, vuelve a llamar con forzar=true.`
+        };
+      }
+      // Justificante: una sola vez, si alguno de los que se van va con retraso.
+      const conRetraso = aEnviar.filter(checklistConRetraso);
+      let cat = null, com = '';
+      if (conRetraso.length) {
+        cat = CATEGORIAS_RETRASO.find(c => normaliza(c) === normaliza(input.categoria));
+        com = String(input.comentario || '').trim();
+        if (!cat || com.length < 5) {
+          return {
+            ok: false, requiere_justificante: true, categorias: CATEGORIAS_RETRASO, con_retraso: conRetraso.length,
+            mensaje: `${conRetraso.length} de esas tareas van con RETRASO (ya paso su hora limite). Para entregarlas necesito el motivo (${CATEGORIAS_RETRASO.join(', ')}) y un comentario de al menos 5 caracteres. Con eso entrego todo de una vez.`
+          };
+        }
+      }
+      const enviados = [];
+      for (const ck of aEnviar) {
+        await marcarEnviado(ctx, ck, { categoria: cat, comentario: com, nota: input.nota });
+        enviados.push({ id: ck.id, nombre: ck.name, con_retraso: !!ck.entregaConRetraso });
+      }
+      if (ctx.convKey) { try { await pgConversacionEsperandoSet(ctx.convKey, null); } catch (e) { /* no critico */ } }
+      const quedan = incompletos.filter(ck => !aEnviar.includes(ck)).length;
+      return {
+        ok: true, enviados: enviados.length, con_retraso: enviados.filter(e => e.con_retraso).length,
+        detalle: enviados.slice(0, 10), pendientes: quedan,
+        mensaje: `ENTREGADAS ${enviados.length} tarea(s) a las ${horaEnvioMx()}`
+          + (enviados.some(e => e.con_retraso) ? ' (con justificante de retraso).' : '.')
+          + (quedan ? ` Le quedan ${quedan} sin completar.` : ' Ya no le queda nada pendiente 🎉')
+      };
+    }
+
+    // --- Un checklist en concreto ---
     const r = await resolverChecklistDestino(ctx, input.checklist_id);
     if (r.error) return { ok: false, mensaje: r.error, opciones: r.opciones };
     const ck = r.ck;
@@ -1466,37 +1719,29 @@ async function ejecutarHerramienta(db, ctx, nombre, input) {
     }
 
     // Retraso: mismo criterio que hayRetrasoEnChecklist() -> justificante obligatorio.
+    let cat1 = null, com1 = '';
     if (checklistConRetraso(ck)) {
-      const cat = CATEGORIAS_RETRASO.find(c => normaliza(c) === normaliza(input.categoria));
-      const com = String(input.comentario || '').trim();
-      if (!cat || com.length < 5) {
+      cat1 = CATEGORIAS_RETRASO.find(c => normaliza(c) === normaliza(input.categoria));
+      com1 = String(input.comentario || '').trim();
+      if (!cat1 || com1.length < 5) {
         return {
           ok: false, requiere_justificante: true, categorias: CATEGORIAS_RETRASO,
           mensaje: `"${ck.name}" va con RETRASO (paso la hora limite). Para enviarlo necesito el motivo (una de estas categorias: ${CATEGORIAS_RETRASO.join(', ')}) y un comentario de al menos 5 caracteres explicando que paso.`
         };
       }
-      ck.entregaConRetraso = true;
-      ck.motivoRetraso = { categoria: cat, comentario: com, reportadoPor: ctx.nombre, timestamp: Date.now() };
     }
 
-    if (input.nota) ck.notaEmpleado = String(input.nota).trim();
-    ck.enviado = true;
-    ck.horaEnvio = horaEnvioMx();
-    ck.enviadoPor = 'whatsapp';
-    ck.enviadoEn = Date.now();
-    recalcularStatus(ck);
-    await pgChecklistUpsert(ck.id, ck);
+    await marcarEnviado(ctx, ck, { categoria: cat1, comentario: com1, nota: input.nota });
 
     // Si quedo alguna foto "esperando" de este checklist, ya no aplica.
     if (ctx.convKey) {
       try {
         const esp = await pgConversacionEsperandoGet(ctx.convKey);
-        if (esp && String(esp.checklistId) === String(ck.id)) await pgConversacionEsperandoSet(ctx.convKey, null);
+        const dela = esp && (String(esp.checklistId) === String(ck.id)
+          || (Array.isArray(esp.cola) && esp.cola.some(c => String(c.checklistId) === String(ck.id))));
+        if (dela) await pgConversacionEsperandoSet(ctx.convKey, null);
       } catch (e) { /* no es critico */ }
     }
-    // Avisar a quien lo asigno (mejor esfuerzo, nunca tumba la entrega).
-    try { await require('./tareas-notificar').avisarEntrega(ck, ctx); }
-    catch (e) { console.error('[entrega] no se pudo avisar al admin:', e && e.message); }
 
     return {
       ok: true, checklist_id: ck.id, status: ck.status,
@@ -2062,11 +2307,12 @@ function construirSystem(ctx) {
     '- TELEFONO: sin numero registrado esa persona NO recibe avisos ni puede usar el bot. Si te dictan un numero ("el de Fatima es 352..."), NO lo ignores: confirma el nombre y el numero en una frase y usa registrar_telefono. Si te preguntan a quien le falta, usa personal_sin_telefono.',
     '',
     'ENTREGAR TAREAS (lo que el colaborador tiene que hacer hoy):',
-    '- "que tengo que hacer", "mis tareas", "que me falta" -> mis_pendientes. Cada item viene NUMERADO: usa esos numeros al hablar ("1. barrer, 2. vitrina").',
-    '- "ya hice la 2", "termine la de la vitrina" -> entregar_item con ese numero o su texto. Antes usa mis_pendientes si no tienes los numeros a la mano.',
-    '- FOTOS: si entregar_item devuelve requiere_foto, la tarea NO quedo lista todavia. Pidele con naturalidad que mande la foto por WhatsApp; la siguiente imagen que envie se guarda sola en esa tarea y el sistema le confirma. NO digas que ya quedo hasta que llegue la foto. Si es antes/despues, pide primero la de ANTES.',
-    '- ENVIAR es el paso final: cuando ya no le falte nada (o el diga que ya acabo) preguntale si lo envia y usa enviar_checklist. Si contesta que faltan cosas y aun asi quiere mandarlo, llama enviar_checklist con forzar=true.',
-    '- Si enviar_checklist pide justificante (paso la hora limite), pidele el MOTIVO (una de las categorias que te devuelve) y una explicacion corta, y vuelve a llamar con categoria y comentario.',
+    '- "que tengo que hacer", "mis tareas", "que me falta" -> mis_pendientes. Leele la lista de "tareas" con SUS numeros y su hora limite; esa numeracion es la unica que debes usar. NO le hables de "checklists": para el son TAREAS (las rutinas llegan como muchos checklists de una sola tarea).',
+    '- "ya hice la 2" -> entregar_item item:"2". "ya hice la 1, 3 y 7" -> entregar_item tareas:["1","3","7"]. "ya termine todo" -> entregar_item todas:true. Si no tienes los numeros frescos, llama mis_pendientes primero.',
+    '- FOTOS EN FILA: las tareas que piden foto NO se cierran al marcarlas; entran a una fila. Si te devuelve fotos_en_cola, pidele las fotos UNA POR UNA empezando por siguiente_foto. Cada imagen que mande se guarda sola y el sistema le confirma el avance ("3 de 12") y le pide la siguiente: TU no tienes que hacer nada entre fotos. Si es antes/despues, primero la de ANTES.',
+    '- Cuando termina la fila de fotos, el sistema ENTREGA SOLO todo lo que quedo completo y a tiempo. No prometas que lo enviaras tu ni vuelvas a llamar enviar_checklist si el sistema ya lo entrego.',
+    '- ENVIAR a mano: si ya no le falta nada y no hubo fila de fotos, usa enviar_checklist con todos=true (entrega todo lo que este completo). Si faltan cosas y aun asi quiere entregar, vuelve a llamar con forzar=true.',
+    '- Si pide justificante (ya paso la hora limite), pidele el MOTIVO (una de las categorias que te devuelve) y una explicacion corta, y vuelve a llamar con categoria y comentario. Con eso entrega todo de una vez.',
     '- Nunca marques ni envies tareas de otra persona: cada quien entrega las suyas.',
     '',
     'FLOTILLA (vehiculos):',

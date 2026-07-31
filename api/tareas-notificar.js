@@ -213,10 +213,20 @@ async function resumenMatutino() {
     const clave = `resumen:${persona.id}:${fechaISO}`;
     if (!await reclamarAviso(clave)) continue;
     const nombre = (persona.nombre || '').split(' ')[0] || 'Hola';
-    const lista = cks.slice(0, 5).map(c => `• ${c.name || 'tarea'} (${c.store || 's/suc'}, ${c.time || '23:59'})`).join('\n')
-      + (cks.length > 5 ? `\n• ...y ${cks.length - 5} más` : '');
-    const vars = [nombre, String(cks.length), lista.replace(/\n/g, ' | ')];
-    const respaldo = `¡Buen día, ${nombre}! ☀️\nHoy tienes *${cks.length}* ${cks.length === 1 ? 'tarea' : 'tareas'}:\n${lista}\n\nEscríbeme *"qué tengo hoy"* para verlas con detalle 👍`;
+    // Se cuentan TAREAS, no checklists: las rutinas llegan como muchos checklists
+    // de una sola tarea, y "hoy tienes 17 checklists" no significa nada para ella.
+    const tareas = cks.flatMap(c => (Array.isArray(c.items) ? c.items : [])
+      .filter(i => !itemHecho(i))
+      .map(i => ({ texto: String(i.text || c.name || 'tarea'), hora: i.horaLimite || i.time || c.time || '23:59' })));
+    const total = tareas.length || cks.length;
+    const muestra = tareas.slice(0, 4).map(t => `${t.texto} (${t.hora})`);
+    // Los parámetros de plantilla no aceptan saltos de línea: se separa con " | ".
+    const lista = muestra.join(' | ') + (tareas.length > 4 ? ` | y ${tareas.length - 4} más` : '');
+    const vars = [nombre, String(total), lista || 'tus pendientes del día'];
+    const respaldo = `¡Buen día, ${nombre}! ☀️\nHoy tienes *${total}* ${total === 1 ? 'tarea' : 'tareas'}:\n`
+      + muestra.map(t => '• ' + t).join('\n')
+      + (tareas.length > 4 ? `\n• ...y ${tareas.length - 4} más` : '')
+      + `\n\nEscríbeme *"qué tengo hoy"* para verlas numeradas y las vamos cerrando 👍`;
     const res = await mandar(persona.telefono, T_RESUMEN, vars, respaldo);
     // Solo se libera la clave ante un fallo pasajero. Si es que no hay plantilla
     // ni ventana, se deja marcada: el poll corre cada minuto y reintentarlo seria
@@ -229,6 +239,9 @@ async function resumenMatutino() {
 // ============================================================================
 //  3) RECORDATORIO ANTES DE LA HORA LÍMITE
 // ============================================================================
+// Se agrupa por PERSONA y hora límite: quien trabaja por rutinas arrastra
+// decenas de checklists de una sola tarea, todos con el mismo límite. Uno por
+// checklist serían 17 mensajes seguidos; así recibe UNO con el total.
 async function recordatoriosLimite() {
   const { fechaISO } = ahoraMexico();
   const pendientes = await pgChecklistsPendientesDeFecha(fechaISO);
@@ -236,29 +249,45 @@ async function recordatoriosLimite() {
   const personal = await cargarPersonal();
   const ahora = Date.now();
 
+  const grupos = new Map();  // persona + hora límite -> lo que le falta
   for (const ck of pendientes) {
     const hora = limitePendiente(ck);
     if (!hora) continue;                       // ya no le falta nada por hacer
     const limite = epochDeMx(ck.date || fechaISO, hora);
     if (limite == null) continue;
-    const faltan = Math.round((limite - ahora) / 60000);
-    if (faltan <= 0 || faltan > RECORDATORIO_MIN) continue;   // aún no toca, o ya venció
+    const faltanMin = Math.round((limite - ahora) / 60000);
+    if (faltanMin <= 0 || faltanMin > RECORDATORIO_MIN) continue;   // aún no toca, o ya venció
 
     const persona = personaDeChecklist(personal, ck);
     if (!persona || !persona.telefono) continue;
 
-    const clave = 'limite:' + ck.id;
+    const clave = `${persona.id}|${hora}`;
+    if (!grupos.has(clave)) grupos.set(clave, { persona, hora, faltanMin, cks: [], tareas: 0 });
+    const g = grupos.get(clave);
+    g.cks.push(ck);
+    g.tareas += (Array.isArray(ck.items) ? ck.items : []).filter(i => !itemHecho(i)).length;
+    g.faltanMin = Math.min(g.faltanMin, faltanMin);
+  }
+
+  for (const g of grupos.values()) {
+    // La clave incluye la hora: si tiene tareas para las 14:00 y otras para las
+    // 20:00, recibe un recordatorio por cada bloque, no uno por tarea.
+    const clave = `limite:${g.persona.id}:${fechaISO}:${g.hora}`;
     if (!await reclamarAviso(clave)) continue;
 
-    const items = Array.isArray(ck.items) ? ck.items : [];
-    const sinHacer = items.filter(i => !itemHecho(i)).length;
-    const nombre = (persona.nombre || '').split(' ')[0] || 'Hola';
-    const vars = [nombre, ck.name || 'tu tarea', String(faltan), String(sinHacer)];
-    const respaldo = `⏰ ${nombre}, te ${faltan === 1 ? 'queda 1 minuto' : 'quedan ' + faltan + ' minutos'} para entregar *${ck.name || 'tu tarea'}*`
-      + ` y te ${sinHacer === 1 ? 'falta 1 tarea' : 'faltan ' + sinHacer + ' tareas'}.\nSi ya las hiciste, dime *"ya terminé"* y lo enviamos 🙌`;
-    const res = await mandar(persona.telefono, T_RECORDATORIO, vars, respaldo);
+    const nombre = (g.persona.nombre || '').split(' ')[0] || 'Hola';
+    const unaSola = g.tareas === 1;
+    const primera = (g.cks[0].items || []).find(i => !itemHecho(i));
+    const que = unaSola
+      ? ((primera && primera.text) || g.cks[0].name || 'tu tarea')
+      : `${g.tareas} tareas de tu rutina`;
+    const vars = [nombre, que, String(g.faltanMin), String(g.tareas)];
+    const respaldo = `⏰ ${nombre}, ${g.faltanMin === 1 ? 'te queda 1 minuto' : 'te quedan ' + g.faltanMin + ' minutos'} (hasta las ${g.hora}) y `
+      + (unaSola ? `te falta *${que}*.` : `te faltan *${g.tareas} tareas*.`)
+      + `\nSi ya las hiciste, dime *"ya terminé"* y las entregamos 🙌`;
+    const res = await mandar(g.persona.telefono, T_RECORDATORIO, vars, respaldo);
     if (!res.ok && res.motivo !== 'sin_plantilla_ni_ventana') await soltarAviso(clave);
-    else if (res.ok) console.log(`[tareas-notificar] recordatorio checklist=${ck.id} (${faltan} min) -> ${persona.nombre}`);
+    else if (res.ok) console.log(`[tareas-notificar] recordatorio ${g.hora} -> ${g.persona.nombre} (${g.tareas} tareas en ${g.cks.length} checklist)`);
   }
 }
 

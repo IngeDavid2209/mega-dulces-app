@@ -134,10 +134,18 @@ module.exports = async (req, res) => {
       );
       const guardado = fila(r.rows[0]);
       const esNuevo = r.rows[0]._insertado === true;
-      // Las tareas que genera el Robot de Rutinas llegan por decenas cada
-      // madrugada: esas NO se avisan una por una (las cubre el resumen de la
-      // manana). Solo se avisa lo que un humano asigno.
-      const deRobot = !!(guardado._asignacionId || guardado._catalogoRutinaId || guardado._rutinaPersonalId);
+      // Las tareas RECURRENTES llegan por decenas cada dia (hoy 144 de 179): esas
+      // NO se avisan una por una, las cubre el resumen de la manana. Solo se avisa
+      // lo que un humano asigno a mano.
+      //
+      // OJO con la deteccion: los checklists que salen de un MOLDE no traen
+      // _asignacionId ni _catalogoRutinaId, y su createdBy es la persona que
+      // aplico el molde (un humano). Lo unico que los delata es el prefijo
+      // `molde_` de su id, que arma el robot del front. Si cambia ese formato,
+      // hay que actualizar esto o volveran los avisos en masa.
+      const deRobot = !!(guardado._asignacionId || guardado._catalogoRutinaId || guardado._rutinaPersonalId)
+        || /^molde_/i.test(id)
+        || /robot/i.test(String(guardado.createdBy || ''));
       if (esNuevo && !deRobot && !guardado.enviado) {
         // Sin await: la respuesta no espera a WhatsApp (Railway es un proceso
         // vivo, no serverless, asi que el envio termina igual).

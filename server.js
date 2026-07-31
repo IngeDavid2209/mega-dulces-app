@@ -126,4 +126,13 @@ app.listen(PORT, () => {
   } catch (e) {
     console.error('[flotilla] no se pudo iniciar el poll:', e && e.message);
   }
+
+  // TAREAS: poll de avisos por WhatsApp (resumen de la manana + recordatorio
+  // antes de la hora limite). El aviso al asignar no pasa por aqui: se dispara
+  // al crear el checklist.
+  try {
+    require('./api/tareas-notificar').iniciarPoll();
+  } catch (e) {
+    console.error('[tareas-notificar] no se pudo iniciar el poll:', e && e.message);
+  }
 });

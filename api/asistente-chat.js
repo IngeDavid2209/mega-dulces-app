@@ -5,9 +5,17 @@
 // resultado, y el modelo sigue hasta terminar.
 //
 // Herramientas:
-//   TAREAS:   agregar_tarea, consultar_tareas, completar_tarea, editar_tarea, eliminar_tarea
-//   RUTINAS:  crear_rutina (crea catalogo_rutinas + asignaciones_rutinas)
-//   INFO:     consultar_rutinas, resumen_hoy, estadisticas
+//   TAREAS:    consultar_tareas, completar_tarea, editar_tarea, eliminar_tarea
+//   ENTREGA:   mis_pendientes, entregar_item, enviar_checklist  (para TODOS)
+//   ASIGNAR:   crear_checklist, crear_rutina  (segun permisos del perfil)
+//   INFO:      consultar_rutinas, resumen_hoy, estadisticas
+//   FLOTILLA:  consultar_vehiculos, apartar_vehiculo, consultar_mis_reservas,
+//              cancelar_reserva, registrar_salida/regreso, reservas_pendientes,
+//              aprobar_reserva (estas dos, solo numeros aprobadores)
+//
+// PERMISOS: se toman del perfil de la app (rol/alcance/flags puede*), ver el
+// bloque PERMISOS mas abajo. Regla: ENTREGAR es para todos; ASIGNAR y ver lo de
+// otros dependen del rol.
 //
 // Variables de entorno (Railway -> Variables):
 //   ANTHROPIC_API_KEY, FIREBASE_SERVICE_ACCOUNT, ASISTENTE_MODELO (opcional)
@@ -181,6 +189,55 @@ async function pgChecklistsPorFecha(fecha) {
   const r = await query('select * from mdtask_checklists where fecha = $1', [String(fecha)]);
   return r.rows.map(checklistFila);
 }
+// Checklists de una fecha que siguen SIN ENVIAR (lo que revisa el poll de avisos).
+async function pgChecklistsPendientesDeFecha(fecha) {
+  const r = await query(
+    `select * from mdtask_checklists
+      where fecha = $1 and coalesce(enviado,false) = false
+        and coalesce(eliminado,false) = false and coalesce(archivado,false) = false`,
+    [String(fecha)]
+  );
+  return r.rows.map(checklistFila);
+}
+async function pgChecklistGet(id) {
+  const r = await query('select * from mdtask_checklists where id = $1', [String(id)]);
+  return r.rows[0] ? checklistFila(r.rows[0]) : null;
+}
+// Checklists asignados a una persona. Se busca por uid Y por nombre porque los
+// checklists viejos (pre Robot V2) solo guardan el nombre en `assigned`.
+// Por defecto: sin borrar, sin archivar y SIN ENVIAR (los que aun debe entregar).
+// Si el match exacto no devuelve nada, se reintenta con el comparador TOLERANTE
+// de nombres (acentos, orden de apellidos), igual que hace el front.
+async function pgChecklistsDeUsuario({ uid, nombre, desde, hasta, incluirEnviados = false } = {}) {
+  const comunes = [];
+  const p2 = [];
+  if (desde) { p2.push(String(desde)); comunes.push(`fecha >= $${p2.length}`); }
+  if (hasta) { p2.push(String(hasta)); comunes.push(`fecha <= $${p2.length}`); }
+  comunes.push('coalesce(eliminado,false) = false', 'coalesce(archivado,false) = false');
+  if (!incluirEnviados) comunes.push('coalesce(enviado,false) = false');
+
+  const ident = [], params = [...p2];
+  if (uid) { params.push(String(uid)); ident.push(`assigned_uid = $${params.length}`); }
+  if (nombre) { params.push(String(nombre)); ident.push(`lower(coalesce(assigned,'')) = lower($${params.length})`); }
+  if (!ident.length) return [];
+
+  const orden = 'order by fecha asc, hora asc';
+  const r = await query(
+    `select * from mdtask_checklists where ${comunes.join(' and ')} and (${ident.join(' or ')}) ${orden}`, params);
+  if (r.rowCount > 0 || !nombre) return r.rows.map(checklistFila);
+
+  // Fallback tolerante: el nombre del checklist puede estar escrito distinto
+  // (acentos, apellidos al reves). Primero se piden solo los NOMBRES distintos
+  // de la ventana (docenas de filas) y, si alguno empareja, se traen esos.
+  const nombres = await query(
+    `select distinct assigned from mdtask_checklists where ${comunes.join(' and ')} and coalesce(assigned,'') <> ''`, p2);
+  const parecidos = nombres.rows.map(x => x.assigned).filter(n => mismoNombreEmpleado(n, nombre));
+  if (!parecidos.length) return [];
+  const t = await query(
+    `select * from mdtask_checklists where ${comunes.join(' and ')} and assigned = any($${p2.length + 1}) ${orden}`,
+    [...p2, parecidos]);
+  return t.rows.map(checklistFila);
+}
 
 // -- CRUD genérico (catalogo_rutinas / asignaciones_rutinas) (igual que _crud.js) --
 function crudFila(r, map, boolCols, numCols) {
@@ -231,8 +288,24 @@ async function pgConversacionGet(id) {
     messages: Array.isArray(row.messages) ? row.messages : [],
     actualizado: row.actualizado != null ? Number(row.actualizado) : 0,
     uid: row.uid || null,
-    invitado: row.invitado || null, // identidad de invitado (número no registrado)
+    invitado: row.invitado || null,   // identidad de invitado (número no registrado)
+    esperando: row.esperando || null, // ENTREGA: foto de evidencia pendiente (SQL 024)
   };
+}
+// ENTREGA DE TAREAS: deja (o limpia) la marca de "estoy esperando la foto de tal
+// item". Va en la conversacion, no en el checklist, porque es estado del CHAT:
+// asi la siguiente imagen que llegue sabe a que item pertenece.
+async function pgConversacionEsperandoSet(id, esperando) {
+  await query(
+    `insert into mdtask_wa_conversaciones (id, actualizado, messages, esperando)
+     values ($1,$2,'[]'::jsonb,$3)
+     on conflict (id) do update set esperando=excluded.esperando, actualizado=excluded.actualizado`,
+    [String(id), Date.now(), esperando ? JSON.stringify(esperando) : null]
+  );
+}
+async function pgConversacionEsperandoGet(id) {
+  const r = await query('select esperando from mdtask_wa_conversaciones where id = $1', [String(id)]);
+  return (r.rows[0] && r.rows[0].esperando) || null;
 }
 // Guarda/actualiza SOLO la identidad de invitado del hilo (sin tocar messages).
 async function pgConversacionInvitadoSet(id, invitado) {
@@ -355,6 +428,238 @@ async function registrarUbicacion(uid, ubicacion) {
   return { ok: true, accion, reserva: { id: r.id, vehiculo: r.vehiculoNombre || '', destino: r.destino || '' }, punto };
 }
 
+// ---------------------------------------------------------------------------
+// ENTREGA DE TAREAS POR WHATSAPP
+//
+// Espejo EXACTO de las reglas del front (src/app/shared/item-completado.util.ts
+// y checklist.ts). Si cambias un criterio aqui, cambialo alla tambien:
+//   - un item cuenta como hecho si trae su EVIDENCIA (foto / antes-despues /
+//     varias fotos) o si quedo palomeado cuando no pedia evidencia;
+//   - status del checklist: 0 hechos = pendiente, todos = completo, si no en-progreso;
+//   - ENVIAR es un acto aparte (enviado=true + horaEnvio). Si al enviar alguna
+//     hora limite ya paso, se exige justificante (entregaConRetraso + motivoRetraso).
+// ---------------------------------------------------------------------------
+const CATEGORIAS_RETRASO = ['Falla de equipo', 'Falta de personal', 'Cliente complicado', 'Otro'];
+
+function itemPideEvidencia(it) {
+  return !!(it && (it.requiresPhoto || it.requiresAntesDespues || it.requiresVariasFotos));
+}
+function subida(v) { return !!v && v !== 'subiendo...'; }
+// Espejo de tieneEvidencia() del front.
+function itemHecho(it) {
+  if (!it) return false;
+  if (it.requiresAntesDespues) return subida(it.photoAntes) && subida(it.photoDespues);
+  if (it.requiresVariasFotos) return Array.isArray(it.photos) && it.photos.length > 0;
+  if (it.requiresPhoto) return subida(it.photo);
+  return it.checked === true;
+}
+// Espejo de motivoIncompleto() del front: que le falta a este item.
+function itemFalta(it) {
+  if (it.requiresAntesDespues) {
+    const falta = [];
+    if (!subida(it.photoAntes)) falta.push('foto ANTES');
+    if (!subida(it.photoDespues)) falta.push('foto DESPUES');
+    if (falta.length) return 'falta ' + falta.join(' y ');
+  }
+  if (it.requiresVariasFotos && !(Array.isArray(it.photos) && it.photos.length)) return 'falta subir fotos';
+  if (it.requiresPhoto && !subida(it.photo)) return 'falta la foto';
+  if (!itemPideEvidencia(it) && !it.checked) return 'falta marcarla como hecha';
+  return 'incompleta';
+}
+// Modo de evidencia que pide el item (para saber cuantas fotos esperar).
+function modoEvidencia(it) {
+  if (it.requiresAntesDespues) return 'antesDespues';
+  if (it.requiresVariasFotos) return 'varias';
+  return 'simple';
+}
+// Espejo de isTareaVencida(): deadline = fecha del checklist + horaLimite del item
+// (o su `time` legacy; por defecto 23:59), en hora de Mexico.
+function itemVencido(it, fecha) {
+  if (!fecha) return false;
+  const limite = epochDeMx(fecha, String(it.horaLimite || it.time || '23:59'));
+  return limite != null && Date.now() > limite + 59 * 1000;
+}
+function checklistConRetraso(ck) {
+  return Array.isArray(ck.items) && ck.items.some(i => itemVencido(i, ck.date));
+}
+// Recalcula status igual que actualizarEstado() del front. Muta y devuelve el ck.
+function recalcularStatus(ck) {
+  const items = Array.isArray(ck.items) ? ck.items : [];
+  const hechos = items.filter(itemHecho).length;
+  if (!items.length || hechos === 0) ck.status = 'pendiente';
+  else if (hechos === items.length) ck.status = 'completo';
+  else ck.status = 'en-progreso';
+  return ck;
+}
+// Espejo de mismoEmpleadoNombre() (src/app/shared/permisos.util.ts): tolera
+// acentos, espacios y apellidos en otro orden, pero exige 2+ palabras en comun
+// para no confundir a dos personas distintas.
+function mismoNombreEmpleado(a, b) {
+  const na = normaliza(a), nb = normaliza(b);
+  if (!na || !nb) return false;
+  if (na === nb) return true;
+  const ta = na.split(' ').filter(Boolean), tb = nb.split(' ').filter(Boolean);
+  const corto = ta.length <= tb.length ? ta : tb;
+  const largo = ta.length <= tb.length ? tb : ta;
+  if (corto.length < 2) return false;
+  const set = new Set(largo);
+  return corto.every(t => set.has(t));
+}
+// Espejo de esElDueno(): solo el responsable asignado entrega su checklist.
+function esMiChecklist(ctx, ck) {
+  if (!ck) return false;
+  if (ck.assignedUid && ck.assignedUid === ctx.uid) return true;
+  return mismoNombreEmpleado(ck.assigned, ctx.nombre);
+}
+// Vista compacta de un checklist para el asistente (items numerados del 1 a N;
+// ese numero es el que el colaborador usa al hablar: "ya hice la 2").
+function vistaChecklist(ck) {
+  const items = Array.isArray(ck.items) ? ck.items : [];
+  return {
+    id: ck.id, nombre: ck.name || '(sin nombre)', sucursal: ck.store || '',
+    fecha: ck.date || '', hora_limite: ck.time || '', status: ck.status || 'pendiente',
+    hechos: items.filter(itemHecho).length, total: items.length,
+    con_retraso: checklistConRetraso(ck),
+    items: items.map((it, i) => ({
+      n: i + 1, texto: String(it.text || '(sin nombre)'), hecho: itemHecho(it),
+      pide_foto: itemPideEvidencia(it) ? modoEvidencia(it) : null,
+      hora_limite: it.horaLimite || it.time || null,
+      vencida: itemVencido(it, ck.date),
+      falta: itemHecho(it) ? null : itemFalta(it),
+    })),
+  };
+}
+// Empareja lo que dijo el colaborador ("la 2", "la de la vitrina") con un item.
+// Devuelve { idx, ambiguos }.
+function resolverItem(ck, ref) {
+  const items = Array.isArray(ck.items) ? ck.items : [];
+  const txt = String(ref == null ? '' : ref).trim();
+  if (!txt) return { idx: -1, ambiguos: [] };
+  const num = /^#?(\d{1,3})$/.exec(txt);
+  if (num) {
+    const i = parseInt(num[1], 10) - 1;
+    return { idx: i >= 0 && i < items.length ? i : -1, ambiguos: [] };
+  }
+  const objetivo = normaliza(txt);
+  const exacto = items.findIndex(it => normaliza(it.text) === objetivo);
+  if (exacto >= 0) return { idx: exacto, ambiguos: [] };
+  const contiene = items.map((it, i) => ({ it, i }))
+    .filter(({ it }) => { const n = normaliza(it.text); return n && (n.includes(objetivo) || objetivo.includes(n)); });
+  if (contiene.length === 1) return { idx: contiene[0].i, ambiguos: [] };
+  if (contiene.length > 1) return { idx: -1, ambiguos: contiene.map(({ it, i }) => `${i + 1}. ${it.text}`) };
+  return { idx: -1, ambiguos: [] };
+}
+// Ventana por defecto de "lo que arrastra": 14 dias atras. Acota la consulta y
+// evita arrastrar checklists viejisimos que ya nadie va a entregar.
+const DIAS_ARRASTRE = 14;
+function restarDiasISO(fechaISO, dias) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(fechaISO || '').trim());
+  if (!m) return null;
+  const d = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])));
+  d.setUTCDate(d.getUTCDate() - Number(dias || 0));
+  return d.toISOString().slice(0, 10);
+}
+// Mismo formato de horaEnvio que guarda el front ("08:30 PM"), en hora de Mexico.
+function horaEnvioMx() {
+  return new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Mexico_City', hour: '2-digit', minute: '2-digit', hour12: true,
+  }).format(new Date());
+}
+
+// Resuelve sobre QUE checklist se va a trabajar: el que digan por id, o el unico
+// que la persona tenga pendiente. Devuelve { ck } o { error, opciones }.
+async function resolverChecklistDestino(ctx, checklistId) {
+  if (checklistId) {
+    const ck = await pgChecklistGet(String(checklistId));
+    if (!ck) return { error: 'No encontre ese checklist.' };
+    if (!esMiChecklist(ctx, ck)) return { error: 'Ese checklist no esta asignado a ti, asi que no lo puedes entregar.' };
+    if (ck.eliminado || ck.archivado) return { error: 'Ese checklist ya no esta activo.' };
+    if (ck.enviado) return { error: `El checklist "${ck.name}" ya fue enviado${ck.horaEnvio ? ' a las ' + ck.horaEnvio : ''}.` };
+    return { ck };
+  }
+  const lista = await pgChecklistsDeUsuario({
+    uid: ctx.uid, nombre: ctx.nombre,
+    desde: restarDiasISO(ctx.fechaHoy, DIAS_ARRASTRE) || undefined,
+    hasta: ctx.fechaHoy || undefined,
+  });
+  if (!lista.length) return { error: 'No tienes checklists pendientes por entregar.' };
+  if (lista.length === 1) return { ck: lista[0] };
+  return {
+    error: 'Tienes varios checklists pendientes; pregunta a cual se refiere.',
+    opciones: lista.map(c => ({ id: c.id, nombre: c.name, sucursal: c.store, fecha: c.date })),
+  };
+}
+
+/**
+ * Guarda una FOTO que acaba de llegar por WhatsApp en el item que la estaba
+ * esperando. La llama el webhook (fuera de Claude) despues de subirla a
+ * Cloudinary, igual que registrarUbicacion() en flotilla.
+ * Devuelve { ok, sinPendiente?, item, checklist, fase, faltaOtra, todosHechos }.
+ */
+async function registrarFotoEvidencia(convKey, urlFoto) {
+  if (!convKey || !urlFoto) return { ok: false, sinPendiente: true };
+  const esp = await pgConversacionEsperandoGet(convKey);
+  if (!esp || esp.tipo !== 'foto' || !esp.checklistId) return { ok: false, sinPendiente: true };
+
+  const ck = await pgChecklistGet(esp.checklistId);
+  if (!ck) {
+    await pgConversacionEsperandoSet(convKey, null);
+    return { ok: false, sinPendiente: true };
+  }
+  const items = Array.isArray(ck.items) ? ck.items : [];
+  const idx = items.findIndex(it => String(it.id) === String(esp.itemId));
+  if (idx < 0) {
+    await pgConversacionEsperandoSet(convKey, null);
+    return { ok: false, sinPendiente: true };
+  }
+
+  const it = items[idx];
+  const ahora = Date.now();
+  const hora = fmtHoraMx(ahora);
+  let fase = null, faltaOtra = false;
+
+  if (esp.modo === 'antesDespues') {
+    if (esp.fase === 'antes') {
+      it.photoAntes = urlFoto; it.photoAntesTime = hora; it.photoAntesTimestamp = ahora;
+      fase = 'antes'; faltaOtra = true;
+    } else {
+      it.photoDespues = urlFoto; it.photoDespuesTime = hora;
+      fase = 'despues';
+    }
+  } else if (esp.modo === 'varias') {
+    it.photos = Array.isArray(it.photos) ? it.photos : [];
+    it.photos.push({ url: urlFoto, time: hora, timestamp: ahora });
+    fase = 'varias';
+  } else {
+    it.photo = urlFoto; it.photoTime = hora;
+    fase = 'simple';
+  }
+  if (itemHecho(it)) { it.checked = true; it.checkedEn = ahora; it.checkedPor = 'whatsapp'; }
+
+  ck.items = items;
+  recalcularStatus(ck);
+  await pgChecklistUpsert(ck.id, ck);
+
+  // Antes/despues: seguimos esperando la segunda foto. Varias fotos: seguimos
+  // abiertos para las que quiera mandar. Simple: ya no esperamos nada.
+  if (esp.modo === 'antesDespues' && fase === 'antes') {
+    await pgConversacionEsperandoSet(convKey, { ...esp, fase: 'despues', pedidoEn: ahora });
+  } else if (esp.modo === 'varias') {
+    await pgConversacionEsperandoSet(convKey, { ...esp, pedidoEn: ahora });
+  } else {
+    await pgConversacionEsperandoSet(convKey, null);
+  }
+
+  const pendientes = items.filter(i => !itemHecho(i)).length;
+  return {
+    ok: true, fase, faltaOtra,
+    totalFotos: Array.isArray(it.photos) ? it.photos.length : (subida(it.photo) ? 1 : 0),
+    item: { n: idx + 1, texto: String(it.text || '') },
+    checklist: { id: ck.id, nombre: ck.name || '', status: ck.status, pendientes, total: items.length },
+    todosHechos: pendientes === 0,
+  };
+}
+
 const MAX_ITERACIONES = 8;
 
 const ROLES = ['Cajero', 'Encargado', 'Auxiliar', 'Supervisor', 'Almacenista', 'Limpieza', 'Vendedor', 'Contador'];
@@ -451,6 +756,47 @@ const TOOLS = [
     input_schema: { type: 'object', properties: { id: { type: 'string' }, titulo: { type: 'string' }, fecha: { type: 'string' }, hora_inicio: { type: 'string' }, fecha_fin: { type: 'string' }, hora_fin: { type: 'string' }, prioridad: { type: 'string', enum: ['alta', 'media', 'baja'] }, instrucciones: { type: 'string' } }, required: ['id'] }
   },
   { name: 'eliminar_tarea', description: 'Elimina una tarea. Requiere id (de consultar_tareas).', input_schema: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] } },
+
+  // --- ENTREGA DE TAREAS (los checklists que le toca hacer al colaborador) ---
+  {
+    name: 'mis_pendientes',
+    description: 'Los CHECKLISTS que esta persona tiene por entregar (los de hoy y los que arrastra sin enviar), con sus items numerados. Usala cuando pregunte "que tengo que hacer", "mis tareas de hoy", "que me falta", y SIEMPRE antes de entregar o enviar algo (de aqui salen el checklist_id y el numero de cada item).',
+    input_schema: {
+      type: 'object',
+      properties: {
+        fecha: { type: 'string', description: 'YYYY-MM-DD para ver una fecha concreta. Vacio = pendientes de hoy y de dias anteriores sin enviar.' },
+        persona: { type: 'string', description: 'Solo admin: ver los pendientes de otra persona.' }
+      },
+      required: []
+    }
+  },
+  {
+    name: 'entregar_item',
+    description: 'Marca UNA tarea (item) de un checklist como hecha. Si el item pide foto de evidencia, NO se cierra: devuelve requiere_foto y hay que pedirle al colaborador que mande la foto por WhatsApp (la siguiente imagen que envie se guarda sola en ese item).',
+    input_schema: {
+      type: 'object',
+      properties: {
+        item: { type: 'string', description: 'Numero del item tal como lo dio mis_pendientes ("2"), o su texto.' },
+        checklist_id: { type: 'string', description: 'Id del checklist. Si la persona solo tiene uno pendiente, se puede omitir.' }
+      },
+      required: ['item']
+    }
+  },
+  {
+    name: 'enviar_checklist',
+    description: 'ENVIA el checklist ya trabajado (es el acto de entregarlo; queda en el historial del admin). Si faltan items, avisa que falta y solo lo manda si el colaborador confirma con forzar=true. Si alguna hora limite ya paso, exige justificante (categoria + comentario).',
+    input_schema: {
+      type: 'object',
+      properties: {
+        checklist_id: { type: 'string', description: 'Id del checklist. Si solo tiene uno pendiente, se puede omitir.' },
+        forzar: { type: 'boolean', description: 'true = enviar aunque falten items (solo despues de que el colaborador lo confirme).' },
+        categoria: { type: 'string', enum: CATEGORIAS_RETRASO, description: 'Motivo del retraso. Obligatorio si el checklist va con retraso.' },
+        comentario: { type: 'string', description: 'Explicacion del retraso (minimo 5 caracteres). Obligatorio si va con retraso.' },
+        nota: { type: 'string', description: 'Nota opcional del colaborador para el admin (queda como notaEmpleado).' }
+      },
+      required: []
+    }
+  },
 
   // --- CHECKLIST ---
   {
@@ -612,6 +958,39 @@ function sucursalesDe(u) {
   return u.sucursales || (u.sucursal ? [u.sucursal] : []);
 }
 // Sucursales a las que este admin puede asignar.
+// ---------------------------------------------------------------------------
+// PERMISOS — espejo de src/app/shared/permisos.util.ts. El bot NO inventa roles:
+// usa los MISMOS del perfil de la app (rol, alcance, sucursales y los flags
+// puede* que el admin activa en la pantalla de Personal).
+//
+// Regla de oro de este modulo:
+//   ENTREGAR (mis_pendientes propias, entregar_item, enviar_checklist) es para
+//   TODOS: si alguien tiene un checklist asignado, puede entregarlo. Punto.
+//   ASIGNAR y VER LO DE OTROS si dependen del rol/permisos.
+// ---------------------------------------------------------------------------
+// Flags de gestion que convierten a un trabajador en "supervisor/encargado"
+// (misma lista que esSupervisor() del front).
+const FLAGS_GESTION = [
+  'puedeAdministrarPersonal', 'puedeVerEstadisticas', 'puedeVerCheckstore',
+  'puedeVerCalendario', 'puedeVerHistorial', 'puedeCrearChecklists',
+  'puedeCrearRutinas', 'puedeCrearTareasUnicas', 'puedeAdministrarAreas',
+];
+function esSupervisorPerfil(perfil) {
+  if (!perfil || perfil.rol !== 'trabajador') return false;
+  if (sucursalesDe(perfil).length === 0) return false;
+  return FLAGS_GESTION.some(f => perfil[f] === true);
+}
+// Espejo de tieneVistaDeGestion(): admin (cualquier alcance) o supervisor.
+function tieneVistaDeGestion(perfil) {
+  return !!perfil && (perfil.rol === 'admin' || esSupervisorPerfil(perfil));
+}
+// ¿Esta persona cae dentro del alcance de sucursales de quien pregunta?
+// Mismo criterio que el enScope de personalAsignable().
+function enMiAlcance(ctx, user) {
+  if (esAdminGlobal(ctx.perfil)) return true;
+  const permitidas = sucursalesPermitidas(ctx);
+  return sucursalesDe(user).some(s => permitidas.some(p => normaliza(p) === normaliza(s)));
+}
 function sucursalesPermitidas(ctx) {
   if (esAdminGlobal(ctx.perfil)) {
     const set = new Set();
@@ -796,7 +1175,7 @@ async function ejecutarHerramienta(db, ctx, nombre, input) {
 
     // Asignacion en GRUPO (sucursal, rol o todos)
     if (input.para_todos || input.para_sucursal || input.para_rol) {
-      if (!ctx.esAdmin) return { ok: false, mensaje: 'Solo los administradores pueden asignar a varias personas.' };
+      if (!ctx.puedeAsignar) return { ok: false, mensaje: 'No tienes permiso para asignar tareas a otras personas.' };
       const rol = input.para_rol ? (ROLES.find(r => normaliza(r) === normaliza(input.para_rol)) || input.para_rol) : null;
       const destinatarios = personalAsignable(ctx, { sucursal: input.para_sucursal, rol });
       if (destinatarios.length === 0) return { ok: false, mensaje: 'No encontre personal que coincida con ese grupo en tus sucursales.' };
@@ -826,11 +1205,15 @@ async function ejecutarHerramienta(db, ctx, nombre, input) {
     const filtro = input.filtro || 'pendientes', hoy = ctx.fechaHoy;
     let uidConsulta = ctx.uid;
     if (input.persona) {
+      // MISMO permiso que en la app: la agenda de otra persona solo la ve quien
+      // tiene vista de gestion (admin o supervisor) y solo de sus sucursales.
+      if (!ctx.esGestor) return { ok: false, mensaje: 'Solo puedes consultar TUS tareas. Las de otras personas las ve un administrador o tu encargado.' };
       const r = resolverPersona(ctx, input.persona);
       if (!r.user) {
         if (r.ambiguos.length) return { ok: false, mensaje: `Hay varias personas que coinciden con "${input.persona}": ${r.ambiguos.slice(0, 6).join(', ')}. Dime el nombre completo.` };
         return { ok: false, mensaje: `No encontre a "${input.persona}" en el personal.` };
       }
+      if (!enMiAlcance(ctx, r.user)) return { ok: false, mensaje: `${r.user.nombre || 'Esa persona'} no esta en tus sucursales, no puedo mostrarte sus tareas.` };
       uidConsulta = r.user.id;
     }
     let lista = await pgAgendaList(uidConsulta);
@@ -872,9 +1255,159 @@ async function ejecutarHerramienta(db, ctx, nombre, input) {
     return { ok: true, mensaje: 'Tarea eliminada.' };
   }
 
+  // ---- ENTREGA DE TAREAS (checklists asignados al colaborador) ----
+  if (nombre === 'mis_pendientes') {
+    let uid = ctx.uid, quien = ctx.nombre, deOtro = false;
+    if (input.persona && normaliza(input.persona) !== normaliza(ctx.nombre)) {
+      // Ver lo de OTROS es de gestion (admin o supervisor con permisos), y solo
+      // dentro de sus sucursales. Entregar lo propio no pasa por aqui.
+      if (!ctx.esGestor) return { ok: false, mensaje: 'Solo puedes ver TUS tareas. Las de otras personas las ve un administrador o tu encargado.' };
+      const r = resolverPersona(ctx, input.persona);
+      if (!r.user) {
+        if (r.ambiguos.length) return { ok: false, mensaje: `Hay varias personas que coinciden con "${input.persona}": ${r.ambiguos.slice(0, 6).join(', ')}. ¿A cual?` };
+        return { ok: false, mensaje: `No encontre a "${input.persona}" en el personal.` };
+      }
+      if (!enMiAlcance(ctx, r.user)) return { ok: false, mensaje: `${r.user.nombre || 'Esa persona'} no esta en tus sucursales, no puedo mostrarte sus tareas.` };
+      uid = r.user.id; quien = r.user.nombre || r.user.correo; deOtro = true;
+    }
+    const filtros = input.fecha
+      ? { desde: input.fecha, hasta: input.fecha }
+      // hoy y lo que arrastra sin enviar (acotado a DIAS_ARRASTRE)
+      : { desde: restarDiasISO(ctx.fechaHoy, DIAS_ARRASTRE) || undefined, hasta: ctx.fechaHoy || undefined };
+    const lista = await pgChecklistsDeUsuario({ uid, nombre: quien, ...filtros });
+    if (!lista.length) {
+      return {
+        ok: true, total: 0, checklists: [],
+        mensaje: deOtro ? `${quien} no tiene checklists por entregar${input.fecha ? ' el ' + input.fecha : ''}.`
+          : `No tienes checklists por entregar${input.fecha ? ' el ' + input.fecha : ''} 🎉`
+      };
+    }
+    const vistas = lista.map(vistaChecklist);
+    const pendientes = vistas.reduce((n, v) => n + (v.total - v.hechos), 0);
+    return { ok: true, de: quien, total: vistas.length, items_pendientes: pendientes, checklists: vistas };
+  }
+
+  if (nombre === 'entregar_item') {
+    const r = await resolverChecklistDestino(ctx, input.checklist_id);
+    if (r.error) return { ok: false, mensaje: r.error, opciones: r.opciones };
+    const ck = r.ck;
+    const items = Array.isArray(ck.items) ? ck.items : [];
+    const { idx, ambiguos } = resolverItem(ck, input.item);
+    if (idx < 0) {
+      if (ambiguos.length) return { ok: false, mensaje: `¿Cual de estas? ${ambiguos.join(' | ')}` };
+      return { ok: false, mensaje: `No encontre esa tarea en "${ck.name}".`, checklist: vistaChecklist(ck) };
+    }
+    const it = items[idx];
+    if (itemHecho(it)) {
+      return { ok: true, ya_estaba: true, mensaje: `"${it.text}" ya estaba lista.`, checklist: vistaChecklist(ck) };
+    }
+
+    // Pide EVIDENCIA: no se cierra aqui. Queda apuntado que esperamos la foto y
+    // el webhook la guarda cuando llegue la imagen (igual que la ubicacion en flotilla).
+    if (itemPideEvidencia(it)) {
+      const modo = modoEvidencia(it);
+      if (!ctx.convKey) {
+        return { ok: false, mensaje: `"${it.text}" necesita foto de evidencia, y la foto se manda por WhatsApp o desde la app. Desde aqui no puedo cerrarla.` };
+      }
+      await pgConversacionEsperandoSet(ctx.convKey, {
+        tipo: 'foto', checklistId: ck.id, itemId: it.id, itemTexto: String(it.text || ''),
+        modo, fase: modo === 'antesDespues' ? 'antes' : null, pedidoEn: Date.now(),
+      });
+      return {
+        ok: true, requiere_foto: modo, checklist_id: ck.id,
+        item: { n: idx + 1, texto: String(it.text || '') },
+        mensaje: modo === 'antesDespues'
+          ? `"${it.text}" pide foto ANTES y foto DESPUES. Pidele la foto de ANTES; la siguiente imagen que mande se guarda ahi.`
+          : modo === 'varias'
+            ? `"${it.text}" pide varias fotos. Pidele que las mande; cada imagen que envie se guarda en esa tarea.`
+            : `"${it.text}" pide foto de evidencia. Pidele que la mande por WhatsApp; la siguiente imagen se guarda ahi y la tarea queda lista.`
+      };
+    }
+
+    it.checked = true; it.checkedEn = Date.now(); it.checkedPor = 'whatsapp';
+    ck.items = items;
+    recalcularStatus(ck);
+    await pgChecklistUpsert(ck.id, ck);
+    const faltan = items.filter(i => !itemHecho(i)).length;
+    return {
+      ok: true, checklist_id: ck.id, item: { n: idx + 1, texto: String(it.text || '') },
+      pendientes: faltan, total: items.length, status: ck.status,
+      mensaje: faltan === 0
+        ? `Listo "${it.text}". Ya completaste las ${items.length} tareas de "${ck.name}": pregúntale si lo envia (enviar_checklist).`
+        : `Listo "${it.text}". Te faltan ${faltan} de ${items.length} en "${ck.name}".`
+    };
+  }
+
+  if (nombre === 'enviar_checklist') {
+    const r = await resolverChecklistDestino(ctx, input.checklist_id);
+    if (r.error) return { ok: false, mensaje: r.error, opciones: r.opciones };
+    const ck = r.ck;
+    const items = Array.isArray(ck.items) ? ck.items : [];
+
+    const subiendo = items.some(i => i.photo === 'subiendo...' || i.photoAntes === 'subiendo...' || i.photoDespues === 'subiendo...');
+    if (subiendo) return { ok: false, mensaje: 'Hay una foto subiendo todavia. Espera unos segundos e intenta de nuevo.' };
+
+    // Igual que el front: si faltan items se avisa QUE falta y solo se manda si
+    // el colaborador confirma (forzar=true).
+    const faltantes = items.map((it, i) => ({ n: i + 1, texto: String(it.text || ''), falta: itemFalta(it), hecho: itemHecho(it) }))
+      .filter(x => !x.hecho);
+    if (faltantes.length && !input.forzar) {
+      return {
+        ok: false, confirmar: true, faltan: faltantes.slice(0, 8), total_faltan: faltantes.length,
+        mensaje: `Le faltan ${faltantes.length} tarea(s) de "${ck.name}". Dile cuales y preguntale si asi lo envia; si dice que si, vuelve a llamar enviar_checklist con forzar=true.`
+      };
+    }
+
+    // Retraso: mismo criterio que hayRetrasoEnChecklist() -> justificante obligatorio.
+    if (checklistConRetraso(ck)) {
+      const cat = CATEGORIAS_RETRASO.find(c => normaliza(c) === normaliza(input.categoria));
+      const com = String(input.comentario || '').trim();
+      if (!cat || com.length < 5) {
+        return {
+          ok: false, requiere_justificante: true, categorias: CATEGORIAS_RETRASO,
+          mensaje: `"${ck.name}" va con RETRASO (paso la hora limite). Para enviarlo necesito el motivo (una de estas categorias: ${CATEGORIAS_RETRASO.join(', ')}) y un comentario de al menos 5 caracteres explicando que paso.`
+        };
+      }
+      ck.entregaConRetraso = true;
+      ck.motivoRetraso = { categoria: cat, comentario: com, reportadoPor: ctx.nombre, timestamp: Date.now() };
+    }
+
+    if (input.nota) ck.notaEmpleado = String(input.nota).trim();
+    ck.enviado = true;
+    ck.horaEnvio = horaEnvioMx();
+    ck.enviadoPor = 'whatsapp';
+    ck.enviadoEn = Date.now();
+    recalcularStatus(ck);
+    await pgChecklistUpsert(ck.id, ck);
+
+    // Si quedo alguna foto "esperando" de este checklist, ya no aplica.
+    if (ctx.convKey) {
+      try {
+        const esp = await pgConversacionEsperandoGet(ctx.convKey);
+        if (esp && String(esp.checklistId) === String(ck.id)) await pgConversacionEsperandoSet(ctx.convKey, null);
+      } catch (e) { /* no es critico */ }
+    }
+    // Avisar a quien lo asigno (mejor esfuerzo, nunca tumba la entrega).
+    try { await require('./tareas-notificar').avisarEntrega(ck, ctx); }
+    catch (e) { console.error('[entrega] no se pudo avisar al admin:', e && e.message); }
+
+    return {
+      ok: true, checklist_id: ck.id, status: ck.status,
+      con_retraso: !!ck.entregaConRetraso, hora_envio: ck.horaEnvio,
+      completadas: items.filter(itemHecho).length, total: items.length,
+      mensaje: `Checklist "${ck.name}" ENVIADO a las ${ck.horaEnvio}` +
+        (ck.entregaConRetraso ? ' con justificante de retraso.' : '.') +
+        ` (${items.filter(itemHecho).length} de ${items.length} tareas)`
+    };
+  }
+
   // ---- CHECKLIST ----
   if (nombre === 'crear_checklist') {
-    if (!ctx.esAdmin) return { ok: false, mensaje: 'Solo los administradores pueden crear checklists.' };
+    // PERMISO DE ASIGNAR: admin, o quien tenga activado "Crear checklists" en su
+    // perfil (mismo flag que usa la app). Entregar no necesita permiso; asignar si.
+    if (!ctx.puedeAsignar) {
+      return { ok: false, mensaje: 'No tienes permiso para asignar tareas. Un administrador te lo puede activar en Personal (permiso *Crear checklists*). Tus propias tareas si las puedes ver y entregar.' };
+    }
     const nombreCk = String(input.nombre || '').trim();
     if (!nombreCk) return { ok: false, mensaje: 'Falta el nombre del checklist.' };
 
@@ -883,6 +1416,10 @@ async function ejecutarHerramienta(db, ctx, nombre, input) {
     if (!r.user) {
       if (r.ambiguos.length) return { ok: false, mensaje: `Hay varias personas que coinciden con "${input.para_quien}": ${r.ambiguos.slice(0, 6).join(', ')}. ¿A cuál?` };
       return { ok: false, mensaje: `No encontre a "${input.para_quien}" en el personal.` };
+    }
+    // ALCANCE: quien no es admin global solo asigna a personal de SUS sucursales.
+    if (!enMiAlcance(ctx, r.user)) {
+      return { ok: false, mensaje: `${r.user.nombre || 'Esa persona'} no esta en tus sucursales, asi que no le puedes asignar tareas.` };
     }
 
     // Restriccion de TURNO: no asignar a alguien fuera de su turno.
@@ -930,31 +1467,51 @@ async function ejecutarHerramienta(db, ctx, nombre, input) {
     const assigned = r.user.nombre || r.user.correo;
     const checklist = {
       id: ahora, timestampCreacion: ahora, name: nombreCk,
-      assigned, store, date: fecha,
+      // assignedUid ademas del nombre: hace la entrega por WhatsApp inmune a
+      // diferencias de escritura del nombre (el front ya lo prioriza igual).
+      assigned, assignedUid: r.user.id, store, date: fecha,
       time: input.hora_limite || '23:59', status: 'pendiente', enviado: false,
-      createdBy: ctx.nombre, notaEmpleado: '', items, subtareas: []
+      createdBy: ctx.nombre, createdByUid: ctx.uid, notaEmpleado: '', items, subtareas: []
     };
     await pgChecklistUpsert(id, checklist);
 
-    // WhatsApp: enlace wa.me con mensaje listo (el admin lo envia con un toque).
+    // AVISO AUTOMATICO por WhatsApp al colaborador (plantilla aprobada; si no se
+    // puede, texto normal). Mejor esfuerzo: si falla, el checklist ya quedo.
+    let avisado = false;
+    try { avisado = await require('./tareas-notificar').avisarAsignacion({ ...checklist, id }); }
+    catch (e) { console.error('[tareas-notificar] aviso de asignacion fallo:', e && e.message); }
+
+    // Si el aviso automatico NO salio, dejamos el boton manual de WhatsApp que ya
+    // usaba el asistente web (acciones[].whatsapp): asi el admin lo manda a mano.
     let tel = String(r.user.telefono || '').replace(/[^\d]/g, '');
     if (tel.length === 10) tel = '52' + tel;   // Mexico: agrega lada si falta
-    const appUrl = process.env.APP_URL || (process.env.RAILWAY_PUBLIC_DOMAIN ? 'https://' + process.env.RAILWAY_PUBLIC_DOMAIN : '');
-    const textoWA = `Hola ${assigned}, te asignaron el checklist "${nombreCk}"${fecha ? ' para el ' + fecha : ''} en ${store}.\n`
-      + items.map(i => '- ' + i.text).join('\n')
-      + (appUrl ? `\n\nEntra a la app: ${appUrl}` : '');
-    const whatsapp = tel ? { telefono: tel, nombre: assigned, texto: textoWA } : null;
+    const tieneTel = !!tel;
+    let whatsapp = null;
+    if (!avisado && tieneTel) {
+      const appUrl = process.env.APP_URL || (process.env.RAILWAY_PUBLIC_DOMAIN ? 'https://' + process.env.RAILWAY_PUBLIC_DOMAIN : '');
+      whatsapp = {
+        telefono: tel, nombre: assigned,
+        texto: `Hola ${assigned}, te asignaron el checklist "${nombreCk}"${fecha ? ' para el ' + fecha : ''} en ${store}.\n`
+          + items.map(i => '- ' + i.text).join('\n')
+          + (appUrl ? `\n\nEntra a la app: ${appUrl}` : ''),
+      };
+    }
 
     return {
-      ok: true, id, whatsapp,
+      ok: true, id, avisado, whatsapp,
       mensaje: `Checklist "${nombreCk}" creado para ${assigned} en ${store} el ${fecha} con ${items.length} tarea(s).`
-        + (whatsapp ? '' : ' (Nota: esa persona no tiene telefono registrado, no podre ofrecer el WhatsApp.)')
+        + (avisado ? ` Ya le avise a ${assigned} por WhatsApp.`
+          : tieneTel ? ' (No pude mandarle el WhatsApp; revisa la plantilla o el numero.)'
+            : ' (Ojo: esa persona no tiene telefono registrado, no le pude avisar por WhatsApp.)')
     };
   }
 
   // ---- RUTINAS ----
   if (nombre === 'crear_rutina') {
-    if (ctx.perfil.rol !== 'admin') return { ok: false, mensaje: 'Solo los administradores pueden crear rutinas.' };
+    // PERMISO: admin o quien tenga activado "Crear rutinas" en su perfil.
+    if (!ctx.puedeCrearRutinas) {
+      return { ok: false, mensaje: 'No tienes permiso para crear rutinas. Un administrador te lo puede activar en Personal (permiso *Crear rutinas*).' };
+    }
     const nombreR = String(input.nombre || '').trim();
     if (!nombreR) return { ok: false, mensaje: 'Falta el nombre de la rutina.' };
     const frecuencia = FRECUENCIAS.includes(input.frecuencia) ? input.frecuencia : 'Diaria';
@@ -1043,6 +1600,11 @@ async function ejecutarHerramienta(db, ctx, nombre, input) {
   // ---- INFO ----
   if (nombre === 'consultar_rutinas') {
     let lista = (await pgAsignacionesList()).filter(a => a.activa !== false);
+    // Alcance: quien no es admin global solo ve las rutinas de sus sucursales.
+    if (!esAdminGlobal(ctx.perfil)) {
+      const permitidas = sucursalesPermitidas(ctx);
+      lista = lista.filter(a => (a.sucursales || []).some(s => permitidas.some(p => normaliza(p) === normaliza(s))));
+    }
     if (input.sucursal) lista = lista.filter(a => (a.sucursales || []).some(s => normaliza(s) === normaliza(input.sucursal)));
     return {
       ok: true, total: lista.length,
@@ -1068,10 +1630,17 @@ async function ejecutarHerramienta(db, ctx, nombre, input) {
 
   if (nombre === 'estadisticas') {
     // Cumplimiento de checklists del dia (por sucursal o toda la operacion).
+    // Es informacion de EQUIPO: solo para quien tiene vista de gestion, y a un
+    // supervisor/admin limitado se le acota a SUS sucursales.
     let checklists = null;
-    const fecha = input.fecha || ctx.fechaHoy;
-    if (fecha) {
+    const fecha = (input.fecha || ctx.fechaHoy);
+    if (fecha && ctx.esGestor) {
+      const permitidas = esAdminGlobal(ctx.perfil) ? null : sucursalesPermitidas(ctx);
+      if (input.sucursal && permitidas && !permitidas.some(p => normaliza(p) === normaliza(input.sucursal))) {
+        return { ok: false, mensaje: `No tienes acceso a la sucursal "${input.sucursal}". Las tuyas son: ${permitidas.join(', ') || '(ninguna)'}.` };
+      }
       let docs = (await pgChecklistsPorFecha(fecha)).filter(c => !c.eliminado && !c.archivado);
+      if (permitidas) docs = docs.filter(c => permitidas.some(p => normaliza(p) === normaliza(c.store || '')));
       if (input.sucursal) {
         const s = normaliza(input.sucursal);
         docs = docs.filter(c => { const st = normaliza(c.store || ''); return st === s || st.includes(s) || s.includes(st); });
@@ -1284,6 +1853,11 @@ async function construirContexto(db, uid, perfil, opts) {
     uid, perfil, usuarios, configTurnos,
     nombre: perfil.nombre || perfil.correo || 'Usuario',
     esAdmin: perfil.rol === 'admin',
+    // PERMISOS tomados del perfil de la app (ver bloque PERMISOS arriba).
+    // ENTREGAR no lleva permiso: cualquiera entrega lo que le asignaron.
+    esGestor: tieneVistaDeGestion(perfil),                    // ve lo de su equipo
+    puedeAsignar: perfil.rol === 'admin' || perfil.puedeCrearChecklists === true,
+    puedeCrearRutinas: perfil.rol === 'admin' || perfil.puedeCrearRutinas === true,
     canal: opts.canal || 'web', // 'whatsapp' | 'web' — solo por WhatsApp se puede compartir ubicacion
     // INVITADO: número no registrado en MD Task. Acceso SOLO a flotilla.
     esInvitado: !!opts.esInvitado,
@@ -1332,9 +1906,23 @@ function construirSystem(ctx) {
   }
 
   const sucs = sucursalesPermitidas(ctx);
-  const reglaAcceso = ctx.esAdmin
-    ? '- El usuario es administrador con ACCESO TOTAL: puedes consultar tareas de cualquier persona (consultar_tareas con "persona") y estadisticas de cualquier sucursal o de toda la operacion (estadisticas con "sucursal"). No digas que algo es solo personal o que no puedes por sucursal: usa los parametros.'
-    : '- El usuario es un COLABORADOR (no administrador): solo puede ver y gestionar SUS propias tareas (consultar_tareas sin "persona", completar_tarea, editar_tarea, eliminar_tarea, resumen_hoy). NO puede crear checklists ni rutinas ni asignar tareas a otros; si lo pide, explicale con amabilidad que eso lo hace un administrador.';
+  // Los permisos vienen del PERFIL de la app (rol + flags puede*), no se inventan
+  // aqui. ENTREGAR siempre esta permitido; ASIGNAR y VER LO DE OTROS dependen.
+  const global = esAdminGlobal(ctx.perfil);
+  const reglaAcceso = [
+    global
+      ? '- El usuario es ADMINISTRADOR con ACCESO TOTAL: puede asignar a cualquiera, consultar las tareas de cualquier persona (consultar_tareas / mis_pendientes con "persona") y ver estadisticas de cualquier sucursal o de toda la operacion. No digas que no puedes por sucursal: usa los parametros.'
+      : ctx.esGestor
+        ? `- El usuario es ENCARGADO/SUPERVISOR: puede ver y gestionar lo de SU equipo, pero SOLO en sus sucursales (${sucs.length ? sucs.join(', ') : 'ninguna asignada'}). Si pregunta por alguien de otra sucursal, la herramienta lo va a rechazar: explicaselo con naturalidad.`
+        : '- El usuario es COLABORADOR: solo lo SUYO. Puede ver y ENTREGAR sus tareas (mis_pendientes, entregar_item, enviar_checklist) y manejar sus pendientes personales (consultar_tareas sin "persona", completar_tarea, editar_tarea, eliminar_tarea, resumen_hoy). No puede ver las tareas de otras personas ni estadisticas del equipo.',
+    ctx.puedeAsignar
+      ? '- SI puede ASIGNAR tareas a otros (crear_checklist)' + (global ? '.' : ', pero solo a personal de sus sucursales.')
+      : '- NO puede asignar tareas a otras personas ni crear checklists. Si lo pide, dile con amabilidad que ese permiso lo activa un administrador en la pantalla de Personal, y ofrecele lo que si puede: ver y entregar SUS tareas.',
+    ctx.puedeCrearRutinas
+      ? '- SI puede crear RUTINAS recurrentes (crear_rutina).'
+      : '- NO puede crear rutinas recurrentes. Mismo caso: ese permiso lo activa un administrador.',
+    '- ENTREGAR SIEMPRE SE PUEDE: cualquier persona, sin importar su rol, puede ver y entregar las tareas que le asignaron. Nunca le digas que necesita permiso para entregar lo suyo.',
+  ].join('\n');
   return [
     'Eres el asistente de Mega Dulces Task, una app de tareas para una dulceria.',
     `Hablas con ${ctx.nombre}${ctx.esAdmin ? ' (administrador)' : ''}.`,
@@ -1348,12 +1936,21 @@ function construirSystem(ctx) {
     '',
     'Reglas:',
     reglaAcceso,
-    '- CONFIRMA ANTES DE ESCRIBIR: antes de crear o asignar (agregar_tarea individual o en grupo, crear_checklist y crear_rutina) RESUME en una frase que haras y a quien, y pide confirmacion. Ej: "Voy a crear el checklist [nombre] para [persona] en [sucursal] el [fecha] con estos items: ... ¿Confirmo?". Llama la herramienta SOLO despues de que el usuario diga si/confirme. Si menciona a una persona y no estas 100% seguro de quien es, di a quien entendiste y pide que confirme. Para consultas, resumenes y estadisticas (solo lectura) NO pidas confirmacion: hazlo directo.',
+    '- CONFIRMA ANTES DE ESCRIBIR: antes de crear o asignar (crear_checklist y crear_rutina) RESUME en una frase que haras y a quien, y pide confirmacion. Ej: "Voy a crear el checklist [nombre] para [persona] en [sucursal] el [fecha] con estos items: ... ¿Confirmo?". Llama la herramienta SOLO despues de que el usuario diga si/confirme. Si menciona a una persona y no estas 100% seguro de quien es, di a quien entendiste y pide que confirme. Para consultas, resumenes y estadisticas (solo lectura) NO pidas confirmacion: hazlo directo.',
     '- CREAR siempre es un CHECKLIST: para crear cualquier cosa usa crear_checklist (escribe en la coleccion checklists, NUNCA en la agenda). Arma los items de lo que el admin dicte: una tarea suelta = item tipo "manual"; una rutina (ej. "todos los lunes...") = item tipo "rutina" con frecuencia y dia_semana. Pide nombre, persona, sucursal, fecha e items si faltan, antes de confirmar.',
     '- Usa las herramientas para EJECUTAR de verdad; no digas que hiciste algo sin llamarlas.',
     '- Para completar/editar/eliminar una tarea, primero usa consultar_tareas para obtener el id.',
     '- Para crear_rutina necesitas: nombre, frecuencia, sucursales y modo (porRol con rol_objetivo, o porPersonas con personas). Si falta algo, preguntalo corto antes de crear.',
     '- TURNOS (Canindo): algunas personas solo pueden recibir tareas dentro de su turno (manana/tarde). Si crear_checklist devuelve que la persona esta "fuera de turno", NO insistas: explicale al admin que esta fuera de su horario y que, si por necesidad debe trabajar otro turno, puede registrar una excepcion en la pantalla de Turnos de Canindo.',
+    '- Al crear un checklist el sistema le AVISA SOLO por WhatsApp a la persona asignada. No le digas al admin que lo reenvie a mano; si el aviso no salio (avisado=false), dilo tal cual.',
+    '',
+    'ENTREGAR TAREAS (lo que el colaborador tiene que hacer hoy):',
+    '- "que tengo que hacer", "mis tareas", "que me falta" -> mis_pendientes. Cada item viene NUMERADO: usa esos numeros al hablar ("1. barrer, 2. vitrina").',
+    '- "ya hice la 2", "termine la de la vitrina" -> entregar_item con ese numero o su texto. Antes usa mis_pendientes si no tienes los numeros a la mano.',
+    '- FOTOS: si entregar_item devuelve requiere_foto, la tarea NO quedo lista todavia. Pidele con naturalidad que mande la foto por WhatsApp; la siguiente imagen que envie se guarda sola en esa tarea y el sistema le confirma. NO digas que ya quedo hasta que llegue la foto. Si es antes/despues, pide primero la de ANTES.',
+    '- ENVIAR es el paso final: cuando ya no le falte nada (o el diga que ya acabo) preguntale si lo envia y usa enviar_checklist. Si contesta que faltan cosas y aun asi quiere mandarlo, llama enviar_checklist con forzar=true.',
+    '- Si enviar_checklist pide justificante (paso la hora limite), pidele el MOTIVO (una de las categorias que te devuelve) y una explicacion corta, y vuelve a llamar con categoria y comentario.',
+    '- Nunca marques ni envies tareas de otra persona: cada quien entrega las suyas.',
     '',
     'FLOTILLA (vehiculos):',
     '- Cualquier colaborador puede: ver los coches (consultar_vehiculos), APARTAR uno (apartar_vehiculo), ver/cancelar SUS reservas (consultar_mis_reservas, cancelar_reserva) y registrar su salida/regreso (registrar_salida, registrar_regreso).',
@@ -1454,5 +2051,18 @@ module.exports.pgConversacionGet = pgConversacionGet;
 module.exports.pgConversacionSet = pgConversacionSet;
 // Flotilla: finalizar captura de ubicacion cuando llega un mensaje `location`.
 module.exports.registrarUbicacion = registrarUbicacion;
+// ENTREGA DE TAREAS: guardar la foto de evidencia cuando llega un mensaje `image`.
+module.exports.registrarFotoEvidencia = registrarFotoEvidencia;
+module.exports.pgConversacionEsperandoGet = pgConversacionEsperandoGet;
+module.exports.pgConversacionEsperandoSet = pgConversacionEsperandoSet;
+// Datos y criterios que reusa el modulo de avisos (api/tareas-notificar.js), para
+// que "item hecho", "vencido" y la hora de Mexico tengan UNA sola definicion.
+module.exports.pgChecklistsDeUsuario = pgChecklistsDeUsuario;
+module.exports.pgChecklistsPendientesDeFecha = pgChecklistsPendientesDeFecha;
+module.exports.itemHecho = itemHecho;
+module.exports.itemVencido = itemVencido;
+module.exports.mismoNombreEmpleado = mismoNombreEmpleado;
+module.exports.epochDeMx = epochDeMx;
+module.exports.ahoraMexico = ahoraMexico;
 // Expuesto para pruebas/arneses server-side (no lo usa el flujo normal).
 module.exports.ejecutarHerramienta = ejecutarHerramienta;

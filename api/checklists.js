@@ -122,14 +122,29 @@ module.exports = async (req, res) => {
       const valores = [id, ...COL_LIST.map(c => valorCol(c, cols[c])), JSON.stringify(datos)];
       const placeholders = valores.map((_, i) => `$${i + 1}`).join(',');
       const sets = COL_LIST.map(c => `${c}=excluded.${c}`).concat('datos=excluded.datos').join(', ');
+      // `xmax = 0` distingue un INSERT real de un UPDATE en el mismo upsert. Lo
+      // necesitamos porque el front usa este POST para TODO guardado (setDoc), y
+      // el aviso de WhatsApp solo debe salir cuando el checklist NACE.
       const r = await query(
         `insert into mdtask_checklists (id, ${COL_LIST.join(', ')}, datos)
          values (${placeholders})
          on conflict (id) do update set ${sets}
-         returning *`,
+         returning *, (xmax = 0) as _insertado`,
         valores
       );
-      return res.json({ checklist: fila(r.rows[0]) });
+      const guardado = fila(r.rows[0]);
+      const esNuevo = r.rows[0]._insertado === true;
+      // Las tareas que genera el Robot de Rutinas llegan por decenas cada
+      // madrugada: esas NO se avisan una por una (las cubre el resumen de la
+      // manana). Solo se avisa lo que un humano asigno.
+      const deRobot = !!(guardado._asignacionId || guardado._catalogoRutinaId || guardado._rutinaPersonalId);
+      if (esNuevo && !deRobot && !guardado.enviado) {
+        // Sin await: la respuesta no espera a WhatsApp (Railway es un proceso
+        // vivo, no serverless, asi que el envio termina igual).
+        require('./tareas-notificar').avisarAsignacion(guardado)
+          .catch(e => console.error('[checklists] aviso de asignacion:', e && e.message));
+      }
+      return res.json({ checklist: guardado });
     }
 
     if (req.method === 'PATCH') {

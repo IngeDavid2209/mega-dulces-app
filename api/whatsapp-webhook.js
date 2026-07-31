@@ -11,9 +11,13 @@
 //   WHATSAPP_APP_SECRET (opcional), ANTHROPIC_API_KEY, ASISTENTE_MODELO (opcional),
 //   FIREBASE_SERVICE_ACCOUNT
 
-const { construirContexto, procesarChat, pgUsuarios, pgConversacionGet, pgConversacionSet, registrarUbicacion } = require('./asistente-chat');
-const { enviarMensaje, enviarSolicitudUbicacion, ultimos10, validarFirma, extraerMensaje } = require('./whatsapp');
+const {
+  construirContexto, procesarChat, pgUsuarios, pgConversacionGet, pgConversacionSet,
+  registrarUbicacion, registrarFotoEvidencia, pgConversacionEsperandoGet,
+} = require('./asistente-chat');
+const { enviarMensaje, enviarSolicitudUbicacion, descargarMedia, ultimos10, validarFirma, extraerMensaje } = require('./whatsapp');
 const { resolverPorWhatsapp } = require('./flotilla-notificar');
+const { subirBuffer } = require('./cloudinary-subir');
 
 const DIAS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 const HORAS_RESET = 3;         // reinicia el hilo tras N horas de inactividad
@@ -49,9 +53,10 @@ async function procesarMensaje(msg) {
   if (!apiKey) { console.error('[wa-webhook] Falta ANTHROPIC_API_KEY.'); return; }
   const modelo = process.env.ASISTENTE_MODELO || 'claude-opus-4-8';
 
-  // Tipos soportados: texto (asistente) y ubicacion (flotilla: salida/regreso).
-  if (msg.tipo !== 'text' && msg.tipo !== 'location') {
-    await enviarMensaje(msg.from, 'Por ahora solo entiendo mensajes de *texto* y *ubicación*. Escríbeme qué necesitas 🙂');
+  // Tipos soportados: texto (asistente), ubicacion (flotilla: salida/regreso) e
+  // imagen (foto de evidencia al entregar una tarea).
+  if (msg.tipo !== 'text' && msg.tipo !== 'location' && msg.tipo !== 'image') {
+    await enviarMensaje(msg.from, 'Por ahora entiendo mensajes de *texto*, *fotos* y *ubicación*. Escríbeme qué necesitas 🙂');
     return;
   }
   if (msg.tipo === 'text' && !String(msg.texto || '').trim()) {
@@ -117,6 +122,57 @@ async function procesarMensaje(msg) {
       ? `¡Listo! Registré tu *salida* con ${veh} 🚗 a las ${hora} desde tu ubicación. Cuando regreses, avísame "ya lo entregué".`
       : `¡Gracias! Registré el *regreso* de ${veh} 🅿️ a las ${hora}. Uso cerrado. 👍`;
     await enviarMensaje(msg.from, texto);
+    return;
+  }
+
+  // ── FOTO entrante (evidencia de la tarea que quedo esperando su foto) ──
+  // Se resuelve FUERA de Claude: el asistente ya dejo apuntado que item espera
+  // foto (entregar_item -> requiere_foto), aqui solo se baja, se sube a
+  // Cloudinary y se guarda. Mismo patron que la ubicacion de flotilla.
+  if (msg.tipo === 'image') {
+    if (identidad.esInvitado) {
+      await enviarMensaje(msg.from, 'Recibí tu foto 📷, pero como invitado solo te puedo ayudar con los *vehículos*.');
+      return;
+    }
+    let esp = null;
+    try { esp = await pgConversacionEsperandoGet(objetivo); } catch (e) { /* sin estado */ }
+    if (!esp || esp.tipo !== 'foto') {
+      await enviarMensaje(msg.from, 'Recibí tu foto 📷 pero no sé de qué tarea es. Dime primero cuál entregas (ej. *"ya hice la 2"*) y te la pido 🙂');
+      return;
+    }
+
+    const media = await descargarMedia(msg.mediaId);
+    if (!media) {
+      await enviarMensaje(msg.from, 'No pude descargar tu foto 😕. ¿Me la mandas otra vez?');
+      return;
+    }
+    const subida = await subirBuffer(media.buffer, { carpeta: 'whatsapp/evidencias' });
+    if (!subida) {
+      await enviarMensaje(msg.from, 'Recibí tu foto pero no la pude guardar 😕. Inténtalo de nuevo en un momento.');
+      return;
+    }
+
+    let res;
+    try { res = await registrarFotoEvidencia(objetivo, subida.url); }
+    catch (e) { console.error('[wa-webhook] error guardando evidencia:', e && e.message); res = null; }
+    if (!res || !res.ok) {
+      await enviarMensaje(msg.from, 'Guardé la foto pero ya no encontré la tarea que la esperaba 😕. Dime otra vez cuál entregas.');
+      return;
+    }
+
+    const tarea = res.item.texto;
+    const ck = res.checklist;
+    let respuesta;
+    if (res.fase === 'antes') {
+      respuesta = `Guardé la foto de *ANTES* de "${tarea}" 📷. Ahora mándame la de *DESPUÉS*.`;
+    } else if (res.fase === 'varias') {
+      respuesta = `Guardé la foto de "${tarea}" 📷 (${res.totalFotos} en total). Puedes mandar más o decirme *listo*.`;
+    } else if (res.todosHechos) {
+      respuesta = `¡Listo! Guardé la evidencia de "${tarea}" ✅. Ya completaste las ${ck.total} tareas de "${ck.nombre}". ¿Lo envío? Contéstame *enviar*.`;
+    } else {
+      respuesta = `¡Listo! Guardé la evidencia de "${tarea}" ✅. Te faltan ${ck.pendientes} de ${ck.total} en "${ck.nombre}".`;
+    }
+    await enviarMensaje(msg.from, respuesta);
     return;
   }
 

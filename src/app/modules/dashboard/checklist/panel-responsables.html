@@ -1,0 +1,210 @@
+<!-- ===================== RESUMEN DEL DÍA ===================== -->
+<section class="pr-strip" aria-label="Resumen del día">
+  <div class="pr-strip-head">
+    <h2>Avance del día</h2>
+    <div class="pr-total">
+      <span class="pr-big">{{ resumen().porcentaje }}<span class="pr-pc">%</span></span>
+      <span class="pr-lab">de {{ resumen().total }} {{ resumen().total === 1 ? 'tarea' : 'tareas' }}</span>
+    </div>
+  </div>
+
+  <div class="pr-bar" role="img"
+       [attr.aria-label]="'Completadas ' + resumen().completada + ', en curso ' + resumen().hoy +
+                          ', vencidas ' + resumen().vencida + ', programadas ' + resumen().programada">
+    <span [style.flex]="resumen().completada" style="background:#1F7A4D"></span>
+    <span [style.flex]="resumen().hoy" style="background:#E08A00"></span>
+    <span [style.flex]="resumen().vencida" style="background:#C7382E"></span>
+    <span [style.flex]="resumen().programada" style="background:#CBD0CB"></span>
+  </div>
+
+  <div class="pr-legend">
+    <div class="pr-legend-item">
+      <span class="k"><i class="pr-dot" style="background:#1F7A4D"></i>Completadas</span>
+      <span class="v">{{ resumen().completada }}</span>
+    </div>
+    <div class="pr-legend-item">
+      <span class="k"><i class="pr-dot" style="background:#E08A00"></i>En curso</span>
+      <span class="v">{{ resumen().hoy }}</span>
+    </div>
+    <div class="pr-legend-item">
+      <span class="k"><i class="pr-dot" style="background:#C7382E"></i>Vencidas</span>
+      <span class="v">{{ resumen().vencida }}</span>
+    </div>
+    <div class="pr-legend-item">
+      <span class="k"><i class="pr-dot" style="background:#CBD0CB"></i>Programadas</span>
+      <span class="v">{{ resumen().programada }}</span>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== ALTAS POR TIPO ===================== -->
+<div class="pr-altas" *ngIf="puedeCrear">
+  <button class="pr-btn pr-btn-u" (click)="crear.emit('unica')">
+    <svg viewBox="0 0 24 24"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h9"/></svg>
+    Tarea única
+  </button>
+  <button class="pr-btn pr-btn-r" (click)="crear.emit('rutina')">
+    <svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 11-2.6-6.4"/><path d="M21 3v6h-6"/></svg>
+    Rutina
+  </button>
+  <button class="pr-btn pr-btn-e" (click)="crear.emit('equipo')">
+    <svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 00-3-3.87"/></svg>
+    Tarea de equipo
+  </button>
+</div>
+
+<!-- ===================== FILTROS ===================== -->
+<div class="pr-filtros">
+  <button class="pr-chip" [attr.aria-pressed]="filtro() === 'todas'" (click)="filtro.set('todas')">
+    Todas <span class="pr-count">{{ conteoFiltros().todas }}</span>
+  </button>
+  <button class="pr-chip" [attr.aria-pressed]="filtro() === 'vencida'" (click)="filtro.set('vencida')">
+    Vencidas <span class="pr-count">{{ conteoFiltros().vencida }}</span>
+  </button>
+  <button class="pr-chip" [attr.aria-pressed]="filtro() === 'hoy'" (click)="filtro.set('hoy')">
+    Hoy <span class="pr-count">{{ conteoFiltros().hoy }}</span>
+  </button>
+  <button class="pr-chip" [attr.aria-pressed]="filtro() === 'completada'" (click)="filtro.set('completada')">
+    Completadas <span class="pr-count">{{ conteoFiltros().completada }}</span>
+  </button>
+  <button class="pr-chip" [attr.aria-pressed]="filtro() === 'programada'" (click)="filtro.set('programada')">
+    Programadas <span class="pr-count">{{ conteoFiltros().programada }}</span>
+  </button>
+
+  <!-- Sin caja de búsqueda propia: la pantalla ya tiene la suya arriba y filtra
+       la lista ANTES de llegar aquí. Dos buscadores era pura confusión. -->
+  <div class="pr-filtros-der">
+    <label for="pr-tipo">Tipo</label>
+    <select id="pr-tipo" [ngModel]="tipoFiltro()" (ngModelChange)="tipoFiltro.set($event)">
+      <option value="todos">Todos</option>
+      <option value="rutina">Rutinas</option>
+      <option value="unica">Tareas únicas</option>
+    </select>
+    <label for="pr-orden">Ordenar</label>
+    <select id="pr-orden" [ngModel]="orden()" (ngModelChange)="orden.set($event)">
+      <option value="riesgo">Riesgo (vencidas primero)</option>
+      <option value="avance">Avance</option>
+      <option value="nombre">Nombre</option>
+    </select>
+  </div>
+</div>
+
+<!-- ===================== CUADRÍCULA DE RESPONSABLES ===================== -->
+<div class="pr-grid">
+  <ng-container *ngFor="let p of personasVisibles(); trackBy: trackPersona">
+
+    <button type="button" class="pr-card"
+            [class.pr-card-abierta]="abiertoId() === p.id"
+            [attr.aria-expanded]="abiertoId() === p.id"
+            (click)="alternar(p.id)">
+      <div class="pr-card-top">
+        <span class="pr-avatar" [style.background]="p.colorFondo" [style.color]="p.colorTexto">
+          {{ p.iniciales }}
+        </span>
+        <span class="pr-card-id">
+          <span class="pr-nombre">{{ p.nombre }}</span>
+          <span class="pr-mezcla">{{ p.mezcla }}</span>
+        </span>
+        <span class="pr-chev" [class.pr-chev-abierta]="abiertoId() === p.id">
+          <svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+        </span>
+      </div>
+
+      <div>
+        <div class="pr-medidor-top">
+          <span class="pr-pct">{{ p.porcentaje }}%</span>
+          <span class="pr-de">{{ p.completadas }} / {{ p.total }}</span>
+        </div>
+        <div class="pr-track">
+          <i [style.width.%]="p.porcentaje" [style.background]="colorMedidor(p)"></i>
+        </div>
+      </div>
+
+      <div class="pr-flags">
+        <span class="pr-flag pr-flag-rojo" *ngIf="p.vencidas">
+          {{ p.vencidas }} vencida{{ p.vencidas > 1 ? 's' : '' }}
+        </span>
+        <span class="pr-flag pr-flag-ambar" *ngIf="p.hoy">{{ p.hoy }} hoy</span>
+        <span class="pr-flag pr-flag-verde" *ngIf="!p.vencidas && !p.hoy">Al día</span>
+      </div>
+    </button>
+
+    <!-- Panel de la persona abierta. Ocupa el ancho completo de la cuadrícula
+         y se coloca justo después de su tarjeta. -->
+    <section class="pr-panel" *ngIf="abiertoId() === p.id">
+      <div class="pr-panel-head">
+        <span class="pr-avatar" [style.background]="p.colorFondo" [style.color]="p.colorTexto">
+          {{ p.iniciales }}
+        </span>
+        <div class="pr-panel-id">
+          <h3>{{ p.nombre }}</h3>
+          <p>{{ p.completadas }} de {{ p.total }} completadas · {{ p.porcentaje }}%</p>
+        </div>
+        <div class="pr-panel-acciones">
+          <button class="pr-btn pr-btn-chico" *ngIf="puedeNotificar"
+                  (click)="notificar.emit(p.nombre)" title="Enviar aviso">
+            <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+            Avisar
+          </button>
+          <button class="pr-cerrar" (click)="cerrar()" aria-label="Cerrar">
+            <svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="pr-tareas">
+        <ng-container *ngIf="tareasVisibles(p).length > 0; else sinTareas">
+          <article class="pr-tarea" *ngFor="let t of tareasVisibles(p); trackBy: trackTarea"
+                   [class.pr-tarea-vencida]="t.estado === 'vencida'"
+                   (click)="abrir.emit(t.ref)" tabindex="0"
+                   (keydown.enter)="abrir.emit(t.ref)">
+            <div class="pr-tarea-top">
+              <span class="pr-pill" [ngClass]="'pr-pill-' + claseEstado(t.estado)">
+                {{ etiquetaEstado(t.estado) }}
+              </span>
+              <span class="pr-tarea-acciones" *ngIf="puedeEditar">
+                <button (click)="$event.stopPropagation(); editar.emit(t.ref)" title="Editar">
+                  <svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4z"/></svg>
+                </button>
+                <button (click)="$event.stopPropagation(); eliminar.emit(t.ref)" title="Eliminar">
+                  <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6"/></svg>
+                </button>
+              </span>
+            </div>
+
+            <p class="pr-tarea-titulo">{{ t.titulo }}</p>
+            <p class="pr-tarea-sub" *ngIf="t.sucursal">{{ t.sucursal }}</p>
+
+            <div>
+              <span class="pr-tipo" [ngClass]="t.tipo === 'rutina' ? 'pr-tipo-r' : 'pr-tipo-u'">
+                <svg *ngIf="t.tipo === 'rutina'" viewBox="0 0 24 24"><path d="M21 12a9 9 0 11-2.6-6.4"/><path d="M21 3v6h-6"/></svg>
+                {{ t.etiquetaTipo }}
+              </span>
+            </div>
+
+            <p class="pr-tarea-meta" [class.pr-meta-vencida]="t.estado === 'vencida'">
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+              {{ t.cuando }}
+            </p>
+
+            <div class="pr-tarea-pie">
+              <div class="pr-track">
+                <i [style.width.%]="t.progreso" [style.background]="colorBarra(t)"></i>
+              </div>
+              <span class="pr-tarea-pct">{{ t.completados }}/{{ t.totalItems }}</span>
+            </div>
+          </article>
+        </ng-container>
+
+        <ng-template #sinTareas>
+          <p class="pr-vacio">Sin tareas que coincidan con el filtro actual.</p>
+        </ng-template>
+      </div>
+    </section>
+
+  </ng-container>
+
+  <p class="pr-vacio pr-vacio-total" *ngIf="personasVisibles().length === 0">
+    Nadie coincide con el filtro actual.
+  </p>
+</div>

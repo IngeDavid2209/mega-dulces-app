@@ -57,7 +57,10 @@
                 style="padding-left: 38px !important; width: 100%; box-sizing: border-box;">
             </div>
             <div class="action-buttons action-bar-responsive" style="margin: 0;">
-              <button class="btn-secondary" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeCrearChecklists"
+              <!-- Estos tres se esconden cuando el panel de responsables está en
+                   pantalla: ese panel ya trae sus propios botones de alta. -->
+              <button class="btn-secondary"
+                *ngIf="(currentUser?.rol === 'admin' || currentUser?.puedeCrearChecklists) && !mostrandoPanelResponsables"
                 (click)="abrirModalRutinas()">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                   style="margin-right: 6px;">
@@ -66,7 +69,8 @@
                   <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
                 </svg> Bloque de Rutinas
               </button>
-              <button class="btn-primary" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeCrearChecklists"
+              <button class="btn-primary"
+                *ngIf="(currentUser?.rol === 'admin' || currentUser?.puedeCrearChecklists) && !mostrandoPanelResponsables"
                 (click)="abrirModal()">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                   style="margin-right: 6px;">
@@ -74,7 +78,8 @@
                   <line x1="5" y1="12" x2="19" y2="12"></line>
                 </svg> Tareas Únicas
               </button>
-              <button class="btn-equipo btn-primary" (click)="abrirModalEquipo()">
+              <button class="btn-equipo btn-primary" *ngIf="!mostrandoPanelResponsables"
+                (click)="abrirModalEquipo()">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                      style="margin-right: 6px;">
                   <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
@@ -507,25 +512,23 @@
           </div>
         </ng-template>
 
-        <!-- VISTA AGRUPADA POR PERSONA -->
-        <div class="checklist-grupos"
-             *ngIf="vistaEquipo() === 'lista' && vistaHistorial() === 'pendientes' && agruparPorPersona() && puedeFiltrarVista && vistaTareas === 'todas'">
-          <div class="persona-grupo" *ngFor="let g of gruposPorPersona; trackBy: trackByGrupo">
-            <button type="button" class="persona-head" (click)="toggleGrupoColapsado(g.nombre)">
-              <span class="persona-avatar" [attr.data-nivel]="g.nivel">{{ (g.nombre || '?').charAt(0) | uppercase }}</span>
-              <span class="persona-info">
-                <span class="persona-nombre">{{ g.nombre }}</span>
-                <span class="persona-sub">{{ g.completas }}/{{ g.total }} completas</span>
-              </span>
-              <span class="persona-chevron" [class.colapsado]="grupoEstaColapsado(g.nombre)">⌄</span>
-            </button>
-            <div class="checklist-grid persona-cards" *ngIf="!grupoEstaColapsado(g.nombre)">
-              <ng-container *ngFor="let checklist of g.checklists; trackBy: trackByChecklist">
-                <ng-container *ngTemplateOutlet="checklistCard; context: { $implicit: checklist }"></ng-container>
-              </ng-container>
-            </div>
-          </div>
-        </div>
+        <!-- VISTA AGRUPADA POR PERSONA (panel de responsables) -->
+        <!-- Misma condición que tenía la vista agrupada anterior: solo para quien
+             puede ver a todo el equipo. El trabajador sigue con la lista de
+             siempre, con sus tarjetas grandes. Abrir una tarea de aquí lleva a la
+             MISMA vista de detalle con fotos: no se cambió nada de la entrega. -->
+        <app-panel-responsables
+          *ngIf="vistaEquipo() === 'lista' && vistaHistorial() === 'pendientes' && agruparPorPersona() && puedeFiltrarVista && vistaTareas === 'todas'"
+          [checklists]="checklistsFiltrados"
+          [puedeCrear]="currentUser?.rol === 'admin' || currentUser?.puedeCrearChecklists"
+          [puedeNotificar]="currentUser?.rol === 'admin' || currentUser?.puedeCrearChecklists"
+          [puedeEditar]="currentUser?.rol === 'admin'"
+          (abrir)="verDetalle($event)"
+          (crear)="altaDesdePanel($event)"
+          (notificar)="abrirModalNotificacion($event)"
+          (editar)="editarDesdePanel($event)"
+          (eliminar)="eliminarDesdePanel($event)">
+        </app-panel-responsables>
 
         <!-- VISTA LISTA (plana por nivel) -->
         <div class="checklist-grid"

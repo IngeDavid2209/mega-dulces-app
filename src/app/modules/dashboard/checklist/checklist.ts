@@ -24,11 +24,12 @@ import {
 } from '../../../shared/lista-cache.util';
 
 import { SidebarComponent } from '../../../shared/sidebar/sidebar';
+import { PanelResponsablesComponent } from './panel-responsables';
 
 @Component({
   selector: 'app-checklist',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, SidebarComponent],
+  imports: [CommonModule, FormsModule, RouterModule, SidebarComponent, PanelResponsablesComponent],
   templateUrl: './checklist.html',
   styleUrls: ['./checklist.css']
 })
@@ -3839,6 +3840,42 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   }
 
   cerrarModalRutinas() { this.isModalRutinasOpen = false; }
+
+  /**
+   * ¿Se está pintando el panel de responsables (el tablero por persona)?
+   *
+   * Sirve para no duplicar controles: cuando el panel está en pantalla, él trae
+   * sus propios botones de alta con el diseño nuevo, así que los de la barra de
+   * arriba se esconden. El trabajador nunca ve el panel, así que a él no se le
+   * quita nada.
+   */
+  get mostrandoPanelResponsables(): boolean {
+    return this.vistaEquipo() === 'lista'
+      && this.vistaHistorial() === 'pendientes'
+      && this.agruparPorPersona()
+      && this.puedeFiltrarVista
+      && this.vistaTareas === 'todas';
+  }
+
+  // ── Puentes para el panel de responsables ─────────────────────────────────
+  // El panel no conoce los modales de esta pantalla: solo avisa qué se pidió.
+  // Aquí se traduce a los flujos de alta que ya existían.
+  /** Abre el alta que corresponda al tipo pedido desde el panel. */
+  altaDesdePanel(tipo: 'unica' | 'rutina' | 'equipo') {
+    if (tipo === 'rutina') { this.abrirModalRutinas(); return; }
+    if (tipo === 'equipo') { this.abrirModalEquipo(); return; }
+    this.abrirModal();
+  }
+
+  /** editar/eliminarChecklist esperan un evento del DOM (hacen stopPropagation).
+   *  El panel ya detuvo la propagación por su cuenta, así que le pasamos un
+   *  evento inerte en vez de null, que reventaría en la primera línea. */
+  private eventoInerte(): Event {
+    return { stopPropagation() { }, preventDefault() { } } as unknown as Event;
+  }
+
+  editarDesdePanel(checklist: any) { this.editarChecklist(checklist, this.eventoInerte()); }
+  eliminarDesdePanel(checklist: any) { this.eliminarChecklist(checklist, this.eventoInerte()); }
 
   agregarRutina() {
     this.formRutinas.push({

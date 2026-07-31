@@ -204,7 +204,10 @@
 /* ---------- Cuadrícula ---------- */
 .pr-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(268px, 1fr));
+  /* 300 px, no 268: con 45 responsables en pantalla, unas decenas de pixeles
+     menos por tarjeta son la diferencia entre leer un nombre completo y ver
+     "Maria Guadalupe Perez" cortado en tres renglones. */
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 12px;
   align-items: start;
 }

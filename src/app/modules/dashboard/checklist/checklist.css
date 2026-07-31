@@ -100,6 +100,12 @@
   padding: 32px 40px;
   overflow-y: auto;
   background-color: var(--bg-app);
+  /* Tope de ancho, como el diseño original (1560 px). Sin esto, en un monitor
+     ancho la cuadrícula de responsables se convertía en 15 columnas de tarjetas
+     diminutas: cabían todas, pero no se leía ninguna. */
+  max-width: 1560px;
+  width: 100%;
+  margin: 0 auto;
 }
 
 .section-header {

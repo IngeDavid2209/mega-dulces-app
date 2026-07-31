@@ -290,4 +290,8 @@ function iniciarPoll() {
   console.log(`[tareas-notificar] poll iniciado (cada 60s) — resumen ${RESUMEN_HORA}, recordatorio ${RECORDATORIO_MIN} min antes`);
 }
 
-module.exports = { avisarAsignacion, avisarEntrega, resumenMatutino, recordatoriosLimite, tick, iniciarPoll };
+// ¿Los avisos estan apagados por configuracion? (para no confundir "apagado"
+// con "fallo el envio" en los mensajes del bot).
+function avisosApagados() { return APAGADO; }
+
+module.exports = { avisarAsignacion, avisarEntrega, resumenMatutino, recordatoriosLimite, tick, iniciarPoll, avisosApagados };

@@ -1477,9 +1477,12 @@ async function ejecutarHerramienta(db, ctx, nombre, input) {
 
     // AVISO AUTOMATICO por WhatsApp al colaborador (plantilla aprobada; si no se
     // puede, texto normal). Mejor esfuerzo: si falla, el checklist ya quedo.
-    let avisado = false;
-    try { avisado = await require('./tareas-notificar').avisarAsignacion({ ...checklist, id }); }
-    catch (e) { console.error('[tareas-notificar] aviso de asignacion fallo:', e && e.message); }
+    let avisado = false, avisosOff = false;
+    try {
+      const notif = require('./tareas-notificar');
+      avisosOff = notif.avisosApagados();
+      avisado = await notif.avisarAsignacion({ ...checklist, id });
+    } catch (e) { console.error('[tareas-notificar] aviso de asignacion fallo:', e && e.message); }
 
     // Si el aviso automatico NO salio, dejamos el boton manual de WhatsApp que ya
     // usaba el asistente web (acciones[].whatsapp): asi el admin lo manda a mano.
@@ -1501,8 +1504,9 @@ async function ejecutarHerramienta(db, ctx, nombre, input) {
       ok: true, id, avisado, whatsapp,
       mensaje: `Checklist "${nombreCk}" creado para ${assigned} en ${store} el ${fecha} con ${items.length} tarea(s).`
         + (avisado ? ` Ya le avise a ${assigned} por WhatsApp.`
-          : tieneTel ? ' (No pude mandarle el WhatsApp; revisa la plantilla o el numero.)'
-            : ' (Ojo: esa persona no tiene telefono registrado, no le pude avisar por WhatsApp.)')
+          : avisosOff ? ' (Los avisos automaticos por WhatsApp estan apagados ahora mismo, asi que no se le notifico.)'
+            : tieneTel ? ' (No pude mandarle el WhatsApp; revisa la plantilla o el numero.)'
+              : ' (Ojo: esa persona no tiene telefono registrado, no le pude avisar por WhatsApp.)')
     };
   }
 

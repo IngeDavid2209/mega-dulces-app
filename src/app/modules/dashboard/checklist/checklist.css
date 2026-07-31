@@ -3619,3 +3619,51 @@
 
 /* Spinner del overlay "Enviando..." */
 @keyframes md-spin { to { transform: rotate(360deg); } }
+
+/* =================================================================
+   BARRA DE CONTROLES DEL CHECKLIST
+   Junta en un solo renglon lo que antes eran cuatro barras apiladas.
+   A la izquierda lo que elige QUE se ve; a la derecha las acciones.
+   ================================================================= */
+.cl-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 0 0 16px 0;
+}
+
+.cl-toolbar-izq,
+.cl-toolbar-der {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* Separador fino entre los dos grupos de fichas, para que se lea que son
+   dos preguntas distintas (cuando se ve) y no una sola lista repetida. */
+.cl-toolbar-sep {
+  width: 1px;
+  height: 22px;
+  background: #E2E8F0;
+  flex-shrink: 0;
+}
+
+/* Las secciones de fichas ya no llevan margen propio: lo pone la barra. */
+.cl-toolbar .vista-tabs {
+  margin: 0 !important;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+@media screen and (max-width: 768px) {
+  .cl-toolbar { gap: 10px; }
+  .cl-toolbar-der { width: 100%; }
+  .cl-toolbar-der .btn-primary,
+  .cl-toolbar-der .agrupar-toggle { flex: 1; justify-content: center; }
+  .cl-toolbar-sep { display: none; }
+}
+

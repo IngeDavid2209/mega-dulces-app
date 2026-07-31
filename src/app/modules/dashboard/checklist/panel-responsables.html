@@ -55,8 +55,12 @@
 
 <!-- ===================== FILTROS ===================== -->
 <div class="pr-filtros">
+  <!-- La etiqueta importa: arriba hay otra barra de fichas (Mis tareas / Toda la
+       operación) y sin decir "Estado" las dos se leían como el mismo control
+       repetido, con el mismo número al lado. -->
+  <span class="pr-etiqueta-grupo">Estado</span>
   <button class="pr-chip" [attr.aria-pressed]="filtro() === 'todas'" (click)="filtro.set('todas')">
-    Todas <span class="pr-count">{{ conteoFiltros().todas }}</span>
+    Todos <span class="pr-count">{{ conteoFiltros().todas }}</span>
   </button>
   <button class="pr-chip" [attr.aria-pressed]="filtro() === 'vencida'" (click)="filtro.set('vencida')">
     Vencidas <span class="pr-count">{{ conteoFiltros().vencida }}</span>

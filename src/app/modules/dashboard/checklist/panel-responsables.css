@@ -113,6 +113,7 @@
   display: inline-flex;
   align-items: center;
   gap: 7px;
+  white-space: nowrap;   /* que el boton entero baje de renglon, no su texto */
   transition: background .15s, border-color .15s;
 }
 
@@ -424,4 +425,14 @@
   .pr-buscar input { width: 100%; }
   .pr-tareas { grid-template-columns: 1fr; }
   .pr-altas .pr-btn { flex: 1; justify-content: center; }
+}
+
+/* Etiqueta del grupo de fichas, para distinguir esta barra de las de arriba. */
+.pr-etiqueta-grupo {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--pr-txt-3);
+  margin-right: 2px;
 }

@@ -340,61 +340,71 @@
           </div>
         </section>
 
-        <!-- 🗂️ Toggle: Pendientes (hoy) / Enviadas (historial últimos 30 días) -->
-        <section class="vista-tabs" *ngIf="vistaEquipo() === 'lista'" style="margin-bottom:14px;">
-          <button class="vista-tab"
-                  [class.vista-tab-active]="vistaHistorial() === 'pendientes'"
-                  (click)="cambiarVistaHistorial('pendientes')">
-            <span class="vista-tab-icon">📋</span> Pendientes
-          </button>
-          <button class="vista-tab"
-                  [class.vista-tab-active]="vistaHistorial() === 'enviadas'"
-                  (click)="cambiarVistaHistorial('enviadas')">
-            <span class="vista-tab-icon">✅</span> Enviadas
-          </button>
-        </section>
+        <!-- ===================== BARRA DE CONTROLES =====================
+             Antes esto eran CUATRO renglones apilados (Pendientes/Enviadas,
+             Mis tareas/Todas, Agregar mi tarea y Agrupado por persona) y con el
+             panel nuevo abajo quedaban cinco barras seguidas: dos de ellas con
+             fichas iguales y el mismo número, que se leían como si fueran el
+             mismo control repetido. Ahora es una sola barra: a la izquierda lo
+             que elige QUÉ se ve, a la derecha las acciones. -->
+        <div class="cl-toolbar" *ngIf="vistaEquipo() === 'lista'">
 
-        <!-- 🎯 Tabs: Mis tareas / Equipo / Todas (solo admin o supervisor) -->
-        <section class="vista-tabs" *ngIf="puedeFiltrarVista && vistaEquipo() === 'lista' && vistaHistorial() === 'pendientes'">
-          <button class="vista-tab"
-                  [class.vista-tab-active]="vistaTareas === 'mis'"
-                  (click)="cambiarVistaTareas('mis')">
-            <span class="vista-tab-icon">👤</span>
-            Mis tareas
-            <span class="vista-tab-badge">{{ contadorMisChecklists }}</span>
-          </button>
-          <button class="vista-tab"
-                  [class.vista-tab-active]="vistaTareas === 'todas'"
-                  (click)="cambiarVistaTareas('todas')">
-            <span class="vista-tab-icon">📋</span>
-            Todas
-            <span class="vista-tab-badge">{{ contadorTodasChecklists }}</span>
-          </button>
-        </section>
+          <div class="cl-toolbar-izq">
+            <!-- Pendientes (hoy) / Enviadas (últimos 30 días) -->
+            <section class="vista-tabs">
+              <button class="vista-tab"
+                      [class.vista-tab-active]="vistaHistorial() === 'pendientes'"
+                      (click)="cambiarVistaHistorial('pendientes')">
+                Pendientes
+              </button>
+              <button class="vista-tab"
+                      [class.vista-tab-active]="vistaHistorial() === 'enviadas'"
+                      (click)="cambiarVistaHistorial('enviadas')">
+                Enviadas
+              </button>
+            </section>
 
-        <!-- Cualquier trabajador puede sumar una tarea propia/extra a su día -->
-        <div class="tarea-propia-bar" *ngIf="vistaEquipo() === 'lista' && vistaHistorial() === 'pendientes'"
-             style="display:flex; justify-content:flex-end; margin:0 0 14px 0;">
-          <button class="btn-primary" (click)="abrirModalTareaDia()">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                 style="margin-right:6px; vertical-align:middle;">
-              <line x1="12" y1="5" x2="12" y2="19"></line>
-              <line x1="5" y1="12" x2="19" y2="12"></line>
-            </svg> Agregar mi tarea
-          </button>
-        </div>
+            <span class="cl-toolbar-sep"
+                  *ngIf="puedeFiltrarVista && vistaHistorial() === 'pendientes'"></span>
 
-        <!-- 🔀 Toggle: agrupar por persona / lista (solo admin-supervisor en "Todas") -->
-        <div class="agrupar-bar" *ngIf="vistaEquipo() === 'lista' && vistaHistorial() === 'pendientes' && puedeFiltrarVista && vistaTareas === 'todas'">
-          <button class="agrupar-toggle" [class.on]="agruparPorPersona()" (click)="toggleAgruparPorPersona()">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-              <circle cx="9" cy="7" r="4"></circle>
-              <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-              <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-            </svg>
-            {{ agruparPorPersona() ? 'Agrupado por persona' : 'Lista' }}
-          </button>
+            <!-- De quién: mis tareas o toda la operación (admin o supervisor) -->
+            <section class="vista-tabs" *ngIf="puedeFiltrarVista && vistaHistorial() === 'pendientes'">
+              <button class="vista-tab"
+                      [class.vista-tab-active]="vistaTareas === 'mis'"
+                      (click)="cambiarVistaTareas('mis')">
+                Mis tareas
+                <span class="vista-tab-badge">{{ contadorMisChecklists }}</span>
+              </button>
+              <button class="vista-tab"
+                      [class.vista-tab-active]="vistaTareas === 'todas'"
+                      (click)="cambiarVistaTareas('todas')">
+                Toda la operación
+                <span class="vista-tab-badge">{{ contadorTodasChecklists }}</span>
+              </button>
+            </section>
+          </div>
+
+          <div class="cl-toolbar-der" *ngIf="vistaHistorial() === 'pendientes'">
+            <!-- Cualquier trabajador puede sumar una tarea propia a su día -->
+            <button class="btn-primary" (click)="abrirModalTareaDia()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                   style="margin-right:6px; vertical-align:middle;">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg> Agregar mi tarea
+            </button>
+
+            <!-- Agrupar por persona (el panel) o lista plana -->
+            <button class="agrupar-toggle" *ngIf="puedeFiltrarVista && vistaTareas === 'todas'"
+                    [class.on]="agruparPorPersona()" (click)="toggleAgruparPorPersona()">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                <circle cx="9" cy="7" r="4"></circle>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+              </svg>
+              {{ agruparPorPersona() ? 'Agrupado por persona' : 'Lista plana' }}
+            </button>
+          </div>
         </div>
 
         <!-- Plantilla reutilizable de tarjeta de checklist -->

@@ -73,18 +73,38 @@ async function soltarAviso(clave) {
   catch (e) { /* no es crítico */ }
 }
 
+// --- ¿Está abierta la ventana de 24 h? ---------------------------------------
+// Un mensaje de TEXTO libre solo llega si la persona nos escribió en las últimas
+// 24 h. Fuera de esa ventana, Meta acepta la petición con HTTP 200 y DESPUÉS la
+// rechaza de forma asíncrona (error 131047 "Re-engagement message"), así que el
+// 200 NO es prueba de que llegó. Por eso preguntamos antes, con la última
+// actividad del hilo (mdtask_wa_conversaciones.actualizado, que se toca cuando
+// esa persona nos escribe). En frío, la ÚNICA vía es una plantilla aprobada.
+const VENTANA_MS = 24 * 3600 * 1000 - 10 * 60 * 1000; // 10 min de margen
+async function ventanaAbierta(telefono) {
+  try {
+    const r = await query('select actualizado from mdtask_wa_conversaciones where id = $1', [ultimos10(telefono)]);
+    const t = r.rows[0] ? Number(r.rows[0].actualizado || 0) : 0;
+    return t > 0 && (Date.now() - t) < VENTANA_MS;
+  } catch (e) { return false; }
+}
+
 // --- Envío con plantilla y respaldo en texto ---------------------------------
-// Devuelve true si WhatsApp aceptó alguno de los dos.
+// Devuelve { ok, motivo }. `motivo`: 'plantilla' | 'texto' | 'sin_telefono' |
+// 'sin_plantilla_ni_ventana' | 'fallo_envio'. Nunca miente: si no hay forma de
+// que el mensaje llegue, devuelve ok:false en vez de dar un falso positivo.
 async function mandar(telefono, plantilla, variables, textoRespaldo) {
   const tel = paraEnviar(telefono);
-  if (!tel) return false;
-  const r = await enviarPlantilla(tel, plantilla, LANG, variables);
-  if (r) return true;
-  // La plantilla puede no existir/estar sin aprobar todavía: al menos intentamos
-  // texto normal (llega si la persona escribió al bot en las últimas 24 h).
-  console.warn(`[tareas-notificar] plantilla "${plantilla}" no salió; intento texto normal.`);
+  if (!tel) return { ok: false, motivo: 'sin_telefono' };
+  if (await enviarPlantilla(tel, plantilla, LANG, variables)) return { ok: true, motivo: 'plantilla' };
+  // Sin plantilla aprobada, el texto libre solo sirve dentro de la ventana.
+  if (!(await ventanaAbierta(tel))) {
+    console.warn(`[tareas-notificar] NO se pudo avisar a ${tel}: la plantilla "${plantilla}" no esta aprobada en Meta y esa persona no le ha escrito al bot en 24h.`);
+    return { ok: false, motivo: 'sin_plantilla_ni_ventana' };
+  }
+  console.warn(`[tareas-notificar] plantilla "${plantilla}" no disponible; mando texto normal (ventana de 24h abierta).`);
   const t = await enviarMensaje(tel, textoRespaldo);
-  return !!t;
+  return { ok: !!t, motivo: t ? 'texto' : 'fallo_envio' };
 }
 
 // --- Personal (teléfono por uid o por nombre) --------------------------------
@@ -128,20 +148,20 @@ function listaItems(ck, max = 5) {
 // ============================================================================
 /**
  * Avisa por WhatsApp a la persona asignada. Idempotente por checklist.
- * Devuelve true si el mensaje salió. Nunca lanza: un aviso fallido NO debe
- * tumbar la creación del checklist.
+ * Devuelve { ok, motivo }. Nunca lanza: un aviso fallido NO debe tumbar la
+ * creación del checklist.
  */
 async function avisarAsignacion(ck) {
   try {
-    if (APAGADO || !dbConfigurada() || !ck || !ck.id) return false;
+    if (APAGADO || !dbConfigurada() || !ck || !ck.id) return { ok: false, motivo: 'apagado' };
     const clave = 'asig:' + ck.id;
-    if (!await reclamarAviso(clave)) return false;   // ya se avisó antes
+    if (!await reclamarAviso(clave)) return { ok: false, motivo: 'ya_avisado' };
 
     const personal = await cargarPersonal();
     const persona = personaDeChecklist(personal, ck);
     if (!persona || !persona.telefono) {
       await soltarAviso(clave); // sin teléfono: que se pueda reintentar si lo registran
-      return false;
+      return { ok: false, motivo: 'sin_telefono' };
     }
 
     const nombre = (persona.nombre || '').split(' ')[0] || 'Hola';
@@ -153,13 +173,15 @@ async function avisarAsignacion(ck) {
       (items ? `\n\n${listaItems(ck)}` : '') +
       `\n\nCuando la termines contéstame por aquí (ej. *"ya hice la 1"*) y la vamos cerrando 👍`;
 
-    const ok = await mandar(persona.telefono, T_NUEVA, vars, respaldo);
-    if (!ok) await soltarAviso(clave);               // para reintentar en otro momento
-    else console.log(`[tareas-notificar] aviso de asignacion checklist=${ck.id} -> ${persona.nombre}`);
-    return ok;
+    const res = await mandar(persona.telefono, T_NUEVA, vars, respaldo);
+    // Si no salió, se libera la clave: nadie reintenta las asignaciones en bucle,
+    // así que dejarla marcada solo taparía el aviso si el checklist se re-guarda.
+    if (!res.ok) await soltarAviso(clave);
+    else console.log(`[tareas-notificar] aviso de asignacion checklist=${ck.id} -> ${persona.nombre} (via ${res.motivo})`);
+    return { ...res, persona: persona.nombre };
   } catch (e) {
     console.error('[tareas-notificar] avisarAsignacion:', e && e.message);
-    return false;
+    return { ok: false, motivo: 'error' };
   }
 }
 
@@ -195,9 +217,12 @@ async function resumenMatutino() {
       + (cks.length > 5 ? `\n• ...y ${cks.length - 5} más` : '');
     const vars = [nombre, String(cks.length), lista.replace(/\n/g, ' | ')];
     const respaldo = `¡Buen día, ${nombre}! ☀️\nHoy tienes *${cks.length}* ${cks.length === 1 ? 'tarea' : 'tareas'}:\n${lista}\n\nEscríbeme *"qué tengo hoy"* para verlas con detalle 👍`;
-    const ok = await mandar(persona.telefono, T_RESUMEN, vars, respaldo);
-    if (!ok) await soltarAviso(clave);
-    else console.log(`[tareas-notificar] resumen ${fechaISO} -> ${persona.nombre} (${cks.length})`);
+    const res = await mandar(persona.telefono, T_RESUMEN, vars, respaldo);
+    // Solo se libera la clave ante un fallo pasajero. Si es que no hay plantilla
+    // ni ventana, se deja marcada: el poll corre cada minuto y reintentarlo seria
+    // fallar igual 60 veces por hora.
+    if (!res.ok && res.motivo !== 'sin_plantilla_ni_ventana') await soltarAviso(clave);
+    else if (res.ok) console.log(`[tareas-notificar] resumen ${fechaISO} -> ${persona.nombre} (${cks.length})`);
   }
 }
 
@@ -231,9 +256,9 @@ async function recordatoriosLimite() {
     const vars = [nombre, ck.name || 'tu tarea', String(faltan), String(sinHacer)];
     const respaldo = `⏰ ${nombre}, te ${faltan === 1 ? 'queda 1 minuto' : 'quedan ' + faltan + ' minutos'} para entregar *${ck.name || 'tu tarea'}*`
       + ` y te ${sinHacer === 1 ? 'falta 1 tarea' : 'faltan ' + sinHacer + ' tareas'}.\nSi ya las hiciste, dime *"ya terminé"* y lo enviamos 🙌`;
-    const ok = await mandar(persona.telefono, T_RECORDATORIO, vars, respaldo);
-    if (!ok) await soltarAviso(clave);
-    else console.log(`[tareas-notificar] recordatorio checklist=${ck.id} (${faltan} min) -> ${persona.nombre}`);
+    const res = await mandar(persona.telefono, T_RECORDATORIO, vars, respaldo);
+    if (!res.ok && res.motivo !== 'sin_plantilla_ni_ventana') await soltarAviso(clave);
+    else if (res.ok) console.log(`[tareas-notificar] recordatorio checklist=${ck.id} (${faltan} min) -> ${persona.nombre}`);
   }
 }
 
@@ -256,6 +281,12 @@ async function avisarEntrega(ck, ctx) {
     const jefe = (creador && personal.find(p => p.id === creador))
       || personal.find(p => mismoNombreEmpleado(p.nombre, nombreCreador));
     if (!jefe || !jefe.telefono) return false;
+    // Va como texto libre (no hay plantilla para esto): solo sirve si el jefe
+    // escribió al bot en las últimas 24 h. Normalmente sí: él mismo lo usa.
+    if (!(await ventanaAbierta(jefe.telefono))) {
+      console.warn(`[tareas-notificar] no aviso la entrega a ${jefe.nombre}: su ventana de 24h esta cerrada.`);
+      return false;
+    }
     // No avisarse a sí mismo (un admin que entrega su propio checklist).
     if (ctx && (jefe.id === ctx.uid || ultimos10(jefe.telefono) === ultimos10(ctx.telefono || ''))) return false;
 

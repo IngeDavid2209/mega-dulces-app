@@ -1584,11 +1584,13 @@ async function ejecutarHerramienta(db, ctx, nombre, input) {
 
     // AVISO AUTOMATICO por WhatsApp al colaborador (plantilla aprobada; si no se
     // puede, texto normal). Mejor esfuerzo: si falla, el checklist ya quedo.
-    let avisado = false, avisosOff = false;
+    let avisado = false, avisosOff = false, motivoAviso = null;
     try {
       const notif = require('./tareas-notificar');
       avisosOff = notif.avisosApagados();
-      avisado = await notif.avisarAsignacion({ ...checklist, id });
+      const res = await notif.avisarAsignacion({ ...checklist, id });
+      avisado = !!(res && res.ok);
+      motivoAviso = res && res.motivo;
     } catch (e) { console.error('[tareas-notificar] aviso de asignacion fallo:', e && e.message); }
 
     // Si el aviso automatico NO salio, dejamos el boton manual de WhatsApp que ya
@@ -1612,8 +1614,11 @@ async function ejecutarHerramienta(db, ctx, nombre, input) {
       mensaje: `Checklist "${nombreCk}" creado para ${assigned} en ${store} el ${fecha} con ${items.length} tarea(s).`
         + (avisado ? ` Ya le avise a ${assigned} por WhatsApp.`
           : avisosOff ? ' (Los avisos automaticos por WhatsApp estan apagados ahora mismo, asi que no se le notifico.)'
-            : tieneTel ? ' (No pude mandarle el WhatsApp; revisa la plantilla o el numero.)'
-              : ` (Ojo: ${assigned} NO tiene telefono registrado, asi que no le pude avisar. Si me dictas su numero lo doy de alta con registrar_telefono y a partir de ahi ya le llegan los avisos.)`)
+            : motivoAviso === 'sin_telefono' || !tieneTel
+              ? ` (Ojo: ${assigned} NO tiene telefono registrado, asi que NO se le aviso. Si me dictas su numero lo doy de alta con registrar_telefono y desde ahi ya le llegan los avisos.)`
+              : motivoAviso === 'sin_plantilla_ni_ventana'
+                ? ` (IMPORTANTE: NO se le pudo avisar. WhatsApp no deja escribirle "en frio" mientras la plantilla no este aprobada en Meta, y ${assigned} no le ha escrito al bot en las ultimas 24 horas. Si ella le manda cualquier mensaje al bot, el aviso le llega de inmediato. El checklist SI quedo guardado.)`
+                : ` (No se pudo mandar el WhatsApp a ${assigned}; el checklist si quedo guardado.)`)
     };
   }
 

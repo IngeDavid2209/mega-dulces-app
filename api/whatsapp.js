@@ -146,6 +146,39 @@ async function enviarSolicitudUbicacion(telefono, texto) {
   }
 }
 
+// Descarga un archivo que el usuario mando por WhatsApp (foto de evidencia de
+// una tarea). Son DOS pasos en la Cloud API: primero se pide la metadata del
+// media para obtener una URL temporal, y luego se baja esa URL con el mismo
+// token. Devuelve { buffer, mime } o null si algo falla.
+async function descargarMedia(mediaId) {
+  const token = process.env.WHATSAPP_TOKEN;
+  if (!token || !mediaId) {
+    console.error('[whatsapp] falta WHATSAPP_TOKEN o mediaId; no se descarga el archivo.');
+    return null;
+  }
+  try {
+    const meta = await fetch(`https://graph.facebook.com/${GRAPH_VERSION}/${mediaId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const info = await meta.json().catch(() => ({}));
+    if (!meta.ok || !info.url) {
+      console.error('[whatsapp] no se pudo leer la metadata del media:', JSON.stringify(info));
+      return null;
+    }
+    // La URL viene firmada y caduca; hay que mandar el token igual.
+    const bin = await fetch(info.url, { headers: { Authorization: `Bearer ${token}` } });
+    if (!bin.ok) {
+      console.error(`[whatsapp] la descarga del media fallo (HTTP ${bin.status})`);
+      return null;
+    }
+    const buffer = Buffer.from(await bin.arrayBuffer());
+    return { buffer, mime: info.mime_type || 'application/octet-stream' };
+  } catch (err) {
+    console.error('[whatsapp] error bajando el media:', err.message);
+    return null;
+  }
+}
+
 // Valida la firma del webhook (X-Hub-Signature-256) con el APP SECRET.
 // Necesita el cuerpo CRUDO (req.rawBody, capturado por express.json verify).
 // Si no hay WHATSAPP_APP_SECRET configurado, no valida (devuelve true) para no
@@ -163,9 +196,11 @@ function validarFirma(req) {
   return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
 
-// Extrae el primer mensaje de texto entrante del payload del webhook.
+// Extrae el primer mensaje entrante del payload del webhook.
 // Devuelve { from, tipo, texto } o null si no hay mensaje de usuario
 // (ej. cuando el webhook trae solo "statuses" de entrega).
+// Los tipos que el bot entiende: text, location (flotilla) e image (evidencia de
+// una tarea; trae mediaId para bajarla y el caption como texto).
 function extraerMensaje(body) {
   try {
     const value = body.entry?.[0]?.changes?.[0]?.value;
@@ -182,11 +217,24 @@ function extraerMensaje(body) {
         },
       };
     }
-    // Otros tipos (audio, imagen, etc.) por ahora se reportan sin texto.
+    // FOTO de evidencia (o un documento que en realidad es una imagen).
+    if (msg.type === 'image' && msg.image) {
+      return {
+        from, tipo: 'image', texto: msg.image.caption || '',
+        mediaId: msg.image.id, mime: msg.image.mime_type || 'image/jpeg',
+      };
+    }
+    if (msg.type === 'document' && msg.document && String(msg.document.mime_type || '').startsWith('image/')) {
+      return {
+        from, tipo: 'image', texto: msg.document.caption || '',
+        mediaId: msg.document.id, mime: msg.document.mime_type,
+      };
+    }
+    // Otros tipos (audio, video, stickers...) por ahora se reportan sin texto.
     return { from, tipo: msg.type, texto: '' };
   } catch (e) {
     return null;
   }
 }
 
-module.exports = { normalizarTelefono, ultimos10, enviarMensaje, enviarPlantilla, enviarSolicitudUbicacion, validarFirma, extraerMensaje };
+module.exports = { normalizarTelefono, ultimos10, enviarMensaje, enviarPlantilla, enviarSolicitudUbicacion, descargarMedia, validarFirma, extraerMensaje };

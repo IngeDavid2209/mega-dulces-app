@@ -1,0 +1,11 @@
+-- Bot de WhatsApp: ENTREGA de tareas con evidencia.
+--
+-- Cuando el colaborador entrega un item de checklist que pide foto, el bot queda
+-- "esperando" esa foto. Ese estado de la CONVERSACION (no del checklist) vive
+-- aqui, igual que `invitado` (SQL 023): asi la siguiente imagen que llegue por
+-- WhatsApp sabe a que checklist/item pertenece, y sobrevive a reinicios.
+--
+-- Forma del jsonb:
+--   { tipo:'foto', checklistId, itemId, itemTexto, modo:'simple'|'antesDespues'|'varias',
+--     fase:'antes'|'despues'|null, pedidoEn: epochMs }
+alter table mdtask_wa_conversaciones add column if not exists esperando jsonb;

@@ -105,7 +105,17 @@ async function registrarAcuse(estatus) {
       console.error(`[whatsapp] NO SE ENTREGO a ${tel}: ${err.title || 'error'} (code ${code})${deCuenta ? ' — es un problema de la CUENTA, afecta a todos los avisos' : ''}`);
       await guardarEstado({ ultimoFallo: { code, titulo: err.title || '', detalle: (err.error_data && err.error_data.details) || '', tel, en: Date.now(), deCuenta } });
     } else if (st === 'delivered') {
-      await guardarEstado({ ultimaEntrega: { tel, en: Date.now() } });
+      // OJO con lo que cuenta como "ya se resolvio": las RESPUESTAS del bot dentro
+      // de una ventana abierta se entregan siempre (categoria `service`), aunque la
+      // cuenta este bloqueada para escribir en frio. Si esas contaran, el trafico
+      // normal de conversacion borraria la señal del bloqueo cada minuto (pasaba).
+      // Solo un mensaje INICIADO POR EL NEGOCIO (utility/marketing) prueba que ya
+      // se puede volver a escribir en frio.
+      const cat = String((estatus.pricing && estatus.pricing.category) || '').toLowerCase();
+      const deNegocio = !!cat && cat !== 'service';
+      await guardarEstado(deNegocio
+        ? { ultimaEntrega: { tel, en: Date.now(), categoria: cat }, ultimaEntregaNegocio: { tel, en: Date.now(), categoria: cat } }
+        : { ultimaEntrega: { tel, en: Date.now(), categoria: cat || 'service' } });
     }
   } catch (e) { console.error('[tareas-notificar] registrarAcuse:', e && e.message); }
 }
@@ -120,7 +130,10 @@ async function avisosRebotando() {
     if (!dbConfigurada()) return null;
     const r = await query('select datos from mdtask_config where id = $1', [CLAVE_ESTADO]);
     const d = (r.rows[0] && r.rows[0].datos) || {};
-    const f = d.ultimoFallo, e = d.ultimaEntrega;
+    const f = d.ultimoFallo;
+    // Solo una entrega INICIADA POR EL NEGOCIO da el bloqueo por resuelto (ver
+    // registrarAcuse): las respuestas dentro de ventana llegan igual estando bloqueado.
+    const e = d.ultimaEntregaNegocio;
     if (!f || !f.deCuenta) return null;
     if (e && Number(e.en || 0) > Number(f.en || 0)) return null;   // ya se resolvio
     return { code: f.code, titulo: f.titulo, detalle: f.detalle };

@@ -73,6 +73,60 @@ async function soltarAviso(clave) {
   catch (e) { /* no es crítico */ }
 }
 
+// --- Estado REAL de los envíos (acuses de Meta) -------------------------------
+// La Cloud API acepta el envío con HTTP 200 y dice si falló DESPUÉS, por el
+// webhook de `statuses`. Sin escuchar eso, el bot presume entregas que nunca
+// ocurrieron (fue justo lo que pasó: "ya le avisé" con el mensaje rebotado por
+// un pendiente de pago de la cuenta). Aquí se guarda el último veredicto real.
+//
+// Códigos de CUENTA (afectan a todos, no a un número): 131042 problema de pago,
+// 131031 cuenta bloqueada. Ver https://developers.facebook.com/docs/whatsapp/cloud-api/support/error-codes
+const CODIGOS_CUENTA = new Set([131042, 131031]);
+const CLAVE_ESTADO = 'wa_estado_envios';
+
+async function guardarEstado(parcial) {
+  await query(
+    `insert into mdtask_config (id, datos) values ($1, $2::jsonb)
+     on conflict (id) do update set datos = coalesce(mdtask_config.datos,'{}'::jsonb) || excluded.datos`,
+    [CLAVE_ESTADO, JSON.stringify(parcial)]
+  );
+}
+
+/** Procesa un `statuses` del webhook de WhatsApp. No lanza nunca. */
+async function registrarAcuse(estatus) {
+  try {
+    if (!dbConfigurada() || !estatus || !estatus.status) return;
+    const st = String(estatus.status);
+    const tel = String(estatus.recipient_id || '');
+    if (st === 'failed') {
+      const err = (Array.isArray(estatus.errors) ? estatus.errors : [])[0] || {};
+      const code = Number(err.code || 0);
+      const deCuenta = CODIGOS_CUENTA.has(code);
+      console.error(`[whatsapp] NO SE ENTREGO a ${tel}: ${err.title || 'error'} (code ${code})${deCuenta ? ' — es un problema de la CUENTA, afecta a todos los avisos' : ''}`);
+      await guardarEstado({ ultimoFallo: { code, titulo: err.title || '', detalle: (err.error_data && err.error_data.details) || '', tel, en: Date.now(), deCuenta } });
+    } else if (st === 'delivered') {
+      await guardarEstado({ ultimaEntrega: { tel, en: Date.now() } });
+    }
+  } catch (e) { console.error('[tareas-notificar] registrarAcuse:', e && e.message); }
+}
+
+/**
+ * ¿Los avisos del negocio están rebotando por un problema de CUENTA?
+ * Devuelve null si todo bien, o { code, titulo, detalle } para poder decirlo.
+ * Se considera resuelto en cuanto hay una entrega exitosa posterior al fallo.
+ */
+async function avisosRebotando() {
+  try {
+    if (!dbConfigurada()) return null;
+    const r = await query('select datos from mdtask_config where id = $1', [CLAVE_ESTADO]);
+    const d = (r.rows[0] && r.rows[0].datos) || {};
+    const f = d.ultimoFallo, e = d.ultimaEntrega;
+    if (!f || !f.deCuenta) return null;
+    if (e && Number(e.en || 0) > Number(f.en || 0)) return null;   // ya se resolvio
+    return { code: f.code, titulo: f.titulo, detalle: f.detalle };
+  } catch (e) { return null; }
+}
+
 // --- ¿Está abierta la ventana de 24 h? ---------------------------------------
 // Un mensaje de TEXTO libre solo llega si la persona nos escribió en las últimas
 // 24 h. Fuera de esa ventana, Meta acepta la petición con HTTP 200 y DESPUÉS la
@@ -354,4 +408,9 @@ function iniciarPoll() {
 // con "fallo el envio" en los mensajes del bot).
 function avisosApagados() { return APAGADO; }
 
-module.exports = { avisarAsignacion, avisarEntrega, resumenMatutino, recordatoriosLimite, tick, iniciarPoll, avisosApagados };
+module.exports = {
+  avisarAsignacion, avisarEntrega, resumenMatutino, recordatoriosLimite,
+  tick, iniciarPoll, avisosApagados,
+  // Acuses de Meta (los alimenta el webhook) para no presumir entregas falsas.
+  registrarAcuse, avisosRebotando,
+};

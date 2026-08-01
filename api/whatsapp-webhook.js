@@ -17,6 +17,7 @@ const {
 } = require('./asistente-chat');
 const { enviarMensaje, enviarSolicitudUbicacion, descargarMedia, ultimos10, validarFirma, extraerMensaje } = require('./whatsapp');
 const { resolverPorWhatsapp } = require('./flotilla-notificar');
+const { registrarAcuse } = require('./tareas-notificar');
 const { subirBuffer } = require('./cloudinary-subir');
 
 const DIAS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
@@ -261,10 +262,15 @@ module.exports = async (req, res) => {
       console.warn('[wa-webhook] firma invalida; se ignora el evento.');
       return res.sendStatus(403);
     }
-    // TEMP DIAGNÓSTICO: registrar eventos de ESTADO (entrega/fallo) de mensajes.
+    // ACUSES de Meta (sent/delivered/read/failed). Es la ÚNICA forma de saber si
+    // un mensaje del negocio llegó de verdad: la Cloud API responde 200 y avisa el
+    // fallo aquí, después. Los fallos se guardan para no presumir entregas falsas.
     try {
       const val = req.body?.entry?.[0]?.changes?.[0]?.value;
-      if (val?.statuses?.length) console.log('[wa-webhook] STATUS:', JSON.stringify(val.statuses));
+      for (const st of (val?.statuses || [])) {
+        if (st && st.status === 'failed') console.log('[wa-webhook] STATUS:', JSON.stringify(st));
+        registrarAcuse(st).catch(() => {});
+      }
     } catch (e) { /* noop */ }
     const msg = extraerMensaje(req.body || {});
     // Responder 200 de inmediato para que Meta no reintente; procesar aparte.

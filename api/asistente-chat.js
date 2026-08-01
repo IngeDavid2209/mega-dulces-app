@@ -1622,29 +1622,45 @@ async function ejecutarHerramienta(db, ctx, nombre, input) {
 
     // La COLA de fotos vive en la conversacion: cada imagen que llegue cierra la
     // siguiente de la fila (lo hace el webhook con registrarFotoEvidencia).
+    //
+    // OJO: se ACUMULA con lo que ya estuviera esperando. La gente va diciendo
+    // "ya hice la 9"... "la 10 y 11"... "la 13" de a poco, y si cada llamada
+    // reemplazara la fila, solo la ultima tarea quedaria esperando su foto y las
+    // demas se perderian en silencio (paso en produccion).
+    let colaFinal = cola;
     if (cola.length) {
-      await pgConversacionEsperandoSet(ctx.convKey, { tipo: 'foto', cola, idx: 0, pedidoEn: Date.now() });
+      try {
+        const esp = await pgConversacionEsperandoGet(ctx.convKey);
+        if (esp && esp.tipo === 'foto' && Array.isArray(esp.cola)) {
+          const previas = esp.cola.slice(Number(esp.idx || 0));   // las que aun no tienen foto
+          const llave = (c) => `${c.checklistId}|${c.itemId}`;
+          const vistas = new Set(previas.map(llave));
+          colaFinal = [...previas, ...cola.filter(c => !vistas.has(llave(c)))];
+        }
+      } catch (e) { /* si no se puede leer, al menos queda la nueva */ }
+      await pgConversacionEsperandoSet(ctx.convKey, { tipo: 'foto', cola: colaFinal, idx: 0, pedidoEn: Date.now() });
     }
 
     const { tareas: despues } = await tareasPlanas(ctx, {});
     const faltan = despues.filter(t => !t.hecho).length;
-    const primera = cola[0];
+    const primera = colaFinal[0];
+    const nuevasEnCola = cola.length;
     return {
       ok: true,
       cerradas, ya_estaban: yaEstaban,
-      requiere_foto: cola.length ? (cola.length === 1 ? cola[0].modo : 'varias_tareas') : null,
-      fotos_en_cola: cola.length,
+      requiere_foto: colaFinal.length ? (colaFinal.length === 1 ? colaFinal[0].modo : 'varias_tareas') : null,
+      fotos_en_cola: colaFinal.length, fotos_agregadas: nuevasEnCola,
       siguiente_foto: primera ? { n: primera.n, texto: primera.texto, fase: primera.fase } : null,
       pendientes: faltan,
       mensaje: [
         cerradas.length ? `Cerre ${cerradas.length} tarea(s): ${cerradas.map(c => c.texto).join(', ')}.` : '',
         yaEstaban.length ? `${yaEstaban.length} ya estaban listas.` : '',
-        cola.length === 1
+        colaFinal.length === 1
           ? `Falta la FOTO de "${primera.texto}"${primera.fase === 'antes' ? ' (primero la de ANTES)' : ''}: pidesela y la siguiente imagen que mande se guarda ahi.`
-          : cola.length > 1
-            ? `Quedan ${cola.length} tareas que piden FOTO. Pidele que te las mande UNA POR UNA en ese orden; empieza con "${primera.texto}". Yo las voy colocando y te confirmo cada una.`
+          : colaFinal.length > 1
+            ? `Hay ${colaFinal.length} tareas esperando FOTO${nuevasEnCola < colaFinal.length ? ' (contando las de antes)' : ''}. Pidele que te las mande UNA POR UNA; la que sigue es "${primera.texto}". Yo las voy colocando en orden y le confirmo cada una.`
             : '',
-        !cola.length && faltan === 0 ? 'Ya no le falta nada: preguntale si lo envia (enviar_checklist con todos=true).' : '',
+        !colaFinal.length && faltan === 0 ? 'Ya no le falta nada: preguntale si lo envia (enviar_checklist con todos=true).' : '',
       ].filter(Boolean).join(' ')
     };
   }
@@ -1829,13 +1845,17 @@ async function ejecutarHerramienta(db, ctx, nombre, input) {
 
     // AVISO AUTOMATICO por WhatsApp al colaborador (plantilla aprobada; si no se
     // puede, texto normal). Mejor esfuerzo: si falla, el checklist ya quedo.
-    let avisado = false, avisosOff = false, motivoAviso = null;
+    let avisado = false, avisosOff = false, motivoAviso = null, rebote = null;
     try {
       const notif = require('./tareas-notificar');
       avisosOff = notif.avisosApagados();
       const res = await notif.avisarAsignacion({ ...checklist, id });
       avisado = !!(res && res.ok);
       motivoAviso = res && res.motivo;
+      // Meta acepta el envio y avisa el fallo despues. Si la CUENTA viene
+      // rebotando (pago pendiente, cuenta bloqueada), no se puede prometer que
+      // llego: se dice tal cual en vez de cantar victoria.
+      if (avisado && motivoAviso === 'plantilla') rebote = await notif.avisosRebotando();
     } catch (e) { console.error('[tareas-notificar] aviso de asignacion fallo:', e && e.message); }
 
     // Si el aviso automatico NO salio, dejamos el boton manual de WhatsApp que ya
@@ -1857,7 +1877,9 @@ async function ejecutarHerramienta(db, ctx, nombre, input) {
     return {
       ok: true, id, avisado, whatsapp,
       mensaje: `Checklist "${nombreCk}" creado para ${assigned} en ${store} el ${fecha} con ${items.length} tarea(s).`
-        + (avisado ? ` Ya le avise a ${assigned} por WhatsApp.`
+        + (avisado && rebote
+          ? ` OJO: mande el aviso a ${assigned}, pero los mensajes del negocio estan REBOTANDO en WhatsApp (${rebote.titulo || 'error ' + rebote.code}${rebote.detalle ? ': ' + rebote.detalle : ''}), asi que seguramente NO le llego. Hay que resolver eso en la cuenta de Meta; mientras, si ${assigned} le escribe al bot, la conversacion si funciona.`
+          : avisado ? ` Ya le avise a ${assigned} por WhatsApp.`
           : avisosOff ? ' (Los avisos automaticos por WhatsApp estan apagados ahora mismo, asi que no se le notifico.)'
             : motivoAviso === 'sin_telefono' || !tieneTel
               ? ` (Ojo: ${assigned} NO tiene telefono registrado, asi que NO se le aviso. Si me dictas su numero lo doy de alta con registrar_telefono y desde ahi ya le llegan los avisos.)`

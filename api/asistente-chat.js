@@ -74,13 +74,44 @@ function ultimos10Tel(numero) {
   return n.length >= 10 ? n.slice(-10) : n;
 }
 // Guarda el telefono en el PERFIL (columna propia de mdtask_usuarios). Es el dato
-// con el que el bot identifica a la persona en WhatsApp.
-async function pgUsuarioSetTelefono(id, telefono) {
+// con el que el bot identifica a la persona en WhatsApp. `auditoria` deja rastro
+// en el jsonb de quien y como se registro (importante cuando lo hace el propio
+// interesado por WhatsApp).
+async function pgUsuarioSetTelefono(id, telefono, auditoria) {
   const r = await query(
-    'update mdtask_usuarios set telefono = $2, actualizado_en = $3 where id = $1 returning id',
-    [String(id), String(telefono), Date.now()]
+    `update mdtask_usuarios set telefono = $2, actualizado_en = $3
+       ${auditoria ? ", datos = coalesce(datos,'{}'::jsonb) || $4::jsonb" : ''}
+      where id = $1 returning id`,
+    auditoria
+      ? [String(id), String(telefono), Date.now(), JSON.stringify({ telefonoAltaPorBot: auditoria })]
+      : [String(id), String(telefono), Date.now()]
   );
   return r.rowCount > 0;
+}
+// Completa campos del perfil. SOLO se usa para llenar huecos (nunca pisa datos
+// existentes; eso lo decide un administrador en Personal).
+async function pgUsuarioCompletar(id, { cargo, correo, sucursales } = {}) {
+  const cur = await query('select cargo, correo, datos from mdtask_usuarios where id = $1', [String(id)]);
+  if (cur.rowCount === 0) return null;
+  const a = cur.rows[0], datos = a.datos || {};
+  const puestas = [];
+  const nuevoCargo = (!String(a.cargo || '').trim() && cargo) ? String(cargo).trim() : a.cargo;
+  const nuevoCorreo = (!String(a.correo || '').trim() && correo) ? String(correo).trim() : a.correo;
+  if (nuevoCargo !== a.cargo) puestas.push('cargo');
+  if (nuevoCorreo !== a.correo) puestas.push('correo');
+  const sucActuales = Array.isArray(datos.sucursales) ? datos.sucursales : (datos.sucursal ? [datos.sucursal] : []);
+  const merge = {};
+  if (!sucActuales.length && Array.isArray(sucursales) && sucursales.length) {
+    merge.sucursales = sucursales; puestas.push('sucursales');
+  }
+  if (!puestas.length) return { puestas: [] };
+  await query(
+    `update mdtask_usuarios set cargo = $2, correo = $3, actualizado_en = $4,
+            datos = coalesce(datos,'{}'::jsonb) || $5::jsonb
+      where id = $1`,
+    [String(id), nuevoCargo || null, nuevoCorreo || null, Date.now(), JSON.stringify(merge)]
+  );
+  return { puestas };
 }
 
 // -- config (mdtask_config) leído por id; todo el doc vive en `datos` --
@@ -911,6 +942,19 @@ const TOOLS = [
     }
   },
   {
+    name: 'completar_mi_perfil',
+    description: 'Completa datos que le FALTAN al perfil de quien te escribe (su sucursal, su puesto o su correo). Usala cuando el sistema te diga que faltan datos, o cuando la persona te los diga. Solo llena huecos: lo que ya tiene registrado no se toca.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        sucursal: { type: 'string', description: 'Sucursal donde trabaja (una de las de la empresa).' },
+        puesto: { type: 'string', description: 'Su puesto o cargo (ej. Cajero, Auxiliar, Encargado).' },
+        correo: { type: 'string', description: 'Su correo, si lo da.' }
+      },
+      required: []
+    }
+  },
+  {
     name: 'personal_sin_telefono',
     description: 'Lista al personal que NO tiene telefono registrado (por eso no recibe avisos ni puede usar el bot). Usala cuando pregunten a quien le falta el numero.',
     input_schema: {
@@ -1328,25 +1372,67 @@ async function ejecutarHerramienta(db, ctx, nombre, input) {
     // no trae telefono. Decirle "eres un invitado, solo coches" seria mentirle.
     // NO se le da acceso por decir un nombre (cualquiera podria); se le explica
     // como arreglarlo y quien puede hacerlo.
-    const empleado = (ctx.usuarios || []).find(u => (u.rol === 'trabajador' || u.rol === 'admin')
+    const coincidencias = (ctx.usuarios || []).filter(u => (u.rol === 'trabajador' || u.rol === 'admin')
       && u.activo !== false && mismoNombreEmpleado(u.nombre, n));
+
+    // Dos personas con nombres parecidos: NO se puede adivinar, se pregunta.
+    if (coincidencias.length > 1) {
+      return {
+        ok: false,
+        mensaje: `Hay varias personas con un nombre parecido al tuyo: ${coincidencias.slice(0, 4).map(u => u.nombre).join(', ')}. Dime tu nombre COMPLETO como aparece en tu recibo para no confundirte con un compañero.`
+      };
+    }
+
+    const empleado = coincidencias[0];
     if (empleado) {
-      const sinTel = !String(empleado.telefono || '').trim();
+      const telActual = String(empleado.telefono || '').trim();
+
+      // ALTA AUTOMATICA: es personal y su perfil NO tiene telefono. Se registra
+      // este numero al instante y desde aqui ya trabaja normal. Queda auditoria
+      // en su perfil (`telefonoAltaPorBot`) de que lo hizo el propio interesado.
+      if (!telActual) {
+        await pgUsuarioSetTelefono(empleado.id, ultimos10Tel(ctx.telefono || ''), {
+          en: Date.now(), telefono: ultimos10Tel(ctx.telefono || ''), nombreQueDijo: n, via: 'whatsapp-autoalta',
+        });
+        console.warn(`[bot] ALTA AUTOMATICA: ${empleado.nombre} registro el numero ${ctx.telefono} por WhatsApp (dijo "${n}").`);
+        // Se limpia la identidad de invitado y se convierte el contexto en el
+        // usuario real, para que en este MISMO mensaje ya vea sus tareas.
+        if (ctx.convKey) await pgConversacionInvitadoSet(ctx.convKey, null);
+        empleado.telefono = ultimos10Tel(ctx.telefono || '');
+        ctx.esInvitado = false; ctx.invitadoNombre = null; ctx.invitadoEsEmpleado = null;
+        ctx.uid = empleado.id; ctx.perfil = empleado;
+        ctx.nombre = empleado.nombre || empleado.correo || n;
+        ctx.esAdmin = empleado.rol === 'admin';
+        ctx.esGestor = tieneVistaDeGestion(empleado);
+        ctx.puedeAsignar = ctx.esAdmin || empleado.puedeCrearChecklists === true;
+        ctx.puedeCrearRutinas = ctx.esAdmin || empleado.puedeCrearRutinas === true;
+
+        const faltan = [];
+        if (!sucursalesDe(empleado).length) faltan.push('sucursal');
+        if (!String(empleado.cargo || '').trim()) faltan.push('puesto');
+        return {
+          ok: true, alta_automatica: true, usuario: ctx.nombre, faltan_datos: faltan,
+          mensaje: `Listo, ${ctx.nombre}: ya registre este numero en tu perfil, asi que desde aqui ya puedes ver y entregar tus tareas 🙌`
+            + (faltan.length ? ` Aprovechando: en la app te falta ${faltan.join(' y ')}; preguntaselo y guardalo con completar_mi_perfil.` : '')
+            + ' Ahora usa mis_pendientes para decirle que le toca hoy.'
+        };
+      }
+
+      // Su perfil YA tiene otro numero: eso no es llenar un hueco, seria quitarle
+      // la cuenta a quien la tiene. Lo cambia un administrador, no el bot.
       if (ctx.convKey) {
         await pgConversacionInvitadoSet(ctx.convKey, {
           nombre: n, telefono: ctx.telefono || '', identificadoEn: Date.now(),
-          empleadoDetectado: empleado.nombre, sinTelefono: sinTel,
+          empleadoDetectado: empleado.nombre, sinTelefono: false,
         });
       }
       ctx.invitadoNombre = n; ctx.nombre = n;
-      console.warn(`[bot] ${empleado.nombre} escribio desde ${ctx.telefono} pero su perfil ${sinTel ? 'NO tiene telefono' : 'tiene otro numero (' + empleado.telefono + ')'}.`);
+      console.warn(`[bot] ${empleado.nombre} escribio desde ${ctx.telefono} pero su perfil tiene otro numero (${telActual}).`);
       return {
         ok: true, invitado_nombre: n, empleado_sin_telefono: empleado.nombre,
-        mensaje: `Con ese nombre SI apareces como personal de MegaDulces (${empleado.nombre}), pero este numero (${ctx.telefono || 'el tuyo'}) `
-          + (sinTel ? 'no esta dado de alta en tu perfil' : 'no es el que tienes registrado')
-          + `, y por eso todavia no te puedo mostrar tus tareas. Dile a tu encargado o a un administrador que lo registre: `
-          + `puede hacerlo aqui mismo escribiendole al bot "el numero de ${empleado.nombre} es ${ctx.telefono || '...'}". `
-          + `En cuanto lo haga, desde este mismo chat vas a ver tus tareas y las podras entregar. Mientras, si necesitas un vehiculo si te puedo ayudar 🚗.`
+        mensaje: `Con ese nombre apareces como personal (${empleado.nombre}), pero tu perfil tiene registrado OTRO numero, y por seguridad no puedo cambiarlo yo. `
+          + `Pidele a tu encargado o a un administrador que lo actualice: puede hacerlo aqui mismo diciendole al bot "el numero de ${empleado.nombre} es ${ctx.telefono || '...'}". `
+          + `Mientras, si necesitas un vehiculo si te puedo ayudar 🚗.`
       };
     }
 
@@ -1498,6 +1584,37 @@ async function ejecutarHerramienta(db, ctx, nombre, input) {
       ok: true, persona: r.user.nombre, telefono: tel, reemplazo: !!anterior,
       mensaje: `Listo, registre el ${tel} para ${r.user.nombre}. Ya le puedo avisar de sus tareas por WhatsApp`
         + ' (el primer aviso en frio necesita la plantilla aprobada; si ella le escribe al bot, le llega de inmediato).'
+    };
+  }
+
+  if (nombre === 'completar_mi_perfil') {
+    // Cada quien completa LO SUYO, y solo lo que este vacio. Nada de pisar datos
+    // ya registrados (eso es de un administrador, en Personal).
+    if (ctx.esInvitado) return { ok: false, mensaje: 'Primero necesito saber quien eres.' };
+    const yo = (ctx.usuarios || []).find(u => u.id === ctx.uid) || ctx.perfil;
+    let sucursales = null;
+    if (input.sucursal) {
+      const todas = new Set();
+      (ctx.usuarios || []).forEach(u => sucursalesDe(u).forEach(s => { if (s && s !== 'General (Acceso Total)') todas.add(s); }));
+      const lista = Array.from(todas);
+      const match = lista.find(s => normaliza(s) === normaliza(input.sucursal))
+        || lista.find(s => normaliza(s).includes(normaliza(input.sucursal)) || normaliza(input.sucursal).includes(normaliza(s)));
+      if (!match) {
+        return { ok: false, mensaje: `No reconozco la sucursal "${input.sucursal}". Las que hay son: ${lista.slice(0, 15).join(', ')}. ¿En cual trabaja?` };
+      }
+      sucursales = [match];
+    }
+    const r = await pgUsuarioCompletar(ctx.uid, { cargo: input.puesto, correo: input.correo, sucursales });
+    if (!r) return { ok: false, mensaje: 'No encontre tu perfil.' };
+    if (!r.puestas.length) {
+      return { ok: true, sin_cambios: true, mensaje: 'Esos datos ya los tenias registrados, no cambie nada.' };
+    }
+    // Refresca lo que ya esta en memoria para este mismo mensaje.
+    if (sucursales && yo) yo.sucursales = sucursales;
+    if (input.puesto && yo && !String(yo.cargo || '').trim()) yo.cargo = String(input.puesto).trim();
+    return {
+      ok: true, guardado: r.puestas,
+      mensaje: `Guardado: ${r.puestas.join(', ')}. Gracias, con eso tu perfil queda completo en la app.`
     };
   }
 
@@ -2359,6 +2476,7 @@ function construirSystem(ctx) {
     '- TURNOS (Canindo): algunas personas solo pueden recibir tareas dentro de su turno (manana/tarde). Si crear_checklist devuelve que la persona esta "fuera de turno", NO insistas: explicale al admin que esta fuera de su horario y que, si por necesidad debe trabajar otro turno, puede registrar una excepcion en la pantalla de Turnos de Canindo.',
     '- Al crear un checklist el sistema le AVISA SOLO por WhatsApp a la persona asignada. No le digas al admin que lo reenvie a mano; si el aviso no salio (avisado=false), dilo tal cual.',
     '- TELEFONO: sin numero registrado esa persona NO recibe avisos ni puede usar el bot. Si te dictan un numero ("el de Fatima es 352..."), NO lo ignores: confirma el nombre y el numero en una frase y usa registrar_telefono. Si te preguntan a quien le falta, usa personal_sin_telefono.',
+    '- SI FALTAN DATOS DE SU PERFIL (te lo dice el sistema): preguntaselos con naturalidad, de uno en uno y sin interrogar, y guardalos con completar_mi_perfil. Es para llenar huecos de SU propio perfil; lo que ya tiene registrado no se toca.',
     '',
     'ENTREGAR TAREAS (lo que el colaborador tiene que hacer hoy):',
     '- "que tengo que hacer", "mis tareas", "que me falta" -> mis_pendientes. Leele la lista de "tareas" con SUS numeros y su hora limite; esa numeracion es la unica que debes usar. NO le hables de "checklists": para el son TAREAS (las rutinas llegan como muchos checklists de una sola tarea).',

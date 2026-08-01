@@ -145,21 +145,43 @@ async function ventanaAbierta(telefono) {
 
 // --- Envío con plantilla y respaldo en texto ---------------------------------
 // Devuelve { ok, motivo }. `motivo`: 'plantilla' | 'texto' | 'sin_telefono' |
-// 'sin_plantilla_ni_ventana' | 'fallo_envio'. Nunca miente: si no hay forma de
+// 'sin_plantilla_ni_ventana' | 'cuenta_bloqueada' | 'fallo_envio'. Nunca miente: si
 // que el mensaje llegue, devuelve ok:false en vez de dar un falso positivo.
 async function mandar(telefono, plantilla, variables, textoRespaldo) {
   const tel = paraEnviar(telefono);
   if (!tel) return { ok: false, motivo: 'sin_telefono' };
-  if (await enviarPlantilla(tel, plantilla, LANG, variables)) return { ok: true, motivo: 'plantilla' };
-  // Sin plantilla aprobada, el texto libre solo sirve dentro de la ventana.
-  if (!(await ventanaAbierta(tel))) {
-    console.warn(`[tareas-notificar] NO se pudo avisar a ${tel}: la plantilla "${plantilla}" no esta aprobada en Meta y esa persona no le ha escrito al bot en 24h.`);
-    return { ok: false, motivo: 'sin_plantilla_ni_ventana' };
+
+  const bloqueo = await avisosRebotando();
+  const ventana = await ventanaAbierta(tel);
+
+  // 1) PLANTILLA: la única vía para escribir en frío. Se salta si la cuenta las
+  //    viene rebotando (ej. sin método de pago): el envío se aceptaría con 200 y
+  //    Meta lo tiraría después, y encima nos quedaríamos sin intentar el texto,
+  //    que a quien tiene la ventana abierta SÍ le llega.
+  if (!bloqueo && await enviarPlantilla(tel, plantilla, LANG, variables)) {
+    return { ok: true, motivo: 'plantilla' };
   }
-  console.warn(`[tareas-notificar] plantilla "${plantilla}" no disponible; mando texto normal (ventana de 24h abierta).`);
-  const t = await enviarMensaje(tel, textoRespaldo);
-  return { ok: !!t, motivo: t ? 'texto' : 'fallo_envio' };
+
+  // 2) TEXTO libre: solo dentro de la ventana de 24 h, pero ahí es gratis y seguro.
+  if (ventana) {
+    if (bloqueo) console.warn(`[tareas-notificar] la cuenta viene rebotando plantillas; mando texto a ${tel} (su ventana esta abierta).`);
+    else console.warn(`[tareas-notificar] plantilla "${plantilla}" no disponible; mando texto normal (ventana de 24h abierta).`);
+    const t = await enviarMensaje(tel, textoRespaldo);
+    return { ok: !!t, motivo: t ? (bloqueo ? 'texto_por_bloqueo' : 'texto') : 'fallo_envio' };
+  }
+
+  // 3) Ni plantilla ni ventana: no hay forma de llegarle. Se dice, no se finge.
+  if (bloqueo) {
+    console.warn(`[tareas-notificar] NO se pudo avisar a ${tel}: la cuenta de WhatsApp esta rebotando (${bloqueo.titulo}) y esa persona no le ha escrito al bot en 24h.`);
+    return { ok: false, motivo: 'cuenta_bloqueada' };
+  }
+  console.warn(`[tareas-notificar] NO se pudo avisar a ${tel}: la plantilla "${plantilla}" no esta aprobada en Meta y esa persona no le ha escrito al bot en 24h.`);
+  return { ok: false, motivo: 'sin_plantilla_ni_ventana' };
 }
+
+// Motivos que NO cambian en lo que queda del día: no vale la pena que el poll
+// (cada minuto) reintente y falle 60 veces por hora.
+const MOTIVOS_SIN_REINTENTO = new Set(['sin_plantilla_ni_ventana', 'cuenta_bloqueada']);
 
 // --- Personal (teléfono por uid o por nombre) --------------------------------
 async function cargarPersonal() {
@@ -285,7 +307,7 @@ async function resumenMatutino() {
     // Solo se libera la clave ante un fallo pasajero. Si es que no hay plantilla
     // ni ventana, se deja marcada: el poll corre cada minuto y reintentarlo seria
     // fallar igual 60 veces por hora.
-    if (!res.ok && res.motivo !== 'sin_plantilla_ni_ventana') await soltarAviso(clave);
+    if (!res.ok && !MOTIVOS_SIN_REINTENTO.has(res.motivo)) await soltarAviso(clave);
     else if (res.ok) console.log(`[tareas-notificar] resumen ${fechaISO} -> ${persona.nombre} (${cks.length})`);
   }
 }
@@ -340,7 +362,7 @@ async function recordatoriosLimite() {
       + (unaSola ? `te falta *${que}*.` : `te faltan *${g.tareas} tareas*.`)
       + `\nSi ya las hiciste, dime *"ya terminé"* y las entregamos 🙌`;
     const res = await mandar(g.persona.telefono, T_RECORDATORIO, vars, respaldo);
-    if (!res.ok && res.motivo !== 'sin_plantilla_ni_ventana') await soltarAviso(clave);
+    if (!res.ok && !MOTIVOS_SIN_REINTENTO.has(res.motivo)) await soltarAviso(clave);
     else if (res.ok) console.log(`[tareas-notificar] recordatorio ${g.hora} -> ${g.persona.nombre} (${g.tareas} tareas en ${g.cks.length} checklist)`);
   }
 }

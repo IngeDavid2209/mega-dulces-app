@@ -96,6 +96,9 @@ async function procesarMensaje(msg) {
       nombre: invitadoNombre || 'Invitado',
       perfil: { nombre: invitadoNombre || '', rol: 'invitado' },
       esInvitado: true, invitadoNombre,
+      // Personal de MD Task al que solo le falta el telefono en su perfil: no es
+      // un externo, y el bot debe explicarle eso en vez de tratarlo como visita.
+      invitadoEsEmpleado: (invitado && invitado.empleadoDetectado) || null,
     };
   }
 
@@ -216,6 +219,7 @@ async function procesarMensaje(msg) {
   const ctx = await construirContexto(null, identidad.uid, identidad.perfil, {
     fechaHoy, diaSemana, usuarios, canal: 'whatsapp',
     esInvitado: identidad.esInvitado, invitadoNombre: identidad.invitadoNombre,
+    invitadoEsEmpleado: identidad.invitadoEsEmpleado,
     convKey: objetivo, telefono: objetivo,
   });
 

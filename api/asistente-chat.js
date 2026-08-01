@@ -1322,6 +1322,34 @@ async function ejecutarHerramienta(db, ctx, nombre, input) {
     if (n.length < 3 || palabras.length < 2) {
       return { ok: false, mensaje: 'Necesito tu *nombre y apellido* completos para poder ayudarte. ¿Cómo te llamas?' };
     }
+    // ¿Es PERSONAL de MegaDulces al que solo le falta su telefono en el perfil?
+    // Con 127 de 154 sin numero registrado, este es el caso mas comun: la persona
+    // si trabaja aqui y tiene tareas, pero el bot no la reconoce porque su perfil
+    // no trae telefono. Decirle "eres un invitado, solo coches" seria mentirle.
+    // NO se le da acceso por decir un nombre (cualquiera podria); se le explica
+    // como arreglarlo y quien puede hacerlo.
+    const empleado = (ctx.usuarios || []).find(u => (u.rol === 'trabajador' || u.rol === 'admin')
+      && u.activo !== false && mismoNombreEmpleado(u.nombre, n));
+    if (empleado) {
+      const sinTel = !String(empleado.telefono || '').trim();
+      if (ctx.convKey) {
+        await pgConversacionInvitadoSet(ctx.convKey, {
+          nombre: n, telefono: ctx.telefono || '', identificadoEn: Date.now(),
+          empleadoDetectado: empleado.nombre, sinTelefono: sinTel,
+        });
+      }
+      ctx.invitadoNombre = n; ctx.nombre = n;
+      console.warn(`[bot] ${empleado.nombre} escribio desde ${ctx.telefono} pero su perfil ${sinTel ? 'NO tiene telefono' : 'tiene otro numero (' + empleado.telefono + ')'}.`);
+      return {
+        ok: true, invitado_nombre: n, empleado_sin_telefono: empleado.nombre,
+        mensaje: `Con ese nombre SI apareces como personal de MegaDulces (${empleado.nombre}), pero este numero (${ctx.telefono || 'el tuyo'}) `
+          + (sinTel ? 'no esta dado de alta en tu perfil' : 'no es el que tienes registrado')
+          + `, y por eso todavia no te puedo mostrar tus tareas. Dile a tu encargado o a un administrador que lo registre: `
+          + `puede hacerlo aqui mismo escribiendole al bot "el numero de ${empleado.nombre} es ${ctx.telefono || '...'}". `
+          + `En cuanto lo haga, desde este mismo chat vas a ver tus tareas y las podras entregar. Mientras, si necesitas un vehiculo si te puedo ayudar 🚗.`
+      };
+    }
+
     if (ctx.convKey) await pgConversacionInvitadoSet(ctx.convKey, { nombre: n, telefono: ctx.telefono || '', identificadoEn: Date.now() });
     ctx.invitadoNombre = n; ctx.nombre = n; // ya identificado en esta misma conversación
     return { ok: true, invitado_nombre: n, mensaje: `Gracias, ${n}. Ya te puedo ayudar con los vehículos 🚗.` };
@@ -2245,6 +2273,8 @@ async function construirContexto(db, uid, perfil, opts) {
     // INVITADO: número no registrado en MD Task. Acceso SOLO a flotilla.
     esInvitado: !!opts.esInvitado,
     invitadoNombre: opts.invitadoNombre || null, // null = aún no nos ha dado su nombre
+    // Nombre real si resultó ser PERSONAL sin teléfono registrado (no un externo).
+    invitadoEsEmpleado: opts.invitadoEsEmpleado || null,
     convKey: opts.convKey || null,               // clave del hilo (para guardar la identidad)
     telefono: opts.telefono || null,
     fechaHoy: String(opts.fechaHoy || '').trim(),
@@ -2276,7 +2306,9 @@ function construirSystem(ctx) {
       `Hoy es ${ctx.fechaHoy || '(desconocido)'}${ctx.diaSemana ? ' (' + ctx.diaSemana + ')' : ''}.`,
       '',
       'SOLO puedes ayudarle con VEHÍCULOS: ver coches (consultar_vehiculos), apartar (apartar_vehiculo), ver/cancelar sus reservas (consultar_mis_reservas, cancelar_reserva) y registrar salida/regreso (registrar_salida, registrar_regreso).',
-      'NO tiene tareas, checklists ni rutinas. Si pide algo de eso, dile con amabilidad que eso es solo para personal registrado de MD Task.',
+      ctx.invitadoEsEmpleado
+        ? `IMPORTANTE: esta persona SÍ es personal de MegaDulces (${ctx.invitadoEsEmpleado}); lo único que pasa es que este número NO está registrado en su perfil, y por eso no puedo ver sus tareas. Si pregunta por sus tareas, NO le digas que no es del personal: explícale que falta dar de alta su número y que su encargado o un administrador puede hacerlo escribiéndole al bot "el numero de ${ctx.invitadoEsEmpleado} es ${ctx.telefono || '...'}"; en cuanto lo hagan verá sus tareas en este mismo chat.`
+        : 'NO tiene tareas, checklists ni rutinas. Si pide algo de eso, dile con amabilidad que eso es solo para personal registrado de MD Task.',
       '',
       'Reglas de flotilla:',
       '- Apartar CONFIRMA antes: resume vehículo, fecha, hora de salida y regreso y destino, y pide confirmación. La reserva queda PENDIENTE de que un encargado la apruebe.',

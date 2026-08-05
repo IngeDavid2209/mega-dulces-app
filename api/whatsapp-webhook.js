@@ -16,6 +16,7 @@ const {
   registrarUbicacion, registrarFotoEvidencia, pgConversacionEsperandoGet,
 } = require('./asistente-chat');
 const { enviarMensaje, enviarSolicitudUbicacion, descargarMedia, ultimos10, validarFirma, extraerMensaje } = require('./whatsapp');
+const { transcribir, transcripcionDisponible } = require('./transcribir');
 const { resolverPorWhatsapp } = require('./flotilla-notificar');
 const { registrarAcuse } = require('./tareas-notificar');
 const { subirBuffer } = require('./cloudinary-subir');
@@ -54,10 +55,10 @@ async function procesarMensaje(msg) {
   if (!apiKey) { console.error('[wa-webhook] Falta ANTHROPIC_API_KEY.'); return; }
   const modelo = process.env.ASISTENTE_MODELO || 'claude-opus-4-8';
 
-  // Tipos soportados: texto (asistente), ubicacion (flotilla: salida/regreso) e
-  // imagen (foto de evidencia al entregar una tarea).
-  if (msg.tipo !== 'text' && msg.tipo !== 'location' && msg.tipo !== 'image') {
-    await enviarMensaje(msg.from, 'Por ahora entiendo mensajes de *texto*, *fotos* y *ubicación*. Escríbeme qué necesitas 🙂');
+  // Tipos soportados: texto y NOTA DE VOZ (asistente), ubicacion (flotilla:
+  // salida/regreso) e imagen (foto de evidencia al entregar una tarea).
+  if (msg.tipo !== 'text' && msg.tipo !== 'location' && msg.tipo !== 'image' && msg.tipo !== 'audio') {
+    await enviarMensaje(msg.from, 'Por ahora entiendo mensajes de *texto*, *notas de voz*, *fotos* y *ubicación*. Escríbeme qué necesitas 🙂');
     return;
   }
   if (msg.tipo === 'text' && !String(msg.texto || '').trim()) {
@@ -65,13 +66,44 @@ async function procesarMensaje(msg) {
     return;
   }
 
+  // ── NOTA DE VOZ: se transcribe y a partir de aqui el mensaje es TEXTO ──
+  // Se hace antes que todo lo demas (incluidos los comandos de flotilla) para
+  // que hablar y escribir sigan exactamente el mismo camino.
+  let texto = msg.tipo === 'text' ? String(msg.texto || '').trim() : '';
+  let porVoz = false;
+  if (msg.tipo === 'audio') {
+    if (!transcripcionDisponible()) {
+      await enviarMensaje(msg.from, 'Todavía no puedo escuchar notas de voz 🙉. Escríbeme qué necesitas y con gusto te ayudo.');
+      return;
+    }
+    const media = await descargarMedia(msg.mediaId);
+    if (!media) {
+      await enviarMensaje(msg.from, 'No pude descargar tu nota de voz 😕. ¿Me la mandas otra vez, o me lo escribes?');
+      return;
+    }
+    const t = await transcribir(media.buffer, { mime: media.mime || msg.mime, nombre: 'nota.ogg' });
+    if (!t.ok) {
+      const razon = t.motivo === 'muy_grande'
+        ? 'Esa nota de voz está muy larga 😅. Mándame una más cortita o escríbeme.'
+        : t.motivo === 'vacio'
+          ? 'No alcancé a escuchar nada en tu nota de voz 🙉. ¿Me la repites, más cerca del micrófono?'
+          : 'No pude entender tu nota de voz 😕. ¿Me la repites o me lo escribes?';
+      await enviarMensaje(msg.from, razon);
+      return;
+    }
+    texto = t.texto;
+    porVoz = true;
+    console.log(`[wa-webhook] nota de voz de ${msg.from}: "${texto.slice(0, 120)}"`);
+  }
+
   // FLOTILLA: si el mensaje es "aprobar/rechazar <CODIGO>", lo resuelve el modulo
   // de flotilla (autoriza por telefono) y NO pasa al asistente de IA. Se checa
   // antes de identificar al usuario, porque un aprobador podria no estar
-  // registrado como usuario y aun asi tener permiso por su numero.
-  if (msg.tipo === 'text') {
+  // registrado como usuario y aun asi tener permiso por su numero. Aplica igual
+  // si el comando llego dictado por voz.
+  if (texto) {
     let respFlotilla = null;
-    try { respFlotilla = await resolverPorWhatsapp(msg.from, msg.texto); }
+    try { respFlotilla = await resolverPorWhatsapp(msg.from, texto); }
     catch (e) { console.error('[wa-webhook] flotilla:', e && e.message); }
     if (respFlotilla) { await enviarMensaje(msg.from, respFlotilla); return; }
   }
@@ -193,7 +225,7 @@ async function procesarMensaje(msg) {
     return;
   }
 
-  const texto = msg.texto.trim();
+  // A partir de aqui `texto` ya trae lo que se escribio o lo que se dicto.
 
   // Comando para reiniciar el hilo.
   if (COMANDOS_RESET.includes(texto.toLowerCase())) {
@@ -221,6 +253,7 @@ async function procesarMensaje(msg) {
     esInvitado: identidad.esInvitado, invitadoNombre: identidad.invitadoNombre,
     invitadoEsEmpleado: identidad.invitadoEsEmpleado,
     convKey: objetivo, telefono: objetivo,
+    porVoz,   // el ultimo mensaje llego dictado: puede traer errores de transcripcion
   });
 
   let respuesta, pideUbicacion = false;

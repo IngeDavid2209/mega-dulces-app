@@ -230,7 +230,17 @@ function extraerMensaje(body) {
         mediaId: msg.document.id, mime: msg.document.mime_type,
       };
     }
-    // Otros tipos (audio, video, stickers...) por ahora se reportan sin texto.
+    // NOTA DE VOZ (o un audio adjunto). Se transcribe y se trata como texto, asi
+    // que el bot completo funciona hablando. `voz` distingue la nota de voz
+    // grabada en el chat de un archivo de audio enviado.
+    if (msg.type === 'audio' && msg.audio) {
+      return {
+        from, tipo: 'audio', texto: '',
+        mediaId: msg.audio.id, mime: msg.audio.mime_type || 'audio/ogg',
+        voz: msg.audio.voice === true,
+      };
+    }
+    // Otros tipos (video, stickers...) por ahora se reportan sin texto.
     return { from, tipo: msg.type, texto: '' };
   } catch (e) {
     return null;

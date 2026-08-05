@@ -2387,6 +2387,7 @@ async function construirContexto(db, uid, perfil, opts) {
     puedeAsignar: perfil.rol === 'admin' || perfil.puedeCrearChecklists === true,
     puedeCrearRutinas: perfil.rol === 'admin' || perfil.puedeCrearRutinas === true,
     canal: opts.canal || 'web', // 'whatsapp' | 'web' — solo por WhatsApp se puede compartir ubicacion
+    porVoz: !!opts.porVoz,      // el ultimo mensaje llego como nota de voz transcrita
     // INVITADO: número no registrado en MD Task. Acceso SOLO a flotilla.
     esInvitado: !!opts.esInvitado,
     invitadoNombre: opts.invitadoNombre || null, // null = aún no nos ha dado su nombre
@@ -2412,6 +2413,9 @@ function construirSystem(ctx) {
       '- NO uses ninguna herramienta ni lo ayudes con NADA (coches, tareas, etc.) hasta que te dé su nombre COMPLETO (nombre y apellido).',
       '- En cuanto te dé un nombre y apellido válidos, llama a la herramienta identificar_invitado con ese nombre.',
       '- Si te escribe cualquier otra cosa sin darte su nombre, vuelve a pedírselo con amabilidad. NO lo dejes continuar sin nombre.',
+      ...(ctx.porVoz ? [
+        '- OJO, te habló por NOTA DE VOZ y los nombres son lo que peor se transcribe. Con el nombre se le da de alta en el sistema, así que ANTES de llamar identificar_invitado repítele el nombre y apellido tal como lo entendiste y pídele que confirme. Si te corrige, usa lo que él diga. NUNCA registres un nombre que no te haya confirmado.',
+      ] : []),
       '- Responde SIEMPRE en español, breve.'
     ].join('\n');
   }
@@ -2433,6 +2437,9 @@ function construirSystem(ctx) {
       '- Al registrar salida o regreso se le pedirá su UBICACIÓN por WhatsApp (obligatoria). Solo dile que comparta su ubicación; el botón aparece automáticamente. NO des por hecha la salida/regreso hasta que la comparta.',
       '- Muestra fechas/horas tal como vienen de las herramientas; no inventes horarios.',
       '- Resuelve fechas relativas a YYYY-MM-DD usando la fecha de hoy.',
+      ...(ctx.porVoz ? [
+        '- Te habló por NOTA DE VOZ (transcrita, puede traer errores): antes de apartar o cancelar algo, repite en una frase lo que entendiste (vehículo, horario, destino) y pide un sí. Para consultas contesta directo.',
+      ] : []),
       '- Responde SIEMPRE en español, breve y claro.'
     ].join('\n');
   }
@@ -2486,6 +2493,13 @@ function construirSystem(ctx) {
     '- ENVIAR a mano: si ya no le falta nada y no hubo fila de fotos, usa enviar_checklist con todos=true (entrega todo lo que este completo). Si faltan cosas y aun asi quiere entregar, vuelve a llamar con forzar=true.',
     '- Si pide justificante (ya paso la hora limite), pidele el MOTIVO (una de las categorias que te devuelve) y una explicacion corta, y vuelve a llamar con categoria y comentario. Con eso entrega todo de una vez.',
     '- Nunca marques ni envies tareas de otra persona: cada quien entrega las suyas.',
+    ...(ctx.porVoz ? [
+      '',
+      'LLEGO POR NOTA DE VOZ (transcrita, puede traer errores):',
+      '- Los NUMEROS y los NOMBRES son lo que peor se transcribe ("la 3" vs "la 13", "Fatima" vs "Fabiola"). Antes de CERRAR, ENVIAR, APARTAR o ASIGNAR algo, repite en una frase corta lo que entendiste y pide un si. Ej: "Entendi que ya hiciste la 3 y la 7, ¿va?".',
+      '- Para consultas y resumenes (solo leer) NO confirmes nada: contesta directo.',
+      '- Si la transcripcion quedo confusa o incompleta, no adivines: di lo que alcanzaste a entender y preguntale.',
+    ] : []),
     '',
     'FLOTILLA (vehiculos):',
     '- Cualquier colaborador puede: ver los coches (consultar_vehiculos), APARTAR uno (apartar_vehiculo), ver/cancelar SUS reservas (consultar_mis_reservas, cancelar_reserva) y registrar su salida/regreso (registrar_salida, registrar_regreso).',

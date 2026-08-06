@@ -98,10 +98,30 @@ app.use(express.static(browserDir, {
   }
 }));
 
-// --- Fallback SPA: cualquier ruta que no sea archivo ni /api -> index.html ---
+// Archivos que se piden por su nombre, no rutas de la app. Si uno de estos NO
+// existe, la respuesta correcta es 404, nunca el index.html.
+const ARCHIVO_ESTATICO = /\.(?:js|mjs|css|map|json|webmanifest|png|jpe?g|gif|svg|webp|avif|ico|woff2?|ttf|eot|wasm|txt|xml)$/i;
+
+// --- Fallback SPA: cualquier RUTA que no sea archivo ni /api -> index.html ---
 // (Angular maneja el ruteo del lado del cliente.) Tambien sin cache.
 app.use((req, res) => {
   if (req.method !== 'GET') return res.status(404).json({ error: 'No encontrado' });
+
+  // ⚠️ ESTO DEJABA A LA GENTE FUERA DESPUES DE CADA DESPLIEGUE.
+  //
+  // Los bundles llevan hash en el nombre (main-ABC123.js) y cambian en cada
+  // build, asi que los viejos desaparecen del servidor. Un navegador que
+  // todavia tiene guardado el index.html anterior pide su bundle viejo... y
+  // este fallback le contestaba 200 con el index.html. El navegador recibia
+  // HTML donde esperaba JavaScript, tronaba con "Unexpected token '<'" y la app
+  // NO ARRANCABA: pantalla en blanco o vuelta al login, sin manera de entrar.
+  //
+  // Con un 404 de verdad, el manejador de fallo de chunk de app.ts se entera,
+  // recarga y baja el index nuevo con los hashes nuevos. La gente entra.
+  if (ARCHIVO_ESTATICO.test(req.path)) {
+    return res.status(404).type('text/plain').send('No encontrado');
+  }
+
   res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
   res.sendFile(path.join(browserDir, 'index.html'));
 });

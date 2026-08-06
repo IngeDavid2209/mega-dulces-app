@@ -75,6 +75,19 @@ app.all('/api/cloudinary-cleanup', require('./api/cloudinary-cleanup'));
 app.all('/api/vehiculos', require('./api/vehiculos'));
 app.all('/api/reservas-vehiculos', require('./api/reservas-vehiculos'));
 
+// Comprobacion de salud para Railway (healthcheckPath en railway.json).
+//
+// A proposito NO toca la base: si Postgres tarda o hipa, no queremos que el
+// despliegue se marque como fallido. Solo dice "el servidor ya esta atendiendo".
+// Con esto Railway mantiene la version anterior sirviendo hasta que la nueva
+// responde aqui, y desaparece el hueco en el que mostraba "Este despliegue esta
+// temporalmente en pausa" (que el service worker alcanzaba a guardar como si
+// fuera la app, dejando el celular atorado en esa pantalla).
+app.get('/api/salud', (_req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  res.status(200).json({ ok: true });
+});
+
 // Cualquier otra ruta /api que no exista -> 404 claro (no servir el index).
 app.use('/api', (req, res) => {
   res.status(404).json({ error: 'Ruta de API no encontrada: ' + req.path });

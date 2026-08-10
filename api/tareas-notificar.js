@@ -164,31 +164,32 @@ async function mandar(telefono, plantilla, variables, textoRespaldo) {
   const tel = paraEnviar(telefono);
   if (!tel) return { ok: false, motivo: 'sin_telefono' };
 
-  const bloqueo = await avisosRebotando();
   const ventana = await ventanaAbierta(tel);
 
-  // 1) PLANTILLA: la única vía para escribir en frío. Se salta si la cuenta las
-  //    viene rebotando (ej. sin método de pago): el envío se aceptaría con 200 y
-  //    Meta lo tiraría después, y encima nos quedaríamos sin intentar el texto,
-  //    que a quien tiene la ventana abierta SÍ le llega.
+  // 1) SI YA TIENE CONVERSACION ABIERTA (nos escribió en las últimas 24 h),
+  //    TEXTO LIBRE. Es la vía preferida siempre: llega seguro, es gratis y no
+  //    depende de que Meta tenga método de pago. Antes se intentaba la plantilla
+  //    primero y al primero de la mañana se le perdía el aviso en un envío
+  //    condenado, además de cobrar por algo que el texto hacía mejor.
+  if (ventana) {
+    const t = await enviarMensaje(tel, textoRespaldo);
+    if (t) return { ok: true, motivo: 'texto' };
+    console.warn(`[tareas-notificar] el texto a ${tel} no salió aunque su ventana estaba abierta; intento la plantilla.`);
+  }
+
+  // 2) EN FRIO (sin conversación abierta) la ÚNICA vía es una plantilla aprobada,
+  //    y hoy la cuenta las rebota si no hay método de pago en Meta.
+  const bloqueo = await avisosRebotando();
   if (!bloqueo && await enviarPlantilla(tel, plantilla, LANG, variables)) {
     return { ok: true, motivo: 'plantilla' };
   }
 
-  // 2) TEXTO libre: solo dentro de la ventana de 24 h, pero ahí es gratis y seguro.
-  if (ventana) {
-    if (bloqueo) console.warn(`[tareas-notificar] la cuenta viene rebotando plantillas; mando texto a ${tel} (su ventana esta abierta).`);
-    else console.warn(`[tareas-notificar] plantilla "${plantilla}" no disponible; mando texto normal (ventana de 24h abierta).`);
-    const t = await enviarMensaje(tel, textoRespaldo);
-    return { ok: !!t, motivo: t ? (bloqueo ? 'texto_por_bloqueo' : 'texto') : 'fallo_envio' };
-  }
-
-  // 3) Ni plantilla ni ventana: no hay forma de llegarle. Se dice, no se finge.
+  // 3) No hay forma de llegarle. Se dice, no se finge.
   if (bloqueo) {
-    console.warn(`[tareas-notificar] NO se pudo avisar a ${tel}: la cuenta de WhatsApp esta rebotando (${bloqueo.titulo}) y esa persona no le ha escrito al bot en 24h.`);
+    console.warn(`[tareas-notificar] NO se pudo avisar a ${tel}: no tiene conversación abierta y la cuenta de WhatsApp está rebotando las plantillas (${bloqueo.titulo}).`);
     return { ok: false, motivo: 'cuenta_bloqueada' };
   }
-  console.warn(`[tareas-notificar] NO se pudo avisar a ${tel}: la plantilla "${plantilla}" no esta aprobada en Meta y esa persona no le ha escrito al bot en 24h.`);
+  console.warn(`[tareas-notificar] NO se pudo avisar a ${tel}: no tiene conversación abierta y la plantilla "${plantilla}" no salió.`);
   return { ok: false, motivo: 'sin_plantilla_ni_ventana' };
 }
 

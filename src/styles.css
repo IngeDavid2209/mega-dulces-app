@@ -241,7 +241,12 @@ select.form-input, select.select-input {
 /* ============================================
    SIDEBAR COLAPSABLE EN ESCRITORIO
    ============================================ */
-@media screen and (min-width: 769px) {
+/* ============================================================
+   TABLET EN VERTICAL (769 a 1023 px)
+   Aquí el menú sigue siendo un cajón que se abre con el botón: a
+   ese ancho una columna fija de 260 px se come el espacio útil.
+   ============================================================ */
+@media screen and (min-width: 769px) and (max-width: 1023px) {
   .btn-menu-mobile {
     display: block !important;
     background: transparent;
@@ -274,12 +279,77 @@ select.form-input, select.select-input {
   .mobile-overlay {
     display: none !important;
   }
+}
 
+/* ============================================================
+   LAPTOP, TABLET ACOSTADA Y MONITOR (1024 px o más)
+   El menú SIEMPRE a la vista, como columna, y sin hamburguesa.
+
+   Antes el menú quedaba en `width: 0` en TODO lo que pasara de
+   768 px, así que en una laptop se veía un diseño de celular
+   estirado: sin navegación visible, con el botón de hamburguesa
+   puesto y el contenido de borde a borde. Eso era la "forma rara".
+   ============================================================ */
+@media screen and (min-width: 1024px) {
+  .btn-menu-mobile {
+    display: none !important;
+  }
+
+  .sidebar {
+    position: static !important;
+    left: auto !important;
+    /* Crece un poco con la pantalla, pero con tope: en un monitor de
+       2560 no tiene sentido un menú de 400 px. */
+    width: clamp(228px, 17vw, 288px) !important;
+    flex: 0 0 auto !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    white-space: normal !important;
+    border-right: 1px solid var(--border) !important;
+    transition: none !important;
+  }
+
+  .mobile-overlay {
+    display: none !important;
+  }
+}
+
+/* ============================================================
+   AIRE DEL CONTENIDO, PROPORCIONAL AL ANCHO
+   Con padding fijo, en un celular sobra margen y en un monitor
+   falta. clamp() crece con la pantalla y se detiene solo.
+   ============================================================ */
+@media screen and (min-width: 769px) {
   .content {
-    padding: 35px 40px !important;
+    padding: clamp(20px, 2.2vw, 36px) clamp(20px, 2.4vw, 44px) 84px !important;
     box-sizing: border-box !important;
     width: 100% !important;
   }
+}
+
+/* En pantallas muy anchas el contenido deja de estirarse y se centra.
+   Estirar una tabla de cuatro columnas a 2500 px no la hace más útil:
+   la vuelve ilegible, con huecos enormes entre dato y dato.
+
+   Sin media query a propósito: debajo de 1720 px no hace nada, y arriba
+   entra sola. Así no hay un salto raro entre dos topes distintos. */
+.content {
+  max-width: 1720px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* ============================================================
+   ALTURA REAL DE LA VENTANA
+   En celular el navegador muestra y esconde su barra de dirección.
+   Con `height: 100vh` la app se dimensiona como si esa barra no
+   existiera y el fondo queda debajo, tapado. `dvh` mide lo que de
+   verdad se ve. Va global para no perseguir los 20 archivos que
+   fijaban 100vh en la envoltura de cada pantalla.
+   ============================================================ */
+.app-layout,
+.app-container {
+  height: 100dvh !important;
 }
 
 /* ============================================

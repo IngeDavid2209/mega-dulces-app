@@ -100,12 +100,9 @@
   padding: 32px 40px;
   overflow-y: auto;
   background-color: var(--bg-app);
-  /* Tope de ancho, como el diseño original (1560 px). Sin esto, en un monitor
-     ancho la cuadrícula de responsables se convertía en 15 columnas de tarjetas
-     diminutas: cabían todas, pero no se leía ninguna. */
-  max-width: 1560px;
+  /* El tope de ancho ya vive en styles.css, para TODA la app, junto con el aire
+     proporcional. Antes estaba solo aquí y quedaban dos reglas peleando. */
   width: 100%;
-  margin: 0 auto;
 }
 
 .section-header {

@@ -1,0 +1,12 @@
+-- Bot de WhatsApp: LISTA CONGELADA de tareas por conversación.
+--
+-- La numeración que ve el colaborador ("ya hice la 67") se calculaba al vuelo en
+-- cada llamada, ordenada por fecha/hora sobre lo que estaba sin enviar. Con
+-- decenas de tareas arrastradas, si entraba un checklist nuevo a media
+-- conversación (los moldes se aplican toda la mañana) con una hora límite más
+-- temprana, se insertaba EN MEDIO y renumeraba todo lo que seguía: el número que
+-- la persona acababa de leer ya apuntaba a otra tarea.
+--
+-- Aquí se guarda el mapa número -> (checklist, item) tal como se le mostró, para
+-- que "la 67" siempre resuelva a la tarea que vio.
+alter table mdtask_wa_conversaciones add column if not exists lista jsonb;

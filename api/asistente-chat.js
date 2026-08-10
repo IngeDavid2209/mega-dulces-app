@@ -356,6 +356,22 @@ async function pgConversacionEsperandoGet(id) {
   const r = await query('select esperando from mdtask_wa_conversaciones where id = $1', [String(id)]);
   return (r.rows[0] && r.rows[0].esperando) || null;
 }
+// LISTA CONGELADA (SQL 026): el mapa numero -> (checklist, item) tal como se le
+// mostro a la persona. Sin esto la numeracion se recalcula en cada llamada y un
+// checklist nuevo a media conversacion renumera todo: "la 67" acaba apuntando a
+// otra tarea (paso en produccion).
+async function pgConversacionListaSet(id, lista) {
+  await query(
+    `insert into mdtask_wa_conversaciones (id, actualizado, messages, lista)
+     values ($1,$2,'[]'::jsonb,$3)
+     on conflict (id) do update set lista=excluded.lista, actualizado=excluded.actualizado`,
+    [String(id), Date.now(), lista ? JSON.stringify(lista) : null]
+  );
+}
+async function pgConversacionListaGet(id) {
+  const r = await query('select lista from mdtask_wa_conversaciones where id = $1', [String(id)]);
+  return (r.rows[0] && r.rows[0].lista) || null;
+}
 // Guarda/actualiza SOLO la identidad de invitado del hilo (sin tocar messages).
 async function pgConversacionInvitadoSet(id, invitado) {
   await query(
@@ -724,17 +740,27 @@ async function registrarFotoEvidencia(convKey, urlFoto, identidad) {
   const actual = cola[cursor];
   if (!actual || !actual.checklistId) return { ok: false, sinPendiente: true };
 
-  const ck = await pgChecklistGet(actual.checklistId);
-  if (!ck) {
+  // Si la entrada de la fila ya no cuadra (el checklist se envio, se borro o el
+  // item cambio), se DESCARTA SOLO ESA y se sigue con las demas. Antes se borraba
+  // la fila completa: un tropiezo tiraba las 3 fotos que la persona traia en cola
+  // y el bot volvia a pedirlas todas desde cero.
+  const saltar = async (motivo) => {
+    const resto = cola.slice(cursor + 1);
+    console.warn(`[entrega] descarto una entrada de la fila (${motivo}); quedan ${resto.length}`);
+    if (resto.length) {
+      await pgConversacionEsperandoSet(convKey, { tipo: 'foto', cola: resto, idx: 0, pedidoEn: Date.now() });
+      return { ok: false, saltada: true, texto: actual.texto, siguiente: { texto: resto[0].texto, fase: resto[0].fase, n: resto[0].n } };
+    }
     await pgConversacionEsperandoSet(convKey, null);
-    return { ok: false, sinPendiente: true };
-  }
+    return { ok: false, sinPendiente: true, texto: actual.texto };
+  };
+
+  const ck = await pgChecklistGet(actual.checklistId);
+  if (!ck) return saltar('el checklist ya no existe');
+  if (ck.enviado) return saltar('el checklist ya se entrego');
   const items = Array.isArray(ck.items) ? ck.items : [];
   const idx = items.findIndex(it => String(it.id) === String(actual.itemId));
-  if (idx < 0) {
-    await pgConversacionEsperandoSet(convKey, null);
-    return { ok: false, sinPendiente: true };
-  }
+  if (idx < 0) return saltar('el item ya no esta en el checklist');
 
   const modoActual = actual.modo || 'simple';
   const faseActual = actual.fase || null;
@@ -1657,6 +1683,17 @@ async function ejecutarHerramienta(db, ctx, nombre, input) {
           : `No tienes tareas por entregar${input.fecha ? ' el ' + input.fecha : ''} 🎉`
       };
     }
+    // CONGELA la numeracion que se le va a leer: "la 67" tiene que seguir siendo
+    // esta tarea aunque entre un checklist nuevo en los proximos minutos.
+    if (ctx.convKey && !deOtro) {
+      try {
+        await pgConversacionListaSet(ctx.convKey, {
+          en: Date.now(),
+          tareas: tareas.map(t => ({ n: t.n, ck: t.checklist_id, it: t.item_id, texto: t.texto })),
+        });
+      } catch (e) { console.error('[entrega] no pude congelar la lista:', e && e.message); }
+    }
+
     const vistas = lista.map(vistaChecklist);
     const pendientes = tareas.filter(t => !t.hecho);
     const conFoto = pendientes.filter(t => t.pide_foto).length;
@@ -1708,6 +1745,33 @@ async function ejecutarHerramienta(db, ctx, nombre, input) {
     } else {
       const { tareas } = await tareasPlanas(ctx, {});
       if (!tareas.length) return { ok: false, mensaje: 'No tienes tareas pendientes por entregar.' };
+
+      // Los NUMEROS se resuelven contra la lista CONGELADA (la que la persona
+      // acaba de leer). Si se recalculara aqui, un checklist nuevo entrado en
+      // los ultimos minutos correria la numeracion y "la 67" cerraria otra cosa.
+      let congelada = null;
+      if (ctx.convKey) {
+        try {
+          const l = await pgConversacionListaGet(ctx.convKey);
+          // 12 h de vigencia: mas alla de eso la lista ya no es la que vio.
+          if (l && Array.isArray(l.tareas) && l.tareas.length && (Date.now() - Number(l.en || 0)) < 12 * 3600 * 1000) {
+            congelada = l.tareas;
+          }
+        } catch (e) { /* sin lista congelada, se usa la de ahora */ }
+      }
+      const porNumero = (n) => {
+        if (congelada) {
+          const f = congelada.find(x => Number(x.n) === n);
+          if (f) {
+            // Se reubica en la lista de AHORA por (checklist, item), no por posicion.
+            const t = tareas.find(x => String(x.checklist_id) === String(f.ck) && String(x.item_id) === String(f.it));
+            if (t) return { ...t, n };            // conserva el numero que ella leyo
+            return { _perdida: true, texto: f.texto, n };
+          }
+        }
+        return tareas.find(x => x.n === n) || null;
+      };
+
       const elegidas = [];
       if (quiereTodas) {
         elegidas.push(...tareas.filter(t => !t.hecho));
@@ -1717,12 +1781,19 @@ async function ejecutarHerramienta(db, ctx, nombre, input) {
           const txt = String(ref).trim();
           const num = /^#?(\d{1,3})$/.exec(txt);
           let t = null;
-          if (num) t = tareas.find(x => x.n === parseInt(num[1], 10));
+          if (num) t = porNumero(parseInt(num[1], 10));
           else {
+            // Por TEXTO se busca en la lista de ahora: los nombres no se mueven.
             const obj = normaliza(txt);
             const cands = tareas.filter(x => { const n = normaliza(x.texto); return n === obj || n.includes(obj) || obj.includes(n); });
             if (cands.length > 1) return { ok: false, mensaje: `"${txt}" coincide con varias: ${cands.slice(0, 6).map(c => c.n + '. ' + c.texto).join(' | ')}. ¿Cual?` };
             t = cands[0] || null;
+          }
+          if (t && t._perdida) {
+            return {
+              ok: false,
+              mensaje: `La ${t.n} ("${t.texto}") ya no está en tu lista de pendientes (puede que ya se haya entregado). Vuelve a leerle sus pendientes con mis_pendientes y confirma el número.`
+            };
           }
           if (!t) return { ok: false, mensaje: `No encontre la tarea "${txt}" en tu lista. Vuelve a leerle sus pendientes con mis_pendientes.` };
           elegidas.push(t);
@@ -1772,17 +1843,22 @@ async function ejecutarHerramienta(db, ctx, nombre, input) {
     // "ya hice la 9"... "la 10 y 11"... "la 13" de a poco, y si cada llamada
     // reemplazara la fila, solo la ultima tarea quedaria esperando su foto y las
     // demas se perderian en silencio (paso en produccion).
-    let colaFinal = cola;
-    if (cola.length) {
+    // Se lee la fila que YA estaba SIEMPRE, no solo cuando esta llamada agrega
+    // fotos: si no, al cerrar una tarea sin evidencia se reportaba "0 en cola"
+    // aunque hubiera 3 esperando, y los mensajes del bot se contradecian.
+    let previas = [];
+    if (ctx.convKey) {
       try {
         const esp = await pgConversacionEsperandoGet(ctx.convKey);
         if (esp && esp.tipo === 'foto' && Array.isArray(esp.cola)) {
-          const previas = esp.cola.slice(Number(esp.idx || 0));   // las que aun no tienen foto
-          const llave = (c) => `${c.checklistId}|${c.itemId}`;
-          const vistas = new Set(previas.map(llave));
-          colaFinal = [...previas, ...cola.filter(c => !vistas.has(llave(c)))];
+          previas = esp.cola.slice(Number(esp.idx || 0));   // las que aun no tienen foto
         }
-      } catch (e) { /* si no se puede leer, al menos queda la nueva */ }
+      } catch (e) { /* sin fila previa */ }
+    }
+    const llave = (c) => `${c.checklistId}|${c.itemId}`;
+    const yaEnFila = new Set(previas.map(llave));
+    let colaFinal = [...previas, ...cola.filter(c => !yaEnFila.has(llave(c)))];
+    if (cola.length) {
       await pgConversacionEsperandoSet(ctx.convKey, { tipo: 'foto', cola: colaFinal, idx: 0, pedidoEn: Date.now() });
     }
 

@@ -192,7 +192,16 @@ async function procesarMensaje(msg) {
     try { res = await registrarFotoEvidencia(objetivo, subida.url, identidad); }
     catch (e) { console.error('[wa-webhook] error guardando evidencia:', e && e.message); res = null; }
     if (!res || !res.ok) {
-      await enviarMensaje(msg.from, 'Guardé la foto pero ya no encontré la tarea que la esperaba 😕. Dime otra vez cuál entregas.');
+      // Una entrada de la fila ya no cuadraba: se descartó SOLO esa y seguimos
+      // con las que quedaban, sin perder las demás fotos que traía en cola.
+      if (res && res.saltada && res.siguiente) {
+        await enviarMensaje(msg.from,
+          `Esa foto ya no la pude poner en "${res.texto}" (esa tarea ya se entregó o cambió) 🤔.\n`
+          + `Sigo con la que falta: mándame la de *${res.siguiente.texto}*`
+          + (res.siguiente.fase === 'antes' ? ' (primero la de ANTES).' : '.'));
+        return;
+      }
+      await enviarMensaje(msg.from, 'Guardé la foto pero ya no encontré la tarea que la esperaba 😕. Dime otra vez cuál entregas (o escríbeme *qué tengo hoy* para verlas numeradas).');
       return;
     }
 

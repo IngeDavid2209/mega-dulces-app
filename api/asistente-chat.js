@@ -721,6 +721,40 @@ async function resolverChecklistDestino(ctx, checklistId) {
 }
 
 /**
+ * Tareas de esta persona que PIDEN evidencia y siguen sin ella. Es el respaldo
+ * cuando llega una foto y la fila esta vacia: la foto ya esta tomada y hay que
+ * colocarla o al menos preguntar bien, nunca tirarla.
+ * Se ordena poniendo primero las YA MARCADAS (esas son las que estaba
+ * entregando) y luego el resto, de la mas reciente a la mas vieja.
+ */
+async function candidatosFoto(identidad) {
+  try {
+    const hoy = ahoraMexico().fechaISO;
+    const cks = await pgChecklistsDeUsuario({
+      uid: (identidad && identidad.uid) || undefined,
+      nombre: (identidad && identidad.nombre) || undefined,
+      desde: restarDiasISO(hoy, DIAS_ARRASTRE) || undefined, hasta: hoy,
+    });
+    const out = [];
+    for (const ck of cks) {
+      (Array.isArray(ck.items) ? ck.items : []).forEach((it) => {
+        if (!itemPideEvidencia(it) || itemHecho(it)) return;
+        out.push({
+          checklistId: ck.id, itemId: it.id, texto: String(it.text || ''),
+          modo: modoEvidencia(it), fase: modoEvidencia(it) === 'antesDespues' ? 'antes' : null,
+          _marcada: it.checked === true, _fecha: ck.date || '',
+        });
+      });
+    }
+    out.sort((a, b) => (b._marcada - a._marcada) || String(b._fecha).localeCompare(String(a._fecha)));
+    return out;
+  } catch (e) {
+    console.error('[entrega] no pude buscar candidatas para la foto:', e && e.message);
+    return [];
+  }
+}
+
+/**
  * Guarda una FOTO que acaba de llegar por WhatsApp en el item que la estaba
  * esperando. La llama el webhook (fuera de Claude) despues de subirla a
  * Cloudinary, igual que registrarUbicacion() en flotilla.
@@ -728,8 +762,23 @@ async function resolverChecklistDestino(ctx, checklistId) {
  */
 async function registrarFotoEvidencia(convKey, urlFoto, identidad) {
   if (!convKey || !urlFoto) return { ok: false, sinPendiente: true };
-  const esp = await pgConversacionEsperandoGet(convKey);
-  if (!esp || esp.tipo !== 'foto') return { ok: false, sinPendiente: true };
+  let esp = await pgConversacionEsperandoGet(convKey);
+
+  // SIN FILA: la persona ya tomo la foto en el piso, no se puede tirar. Se busca
+  // a que tarea pertenece entre las que le piden evidencia y siguen sin ella.
+  // Si hay UNA sola, ahi va (y se le dice cual). Si hay varias, se le pregunta
+  // con sus numeros. Antes se contestaba "no se de que tarea es" y la foto se
+  // perdia: el usuario reportaba justo eso desde el piso.
+  if (!esp || esp.tipo !== 'foto' || !(Array.isArray(esp.cola) ? esp.cola.length : esp.checklistId)) {
+    const cand = await candidatosFoto(identidad);
+    if (cand.length === 1) {
+      console.log(`[entrega] foto sin fila: hay una sola tarea esperando evidencia ("${cand[0].texto}"), la pongo ahi`);
+      esp = { tipo: 'foto', cola: [cand[0]], idx: 0, pedidoEn: Date.now(), deducida: true };
+    } else {
+      console.warn(`[entrega] foto sin fila y ${cand.length} candidatas: hay que preguntarle`);
+      return { ok: false, sinPendiente: true, candidatos: cand.slice(0, 8) };
+    }
+  }
 
   // Formato con FILA (varias tareas con foto, una tras otra) o el de una sola
   // tarea (compatibilidad con lo que quedara apuntado antes de este cambio).
@@ -1924,7 +1973,21 @@ async function ejecutarHerramienta(db, ctx, nombre, input) {
         await marcarEnviado(ctx, ck, { categoria: cat, comentario: com, nota: input.nota });
         enviados.push({ id: ck.id, nombre: ck.name, con_retraso: !!ck.entregaConRetraso });
       }
-      if (ctx.convKey) { try { await pgConversacionEsperandoSet(ctx.convKey, null); } catch (e) { /* no critico */ } }
+      // La fila de fotos NO se borra completa: solo salen las entradas de los
+      // checklists que de verdad se acabaron de entregar. Antes se limpiaba de
+      // golpe, asi que un "Enviar" tiraba las fotos que la persona traia
+      // pendientes de OTRAS tareas y el bot se las volvia a pedir desde cero.
+      if (ctx.convKey) {
+        try {
+          const idsEnviados = new Set(enviados.map(e => String(e.id)));
+          const esp = await pgConversacionEsperandoGet(ctx.convKey);
+          if (esp && Array.isArray(esp.cola)) {
+            const quedan = esp.cola.slice(Number(esp.idx || 0)).filter(c => !idsEnviados.has(String(c.checklistId)));
+            await pgConversacionEsperandoSet(ctx.convKey, quedan.length ? { tipo: 'foto', cola: quedan, idx: 0, pedidoEn: Date.now() } : null);
+            if (quedan.length) console.log(`[entrega] tras enviar quedan ${quedan.length} foto(s) en la fila`);
+          }
+        } catch (e) { console.error('[entrega] no pude depurar la fila:', e && e.message); }
+      }
       const quedan = incompletos.filter(ck => !aEnviar.includes(ck)).length;
       return {
         ok: true, enviados: enviados.length, con_retraso: enviados.filter(e => e.con_retraso).length,

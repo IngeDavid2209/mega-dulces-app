@@ -170,12 +170,12 @@ async function procesarMensaje(msg) {
       await enviarMensaje(msg.from, 'Recibí tu foto 📷, pero como invitado solo te puedo ayudar con los *vehículos*.');
       return;
     }
+    // Ya NO se rechaza aquí por no tener fila: registrarFotoEvidencia sabe
+    // deducir a qué tarea va (o a qué candidatas preguntar). La foto ya está
+    // tomada; tirarla es lo peor que podemos hacer.
     let esp = null;
     try { esp = await pgConversacionEsperandoGet(objetivo); } catch (e) { /* sin estado */ }
-    if (!esp || esp.tipo !== 'foto') {
-      await enviarMensaje(msg.from, 'Recibí tu foto 📷 pero no sé de qué tarea es. Dime primero cuál entregas (ej. *"ya hice la 2"*) y te la pido 🙂');
-      return;
-    }
+    console.log(`[wa-webhook] FOTO de ${msg.from} | fila: ${esp && Array.isArray(esp.cola) ? esp.cola.length - Number(esp.idx || 0) + ' pendiente(s)' : 'vacía'}`);
 
     const media = await descargarMedia(msg.mediaId);
     if (!media) {
@@ -201,7 +201,18 @@ async function procesarMensaje(msg) {
           + (res.siguiente.fase === 'antes' ? ' (primero la de ANTES).' : '.'));
         return;
       }
-      await enviarMensaje(msg.from, 'Guardé la foto pero ya no encontré la tarea que la esperaba 😕. Dime otra vez cuál entregas (o escríbeme *qué tengo hoy* para verlas numeradas).');
+      // Varias tareas podrían ser la dueña de esta foto: se le PREGUNTA por
+      // nombre en vez de tirarla. Ella contesta y la siguiente foto ya cae bien.
+      if (res && Array.isArray(res.candidatos) && res.candidatos.length > 1) {
+        const lista = res.candidatos.slice(0, 5).map((c, i) => `${i + 1}. ${c.texto}`).join('\n');
+        await enviarMensaje(msg.from,
+          `Recibí tu foto 📷 pero no sé de cuál tarea es. ¿De cuál de estas?\n${lista}\n\n`
+          + 'Dime su nombre y me la vuelves a mandar 🙂');
+        return;
+      }
+      await enviarMensaje(msg.from,
+        'Recibí tu foto 📷 pero ahora mismo no tienes ninguna tarea que pida evidencia. '
+        + 'Escríbeme *qué tengo hoy* para verlas numeradas y dime cuál entregas 🙂');
       return;
     }
 

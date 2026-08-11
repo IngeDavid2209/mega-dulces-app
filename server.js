@@ -75,6 +75,10 @@ app.all('/api/cloudinary-cleanup', require('./api/cloudinary-cleanup'));
 app.all('/api/vehiculos', require('./api/vehiculos'));
 app.all('/api/reservas-vehiculos', require('./api/reservas-vehiculos'));
 
+// 🏷️ Activación de promociones (formato MKTN001)
+app.all('/api/promociones', require('./api/promociones'));
+app.all('/api/promo-proveedores', require('./api/promo-proveedores'));
+
 // Comprobacion de salud para Railway (healthcheckPath en railway.json).
 //
 // A proposito NO toca la base: si Postgres tarda o hipa, no queremos que el

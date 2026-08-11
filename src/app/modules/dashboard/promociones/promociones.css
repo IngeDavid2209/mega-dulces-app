@@ -1,7 +1,18 @@
-/* Activación de promociones. Usa las clases globales del armazón (.app-layout,
-   .header, .main-wrapper, .content) igual que las demás pantallas, para que
-   herede el acomodo a laptop, tablet y celular sin reglas propias. */
+/* Activación de promociones (formato MKTN001).
+   El armazón (.app-layout, .header, .main-wrapper, .content) viene del CSS
+   global, así que esta pantalla solo trae lo suyo. */
 
+:host {
+  --pz-azul: #1F4E79;
+  --pz-azul-claro: #DEEBF7;
+  --pz-linea: #E2E8F0;
+  --pz-txt: #1E293B;
+  --pz-txt-2: #64748B;
+  --pz-rojo: #C7382E;
+  --pz-verde: #1F7A4D;
+}
+
+/* ---------- Encabezado ---------- */
 .promo-head {
   display: flex;
   align-items: flex-end;
@@ -10,7 +21,7 @@
   flex-wrap: wrap;
   padding-bottom: 14px;
   margin-bottom: 18px;
-  border-bottom: 2px solid var(--border);
+  border-bottom: 2px solid var(--pz-linea);
 }
 
 .promo-head h1 {
@@ -19,38 +30,313 @@
   color: #0F172A;
   letter-spacing: -0.2px;
   line-height: 1.2;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
-.promo-sub {
+.promo-folio {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--pz-azul);
+  background: var(--pz-azul-claro);
+  border-radius: 999px;
+  padding: 3px 10px;
+}
+
+.promo-sub { font-size: 13px; color: var(--pz-txt-2); margin-top: 4px; }
+.promo-head-acciones { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* ---------- Botones ---------- */
+.pr-btn {
+  font: inherit;
   font-size: 13px;
-  color: var(--text-muted);
-  margin-top: 4px;
+  font-weight: 600;
+  height: 36px;
+  padding: 0 14px;
+  border: 1px solid #CBD5E1;
+  border-radius: 6px;
+  background: #FFF;
+  color: var(--pz-txt);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  white-space: nowrap;
+  transition: background .15s, border-color .15s;
 }
 
+.pr-btn svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.pr-btn:hover:not(:disabled) { background: #F8FAFC; border-color: #94A3B8; }
+.pr-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+.pr-btn-alta { background: var(--pz-azul); border-color: var(--pz-azul); color: #FFF; }
+.pr-btn-alta:hover:not(:disabled) { background: #17405f; border-color: #17405f; }
+
+.pr-btn-pdf { background: var(--pz-verde); border-color: var(--pz-verde); color: #FFF; }
+.pr-btn-pdf:hover { background: #17603c; border-color: #17603c; }
+
+.pr-btn-chico { height: 28px; font-size: 12px; padding: 0 10px; }
+.pr-btn-quitar { color: var(--pz-rojo); }
+.pr-btn-quitar:hover { border-color: var(--pz-rojo); background: #FBEBE9; }
+.pr-btn-adjuntar { border-style: dashed; }
+
+/* ---------- Lista ---------- */
+.promo-vacio { color: var(--pz-txt-2); font-size: 13.5px; padding: 18px 0; }
+
+.promo-tabla-marco {
+  border: 1px solid var(--pz-linea);
+  border-radius: 10px;
+  background: #FFF;
+  overflow-x: auto;
+}
+
+.promo-tabla { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 620px; }
+
+.promo-tabla thead th {
+  text-align: left;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .4px;
+  text-transform: uppercase;
+  color: var(--pz-txt-2);
+  padding: 10px;
+  border-bottom: 1px solid var(--pz-linea);
+  white-space: nowrap;
+}
+
+.promo-tabla td { padding: 9px 10px; border-bottom: 1px solid #F1F5F9; vertical-align: middle; }
+.promo-tabla tbody tr:hover { background: #F8FAFC; }
+.promo-tabla .th-num { text-align: right; }
+.td-folio { font-weight: 800; font-variant-numeric: tabular-nums; color: var(--pz-azul); }
+.td-prov { font-weight: 600; }
+.td-canal { font-weight: 700; font-size: 12px; color: var(--pz-azul); background: var(--pz-azul-claro); white-space: nowrap; }
+.td-ruta { display: flex; gap: 6px; flex-wrap: wrap; }
+.td-acciones { display: flex; gap: 6px; justify-content: flex-end; }
+
+.promo-chip {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--pz-azul-claro);
+  color: var(--pz-azul);
+  white-space: nowrap;
+}
+
+/* ---------- Pasos ---------- */
+.pasos { display: flex; align-items: center; gap: 6px; margin-bottom: 18px; flex-wrap: wrap; }
+
+.paso {
+  font: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #FFF;
+  border: 1px solid var(--pz-linea);
+  border-radius: 999px;
+  padding: 6px 14px 6px 6px;
+  cursor: pointer;
+  color: var(--pz-txt-2);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.paso-num {
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  background: #EEF2F7;
+  color: var(--pz-txt-2);
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 800;
+}
+
+.paso-num svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 2; }
+.paso-activo { border-color: var(--pz-azul); color: var(--pz-azul); }
+.paso-activo .paso-num { background: var(--pz-azul); color: #FFF; }
+.paso-bloqueado { opacity: .55; cursor: not-allowed; }
+.paso-linea { flex: 0 0 18px; height: 1px; background: #CBD5E1; }
+
+/* ---------- Panel de captura ---------- */
 .promo-panel {
-  background: var(--card);
-  border: 1px solid var(--border);
+  background: #FFF;
+  border: 1px solid var(--pz-linea);
   border-radius: 12px;
   padding: 20px 22px;
-  max-width: 680px;
+  max-width: 980px;
 }
 
-.promo-panel h2 {
-  font-size: 15px;
+.promo-panel h2 { font-size: 15px; font-weight: 800; color: var(--pz-txt); margin-bottom: 6px; }
+.promo-ayuda { font-size: 13px; line-height: 1.55; color: var(--pz-txt-2); margin-bottom: 16px; }
+
+.promo-label {
+  display: block;
+  font-size: 11px;
   font-weight: 800;
-  color: #1E293B;
-  margin-bottom: 10px;
+  letter-spacing: .4px;
+  text-transform: uppercase;
+  color: var(--pz-txt-2);
+  margin: 14px 0 5px;
 }
 
-.promo-panel p {
+.promo-input {
+  font: inherit;
   font-size: 13.5px;
-  line-height: 1.6;
-  color: var(--text-muted);
+  width: 100%;
+  min-height: 38px;
+  padding: 8px 11px;
+  border: 1px solid #CBD5E1;
+  border-radius: 6px;
+  background: #FFF;
+  color: var(--pz-txt);
+  box-sizing: border-box;
 }
 
-.promo-panel p + p { margin-top: 10px; }
+.promo-input:focus { outline: none; border-color: var(--pz-azul); box-shadow: 0 0 0 3px rgba(31,78,121,.12); }
+.promo-textarea { min-height: 84px; resize: vertical; line-height: 1.5; }
+.promo-input-tabla { min-height: 32px; font-size: 12.5px; }
+
+.promo-rejilla {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 12px;
+  align-items: end;
+}
+
+.promo-col2 { grid-column: span 2; min-width: 0; }
+
+/* ---------- Sugerencias de proveedor ---------- */
+.promo-sugerencias { margin-top: 14px; }
+
+.promo-sug-titulo {
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: .4px;
+  text-transform: uppercase;
+  color: #94A3B8;
+}
+
+.promo-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 7px; }
+
+.promo-chip-btn {
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 5px 11px;
+  border-radius: 999px;
+  border: 1px solid var(--pz-linea);
+  background: #FFF;
+  color: var(--pz-txt);
+  cursor: pointer;
+}
+
+.promo-chip-btn:hover { border-color: var(--pz-azul); color: var(--pz-azul); }
+.promo-chip-btn small { color: #94A3B8; font-weight: 500; margin-left: 4px; }
+
+/* ---------- Canales y recursos ---------- */
+.promo-canales { display: flex; flex-wrap: wrap; gap: 7px; }
+
+.promo-canal {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 6px 11px;
+  border: 1px solid var(--pz-linea);
+  border-radius: 6px;
+  cursor: pointer;
+  background: #FFF;
+  color: var(--pz-txt-2);
+}
+
+.promo-canal-on { border-color: var(--pz-azul); background: var(--pz-azul-claro); color: var(--pz-azul); }
+
+.promo-recursos { display: flex; flex-direction: column; gap: 8px; }
+
+.promo-recurso {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--pz-txt);
+  cursor: pointer;
+  line-height: 1.4;
+}
+
+/* ---------- Códigos ---------- */
+.promo-codigos { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 8px; }
+.promo-codigo { display: flex; align-items: center; gap: 6px; }
+
+.promo-codigo-n {
+  width: 24px; height: 32px;
+  flex-shrink: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--pz-azul-claro);
+  color: var(--pz-azul);
+  border-radius: 4px;
+  font-size: 12px; font-weight: 800;
+}
+
+/* ---------- Evidencias ---------- */
+.promo-adjuntar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.promo-nota { font-size: 12px; color: var(--pz-txt-2); }
+.promo-evidencias { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 8px; margin-top: 12px; }
+
+.promo-ev {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  border: 1px solid var(--pz-linea);
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: #F8FAFC;
+  min-width: 0;
+}
+
+.promo-ev-mini { width: 34px; height: 34px; object-fit: cover; border-radius: 5px; flex-shrink: 0; }
+
+.promo-ev-icono {
+  width: 34px; height: 34px; flex-shrink: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: #FFF; border: 1px solid var(--pz-linea); border-radius: 5px; color: var(--pz-azul);
+}
+
+.promo-ev-icono svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.8; }
+.promo-ev-info { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+
+.promo-ev-nombre {
+  font-size: 12.5px; font-weight: 600; color: var(--pz-txt);
+  text-decoration: none;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+.promo-ev-nombre:hover { color: var(--pz-azul); text-decoration: underline; }
+.promo-ev-peso { font-size: 11px; color: #94A3B8; }
+
+.promo-ev-quitar {
+  border: 0; background: transparent; color: #94A3B8;
+  font-size: 20px; line-height: 1; cursor: pointer; padding: 0 2px; flex-shrink: 0;
+}
+
+.promo-ev-quitar:hover { color: var(--pz-rojo); }
+
+/* ---------- Acciones ---------- */
+.promo-acciones {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--pz-linea);
+}
 
 @media screen and (max-width: 768px) {
   .promo-head h1 { font-size: 18px; }
   .promo-panel { padding: 16px; }
+  .promo-col2 { grid-column: auto; }
+  .promo-tabla { min-width: 560px; }
+  .td-acciones { justify-content: flex-start; }
 }

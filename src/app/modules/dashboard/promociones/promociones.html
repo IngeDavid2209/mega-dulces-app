@@ -21,29 +21,339 @@
 
     <div class="content">
 
-      <section class="promo-head">
-        <div>
-          <h1>Activación de promociones</h1>
-          <p class="promo-sub">Apartado con acceso restringido</p>
-        </div>
-      </section>
+      <!-- ==================== LISTA ==================== -->
+      <ng-container *ngIf="vista() === 'lista'">
+        <section class="promo-head">
+          <div>
+            <h1>Activación de promociones</h1>
+            <p class="promo-sub">Formato MKTN001 · Apoyo para Sell Out</p>
+          </div>
+          <button class="pr-btn pr-btn-alta" (click)="nueva()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+            Nueva promoción
+          </button>
+        </section>
 
-      <!-- Estado honesto: el apartado y su permiso ya funcionan; el contenido
-           está por definir. Mejor decirlo que fingir una pantalla llena. -->
-      <section class="promo-panel">
-        <h2>Apartado listo, contenido por definir</h2>
-        <p>
-          El acceso ya está funcionando: esta pantalla solo la ve quien tenga el
-          permiso <strong>Activación de promociones</strong> asignado desde
-          <em>Usuarios</em>, y la dirección está protegida aunque alguien la
-          escriba a mano.
+        <p class="promo-vacio" *ngIf="cargando()">Cargando…</p>
+
+        <p class="promo-vacio" *ngIf="!cargando() && promociones().length === 0">
+          Todavía no hay promociones capturadas. Empieza con "Nueva promoción".
         </p>
-        <p>
-          Falta definir qué se hace aquí. Para construirlo necesito saber tres
-          cosas: qué es una promoción en este caso, quién la activa y sobre qué
-          (sucursal, producto, periodo), y qué tiene que quedar registrado.
-        </p>
-      </section>
+
+        <div class="promo-tabla-marco" *ngIf="!cargando() && promociones().length > 0">
+          <table class="promo-tabla">
+            <thead>
+              <tr>
+                <th>Folio</th>
+                <th>Proveedor / Marca</th>
+                <th>Negociación</th>
+                <th>Avance</th>
+                <th class="th-num">Evidencias</th>
+                <th class="th-num">Monto</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let p of promociones()">
+                <td class="td-folio">{{ folioTexto(p.folio) }}</td>
+                <td class="td-prov">{{ p.proveedor || '—' }}</td>
+                <td>{{ p.fechaNegociacion || '—' }}</td>
+                <td><span class="promo-chip">{{ etiquetaEstado(p.estado) }}</span></td>
+                <td class="th-num">{{ (p.evidencias || []).length }}</td>
+                <td class="th-num">{{ p.monto != null ? (p.monto | number:'1.2-2') : '—' }}</td>
+                <td class="td-acciones">
+                  <button class="pr-btn pr-btn-chico" (click)="abrir(p)">Abrir</button>
+                  <button class="pr-btn pr-btn-chico pr-btn-quitar" (click)="eliminar(p)">Quitar</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </ng-container>
+
+      <!-- ==================== CAPTURA ==================== -->
+      <ng-container *ngIf="vista() === 'captura'">
+
+        <section class="promo-head">
+          <div>
+            <h1>
+              {{ proveedor ? proveedor : 'Nueva promoción' }}
+              <span class="promo-folio">Folio {{ folioTexto(folio) }}</span>
+            </h1>
+            <p class="promo-sub">Formato MKTN001 · Apoyo para Sell Out</p>
+          </div>
+          <div class="promo-head-acciones">
+            <button class="pr-btn" (click)="volverALista()">Volver</button>
+            <button class="pr-btn pr-btn-alta" (click)="guardar()" [disabled]="guardando()">
+              {{ guardando() ? 'Guardando…' : 'Guardar' }}
+            </button>
+          </div>
+        </section>
+
+        <!-- Pasos -->
+        <div class="pasos">
+          <button class="paso" [class.paso-activo]="paso() === 1" (click)="irAPaso(1)">
+            <span class="paso-num">1</span>
+            <span class="paso-txt">Proveedor</span>
+          </button>
+          <span class="paso-linea"></span>
+          <button class="paso" [class.paso-activo]="paso() === 2"
+                  [class.paso-bloqueado]="!pasoDesbloqueado(2)"
+                  [attr.title]="!pasoDesbloqueado(2) ? motivoCandado(2) : ''"
+                  (click)="irAPaso(2)">
+            <span class="paso-num">
+              <ng-container *ngIf="pasoDesbloqueado(2); else candado2">2</ng-container>
+              <ng-template #candado2>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/>
+                </svg>
+              </ng-template>
+            </span>
+            <span class="paso-txt">Oferta y evidencia</span>
+          </button>
+          <span class="paso-linea"></span>
+          <button class="paso" [class.paso-activo]="paso() === 3"
+                  [class.paso-bloqueado]="!pasoDesbloqueado(3)"
+                  [attr.title]="!pasoDesbloqueado(3) ? motivoCandado(3) : ''"
+                  (click)="irAPaso(3)">
+            <span class="paso-num">
+              <ng-container *ngIf="pasoDesbloqueado(3); else candado3">3</ng-container>
+              <ng-template #candado3>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/>
+                </svg>
+              </ng-template>
+            </span>
+            <span class="paso-txt">Formato y descarga</span>
+          </button>
+        </div>
+
+        <!-- ---------- PASO 1 ---------- -->
+        <section class="promo-panel" *ngIf="paso() === 1">
+          <h2>1. Proveedor o marca</h2>
+          <p class="promo-ayuda">
+            Escríbelo como quieras que salga impreso. Cada proveedor nuevo se guarda
+            solo y desde la próxima vez aparece aquí abajo para elegirlo.
+          </p>
+
+          <label class="promo-label">Proveedor / Marca</label>
+          <input class="promo-input" type="text" [(ngModel)]="proveedor"
+                 placeholder="Por ejemplo: Canels" maxlength="120">
+
+          <div class="promo-sugerencias" *ngIf="proveedoresSugeridos.length">
+            <span class="promo-sug-titulo">Ya registrados</span>
+            <div class="promo-chips">
+              <button class="promo-chip-btn" *ngFor="let p of proveedoresSugeridos"
+                      (click)="elegirProveedor(p.nombre)">
+                {{ p.nombre }} <small>{{ p.usos }}</small>
+              </button>
+            </div>
+          </div>
+
+          <div class="promo-acciones">
+            <button class="pr-btn pr-btn-alta" [disabled]="!pasoDesbloqueado(2) || guardando()"
+                    (click)="guardar(2)">
+              {{ guardando() ? 'Guardando…' : 'Guardar y seguir' }}
+            </button>
+            <span class="promo-nota" *ngIf="!pasoDesbloqueado(2)">{{ motivoCandado(2) }}</span>
+          </div>
+        </section>
+
+        <!-- ---------- PASO 2 ---------- -->
+        <section class="promo-panel" *ngIf="paso() === 2">
+          <h2>2. La oferta negociada y su evidencia</h2>
+          <p class="promo-ayuda">
+            Primero escribe qué se negoció con {{ proveedor }}. Después adjunta el
+            respaldo: PDF, Excel, XML, foto del correo o de WhatsApp, lo que tengas.
+          </p>
+
+          <label class="promo-label">Oferta negociada</label>
+          <textarea class="promo-input promo-textarea" rows="5" [(ngModel)]="oferta"
+                    placeholder="Ejemplo: En la compra de 3 exhibidores de Ch. Canels Celofán /60 = Gratis 1 Tira de Paletón Vaquita /10"></textarea>
+
+          <label class="promo-label">Evidencia de la oferta</label>
+          <div class="promo-adjuntar">
+            <label class="pr-btn pr-btn-adjuntar">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21.4 11.05 12.25 20.2a5 5 0 0 1-7.07-7.07l8.49-8.49a3 3 0 1 1 4.24 4.24l-8.49 8.49a1 1 0 1 1-1.41-1.41l7.78-7.78"/>
+              </svg>
+              Adjuntar archivos
+              <input type="file" multiple (change)="alElegirArchivos($event)" hidden>
+            </label>
+            <span class="promo-nota" *ngIf="subiendo() > 0">Subiendo {{ subiendo() }}…</span>
+            <span class="promo-nota" *ngIf="subiendo() === 0">
+              Los que quieras. Tope de {{ MAX_ARCHIVO_MB }} MB por archivo.
+            </span>
+          </div>
+
+          <div class="promo-evidencias" *ngIf="evidencias.length">
+            <div class="promo-ev" *ngFor="let e of evidencias; let i = index">
+              <img *ngIf="esImagen(e)" [src]="e.url" alt="" class="promo-ev-mini">
+              <span *ngIf="!esImagen(e)" class="promo-ev-icono">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/>
+                </svg>
+              </span>
+              <span class="promo-ev-info">
+                <a [href]="e.url" target="_blank" rel="noopener" class="promo-ev-nombre">{{ e.nombre }}</a>
+                <span class="promo-ev-peso">{{ e.pesoKB }} KB</span>
+              </span>
+              <button class="promo-ev-quitar" (click)="quitarEvidencia(i)" title="Quitar">×</button>
+            </div>
+          </div>
+
+          <div class="promo-acciones">
+            <button class="pr-btn" (click)="irAPaso(1)">Atrás</button>
+            <button class="pr-btn pr-btn-alta" [disabled]="!pasoDesbloqueado(3) || guardando()"
+                    (click)="guardar(3)">
+              {{ guardando() ? 'Guardando…' : 'Guardar y seguir' }}
+            </button>
+            <span class="promo-nota" *ngIf="!pasoDesbloqueado(3)">{{ motivoCandado(3) }}</span>
+          </div>
+        </section>
+
+        <!-- ---------- PASO 3 ---------- -->
+        <section class="promo-panel" *ngIf="paso() === 3">
+          <h2>3. Formato MKTN001</h2>
+          <p class="promo-ayuda">
+            Esto es lo que se imprime y se firma. Lo que captures aquí sale tal cual
+            en el PDF.
+          </p>
+
+          <div class="promo-rejilla">
+            <div>
+              <label class="promo-label">Fecha de negociación</label>
+              <input class="promo-input" type="date" [(ngModel)]="fechaNegociacion">
+            </div>
+            <div>
+              <label class="promo-label">Agente de ventas</label>
+              <input class="promo-input" type="text" [(ngModel)]="agenteVentas" placeholder="Nombre del agente">
+            </div>
+            <div>
+              <label class="promo-label">Periodo</label>
+              <input class="promo-input" type="text" [(ngModel)]="periodo" placeholder="4">
+            </div>
+            <div>
+              <label class="promo-label">Del</label>
+              <input class="promo-input" type="date" [(ngModel)]="vigenciaDel">
+            </div>
+            <div>
+              <label class="promo-label">Al</label>
+              <input class="promo-input" type="text" [(ngModel)]="vigenciaAl"
+                     placeholder="Fecha o texto: Agotar Producto Asignado">
+            </div>
+          </div>
+
+          <label class="promo-label">Canales de venta participantes</label>
+          <div class="promo-canales">
+            <label class="promo-canal" *ngFor="let c of CANALES" [class.promo-canal-on]="canalMarcado(c)">
+              <input type="checkbox" [checked]="canalMarcado(c)" (change)="alternarCanal(c)">
+              {{ c }}
+            </label>
+          </div>
+
+          <label class="promo-label">Mecánica</label>
+          <textarea class="promo-input promo-textarea" rows="5" [(ngModel)]="mecanica"
+                    placeholder="1.- Sucursales: ...&#10;2.- Sucs/Mayoreo: ...&#10;3.- PH: ..."></textarea>
+
+          <label class="promo-label">Códigos de promoción</label>
+          <div class="promo-codigos">
+            <div class="promo-codigo" *ngFor="let c of codigos; let i = index">
+              <span class="promo-codigo-n">{{ i + 1 }}</span>
+              <input class="promo-input" type="text" [(ngModel)]="c.codigo" placeholder="Código">
+              <input class="promo-input" type="text" [(ngModel)]="c.descripcion" placeholder="Descripción">
+            </div>
+          </div>
+
+          <label class="promo-label">Presupuesto (topado)</label>
+          <textarea class="promo-input promo-textarea" rows="3" [(ngModel)]="presupuestoTopado"
+                    placeholder="50 cajas Pal Vaquita /10 para la 1, 125 cajas..."></textarea>
+
+          <label class="promo-label">Recurso que se utiliza (manera de pago)</label>
+          <div class="promo-recursos">
+            <label class="promo-recurso" *ngFor="let r of RECURSOS">
+              <input type="radio" name="recurso" [value]="r" [(ngModel)]="recurso"> {{ r }}
+            </label>
+            <input class="promo-input" type="text" *ngIf="recurso === 'Otros'"
+                   [(ngModel)]="recursoOtros" placeholder="Especifique">
+          </div>
+
+          <div class="promo-rejilla">
+            <div class="promo-col2">
+              <label class="promo-label">Conceptos del presupuesto de mercadotecnia</label>
+              <textarea class="promo-input promo-textarea" rows="3" [(ngModel)]="conceptos"></textarea>
+            </div>
+            <div>
+              <label class="promo-label">Monto</label>
+              <input class="promo-input" type="number" step="0.01" [(ngModel)]="monto" placeholder="76946.02">
+            </div>
+          </div>
+
+          <div class="promo-rejilla">
+            <div>
+              <label class="promo-label">Distribución de cajas de</label>
+              <input class="promo-input" type="text" [(ngModel)]="distribucionDe">
+            </div>
+            <div>
+              <label class="promo-label">Código</label>
+              <input class="promo-input" type="text" [(ngModel)]="distribucionCod">
+            </div>
+            <div>
+              <label class="promo-label">Cargo</label>
+              <select class="promo-input" [(ngModel)]="cargo">
+                <option value="">—</option>
+                <option value="con">Con cargo</option>
+                <option value="sin">Sin cargo</option>
+              </select>
+            </div>
+          </div>
+
+          <label class="promo-label">Número de cajas o piezas por canal</label>
+          <div class="promo-tabla-marco">
+            <table class="promo-tabla">
+              <tbody>
+                <tr *ngFor="let c of CANALES">
+                  <td class="td-canal">{{ c }}</td>
+                  <td>
+                    <input class="promo-input promo-input-tabla" type="text" [(ngModel)]="porCanal[c]"
+                           placeholder="13 cj 20054 -1, 24 cj 20103...">
+                  </td>
+                </tr>
+                <tr>
+                  <td class="td-canal">Ruta Diaria, detalle</td>
+                  <td class="td-ruta">
+                    <input class="promo-input promo-input-tabla" type="text" [(ngModel)]="rutaDiariaLP" placeholder="LP:">
+                    <input class="promo-input promo-input-tabla" type="text" [(ngModel)]="rutaDiariaCAN" placeholder="CAN:">
+                    <input class="promo-input promo-input-tabla" type="text" [(ngModel)]="rutaDiariaMOR" placeholder="MOR:">
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="promo-rejilla">
+            <div>
+              <label class="promo-label">Autoriza por Mega Dulces de los Altos</label>
+              <input class="promo-input" type="text" [(ngModel)]="autoriza"
+                     placeholder="Nombre de quien autoriza (o vacío para firmar a mano)">
+            </div>
+          </div>
+
+          <div class="promo-acciones">
+            <button class="pr-btn" (click)="irAPaso(2)">Atrás</button>
+            <button class="pr-btn pr-btn-alta" (click)="guardar()" [disabled]="guardando()">
+              {{ guardando() ? 'Guardando…' : 'Guardar' }}
+            </button>
+            <button class="pr-btn pr-btn-pdf" (click)="descargarPdf()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/>
+              </svg>
+              Descargar PDF
+            </button>
+          </div>
+        </section>
+
+      </ng-container>
 
     </div>
   </div>

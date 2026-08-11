@@ -152,20 +152,37 @@ app.listen(PORT, () => {
     console.error('[migrate] no se pudo iniciar el runner:', e && e.message);
   }
 
+  // ⚠️ INTERRUPTOR DE AVISOS.
+  //
+  // Poner AVISOS_APAGADOS=1 arranca el servidor SIN los procesos que le escriben
+  // por WhatsApp a la gente. Sirve para dos cosas:
+  //   - levantar una copia de la app (otro proyecto, un ambiente de pruebas) sin
+  //     que dos servidores le manden el mismo aviso a los mismos trabajadores;
+  //   - probar contra la base real sin molestar a nadie.
+  // El resto de la app funciona igual: se puede entrar, ver y entregar tareas.
+  const avisosApagados = process.env.AVISOS_APAGADOS === '1';
+  if (avisosApagados) {
+    console.log('[avisos] APAGADOS por AVISOS_APAGADOS=1: no se manda WhatsApp desde esta copia.');
+  }
+
   // FLOTILLA: poll de escalamiento de solicitudes por WhatsApp (avisa al 1er
   // aprobador, escala al 2do a los 2 min y recuerda a ambos hasta el tope).
-  try {
-    require('./api/flotilla-notificar').iniciarPoll();
-  } catch (e) {
-    console.error('[flotilla] no se pudo iniciar el poll:', e && e.message);
+  if (!avisosApagados) {
+    try {
+      require('./api/flotilla-notificar').iniciarPoll();
+    } catch (e) {
+      console.error('[flotilla] no se pudo iniciar el poll:', e && e.message);
+    }
   }
 
   // TAREAS: poll de avisos por WhatsApp (resumen de la manana + recordatorio
   // antes de la hora limite). El aviso al asignar no pasa por aqui: se dispara
   // al crear el checklist.
-  try {
-    require('./api/tareas-notificar').iniciarPoll();
-  } catch (e) {
-    console.error('[tareas-notificar] no se pudo iniciar el poll:', e && e.message);
+  if (!avisosApagados) {
+    try {
+      require('./api/tareas-notificar').iniciarPoll();
+    } catch (e) {
+      console.error('[tareas-notificar] no se pudo iniciar el poll:', e && e.message);
+    }
   }
 });

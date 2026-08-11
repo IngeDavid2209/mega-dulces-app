@@ -302,12 +302,38 @@ select.form-input, select.select-input {
        2560 no tiene sentido un menú de 400 px. */
     width: clamp(228px, 17vw, 288px) !important;
     flex: 0 0 auto !important;
+    /* UN SOLO scroll para todo el menú. Antes el <nav> tenía el suyo propio y
+       abajo quedaba un bloque fijo (Mi Perfil, Cerrar Sesión, la tarjeta del
+       usuario y la versión) que le comía unos 200 px: el resultado era una
+       opción partida a la mitad contra ese bloque. Ahora la columna entera
+       scrollea de corrido y no se corta ninguna. */
     overflow-y: auto !important;
     overflow-x: hidden !important;
     white-space: normal !important;
     border-right: 1px solid var(--border) !important;
     transition: none !important;
+    scrollbar-width: thin;
   }
+
+  /* El nav ya no scrollea por su cuenta: fluye dentro de la columna. */
+  .sidebar-nav {
+    overflow: visible !important;
+    flex: 0 0 auto !important;
+    /* Más apretado que en celular, para que en una laptop de 900 px de alto
+       quepan las 16 opciones sin necesidad de scroll. Aquí hay ratón, no dedo,
+       así que no hace falta el área de toque grande del móvil. */
+    gap: 1px !important;
+    padding: 10px 10px !important;
+  }
+
+  .sidebar .nav-item {
+    padding: 7px 12px !important;
+  }
+
+  /* Barra de scroll discreta, para que no parezca que algo está roto. */
+  .sidebar::-webkit-scrollbar { width: 8px; }
+  .sidebar::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 8px; }
+  .sidebar::-webkit-scrollbar-track { background: transparent; }
 
   .mobile-overlay {
     display: none !important;

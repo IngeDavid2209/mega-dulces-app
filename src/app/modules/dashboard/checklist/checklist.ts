@@ -3497,7 +3497,9 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     }
     const nombreAsignador = this.currentUser?.nombre || 'Administración';
     const asunto = `NUEVA TAREA de ${nombreAsignador}: ${nombreTarea} - Mega Dulces Task`;
-    const cuerpo = `Hola ${empleadoNombre},\n\n¡${nombreAsignador} te ha asignado una nueva tarea!\n\n 📌 Operación: ${nombreTarea}\n\nIngresa a https://mdtask-production.up.railway.app/\n\nSaludos,\n${nombreAsignador}.`;
+    // Igual que en el aviso de WhatsApp: la dirección se toma de donde corre la
+    // app, no escrita a mano, para que el correo no mande gente a la URL vieja.
+    const cuerpo = `Hola ${empleadoNombre},\n\n¡${nombreAsignador} te ha asignado una nueva tarea!\n\n 📌 Operación: ${nombreTarea}\n\nIngresa a ${window.location.origin}/\n\nSaludos,\n${nombreAsignador}.`;
     const googleScriptUrl = 'https://script.google.com/macros/s/AKfycbw3rrfQizd-jHzz0gBEF3Gj8fOEYOnJ-w4X1rY1GoKAzn7636mnEyDrd7gvSqvyLNH9sg/exec';
     const miCorreo = this.currentUser?.correo || 'gerencia@megadulces.com';
     try {
@@ -3698,7 +3700,11 @@ export class ChecklistComponent implements OnInit, OnDestroy {
         if (telefono.startsWith('+')) telefono = telefono.slice(1);
         if (telefono.length === 10) telefono = '52' + telefono;
         if (telefono) {
-          const urlApp = 'https://mdtask-production.up.railway.app';
+          // La dirección de la app NO va escrita a mano: se toma de donde está
+          // corriendo. Así el enlace del WhatsApp siempre lleva al mismo lugar
+          // desde donde se mandó, y el día que la app viva en otro dominio
+          // (mdtask.megadulces.com.mx) no se queda mandando gente a la URL vieja.
+          const urlApp = window.location.origin;
           const mensaje =
             `*Mega Dulces Task* 🍭\n\n` +
             `¡Hola *${this.limpiarEmojis(asignadoFinal)}*!\n` +

@@ -4,6 +4,7 @@ import { CalendarioComponent } from './modules/dashboard/calendario/calendario';
 import { authGuard } from './services/auth.guard';
 import { soloTecGuard } from './services/tec.guard';
 import { flotillaGuard } from './services/flotilla.guard';
+import { promocionesGuard } from './services/promociones.guard';
 import { AgendaComponent } from './agenda/agenda';
 
 export const routes: Routes = [
@@ -135,6 +136,13 @@ export const routes: Routes = [
     path: 'flotilla',
     canActivate: [flotillaGuard],
     loadComponent: () => import('./modules/dashboard/flotilla/flotilla').then(m => m.FlotillaComponent)
+  },
+
+  // 🏷️ ACTIVACIÓN DE PROMOCIONES — visible solo para quien tenga grupoPromociones
+  {
+    path: 'promociones',
+    canActivate: [promocionesGuard],
+    loadComponent: () => import('./modules/dashboard/promociones/promociones').then(m => m.PromocionesComponent)
   },
 
   

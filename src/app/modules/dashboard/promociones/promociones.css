@@ -1,0 +1,56 @@
+/* Activación de promociones. Usa las clases globales del armazón (.app-layout,
+   .header, .main-wrapper, .content) igual que las demás pantallas, para que
+   herede el acomodo a laptop, tablet y celular sin reglas propias. */
+
+.promo-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding-bottom: 14px;
+  margin-bottom: 18px;
+  border-bottom: 2px solid var(--border);
+}
+
+.promo-head h1 {
+  font-size: 21px;
+  font-weight: 800;
+  color: #0F172A;
+  letter-spacing: -0.2px;
+  line-height: 1.2;
+}
+
+.promo-sub {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.promo-panel {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px 22px;
+  max-width: 680px;
+}
+
+.promo-panel h2 {
+  font-size: 15px;
+  font-weight: 800;
+  color: #1E293B;
+  margin-bottom: 10px;
+}
+
+.promo-panel p {
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--text-muted);
+}
+
+.promo-panel p + p { margin-top: 10px; }
+
+@media screen and (max-width: 768px) {
+  .promo-head h1 { font-size: 18px; }
+  .promo-panel { padding: 16px; }
+}

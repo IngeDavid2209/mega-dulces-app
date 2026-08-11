@@ -1,0 +1,50 @@
+<div class="app-layout">
+
+  <header class="header">
+    <div class="header-left">
+      <button class="btn-menu-mobile" (click)="toggleMenu()" aria-label="Abrir menú">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="3" y1="12" x2="21" y2="12"></line>
+          <line x1="3" y1="6" x2="21" y2="6"></line>
+          <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+      </button>
+      <div class="header-brand">Mega Dulces Task<small>Activación de promociones</small></div>
+    </div>
+    <div class="header-right"></div>
+  </header>
+
+  <div class="main-wrapper">
+    <div class="mobile-overlay" *ngIf="isMenuOpen" (click)="toggleMenu()"></div>
+    <app-sidebar [currentUser]="currentUser" [isMenuOpen]="isMenuOpen"
+                 (closeMenu)="isMenuOpen = false"></app-sidebar>
+
+    <div class="content">
+
+      <section class="promo-head">
+        <div>
+          <h1>Activación de promociones</h1>
+          <p class="promo-sub">Apartado con acceso restringido</p>
+        </div>
+      </section>
+
+      <!-- Estado honesto: el apartado y su permiso ya funcionan; el contenido
+           está por definir. Mejor decirlo que fingir una pantalla llena. -->
+      <section class="promo-panel">
+        <h2>Apartado listo, contenido por definir</h2>
+        <p>
+          El acceso ya está funcionando: esta pantalla solo la ve quien tenga el
+          permiso <strong>Activación de promociones</strong> asignado desde
+          <em>Usuarios</em>, y la dirección está protegida aunque alguien la
+          escriba a mano.
+        </p>
+        <p>
+          Falta definir qué se hace aquí. Para construirlo necesito saber tres
+          cosas: qué es una promoción en este caso, quién la activa y sobre qué
+          (sucursal, producto, periodo), y qué tiene que quedar registrado.
+        </p>
+      </section>
+
+    </div>
+  </div>
+</div>

@@ -46,6 +46,20 @@
         Espacio TEC
       </a>
 
+      <!-- 🏷️ Activacion de promociones: visible SOLO para los usuarios a los que
+           se les asigne el permiso (grupoPromociones), desde Usuarios. Los admins
+           NO lo ven por ser admin, igual que Flotilla y el Espacio TEC. -->
+      <a class="nav-item" routerLink="/promociones" routerLinkActive="active"
+         *ngIf="currentUser?.grupoPromociones === true"
+         (click)="onNavClick()"
+         title="Activacion de promociones">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M20.6 12.6 12.6 20.6a2 2 0 0 1-2.8 0l-6.4-6.4a2 2 0 0 1-.6-1.4V4a1 1 0 0 1 1-1h8.8a2 2 0 0 1 1.4.6l6.6 6.6a2 2 0 0 1 0 2.8z"></path>
+          <circle cx="7.5" cy="7.5" r="1.2"></circle>
+        </svg>
+        Promociones
+      </a>
+
       <!-- 🚗 Flotilla: reservas de vehiculos. Visible SOLO para los usuarios
            designados (grupoFlotilla). Los admins NO lo ven por ser admin. -->
       <a class="nav-item" routerLink="/flotilla" routerLinkActive="active"

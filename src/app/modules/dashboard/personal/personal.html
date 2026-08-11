@@ -434,6 +434,17 @@
               </label>
             </div>
 
+            <!-- 🏷️ PRIVILEGIO: ACTIVACIÓN DE PROMOCIONES -->
+            <div class="form-group form-full" style="padding-top: 16px; border-top: 1px solid var(--border);">
+              <label class="premium-perm-item" style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+                <div class="perm-text">
+                  <strong>Activación de promociones</strong>
+                  <span>Le agrega al menú el apartado "Promociones". Solo lo ve quien tenga este permiso: ni los administradores entran sin él. El usuario conserva su acceso normal según sus demás permisos.</span>
+                </div>
+                <div class="perm-switch"><input type="checkbox" [(ngModel)]="formGrupoPromociones"><span class="slider"></span></div>
+              </label>
+            </div>
+
             <!-- 🔥 ALCANCE DEL ADMIN (Global vs Por sucursales) 🔥 -->
             <div class="form-group form-full" *ngIf="formRol === 'admin'"
                  style="padding-top: 16px; border-top: 1px solid var(--border);">

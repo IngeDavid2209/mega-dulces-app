@@ -1,4 +1,4 @@
-import { Component, signal, OnInit, OnDestroy, inject, effect } from '@angular/core';
+﻿import { Component, signal, OnInit, OnDestroy, inject, effect } from '@angular/core';
 import { UsuariosService } from '../../../shared/usuarios.service';
 import { ApiService } from '../../../shared/api.service';
 import { CommonModule } from '@angular/common';
@@ -61,6 +61,8 @@ export class PersonalComponent implements OnInit, OnDestroy {
   formAreas: string[] = [];
   // 🎓 Grupo TEC: marca al usuario como miembro del apartado aislado del TEC.
   formGrupoTec = false;
+  /** Privilegio del apartado "Activación de promociones" (grupoPromociones). */
+  formGrupoPromociones = false;
   // 🔥 NUEVO: Alcance del admin (global = todas las sucursales, sucursales = solo las asignadas)
   formAlcance: 'global' | 'sucursales' = 'global';
 
@@ -403,6 +405,7 @@ export class PersonalComponent implements OnInit, OnDestroy {
     this.formPuedeAdministrarAreas = false;
     this.formAlcance = 'global'; // 🔥 Por defecto los admins nuevos son globales
     this.formGrupoTec = false;
+    this.formGrupoPromociones = false;
   }
 
   editarUsuario(user: any) {
@@ -448,6 +451,7 @@ export class PersonalComponent implements OnInit, OnDestroy {
   this.formPuedeAdministrarPersonal = !!user.puedeAdministrarPersonal;
   this.formPuedeVerCalendario       = !!user.puedeVerCalendario;
   this.formGrupoTec                 = !!user.grupoTec;
+  this.formGrupoPromociones         = !!user.grupoPromociones;
 
   this.isModalOpen = true;
 }
@@ -596,6 +600,9 @@ export class PersonalComponent implements OnInit, OnDestroy {
       // El usuario conserva su acceso normal; sigue apareciendo en el directorio
       // y en las asignaciones. Solo ve "Espacio TEC" si esto está en true.
       grupoTec: this.formGrupoTec === true,
+      // 🏷️ Acceso a "Activación de promociones". Mismo modelo que grupoTec: es un
+      // privilegio que SUMA el apartado en el menú, y ni los admins entran sin él.
+      grupoPromociones: this.formGrupoPromociones === true,
     };
 
     try {

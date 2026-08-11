@@ -341,6 +341,76 @@ select.form-input, select.select-input {
 }
 
 /* ============================================================
+   ARMAZÓN DE PANTALLA (base para TODAS)
+
+   Estas cuatro clases son el esqueleto que usan todas las pantallas:
+   barra arriba, menú a la izquierda, contenido a la derecha. Estaban
+   definidas SOLO dentro del CSS de cada componente, así que una
+   pantalla nueva nacía sin ellas: el menú y el contenido se apilaban
+   uno debajo del otro y el contenido quedaba fuera de la vista.
+   (Pasó exactamente eso con el apartado de Promociones.)
+
+   Aquí quedan como base. Cada pantalla puede seguir ajustándolas en
+   su propio CSS: sus reglas se cargan después y ganan.
+   ============================================================ */
+.app-layout {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.main-wrapper {
+  display: flex;
+  flex: 1;
+  min-height: 0;      /* sin esto, un hijo con scroll estira al padre */
+  overflow: hidden;
+}
+
+.content {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  background-color: var(--bg-app);
+}
+
+.header {
+  height: 64px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  background-color: var(--bg-sidebar);
+  border-bottom: 1px solid var(--border);
+  z-index: 20;
+}
+
+.header-left,
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.header-brand {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-main);
+  line-height: 1.2;
+  min-width: 0;
+}
+
+/* El subtítulo va en su propio renglón. Sin esto se pegaba al nombre y
+   se leía "Mega Dulces TaskActivación de promociones". */
+.header-brand small {
+  display: block;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+/* ============================================================
    AIRE DEL CONTENIDO, PROPORCIONAL AL ANCHO
    Con padding fijo, en un celular sobra margen y en un monitor
    falta. clamp() crece con la pantalla y se detiene solo.

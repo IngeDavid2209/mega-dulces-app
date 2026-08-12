@@ -8,7 +8,6 @@ import { Firestore, doc, setDoc, deleteDoc } from '@angular/fire/firestore';
 import {
   getAuth,
   verifyBeforeUpdateEmail,
-  updatePassword,
   EmailAuthProvider,
   reauthenticateWithCredential
 } from '@angular/fire/auth';
@@ -666,49 +665,50 @@ export class PersonalComponent implements OnInit, OnDestroy {
         }
 
         // -------------------------------------------------------
-        // 🔥 FIX 2: CAMBIO DE CONTRASEÑA REAL EN FIREBASE AUTH
+        // CAMBIO DE CONTRASEÑA
+        //
+        // Antes esto solo servía cuando el admin se editaba a SÍ MISMO, porque
+        // updatePassword del SDK del navegador no puede cambiarle la contraseña
+        // a otra persona. Con cualquier otro usuario el bloque se saltaba sin
+        // avisar: se guardaba el campo "password" de la ficha (que es nada más
+        // un espejo para que el admin la vea) y el trabajador seguía entrando
+        // con la de antes. De ahí el "cambio la contraseña y no funciona".
+        //
+        // Ahora lo hace el servidor con el SDK de administrador, que sí puede
+        // cambiar la de cualquiera, y si algo falla lo dice en lugar de callarse.
         // -------------------------------------------------------
-        if (esElMismoUsuario && passwordDistinta && userAuth) {
-  // Pedimos la contraseña actual para reautenticar
-  const { value: passActual } = await Swal.fire({
-    title: 'Confirma tu contraseña actual',
-    text: 'Para cambiar tu contraseña ingresa la actual:',
-    input: 'password',
-    inputPlaceholder: '••••••••',
-    icon: 'info',
-    showCancelButton: true,
-    confirmButtonColor: '#0F172A',
-    confirmButtonText: 'Confirmar',
-    cancelButtonText: 'Cancelar'
-  });
-
-  if (!passActual) return; // canceló
-
-  try {
-    // Reautenticamos con la contraseña actual
-    const credential = EmailAuthProvider.credential(userAuth.email!, passActual);
-    await reauthenticateWithCredential(userAuth, credential);
-
-    // Ahora sí cambiamos la contraseña en Firebase Auth
-    await updatePassword(userAuth, this.formPassword);
-    console.log('✅ Contraseña actualizada en Firebase Auth');
-
-  } catch (error: any) {
-    if (
-      error.code === 'auth/wrong-password' ||
-      error.code === 'auth/invalid-credential'
-    ) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Contraseña Incorrecta',
-        text: 'La contraseña actual que ingresaste no es correcta.',
-        confirmButtonColor: '#0F172A'
-      });
-      return;
-    }
-    throw error;
-  }
-}
+        if (passwordDistinta) {
+          if (String(this.formPassword || '').length < 6) {
+            Swal.fire({
+              icon: 'error',
+              title: 'Contraseña muy corta',
+              text: 'Debe tener al menos 6 caracteres.',
+              confirmButtonColor: '#0F172A'
+            });
+            return;
+          }
+          // El id de acceso es el uid; docId puede venir del nombre de usuario.
+          const idAcceso = this.usuarioEnEdicion.uid || this.usuarioEnEdicion.id || docId;
+          try {
+            await this.api.post('/api/cambiar-password', { id: idAcceso, password: this.formPassword });
+          } catch (error: any) {
+            Swal.fire({
+              icon: 'error',
+              title: 'No se pudo cambiar la contraseña',
+              text: error?.message || 'Inténtalo de nuevo. No se guardaron los cambios.',
+              confirmButtonColor: '#0F172A'
+            });
+            return;
+          }
+          if (esElMismoUsuario) {
+            await Swal.fire({
+              icon: 'info',
+              title: 'Cambiaste tu propia contraseña',
+              text: 'Con la siguiente vez que entres, usa la nueva.',
+              confirmButtonColor: '#0F172A'
+            });
+          }
+        }
 
         // Guardamos en Firestore (siempre)
         await setDoc(doc(this.firestore, 'usuarios', docId), payload, { merge: true });

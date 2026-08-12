@@ -397,6 +397,92 @@ export class PromocionesComponent implements OnInit {
 
   // ================= El PDF =================
   /**
+   * El logo que va en el encabezado del PDF. Se toma del icono de la propia app
+   * (public/icons), asi no hay que subir otra copia ni depender de internet: el
+   * archivo ya viene con la app y el service worker lo tiene guardado.
+   *
+   * Se recuerda en memoria para no volver a leerlo en cada descarga, y si por lo
+   * que sea no se puede leer regresa null: el PDF sale igual, nomas sin imagen.
+   */
+  private logoGuardado: string | null | undefined;
+
+  private async cargarLogo(): Promise<string | null> {
+    if (this.logoGuardado !== undefined) return this.logoGuardado;
+    try {
+      const r = await fetch('/icons/icon-512x512.png');
+      if (!r.ok) { this.logoGuardado = null; return null; }
+      const imagen = await r.blob();
+      const plano = await new Promise<string>((listo, falla) => {
+        const lector = new FileReader();
+        lector.onload = () => listo(String(lector.result));
+        lector.onerror = () => falla(new Error('no se pudo leer el logo'));
+        lector.readAsDataURL(imagen);
+      });
+      // Si el recorte falla por lo que sea, se usa el icono tal cual: mas vale
+      // el logo grandote y el archivo pesado que un formato sin logo.
+      try { this.logoGuardado = await this.recortarLogo(plano); }
+      catch { this.logoGuardado = plano; }
+    } catch {
+      this.logoGuardado = null;
+    }
+    return this.logoGuardado ?? null;
+  }
+
+  /**
+   * El icono de la app trae mucho margen vacio alrededor del circulo. Metido tal
+   * cual, el logo se veia chiquito en la hoja y el PDF pesaba mas de 1 MB (512x512
+   * sin comprimir), y estos formatos se mandan por correo.
+   *
+   * Aqui se busca donde empieza y acaba el dibujo de verdad, se recorta cuadrado
+   * para no deformarlo y se baja a 256 px, de sobra para los 13 mm impresos.
+   */
+  private recortarLogo(dataUrl: string): Promise<string> {
+    return new Promise((listo, falla) => {
+      const img = new Image();
+      img.onerror = () => falla(new Error('no se pudo cargar el logo'));
+      img.onload = () => {
+        const an = img.naturalWidth, al = img.naturalHeight;
+        const lienzo = document.createElement('canvas');
+        lienzo.width = an; lienzo.height = al;
+        const ctx = lienzo.getContext('2d');
+        if (!ctx || !an || !al) return falla(new Error('sin lienzo'));
+        ctx.drawImage(img, 0, 0);
+        const px = ctx.getImageData(0, 0, an, al).data;
+
+        let x1 = an, y1 = al, x2 = -1, y2 = -1;
+        for (let y = 0; y < al; y++) {
+          for (let x = 0; x < an; x++) {
+            const i = (y * an + x) * 4;
+            // Margen = transparente o practicamente blanco
+            if (px[i + 3] < 12) continue;
+            if (px[i] > 244 && px[i + 1] > 244 && px[i + 2] > 244) continue;
+            if (x < x1) x1 = x;
+            if (x > x2) x2 = x;
+            if (y < y1) y1 = y;
+            if (y > y2) y2 = y;
+          }
+        }
+        if (x2 < 0) return falla(new Error('el logo salio vacio'));
+
+        // Cuadrado centrado en el dibujo, con un pelo de aire alrededor
+        const lado = Math.max(x2 - x1 + 1, y2 - y1 + 1) * 1.04;
+        const cx = (x1 + x2) / 2, cy = (y1 + y2) / 2;
+
+        const LADO_FINAL = 256;
+        const destino = document.createElement('canvas');
+        destino.width = destino.height = LADO_FINAL;
+        const c2 = destino.getContext('2d');
+        if (!c2) return falla(new Error('sin lienzo de salida'));
+        c2.fillStyle = '#ffffff';
+        c2.fillRect(0, 0, LADO_FINAL, LADO_FINAL);
+        c2.drawImage(img, cx - lado / 2, cy - lado / 2, lado, lado, 0, 0, LADO_FINAL, LADO_FINAL);
+        listo(destino.toDataURL('image/png'));
+      };
+      img.src = dataUrl;
+    });
+  }
+
+  /**
    * Arma el formato MKTN001 en PDF, con la misma estructura del papel: barras
    * azules de titulo, los campos del encabezado, las casillas de canales, la
    * mecanica, los codigos, el presupuesto, la manera de pago, la distribucion
@@ -456,17 +542,29 @@ export class PromocionesComponent implements OnInit {
       };
 
       // ---------- Encabezado ----------
-      doc.setFillColor(...AZUL); doc.rect(M, y, W * 0.55, 9, 'F');
+      // El logo se lleva una columna a la izquierda y lo demas del encabezado se
+      // recorre: las tres cajas reparten el ancho que queda (Wenc), no el total,
+      // para que no se salgan de la hoja.
+      const logo = await this.cargarLogo();
+      const ALTO_ENC = 13;
+      const COL_LOGO = logo ? 16 : 0;
+      if (logo) doc.addImage(logo, 'PNG', M, y, ALTO_ENC, ALTO_ENC);
+
+      const xEnc = M + COL_LOGO;
+      const Wenc = W - COL_LOGO;
+      const medio = y + ALTO_ENC / 2;
+
+      doc.setFillColor(...AZUL); doc.rect(xEnc, y, Wenc * 0.52, ALTO_ENC, 'F');
       doc.setTextColor(255); doc.setFont('helvetica', 'bold'); doc.setFontSize(13);
-      doc.text('APOYO PARA SELL OUT', M + 3, y + 6.4);
-      doc.setDrawColor(...AZUL); doc.rect(M + W * 0.56, y, W * 0.22, 9);
+      doc.text('APOYO PARA SELL OUT', xEnc + 3, medio + 1.6);
+      doc.setDrawColor(...AZUL); doc.rect(xEnc + Wenc * 0.53, y, Wenc * 0.23, ALTO_ENC);
       doc.setTextColor(...AZUL); doc.setFontSize(9);
-      doc.text('FORMATO: MKTN001', M + W * 0.565, y + 6);
-      doc.rect(M + W * 0.79, y, W * 0.21, 9);
+      doc.text('FORMATO: MKTN001', xEnc + Wenc * 0.535 + 1, medio + 1.2);
+      doc.rect(xEnc + Wenc * 0.77, y, Wenc * 0.23, ALTO_ENC);
       doc.setFontSize(11);
-      doc.text('Folio: ' + this.folioTexto(this.folio), M + W * 0.80, y + 6.2);
+      doc.text('Folio: ' + this.folioTexto(this.folio), xEnc + Wenc * 0.785, medio + 1.4);
       doc.setTextColor(0);
-      y += 11;
+      y += ALTO_ENC + 2;
 
       campo('Fecha de negociación:', this.fechaNegociacion);
       campo('Proveedor / Marca:', this.proveedor);

@@ -252,8 +252,15 @@ async function pgChecklistGet(id) {
 // Checklists asignados a una persona. Se busca por uid Y por nombre porque los
 // checklists viejos (pre Robot V2) solo guardan el nombre en `assigned`.
 // Por defecto: sin borrar, sin archivar y SIN ENVIAR (los que aun debe entregar).
-// Si el match exacto no devuelve nada, se reintenta con el comparador TOLERANTE
-// de nombres (acentos, orden de apellidos), igual que hace el front.
+//
+// Al match exacto se le SUMA el comparador TOLERANTE de nombres (acentos, orden
+// de apellidos, un apellido de mas), el mismo que usa el front.
+//
+// ⚠️ Antes el tolerante solo corria si el exacto venia vacio, y eso ESCONDIA
+// tareas: a quien tenia sus tareas escritas de dos formas ("SILVIA ZAVALA" y
+// "Silvia Zavala Ramirez") el bot le mostraba unas y se callaba las otras,
+// mientras la app le mostraba todas. Ahora se juntan los dos resultados, con lo
+// que el bot ve exactamente lo mismo que la app — ni mas, ni menos.
 async function pgChecklistsDeUsuario({ uid, nombre, desde, hasta, incluirEnviados = false } = {}) {
   const comunes = [];
   const p2 = [];
@@ -273,19 +280,32 @@ async function pgChecklistsDeUsuario({ uid, nombre, desde, hasta, incluirEnviado
   const orden = 'order by fecha asc, hora asc, id asc';
   const r = await query(
     `select * from mdtask_checklists where ${comunes.join(' and ')} and (${ident.join(' or ')}) ${orden}`, params);
-  if (r.rowCount > 0 || !nombre) return r.rows.map(checklistFila);
+  if (!nombre) return r.rows.map(checklistFila);
 
-  // Fallback tolerante: el nombre del checklist puede estar escrito distinto
-  // (acentos, apellidos al reves). Primero se piden solo los NOMBRES distintos
-  // de la ventana (docenas de filas) y, si alguno empareja, se traen esos.
+  // Nombres escritos distinto: se piden solo los NOMBRES distintos de la ventana
+  // (docenas de filas, no miles) y se filtran con el comparador tolerante.
   const nombres = await query(
     `select distinct assigned from mdtask_checklists where ${comunes.join(' and ')} and coalesce(assigned,'') <> ''`, p2);
   const parecidos = nombres.rows.map(x => x.assigned).filter(n => mismoNombreEmpleado(n, nombre));
-  if (!parecidos.length) return [];
+  if (!parecidos.length) return r.rows.map(checklistFila);
   const t = await query(
     `select * from mdtask_checklists where ${comunes.join(' and ')} and assigned = any($${p2.length + 1}) ${orden}`,
     [...p2, parecidos]);
-  return t.rows.map(checklistFila);
+
+  // Union de los dos, sin repetir, respetando el mismo orden estable (la
+  // NUMERACION que ve el colaborador depende de esto).
+  const vistos = new Set();
+  const juntos = [];
+  for (const fila of [...r.rows, ...t.rows]) {
+    if (vistos.has(fila.id)) continue;
+    vistos.add(fila.id);
+    juntos.push(fila);
+  }
+  juntos.sort((a, b) =>
+    String(a.fecha || '').localeCompare(String(b.fecha || '')) ||
+    String(a.hora || '').localeCompare(String(b.hora || '')) ||
+    String(a.id).localeCompare(String(b.id)));
+  return juntos.map(checklistFila);
 }
 
 // -- CRUD genérico (catalogo_rutinas / asignaciones_rutinas) (igual que _crud.js) --

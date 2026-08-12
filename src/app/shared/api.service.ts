@@ -6,9 +6,23 @@ import { getAuth, onAuthStateChanged, type User } from '@angular/fire/auth';
  * Adjunta el idToken de Firebase (el login sigue en Firebase) en cada llamada.
  * Se reutiliza para todas las colecciones que se vayan migrando a Postgres.
  */
+/**
+ * Error de la API con el MOTIVO, para que las pantallas puedan distinguir "no
+ * hay internet" de "el servidor contestó con error" o "la sesión se venció".
+ *
+ * Antes todo caía en el mismo aviso de "Sin conexión", y eso mandaba a revisar
+ * el wifi cuando el problema estaba en otra parte.
+ */
+export class ErrorApi extends Error {
+  constructor(mensaje: string, public sinRed: boolean, public status = 0) {
+    super(mensaje);
+    this.name = 'ErrorApi';
+  }
+}
+
 @Injectable({ providedIn: 'root' })
 export class ApiService {
-  private async token(): Promise<string> {
+  private async token(forzarRefresco = false): Promise<string> {
     const auth = getAuth();
     let u = auth.currentUser;
     // Tras un reload (F5/PWA update), Firebase restaura la sesión persistida de
@@ -24,15 +38,19 @@ export class ApiService {
         setTimeout(() => cerrar(auth.currentUser), 8000);
       });
     }
-    if (!u) throw new Error('Sin sesión activa');
+    if (!u) throw new ErrorApi('Sin sesión activa', false, 401);
     // getIdToken() sin forzar: devuelve el token en cache si aún es válido (no
     // pega a la red salvo que esté por expirar). Evita que un refresh de token
-    // por red tumbe cada petición con mala señal.
-    return u.getIdToken();
+    // por red tumbe cada petición con mala señal. Con `forzarRefresco` se pide
+    // uno nuevo a huevo, que es lo que se hace al recibir un 401.
+    return u.getIdToken(forzarRefresco);
   }
 
-  private async req(method: string, url: string, body?: any, reintentosRed = 2): Promise<any> {
-    const token = await this.token();
+  private async req(
+    method: string, url: string, body?: any,
+    reintentosRed = 2, forzarToken = false, puedeReintentarAuth = true
+  ): Promise<any> {
+    const token = await this.token(forzarToken);
     let res: Response;
     try {
       res = await fetch(url, {
@@ -48,9 +66,10 @@ export class ApiService {
       // ya tiene su propio reintento y no queremos duplicar envíos).
       if (method === 'GET' && reintentosRed > 0) {
         await new Promise(r => setTimeout(r, 700 * (3 - reintentosRed)));
-        return this.req(method, url, body, reintentosRed - 1);
+        return this.req(method, url, body, reintentosRed - 1, forzarToken, puedeReintentarAuth);
       }
-      throw e;
+      // Aquí sí es falta de red: la petición no obtuvo NINGUNA respuesta.
+      throw new ErrorApi('Sin conexión con el servidor', true);
     }
     // Respuesta que SÍ llegó, pero de una puerta intermedia caída. Railway
     // devuelve 502/503/504 (con cuerpo HTML, no JSON) mientras el contenedor
@@ -60,11 +79,25 @@ export class ApiService {
     const puertaCaida = res.status === 502 || res.status === 503 || res.status === 504;
     if (puertaCaida && method === 'GET' && reintentosRed > 0) {
       await new Promise(r => setTimeout(r, 700 * (3 - reintentosRed)));
-      return this.req(method, url, body, reintentosRed - 1);
+      return this.req(method, url, body, reintentosRed - 1, forzarToken, puedeReintentarAuth);
+    }
+
+    // El idToken de Firebase dura una hora. Firebase lo renueva solo, pero si esa
+    // renovación falla una vez (un parpadeo de red, la pestaña dormida), el token
+    // en cache se queda viejo y TODAS las lecturas se van en 401 para siempre: la
+    // app se congela mostrando datos de horas antes con el aviso de "sin conexión"
+    // aunque haya internet perfecto. Nada la sacaba de ahí sin recargar.
+    //
+    // Un 401 significa que el servidor rechazó ANTES de hacer nada, así que
+    // reintentar es seguro incluso en una escritura.
+    if (res.status === 401 && puedeReintentarAuth) {
+      return this.req(method, url, body, reintentosRed, true, false);
     }
 
     const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error((data && data.error) || ('HTTP ' + res.status));
+    if (!res.ok) {
+      throw new ErrorApi((data && data.error) || ('HTTP ' + res.status), false, res.status);
+    }
     return data;
   }
 

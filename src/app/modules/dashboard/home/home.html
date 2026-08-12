@@ -42,12 +42,13 @@
     <!-- ===================== TABLERO ===================== -->
     <div class="content">
 
-      <!-- Aviso de sin conexión: el tablero muestra los últimos datos guardados -->
+      <!-- Aviso de datos no frescos: el tablero muestra los últimos guardados.
+           El título y el detalle dicen el motivo REAL (red, sesión o servidor). -->
       <div *ngIf="sinConexion()" class="aviso-offline">
-        <strong>Sin conexión</strong>
+        <strong>{{ aviso().titulo }}</strong>
         <span>
           Mostrando datos guardados<span *ngIf="edadDatos()"> {{ edadDatos() }}</span>.
-          Se actualizarán solos al volver el internet.
+          {{ aviso().detalle }}
         </span>
       </div>
 

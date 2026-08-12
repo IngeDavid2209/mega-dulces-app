@@ -22,6 +22,7 @@ import { resolverAsignadoTarea, mapaNombreAUid } from '../../../shared/reasignac
 import {
   guardarListaCache, leerListaCacheConEdad, textoAntiguedad
 } from '../../../shared/lista-cache.util';
+import { avisoDeFalla, AvisoDatos } from '../../../shared/aviso-datos.util';
 
 import { SidebarComponent } from '../../../shared/sidebar/sidebar';
 import { PanelResponsablesComponent } from './panel-responsables';
@@ -141,10 +142,16 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   checklistToDelete: any = null;
 
   checklists = signal<any[]>([]);
-  // 📡 true cuando el último poll a la nube falló por red: la vista sigue
-  // mostrando la última lista buena (cache) y enseña un aviso "Sin conexión"
-  // en vez de una lista vacía que parezca "se borraron las tareas".
+  // 📡 true cuando el último poll a la nube falló: la vista sigue mostrando la
+  // última lista buena (cache) y enseña un aviso, en vez de una lista vacía que
+  // parezca "se borraron las tareas".
   sinConexion = signal<boolean>(false);
+  // 📣 Qué dice ese aviso, con el motivo real: falta de internet, sesión vencida
+  // o el servidor. Decía "Sin conexión" siempre, aunque hubiera internet.
+  aviso = signal<AvisoDatos>({
+    titulo: 'Sin conexión',
+    detalle: 'Se actualizarán solas al volver el internet.'
+  });
   // 🕒 De cuándo son las tareas que se muestran ('hace 5 minutos'). Vacío cuando
   // vienen frescas de la nube. Antes el aviso no aclaraba la antigüedad, y una
   // lista guardada se leía igual que una recién traída.
@@ -1273,13 +1280,16 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     // post-proceso (filtros por rol, dedup, progreso, diagnóstico) queda IGUAL.
     const claveUsuario = (s: any) => String(s?.uid || s?.id || s?.usuario || 'anon');
     const recargarChecklists = async () => {
+      let falla: any = null;
       const resp = await this.api.get('/api/checklists?desde=' + encodeURIComponent(desde))
-        .catch((e: any) => { console.error('[checklist] poll PG', e); return null; });
+        .catch((e: any) => { falla = e; console.error('[checklist] poll PG', e); return null; });
       if (!resp) {
-        // Falló por red: NO vaciar. Marcamos sin conexión y, si aún no tenemos
-        // nada en pantalla (p.ej. recién se abrió/recargó la vista), hidratamos
-        // desde la última lista buena guardada para no mostrar vacío.
+        // Falló la lectura: NO vaciar. Marcamos el aviso (con el motivo real, que
+        // no siempre es el internet) y, si aún no tenemos nada en pantalla (p.ej.
+        // recién se abrió/recargó la vista), hidratamos desde la última lista
+        // buena guardada para no mostrar vacío.
         this.sinConexion.set(true);
+        this.aviso.set(avisoDeFalla(falla));
         if (this.checklists().length === 0) {
           const cache = leerListaCacheConEdad('checklists', claveUsuario(leerSesion() || this.currentUser));
           if (cache && cache.lista.length) {

@@ -16,6 +16,7 @@ import { ApiService } from '../../../shared/api.service';
 import {
   guardarListaCache, leerListaCacheConEdad, textoAntiguedad
 } from '../../../shared/lista-cache.util';
+import { avisoDeFalla, AvisoDatos } from '../../../shared/aviso-datos.util';
 import { MapaSucursalesComponent, PuntoMapa } from './mapa-sucursales';
 import {
   UBICACIONES_SUCURSALES, SUCURSALES_COMERCIALES, tieneCoordenadas,
@@ -36,9 +37,16 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
   isMenuOpen = false;
  
   checklists = signal<any[]>([]);
-  // 📡 true cuando el último poll falló por red: se muestra la última lista
-  // buena (cache) con un aviso, en vez de un dashboard vacío.
+  // 📡 true cuando el último poll falló: se muestra la última lista buena (cache)
+  // con un aviso, en vez de un dashboard vacío.
   sinConexion = signal<boolean>(false);
+  // 📣 Qué dice ese aviso. No siempre es falta de internet: puede ser la sesión
+  // vencida o el servidor. Decir "Sin conexión" cuando el internet está bien
+  // manda a buscar el problema donde no está.
+  aviso = signal<AvisoDatos>({
+    titulo: 'Sin conexión',
+    detalle: 'Se actualizarán solos al volver el internet.'
+  });
   // 🕒 De cuándo son los datos que se están mostrando ('hace 5 minutos'). Vacío
   // cuando vienen frescos de la nube. Sin esto, el aviso decía "datos guardados"
   // sin aclarar si eran de hace un minuto o de la mañana.
@@ -762,12 +770,15 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
     // FERROCARRIL Etapa 3: antes onSnapshot(checklists); ahora poll a Postgres.
     const claveUsuario = (s: any) => String(s?.uid || s?.id || s?.usuario || 'anon');
     const recargarChecklists = async () => {
+      let falla: any = null;
       const resp = await this.api.get('/api/checklists?desde=' + encodeURIComponent(desdeISO))
-        .catch((e: any) => { console.error('[home] poll PG', e); return null; });
+        .catch((e: any) => { falla = e; console.error('[home] poll PG', e); return null; });
       if (!resp) {
-        // Falló por red: no vaciar el dashboard. Marcamos sin conexión y, si no
+        // Falló la lectura: no vaciar el dashboard. Marcamos el aviso y, si no
         // hay nada en pantalla, hidratamos desde la última lista buena.
+        // El aviso dice el motivo real: no siempre es falta de internet.
         this.sinConexion.set(true);
+        this.aviso.set(avisoDeFalla(falla));
         if (this.checklists().length === 0) {
           const cache = leerListaCacheConEdad('dashboard', claveUsuario(leerSesion() || this.currentUser));
           if (cache && cache.lista.length) {

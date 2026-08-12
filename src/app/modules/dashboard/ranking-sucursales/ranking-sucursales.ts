@@ -7,6 +7,7 @@ import { esAdminGlobal, sucursalesPermitidas } from '../../../shared/permisos.ut
 import { esItemHecho } from '../../../shared/item-completado.util';
 import { ApiService } from '../../../shared/api.service';
 import { guardarListaCache, leerListaCache } from '../../../shared/lista-cache.util';
+import { avisoDeFalla, AvisoDatos } from '../../../shared/aviso-datos.util';
 
 interface DiaStat {
   fechaISO: string;     // YYYY-MM-DD
@@ -68,9 +69,14 @@ export class RankingSucursalesComponent implements OnInit, OnDestroy {
   private checklistsSemana = signal<any[]>([]);
   /** Indicador visual de carga. */
   cargando = signal<boolean>(true);
-  /** 📡 true cuando el último poll falló por red: se muestra el último ranking
-   *  bueno (cache) con un aviso en vez de una tabla vacía. */
+  /** 📡 true cuando el último poll falló: se muestra el último ranking bueno
+   *  (cache) con un aviso en vez de una tabla vacía. */
   sinConexion = signal<boolean>(false);
+  /** 📣 Qué dice ese aviso, con el motivo real: internet, sesión o servidor. */
+  aviso = signal<AvisoDatos>({
+    titulo: 'Sin conexión',
+    detalle: 'Se actualizará solo al volver el internet.'
+  });
 
   /** Fecha "ancla" para calcular la semana (por defecto hoy). */
   fechaAncla = signal<Date>(new Date());
@@ -147,12 +153,15 @@ export class RankingSucursalesComponent implements OnInit, OnDestroy {
     const claveCache = 'ranking_' + desdeISO;
     const claveUsuario = String(this.currentUser?.uid || this.currentUser?.id || this.currentUser?.usuario || 'anon');
     const recargar = async () => {
+      let falla: any = null;
       const resp = await this.api.get('/api/checklists?desde=' + encodeURIComponent(desdeISO) + '&hasta=' + encodeURIComponent(hastaISO))
-        .catch((e: any) => { console.error('[ranking-sucursales] poll PG', e); return null; });
+        .catch((e: any) => { falla = e; console.error('[ranking-sucursales] poll PG', e); return null; });
       if (!resp) {
-        // Falló por red: no vaciar el ranking. Marcamos sin conexión y, si no hay
-        // nada cargado, hidratamos desde el último ranking bueno de esta semana.
+        // Falló la lectura: no vaciar el ranking. Marcamos el aviso con el motivo
+        // real y, si no hay nada cargado, hidratamos desde el último ranking
+        // bueno de esta semana.
         this.sinConexion.set(true);
+        this.aviso.set(avisoDeFalla(falla));
         if (this.checklistsSemana().length === 0) {
           // Una semana de vida, no un dia: la clave ya incluye la semana
           // (`ranking_<desde>`), asi que un ranking de anteayer sigue siendo el

@@ -34,8 +34,8 @@
              guardada. Evita que el usuario crea que "se borraron" sus tareas. -->
         <div *ngIf="sinConexion()"
           style="display:flex; align-items:center; gap:8px; background:#FEF3C7; border:1px solid #F59E0B; color:#92400E; padding:8px 12px; border-radius:10px; margin-bottom:12px; font-size:13.5px;">
-          <span style="font-weight:700;">Sin conexión</span>
-          <span>Mostrando tus tareas guardadas<span *ngIf="edadDatos()"> {{ edadDatos() }}</span>. Se actualizarán solas al volver el internet. No se borró nada.</span>
+          <span style="font-weight:700;">{{ aviso().titulo }}</span>
+          <span>Mostrando tus tareas guardadas<span *ngIf="edadDatos()"> {{ edadDatos() }}</span>. {{ aviso().detalle }} No se borró nada.</span>
         </div>
         <div class="section-header"
           style="display: flex; flex-wrap: wrap; gap: 15px; align-items: center; justify-content: space-between;">

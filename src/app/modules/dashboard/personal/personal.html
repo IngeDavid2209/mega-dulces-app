@@ -616,15 +616,34 @@
               </div>
               <div class="form-group">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                  <label class="form-label" style="margin-bottom: 0;">Contraseña</label>
+                  <label class="form-label" style="margin-bottom: 0;">
+                    {{ usuarioEnEdicion ? 'Cambiar contraseña' : 'Contraseña' }}
+                  </label>
                   <span style="font-size: 11px; font-weight: 600;"
                     [style.color]="(formPassword?.length || 0) === 6 ? '#10B981' : 'var(--text-muted)'">
                     {{ formPassword?.length || 0 }} / 6
                   </span>
                 </div>
+
+                <!-- Al EDITAR se muestra la contraseña que ya tiene (para soporte),
+                     pero el campo de captura va aparte y arranca vacío: si se
+                     precargara, no se podría escribir encima por el maxlength. -->
+                <div *ngIf="usuarioEnEdicion && passwordActual"
+                     style="display:flex; align-items:center; gap:8px; margin-bottom:8px; font-size:12px; color:#64748B;">
+                  <span>Actual:</span>
+                  <strong style="font-family:monospace; letter-spacing:1px; color:#334155;">
+                    {{ verPasswordActual ? passwordActual : '••••••' }}
+                  </strong>
+                  <button type="button" (click)="verPasswordActual = !verPasswordActual"
+                    style="background:none; border:none; color:#0F172A; font-weight:700; font-size:11px; text-decoration:underline; cursor:pointer; padding:0;">
+                    {{ verPasswordActual ? 'ocultar' : 'ver' }}
+                  </button>
+                </div>
+
                 <div class="password-input-wrapper" style="position: relative; display: flex; align-items: center;">
                   <input class="form-input" [type]="mostrarPassword ? 'text' : 'password'" [(ngModel)]="formPassword"
-                    placeholder="••••••" maxlength="6" style="padding-right: 40px; width: 100%;">
+                    [placeholder]="usuarioEnEdicion ? 'Déjalo vacío para no cambiarla' : '••••••'"
+                    maxlength="6" style="padding-right: 40px; width: 100%;">
                   <button type="button" (click)="togglePassword()"
                     style="position: absolute; right: 10px; background: transparent; border: none; cursor: pointer; color: #64748B; display: flex; align-items: center; justify-content: center; padding: 5px;">
                     <svg *ngIf="!mostrarPassword" width="20" height="20" viewBox="0 0 24 24" fill="none"

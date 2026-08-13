@@ -47,6 +47,10 @@ export class PersonalComponent implements OnInit, OnDestroy {
   mostrarPassword = false;
   formPuedeAdministrarAreas = false;
   formNombre = ''; formUsuario = ''; formCorreo = ''; formTelefono = ''; formPassword = '';
+  /** Contraseña que ya tenía el usuario (para mostrarla y para no borrarla al guardar). */
+  passwordActual = '';
+  /** Mostrar en claro la contraseña que ya tenía (soporte). */
+  verPasswordActual = false;
   formRol = 'trabajador'; formCargo = 'Trabajador General';
   formPuedeCrearChecklists = false;
   formPuedeCrearRutinas = false;
@@ -392,6 +396,7 @@ export class PersonalComponent implements OnInit, OnDestroy {
 
   limpiarForm() {
     this.formNombre = ''; this.formUsuario = ''; this.formCorreo = ''; this.formPassword = '';
+    this.passwordActual = ''; this.verPasswordActual = false;
     this.formRol = 'trabajador'; this.formCargo = 'Trabajador General';
     this.formPuedeCrearChecklists = false;
     this.formPuedeCrearRutinas = false;
@@ -431,10 +436,21 @@ export class PersonalComponent implements OnInit, OnDestroy {
   this.formNombre    = user.nombre;
   this.formUsuario   = user.usuario;
   this.formCorreo    = user.correo   || '';
-  // Precargamos la contraseña actual (por petición: admin global la ve para soporte).
-  // ⚠️ Recordatorio de seguridad: se guarda en texto plano en Firestore. Si la base
-  // se filtra, las contraseñas quedan expuestas. Las Firestore Rules limitan ese riesgo.
-  this.formPassword  = user.password || '';
+  // El campo de contraseña arranca VACIO al editar, y vacío significa "no la
+  // cambies".
+  //
+  // Antes se precargaba con la contraseña actual, y ahí estaba el problema: el
+  // input tiene maxlength=6 y casi todas las contraseñas son de 6 caracteres, o
+  // sea que el campo llegaba lleno hasta el tope. Al hacer clic y teclear, el
+  // navegador no dejaba escribir NADA; el campo seguía mostrando los mismos
+  // puntitos, el valor no cambiaba y el guardado concluía que no se quería tocar
+  // la contraseña. Resultado: decía "guardado" y la persona seguía entrando con
+  // la de antes, sin un solo error a la vista.
+  //
+  // La contraseña actual se sigue pudiendo consultar en la ficha (`user.password`)
+  // para soporte; simplemente ya no se mete en el campo de captura.
+  this.formPassword  = '';
+  this.passwordActual = user.password || '';
   this.formTelefono  = user.telefono || ''; // 🔥 FIX: cargaba vacío antes
   this.formRol       = user.rol;
   this.formCargo     = user.cargo    || 'Trabajador General';
@@ -530,7 +546,9 @@ export class PersonalComponent implements OnInit, OnDestroy {
   async guardarUsuario() {
     if (this.currentUser?.rol !== 'admin' && !this.currentUser?.puedeAdministrarPersonal) return;
 
-    if (!this.formNombre || !this.formUsuario || !this.formPassword) {
+    // La contraseña solo es obligatoria al CREAR. Al editar, el campo vacío
+    // significa "déjale la que ya tiene".
+    if (!this.formNombre || !this.formUsuario || (!this.usuarioEnEdicion && !this.formPassword)) {
       Swal.fire({ icon: 'warning', title: 'Datos Incompletos', text: 'Por favor completa el Nombre, Usuario y Contraseña.', confirmButtonColor: '#0F172A' });
       return;
     }
@@ -584,7 +602,11 @@ export class PersonalComponent implements OnInit, OnDestroy {
       // visible para el admin global desde el panel de Usuarios. La autenticación
       // real sigue siendo Firebase Auth (hasheada). Riesgo asumido: si la base se
       // filtra, las contraseñas quedan expuestas. Mitigado por Firestore Rules.
-      nombre: this.formNombre, usuario: this.formUsuario, correo: this.formCorreo, password: this.formPassword,
+      // Si el campo se dejó vacío (editar sin cambiar la contraseña), se conserva
+      // la que ya tenía: si no, el espejo se borraría y el admin perdería la
+      // referencia de soporte sin haber pedido nada.
+      nombre: this.formNombre, usuario: this.formUsuario, correo: this.formCorreo,
+      password: String(this.formPassword || '').trim() ? this.formPassword : this.passwordActual,
       rol: this.formRol, cargo: this.formCargo, telefono: this.formTelefono,
       alcance: alcanceFinal,
       puedeCrearChecklists: this.formRol === 'admin' ? true : this.formPuedeCrearChecklists,
@@ -622,9 +644,16 @@ export class PersonalComponent implements OnInit, OnDestroy {
         const userAuth = auth.currentUser;
         const esElMismoUsuario = this.usuarioEnEdicion.usuario === this.currentUser.usuario;
         const correoDistinto = this.formCorreo !== this.usuarioEnEdicion.correo;
-        // Detectamos cambio comparando con la contraseña guardada en Firestore.
-        // (El campo password se mantiene como "espejo" visible para el admin global.)
-        const passwordDistinta = this.formPassword !== (this.usuarioEnEdicion.password || '');
+        // Se cambia la contraseña SOLO si se escribió algo en el campo (que al
+        // editar arranca vacío). Antes esto se decidía comparando el campo con la
+        // contraseña guardada, y como el campo venía precargado y topado por
+        // maxlength, no se podía escribir encima: la comparación daba "iguales" y
+        // el cambio se saltaba en silencio.
+        // Basta con que se haya escrito algo. NO se compara contra la contraseña
+        // guardada en la ficha a propósito: ese "espejo" y la contraseña real de
+        // Firebase pueden estar desincronizados (de hecho lo estaban), así que
+        // volver a escribir la misma tiene que servir para forzar el cambio.
+        const passwordDistinta = String(this.formPassword || '').trim().length > 0;
 
         // -------------------------------------------------------
         // 🔥 FIX 1: CAMBIO DE CORREO (solo si es el mismo usuario)

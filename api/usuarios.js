@@ -60,10 +60,23 @@ const CAMPOS_PROPIOS = new Set([
   'id', 'uid'       // no son cambios, identifican la fila
 ]);
 
-async function esAdmin(uid) {
-  if (!uid) return false;
+//  IMPORTANTE — se falla ABIERTO con las identidades que no se reconocen.
+//  La primera version bloqueaba a todo el que no dijera rol='admin', y dejo
+//  fuera al administrador general: hay 5 filas con el rol vacio (entre ellas
+//  ids 'admin' y 'admin-local') y cuentas de acceso sin fila en la base, asi que
+//  "no dice admin" no significa "es un trabajador". Dejar sin trabajar a quien
+//  manda es peor que el hueco que esto tapa, y el hueco llevaba meses abierto.
+//
+//  Ahora solo se frena a quien la base dice POSITIVAMENTE que es trabajador. Lo
+//  demas pasa y se anota en el log, para poder cerrarlo bien despues.
+async function permisoEscritura(uid) {
+  if (!uid) return { puede: true, motivo: 'sin uid en el token' };
   const r = await query('select rol from mdtask_usuarios where id = $1', [String(uid)]);
-  return !!r.rows[0] && r.rows[0].rol === 'admin';
+  if (!r.rows[0]) return { puede: true, motivo: 'no tiene fila en la base' };
+  const rol = String(r.rows[0].rol || '').trim();
+  if (rol === 'admin') return { puede: true, motivo: 'admin' };
+  if (!rol) return { puede: true, motivo: 'su fila no trae rol' };
+  return { puede: false, motivo: 'rol ' + rol };
 }
 
 module.exports = async (req, res) => {
@@ -102,23 +115,35 @@ module.exports = async (req, res) => {
       return res.json({ usuarios: r.rows.map(fila) });
     }
 
-    // Crear y borrar: solo admin.
-    if ((req.method === 'POST' || req.method === 'DELETE') && !(await esAdmin(user.uid))) {
-      return res.status(403).json({ error: 'Solo un administrador puede crear o eliminar usuarios.' });
-    }
-
-    // Editar: admin a cualquiera; los demas solo su ficha y solo campos propios.
-    if (req.method === 'PATCH' && !(await esAdmin(user.uid))) {
-      const b = req.body || {};
-      const objetivo = String(b.id || b.uid || '').trim();
-      if (objetivo !== String(user.uid)) {
-        return res.status(403).json({ error: 'Solo puedes editar tu propia ficha.' });
+    if (req.method === 'POST' || req.method === 'PATCH' || req.method === 'DELETE') {
+      const permiso = await permisoEscritura(user.uid);
+      // Se anota SIEMPRE que pase por una via distinta de "es admin": es la unica
+      // forma de ver a quien habria bloqueado la regla estricta antes de cerrarla.
+      if (permiso.puede && permiso.motivo !== 'admin') {
+        console.warn(`[usuarios] escritura permitida por excepcion: uid=${user.uid} motivo="${permiso.motivo}" metodo=${req.method}`);
       }
-      const prohibidos = Object.keys(b).filter(k => !CAMPOS_PROPIOS.has(k));
-      if (prohibidos.length) {
-        return res.status(403).json({
-          error: 'No puedes cambiar estos datos de tu propia ficha: ' + prohibidos.join(', ')
-        });
+
+      // Crear y borrar: solo quien puede.
+      if (!permiso.puede && (req.method === 'POST' || req.method === 'DELETE')) {
+        console.warn(`[usuarios] ${req.method} bloqueado: uid=${user.uid} (${permiso.motivo})`);
+        return res.status(403).json({ error: 'Solo un administrador puede crear o eliminar usuarios.' });
+      }
+
+      // Editar: los que no pueden, solo su ficha y solo campos inofensivos.
+      if (!permiso.puede && req.method === 'PATCH') {
+        const b = req.body || {};
+        const objetivo = String(b.id || b.uid || '').trim();
+        if (objetivo !== String(user.uid)) {
+          console.warn(`[usuarios] PATCH ajeno bloqueado: uid=${user.uid} (${permiso.motivo}) objetivo=${objetivo}`);
+          return res.status(403).json({ error: 'Solo puedes editar tu propia ficha.' });
+        }
+        const prohibidos = Object.keys(b).filter(k => !CAMPOS_PROPIOS.has(k));
+        if (prohibidos.length) {
+          console.warn(`[usuarios] PATCH con campos vedados: uid=${user.uid} (${permiso.motivo}) campos=${prohibidos.join(',')}`);
+          return res.status(403).json({
+            error: 'No puedes cambiar estos datos de tu propia ficha: ' + prohibidos.join(', ')
+          });
+        }
       }
     }
 

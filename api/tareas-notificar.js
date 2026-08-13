@@ -84,6 +84,10 @@ async function soltarAviso(clave) {
 const CODIGOS_CUENTA = new Set([131042, 131031]);
 const CLAVE_ESTADO = 'wa_estado_envios';
 
+// Cada cuanto se permite una PRUEBA DE VIDA cuando la cuenta viene rebotando.
+// Ver `tocaPruebaDeVida`: sin esto el bloqueo no se abre nunca solo.
+const PRUEBA_VIDA_H = Number(process.env.WA_PRUEBA_VIDA_H || 4);
+
 async function guardarEstado(parcial) {
   await query(
     `insert into mdtask_config (id, datos) values ($1, $2::jsonb)
@@ -136,8 +140,39 @@ async function avisosRebotando() {
     const e = d.ultimaEntregaNegocio;
     if (!f || !f.deCuenta) return null;
     if (e && Number(e.en || 0) > Number(f.en || 0)) return null;   // ya se resolvio
-    return { code: f.code, titulo: f.titulo, detalle: f.detalle };
+    return { code: f.code, titulo: f.titulo, detalle: f.detalle, en: Number(f.en || 0) };
   } catch (e) { return null; }
+}
+
+/**
+ * ¿Toca una PRUEBA DE VIDA? (y si toca, la reserva).
+ *
+ * El bloqueo de cuenta solo se da por resuelto cuando llega una entrega INICIADA
+ * POR EL NEGOCIO. Pero mientras el bloqueo esta puesto no se manda ninguna
+ * plantilla, asi que esa entrega no puede ocurrir: una vez marcado, el candado no
+ * se abria NUNCA solo — ni despues de arreglar el metodo de pago en Meta.
+ *
+ * Se rompe el circulo dejando pasar UN intento cada `PRUEBA_VIDA_H` horas. Si
+ * sale, el acuse `delivered` limpia el bloqueo y todo vuelve a la normalidad sin
+ * que nadie toque nada; si vuelve a fallar, el acuse `failed` re-marca el fallo
+ * con fecha nueva y el siguiente intento se pospone otras horas.
+ *
+ * Marca `pruebaEn` ANTES de intentar (no despues): si se marcara al final y el
+ * envio tardara, dos ticks del poll podrian colarse a la vez y mandar dos.
+ * Devuelve false ante cualquier error: en la duda, no se manda.
+ */
+async function tocaPruebaDeVida(bloqueo) {
+  try {
+    if (!dbConfigurada() || !bloqueo) return false;
+    const r = await query('select datos from mdtask_config where id = $1', [CLAVE_ESTADO]);
+    const d = (r.rows[0] && r.rows[0].datos) || {};
+    // Desde lo que haya pasado mas tarde: el fallo o la ultima prueba.
+    const desde = Math.max(Number(bloqueo.en || 0), Number((d.pruebaVida || {}).en || 0));
+    if (Date.now() - desde < PRUEBA_VIDA_H * 3600 * 1000) return false;
+    await guardarEstado({ pruebaVida: { en: Date.now() } });
+    console.log(`[whatsapp] la cuenta viene rebotando (${bloqueo.titulo || bloqueo.code}); mando UNA plantilla como prueba de vida.`);
+    return true;
+  } catch (e) { return false; }
 }
 
 // --- ¿Está abierta la ventana de 24 h? ---------------------------------------
@@ -157,9 +192,11 @@ async function ventanaAbierta(telefono) {
 }
 
 // --- Envío con plantilla y respaldo en texto ---------------------------------
-// Devuelve { ok, motivo }. `motivo`: 'plantilla' | 'texto' | 'sin_telefono' |
-// 'sin_plantilla_ni_ventana' | 'cuenta_bloqueada' | 'fallo_envio'. Nunca miente: si
-// que el mensaje llegue, devuelve ok:false en vez de dar un falso positivo.
+// Devuelve { ok, motivo, prueba? }. `motivo`: 'plantilla' | 'texto' | 'sin_telefono' |
+// 'sin_plantilla_ni_ventana' | 'cuenta_bloqueada' | 'fallo_envio'. Nunca miente: si no
+// hay forma de que el mensaje llegue, devuelve ok:false en vez de dar un falso positivo.
+// `prueba:true` marca el envío tentativo con el que se tantea si la cuenta ya se
+// destrabó: salió hacia Meta, pero NO hay que darlo por entregado.
 async function mandar(telefono, plantilla, variables, textoRespaldo) {
   const tel = paraEnviar(telefono);
   if (!tel) return { ok: false, motivo: 'sin_telefono' };
@@ -179,9 +216,16 @@ async function mandar(telefono, plantilla, variables, textoRespaldo) {
 
   // 2) EN FRIO (sin conversación abierta) la ÚNICA vía es una plantilla aprobada,
   //    y hoy la cuenta las rebota si no hay método de pago en Meta.
+  //
+  //    Si viene rebotando, cada tantas horas se deja pasar UNA plantilla como
+  //    prueba de vida (ver tocaPruebaDeVida): es la única forma de que el bloqueo
+  //    se abra solo el día que se arregle el pago. Esa va marcada `prueba:true`,
+  //    porque el HTTP 200 no prueba entrega y quien la pidió no debe darla por
+  //    hecha ni dejar de reintentar.
   const bloqueo = await avisosRebotando();
-  if (!bloqueo && await enviarPlantilla(tel, plantilla, LANG, variables)) {
-    return { ok: true, motivo: 'plantilla' };
+  const prueba = bloqueo ? await tocaPruebaDeVida(bloqueo) : false;
+  if ((!bloqueo || prueba) && await enviarPlantilla(tel, plantilla, LANG, variables)) {
+    return { ok: true, motivo: 'plantilla', ...(prueba ? { prueba: true } : {}) };
   }
 
   // 3) No hay forma de llegarle. Se dice, no se finge.

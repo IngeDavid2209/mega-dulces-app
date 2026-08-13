@@ -493,12 +493,30 @@ export class PagosServiciosComponent implements OnInit, OnDestroy {
     this.avisando = null;
     await this.cargarPagos();
 
-    if (r?.ok) {
+    if (r?.ok && !r?.prueba) {
       Swal.fire({
         icon: 'success', title: 'Recordatorio enviado',
         text: `Le llegó a ${r.nombre || 'el responsable'} por WhatsApp.`,
         timer: 2600, showConfirmButton: false,
       });
+      return;
+    }
+
+    // Salió, pero como PRUEBA: la cuenta venía rebotando y se dejó pasar este
+    // mensaje para tantear si ya se destrabó. Meta contesta que sí y rechaza
+    // después, así que no se puede prometer que llegó — se dice, y se deja abierta
+    // la salida a mano. Si de verdad llegó, el candado se abre solo para el resto.
+    if (r?.ok && r?.prueba) {
+      const res = await Swal.fire({
+        icon: 'info', title: 'Se mandó, pero no lo doy por entregado',
+        html: '<p style="font-size:13.5px;color:#334155;margin:0 0 10px">La cuenta de WhatsApp venía rechazando los mensajes en frío. '
+          + 'Este salió para ver si ya se destrabó, y Meta avisa el resultado unos segundos después.</p>'
+          + '<p style="font-size:13px;color:#64748B;margin:0">Si en un minuto no le llegó, mándalo tú.</p>',
+        showCancelButton: true,
+        confirmButtonText: 'Mandarlo yo', cancelButtonText: 'Esperar',
+        confirmButtonColor: '#128C7E', cancelButtonColor: '#64748B',
+      });
+      if (res.isConfirmed && r.telefono && r.texto) this.abrirWhatsApp(r.telefono, r.texto);
       return;
     }
 
@@ -535,12 +553,14 @@ export class PagosServiciosComponent implements OnInit, OnDestroy {
       cancelButtonColor: '#64748B',
     });
 
-    if (res.isConfirmed && puedeManual) {
-      // wa.me abre el chat con el texto listo. No depende de la API de Meta.
-      const tel = String(r.telefono).replace(/\D/g, '');
-      const numero = tel.length === 10 ? '52' + tel : tel;
-      window.open(`https://wa.me/${numero}?text=${encodeURIComponent(r.texto)}`, '_blank', 'noopener');
-    }
+    if (res.isConfirmed && puedeManual) this.abrirWhatsApp(r.telefono, r.texto);
+  }
+
+  /** wa.me abre el chat con el texto listo. No depende de la API de Meta. */
+  private abrirWhatsApp(telefono: string, texto: string) {
+    const tel = String(telefono).replace(/\D/g, '');
+    const numero = tel.length === 10 ? '52' + tel : tel;
+    window.open(`https://wa.me/${numero}?text=${encodeURIComponent(texto)}`, '_blank', 'noopener');
   }
 
   verComprobante(p: any) {

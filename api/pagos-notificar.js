@@ -45,8 +45,18 @@ const SUPERVISORES = String(process.env.PAGOS_SUPERVISORES || '')
 // La GENERACION de recibos no se apaga con ninguno: crear la fila del mes no le
 // escribe a nadie, y si no se generara, dar de alta un servicio no mostraria
 // nada en el tablero y el modulo pareceria roto.
-const APAGADO = String(process.env.PAGOS_AVISOS || '').toLowerCase() === 'off'
-  || process.env.AVISOS_APAGADOS === '1';
+const PAGOS_AVISOS = String(process.env.PAGOS_AVISOS || '').toLowerCase();
+// `PAGOS_AVISOS` MANDA sobre el interruptor general cuando trae un valor:
+//   'off' -> apagados aunque el general este encendido;
+//   'on'  -> encendidos aunque el general este apagado (es lo que hay hoy en
+//            MDTask: AVISOS_APAGADOS=1 dejaba mudo tambien a este modulo, y los
+//            recibos de luz no pueden esperar a que se prendan los de tareas);
+//   sin valor -> se sigue al general, como antes.
+// OJO si algun dia se levanta una SEGUNDA copia de la app: el general existe para
+// que dos servidores no le manden el mismo aviso a la misma persona, asi que en
+// esa copia hay que poner PAGOS_AVISOS=off explicitamente.
+const APAGADO = PAGOS_AVISOS === 'off'
+  || (PAGOS_AVISOS !== 'on' && process.env.AVISOS_APAGADOS === '1');
 
 // Un hilo de captura abandonado no puede quedarse abierto para siempre: si la
 // persona mando una foto y nunca dijo el monto, a las 3 horas el bot vuelve a
@@ -194,6 +204,27 @@ async function marcarAviso(pagoId, obj) {
   );
 }
 
+/**
+ * Las 5 variables de la plantilla `recordatorio_pago`, en su orden:
+ *   {{1}} nombre  {{2}} servicio  {{3}} periodo  {{4}} fecha limite  {{5}} monto
+ *
+ * Va en UNA sola funcion porque la usan el poll y el boton "Avisar" del tablero:
+ * si se arman por separado, tarde o temprano una queda con 4 y Meta rechaza el
+ * envio entero (error 132000, "number of parameters does not match").
+ *
+ * Ninguna puede ir VACIA (Meta tambien lo rechaza) ni con saltos de linea, de ahi
+ * los respaldos. El monto es el estimado del catalogo, no lo que se pagara.
+ */
+function varsPlantilla(pago) {
+  return [
+    pago.responsableNombre || 'Hola',
+    nombreServicio(pago),
+    pago.periodoTexto || pago.periodo || 'este periodo',
+    fechaLegible(pago.fechaLimite) || 'por definir',
+    pago.montoEstimado ? pesos(pago.montoEstimado) : 'por confirmar',
+  ];
+}
+
 /** El texto del recordatorio segun que tan cerca (o lejos) esta el vencimiento. */
 function textoRecordatorio(pago, dias) {
   const nombre = nombreServicio(pago);
@@ -274,16 +305,19 @@ async function recordatoriosDelDia() {
     }
 
     const texto = textoRecordatorio(pago, dias);
-    const vars = [
-      pago.responsableNombre || 'Hola',
-      nombreServicio(pago),
-      pago.periodoTexto || pago.periodo || '',
-      fechaLegible(pago.fechaLimite),
-    ];
-    const res = await mandar(paraEnviar(tel), T_PAGO, vars, texto);
+    const res = await mandar(paraEnviar(tel), T_PAGO, varsPlantilla(pago), texto);
     const ahora = Date.now();
 
-    if (res.ok) {
+    if (res.ok && res.prueba) {
+      // Fue la plantilla de PRUEBA DE VIDA (la cuenta venia rebotando): salio
+      // hacia Meta, pero el 200 no prueba entrega. Se anota sin `ultimoDia`, para
+      // que el dia siga vivo y el recordatorio se reintente en los proximos
+      // ticks — si la persona abre su ventana escribiendole al bot, ahi si llega.
+      await marcarAviso(pago.id, {
+        ultimoEn: ahora, ultimoMotivo: 'plantilla_prueba',
+      }).catch(() => {});
+      console.log(`[pagos] recordatorio ${pago.id} -> ${tel}: plantilla de prueba (la cuenta venía rebotando); no se da por avisado.`);
+    } else if (res.ok) {
       await marcarAviso(pago.id, {
         ultimoDia: hoy, ultimoEn: ahora, ultimoMotivo: res.motivo,
         enviados: Number(pago.avisos.enviados || 0) + 1,
@@ -344,16 +378,17 @@ async function avisarAhora(pagoId) {
   // seria tratar una decision deliberada como si fuera spam del sistema.
   if (APAGADO) console.log(`[pagos] aviso MANUAL de ${pago.id}: los avisos automaticos estan apagados, pero este lo pidio una persona.`);
 
-  const vars = [
-    pago.responsableNombre || 'Hola', nombreServicio(pago),
-    pago.periodoTexto || pago.periodo || '', fechaLegible(pago.fechaLimite),
-  ];
-  const res = await mandar(paraEnviar(tel), T_PAGO, vars, texto);
+  const res = await mandar(paraEnviar(tel), T_PAGO, varsPlantilla(pago), texto);
 
   // Queda anotado igual que un aviso del poll, para que el tablero muestre como
   // le fue y para no repetirlo automaticamente el mismo dia si este si salio.
   const hoy = hoyMexico();
-  if (res.ok) {
+  if (res.ok && res.prueba) {
+    // Prueba de vida: se mando, pero la cuenta venia rebotando y el 200 de Meta
+    // no prueba entrega. No se marca `ultimoDia` (el dia sigue vivo) y el tablero
+    // recibe `prueba:true` para ofrecerle igual la salida a mano a quien lo pidio.
+    await marcarAviso(pago.id, { ultimoEn: Date.now(), ultimoMotivo: 'plantilla_prueba', aMano: true }).catch(() => {});
+  } else if (res.ok) {
     await marcarAviso(pago.id, {
       ultimoDia: hoy, ultimoEn: Date.now(), ultimoMotivo: res.motivo,
       enviados: Number(pago.avisos.enviados || 0) + 1, aMano: true,
@@ -363,8 +398,8 @@ async function avisarAhora(pagoId) {
       ultimoEn: Date.now(), ultimoMotivo: 'fallo:' + res.motivo,
     }).catch(() => {});
   }
-  console.log(`[pagos] aviso MANUAL ${pago.id} -> ${tel}: ${res.ok ? res.motivo : 'NO SALIO (' + res.motivo + ')'}`);
-  return { ok: res.ok, motivo: res.motivo, ...base };
+  console.log(`[pagos] aviso MANUAL ${pago.id} -> ${tel}: ${res.ok ? (res.prueba ? 'plantilla de PRUEBA (cuenta rebotando)' : res.motivo) : 'NO SALIO (' + res.motivo + ')'}`);
+  return { ok: res.ok, motivo: res.motivo, prueba: !!res.prueba, ...base };
 }
 
 /**
@@ -430,8 +465,12 @@ async function resumenSupervisores() {
   }
   const texto = partes.join('\n\n');
 
+  // Se reusa la plantilla del recordatorio (no hay una de resumen aprobada), asi
+  // que hay que darle sus 5 variables en el mismo orden. Solo importa en frio: si
+  // el supervisor tiene su ventana abierta, lo que recibe es el `texto` de arriba.
   for (const tel of SUPERVISORES) {
-    await mandar(paraEnviar(tel), T_PAGO, ['Resumen', 'Pagos atrasados', hoy, String(vencidos.length)], texto);
+    await mandar(paraEnviar(tel), T_PAGO,
+      ['Resumen', 'Pagos atrasados', hoy, fechaLegible(hoy) || hoy, `${vencidos.length} pendiente(s)`], texto);
   }
   console.log(`[pagos] resumen de ${vencidos.length} atrasado(s) enviado a ${SUPERVISORES.length} supervisor(es).`);
 }

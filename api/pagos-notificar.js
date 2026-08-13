@@ -39,7 +39,14 @@ const HORA_AVISO = String(process.env.PAGOS_HORA || '09:00');
 const TOPE_INSISTENCIA = Number(process.env.PAGOS_TOPE_INSISTENCIA || 15);
 const SUPERVISORES = String(process.env.PAGOS_SUPERVISORES || '')
   .split(',').map(s => s.replace(/\D/g, '')).filter(Boolean);
-const APAGADO = String(process.env.PAGOS_AVISOS || '').toLowerCase() === 'off';
+// Dos interruptores distintos, y los dos apagan SOLO los mensajes:
+//   PAGOS_AVISOS=off   apaga los avisos de este modulo;
+//   AVISOS_APAGADOS=1  es el interruptor general del servidor (tareas, flotilla).
+// La GENERACION de recibos no se apaga con ninguno: crear la fila del mes no le
+// escribe a nadie, y si no se generara, dar de alta un servicio no mostraria
+// nada en el tablero y el modulo pareceria roto.
+const APAGADO = String(process.env.PAGOS_AVISOS || '').toLowerCase() === 'off'
+  || process.env.AVISOS_APAGADOS === '1';
 
 // Un hilo de captura abandonado no puede quedarse abierto para siempre: si la
 // persona mando una foto y nunca dijo el monto, a las 3 horas el bot vuelve a
@@ -755,15 +762,19 @@ async function tick() {
 let pollIniciado = false;
 function iniciarPoll() {
   if (pollIniciado) return;
-  if (APAGADO) { console.log('[pagos] avisos APAGADOS (PAGOS_AVISOS=off).'); return; }
   pollIniciado = true;
+  if (APAGADO) {
+    // El poll SIGUE corriendo: genera los recibos de cada periodo para que el
+    // tablero este al dia. Lo unico que no hace es mandar WhatsApps.
+    console.log('[pagos] avisos APAGADOS: se generan los recibos, pero NO se manda ningun WhatsApp.');
+  }
   // Cada 5 min: cada servicio puede pedir su propia hora de aviso, y con un poll
   // mas lento un recordatorio puesto a las 09:00 podria salir bastante despues.
   // Mas rapido no aporta (los avisos son diarios) y solo gastaria consultas.
   const correr = () => tick().catch(e => console.error('[pagos] poll:', e && e.message));
   setInterval(correr, 5 * 60 * 1000);
   correr();
-  console.log(`[pagos] poll iniciado (cada 5 min) — hora por servicio (general ${HORA_AVISO}), insiste hasta ${TOPE_INSISTENCIA} días`);
+  console.log(`[pagos] poll iniciado (cada 5 min) — avisos ${APAGADO ? 'APAGADOS' : `activos, hora por servicio (general ${HORA_AVISO}), insiste hasta ${TOPE_INSISTENCIA} días`}`);
 }
 
 module.exports = {

@@ -198,12 +198,15 @@ app.listen(PORT, () => {
 
   // PAGOS DE SERVICIOS: genera el pago de cada periodo a partir del catálogo y
   // recuerda por WhatsApp al responsable (antes, el día, y mientras no llegue el
-  // comprobante). Respeta el interruptor general de avisos.
-  if (!avisosApagados) {
-    try {
-      require('./api/pagos-notificar').iniciarPoll();
-    } catch (e) {
-      console.error('[pagos] no se pudo iniciar el poll:', e && e.message);
-    }
+  // comprobante).
+  //
+  // A diferencia de los dos de arriba, este poll arranca SIEMPRE: el módulo mira
+  // `AVISOS_APAGADOS` por dentro y, cuando está encendido, se calla los WhatsApps
+  // pero sigue generando los recibos de cada periodo. Si no, dar de alta un
+  // servicio no mostraría nada en el tablero y parecería que el módulo no sirve.
+  try {
+    require('./api/pagos-notificar').iniciarPoll();
+  } catch (e) {
+    console.error('[pagos] no se pudo iniciar el poll:', e && e.message);
   }
 });

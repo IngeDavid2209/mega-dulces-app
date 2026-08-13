@@ -62,6 +62,8 @@ export class PersonalComponent implements OnInit, OnDestroy {
   formGrupoTec = false;
   /** Privilegio del apartado "Activación de promociones" (grupoPromociones). */
   formGrupoPromociones = false;
+  /** Privilegio del apartado "Pagos de servicios" (grupoPagos). */
+  formGrupoPagos = false;
   // 🔥 NUEVO: Alcance del admin (global = todas las sucursales, sucursales = solo las asignadas)
   formAlcance: 'global' | 'sucursales' = 'global';
 
@@ -451,6 +453,7 @@ export class PersonalComponent implements OnInit, OnDestroy {
   this.formPuedeVerCalendario       = !!user.puedeVerCalendario;
   this.formGrupoTec                 = !!user.grupoTec;
   this.formGrupoPromociones         = !!user.grupoPromociones;
+  this.formGrupoPagos               = !!user.grupoPagos;
 
   this.isModalOpen = true;
 }
@@ -602,6 +605,10 @@ export class PersonalComponent implements OnInit, OnDestroy {
       // 🏷️ Acceso a "Activación de promociones". Mismo modelo que grupoTec: es un
       // privilegio que SUMA el apartado en el menú, y ni los admins entran sin él.
       grupoPromociones: this.formGrupoPromociones === true,
+      // 🧾 Acceso a "Pagos de servicios". A diferencia de los de arriba, el rol
+      // admin entra aunque no tenga la bandera: es un módulo con avisos
+      // automáticos por WhatsApp y el administrador debe poder apagarlos.
+      grupoPagos: this.formGrupoPagos === true,
     };
 
     // Se avisa al final si la copia de respaldo no se pudo hacer. El guardado sí

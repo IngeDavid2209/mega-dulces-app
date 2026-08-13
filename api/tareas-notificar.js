@@ -449,4 +449,9 @@ module.exports = {
   tick, iniciarPoll, avisosApagados,
   // Acuses de Meta (los alimenta el webhook) para no presumir entregas falsas.
   registrarAcuse, avisosRebotando,
+  // Envio con plantilla + respaldo en texto y la prueba de la ventana de 24 h.
+  // Los usa tambien api/pagos-notificar.js: la regla de "como se le llega a una
+  // persona por WhatsApp" (ventana abierta, cuenta rebotando, plantilla en frio)
+  // debe vivir en un solo lugar, no copiada en cada modulo que avisa.
+  mandar, ventanaAbierta,
 };

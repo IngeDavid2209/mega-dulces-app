@@ -79,6 +79,12 @@ app.all('/api/reservas-vehiculos', require('./api/reservas-vehiculos'));
 app.all('/api/promociones', require('./api/promociones'));
 app.all('/api/promo-proveedores', require('./api/promo-proveedores'));
 
+// 🧾 PAGOS DE SERVICIOS: catálogo de servicios contratados (luz, agua, internet)
+// y el pago de cada periodo. Los recordatorios y la captura del comprobante van
+// por WhatsApp (api/pagos-notificar.js).
+app.all('/api/servicios', require('./api/servicios'));
+app.all('/api/pagos-servicios', require('./api/pagos-servicios'));
+
 // Comprobacion de salud para Railway (healthcheckPath en railway.json).
 //
 // A proposito NO toca la base: si Postgres tarda o hipa, no queremos que el
@@ -187,6 +193,17 @@ app.listen(PORT, () => {
       require('./api/tareas-notificar').iniciarPoll();
     } catch (e) {
       console.error('[tareas-notificar] no se pudo iniciar el poll:', e && e.message);
+    }
+  }
+
+  // PAGOS DE SERVICIOS: genera el pago de cada periodo a partir del catálogo y
+  // recuerda por WhatsApp al responsable (antes, el día, y mientras no llegue el
+  // comprobante). Respeta el interruptor general de avisos.
+  if (!avisosApagados) {
+    try {
+      require('./api/pagos-notificar').iniciarPoll();
+    } catch (e) {
+      console.error('[pagos] no se pudo iniciar el poll:', e && e.message);
     }
   }
 });

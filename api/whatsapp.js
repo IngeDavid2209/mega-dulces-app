@@ -230,6 +230,16 @@ function extraerMensaje(body) {
         mediaId: msg.document.id, mime: msg.document.mime_type,
       };
     }
+    // PDF: el comprobante de un pago de servicios casi siempre llega asi (el
+    // recibo que descarga el banco o la app de CFE). Se distingue de la imagen
+    // porque no sirve como evidencia de una tarea, solo como comprobante.
+    if (msg.type === 'document' && msg.document && String(msg.document.mime_type || '') === 'application/pdf') {
+      return {
+        from, tipo: 'documento', texto: msg.document.caption || '',
+        mediaId: msg.document.id, mime: msg.document.mime_type,
+        nombreArchivo: msg.document.filename || '',
+      };
+    }
     // NOTA DE VOZ (o un audio adjunto). Se transcribe y se trata como texto, asi
     // que el bot completo funciona hablando. `voz` distingue la nota de voz
     // grabada en el chat de un archivo de audio enviado.

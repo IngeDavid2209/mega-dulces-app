@@ -5,6 +5,7 @@ import { authGuard } from './services/auth.guard';
 import { soloTecGuard } from './services/tec.guard';
 import { flotillaGuard } from './services/flotilla.guard';
 import { promocionesGuard } from './services/promociones.guard';
+import { pagosGuard } from './services/pagos.guard';
 import { AgendaComponent } from './agenda/agenda';
 
 export const routes: Routes = [
@@ -143,6 +144,14 @@ export const routes: Routes = [
     path: 'promociones',
     canActivate: [promocionesGuard],
     loadComponent: () => import('./modules/dashboard/promociones/promociones').then(m => m.PromocionesComponent)
+  },
+
+  // 🧾 PAGOS DE SERVICIOS — luz, agua, internet y demás recibos por sucursal.
+  // Los recordatorios y la captura del comprobante van por WhatsApp.
+  {
+    path: 'pagos',
+    canActivate: [pagosGuard],
+    loadComponent: () => import('./modules/dashboard/pagos-servicios/pagos-servicios').then(m => m.PagosServiciosComponent)
   },
 
   

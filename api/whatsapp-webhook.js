@@ -18,6 +18,10 @@ const {
 const { enviarMensaje, enviarSolicitudUbicacion, descargarMedia, ultimos10, validarFirma, extraerMensaje } = require('./whatsapp');
 const { transcribir, transcripcionDisponible } = require('./transcribir');
 const { resolverPorWhatsapp } = require('./flotilla-notificar');
+const {
+  resolverPorWhatsapp: resolverPagoPorWhatsapp,
+  recibirComprobante, hayPagoEsperando,
+} = require('./pagos-notificar');
 const { registrarAcuse } = require('./tareas-notificar');
 const { subirBuffer } = require('./cloudinary-subir');
 
@@ -56,9 +60,11 @@ async function procesarMensaje(msg) {
   const modelo = process.env.ASISTENTE_MODELO || 'claude-opus-4-8';
 
   // Tipos soportados: texto y NOTA DE VOZ (asistente), ubicacion (flotilla:
-  // salida/regreso) e imagen (foto de evidencia al entregar una tarea).
-  if (msg.tipo !== 'text' && msg.tipo !== 'location' && msg.tipo !== 'image' && msg.tipo !== 'audio') {
-    await enviarMensaje(msg.from, 'Por ahora entiendo mensajes de *texto*, *notas de voz*, *fotos* y *ubicación*. Escríbeme qué necesitas 🙂');
+  // salida/regreso), imagen (evidencia de tarea o comprobante de un pago) y
+  // documento PDF (comprobante de un pago de servicios).
+  const TIPOS_OK = ['text', 'location', 'image', 'audio', 'documento'];
+  if (!TIPOS_OK.includes(msg.tipo)) {
+    await enviarMensaje(msg.from, 'Por ahora entiendo mensajes de *texto*, *notas de voz*, *fotos*, *PDF* y *ubicación*. Escríbeme qué necesitas 🙂');
     return;
   }
   if (msg.tipo === 'text' && !String(msg.texto || '').trim()) {
@@ -106,6 +112,22 @@ async function procesarMensaje(msg) {
     try { respFlotilla = await resolverPorWhatsapp(msg.from, texto); }
     catch (e) { console.error('[wa-webhook] flotilla:', e && e.message); }
     if (respFlotilla) { await enviarMensaje(msg.from, respFlotilla); return; }
+  }
+
+  // PAGOS DE SERVICIOS: si esta persona tiene una captura de pago EN CURSO (le
+  // pedimos el monto, o de cual de sus recibos era el comprobante), o si escribe
+  // algo claramente de pagos ("mis pagos", "ya pagué la luz"), lo resuelve el
+  // modulo de pagos y NO pasa al asistente de IA. Devuelve null cuando el
+  // mensaje no tiene nada que ver, y entonces todo sigue como antes.
+  //
+  // Va DESPUES de flotilla y ANTES del asistente a proposito: es un flujo
+  // determinista de dinero, y dejar que Claude improvise sobre un comprobante
+  // seria pedirle que adivine cifras.
+  if (texto) {
+    let respPago = null;
+    try { respPago = await resolverPagoPorWhatsapp(msg.from, texto); }
+    catch (e) { console.error('[wa-webhook] pagos:', e && e.message); }
+    if (respPago) { await enviarMensaje(msg.from, respPago); return; }
   }
 
   // Identificar al usuario por su telefono (ultimos 10 digitos, sin importar formato).
@@ -161,6 +183,33 @@ async function procesarMensaje(msg) {
     return;
   }
 
+  // ── PDF entrante: solo puede ser el comprobante de un pago de servicios ──
+  // Un PDF nunca es evidencia de una tarea (esas son fotos), asi que este camino
+  // no se cruza con el de arriba.
+  if (msg.tipo === 'documento') {
+    if (identidad.esInvitado) {
+      await enviarMensaje(msg.from, 'Recibí tu archivo 📄, pero como invitado solo te puedo ayudar con los *vehículos*.');
+      return;
+    }
+    const media = await descargarMedia(msg.mediaId);
+    if (!media) {
+      await enviarMensaje(msg.from, 'No pude descargar tu archivo 😕. ¿Me lo mandas otra vez?');
+      return;
+    }
+    const subida = await subirBuffer(media.buffer, { carpeta: 'whatsapp/comprobantes' });
+    if (!subida) {
+      await enviarMensaje(msg.from, 'Recibí tu archivo pero no lo pude guardar 😕. Inténtalo de nuevo en un momento.');
+      return;
+    }
+    let resPago = null;
+    try { resPago = await recibirComprobante(objetivo, subida.url, 'documento', identidad); }
+    catch (e) { console.error('[wa-webhook] comprobante PDF:', e && e.message); }
+    await enviarMensaje(msg.from, resPago
+      || 'Recibí tu PDF 📄 pero ahora mismo no tienes ningún pago de servicios pendiente a tu nombre. '
+      + 'Si es de otra cosa, mándame una foto o escríbeme qué necesitas 🙂');
+    return;
+  }
+
   // ── FOTO entrante (evidencia de la tarea que quedo esperando su foto) ──
   // Se resuelve FUERA de Claude: el asistente ya dejo apuntado que item espera
   // foto (entregar_item -> requiere_foto), aqui solo se baja, se sube a
@@ -182,6 +231,37 @@ async function procesarMensaje(msg) {
       await enviarMensaje(msg.from, 'No pude descargar tu foto 😕. ¿Me la mandas otra vez?');
       return;
     }
+
+    // ¿Es evidencia de tarea o comprobante de un pago? La FILA DE TAREAS manda:
+    // si el asistente ya le pidió la foto de un item concreto, esa foto es de la
+    // tarea y no hay ambigüedad. Solo cuando no hay fila abierta se pregunta al
+    // módulo de pagos, que responde null si esta persona no debe ningún recibo.
+    // Además, un pie de foto explícito ("comprobante", "recibo de la luz")
+    // manda la foto a pagos aunque haya fila: lo que la persona escribió es
+    // mejor pista que el orden en que llegaron las cosas.
+    //
+    // Se decide ANTES de subir para no dejar el archivo duplicado en Cloudinary.
+    const filaTareas = esp && Array.isArray(esp.cola) && esp.cola.length > Number(esp.idx || 0);
+    const pieDePago = /\b(comprobante|recibo|pago|pagu[eé]|ticket|factura)\b/i.test(String(msg.texto || ''));
+    let esDePagos = false;
+    if (!filaTareas || pieDePago) {
+      try { esDePagos = await hayPagoEsperando(objetivo); }
+      catch (e) { console.error('[wa-webhook] no se pudo revisar pagos:', e && e.message); }
+    }
+    if (esDePagos) {
+      const subidaPago = await subirBuffer(media.buffer, { carpeta: 'whatsapp/comprobantes' });
+      if (!subidaPago) {
+        await enviarMensaje(msg.from, 'Recibí tu comprobante pero no lo pude guardar 😕. Inténtalo de nuevo en un momento.');
+        return;
+      }
+      let resPago = null;
+      try { resPago = await recibirComprobante(objetivo, subidaPago.url, 'imagen', identidad); }
+      catch (e) { console.error('[wa-webhook] comprobante foto:', e && e.message); }
+      if (resPago) { await enviarMensaje(msg.from, resPago); return; }
+      // Cambió algo entre la revisión y el guardado (le acaban de registrar el
+      // pago desde la app): sigue de largo al camino normal de evidencias.
+    }
+
     const subida = await subirBuffer(media.buffer, { carpeta: 'whatsapp/evidencias' });
     if (!subida) {
       await enviarMensaje(msg.from, 'Recibí tu foto pero no la pude guardar 😕. Inténtalo de nuevo en un momento.');

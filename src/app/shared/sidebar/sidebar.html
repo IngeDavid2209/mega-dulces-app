@@ -60,6 +60,22 @@
         Promociones
       </a>
 
+      <!-- 🧾 Pagos de servicios: luz, agua, internet y demas recibos por
+           sucursal. Visible para los designados (grupoPagos) y para el admin,
+           que debe poder entrar a apagar un aviso mal configurado. -->
+      <a class="nav-item" routerLink="/pagos" routerLinkActive="active"
+         *ngIf="currentUser?.grupoPagos === true || currentUser?.rol === 'admin'"
+         (click)="onNavClick()"
+         title="Pagos de servicios: luz, agua, internet y comprobantes">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M4 4h16v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"></path>
+          <path d="M8 8h8"></path>
+          <path d="M8 12h8"></path>
+          <path d="M8 16h4"></path>
+        </svg>
+        Pagos
+      </a>
+
       <!-- 🚗 Flotilla: reservas de vehiculos. Visible SOLO para los usuarios
            designados (grupoFlotilla). Los admins NO lo ven por ser admin. -->
       <a class="nav-item" routerLink="/flotilla" routerLinkActive="active"

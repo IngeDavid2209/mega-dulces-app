@@ -3294,7 +3294,22 @@
 }
 
 .eq-detalle-foot {
-  display: flex; justify-content: flex-end; padding-top: 16px; margin-top: 4px;
+  display: flex; justify-content: flex-end; align-items: center;
+  gap: 10px; flex-wrap: wrap; padding-top: 16px; margin-top: 4px;
+}
+
+/* Eliminar proyecto: se ve que es destructivo, pero sin competir con la acción
+   principal (cerrar). Por eso va delineado y no relleno. */
+.btn-eliminar-proyecto {
+  display: flex; align-items: center; justify-content: center;
+  height: 40px; padding: 0 16px;
+  background: #FFFFFF; color: #DC2626;
+  border: 1px solid #FCA5A5; border-radius: 6px;
+  font-size: 14px; font-weight: 500; cursor: pointer; transition: .2s;
+}
+
+.btn-eliminar-proyecto:hover {
+  background: #FEF2F2; border-color: #DC2626;
 }
 
 @media (max-width: 768px) {

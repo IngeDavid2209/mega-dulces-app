@@ -2,5 +2,5 @@
 // Lo escribe scripts/generar-version.js antes de compilar.
 export const APP_VERSION = '0.0.0';
 export const APP_BUILD_FECHA = '2026-08-13';
-export const APP_BUILD_HORA = '08:33';
-export const APP_BUILD_SELLO = '2026-08-13 08:33';
+export const APP_BUILD_HORA = '09:37';
+export const APP_BUILD_SELLO = '2026-08-13 09:37';

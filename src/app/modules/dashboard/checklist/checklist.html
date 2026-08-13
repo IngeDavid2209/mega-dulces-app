@@ -330,9 +330,18 @@
             </div>
           </div>
 
-          <!-- Botón cerrar proyecto cuando todas las fases están completas -->
-          <div class="eq-detalle-foot" *ngIf="puedeMonitorearEquipo(proyecto) && !proyecto.cerrado">
+          <!-- Pie del detalle: eliminar (solo admins) y cerrar cuando todas las
+               fases están completas. Eliminar también aparece en proyectos ya
+               cerrados, por eso el pie no depende de que esté abierto. -->
+          <div class="eq-detalle-foot"
+               *ngIf="puedeEliminarEquipo(proyecto) || (puedeMonitorearEquipo(proyecto) && !proyecto.cerrado)">
+            <button class="btn-eliminar-proyecto"
+                    *ngIf="puedeEliminarEquipo(proyecto)"
+                    (click)="eliminarProyectoEquipo(proyecto)">
+              Eliminar proyecto
+            </button>
             <button class="btn-primary"
+                    *ngIf="puedeMonitorearEquipo(proyecto) && !proyecto.cerrado"
                     [disabled]="progresoEquipo(proyecto) < 100"
                     (click)="cerrarProyectoEquipo(proyecto)">
               Cerrar proyecto

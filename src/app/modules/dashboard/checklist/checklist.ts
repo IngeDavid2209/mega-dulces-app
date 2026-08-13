@@ -1459,6 +1459,9 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       const arr: TareaEquipo[] = [];
       (resp.items || []).forEach((data: any) => {
         const tarea: TareaEquipo = { ...data, id: data.id };
+        // Eliminado con el botón de borrar: fuera de la lista para todos. El
+        // registro sigue en la base, nada más deja de mostrarse.
+        if ((tarea as any).eliminado === true) return;
         if (tarea.cerrado === true && esAdminGlobal(sesion) === false) {
           // Trabajadores y admins limitados no ven proyectos cerrados (limpieza visual)
           return;
@@ -3419,6 +3422,67 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     await setDoc(doc(this.firestore, 'tareas_equipo', t.id), cierreEquipo, { merge: true });
     await this.api.parchar('/api/tareas-equipo', t.id, cierreEquipo); // FERROCARRIL Etapa 7
     this.volverDeEquipoDetalle();
+  }
+
+  /**
+   * ¿Puede ELIMINAR el proyecto? Solo administradores, que es la misma política
+   * que ya tenían las reglas para `tareas_equipo`. El creador y el jefe pueden
+   * monitorear y cerrar el proyecto, pero borrarlo no.
+   */
+  puedeEliminarEquipo(t: TareaEquipo | null): boolean {
+    if (!t) return false;
+    const u = this.currentUser;
+    if (esAdminGlobal(u)) return true;
+    if (esAdminLimitado(u)) {
+      const perms = sucursalesPermitidas(u);
+      return perms === null || perms.includes(t.store);   // null = acceso total
+    }
+    return false;
+  }
+
+  /**
+   * Elimina el proyecto de equipo.
+   *
+   * Es un borrado MARCADO, no físico: se guarda `eliminado` y desaparece de la
+   * lista para todos, pero el registro sigue en la base y se puede devolver si
+   * fue un error. Con el trabajo de siete personas adentro, un borrado
+   * irreversible por un clic de más no vale la pena.
+   */
+  async eliminarProyectoEquipo(t: TareaEquipo) {
+    if (!this.puedeEliminarEquipo(t)) return;
+    const r = await Swal.fire({
+      title: '¿Eliminar el proyecto?',
+      html: `Se va a quitar <b>${t.name || 'este proyecto'}</b> de la lista, con todas sus fases y su avance.`,
+      icon: 'warning', showCancelButton: true,
+      confirmButtonText: 'Sí, eliminar', cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#DC2626'
+    });
+    if (!r.isConfirmed) return;
+
+    const marca = {
+      eliminado: true, eliminadoEn: Date.now(),
+      eliminadoPor: this.currentUser?.nombre || ''
+    };
+    try {
+      // Postgres es el bueno: si esto falla, no se borró nada y hay que decirlo.
+      await this.api.parchar('/api/tareas-equipo', t.id, marca);
+    } catch (e: any) {
+      Swal.fire({
+        icon: 'error', title: 'No se pudo eliminar',
+        text: e?.message || 'Inténtalo de nuevo.', confirmButtonColor: '#0F172A'
+      });
+      return;
+    }
+    // El respaldo de Firestore es opcional: que no tumbe la operación.
+    try {
+      await setDoc(doc(this.firestore, 'tareas_equipo', t.id), marca, { merge: true });
+    } catch (e) {
+      console.warn('[checklist] no se pudo marcar el borrado en el respaldo de Firestore', e);
+    }
+
+    this.tareasEquipo.set(this.tareasEquipo().filter(x => x.id !== t.id));
+    this.volverDeEquipoDetalle();
+    this.mostrarToast('Proyecto eliminado.');
   }
 
   /** Lee el doc fresco antes de mutar (evita race conditions con el snapshot). */

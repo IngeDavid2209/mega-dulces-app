@@ -683,10 +683,13 @@ function listaNumerada(pagos) {
 function leerMontoYForma(texto) {
   const t = String(texto || '').toLowerCase();
 
+  // Las alternativas van AGRUPADAS: sin los parentesis, `\btarjeta|credito|...`
+  // se lee como "(\btarjeta) o (credito) o (...)", asi que solo la primera
+  // llevaba frontera y "acredito" contaba como pago con tarjeta.
   let formaPago = null;
-  if (/\btarjeta|tdc|tdd|credito|débito|debito\b/.test(t)) formaPago = 'tarjeta';
-  else if (/\btransferencia|transfer|spei|deposito|depósito\b/.test(t)) formaPago = 'transferencia';
-  else if (/\befectivo|cash|contado\b/.test(t)) formaPago = 'efectivo';
+  if (/(?:^|[^\p{L}])(?:tarjeta|tdc|tdd|cr[eé]dito|d[eé]bito)(?![\p{L}])/u.test(t)) formaPago = 'tarjeta';
+  else if (/(?:^|[^\p{L}])(?:transferencia|transfer|spei|dep[oó]sito)(?![\p{L}])/u.test(t)) formaPago = 'transferencia';
+  else if (/(?:^|[^\p{L}])(?:efectivo|cash|contado)(?![\p{L}])/u.test(t)) formaPago = 'efectivo';
 
   // El monto: el primer numero con pinta de importe. Se quitan las comas de
   // millares antes de convertir ("1,250.50" -> 1250.50).
@@ -697,7 +700,10 @@ function leerMontoYForma(texto) {
     if (Number.isFinite(n) && n > 0) monto = n;
   }
 
-  const sinDato = /\bno s[eé]\b|\bno recuerdo\b|\bdespu[eé]s\b|\bluego\b/.test(t);
+  // "no sé" es la respuesta mas comun de todas, y con `\bno s[eé]\b` NO casaba
+  // (la frontera despues de la "é" no existe): el bot se quedaba pidiendole el
+  // monto una y otra vez a quien acababa de decirle que no lo sabia.
+  const sinDato = /(?:^|[^\p{L}])(?:no\s+s[eé]|no\s+recuerdo|despu[eé]s|luego)(?![\p{L}])/u.test(t);
   return { monto, formaPago, sinDato };
 }
 

@@ -251,7 +251,10 @@ async function procesarMensaje(msg) {
     //
     // Se decide ANTES de subir para no dejar el archivo duplicado en Cloudinary.
     const filaTareas = esp && Array.isArray(esp.cola) && esp.cola.length > Number(esp.idx || 0);
-    const pieDePago = /\b(comprobante|recibo|pago|pagu[eé]|ticket|factura)\b/i.test(String(msg.texto || ''));
+    // El `(?![\p{L}])` en vez de `\b`: en JavaScript `\b` es ASCII, asi que
+    // /pagu[eé]\b/ NO casa con "pagué" y el pie de foto mas comun de todos ("ya
+    // pagué") no mandaba la foto a pagos, sino a evidencia de tareas.
+    const pieDePago = /(?:^|[^\p{L}])(?:comprobante|recibo|pago|pagu[eé]|ticket|factura)(?![\p{L}])/iu.test(String(msg.texto || ''));
     let esDePagos = false;
     if (!filaTareas || pieDePago) {
       try { esDePagos = await hayPagoEsperando(objetivo); }

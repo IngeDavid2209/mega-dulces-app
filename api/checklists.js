@@ -270,3 +270,6 @@ module.exports = async (req, res) => {
     return res.status(500).json({ error: (e && e.message) || 'Error interno' });
   }
 };
+
+// Se exporta para el reporte de tareas huérfanas y para pruebas.
+module.exports.resolverUidDeNombre = resolverUidDeNombre;

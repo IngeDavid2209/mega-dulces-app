@@ -337,7 +337,12 @@ async function avisarAhora(pagoId) {
   const base = { texto, telefono: tel || null, nombre: pago.responsableNombre || null, servicio: nombreServicio(pago) };
 
   if (!tel) return { ok: false, motivo: 'sin_telefono', ...base };
-  if (APAGADO) return { ok: false, motivo: 'avisos_apagados', ...base };
+
+  // A PROPOSITO no se respeta aqui el interruptor de avisos (PAGOS_AVISOS /
+  // AVISOS_APAGADOS): ese apaga los avisos AUTOMATICOS, y esto es una persona
+  // pulsando un boton porque quiere mandar ese recordatorio ahora. Bloquearlo
+  // seria tratar una decision deliberada como si fuera spam del sistema.
+  if (APAGADO) console.log(`[pagos] aviso MANUAL de ${pago.id}: los avisos automaticos estan apagados, pero este lo pidio una persona.`);
 
   const vars = [
     pago.responsableNombre || 'Hola', nombreServicio(pago),

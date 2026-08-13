@@ -508,6 +508,8 @@ export class PagosServiciosComponent implements OnInit, OnDestroy {
       ya_pagado: 'Ese pago ya está registrado como pagado.',
       no_existe: 'No encontré ese pago.',
       avisos_apagados: 'Los avisos automáticos están apagados en el servidor.',
+      sin_base: 'No hay conexión con la base de datos.',
+      fallo_envio: 'WhatsApp rechazó el mensaje.',
       cuenta_bloqueada: 'La cuenta de WhatsApp del negocio no puede iniciar conversaciones (falta el método de pago en Meta).',
       sin_plantilla_ni_ventana: 'Esa persona no le ha escrito al bot en las últimas 24 horas, y la cuenta no puede iniciar la conversación.',
     };
@@ -517,14 +519,20 @@ export class PagosServiciosComponent implements OnInit, OnDestroy {
     const res = await Swal.fire({
       icon: 'warning',
       title: 'El bot no pudo mandarlo',
-      html: `<p style="font-size:13.5px;color:#334155;margin:0 0 10px">${porQue}</p>`
+      html: `<p style="font-size:13.5px;color:#334155;margin:0 0 12px">${porQue}</p>`
         + (puedeManual
-          ? '<p style="font-size:13px;color:#64748B;margin:0">Puedes mandarlo tú desde tu WhatsApp: el mensaje ya va escrito.</p>'
+          ? '<p style="font-size:13px;color:#64748B;margin:0 0 10px">Mándalo tú desde tu WhatsApp: el mensaje ya va escrito.</p>'
+            + `<pre style="text-align:left;white-space:pre-wrap;font-family:inherit;font-size:12.5px;`
+            + `background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;padding:10px;color:#334155;margin:0">`
+            + String(r.texto).replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' } as any)[c])
+            + '</pre>'
           : ''),
       showCancelButton: true,
       confirmButtonText: puedeManual ? 'Abrir WhatsApp' : 'Entendido',
       cancelButtonText: 'Cerrar',
-      showConfirmButton: true,
+      // Verde de WhatsApp, para que el botón se lea como lo que hace.
+      confirmButtonColor: puedeManual ? '#128C7E' : '#0F172A',
+      cancelButtonColor: '#64748B',
     });
 
     if (res.isConfirmed && puedeManual) {

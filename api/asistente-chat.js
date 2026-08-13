@@ -410,6 +410,26 @@ async function pgConversacionSet(id, { messages, uid }) {
   );
 }
 
+/**
+ * Marca que ESTE NUMERO nos acaba de escribir, sin tocar el historial.
+ *
+ * `actualizado` es lo que usa `ventanaAbierta` (api/tareas-notificar.js) para
+ * saber si se le puede mandar texto libre en las siguientes 24 h. Antes solo se
+ * escribia al guardar el hilo del asistente, asi que un mensaje que se resolvia
+ * por otro camino —aprobar un vehiculo, mandar el comprobante de un pago, una
+ * foto, una ubicacion— dejaba la ventana sin registrar: el sistema la creia
+ * cerrada e intentaba una plantilla (que hoy rebota) en vez del texto, que si
+ * habria llegado. Por eso se toca en CUANTO entra el mensaje, pase por donde pase.
+ */
+async function pgConversacionTocar(id) {
+  await query(
+    `insert into mdtask_wa_conversaciones (id, actualizado)
+     values ($1,$2)
+     on conflict (id) do update set actualizado = excluded.actualizado`,
+    [String(id), Date.now()]
+  );
+}
+
 // -- FLOTILLA: vehiculos + reservas_vehiculos (mismo mapeo que api/vehiculos.js
 //    y api/reservas-vehiculos.js, pero consultando Postgres DIRECTO). OJO: estas
 //    dos tablas NO llevan el prefijo mdtask_ (asi estan creadas en 020/021). --
@@ -2757,6 +2777,7 @@ module.exports.procesarChat = procesarChat;
 module.exports.pgUsuarios = pgUsuarios;
 module.exports.pgConversacionGet = pgConversacionGet;
 module.exports.pgConversacionSet = pgConversacionSet;
+module.exports.pgConversacionTocar = pgConversacionTocar;
 // Flotilla: finalizar captura de ubicacion cuando llega un mensaje `location`.
 module.exports.registrarUbicacion = registrarUbicacion;
 // ENTREGA DE TAREAS: guardar la foto de evidencia cuando llega un mensaje `image`.

@@ -14,6 +14,7 @@
 const {
   construirContexto, procesarChat, pgUsuarios, pgConversacionGet, pgConversacionSet,
   registrarUbicacion, registrarFotoEvidencia, pgConversacionEsperandoGet,
+  pgConversacionTocar,
 } = require('./asistente-chat');
 const { enviarMensaje, enviarSolicitudUbicacion, descargarMedia, ultimos10, validarFirma, extraerMensaje } = require('./whatsapp');
 const { transcribir, transcripcionDisponible } = require('./transcribir');
@@ -62,6 +63,14 @@ async function procesarMensaje(msg) {
   // Tipos soportados: texto y NOTA DE VOZ (asistente), ubicacion (flotilla:
   // salida/regreso), imagen (evidencia de tarea o comprobante de un pago) y
   // documento PDF (comprobante de un pago de servicios).
+  // ABRE LA VENTANA DE 24 H. Se registra que esta persona nos escribio ANTES de
+  // decidir que hacer con el mensaje, porque hay caminos (flotilla, pagos, fotos,
+  // ubicacion) que responden y terminan sin guardar el hilo del asistente. Si no
+  // se anota aqui, esos mensajes no cuentan como actividad y despues los avisos
+  // se intentan por plantilla —que hoy rebota— en vez de por texto, que si llega.
+  try { await pgConversacionTocar(ultimos10(msg.from)); }
+  catch (e) { console.error('[wa-webhook] no se pudo registrar la actividad:', e && e.message); }
+
   const TIPOS_OK = ['text', 'location', 'image', 'audio', 'documento'];
   if (!TIPOS_OK.includes(msg.tipo)) {
     await enviarMensaje(msg.from, 'Por ahora entiendo mensajes de *texto*, *notas de voz*, *fotos*, *PDF* y *ubicación*. Escríbeme qué necesitas 🙂');

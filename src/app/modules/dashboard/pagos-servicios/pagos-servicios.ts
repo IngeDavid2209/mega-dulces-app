@@ -469,6 +469,72 @@ export class PagosServiciosComponent implements OnInit, OnDestroy {
     }
   }
 
+  /**
+   * "Avisar" — manda el recordatorio de ese pago en el momento.
+   *
+   * Si el bot no lo puede entregar (hoy es lo normal: la cuenta de WhatsApp no
+   * puede iniciar conversación y solo llega a quien escribió en las últimas 24 h),
+   * NO se queda en un "no se pudo": se ofrece abrir WhatsApp con el mensaje ya
+   * escrito para mandarlo desde el teléfono de quien está usando la app. Eso
+   * funciona siempre, porque no pasa por la API bloqueada.
+   */
+  avisando: string | null = null;
+  async avisar(p: any) {
+    if (this.avisando) return;
+    this.avisando = p.id;
+    let r: any = null;
+    try {
+      r = await this.api.post('/api/pagos-servicios', { id: p.id, accion: 'avisar' });
+    } catch (e: any) {
+      this.avisoError(e, 'No se pudo mandar el recordatorio.');
+      this.avisando = null;
+      return;
+    }
+    this.avisando = null;
+    await this.cargarPagos();
+
+    if (r?.ok) {
+      Swal.fire({
+        icon: 'success', title: 'Recordatorio enviado',
+        text: `Le llegó a ${r.nombre || 'el responsable'} por WhatsApp.`,
+        timer: 2600, showConfirmButton: false,
+      });
+      return;
+    }
+
+    // No salió: se explica por qué y se ofrece la salida manual.
+    const motivos: Record<string, string> = {
+      sin_telefono: 'Este servicio no tiene un responsable con teléfono.',
+      ya_pagado: 'Ese pago ya está registrado como pagado.',
+      no_existe: 'No encontré ese pago.',
+      avisos_apagados: 'Los avisos automáticos están apagados en el servidor.',
+      cuenta_bloqueada: 'La cuenta de WhatsApp del negocio no puede iniciar conversaciones (falta el método de pago en Meta).',
+      sin_plantilla_ni_ventana: 'Esa persona no le ha escrito al bot en las últimas 24 horas, y la cuenta no puede iniciar la conversación.',
+    };
+    const porQue = motivos[r?.motivo] || 'No se pudo entregar el mensaje.';
+    const puedeManual = !!(r?.telefono && r?.texto);
+
+    const res = await Swal.fire({
+      icon: 'warning',
+      title: 'El bot no pudo mandarlo',
+      html: `<p style="font-size:13.5px;color:#334155;margin:0 0 10px">${porQue}</p>`
+        + (puedeManual
+          ? '<p style="font-size:13px;color:#64748B;margin:0">Puedes mandarlo tú desde tu WhatsApp: el mensaje ya va escrito.</p>'
+          : ''),
+      showCancelButton: true,
+      confirmButtonText: puedeManual ? 'Abrir WhatsApp' : 'Entendido',
+      cancelButtonText: 'Cerrar',
+      showConfirmButton: true,
+    });
+
+    if (res.isConfirmed && puedeManual) {
+      // wa.me abre el chat con el texto listo. No depende de la API de Meta.
+      const tel = String(r.telefono).replace(/\D/g, '');
+      const numero = tel.length === 10 ? '52' + tel : tel;
+      window.open(`https://wa.me/${numero}?text=${encodeURIComponent(r.texto)}`, '_blank', 'noopener');
+    }
+  }
+
   verComprobante(p: any) {
     if (!p.comprobanteUrl) return;
     window.open(p.comprobanteUrl, '_blank', 'noopener');

@@ -116,6 +116,10 @@
                     [class.pill-porvencer]="p.estadoVisible === 'por_vencer'">
                 {{ textoVencimiento(p) }}
               </span>
+              <button class="pg-btn-mini wa" (click)="avisar(p)" [disabled]="avisando === p.id"
+                      title="Mandarle el recordatorio por WhatsApp ahora mismo">
+                {{ avisando === p.id ? 'Enviando...' : 'Avisar' }}
+              </button>
               <button class="pg-btn-mini ok" (click)="registrarPago(p)">Registrar pago</button>
             </div>
           }
@@ -240,6 +244,10 @@
                     @if (p.estadoVisible === 'pagado') {
                       <button class="pg-btn-mini" (click)="reabrirPago(p)">Reabrir</button>
                     } @else {
+                      <button class="pg-btn-mini wa" (click)="avisar(p)" [disabled]="avisando === p.id"
+                              title="Mandarle el recordatorio por WhatsApp ahora mismo">
+                        {{ avisando === p.id ? '...' : 'Avisar' }}
+                      </button>
                       <button class="pg-btn-mini ok" (click)="registrarPago(p)">Registrar</button>
                     }
                   </td>

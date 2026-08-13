@@ -190,6 +190,11 @@
 .pg-btn-mini.ok:hover { background: #047857; }
 .pg-btn-mini.danger { background: #fff; color: #B91C1C; border-color: #FCA5A5; }
 .pg-btn-mini.danger:hover { background: #FEF2F2; }
+/* Verde de WhatsApp: es el boton que le escribe a la persona. */
+.pg-btn-mini.wa { background: #fff; color: #128C7E; border-color: #A7D8D2; }
+.pg-btn-mini.wa:hover { background: #F0FDFA; }
+.pg-btn-mini:disabled { opacity: .55; cursor: default; }
+.pg-td-acciones .pg-btn-mini + .pg-btn-mini { margin-left: 6px; }
 .pg-link {
   background: none; border: none; color: #0F172A; font-weight: 700;
   text-decoration: underline; cursor: pointer; font-size: 13px; padding: 0;

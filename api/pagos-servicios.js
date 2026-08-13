@@ -152,6 +152,17 @@ module.exports = async (req, res) => {
       const id = String(b.id || '');
       if (!id) return res.status(400).json({ error: 'Falta el id del pago.' });
 
+      // AVISAR AHORA (botón del tablero): manda el recordatorio en el momento,
+      // sin esperar al poll ni a la hora del servicio. Va aquí y no en un
+      // endpoint aparte porque es una acción sobre un pago concreto.
+      if (b.accion === 'avisar') {
+        const { avisarAhora } = require('./pagos-notificar');
+        const r = await avisarAhora(id);
+        // Siempre 200: el frontend necesita el texto y el motivo para ofrecer
+        // mandarlo a mano. Un 500 aquí solo mostraría "error" y perdería el dato.
+        return res.json(r);
+      }
+
       const r0 = await query('select * from mdtask_pagos_servicios where id = $1 and eliminado = false', [id]);
       const actual = r0.rows[0];
       if (!actual) return res.status(404).json({ error: 'No existe ese pago.' });

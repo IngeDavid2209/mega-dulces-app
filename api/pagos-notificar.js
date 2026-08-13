@@ -317,6 +317,52 @@ async function recordatoriosDelDia() {
 }
 
 /**
+ * AVISAR AHORA: manda el recordatorio de UN pago en este momento, sin esperar al
+ * poll ni a la hora configurada. Lo dispara el boton del tablero.
+ *
+ * Devuelve { ok, motivo, texto, telefono, nombre } — y `texto` va SIEMPRE, haya
+ * salido o no: si el envio no se pudo (la cuenta no puede escribir en frio y esa
+ * persona no tiene conversacion abierta), el tablero ofrece abrir WhatsApp con el
+ * mensaje ya escrito para mandarlo a mano. Vale mas eso que un "no se pudo".
+ */
+async function avisarAhora(pagoId) {
+  if (!dbConfigurada()) return { ok: false, motivo: 'sin_base' };
+  const pago = await leerPago(pagoId);
+  if (!pago) return { ok: false, motivo: 'no_existe' };
+  if (pago.estado !== 'pendiente') return { ok: false, motivo: 'ya_pagado' };
+
+  const tel = pago.responsableTelefono;
+  const dias = diasFaltantes(pago.fechaLimite, hoyMexico());
+  const texto = textoRecordatorio(pago, dias == null ? 0 : dias);
+  const base = { texto, telefono: tel || null, nombre: pago.responsableNombre || null, servicio: nombreServicio(pago) };
+
+  if (!tel) return { ok: false, motivo: 'sin_telefono', ...base };
+  if (APAGADO) return { ok: false, motivo: 'avisos_apagados', ...base };
+
+  const vars = [
+    pago.responsableNombre || 'Hola', nombreServicio(pago),
+    pago.periodoTexto || pago.periodo || '', fechaLegible(pago.fechaLimite),
+  ];
+  const res = await mandar(paraEnviar(tel), T_PAGO, vars, texto);
+
+  // Queda anotado igual que un aviso del poll, para que el tablero muestre como
+  // le fue y para no repetirlo automaticamente el mismo dia si este si salio.
+  const hoy = hoyMexico();
+  if (res.ok) {
+    await marcarAviso(pago.id, {
+      ultimoDia: hoy, ultimoEn: Date.now(), ultimoMotivo: res.motivo,
+      enviados: Number(pago.avisos.enviados || 0) + 1, aMano: true,
+    }).catch(() => {});
+  } else {
+    await marcarAviso(pago.id, {
+      ultimoEn: Date.now(), ultimoMotivo: 'fallo:' + res.motivo,
+    }).catch(() => {});
+  }
+  console.log(`[pagos] aviso MANUAL ${pago.id} -> ${tel}: ${res.ok ? res.motivo : 'NO SALIO (' + res.motivo + ')'}`);
+  return { ok: res.ok, motivo: res.motivo, ...base };
+}
+
+/**
  * Resumen diario de lo ATRASADO para los supervisores (PAGOS_SUPERVISORES).
  * Va aparte de los recordatorios: al responsable se le pide su pago, al
  * supervisor se le da la foto completa de lo que nadie ha pagado.
@@ -779,6 +825,7 @@ function iniciarPoll() {
 
 module.exports = {
   generarPagosPendientes, recordatoriosDelDia, resumenSupervisores, tick, iniciarPoll,
+  avisarAhora,
   recibirComprobante, resolverPorWhatsapp, pagosAbiertosDe, hayPagoEsperando,
   // Exportadas para pruebas y para reusar el formato en otros modulos.
   nombreServicio, leerMontoYForma, esperaGet, esperaSet,

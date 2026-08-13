@@ -38,6 +38,7 @@ function fila(r) {
     mesAncla: r.mes_ancla,
     diaLimite: r.dia_limite == null ? null : Number(r.dia_limite),
     diasAviso: r.dias_aviso == null ? null : Number(r.dias_aviso),
+    horaAviso: r.hora_aviso || null,
     montoEstimado: r.monto_estimado == null ? null : Number(r.monto_estimado),
     responsableUid: r.responsable_uid,
     responsableNombre: r.responsable_nombre,
@@ -79,11 +80,22 @@ function validar(b, existente) {
     return { error: 'El día límite debe ser un número del 1 al 31.' };
   }
 
-  // Dias de aviso previo: 0 significa "avisar solo el mismo dia".
+  // Dias de aviso previo: 0 significa "avisar solo el mismo dia". A partir de
+  // ese dia se recuerda TODOS los dias hasta que llegue el comprobante.
   const diasAvisoRaw = b.diasAviso ?? existente?.dias_aviso ?? 3;
   const diasAviso = Number(diasAvisoRaw);
   if (!Number.isInteger(diasAviso) || diasAviso < 0 || diasAviso > 30) {
     return { error: 'Los días de aviso deben ir de 0 a 30.' };
+  }
+
+  // Hora del recordatorio (HH:mm en hora de Mexico). Vacio = la hora general.
+  let horaAviso = String(b.horaAviso ?? existente?.hora_aviso ?? '').trim();
+  if (horaAviso) {
+    const m = /^(\d{1,2}):(\d{2})$/.exec(horaAviso);
+    if (!m || Number(m[1]) > 23 || Number(m[2]) > 59) {
+      return { error: 'La hora del aviso debe ir en formato HH:mm (por ejemplo 09:00).' };
+    }
+    horaAviso = String(Number(m[1])).padStart(2, '0') + ':' + m[2];
   }
 
   // El ancla solo aplica (y solo se exige) en los bimestrales.
@@ -110,7 +122,7 @@ function validar(b, existente) {
   return {
     valor: {
       sucursal, departamento, tipo, periodicidad, mesAncla: mesAncla || null,
-      diaLimite, diasAviso, montoEstimado,
+      diaLimite, diasAviso, horaAviso: horaAviso || null, montoEstimado,
       proveedor: String(b.proveedor ?? existente?.proveedor ?? '').trim(),
       referencia: String(b.referencia ?? existente?.referencia ?? '').trim(),
       responsableUid: String(b.responsableUid ?? existente?.responsable_uid ?? '').trim() || null,
@@ -173,9 +185,9 @@ module.exports = async (req, res) => {
       await query(
         `insert into mdtask_servicios
            (id, sucursal, departamento, tipo, proveedor, referencia, periodicidad, mes_ancla,
-            dia_limite, dias_aviso, monto_estimado, responsable_uid, responsable_nombre,
+            dia_limite, dias_aviso, hora_aviso, monto_estimado, responsable_uid, responsable_nombre,
             responsable_telefono, activo, datos, creado_en, creado_por, actualizado_en, eliminado)
-         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16::jsonb,$17,$18,$19,false)
+         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$20,$11,$12,$13,$14,$15,$16::jsonb,$17,$18,$19,false)
          on conflict (id) do update set
            sucursal = excluded.sucursal,
            departamento = excluded.departamento,
@@ -186,6 +198,7 @@ module.exports = async (req, res) => {
            mes_ancla = excluded.mes_ancla,
            dia_limite = excluded.dia_limite,
            dias_aviso = excluded.dias_aviso,
+           hora_aviso = excluded.hora_aviso,
            monto_estimado = excluded.monto_estimado,
            responsable_uid = excluded.responsable_uid,
            responsable_nombre = excluded.responsable_nombre,
@@ -199,9 +212,12 @@ module.exports = async (req, res) => {
           s.referencia || null, s.periodicidad, s.mesAncla, s.diaLimite, s.diasAviso,
           s.montoEstimado, s.responsableUid, s.responsableNombre, s.responsableTelefono,
           s.activo, JSON.stringify(extras),
+          // $20 (hora_aviso) va al final del arreglo para no renumerar todos los
+          // demas parametros; en el INSERT esta en su lugar por nombre de columna.
           existente ? Number(existente.creado_en || ahora) : ahora,
           existente ? existente.creado_por : quien,
           ahora,
+          s.horaAviso,   // $20
         ]
       );
 

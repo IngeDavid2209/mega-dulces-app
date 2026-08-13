@@ -157,7 +157,7 @@ async function generarPagosPendientes() {
 // Pagos abiertos (sin pagar) con los datos de su servicio.
 const SELECT_ABIERTOS = `
   select p.*, s.proveedor, s.referencia, s.departamento, s.periodicidad, s.dias_aviso,
-         s.responsable_nombre, s.responsable_telefono, s.monto_estimado, s.activo
+         s.hora_aviso, s.responsable_nombre, s.responsable_telefono, s.monto_estimado, s.activo
     from mdtask_pagos_servicios p
     join mdtask_servicios s on s.id = p.servicio_id
    where p.eliminado = false and s.eliminado = false
@@ -170,6 +170,7 @@ function pagoConServicio(r) {
     estado: r.estado, avisos: r.avisos || {},
     departamento: r.departamento, proveedor: r.proveedor, referencia: r.referencia,
     diasAviso: r.dias_aviso == null ? 3 : Number(r.dias_aviso),
+    horaAviso: r.hora_aviso || null,
     responsableNombre: r.responsable_nombre, responsableTelefono: r.responsable_telefono,
     montoEstimado: r.monto_estimado == null ? null : Number(r.monto_estimado),
     activo: r.activo !== false,
@@ -210,22 +211,27 @@ function textoRecordatorio(pago, dias) {
 /**
  * Manda los recordatorios que tocan hoy.
  *
+ * Se avisa TODOS LOS DIAS de la cuenta regresiva, uno por dia: si el pago vence
+ * el 30 y el servicio dice "3 dias antes", se recuerda el 27, el 28, el 29 y el
+ * 30. Si aun asi no llega el comprobante, se sigue insistiendo a diario hasta el
+ * tope (PAGOS_TOPE_INSISTENCIA).
+ *
  * Regla: MAXIMO un recordatorio por pago y por dia (se guarda la fecha del
  * ultimo en `avisos.ultimoDia`). Se manda cuando:
  *   - faltan `dias_aviso` dias o menos, o
  *   - ya vencio y no se ha pasado del tope de insistencia.
  *
- * Los avisos salen a partir de PAGOS_HORA para no escribirle a nadie de
- * madrugada. Si el servidor se reinicia a media manana, el poll los manda en
- * cuanto levanta (la bitacora evita repetirlos).
+ * La HORA la decide cada servicio (`hora_aviso`); si no tiene, se usa la general
+ * (PAGOS_HORA). Nunca antes de esa hora, para no escribirle a nadie de
+ * madrugada. Si el servidor se reinicia mas tarde, el poll lo manda en cuanto
+ * levanta y la bitacora evita repetirlo.
  */
 async function recordatoriosDelDia() {
   if (!dbConfigurada() || APAGADO) return;
 
   const hoy = hoyMexico();
   const ahoraMin = aMinutos(horaMexico());
-  const desdeMin = aMinutos(HORA_AVISO);
-  if (ahoraMin == null || desdeMin == null || ahoraMin < desdeMin) return;
+  if (ahoraMin == null) return;
 
   let filas;
   try {
@@ -243,6 +249,9 @@ async function recordatoriosDelDia() {
 
     // Todavia no entra en la ventana de aviso.
     if (dias > pago.diasAviso) continue;
+    // Todavia no es la hora que pidieron para este servicio.
+    const horaDelServicio = aMinutos(pago.horaAviso || HORA_AVISO);
+    if (horaDelServicio != null && ahoraMin < horaDelServicio) continue;
     // Vencido hace demasiado: se deja de insistir (sigue en rojo en el tablero).
     if (dias < 0 && Math.abs(dias) > TOPE_INSISTENCIA) continue;
     // Ya se le aviso hoy.
@@ -748,12 +757,13 @@ function iniciarPoll() {
   if (pollIniciado) return;
   if (APAGADO) { console.log('[pagos] avisos APAGADOS (PAGOS_AVISOS=off).'); return; }
   pollIniciado = true;
-  // Cada 10 min basta: los avisos son diarios, no al minuto. Un poll agresivo
-  // solo gastaria consultas para volver a decidir lo mismo.
+  // Cada 5 min: cada servicio puede pedir su propia hora de aviso, y con un poll
+  // mas lento un recordatorio puesto a las 09:00 podria salir bastante despues.
+  // Mas rapido no aporta (los avisos son diarios) y solo gastaria consultas.
   const correr = () => tick().catch(e => console.error('[pagos] poll:', e && e.message));
-  setInterval(correr, 10 * 60 * 1000);
+  setInterval(correr, 5 * 60 * 1000);
   correr();
-  console.log(`[pagos] poll iniciado (cada 10 min) — avisos a partir de las ${HORA_AVISO}, insiste hasta ${TOPE_INSISTENCIA} días`);
+  console.log(`[pagos] poll iniciado (cada 5 min) — hora por servicio (general ${HORA_AVISO}), insiste hasta ${TOPE_INSISTENCIA} días`);
 }
 
 module.exports = {

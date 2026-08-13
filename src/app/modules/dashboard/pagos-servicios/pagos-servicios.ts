@@ -65,10 +65,13 @@ export class PagosServiciosComponent implements OnInit, OnDestroy {
 
   tipos = TIPOS;
 
-  // Filtros de la vista de pagos
-  filtroSucursal = '';
-  filtroEstado = '';
-  filtroTipo = '';
+  // Filtros de la vista de pagos.
+  // Son SIGNALS a proposito: los lee un computed, y un computed no se entera de
+  // los cambios de una propiedad normal. Si fueran campos sueltos, mover un
+  // filtro no repintaria la tabla hasta el refresco de 30 s.
+  filtroSucursal = signal('');
+  filtroEstado = signal('');
+  filtroTipo = signal('');
 
   // Formulario del catalogo de servicios
   modalServicio = false;
@@ -95,8 +98,91 @@ export class PagosServiciosComponent implements OnInit, OnDestroy {
       .filter(u => u.activo !== false && String(u.telefono || '').replace(/\D/g, '').length >= 10)
       .sort((a, b) => String(a.nombre || '').localeCompare(String(b.nombre || ''))));
 
+  // --- Buscador de responsable ---------------------------------------------
+  // Son más de cien personas: una lista desplegable obliga a recorrerla a mano.
+  // Aquí se escribe el nombre (o el teléfono) y la lista se va acortando.
+  busquedaResponsable = signal('');
+  listaResponsablesAbierta = false;
+
+  /** Quita acentos y mayúsculas para que "estefania" encuentre a "Estefanía". */
+  private normalizar(t: any): string {
+    return String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+  }
+
+  responsablesFiltrados = computed<any[]>(() => {
+    const q = this.normalizar(this.busquedaResponsable());
+    const lista = this.responsablesPosibles();
+    if (!q) return lista;
+    // Se busca por nombre y por teléfono (solo dígitos), porque a veces se
+    // acuerdan del número y no del nombre completo.
+    const soloDigitos = q.replace(/\D/g, '');
+    return lista.filter(u =>
+      this.normalizar(u.nombre).includes(q) ||
+      (soloDigitos.length >= 3 && String(u.telefono || '').replace(/\D/g, '').includes(soloDigitos)));
+  });
+
+  /**
+   * Explica en palabras qué va a hacer el bot con lo que se acaba de capturar.
+   *
+   * Se arma en vivo porque "avisar 3 días antes" es ambiguo: no es UN aviso tres
+   * días antes, es uno CADA DÍA de esos tres, más el día del vencimiento. Dicho
+   * con los números que la persona ya escribió, no hay que adivinarlo.
+   */
+  explicacionAvisos(): string {
+    const dia = Number(this.form.diaLimite);
+    const antes = Number(this.form.diasAviso);
+    const hora = String(this.form.horaAviso || '').trim();
+    if (!Number.isFinite(dia) || dia < 1) return '';
+
+    const aLas = hora ? ` a las ${hora}` : '';
+    if (!Number.isFinite(antes) || antes <= 0) {
+      return `Se le avisará el día ${dia}${aLas}, y después una vez al día mientras no llegue el comprobante.`;
+    }
+
+    // Los días de la cuenta regresiva. Si la cuenta se sale del mes no se
+    // inventan números (no todos los meses tienen los mismos días): se dice en
+    // palabras, que para explicar es igual de claro y no puede quedar mal.
+    if (dia - antes < 1) {
+      return `Se le avisará cada día durante los ${antes} días previos al ${dia}${aLas} `
+        + '(los primeros caen en el mes anterior), y si no manda el comprobante '
+        + 'se le sigue recordando a diario después del vencimiento.';
+    }
+    const dias: string[] = [];
+    for (let i = antes; i >= 0; i--) dias.push(String(dia - i));
+    const lista = dias.slice(0, -1).join(', ') + ' y ' + dias[dias.length - 1];
+    return `Se le avisará los días ${lista}${aLas} (uno cada día), y si no manda el comprobante `
+      + 'se le sigue recordando a diario después del vencimiento.';
+  }
+
+  /** Elegir a alguien de la lista (o `null` para dejar el servicio sin responsable). */
+  elegirResponsable(u: any | null) {
+    if (!u) {
+      this.form.responsableUid = '';
+      this.form.responsableNombre = '';
+      this.form.responsableTelefono = '';
+      this.busquedaResponsable.set('');
+    } else {
+      this.form.responsableUid = u.id || u.uid || '';
+      this.form.responsableNombre = u.nombre || '';
+      // El teléfono se guarda normalizado a 10 dígitos: en el directorio los hay
+      // con lada 52, con espacios y con guiones, y el bot compara los últimos 10.
+      this.form.responsableTelefono = String(u.telefono || '').replace(/\D/g, '').slice(-10);
+      this.busquedaResponsable.set(u.nombre || '');
+    }
+    this.listaResponsablesAbierta = false;
+  }
+
+  /** Se cierra la lista al salir del campo; el `mousedown` de la opción ya corrió. */
+  cerrarListaResponsables() {
+    this.listaResponsablesAbierta = false;
+    // Si quedó texto escrito que no corresponde a nadie elegido, se limpia para
+    // no dejar en pantalla un nombre que en realidad no se guardó.
+    if (!this.form.responsableUid) this.busquedaResponsable.set('');
+    else this.busquedaResponsable.set(this.form.responsableNombre || '');
+  }
+
   pagosFiltrados = computed(() => {
-    const suc = this.filtroSucursal, est = this.filtroEstado, tipo = this.filtroTipo;
+    const suc = this.filtroSucursal(), est = this.filtroEstado(), tipo = this.filtroTipo();
     return this.pagos().filter(p =>
       (!suc || p.sucursal === suc) &&
       (!est || p.estadoVisible === est) &&
@@ -203,6 +289,7 @@ export class PagosServiciosComponent implements OnInit, OnDestroy {
     return {
       id: '', sucursal: '', departamento: '', tipo: 'luz', proveedor: '', referencia: '',
       periodicidad: 'mensual', mesAncla: '', diaLimite: 15, diasAviso: 3,
+      horaAviso: '09:00',
       montoEstimado: null as number | null,
       responsableUid: '', responsableNombre: '', responsableTelefono: '',
       activo: true, notas: '',
@@ -211,6 +298,8 @@ export class PagosServiciosComponent implements OnInit, OnDestroy {
 
   abrirNuevoServicio() {
     this.form = this.formVacio();
+    this.busquedaResponsable.set('');
+    this.listaResponsablesAbierta = false;
     this.modalServicio = true;
   }
 
@@ -226,6 +315,7 @@ export class PagosServiciosComponent implements OnInit, OnDestroy {
       mesAncla: s.mesAncla || '',
       diaLimite: s.diaLimite ?? 15,
       diasAviso: s.diasAviso ?? 3,
+      horaAviso: s.horaAviso || '09:00',
       montoEstimado: s.montoEstimado ?? null,
       responsableUid: s.responsableUid || '',
       responsableNombre: s.responsableNombre || '',
@@ -233,15 +323,10 @@ export class PagosServiciosComponent implements OnInit, OnDestroy {
       activo: s.activo !== false,
       notas: s.notas || '',
     };
+    // El buscador arranca mostrando a quien ya estaba puesto.
+    this.busquedaResponsable.set(s.responsableNombre || '');
+    this.listaResponsablesAbierta = false;
     this.modalServicio = true;
-  }
-
-  /** Al elegir responsable se copian nombre y teléfono: el bot avisa por ahí. */
-  alElegirResponsable() {
-    const u = this.responsablesPosibles().find(x => (x.id || x.uid) === this.form.responsableUid);
-    if (!u) { this.form.responsableNombre = ''; this.form.responsableTelefono = ''; return; }
-    this.form.responsableNombre = u.nombre || '';
-    this.form.responsableTelefono = String(u.telefono || '').replace(/\D/g, '').slice(-10);
   }
 
   async guardarServicio() {
@@ -314,18 +399,31 @@ export class PagosServiciosComponent implements OnInit, OnDestroy {
    * resolver, y el backend lo rechaza igual si llega sin él.
    */
   async registrarPago(p: any) {
+    // El modal se monta fuera del componente, así que el CSS de esta pantalla no
+    // le llega: los campos se estilan aquí para que se vean iguales entre sí y
+    // para que el signo de pesos quede pegado al monto.
+    const campo = 'width:100%;box-sizing:border-box;border:1px solid #E2E8F0;border-radius:9px;'
+      + 'padding:10px 12px;font-size:15px;background:#fff;color:#0F172A';
+    const etiqueta = 'display:block;text-align:left;font-size:12.5px;font-weight:600;color:#334155;margin:14px 0 5px';
+
     const { value: datos } = await Swal.fire({
       title: 'Registrar pago',
       html:
-        `<p style="font-size:13px;color:#64748B;margin:0 0 14px">${this.nombreServicio(p)} — ${p.periodoTexto || ''}</p>`
-        + '<input id="sw-monto" class="swal2-input" type="number" step="0.01" min="0" placeholder="Monto pagado">'
-        + '<select id="sw-forma" class="swal2-input">'
-        + '<option value="">¿Cómo se pagó?</option>'
+        `<p style="font-size:13px;color:#64748B;margin:0 0 4px">${this.nombreServicio(p)} — ${p.periodoTexto || ''}</p>`
+        + `<label style="${etiqueta}">Monto pagado</label>`
+        + '<div style="display:flex;align-items:center;gap:8px">'
+        + '<span style="font-size:17px;font-weight:700;color:#475569">$</span>'
+        + `<input id="sw-monto" type="number" step="0.01" min="0" placeholder="0.00" style="${campo}">`
+        + '</div>'
+        + `<label style="${etiqueta}">¿Cómo se pagó?</label>`
+        + `<select id="sw-forma" style="${campo}">`
+        + '<option value="">Selecciona una opción</option>'
         + '<option value="efectivo">Efectivo</option>'
         + '<option value="tarjeta">Tarjeta</option>'
         + '<option value="transferencia">Transferencia</option>'
         + '</select>'
-        + '<input id="sw-url" class="swal2-input" placeholder="Liga del comprobante">'
+        + `<label style="${etiqueta}">Liga del comprobante</label>`
+        + `<input id="sw-url" placeholder="https://..." style="${campo}">`
         + '<p style="font-size:12px;color:#94A3B8;margin:10px 2px 0;text-align:left">'
         + 'Si el comprobante llega por WhatsApp se guarda solo. Aquí se pega la liga cuando ya está subido en otro lado.</p>',
       showCancelButton: true, confirmButtonText: 'Registrar', cancelButtonText: 'Cancelar',

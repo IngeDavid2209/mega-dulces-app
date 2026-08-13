@@ -1,0 +1,13 @@
+-- Hora a la que sale el recordatorio de CADA servicio.
+--
+-- Antes la hora era una sola para toda la empresa (variable PAGOS_HORA, 09:00
+-- por defecto). No alcanzaba: hay pagos que conviene recordar temprano, antes de
+-- que la persona salga a la ruta, y otros a media tarde.
+--
+-- Formato 'HH:mm' en hora de Mexico, en texto y no en `time`, por lo mismo que
+-- las horas limite de los checklists: se compara y se muestra como cadena, y asi
+-- no hay que lidiar con zonas horarias al leerlo.
+--
+-- Nulo = usar la hora general (PAGOS_HORA). Los servicios que ya estaban dados
+-- de alta se quedan en nulo y siguen comportandose igual que hasta ahora.
+alter table mdtask_servicios add column if not exists hora_aviso text;

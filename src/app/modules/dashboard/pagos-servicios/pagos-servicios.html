@@ -165,13 +165,13 @@
       @if (!cargando() && vista() === 'pagos') {
         <div class="pg-filtros">
           <label>Sucursal:</label>
-          <select [(ngModel)]="filtroSucursal">
+          <select [ngModel]="filtroSucursal()" (ngModelChange)="filtroSucursal.set($event)">
             <option value="">Todas</option>
             @for (s of sucursales(); track s) { <option [value]="s">{{ s }}</option> }
           </select>
 
           <label>Estado:</label>
-          <select [(ngModel)]="filtroEstado">
+          <select [ngModel]="filtroEstado()" (ngModelChange)="filtroEstado.set($event)">
             <option value="">Todos</option>
             <option value="vencido">Vencidos</option>
             <option value="por_vencer">Por vencer</option>
@@ -180,7 +180,7 @@
           </select>
 
           <label>Servicio:</label>
-          <select [(ngModel)]="filtroTipo">
+          <select [ngModel]="filtroTipo()" (ngModelChange)="filtroTipo.set($event)">
             <option value="">Todos</option>
             @for (t of tipos; track t.valor) { <option [value]="t.valor">{{ t.nombre }}</option> }
           </select>
@@ -273,6 +273,10 @@
                   <div class="pg-card-sub">
                     {{ s.periodicidad === 'bimestral' ? 'Cada 2 meses' : 'Cada mes' }} · día {{ s.diaLimite }}
                   </div>
+                  <div class="pg-card-sub">
+                    Avisa desde {{ s.diasAviso ?? 3 }} día{{ (s.diasAviso ?? 3) === 1 ? '' : 's' }} antes,
+                    a las {{ s.horaAviso || '09:00' }}
+                  </div>
                   @if (s.proveedor) { <div class="pg-card-sub">{{ s.proveedor }}</div> }
                   @if (s.referencia) { <div class="pg-card-sub">Ref. {{ s.referencia }}</div> }
                 </div>
@@ -359,22 +363,63 @@
 
       <div class="pg-form-2">
         <div>
-          <label class="pg-label">Avisar con cuántos días de anticipación</label>
+          <label class="pg-label">Empezar a avisar cuántos días antes</label>
           <input class="pg-input" type="number" min="0" max="30" [(ngModel)]="form.diasAviso">
         </div>
         <div>
-          <label class="pg-label">Monto aproximado (opcional)</label>
-          <input class="pg-input" type="number" step="0.01" min="0" [(ngModel)]="form.montoEstimado" placeholder="1250.00">
+          <label class="pg-label">¿A qué hora se manda el aviso?</label>
+          <input class="pg-input" type="time" [(ngModel)]="form.horaAviso">
         </div>
+      </div>
+      <p class="pg-nota">{{ explicacionAvisos() }}</p>
+
+      <div class="pg-form-2">
+        <div>
+          <label class="pg-label">Monto aproximado (opcional)</label>
+          <div class="pg-monto">
+            <input class="pg-input" type="number" step="0.01" min="0" [(ngModel)]="form.montoEstimado" placeholder="1250.00">
+          </div>
+        </div>
+        <div></div>
       </div>
 
       <label class="pg-label">¿Quién lo paga? (recibe el recordatorio por WhatsApp)</label>
-      <select class="pg-input" [(ngModel)]="form.responsableUid" (ngModelChange)="alElegirResponsable()">
-        <option value="">— Sin responsable —</option>
-        @for (u of responsablesPosibles(); track u.id) {
-          <option [value]="u.id || u.uid">{{ u.nombre }} · {{ u.telefono }}</option>
+      <div class="pg-buscador">
+        <input class="pg-input" type="text" autocomplete="off"
+               placeholder="Escribe el nombre o el teléfono..."
+               [ngModel]="busquedaResponsable()"
+               (ngModelChange)="busquedaResponsable.set($event); listaResponsablesAbierta = true"
+               (focus)="listaResponsablesAbierta = true"
+               (blur)="cerrarListaResponsables()">
+
+        @if (listaResponsablesAbierta) {
+          <!-- Se usa mousedown y no click: el blur del campo se dispara antes que
+               el click y cerraría la lista sin llegar a elegir a nadie. -->
+          <div class="pg-opciones">
+            <button type="button" class="pg-opcion vacia" (mousedown)="elegirResponsable(null)">
+              — Sin responsable —
+            </button>
+            @for (u of responsablesFiltrados(); track u.id || u.uid) {
+              <button type="button" class="pg-opcion"
+                      [class.elegida]="(u.id || u.uid) === form.responsableUid"
+                      (mousedown)="elegirResponsable(u)">
+                <span class="pg-opcion-nombre">{{ u.nombre }}</span>
+                <span class="pg-opcion-tel">{{ u.telefono }}</span>
+              </button>
+            }
+            @if (!responsablesFiltrados().length) {
+              <div class="pg-opcion-sin">Nadie coincide con "{{ busquedaResponsable() }}".</div>
+            }
+          </div>
         }
-      </select>
+      </div>
+
+      @if (form.responsableTelefono) {
+        <p class="pg-elegido">
+          Le llegará a <strong>{{ form.responsableNombre }}</strong> al {{ form.responsableTelefono }}
+          <button type="button" class="pg-link" (click)="elegirResponsable(null)">quitar</button>
+        </p>
+      }
       <p class="pg-nota">Solo aparece el personal que tiene teléfono registrado en Personal, porque el aviso va por ahí.</p>
 
       <label class="pg-label">Notas (opcional)</label>

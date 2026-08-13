@@ -219,7 +219,45 @@
 }
 .pg-input:focus { outline: none; border-color: #0F172A; box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.08); }
 .pg-form-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+/* Campo de dinero: el signo de pesos va DENTRO de la caja, pegado al numero.
+   Se pinta con ::before en vez de meterlo al valor para que el input siga siendo
+   type=number (validacion del navegador y teclado numerico en el celular). */
+.pg-monto { position: relative; }
+.pg-monto::before {
+  content: '$';
+  position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+  color: #475569; font-size: 14px; font-weight: 600; pointer-events: none;
+}
+.pg-monto .pg-input { padding-left: 26px; }
 .pg-nota { font-size: 12px; color: #94A3B8; margin: 6px 2px 0; line-height: 1.5; }
+
+/* ---------- BUSCADOR DE RESPONSABLE ---------- */
+/* Son mas de cien personas: una lista desplegable normal obliga a recorrerlas
+   a mano. Aqui se escribe y la lista se acorta. */
+.pg-buscador { position: relative; }
+.pg-opciones {
+  position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 5;
+  max-height: 260px; overflow-y: auto;
+  background: #fff; border: 1px solid #E2E8F0; border-radius: 10px;
+  box-shadow: 0 12px 28px -8px rgba(15, 23, 42, .25);
+}
+.pg-opcion {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 10px;
+  width: 100%; text-align: left; background: none; border: none;
+  border-bottom: 1px solid #F1F5F9; padding: 9px 12px; cursor: pointer; font-size: 13.5px;
+}
+.pg-opcion:last-child { border-bottom: none; }
+.pg-opcion:hover { background: #F8FAFC; }
+.pg-opcion.elegida { background: #EFF6FF; }
+.pg-opcion.vacia { color: #64748B; font-style: italic; }
+.pg-opcion-nombre { color: #0F172A; font-weight: 600; }
+.pg-opcion-tel { color: #94A3B8; font-size: 12px; white-space: nowrap; }
+.pg-opcion-sin { padding: 14px 12px; color: #94A3B8; font-size: 13px; text-align: center; }
+.pg-elegido {
+  font-size: 12.5px; color: #047857; margin: 8px 2px 0;
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+}
 .pg-check { display: flex; align-items: center; gap: 8px; margin-top: 18px; font-size: 13.5px; color: #334155; }
 .pg-modal-acciones { display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; }
 

@@ -40,6 +40,32 @@ function desglosar(obj) {
   return { cols, datos };
 }
 
+// ---------------------------------------------------------------------------
+//  QUIEN PUEDE ESCRIBIR AQUI
+//
+//  Antes este endpoint no revisaba nada: con cualquier sesion valida se podia
+//  editar a cualquiera, incluso ponerse rol=admin a uno mismo. Lo unico que
+//  frenaba eso eran las reglas de Firestore, y Firestore ya solo es respaldo: el
+//  login y el perfil salen de Postgres. Asi que la regla se pasa aqui, que es
+//  donde ahora si manda.
+//
+//  Es la MISMA politica que ya decian las reglas de Firestore:
+//   - Admin (rol en Postgres): crea, edita y borra a cualquiera.
+//   - Los demas: solo su propia ficha y solo campos inofensivos. No pueden
+//     tocar rol, permisos, sucursales, alcance ni activo.
+// ---------------------------------------------------------------------------
+const CAMPOS_PROPIOS = new Set([
+  'correo', 'telefono', 'password', 'fotoPerfil',
+  'ultimoLatido',   // el latido de presencia lo manda cada quien todo el tiempo
+  'id', 'uid'       // no son cambios, identifican la fila
+]);
+
+async function esAdmin(uid) {
+  if (!uid) return false;
+  const r = await query('select rol from mdtask_usuarios where id = $1', [String(uid)]);
+  return !!r.rows[0] && r.rows[0].rol === 'admin';
+}
+
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
@@ -74,6 +100,26 @@ module.exports = async (req, res) => {
       }
       const r = await query('select * from mdtask_usuarios order by nombre asc');
       return res.json({ usuarios: r.rows.map(fila) });
+    }
+
+    // Crear y borrar: solo admin.
+    if ((req.method === 'POST' || req.method === 'DELETE') && !(await esAdmin(user.uid))) {
+      return res.status(403).json({ error: 'Solo un administrador puede crear o eliminar usuarios.' });
+    }
+
+    // Editar: admin a cualquiera; los demas solo su ficha y solo campos propios.
+    if (req.method === 'PATCH' && !(await esAdmin(user.uid))) {
+      const b = req.body || {};
+      const objetivo = String(b.id || b.uid || '').trim();
+      if (objetivo !== String(user.uid)) {
+        return res.status(403).json({ error: 'Solo puedes editar tu propia ficha.' });
+      }
+      const prohibidos = Object.keys(b).filter(k => !CAMPOS_PROPIOS.has(k));
+      if (prohibidos.length) {
+        return res.status(403).json({
+          error: 'No puedes cambiar estos datos de tu propia ficha: ' + prohibidos.join(', ')
+        });
+      }
     }
 
     if (req.method === 'POST') {

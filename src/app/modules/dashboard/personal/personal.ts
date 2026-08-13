@@ -604,6 +604,10 @@ export class PersonalComponent implements OnInit, OnDestroy {
       grupoPromociones: this.formGrupoPromociones === true,
     };
 
+    // Se avisa al final si la copia de respaldo no se pudo hacer. El guardado sí
+    // quedó (Postgres), pero conviene decirlo en vez de fingir que todo salió.
+    let respaldoFallo = false;
+
     try {
       if (this.usuarioEnEdicion) {
         const docId = this.usuarioEnEdicion.idFirestore || this.usuarioEnEdicion.uid || this.usuarioEnEdicion.usuario;
@@ -710,10 +714,19 @@ export class PersonalComponent implements OnInit, OnDestroy {
           }
         }
 
-        // Guardamos en Firestore (siempre)
-        await setDoc(doc(this.firestore, 'usuarios', docId), payload, { merge: true });
-        await this.guardarIndiceLogin(payload.usuario, payload.correo, docId, this.usuarioEnEdicion?.usuario);
-        await this.api.patch('/api/usuarios', { id: docId, ...payload }).catch(e => console.error('[personal] sync PG editar', e));
+        // Postgres es el bueno: va PRIMERO y si falla se detiene el guardado.
+        // Antes iba al final y con un .catch que se comía el error, así que un
+        // fallo del respaldo abortaba todo y un fallo del guardado real pasaba
+        // desapercibido. Estaba exactamente al revés.
+        await this.api.patch('/api/usuarios', { id: docId, ...payload });
+
+        // Firestore quedó como respaldo de la migración. Si sus reglas dicen no
+        // (o la sesión de Firebase se venció), NO debe tumbar el guardado: se
+        // anota y se sigue. De aquí salía el "Missing or insufficient
+        // permissions" que dejaba los permisos sin guardar en ningún lado.
+        if (!await this.copiarRespaldoFirestore(docId, payload, this.usuarioEnEdicion?.usuario)) {
+          respaldoFallo = true;
+        }
 
       } else {
         // 🔥 FIX CRÍTICO: createUserWithEmailAndPassword desloguea al admin actual
@@ -726,9 +739,12 @@ export class PersonalComponent implements OnInit, OnDestroy {
         try {
           const tempAuth = getAuthSecondary(tempApp);
           const creds = await createUserSecondary(tempAuth, this.formCorreo, this.formPassword);
-          await setDoc(doc(this.firestore, 'usuarios', creds.user.uid), { ...payload, uid: creds.user.uid });
-          await this.guardarIndiceLogin(payload.usuario, payload.correo, creds.user.uid);
-          await this.api.post('/api/usuarios', { id: creds.user.uid, ...payload, uid: creds.user.uid }).catch(e => console.error('[personal] sync PG crear', e));
+          // Igual que al editar: primero el guardado de verdad (Postgres), y el
+          // respaldo en Firestore como algo que puede fallar sin tumbar nada.
+          await this.api.post('/api/usuarios', { id: creds.user.uid, ...payload, uid: creds.user.uid });
+          if (!await this.copiarRespaldoFirestore(creds.user.uid, { ...payload, uid: creds.user.uid })) {
+            respaldoFallo = true;
+          }
           // Cerramos sesión y limpiamos la app temporal — el admin sigue logueado normal.
           await signOutSecondary(tempAuth);
         } finally {
@@ -738,11 +754,39 @@ export class PersonalComponent implements OnInit, OnDestroy {
 
       this.cerrarModal();
       this.usuariosSvc.refrescar(); // refresca la lista compartida (ya no es en vivo)
-      Swal.fire({ icon: 'success', title: '¡Guardado!', text: 'El usuario se ha guardado correctamente.', confirmButtonColor: '#0F172A' });
+      Swal.fire(respaldoFallo
+        ? {
+          icon: 'success', title: '¡Guardado!', confirmButtonColor: '#0F172A',
+          text: 'El usuario se guardó y los permisos ya aplican. La copia de respaldo no se pudo hacer, pero eso no afecta la operación.'
+        }
+        : {
+          icon: 'success', title: '¡Guardado!',
+          text: 'El usuario se ha guardado correctamente.', confirmButtonColor: '#0F172A'
+        });
 
     }
     catch (error: any) {
       Swal.fire({ icon: 'error', title: 'Error', text: error.message || 'Error desconocido', confirmButtonColor: '#0F172A' });
+    }
+  }
+
+  /**
+   * Copia el usuario al respaldo de Firestore. Devuelve false si no se pudo.
+   *
+   * Firestore es lo que quedó de antes de la migración: el login y el perfil ya
+   * salen de Postgres. Sus reglas preguntan si eres admin leyendo tu documento EN
+   * FIRESTORE, así que cualquier desajuste ahí (o una sesión de Firebase vencida)
+   * contesta "Missing or insufficient permissions". Eso no tiene por qué impedir
+   * guardar un permiso, así que aquí se anota y se sigue.
+   */
+  private async copiarRespaldoFirestore(docId: string, payload: any, usuarioAnterior?: string): Promise<boolean> {
+    try {
+      await setDoc(doc(this.firestore, 'usuarios', docId), payload, { merge: true });
+      await this.guardarIndiceLogin(payload.usuario, payload.correo, docId, usuarioAnterior);
+      return true;
+    } catch (e) {
+      console.warn('[personal] no se pudo copiar al respaldo de Firestore', e);
+      return false;
     }
   }
 

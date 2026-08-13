@@ -12,6 +12,8 @@
 //   FLOTILLA:  consultar_vehiculos, apartar_vehiculo, consultar_mis_reservas,
 //              cancelar_reserva, registrar_salida/regreso, reservas_pendientes,
 //              aprobar_reserva (estas dos, solo numeros aprobadores)
+//   PAGOS:     consultar_mis_pagos (los recibos de los que uno es responsable;
+//              reportar el pago no necesita herramienta: se manda la foto)
 //
 // PERMISOS: se toman del perfil de la app (rol/alcance/flags puede*), ver el
 // bloque PERMISOS mas abajo. Regla: ENTREGAR es para todos; ASIGNAR y ver lo de
@@ -1266,6 +1268,11 @@ const TOOLS = [
     name: 'aprobar_reserva',
     description: 'ADMIN: aprueba o rechaza una solicitud de vehiculo. Requiere id (de reservas_pendientes). aprobar=false para rechazar.',
     input_schema: { type: 'object', properties: { id: { type: 'string' }, aprobar: { type: 'boolean', description: 'true=aprobar (por defecto), false=rechazar.' }, motivo: { type: 'string', description: 'Motivo del rechazo. Opcional.' } }, required: ['id'] }
+  },
+  {
+    name: 'consultar_mis_pagos',
+    description: 'Los PAGOS DE SERVICIOS (luz, agua, internet, gas, renta) de los que el usuario es responsable y siguen sin pagarse. Usala cuando pregunte si debe algun recibo o servicio ("tengo algun pago pendiente", "que recibos me tocan", "ya pague todo?"). NO es para las tareas ni para su sueldo: si pregunta por sus pendientes de trabajo, usa mis_pendientes.',
+    input_schema: { type: 'object', properties: {}, required: [] }
   }
 ];
 
@@ -2442,6 +2449,29 @@ async function ejecutarHerramienta(db, ctx, nombre, input) {
     };
   }
 
+  if (nombre === 'consultar_mis_pagos') {
+    // El modulo de pagos se pide AQUI dentro y no arriba a proposito: hay un
+    // ciclo de requires (pagos-notificar -> tareas-notificar -> este archivo) y
+    // pedirlo al cargar dejaria uno de los dos a medio construir.
+    const { resumenPagosDe, esResponsableDeAlgo } = require('./pagos-notificar');
+    // Los pagos se amarran al TELEFONO del responsable, no al usuario de la app:
+    // por WhatsApp es el numero de quien escribe; desde la web, el de su perfil.
+    const tel = ctx.telefono || (ctx.perfil && ctx.perfil.telefono) || '';
+    if (!tel) {
+      return { ok: false, mensaje: 'No tengo un teléfono con el que buscar sus pagos. Los recibos se asignan por número: pídele a quien lleva el control de pagos que lo registre.' };
+    }
+    const r = await resumenPagosDe(tel);
+    if (!r.total) {
+      // Al corriente y "esto no va contigo" no son lo mismo, y confundirlos hace
+      // que alguien se quede tranquilo creyendo que no debe nada.
+      const responsable = await esResponsableDeAlgo(tel);
+      return responsable
+        ? { ok: true, total: 0, mensaje: 'No tiene ningún pago de servicios pendiente: está al corriente 👌' }
+        : { ok: true, total: 0, sin_servicios: true, mensaje: 'No aparece como responsable de ningún servicio (luz, agua, internet...), así que no tiene recibos que pagar. Si debería tenerlos, quien lleva el control de pagos se los puede asignar.' };
+    }
+    return { ok: true, total: r.total, pagos: r.pagos, texto_sugerido: r.texto };
+  }
+
   if (nombre === 'cancelar_reserva') {
     if (!input.id) return { ok: false, mensaje: 'Falta el id de la reserva (usa consultar_mis_reservas).' };
     const r = await pgReservaGet(input.id);
@@ -2688,6 +2718,13 @@ function construirSystem(ctx) {
     ctx.canal === 'whatsapp'
       ? '- Al registrar salida o regreso, el sistema le pedira su UBICACION por WhatsApp (es obligatoria para dejar constancia). Solo dile con naturalidad que comparta su ubicacion; el boton para enviarla aparece automaticamente. NO registres la salida/regreso como hecha hasta que comparta la ubicacion.'
       : '- Registrar salida/regreso con ubicacion se hace desde WhatsApp (ahi el colaborador comparte su ubicacion). Desde aqui solo consulta o gestiona reservas.',
+    '',
+    'PAGOS DE SERVICIOS (luz, agua, internet, gas, renta):',
+    '- Si pregunta si debe algun recibo o servicio ("tengo algun pago pendiente", "que recibos me tocan", "ya pague todo"), usa consultar_mis_pagos. NUNCA contestes de memoria: los recibos cambian cada mes.',
+    '- Solo ves los servicios de los que ESA persona es responsable. Si no es responsable de ninguno, dilo tal cual; no inventes recibos ni prometas revisarlo despues.',
+    '- Para REPORTAR un pago no necesitas herramienta: dile que mande aqui mismo la *foto o el PDF del comprobante* y el sistema lo guarda y le pregunta el monto.',
+    '- No confundas esto con las TAREAS: "que tengo pendiente" del trabajo es mis_pendientes; los recibos son consultar_mis_pagos. Si no queda claro cual pregunta, pregunta tu.',
+    '',
     '- Muestra fechas/horas ya formateadas tal como vienen de las herramientas; no inventes horarios.',
     '- Resuelve fechas relativas a YYYY-MM-DD usando la fecha de hoy.',
     '- Responde SIEMPRE en espanol, breve y claro. Confirma lo hecho en una frase.',

@@ -517,7 +517,7 @@ async function esperaSet(telefono, estado) {
  * Se compara por los ultimos 10 digitos y no por el texto tal cual: en la base
  * hay telefonos guardados con lada, con +52, con espacios y con guiones.
  */
-async function pagosAbiertosDe(telefono) {
+async function pagosAbiertosDe(telefono, { todos = false } = {}) {
   const tel = ultimos10(telefono);
   if (!tel || tel.length < 10) return [];
   let filas;
@@ -539,8 +539,70 @@ async function pagosAbiertosDe(telefono) {
     // Se aceptan los que ya entraron en ventana de aviso. Si alguien paga muy
     // por adelantado, igual se le deja reportar: mas vale recibir el
     // comprobante antes de tiempo que rechazarlo.
-    .filter(p => p.dias == null || p.dias <= Math.max(p.diasAviso, 7))
+    //
+    // `todos:true` se salta ese filtro, y es lo que se usa cuando la persona
+    // PREGUNTA que debe: contestarle "no tienes pagos pendientes" porque el
+    // recibo vence en tres semanas seria mentirle. Para REPORTAR un comprobante
+    // se sigue usando la lista corta, que es la que evita ambiguedades.
+    .filter(p => todos || p.dias == null || p.dias <= Math.max(p.diasAviso, 7))
     .sort((a, b) => (a.dias ?? 999) - (b.dias ?? 999));
+}
+
+/**
+ * ¿Este telefono es responsable de algun servicio? (aunque ahorita no deba nada)
+ *
+ * Sirve para distinguir dos silencios muy distintos: "eres responsable y estas
+ * al corriente" (hay que decirselo) y "esto no va contigo" (mejor callarse y
+ * dejar que el asistente atienda lo que en realidad preguntaba).
+ */
+async function esResponsableDeAlgo(telefono) {
+  const tel = ultimos10(telefono);
+  if (!tel || tel.length < 10) return false;
+  try {
+    const r = await query(
+      `select 1 from mdtask_servicios
+        where eliminado = false and activo = true
+          and right(regexp_replace(coalesce(responsable_telefono,''), '[^0-9]', '', 'g'), 10) = $1
+        limit 1`, [tel]);
+    return r.rows.length > 0;
+  } catch (e) { return false; }
+}
+
+/** Como se lee un vencimiento en el chat: "vence en 2 días", "atrasado 5 días". */
+function cuandoVence(dias) {
+  if (dias == null) return '';
+  if (dias < 0) return ` — 🔴 atrasado ${Math.abs(dias)} día${Math.abs(dias) === 1 ? '' : 's'}`;
+  if (dias === 0) return ' — ⏰ vence hoy';
+  return ` — vence en ${dias} día${dias === 1 ? '' : 's'}`;
+}
+
+/**
+ * Lo que este telefono debe, listo para contestar por WhatsApp.
+ *
+ * Lo usan los DOS caminos —el comando de texto ("mis pagos") y la herramienta
+ * del asistente— para que la respuesta sea la misma sin importar como pregunten.
+ * Devuelve tambien los datos sueltos, porque el asistente necesita razonar sobre
+ * ellos y no solo repetir un parrafo.
+ */
+async function resumenPagosDe(telefono) {
+  const abiertos = await pagosAbiertosDe(telefono, { todos: true });
+  if (!abiertos.length) {
+    return { total: 0, pagos: [], texto: 'No tienes pagos de servicios pendientes por ahora 👌' };
+  }
+  const lista = abiertos.slice(0, 8)
+    .map(p => `• ${nombreServicio(p)} (${p.periodoTexto})${cuandoVence(p.dias)}`)
+    .join('\n');
+  const extra = abiertos.length > 8 ? `\n...y ${abiertos.length - 8} más.` : '';
+  return {
+    total: abiertos.length,
+    pagos: abiertos.map(p => ({
+      servicio: nombreServicio(p), periodo: p.periodoTexto, proveedor: p.proveedor || '',
+      vence: fechaLegible(p.fechaLimite), dias: p.dias,
+      atrasado: p.dias != null && p.dias < 0,
+      monto_estimado: p.montoEstimado ? pesos(p.montoEstimado) : null,
+    })),
+    texto: `Tus pagos pendientes:\n\n${lista}${extra}\n\nCuando pagues alguno, mándame aquí su comprobante 📄`,
+  };
 }
 
 /**
@@ -699,8 +761,35 @@ async function recibirComprobante(telefono, url, tipo, identidad) {
 }
 
 // Comandos de texto que este modulo atiende sin pasar por el asistente.
+//
+// La consulta se reconoce de dos formas, y las dos exigen la palabra pago/recibo:
+//   1) el mensaje ES la pregunta ("mis pagos", "pagos pendientes?");
+//   2) una frase natural de pregunta ("¿tengo algun pago pendiente?", "que
+//      recibos me tocan", "cuanto debo de pagos").
+// Antes solo valia la forma 1, asi que la manera normal de preguntarlo se le
+// escapaba al modulo y caia en el asistente, que no sabe nada de pagos.
+//
+// A PROPOSITO no entra un "¿que tengo pendiente?" a secas: eso es del asistente
+// de TAREAS, que es lo que la gente pregunta cien veces al dia. Para esos casos
+// esta la herramienta `consultar_mis_pagos`, y ahi decide el asistente.
+// ⚠️ `\b` es ASCII en JavaScript, asi que /pagu[eé]\b/ NO casa con "pagué": la
+// "é" no cuenta como letra, no hay frontera y el patron falla en silencio. Es un
+// detalle caro aqui, porque la gente escribe con acentos y las notas de voz se
+// transcriben CON acentos. Por eso el final de palabra se marca con (?![\p{L}])
+// y la bandera /u.
 const RE_CONSULTA = /^\s*(mis\s+)?(pagos|servicios|recibos)\s*(pendientes|abiertos)?\s*[?¿!.]*\s*$/i;
-const RE_YA_PAGUE = /\b(ya\s+)?(pagu[eé]|pague|pagamos|se\s+pag[oó]|pagado)\b/i;
+const RE_CONSULTA_FRASE = /(?:^|[^\p{L}])(?:tengo|tenemos|hay|falta|faltan|debo|debemos|adeudo|toca|tocan|cu[aá]les|qu[eé]|cu[aá]nto)(?![\p{L}])[^]{0,40}(?:^|[^\p{L}])(?:pagos?|recibos?)(?![\p{L}])|(?:^|[^\p{L}])(?:pagos?|recibos?)(?![\p{L}])[^]{0,25}(?:pendientes?|por\s+pagar|atrasad[oa]s?|vencid[oa]s?|abiert[oa]s?)(?![\p{L}])/iu;
+// Lo que NO es una consulta aunque traiga la palabra: reportar que ya se pago.
+// Sin esto, "¿ya pagué la luz?" no, pero "ya pagué el recibo" si caeria en la
+// consulta y el bot contestaria una lista en vez de pedir el comprobante.
+function esConsultaDePagos(t) {
+  if (RE_YA_PAGUE.test(t)) return false;
+  return RE_CONSULTA.test(t) || RE_CONSULTA_FRASE.test(t);
+}
+// Mismo cuidado con los acentos: la version anterior (`...|pagu[eé]|...\b`) NO
+// reconocia "ya pagué la luz" —el caso mas comun de todos— y esa persona se iba
+// al asistente en vez de que le pidieran el comprobante.
+const RE_YA_PAGUE = /(?:^|[^\p{L}])(?:ya\s+)?(?:pagu[eé]|pagamos|pagad[oa]|se\s+pag[oó])(?![\p{L}])/iu;
 
 /**
  * TEXTO ENTRANTE. Devuelve el texto a responder, o null si el mensaje no tiene
@@ -799,17 +888,13 @@ async function resolverPorWhatsapp(telefono, texto) {
   }
 
   // ── Sin hilo abierto: solo comandos claros de pagos ──
-  if (RE_CONSULTA.test(t)) {
-    const abiertos = await pagosAbiertosDe(tel);
-    if (!abiertos.length) return 'No tienes pagos de servicios pendientes por ahora 👌';
-    const lista = abiertos.slice(0, 8).map(p => {
-      const d = p.dias;
-      const cuando = d == null ? '' : d < 0
-        ? ` — 🔴 atrasado ${Math.abs(d)} día${Math.abs(d) === 1 ? '' : 's'}`
-        : d === 0 ? ' — ⏰ vence hoy' : ` — vence en ${d} día${d === 1 ? '' : 's'}`;
-      return `• ${nombreServicio(p)} (${p.periodoTexto})${cuando}`;
-    }).join('\n');
-    return `Tus pagos pendientes:\n\n${lista}\n\nCuando pagues alguno, mándame aquí su comprobante 📄`;
+  if (esConsultaDePagos(t)) {
+    // Si esta persona no es responsable de NINGUN servicio, no se le contesta
+    // "no tienes pagos": se devuelve null y que lo atienda el asistente. Puede
+    // estar preguntando por el pago de otra cosa (una tarea, un proveedor).
+    const resumen = await resumenPagosDe(tel);
+    if (!resumen.total && !(await esResponsableDeAlgo(tel))) return null;
+    return resumen.texto;
   }
 
   if (RE_YA_PAGUE.test(t)) {
@@ -871,6 +956,9 @@ module.exports = {
   generarPagosPendientes, recordatoriosDelDia, resumenSupervisores, tick, iniciarPoll,
   avisarAhora,
   recibirComprobante, resolverPorWhatsapp, pagosAbiertosDe, hayPagoEsperando,
+  // Consulta "¿tengo algo que pagar?": la usan el comando de texto y la
+  // herramienta `consultar_mis_pagos` del asistente, para que contesten igual.
+  resumenPagosDe, esResponsableDeAlgo, esConsultaDePagos,
   // Exportadas para pruebas y para reusar el formato en otros modulos.
   nombreServicio, leerMontoYForma, esperaGet, esperaSet,
 };

@@ -656,9 +656,30 @@ function resolverItem(ck, ref) {
   if (contiene.length > 1) return { idx: -1, ambiguos: contiene.map(({ it, i }) => `${i + 1}. ${it.text}`) };
   return { idx: -1, ambiguos: [] };
 }
-// Ventana por defecto de "lo que arrastra": 14 dias atras. Acota la consulta y
-// evita arrastrar checklists viejisimos que ya nadie va a entregar.
-const DIAS_ARRASTRE = 14;
+// Ventana por defecto: SOLO EL DIA DE HOY.
+//
+// Antes eran 14 dias hacia atras, para que nadie perdiera lo que arrastraba. En
+// la practica hizo lo contrario: como casi nadie ENVIA sus checklists, el
+// arrastre se acumulo y a quien preguntaba "¿que tengo hoy?" le caian 103 tareas
+// de las ultimas dos semanas, todas marcadas "vencida". La lista dejo de servir
+// justo para lo que era, y la gente pedia "solo dame las del lunes".
+//
+// Decision del usuario (17-ago-2026): de hoy en adelante; lo pasado ya no se
+// muestra. Lo viejo NO se pierde —sigue en la app, y por chat se puede pedir con
+// `mis_pendientes({fecha:'YYYY-MM-DD'})`—, simplemente deja de estorbar.
+const DIAS_ARRASTRE = 0;
+
+/**
+ * La ventana de fechas con la que trabaja el bot.
+ *
+ * Vive en UNA sola funcion porque la usan cuatro caminos (la lista, resolver un
+ * checklist, colocar una foto suelta y la entrega automatica al final de la
+ * fila). Si cada uno mirara un rango distinto, el bot enseñaria una lista y
+ * cerraria otra cosa —que es exactamente el bug que ya nos costo caro.
+ */
+function ventanaDeTrabajo(fechaHoy) {
+  return { desde: restarDiasISO(fechaHoy, DIAS_ARRASTRE) || undefined, hasta: fechaHoy || undefined };
+}
 function restarDiasISO(fechaISO, dias) {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(fechaISO || '').trim());
   if (!m) return null;
@@ -685,9 +706,7 @@ function horaEnvioMx() {
  * otra cosa. Numerando todo, los numeros aguantan toda la conversacion.
  */
 async function tareasPlanas(ctx, { uid, nombre, fecha } = {}) {
-  const filtros = fecha
-    ? { desde: fecha, hasta: fecha }
-    : { desde: restarDiasISO(ctx.fechaHoy, DIAS_ARRASTRE) || undefined, hasta: ctx.fechaHoy || undefined };
+  const filtros = fecha ? { desde: fecha, hasta: fecha } : ventanaDeTrabajo(ctx.fechaHoy);
   const checklists = await pgChecklistsDeUsuario({
     uid: uid || ctx.uid, nombre: nombre || ctx.nombre, ...filtros,
   });
@@ -750,9 +769,7 @@ async function resolverChecklistDestino(ctx, checklistId) {
     return { ck };
   }
   const lista = await pgChecklistsDeUsuario({
-    uid: ctx.uid, nombre: ctx.nombre,
-    desde: restarDiasISO(ctx.fechaHoy, DIAS_ARRASTRE) || undefined,
-    hasta: ctx.fechaHoy || undefined,
+    uid: ctx.uid, nombre: ctx.nombre, ...ventanaDeTrabajo(ctx.fechaHoy),
   });
   if (!lista.length) return { error: 'No tienes checklists pendientes por entregar.' };
   if (lista.length === 1) return { ck: lista[0] };
@@ -775,7 +792,7 @@ async function candidatosFoto(identidad) {
     const cks = await pgChecklistsDeUsuario({
       uid: (identidad && identidad.uid) || undefined,
       nombre: (identidad && identidad.nombre) || undefined,
-      desde: restarDiasISO(hoy, DIAS_ARRASTRE) || undefined, hasta: hoy,
+      ...ventanaDeTrabajo(hoy),
     });
     const out = [];
     for (const ck of cks) {
@@ -910,7 +927,7 @@ async function registrarFotoEvidencia(convKey, urlFoto, identidad) {
       try {
         candidatos = await pgChecklistsDeUsuario({
           uid: quien.uid || undefined, nombre: quien.nombre || undefined,
-          desde: restarDiasISO(hoyISO, DIAS_ARRASTRE) || undefined, hasta: hoyISO,
+          ...ventanaDeTrabajo(hoyISO),
         });
       } catch (e) { console.error('[entrega] no pude leer los pendientes:', e && e.message); }
       // Respaldo: si la consulta falla, al menos los de la propia fila.
@@ -1084,11 +1101,11 @@ const TOOLS = [
   // --- ENTREGA DE TAREAS (los checklists que le toca hacer al colaborador) ---
   {
     name: 'mis_pendientes',
-    description: 'Los CHECKLISTS que esta persona tiene por entregar (los de hoy y los que arrastra sin enviar), con sus items numerados. Usala cuando pregunte "que tengo que hacer", "mis tareas de hoy", "que me falta", y SIEMPRE antes de entregar o enviar algo (de aqui salen el checklist_id y el numero de cada item).',
+    description: 'Las tareas que esta persona tiene HOY, numeradas 1..N. Usala cuando pregunte "que tengo que hacer", "mis tareas de hoy", "que me falta", y SIEMPRE antes de entregar o enviar algo (de aqui salen el checklist_id y el numero de cada item). Solo trae las de HOY: para otro dia hay que pasar `fecha`.',
     input_schema: {
       type: 'object',
       properties: {
-        fecha: { type: 'string', description: 'YYYY-MM-DD para ver una fecha concreta. Vacio = pendientes de hoy y de dias anteriores sin enviar.' },
+        fecha: { type: 'string', description: 'YYYY-MM-DD para ver OTRO dia (ej. "las del lunes que no entregue"). Vacio = las de hoy.' },
         persona: { type: 'string', description: 'Solo admin: ver los pendientes de otra persona.' }
       },
       required: []
@@ -1774,9 +1791,10 @@ async function ejecutarHerramienta(db, ctx, nombre, input) {
     const { checklists: lista, tareas } = await tareasPlanas(ctx, { uid, nombre: quien, fecha: input.fecha });
     if (!lista.length) {
       return {
-        ok: true, total: 0, checklists: [], tareas: [],
-        mensaje: deOtro ? `${quien} no tiene tareas por entregar${input.fecha ? ' el ' + input.fecha : ''}.`
-          : `No tienes tareas por entregar${input.fecha ? ' el ' + input.fecha : ''} 🎉`
+        ok: true, total_checklists: 0, total_tareas: 0, pendientes: 0, checklists: [], tareas: [],
+        mensaje: (deOtro ? `${quien} no tiene tareas por entregar` : 'No tienes tareas por entregar')
+          + (input.fecha ? ` el ${input.fecha}` : ' hoy')
+          + (deOtro ? '.' : ' 🎉')
       };
     }
     // CONGELA la numeracion que se le va a leer: "la 67" tiene que seguir siendo
@@ -1798,8 +1816,11 @@ async function ejecutarHerramienta(db, ctx, nombre, input) {
       // `tareas` es la lista que se le debe leer al colaborador: numerada de
       // corrido, sin importar en cuantos checklists vengan repartidas.
       tareas: tareas.map(({ _idx, item_id, ...t }) => t),
+      // `total_checklists` y no `total`: el modelo leia `total` (que eran los
+      // CHECKLISTS, 14) y le decia a la persona "tienes 14 tareas" cuando en la
+      // lista habia 55. Un numero mal nombrado se convierte en un dato falso.
       total_tareas: tareas.length, pendientes: pendientes.length, con_foto: conFoto,
-      checklists: vistas, total: vistas.length,
+      checklists: vistas, total_checklists: vistas.length,
       mensaje: pendientes.length === 0
         ? `${deOtro ? quien + ' ya' : 'Ya'} tiene todo hecho; falta enviarlo.`
         : `${pendientes.length} tarea(s) pendiente(s)${conFoto ? `, ${conFoto} con foto` : ''}. Leele la lista con SUS numeros.`
@@ -2696,6 +2717,8 @@ function construirSystem(ctx) {
     '',
     'ENTREGAR TAREAS (lo que el colaborador tiene que hacer hoy):',
     '- "que tengo que hacer", "mis tareas", "que me falta" -> mis_pendientes. Leele la lista de "tareas" con SUS numeros y su hora limite; esa numeracion es la unica que debes usar. NO le hables de "checklists": para el son TAREAS (las rutinas llegan como muchos checklists de una sola tarea).',
+    '- La lista trae SOLO LAS DE HOY. Si te pide las de otro dia ("las del lunes", "las que no entregue el sabado"), llama mis_pendientes con `fecha` en YYYY-MM-DD. Nunca le digas que arrastra tareas viejas si no se lo has consultado con fecha.',
+    '- Cuando cuentes cuantas tiene, usa `pendientes` (las tareas que le faltan), NO `total_checklists`: son cosas distintas y confundirlas le da un numero falso.',
     '- "ya hice la 2" -> entregar_item item:"2". "ya hice la 1, 3 y 7" -> entregar_item tareas:["1","3","7"]. "ya termine todo" -> entregar_item todas:true. Si no tienes los numeros frescos, llama mis_pendientes primero.',
     '- FOTOS EN FILA: las tareas que piden foto NO se cierran al marcarlas; entran a una fila. Si te devuelve fotos_en_cola, pidele las fotos UNA POR UNA empezando por siguiente_foto. Cada imagen que mande se guarda sola y el sistema le confirma el avance ("3 de 12") y le pide la siguiente: TU no tienes que hacer nada entre fotos. Si es antes/despues, primero la de ANTES.',
     '- Cuando termina la fila de fotos, el sistema ENTREGA SOLO todo lo que quedo completo y a tiempo. No prometas que lo enviaras tu ni vuelvas a llamar enviar_checklist si el sistema ya lo entrego.',

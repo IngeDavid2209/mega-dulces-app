@@ -85,6 +85,10 @@ app.all('/api/promo-proveedores', require('./api/promo-proveedores'));
 app.all('/api/servicios', require('./api/servicios'));
 app.all('/api/pagos-servicios', require('./api/pagos-servicios'));
 
+// 🎫 TICKETS: vale de servicio operativo (solicitudes de servicio entre areas,
+// con su folio, el detalle de lo realizado y las tres firmas del formato).
+app.all('/api/tickets', require('./api/tickets'));
+
 // Comprobacion de salud para Railway (healthcheckPath en railway.json).
 //
 // A proposito NO toca la base: si Postgres tarda o hipa, no queremos que el

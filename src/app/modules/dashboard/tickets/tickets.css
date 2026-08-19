@@ -1,0 +1,274 @@
+/* ============================================================================
+   MODULO TICKETS — Vale de Servicio Operativo.
+   El "shell" (header + sidebar + content) es el mismo de los demas paneles; el
+   VALE aparte imita el formato en papel: bandas azul marino, etiquetas sobre
+   fondo azul claro y el folio en verde.
+   ============================================================================ */
+
+/* ---------- LAYOUT BASE (shell) ---------- */
+.app-layout {
+  display: flex; flex-direction: column; height: 100vh;
+  background-color: #F8FAFC; font-family: 'Inter', system-ui, sans-serif;
+}
+.header {
+  height: 60px; background: white; border-bottom: 1px solid #E2E8F0;
+  display: flex; align-items: center; padding: 0 20px; justify-content: space-between; z-index: 10;
+}
+.header-left { display: flex; align-items: center; gap: 15px; }
+.header-brand {
+  font-weight: 700; font-size: 16px; color: #0F172A;
+  display: flex; flex-direction: column; line-height: 1.2;
+}
+.header-brand small { font-size: 11px; color: #64748B; font-weight: 500; }
+.main-wrapper { display: flex; flex: 1; overflow: hidden; position: relative; }
+.content { flex: 1; padding: 30px; overflow-y: auto; }
+.btn-menu-mobile { display: none; background: transparent; border: none; color: #0F172A; cursor: pointer; }
+.mobile-overlay { display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.4); z-index: 15; }
+
+/* ---------- ENCABEZADO ---------- */
+.tk-header {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 22px 26px; margin-bottom: 20px;
+  background: linear-gradient(135deg, #FFFFFF 0%, #F8FAFF 100%);
+  border: 1px solid #E2E8F0; border-left: 4px solid #1F3864; border-radius: 14px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 24px -12px rgba(15, 23, 42, 0.15);
+  flex-wrap: wrap;
+}
+.tk-title { font-size: 24px; font-weight: 800; color: #0F172A; margin: 0 0 4px; }
+.tk-sub { font-size: 13px; color: #64748B; margin: 0; }
+
+/* ---------- CIFRAS ---------- */
+.tk-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px; margin-bottom: 18px; }
+.tk-kpi {
+  background: #fff; border: 1px solid #E2E8F0; border-radius: 14px; padding: 18px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04); border-top: 3px solid #CBD5E1;
+}
+.tk-kpi.ambar { border-top-color: #F59E0B; }
+.tk-kpi.azul { border-top-color: #1F3864; }
+.tk-kpi.verde { border-top-color: #059669; }
+.tk-kpi-num { font-size: 30px; font-weight: 800; color: #0F172A; line-height: 1; }
+.tk-kpi-lbl { font-size: 12.5px; color: #64748B; margin-top: 6px; font-weight: 600; }
+
+/* ---------- FILTROS ---------- */
+.tk-filtros { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+.tk-filtros label { font-size: 13px; color: #475569; font-weight: 600; }
+.tk-filtros select, .tk-buscar {
+  border: 1px solid #E2E8F0; border-radius: 8px; padding: 7px 10px; font-size: 14px; background: #fff;
+}
+.tk-buscar { flex: 1; min-width: 200px; }
+
+/* ---------- LISTA ---------- */
+.tk-lista { display: flex; flex-direction: column; gap: 8px; }
+.tk-row {
+  background: #fff; border: 1px solid #E2E8F0; border-left: 4px solid #CBD5E1; border-radius: 10px;
+  padding: 12px 14px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; cursor: pointer;
+  transition: box-shadow .15s, transform .05s;
+}
+.tk-row:hover { box-shadow: 0 6px 18px -8px rgba(15, 23, 42, .25); }
+.tk-row:active { transform: translateY(1px); }
+.tk-row.abierto { border-left-color: #F59E0B; }
+.tk-row.proceso { border-left-color: #1F3864; }
+.tk-row.cerrado { border-left-color: #059669; opacity: .82; }
+.tk-row-folio {
+  font-family: monospace; font-size: 12.5px; font-weight: 700; color: #1F3864;
+  background: #EEF2F9; border-radius: 6px; padding: 4px 8px; white-space: nowrap;
+}
+.tk-row-main { flex: 1; min-width: 200px; }
+.tk-row-act { font-weight: 700; color: #0F172A; font-size: 14.5px; }
+.tk-row-meta { color: #64748B; font-size: 12.5px; margin-top: 2px; }
+.tk-dias {
+  font-size: 11.5px; font-weight: 700; color: #B45309; background: #FFFBEB;
+  border-radius: 999px; padding: 2px 8px; white-space: nowrap;
+}
+
+/* ---------- PILDORAS ---------- */
+.pill {
+  display: inline-block; padding: 3px 10px; border-radius: 999px;
+  font-size: 11.5px; font-weight: 700; white-space: nowrap; background: #F1F5F9; color: #64748B;
+}
+.pill-abierto { background: #FFFBEB; color: #B45309; }
+.pill-proceso { background: #EEF2F9; color: #1F3864; }
+.pill-ok { background: #ECFDF5; color: #047857; }
+.pill-cancelado { background: #FEF2F2; color: #B91C1C; }
+
+/* ---------- BARRA DEL VALE ---------- */
+.tk-vale-barra {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  margin-bottom: 14px; flex-wrap: wrap;
+}
+.tk-vale-acciones { display: flex; gap: 8px; flex-wrap: wrap; }
+.tk-cancelado {
+  background: #FEF2F2; border: 1px solid #FECACA; color: #991B1B;
+  border-radius: 10px; padding: 10px 14px; margin-bottom: 12px; font-size: 13.5px; font-weight: 600;
+}
+
+/* ============================================================================
+   EL VALE (imita el formato en papel)
+   ============================================================================ */
+.vale {
+  background: #fff; border: 2px solid #1F3864; border-radius: 6px; overflow: hidden;
+  max-width: 900px; box-shadow: 0 10px 30px -12px rgba(15, 23, 42, .25);
+}
+.vale-top {
+  background: #1F3864; color: #fff; display: flex; align-items: center;
+  justify-content: space-between; gap: 12px; padding: 12px 16px;
+}
+.vale-titulo { font-size: 19px; font-weight: 800; letter-spacing: .3px; }
+.vale-folio { font-family: monospace; font-size: 17px; font-weight: 800; color: #00E676; white-space: nowrap; }
+
+.vale-fila { display: flex; border-top: 1px solid #1F3864; align-items: stretch; flex-wrap: wrap; }
+.vale-fila.alto { align-items: stretch; }
+.vale-lbl {
+  background: #E1E8F3; color: #1F3864; font-size: 10.5px; font-weight: 800;
+  padding: 8px 10px; width: 210px; box-sizing: border-box;
+  border-right: 1px solid #1F3864; display: flex; align-items: center; line-height: 1.25;
+}
+.vale-lbl.chico { width: 92px; }
+.vale-lbl.estatus { width: 92px; border-left: 1px solid #1F3864; }
+.vale-val {
+  flex: 1; min-width: 160px; padding: 5px 8px; display: flex; align-items: center; gap: 12px;
+  box-sizing: border-box;
+}
+.vale-val.ancho { min-width: 240px; }
+.vale-val.sinlbl { width: 100%; }
+.vale-input {
+  width: 100%; border: none; border-bottom: 1px dotted #94A3B8; background: transparent;
+  font-size: 14px; padding: 4px 2px; color: #0F172A; font-family: inherit;
+}
+.vale-input:focus { outline: none; border-bottom: 2px solid #1F3864; }
+.vale-input:disabled { color: #334155; border-bottom-style: solid; border-bottom-color: #E2E8F0; }
+.vale-area {
+  width: 100%; border: none; background: transparent; resize: vertical;
+  font-size: 13.5px; font-family: inherit; color: #0F172A; padding: 4px 2px;
+  line-height: 1.7;
+  /* Renglones como los del formato en papel */
+  background-image: repeating-linear-gradient(to bottom, transparent 0 22px, #E2E8F0 22px 23px);
+}
+.vale-area:focus { outline: none; }
+.vale-area:disabled { color: #334155; }
+
+.vale-banda {
+  background: #1F3864; color: #fff; text-align: center; font-size: 11.5px;
+  font-weight: 800; letter-spacing: .4px; padding: 6px 10px; border-top: 1px solid #1F3864;
+}
+.casilla {
+  font-size: 11px; font-weight: 700; color: #64748B; border: 1.5px solid #CBD5E1;
+  border-radius: 4px; padding: 3px 8px; white-space: nowrap;
+}
+.casilla.marcada { background: #1F3864; color: #fff; border-color: #1F3864; }
+.radio { font-size: 12.5px; font-weight: 700; color: #334155; display: inline-flex; align-items: center; gap: 5px; }
+
+/* ---------- FIRMAS ---------- */
+.vale-firmas { display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid #1F3864; }
+.firma-caja { border-right: 1px solid #1F3864; }
+.firma-caja:last-child { border-right: none; }
+.firma-titulo {
+  background: #1F3864; color: #fff; font-size: 10px; font-weight: 800;
+  text-align: center; padding: 5px 6px; line-height: 1.2;
+}
+.firma-cuerpo {
+  padding: 10px; min-height: 118px; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 4px;
+}
+.firma-vacia { font-size: 10px; color: #94A3B8; font-weight: 700; margin-bottom: 6px; }
+.firma-img { max-width: 100%; height: 54px; object-fit: contain; }
+.firma-nombre {
+  font-size: 12.5px; font-weight: 700; color: #0F172A; text-align: center;
+  border-top: 1px solid #334155; padding-top: 4px; width: 88%;
+}
+.firma-fecha { font-size: 10.5px; color: #64748B; }
+
+/* ---------- BOTONES ---------- */
+.tk-btn-primary {
+  background: #1F3864; color: #fff; border: none; border-radius: 10px;
+  padding: 10px 18px; font-weight: 700; font-size: 14px; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 8px;
+}
+.tk-btn-primary:hover { background: #2A4A80; }
+.tk-btn-primary:disabled { opacity: .6; cursor: default; }
+.tk-btn-ghost {
+  background: transparent; color: #475569; border: 1px solid #E2E8F0; border-radius: 9px;
+  padding: 9px 14px; font-weight: 600; font-size: 13.5px; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.tk-btn-ghost:hover { background: #F1F5F9; }
+.tk-btn-mini {
+  border: 1px solid #CBD5E1; background: #fff; color: #334155; border-radius: 8px;
+  padding: 7px 13px; font-weight: 600; font-size: 13px; cursor: pointer;
+}
+.tk-btn-mini:hover { background: #F8FAFC; }
+.tk-btn-mini:disabled { opacity: .55; cursor: default; }
+.tk-btn-mini.ok { background: #059669; color: #fff; border-color: #059669; }
+.tk-btn-mini.ok:hover { background: #047857; }
+.tk-btn-mini.azul { background: #1F3864; color: #fff; border-color: #1F3864; }
+.tk-btn-mini.danger { background: #fff; color: #B91C1C; border-color: #FCA5A5; }
+.tk-btn-mini.danger:hover { background: #FEF2F2; }
+.tk-btn-mini.pdf { background: #fff; color: #1F3864; border-color: #1F3864; font-weight: 700; }
+.tk-btn-mini.firmar { background: #1F3864; color: #fff; border-color: #1F3864; }
+.tk-link {
+  background: none; border: none; color: #1F3864; font-weight: 700;
+  text-decoration: underline; cursor: pointer; font-size: 12.5px; padding: 0;
+}
+.tk-link.rojo { color: #B91C1C; }
+
+/* ---------- VACIOS / NOTAS ---------- */
+.tk-empty {
+  background: #fff; border: 1px dashed #CBD5E1; border-radius: 12px;
+  padding: 28px; text-align: center; color: #64748B; font-size: 14px;
+}
+.tk-nota { font-size: 12.5px; color: #94A3B8; margin: 8px 2px 0; line-height: 1.55; max-width: 760px; }
+
+/* ---------- MODALES ---------- */
+.tk-modal-fondo {
+  position: fixed; inset: 0; background: rgba(15, 23, 42, 0.45);
+  display: flex; align-items: center; justify-content: center; z-index: 50; padding: 20px;
+}
+.tk-modal {
+  background: #fff; border-radius: 16px; padding: 26px;
+  width: 100%; max-width: 620px; max-height: 90vh; overflow-y: auto;
+  box-shadow: 0 24px 60px -12px rgba(15, 23, 42, 0.35);
+}
+.tk-modal-titulo {
+  font-size: 20px; font-weight: 800; color: #0F172A; margin: 0 0 6px;
+  display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+}
+.tk-modal-folio { font-family: monospace; font-size: 15px; color: #1F3864; font-weight: 800; }
+.tk-label { display: block; font-size: 13px; font-weight: 600; color: #334155; margin: 14px 0 5px; }
+.tk-input {
+  width: 100%; border: 1px solid #E2E8F0; border-radius: 9px; padding: 10px 12px;
+  font-size: 14px; box-sizing: border-box; background: #fff; font-family: inherit;
+}
+.tk-input:focus { outline: none; border-color: #1F3864; box-shadow: 0 0 0 3px rgba(31, 56, 100, 0.08); }
+.tk-form-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.tk-modal-acciones { display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; flex-wrap: wrap; }
+
+/* ---------- LIENZO DE FIRMA ---------- */
+.firma-modal { max-width: 540px; }
+.firma-lienzo-caja {
+  position: relative; margin-top: 14px; border: 2px dashed #CBD5E1; border-radius: 12px;
+  background: #FCFDFF; height: 190px; overflow: hidden;
+}
+.firma-lienzo {
+  width: 100%; height: 100%; display: block;
+  /* Sin esto, arrastrar el dedo hace scroll de la pagina en vez de dibujar. */
+  touch-action: none; cursor: crosshair;
+}
+.firma-linea {
+  position: absolute; left: 24px; right: 24px; bottom: 34px;
+  border-bottom: 1px solid #94A3B8; pointer-events: none;
+}
+
+/* ---------- RESPONSIVE ---------- */
+@media (max-width: 768px) {
+  .content { padding: 16px; }
+  .btn-menu-mobile { display: block; }
+  .mobile-overlay { display: block; }
+  .tk-form-2 { grid-template-columns: 1fr; }
+  .vale-lbl, .vale-lbl.chico, .vale-lbl.estatus {
+    width: 100%; border-right: none; border-left: none; border-bottom: 1px solid #1F3864;
+  }
+  .vale-fila { flex-direction: column; }
+  .vale-firmas { grid-template-columns: 1fr; }
+  .firma-caja { border-right: none; border-bottom: 1px solid #1F3864; }
+  .vale-titulo { font-size: 15px; }
+}

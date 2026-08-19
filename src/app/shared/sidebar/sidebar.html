@@ -60,6 +60,19 @@
         Promociones
       </a>
 
+      <!-- 🎫 Tickets: vale de servicio operativo. Visible para los designados
+           (grupoTickets) y para el admin. -->
+      <a class="nav-item" routerLink="/tickets" routerLinkActive="active"
+         *ngIf="currentUser?.grupoTickets === true || currentUser?.rol === 'admin'"
+         (click)="onNavClick()"
+         title="Tickets: vale de servicio operativo">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 9V6a1 1 0 0 1 1-1h16a1 1 0 0 1 1 1v3a2 2 0 0 0 0 4v3a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-3a2 2 0 0 0 0-4z"></path>
+          <path d="M9 5v14" stroke-dasharray="2 2"></path>
+        </svg>
+        Tickets
+      </a>
+
       <!-- 🧾 Pagos de servicios: luz, agua, internet y demas recibos por
            sucursal. Visible para los designados (grupoPagos) y para el admin,
            que debe poder entrar a apagar un aviso mal configurado. -->

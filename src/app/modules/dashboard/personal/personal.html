@@ -456,6 +456,17 @@
               </label>
             </div>
 
+            <!-- 🎫 PRIVILEGIO: TICKETS (VALE DE SERVICIO OPERATIVO) -->
+            <div class="form-group form-full" style="padding-top: 16px; border-top: 1px solid var(--border);">
+              <label class="premium-perm-item" style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+                <div class="perm-text">
+                  <strong>Tickets (vale de servicio operativo)</strong>
+                  <span>Le agrega al menú el apartado "Tickets": puede levantar solicitudes de servicio, atenderlas y cerrar el vale con firmas. Los administradores entran aunque no tengan este permiso.</span>
+                </div>
+                <div class="perm-switch"><input type="checkbox" [(ngModel)]="formGrupoTickets"><span class="slider"></span></div>
+              </label>
+            </div>
+
             <!-- 🔥 ALCANCE DEL ADMIN (Global vs Por sucursales) 🔥 -->
             <div class="form-group form-full" *ngIf="formRol === 'admin'"
                  style="padding-top: 16px; border-top: 1px solid var(--border);">

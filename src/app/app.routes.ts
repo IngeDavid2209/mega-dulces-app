@@ -6,6 +6,7 @@ import { soloTecGuard } from './services/tec.guard';
 import { flotillaGuard } from './services/flotilla.guard';
 import { promocionesGuard } from './services/promociones.guard';
 import { pagosGuard } from './services/pagos.guard';
+import { ticketsGuard } from './services/tickets.guard';
 import { AgendaComponent } from './agenda/agenda';
 
 export const routes: Routes = [
@@ -144,6 +145,14 @@ export const routes: Routes = [
     path: 'promociones',
     canActivate: [promocionesGuard],
     loadComponent: () => import('./modules/dashboard/promociones/promociones').then(m => m.PromocionesComponent)
+  },
+
+  // 🎫 TICKETS — vale de servicio operativo: solicitudes de servicio entre áreas,
+  // con su folio, el detalle de lo realizado y las firmas del formato.
+  {
+    path: 'tickets',
+    canActivate: [ticketsGuard],
+    loadComponent: () => import('./modules/dashboard/tickets/tickets').then(m => m.TicketsComponent)
   },
 
   // 🧾 PAGOS DE SERVICIOS — luz, agua, internet y demás recibos por sucursal.

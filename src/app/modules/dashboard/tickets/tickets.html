@@ -1,0 +1,387 @@
+<div class="app-layout">
+  <header class="header">
+    <div class="header-left">
+      <button class="btn-menu-mobile" (click)="toggleMenu()">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="3" y1="12" x2="21" y2="12"></line>
+          <line x1="3" y1="6" x2="21" y2="6"></line>
+          <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+      </button>
+      <div class="header-logo-wrap" style="background: transparent !important; width: auto; padding: 0 4px;">
+        <img src="https://static.wixstatic.com/media/fd397e_0fd82a1ecec84a118ceeb603b493f25a~mv2.png" style="height: 36px;">
+      </div>
+      <div class="header-brand">Mega Dulces<small>Vale de servicio operativo</small></div>
+    </div>
+  </header>
+
+  <div class="main-wrapper">
+    <div class="mobile-overlay" *ngIf="isMenuOpen" (click)="toggleMenu()"></div>
+    <app-sidebar [currentUser]="currentUser" [isMenuOpen]="isMenuOpen" (closeMenu)="isMenuOpen = false"></app-sidebar>
+
+    <div class="content">
+
+      <!-- ═══════════════════ LISTA ═══════════════════ -->
+      @if (vista() === 'lista') {
+        <div class="tk-header">
+          <div>
+            <h1 class="tk-title">Tickets de servicio</h1>
+            <p class="tk-sub">Solicitudes de servicio entre áreas. Cada una lleva su folio y termina en un vale firmado.</p>
+          </div>
+          <button class="tk-btn-primary" (click)="abrirNuevo()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            Nuevo ticket
+          </button>
+        </div>
+
+        @if (cargando()) {
+          <div class="tk-empty">Cargando...</div>
+        } @else {
+
+          <div class="tk-kpis">
+            <div class="tk-kpi ambar">
+              <div class="tk-kpi-num">{{ totalAbiertos() }}</div>
+              <div class="tk-kpi-lbl">Abiertos</div>
+            </div>
+            <div class="tk-kpi azul">
+              <div class="tk-kpi-num">{{ totalEnProceso() }}</div>
+              <div class="tk-kpi-lbl">En proceso</div>
+            </div>
+            <div class="tk-kpi verde">
+              <div class="tk-kpi-num">{{ totalCompletados() }}</div>
+              <div class="tk-kpi-lbl">Completados</div>
+            </div>
+            <div class="tk-kpi">
+              <div class="tk-kpi-num">{{ mios().length }}</div>
+              <div class="tk-kpi-lbl">Míos sin cerrar</div>
+            </div>
+          </div>
+
+          <div class="tk-filtros">
+            <label>Estado:</label>
+            <select [ngModel]="filtroEstatus()" (ngModelChange)="filtroEstatus.set($event)">
+              <option value="pendientes">Sin cerrar</option>
+              <option value="">Todos</option>
+              <option value="abierto">Abiertos</option>
+              <option value="en_proceso">En proceso</option>
+              <option value="completado">Completados</option>
+              <option value="cancelado">Cancelados</option>
+            </select>
+
+            <label>Área:</label>
+            <select [ngModel]="filtroArea()" (ngModelChange)="filtroArea.set($event)">
+              <option value="">Todas</option>
+              @for (a of areas(); track a) { <option [value]="a">{{ a }}</option> }
+            </select>
+
+            <input class="tk-buscar" type="text" placeholder="Buscar por folio, actividad o persona..."
+                   [ngModel]="busqueda()" (ngModelChange)="busqueda.set($event)">
+          </div>
+
+          @if (!ticketsFiltrados().length) {
+            <div class="tk-empty">
+              No hay tickets con esos filtros.
+              <button class="tk-link" (click)="abrirNuevo()">Levanta el primero</button>
+            </div>
+          }
+
+          <div class="tk-lista">
+            @for (t of ticketsFiltrados(); track t.id) {
+              <div class="tk-row" [class.abierto]="t.estatus === 'abierto'"
+                   [class.proceso]="t.estatus === 'en_proceso'"
+                   [class.cerrado]="t.estatus === 'completado' || t.estatus === 'cancelado'"
+                   (click)="abrirVale(t)">
+                <div class="tk-row-folio">{{ folioTexto(t.folio) }}</div>
+                <div class="tk-row-main">
+                  <div class="tk-row-act">{{ t.actividad }}</div>
+                  <div class="tk-row-meta">
+                    {{ t.area }}
+                    @if (t.lugar) { · {{ t.lugar }} }
+                    · {{ fechaLegible(t.fecha) }}
+                    @if (t.solicitante) { · pide {{ t.solicitante }} }
+                    @if (t.responsable) { · atiende {{ t.responsable }} }
+                  </div>
+                </div>
+                <span class="pill" [class.pill-abierto]="t.estatus === 'abierto'"
+                      [class.pill-proceso]="t.estatus === 'en_proceso'"
+                      [class.pill-ok]="t.estatus === 'completado'"
+                      [class.pill-cancelado]="t.estatus === 'cancelado'">
+                  {{ etiquetaEstatus(t.estatus) }}
+                </span>
+                @if (t.estatus !== 'completado' && t.estatus !== 'cancelado' && diasAbierto(t) !== null && diasAbierto(t)! > 0) {
+                  <span class="tk-dias">{{ diasAbierto(t) }} d</span>
+                }
+              </div>
+            }
+          </div>
+        }
+      }
+
+      <!-- ═══════════════════ EL VALE ═══════════════════ -->
+      @if (vista() === 'vale' && ticketAbierto(); as t) {
+        <div class="tk-vale-barra">
+          <button class="tk-btn-ghost" (click)="cerrarVale()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polyline points="15 18 9 12 15 6"></polyline>
+            </svg>
+            Volver
+          </button>
+          <div class="tk-vale-acciones">
+            @if (t.estatus === 'abierto') {
+              <button class="tk-btn-mini azul" (click)="tomarTicket()" [disabled]="guardando">Me hago cargo</button>
+            }
+            @if (t.estatus !== 'completado' && t.estatus !== 'cancelado') {
+              <button class="tk-btn-mini" (click)="guardarVale()" [disabled]="guardando">
+                {{ guardando ? 'Guardando...' : 'Guardar' }}
+              </button>
+              <button class="tk-btn-mini ok" (click)="guardarVale('completado')" [disabled]="guardando">Cerrar vale</button>
+              <button class="tk-btn-mini danger" (click)="cancelarTicket()" [disabled]="guardando">Cancelar</button>
+            } @else {
+              <button class="tk-btn-mini" (click)="reabrirTicket()" [disabled]="guardando">Reabrir</button>
+            }
+            <button class="tk-btn-mini pdf" (click)="descargarPdf()">Descargar PDF</button>
+          </div>
+        </div>
+
+        @if (t.estatus === 'cancelado') {
+          <div class="tk-cancelado">Ticket cancelado. Motivo: {{ t.motivoCancelacion }}</div>
+        }
+
+        <!-- El vale, con el mismo orden y las mismas casillas que el papel -->
+        <div class="vale">
+          <div class="vale-top">
+            <div class="vale-titulo">VALE DE SERVICIO OPERATIVO</div>
+            <div class="vale-folio">{{ folioTexto(t.folio) }}</div>
+          </div>
+
+          <div class="vale-fila">
+            <div class="vale-lbl chico">FOLIO:</div>
+            <div class="vale-val">{{ t.folio == null ? '—' : (t.folio + '') }}</div>
+            <div class="vale-lbl chico">FECHA:</div>
+            <div class="vale-val">
+              <input class="vale-input" type="date" [(ngModel)]="t.fecha" [disabled]="t.estatus === 'completado'">
+            </div>
+          </div>
+
+          <div class="vale-fila">
+            <div class="vale-lbl">ÁREA / DEPARTAMENTO:</div>
+            <div class="vale-val">
+              <input class="vale-input" [(ngModel)]="t.area" [disabled]="t.estatus === 'completado'" list="areas-vale">
+              <datalist id="areas-vale">
+                @for (a of areasSugeridas(); track a) { <option [value]="a"></option> }
+              </datalist>
+            </div>
+            <div class="vale-lbl estatus">ESTATUS:</div>
+            <div class="vale-val">
+              <span class="casilla" [class.marcada]="t.estatus === 'completado'">COMPLETADO</span>
+              <span class="casilla" [class.marcada]="t.estatus === 'en_proceso'">EN PROCESO</span>
+            </div>
+          </div>
+
+          <div class="vale-fila">
+            <div class="vale-lbl">SOLICITANTE:</div>
+            <div class="vale-val ancho">
+              <input class="vale-input" [(ngModel)]="t.solicitante" [disabled]="t.estatus === 'completado'">
+            </div>
+          </div>
+          <div class="vale-fila">
+            <div class="vale-lbl">RESPONSABLE DEL SERVICIO:</div>
+            <div class="vale-val ancho">
+              <input class="vale-input" [(ngModel)]="t.responsable" [disabled]="t.estatus === 'completado'">
+            </div>
+          </div>
+          <div class="vale-fila">
+            <div class="vale-lbl">SUPERVISOR / JEFE INMEDIATO:</div>
+            <div class="vale-val ancho">
+              <input class="vale-input" [(ngModel)]="t.supervisor" [disabled]="t.estatus === 'completado'">
+            </div>
+          </div>
+          <div class="vale-fila">
+            <div class="vale-lbl">LUGAR / SUCURSAL / ÁREA:</div>
+            <div class="vale-val ancho">
+              <input class="vale-input" [(ngModel)]="t.lugar" [disabled]="t.estatus === 'completado'">
+            </div>
+          </div>
+
+          <div class="vale-banda">INFORMACIÓN DEL SERVICIO REALIZADO</div>
+
+          <div class="vale-fila">
+            <div class="vale-lbl">ACTIVIDAD / SERVICIO REALIZADO:</div>
+            <div class="vale-val ancho">
+              <input class="vale-input" [(ngModel)]="t.actividad" [disabled]="t.estatus === 'completado'">
+            </div>
+          </div>
+          <div class="vale-fila alto">
+            <div class="vale-lbl">DETALLE DE ACTIVIDADES REALIZADAS:</div>
+            <div class="vale-val ancho">
+              <textarea class="vale-area" rows="5" [(ngModel)]="t.detalle" [disabled]="t.estatus === 'completado'"
+                        placeholder="Qué se hizo, paso a paso"></textarea>
+            </div>
+          </div>
+          <div class="vale-fila alto">
+            <div class="vale-lbl">MATERIALES / REFACCIONES / RECURSOS UTILIZADOS:</div>
+            <div class="vale-val ancho">
+              <textarea class="vale-area" rows="4" [(ngModel)]="t.materiales" [disabled]="t.estatus === 'completado'"></textarea>
+            </div>
+          </div>
+          <div class="vale-fila alto">
+            <div class="vale-lbl">RESULTADO / CONCLUSIÓN:</div>
+            <div class="vale-val ancho">
+              <textarea class="vale-area" rows="3" [(ngModel)]="t.resultado" [disabled]="t.estatus === 'completado'"></textarea>
+            </div>
+          </div>
+
+          <div class="vale-fila">
+            <div class="vale-lbl">¿REQUIERE SEGUIMIENTO?</div>
+            <div class="vale-val">
+              <label class="radio"><input type="radio" [value]="true" [(ngModel)]="t.requiereSeguimiento"
+                     [disabled]="t.estatus === 'completado'" name="seg"> SÍ</label>
+              <label class="radio"><input type="radio" [value]="false" [(ngModel)]="t.requiereSeguimiento"
+                     [disabled]="t.estatus === 'completado'" name="seg"> NO</label>
+            </div>
+            <div class="vale-lbl chico">OBSERVACIONES:</div>
+            <div class="vale-val">
+              <input class="vale-input" [(ngModel)]="t.observacionesSeguimiento" [disabled]="t.estatus === 'completado'">
+            </div>
+          </div>
+
+          <!-- Las tres firmas del formato -->
+          <div class="vale-firmas">
+            @for (f of firmas; track f) {
+              <div class="firma-caja">
+                <div class="firma-titulo">{{ etiquetaFirma(f) }}</div>
+                <div class="firma-cuerpo">
+                  @if (t[f] && t[f].url) {
+                    <img class="firma-img" [src]="t[f].url" alt="Firma">
+                    <div class="firma-nombre">{{ t[f].nombre }}</div>
+                    <div class="firma-fecha">{{ fechaLegible(t[f].fecha) }}</div>
+                    <button class="tk-link rojo" (click)="quitarFirma(f)">quitar</button>
+                  } @else {
+                    <div class="firma-vacia">(NOMBRE Y FIRMA)</div>
+                    <button class="tk-btn-mini firmar" (click)="abrirFirma(f)">Firmar</button>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+
+          <div class="vale-banda">OBSERVACIONES GENERALES</div>
+          <div class="vale-fila alto">
+            <div class="vale-val ancho sinlbl">
+              <textarea class="vale-area" rows="3" [(ngModel)]="t.observacionesGenerales"
+                        [disabled]="t.estatus === 'completado'"></textarea>
+            </div>
+          </div>
+        </div>
+
+        @if (t.estatus === 'completado') {
+          <p class="tk-nota">Este vale ya está cerrado, por eso los campos no se pueden editar.
+            Si algo quedó mal, usa <strong>Reabrir</strong>.</p>
+        }
+      }
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ MODAL: nuevo ticket ═══════════════ -->
+@if (modalNuevo) {
+  <div class="tk-modal-fondo" (click)="modalNuevo = false">
+    <div class="tk-modal" (click)="$event.stopPropagation()">
+      <h2 class="tk-modal-titulo">
+        Nuevo ticket
+        @if (folioSiguiente() !== null) {
+          <span class="tk-modal-folio">{{ folioTexto(folioSiguiente()) }}</span>
+        }
+      </h2>
+      <p class="tk-nota">Levanta la solicitud con lo básico. El detalle de lo que se hizo se llena después, al atenderla.</p>
+
+      <div class="tk-form-2">
+        <div>
+          <label class="tk-label">Fecha</label>
+          <input class="tk-input" type="date" [(ngModel)]="form.fecha">
+        </div>
+        <div>
+          <label class="tk-label">Área / departamento que solicita</label>
+          <input class="tk-input" [(ngModel)]="form.area" list="areas-nuevo" placeholder="Sistemas, Bodega, Cajas...">
+          <datalist id="areas-nuevo">
+            @for (a of areasSugeridas(); track a) { <option [value]="a"></option> }
+          </datalist>
+        </div>
+      </div>
+
+      <label class="tk-label">¿Qué se necesita? (actividad / servicio)</label>
+      <input class="tk-input" [(ngModel)]="form.actividad" placeholder="Ej. No enciende la impresora de cajas">
+
+      <label class="tk-label">Lugar / sucursal / área</label>
+      <input class="tk-input" [(ngModel)]="form.lugar" placeholder="Ej. Morelia Madero, caja 2">
+
+      <label class="tk-label">Solicitante</label>
+      <select class="tk-input" [ngModel]="form.solicitanteUid" (ngModelChange)="elegirPersona('solicitante', $event)">
+        <option value="">— Escribir a mano —</option>
+        @for (u of personal(); track u.id) { <option [value]="u.id || u.uid">{{ u.nombre }}</option> }
+      </select>
+      @if (!form.solicitanteUid) {
+        <input class="tk-input" [(ngModel)]="form.solicitante" placeholder="Nombre de quien solicita" style="margin-top:6px">
+      }
+
+      <div class="tk-form-2">
+        <div>
+          <label class="tk-label">Responsable del servicio (opcional)</label>
+          <select class="tk-input" [ngModel]="form.responsableUid" (ngModelChange)="elegirPersona('responsable', $event)">
+            <option value="">— Sin asignar —</option>
+            @for (u of personal(); track u.id) { <option [value]="u.id || u.uid">{{ u.nombre }}</option> }
+          </select>
+        </div>
+        <div>
+          <label class="tk-label">Supervisor / jefe inmediato (opcional)</label>
+          <select class="tk-input" [ngModel]="form.supervisorUid" (ngModelChange)="elegirPersona('supervisor', $event)">
+            <option value="">— Sin asignar —</option>
+            @for (u of personal(); track u.id) { <option [value]="u.id || u.uid">{{ u.nombre }}</option> }
+          </select>
+        </div>
+      </div>
+      <p class="tk-nota">Si dejas el responsable sin asignar, el ticket queda <strong>abierto</strong> hasta que alguien
+        se haga cargo. Si ya sabes quién lo va a hacer, nace <strong>en proceso</strong>.</p>
+
+      <div class="tk-modal-acciones">
+        <button class="tk-btn-ghost" (click)="modalNuevo = false">Cancelar</button>
+        <button class="tk-btn-primary" (click)="guardarNuevo()" [disabled]="guardando">
+          {{ guardando ? 'Creando...' : 'Crear ticket' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ═══════════════ MODAL: firma ═══════════════ -->
+@if (modalFirma) {
+  <div class="tk-modal-fondo">
+    <div class="tk-modal firma-modal">
+      <h2 class="tk-modal-titulo">{{ etiquetaFirma(modalFirma) }}</h2>
+      <p class="tk-nota">Firma con el dedo dentro del cuadro.</p>
+
+      <label class="tk-label">Nombre de quien firma</label>
+      <input class="tk-input" [(ngModel)]="firmaNombre" placeholder="Nombre completo">
+
+      <div class="firma-lienzo-caja">
+        <canvas #lienzo class="firma-lienzo"
+                (pointerdown)="trazoInicia($event)"
+                (pointermove)="trazoMueve($event)"
+                (pointerup)="trazoTermina()"
+                (pointerleave)="trazoTermina()"></canvas>
+        <div class="firma-linea"></div>
+      </div>
+
+      <div class="tk-modal-acciones">
+        <button class="tk-btn-ghost" (click)="limpiarFirma()">Borrar trazo</button>
+        <button class="tk-btn-ghost" (click)="cerrarFirma()">Cancelar</button>
+        <button class="tk-btn-primary" (click)="guardarFirma()" [disabled]="firmaGuardando">
+          {{ firmaGuardando ? 'Guardando...' : 'Guardar firma' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}

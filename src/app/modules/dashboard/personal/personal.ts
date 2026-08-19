@@ -68,6 +68,8 @@ export class PersonalComponent implements OnInit, OnDestroy {
   formGrupoPromociones = false;
   /** Privilegio del apartado "Pagos de servicios" (grupoPagos). */
   formGrupoPagos = false;
+  /** Privilegio del apartado "Tickets" / vale de servicio operativo (grupoTickets). */
+  formGrupoTickets = false;
   // 🔥 NUEVO: Alcance del admin (global = todas las sucursales, sucursales = solo las asignadas)
   formAlcance: 'global' | 'sucursales' = 'global';
 
@@ -470,6 +472,7 @@ export class PersonalComponent implements OnInit, OnDestroy {
   this.formGrupoTec                 = !!user.grupoTec;
   this.formGrupoPromociones         = !!user.grupoPromociones;
   this.formGrupoPagos               = !!user.grupoPagos;
+  this.formGrupoTickets             = !!user.grupoTickets;
 
   this.isModalOpen = true;
 }
@@ -631,6 +634,9 @@ export class PersonalComponent implements OnInit, OnDestroy {
       // admin entra aunque no tenga la bandera: es un módulo con avisos
       // automáticos por WhatsApp y el administrador debe poder apagarlos.
       grupoPagos: this.formGrupoPagos === true,
+      // 🎫 Acceso a "Tickets" (vale de servicio operativo). Igual que Pagos: el
+      // rol admin entra aunque no tenga la bandera.
+      grupoTickets: this.formGrupoTickets === true,
     };
 
     // Se avisa al final si la copia de respaldo no se pudo hacer. El guardado sí

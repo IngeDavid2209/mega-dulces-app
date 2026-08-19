@@ -319,10 +319,10 @@
       <input class="tk-input" [(ngModel)]="form.lugar" placeholder="Ej. Morelia Madero, caja 2">
 
       <label class="tk-label">Solicitante</label>
-      <select class="tk-input" [ngModel]="form.solicitanteUid" (ngModelChange)="elegirPersona('solicitante', $event)">
-        <option value="">— Escribir a mano —</option>
-        @for (u of personal(); track u.id) { <option [value]="u.id || u.uid">{{ u.nombre }}</option> }
-      </select>
+      <app-buscador-persona [personas]="personal()" [uid]="form.solicitanteUid"
+                            etiquetaVacio="— Escribir a mano —"
+                            placeholder="Busca por nombre o teléfono..."
+                            (elegir)="elegirPersona('solicitante', $event)"></app-buscador-persona>
       @if (!form.solicitanteUid) {
         <input class="tk-input" [(ngModel)]="form.solicitante" placeholder="Nombre de quien solicita" style="margin-top:6px">
       }
@@ -330,17 +330,15 @@
       <div class="tk-form-2">
         <div>
           <label class="tk-label">Responsable del servicio (opcional)</label>
-          <select class="tk-input" [ngModel]="form.responsableUid" (ngModelChange)="elegirPersona('responsable', $event)">
-            <option value="">— Sin asignar —</option>
-            @for (u of personal(); track u.id) { <option [value]="u.id || u.uid">{{ u.nombre }}</option> }
-          </select>
+          <app-buscador-persona [personas]="personal()" [uid]="form.responsableUid"
+                                placeholder="Busca por nombre o teléfono..."
+                                (elegir)="elegirPersona('responsable', $event)"></app-buscador-persona>
         </div>
         <div>
           <label class="tk-label">Supervisor / jefe inmediato (opcional)</label>
-          <select class="tk-input" [ngModel]="form.supervisorUid" (ngModelChange)="elegirPersona('supervisor', $event)">
-            <option value="">— Sin asignar —</option>
-            @for (u of personal(); track u.id) { <option [value]="u.id || u.uid">{{ u.nombre }}</option> }
-          </select>
+          <app-buscador-persona [personas]="personal()" [uid]="form.supervisorUid"
+                                placeholder="Busca por nombre o teléfono..."
+                                (elegir)="elegirPersona('supervisor', $event)"></app-buscador-persona>
         </div>
       </div>
       <p class="tk-nota">Si dejas el responsable sin asignar, el ticket queda <strong>abierto</strong> hasta que alguien

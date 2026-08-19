@@ -7,6 +7,7 @@ import Swal from 'sweetalert2';
 import { SidebarComponent } from '../../../shared/sidebar/sidebar';
 import { ApiService } from '../../../shared/api.service';
 import { UsuariosService } from '../../../shared/usuarios.service';
+import { BuscadorPersonaComponent } from '../../../shared/buscador-persona/buscador-persona';
 
 /**
  * MODULO TICKETS — Vale de Servicio Operativo.
@@ -38,7 +39,7 @@ const ESTATUS_TEXTO: Record<string, string> = {
 @Component({
   selector: 'app-tickets',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, SidebarComponent],
+  imports: [CommonModule, FormsModule, RouterModule, SidebarComponent, BuscadorPersonaComponent],
   templateUrl: './tickets.html',
   styleUrls: ['./tickets.css'],
 })
@@ -216,11 +217,10 @@ export class TicketsComponent implements OnInit, OnDestroy {
     } catch { /* si falla, se muestra al guardar */ }
   }
 
-  /** Al elegir a alguien de la lista se copia su nombre y su uid. */
-  elegirPersona(campo: 'solicitante' | 'responsable' | 'supervisor', uid: string) {
-    const u = this.personal().find(x => (x.id || x.uid) === uid);
-    this.form[campo + 'Uid'] = uid || '';
-    this.form[campo] = u ? (u.nombre || '') : '';
+  /** Al elegir a alguien en el buscador se copia su nombre y su uid. */
+  elegirPersona(campo: 'solicitante' | 'responsable' | 'supervisor', persona: any | null) {
+    this.form[campo + 'Uid'] = persona ? (persona.id || persona.uid || '') : '';
+    this.form[campo] = persona ? (persona.nombre || '') : '';
   }
 
   async guardarNuevo() {

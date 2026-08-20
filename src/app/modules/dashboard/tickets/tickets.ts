@@ -604,7 +604,10 @@ export class TicketsComponent implements OnInit, OnDestroy {
 
       const AZUL: [number, number, number] = [31, 56, 100];
       const AZUL_CLARO: [number, number, number] = [225, 232, 243];
-      const VERDE: [number, number, number] = [0, 176, 80];
+      // El folio va en ROJO (antes verde): es el numero del vale y se busca de
+      // un tiron entre todos los papeles. Rojo claro para que se lea sobre la
+      // banda azul marino del encabezado.
+      const ROJO: [number, number, number] = [255, 106, 96];
       const GRIS: [number, number, number] = [120, 130, 145];
 
       const M = 12;                     // margen
@@ -658,7 +661,7 @@ export class TicketsComponent implements OnInit, OnDestroy {
       doc.setFillColor(...AZUL); doc.rect(M, y, A, 12, 'F');
       doc.setTextColor(255, 255, 255); doc.setFont('helvetica', 'bold'); doc.setFontSize(15);
       doc.text('VALE DE SERVICIO OPERATIVO', M + 3, y + 8);
-      doc.setTextColor(...VERDE); doc.setFontSize(14);
+      doc.setTextColor(...ROJO); doc.setFontSize(14);
       doc.text(this.folioTexto(t.folio).replace('No. ', 'No. '), M + A - 3, y + 8, { align: 'right' });
       y += 12;
 

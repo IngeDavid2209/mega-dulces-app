@@ -270,11 +270,25 @@
         <input class="bq-input" [(ngModel)]="formTarea.texto" placeholder="Ej. Barrer el piso de ventas">
       } @else {
         <label class="bq-label">¿Qué hay que hacer?</label>
-        <textarea class="bq-input bq-textarea" rows="5" [(ngModel)]="formTarea.texto"
-                  placeholder="Una por renglón:&#10;Barrer el piso de ventas&#10;Trapear&#10;Limpiar los vidrios"></textarea>
+        <!-- Una tarea por renglón, numeradas. Se agregan las que hagan falta. -->
+        <div class="bq-lineas">
+          @for (l of formTarea.lineas; track $index) {
+            <div class="bq-linea">
+              <span class="bq-linea-n">{{ $index + 1 }}</span>
+              <input class="bq-input" [(ngModel)]="l.v"
+                     (paste)="alPegarTarea($event, $index)"
+                     [placeholder]="$index === 0 ? 'Ej. Barrer el piso de ventas' : 'Otra tarea'">
+              @if (formTarea.lineas.length > 1) {
+                <button class="bq-linea-x" (click)="quitarLineaTarea($index)"
+                        title="Quitar este renglón">&times;</button>
+              }
+            </div>
+          }
+        </div>
+        <button class="bq-link" (click)="agregarLineaTarea()">+ Agregar otra tarea</button>
         <p class="bq-nota">
-          Escribe o <strong>pega</strong> todas las que quieras, una por renglón. Se crean
-          todas con lo que elijas aquí abajo (misma frecuencia y mismo horario).
+          Las que quieras, sin límite. Todas se crean con lo que elijas aquí abajo
+          (misma frecuencia y el horario del bloque).
           @if (cuantasTareas() > 1) {
             <br><strong>Se van a crear {{ cuantasTareas() }} tareas.</strong>
           }

@@ -264,6 +264,10 @@ export class BloquesComponent implements OnInit, OnDestroy {
       id: '', bloqueId: '', texto: '', tipo: 'rutina',
       frecuencia: 'Diaria', diasSemana: [] as string[], diaMes: null as number | null,
       fecha, requiereFoto: false, orden: null as number | null, activo: true,
+      // Al dar de alta: un renglon numerado por tarea (1, 2, 3...). Son objetos y
+      // no strings porque con strings sueltos Angular vuelve a crear el input en
+      // cada tecla y se pierde el cursor. `texto` es el campo de la EDICION.
+      lineas: [{ v: '' }] as { v: string }[],
     };
   }
 
@@ -282,6 +286,8 @@ export class BloquesComponent implements OnInit, OnDestroy {
       frecuencia: t.frecuencia || 'Diaria', diasSemana: [...(t.diasSemana || [])],
       diaMes: t.diaMes ?? null, fecha: t.fecha || this.tareaVacia().fecha,
       requiereFoto: t.requiereFoto === true, orden: t.orden ?? null, activo: t.activo !== false,
+      // Editando no se usan los renglones, pero va para que el objeto sea el mismo.
+      lineas: [{ v: '' }] as { v: string }[],
     };
     this.modalTarea = true;
   }
@@ -312,15 +318,50 @@ export class BloquesComponent implements OnInit, OnDestroy {
   textosDeTarea(): string[] {
     const vistos = new Set<string>();
     const salida: string[] = [];
-    for (const renglon of String(this.formTarea.texto || '').split('\n')) {
-      const limpio = renglon.replace(BloquesComponent.VINETA, '').trim();
+    for (const renglon of (this.formTarea.lineas || [])) {
+      const limpio = this.limpiarVineta(renglon.v);
       if (!limpio) continue;
       const llave = limpio.toLowerCase();
-      if (vistos.has(llave)) continue;
+      if (vistos.has(llave)) continue;   // el mismo texto dos veces es un descuido
       vistos.add(llave);
       salida.push(limpio);
     }
     return salida;
+  }
+
+  /** Quita la vineta o el numero que venga pegado al texto, y los espacios. */
+  private limpiarVineta(texto: any): string {
+    return String(texto == null ? '' : texto).replace(BloquesComponent.VINETA, '').trim();
+  }
+
+  /** Un renglon mas para otra tarea. Sin tope: los que hagan falta. */
+  agregarLineaTarea() {
+    this.formTarea.lineas = [...this.formTarea.lineas, { v: '' }];
+  }
+
+  quitarLineaTarea(i: number) {
+    const l = this.formTarea.lineas.filter((_: any, k: number) => k !== i);
+    this.formTarea.lineas = l.length ? l : [{ v: '' }];
+  }
+
+  /**
+   * Pegar una lista completa en un renglon la reparte en varios.
+   *
+   * Un input de una linea se traga los saltos y dejaria las diez tareas juntas
+   * en el renglon 1; asi cada una cae en su numero.
+   */
+  alPegarTarea(ev: ClipboardEvent, i: number) {
+    const pegado = ev.clipboardData?.getData('text') || '';
+    if (!pegado.includes('\n')) return;   // una sola linea: que pegue el navegador
+
+    ev.preventDefault();
+    const partes = pegado.split('\n').map(x => this.limpiarVineta(x)).filter(Boolean);
+    if (!partes.length) return;
+    this.formTarea.lineas = [
+      ...this.formTarea.lineas.slice(0, i),
+      ...partes.map(v => ({ v })),
+      ...this.formTarea.lineas.slice(i + 1),
+    ];
   }
 
   /** Cuantas se crearian ahora mismo (para el contador del modal). */
@@ -330,7 +371,11 @@ export class BloquesComponent implements OnInit, OnDestroy {
 
   async guardarTarea(seguirAgregando = false) {
     if (this.guardando) return;
-    if (!this.formTarea.texto.trim()) {
+    // Editar es siempre UNA tarea; crear son los renglones numerados que haya.
+    const textos = this.formTarea.id
+      ? [String(this.formTarea.texto || '').trim()].filter(Boolean)
+      : this.textosDeTarea();
+    if (!textos.length) {
       Swal.fire({ icon: 'warning', title: 'Falta la tarea', text: 'Escribe qué hay que hacer.' });
       return;
     }
@@ -345,15 +390,6 @@ export class BloquesComponent implements OnInit, OnDestroy {
         return;
       }
     }
-    // Editar es siempre UNA tarea; crear pueden ser todas las que se escribieron.
-    const textos = this.formTarea.id
-      ? [String(this.formTarea.texto || '').trim()]
-      : this.textosDeTarea();
-    if (!textos.length) {
-      Swal.fire({ icon: 'warning', title: 'Falta la tarea', text: 'Escribe qué hay que hacer.' });
-      return;
-    }
-
     this.guardando = true;
     let creadas = 0;
     try {
@@ -372,9 +408,9 @@ export class BloquesComponent implements OnInit, OnDestroy {
       }
 
       if (seguirAgregando) {
-        // Se queda abierto y con la misma configuracion: solo se limpia el texto,
-        // que es lo que cambia de una tarea a otra.
-        this.formTarea.texto = '';
+        // Se queda abierto y con la misma configuracion: solo se limpian los
+        // renglones, que es lo que cambia de una tarea a otra.
+        this.formTarea.lineas = [{ v: '' }];
         await this.cargar();
         this.bloqueActual = this.bloques().find(b => b.id === this.formTarea.bloqueId) || this.bloqueActual;
       } else {

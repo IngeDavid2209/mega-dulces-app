@@ -233,10 +233,26 @@
   white-space: nowrap;
 }
 
-/* Alta de varias tareas de un golpe: una por renglon. */
-.bq-textarea {
-  min-height: 96px;
-  resize: vertical;
-  font-family: inherit;
-  line-height: 1.5;
+/* ---------- Alta de varias tareas, numeradas ---------- */
+.bq-lineas { display: flex; flex-direction: column; gap: 6px; }
+.bq-linea { display: flex; align-items: center; gap: 6px; }
+.bq-linea .bq-input { flex: 1 1 auto; min-width: 0; }
+
+.bq-linea-n {
+  flex: 0 0 auto;
+  width: 26px; height: 34px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: #F3E8FF;
+  color: #6D28D9;
+  border-radius: 6px;
+  font-size: 12.5px; font-weight: 800;
 }
+
+.bq-linea-x {
+  flex: 0 0 auto;
+  width: 30px; height: 34px;
+  border: 1px solid #E2E8F0; border-radius: 6px;
+  background: #fff; color: #64748B;
+  font-size: 17px; line-height: 1; cursor: pointer;
+}
+.bq-linea-x:hover { background: #FDECEA; border-color: #C7382E; color: #C7382E; }

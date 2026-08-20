@@ -7,6 +7,7 @@ import Swal from 'sweetalert2';
 import { SidebarComponent } from '../../../shared/sidebar/sidebar';
 import { ApiService } from '../../../shared/api.service';
 import { UsuariosService } from '../../../shared/usuarios.service';
+import { BuscadorPersonaComponent } from '../../../shared/buscador-persona/buscador-persona';
 
 /**
  * MODULO BLOQUES DE TRABAJO — creación de tareas por tramos de horario.
@@ -27,10 +28,18 @@ const FRECUENCIAS = ['Diaria', 'Semanal', 'Catorcenal', 'Mensual', 'Trimestral',
 const DIAS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 const ROLES = ['trabajador', 'supervisor', 'admin'];
 
+/** Las que son SUCURSAL de venta. El resto de la lista son areas y oficinas.
+ *  Estan separadas nomas para presentarlas en dos grupos: una parrilla de 18
+ *  chips revueltos no se puede leer. */
+const LUGARES_DE_VENTA = [
+  'Canindo', 'La Piedad Abastos', '8 Esquinas', 'Padre Hidalgo',
+  'Morelia Madero', 'Morelia Abastos', 'Yurécuaro', 'Zamora Centro',
+];
+
 @Component({
   selector: 'app-bloques',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, SidebarComponent],
+  imports: [CommonModule, FormsModule, RouterModule, SidebarComponent, BuscadorPersonaComponent],
   templateUrl: './bloques.html',
   styleUrls: ['./bloques.css'],
 })
@@ -485,10 +494,64 @@ export class BloquesComponent implements OnInit, OnDestroy {
   todasLas() { this.formAsignacion.sucursales = [...this.sucursalesDisponibles()]; }
   ninguna() { this.formAsignacion.sucursales = []; }
 
-  alternarPersona(uid: string) {
-    const i = this.formAsignacion.personas.indexOf(uid);
-    if (i >= 0) this.formAsignacion.personas.splice(i, 1);
-    else this.formAsignacion.personas.push(uid);
+  // ---- Sucursales y areas, en dos grupos ----
+  /** Lo que se puede elegir, partido en "Sucursales" y "Áreas y oficinas". */
+  gruposDeLugares = computed<{ titulo: string; lugares: string[] }[]>(() => {
+    const todas = this.sucursalesDisponibles();
+    const venta = todas.filter(s => LUGARES_DE_VENTA.includes(s));
+    const areas = todas.filter(s => !LUGARES_DE_VENTA.includes(s));
+    return [
+      { titulo: 'Sucursales', lugares: venta },
+      { titulo: 'Áreas y oficinas', lugares: areas },
+    ].filter(g => g.lugares.length);
+  });
+
+  elegida(s: string): boolean { return this.formAsignacion.sucursales.includes(s); }
+
+  cuantasDelGrupo(lugares: string[]): number {
+    return lugares.filter(s => this.elegida(s)).length;
+  }
+
+  /** El botón del grupo: si ya están todas las marca, si no las marca todas. */
+  alternarGrupo(lugares: string[]) {
+    if (this.cuantasDelGrupo(lugares) === lugares.length) {
+      this.formAsignacion.sucursales =
+        this.formAsignacion.sucursales.filter((s: string) => !lugares.includes(s));
+      return;
+    }
+    const faltantes = lugares.filter(s => !this.elegida(s));
+    this.formAsignacion.sucursales = [...this.formAsignacion.sucursales, ...faltantes];
+  }
+
+  // ---- Personal, por buscador ----
+  /**
+   * De donde elige el buscador: el personal activo CON nombre y quitando a los
+   * que ya se eligieron.
+   *
+   * Los que no traen nombre se van fuera a proposito: en la lista de chips
+   * salian como botones en blanco, imposibles de identificar.
+   */
+  personalParaBuscador = computed<any[]>(() =>
+    this.personal().filter(p => String(p.nombre || '').trim()
+      && !this.formAsignacion.personas.includes(p.id || p.uid)));
+
+  /** Los que ya se eligieron, en objetos, para las fichas de abajo. */
+  personasElegidas(): any[] {
+    return this.formAsignacion.personas.map((uid: string) => {
+      const p = this.personal().find(x => (x.id || x.uid) === uid);
+      return p || { id: uid, nombre: '(ya no está en el personal)' };
+    });
+  }
+
+  agregarPersona(p: any | null) {
+    const uid = p && (p.id || p.uid);
+    if (!uid || this.formAsignacion.personas.includes(uid)) return;
+    this.formAsignacion.personas = [...this.formAsignacion.personas, uid];
+  }
+
+  quitarPersona(uid: string) {
+    this.formAsignacion.personas =
+      this.formAsignacion.personas.filter((x: string) => x !== uid);
   }
 
   async guardarAsignacion() {

@@ -374,18 +374,40 @@
         <span class="bq-modal-sub">{{ bloqueActual?.nombre }}</span>
       </h2>
 
-      <label class="bq-label">Sucursales</label>
+      <div class="bq-label-fila">
+        <label class="bq-label">¿Dónde? Sucursales o áreas</label>
+        <span class="bq-conteo">
+          {{ formAsignacion.sucursales.length }} de {{ sucursalesDisponibles().length }}
+        </span>
+      </div>
       <div class="bq-acciones-chicas">
         <button class="bq-link" (click)="todasLas()">Todas</button>
         <button class="bq-link" (click)="ninguna()">Ninguna</button>
       </div>
-      <div class="bq-sucursales">
-        @for (s of sucursalesDisponibles(); track s) {
-          <button class="bq-suc" [class.active]="formAsignacion.sucursales.includes(s)" (click)="alternarSucursal(s)">
-            {{ s }}
-          </button>
-        }
-      </div>
+
+      <!-- Dos grupos con casillas en vez de una parrilla de 18 chips revueltos:
+           las sucursales de venta y las áreas de oficina no se eligen igual. -->
+      @for (g of gruposDeLugares(); track g.titulo) {
+        <div class="bq-grupo">
+          <div class="bq-grupo-top">
+            <span class="bq-grupo-tit">
+              {{ g.titulo }}
+              <small>{{ cuantasDelGrupo(g.lugares) }}/{{ g.lugares.length }}</small>
+            </span>
+            <button class="bq-link" (click)="alternarGrupo(g.lugares)">
+              {{ cuantasDelGrupo(g.lugares) === g.lugares.length ? 'Quitar todas' : 'Marcar todas' }}
+            </button>
+          </div>
+          <div class="bq-lugares">
+            @for (s of g.lugares; track s) {
+              <label class="bq-lugar" [class.on]="elegida(s)">
+                <input type="checkbox" [checked]="elegida(s)" (change)="alternarSucursal(s)">
+                <span>{{ s }}</span>
+              </label>
+            }
+          </div>
+        </div>
+      }
 
       <label class="bq-label">¿A quién?</label>
       <div class="bq-tabs">
@@ -404,16 +426,27 @@
         <p class="bq-nota">Se le repartirá a todo el personal activo con ese rol en las sucursales elegidas.
           Si entra alguien nuevo, también lo recibe.</p>
       } @else {
-        <div class="bq-personas">
-          @for (p of personal(); track p.id) {
-            <button class="bq-persona" [class.active]="formAsignacion.personas.includes(p.id || p.uid)"
-                    (click)="alternarPersona(p.id || p.uid)">
-              {{ p.nombre }}
-            </button>
-          }
-        </div>
+        <!-- Buscador en vez de la lista larga: son mas de cien personas. Al
+             elegir a alguien se agrega abajo y el campo queda libre para la
+             siguiente. Es el mismo buscador de Tickets. -->
+        <app-buscador-persona [personas]="personalParaBuscador()" [uid]="''"
+                              [permitirVacio]="false"
+                              placeholder="Escribe el nombre de quien lo va a hacer..."
+                              (elegir)="agregarPersona($event)"></app-buscador-persona>
+
         @if (formAsignacion.personas.length) {
-          <p class="bq-nota">Elegidas: {{ formAsignacion.personas.length }}</p>
+          <div class="bq-elegidas">
+            @for (p of personasElegidas(); track p.id || p.uid) {
+              <span class="bq-ficha">
+                {{ p.nombre }}
+                <button class="bq-ficha-x" (click)="quitarPersona(p.id || p.uid)"
+                        title="Quitar">&times;</button>
+              </span>
+            }
+          </div>
+          <p class="bq-nota">{{ formAsignacion.personas.length }} elegida(s).</p>
+        } @else {
+          <p class="bq-nota">Todavía no has elegido a nadie.</p>
         }
       }
 

@@ -197,16 +197,6 @@
   padding: 7px 11px; font-weight: 700; font-size: 12.5px; cursor: pointer; min-width: 48px;
 }
 .bq-dia.active { background: #7C3AED; color: #fff; border-color: #7C3AED; }
-.bq-sucursales, .bq-personas {
-  display: flex; gap: 6px; flex-wrap: wrap; max-height: 190px; overflow-y: auto;
-  border: 1px solid #F1F5F9; border-radius: 10px; padding: 10px;
-}
-.bq-suc, .bq-persona {
-  border: 1px solid #E2E8F0; background: #fff; color: #475569; border-radius: 999px;
-  padding: 6px 12px; font-weight: 600; font-size: 12.5px; cursor: pointer;
-}
-.bq-suc.active, .bq-persona.active { background: #7C3AED; color: #fff; border-color: #7C3AED; }
-
 /* ---------- RESPONSIVE ---------- */
 @media (max-width: 768px) {
   .content { padding: 16px; }
@@ -256,3 +246,56 @@
   font-size: 17px; line-height: 1; cursor: pointer;
 }
 .bq-linea-x:hover { background: #FDECEA; border-color: #C7382E; color: #C7382E; }
+
+/* ---------- Elegir sucursales/áreas por grupos ---------- */
+.bq-label-fila {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 10px; flex-wrap: wrap;
+}
+.bq-conteo { font-size: 12px; font-weight: 700; color: #6D28D9; }
+
+.bq-grupo {
+  border: 1px solid #E2E8F0;
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-top: 8px;
+}
+.bq-grupo-top {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 10px; margin-bottom: 8px;
+}
+.bq-grupo-tit { font-size: 12.5px; font-weight: 800; color: #0F172A; }
+.bq-grupo-tit small { font-weight: 700; color: #94A3B8; margin-left: 6px; }
+
+.bq-lugares {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 4px 12px;
+}
+.bq-lugar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 8px; border-radius: 8px;
+  font-size: 13px; color: #334155; cursor: pointer;
+}
+.bq-lugar:hover { background: #F8FAFC; }
+.bq-lugar.on { background: #F3E8FF; color: #5B21B6; font-weight: 700; }
+.bq-lugar input { flex: 0 0 auto; width: 16px; height: 16px; accent-color: #7C3AED; }
+
+/* ---------- Personas elegidas (fichas) ---------- */
+.bq-elegidas { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.bq-ficha {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: #F3E8FF; color: #5B21B6;
+  border-radius: 999px; padding: 5px 6px 5px 12px;
+  font-size: 12.5px; font-weight: 700;
+}
+.bq-ficha-x {
+  border: none; background: rgba(109, 40, 217, .14); color: #5B21B6;
+  width: 18px; height: 18px; border-radius: 50%;
+  font-size: 13px; line-height: 1; cursor: pointer;
+}
+.bq-ficha-x:hover { background: #C7382E; color: #fff; }
+
+@media (max-width: 640px) {
+  .bq-lugares { grid-template-columns: 1fr; }
+}

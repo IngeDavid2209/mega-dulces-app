@@ -232,3 +232,11 @@
   color: #1F3864;
   white-space: nowrap;
 }
+
+/* Alta de varias tareas de un golpe: una por renglon. */
+.bq-textarea {
+  min-height: 96px;
+  resize: vertical;
+  font-family: inherit;
+  line-height: 1.5;
+}

@@ -265,8 +265,21 @@
         <span class="bq-modal-sub">{{ bloqueActual?.nombre }} · {{ bloqueActual?.horaInicio }}-{{ bloqueActual?.horaFin }}</span>
       </h2>
 
-      <label class="bq-label">¿Qué hay que hacer?</label>
-      <input class="bq-input" [(ngModel)]="formTarea.texto" placeholder="Ej. Barrer el piso de ventas">
+      @if (formTarea.id) {
+        <label class="bq-label">¿Qué hay que hacer?</label>
+        <input class="bq-input" [(ngModel)]="formTarea.texto" placeholder="Ej. Barrer el piso de ventas">
+      } @else {
+        <label class="bq-label">¿Qué hay que hacer?</label>
+        <textarea class="bq-input bq-textarea" rows="5" [(ngModel)]="formTarea.texto"
+                  placeholder="Una por renglón:&#10;Barrer el piso de ventas&#10;Trapear&#10;Limpiar los vidrios"></textarea>
+        <p class="bq-nota">
+          Escribe o <strong>pega</strong> todas las que quieras, una por renglón. Se crean
+          todas con lo que elijas aquí abajo (misma frecuencia y mismo horario).
+          @if (cuantasTareas() > 1) {
+            <br><strong>Se van a crear {{ cuantasTareas() }} tareas.</strong>
+          }
+        </p>
+      }
 
       <label class="bq-label">¿Se repite?</label>
       <div class="bq-tabs">
@@ -323,8 +336,15 @@
 
       <div class="bq-modal-acciones">
         <button class="bq-btn-ghost" (click)="modalTarea = false">Cancelar</button>
+        @if (!formTarea.id) {
+          <!-- Para seguir agregando con OTRA frecuencia: guarda y deja el modal
+               abierto, con la misma configuracion y el texto limpio. -->
+          <button class="bq-btn-ghost" (click)="guardarTarea(true)" [disabled]="guardando">
+            Guardar y seguir
+          </button>
+        }
         <button class="bq-btn-primary" (click)="guardarTarea()" [disabled]="guardando">
-          {{ guardando ? 'Guardando...' : 'Guardar' }}
+          {{ guardando ? 'Guardando...' : (cuantasTareas() > 1 ? 'Guardar las ' + cuantasTareas() : 'Guardar') }}
         </button>
       </div>
     </div>

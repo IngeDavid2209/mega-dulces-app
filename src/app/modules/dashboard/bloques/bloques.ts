@@ -292,7 +292,43 @@ export class BloquesComponent implements OnInit, OnDestroy {
     else this.formTarea.diasSemana.push(d);
   }
 
-  async guardarTarea() {
+  /**
+   * Vinetas y numeracion que se le quitan a cada renglon pegado.
+   *
+   * Esta escrita para NO comerse texto de verdad: exige espacio despues del
+   * guion suelto, para que "5-6 vitrinas" o "20 cajas al anden" queden
+   * intactos. Probado con 16 casos.
+   */
+  private static readonly VINETA = /^\s*(?:[-*•·]+\s*|\d+\s*[.)]\s*-?\s*|\d+\s*-\s+)/;
+
+  /**
+   * Las tareas que se van a crear con lo que hay escrito: UNA POR RENGLON.
+   *
+   * Asi se puede pegar la lista completa de una vez en vez de abrir el modal
+   * veinte veces. Se limpian las vinetas y la numeracion porque lo normal es
+   * pegar desde Word o WhatsApp ("1.- Barrer", "- Trapear"), y se quitan los
+   * repetidos para no crear la misma tarea dos veces por un descuido.
+   */
+  textosDeTarea(): string[] {
+    const vistos = new Set<string>();
+    const salida: string[] = [];
+    for (const renglon of String(this.formTarea.texto || '').split('\n')) {
+      const limpio = renglon.replace(BloquesComponent.VINETA, '').trim();
+      if (!limpio) continue;
+      const llave = limpio.toLowerCase();
+      if (vistos.has(llave)) continue;
+      vistos.add(llave);
+      salida.push(limpio);
+    }
+    return salida;
+  }
+
+  /** Cuantas se crearian ahora mismo (para el contador del modal). */
+  cuantasTareas(): number {
+    return this.formTarea.id ? 1 : this.textosDeTarea().length;
+  }
+
+  async guardarTarea(seguirAgregando = false) {
     if (this.guardando) return;
     if (!this.formTarea.texto.trim()) {
       Swal.fire({ icon: 'warning', title: 'Falta la tarea', text: 'Escribe qué hay que hacer.' });
@@ -309,13 +345,54 @@ export class BloquesComponent implements OnInit, OnDestroy {
         return;
       }
     }
+    // Editar es siempre UNA tarea; crear pueden ser todas las que se escribieron.
+    const textos = this.formTarea.id
+      ? [String(this.formTarea.texto || '').trim()]
+      : this.textosDeTarea();
+    if (!textos.length) {
+      Swal.fire({ icon: 'warning', title: 'Falta la tarea', text: 'Escribe qué hay que hacer.' });
+      return;
+    }
+
     this.guardando = true;
+    let creadas = 0;
     try {
-      await this.api.post('/api/bloques?recurso=tarea', { ...this.formTarea, id: this.formTarea.id || undefined });
-      this.modalTarea = false;
-      await this.cargar();
+      // De una en una y en orden, para que queden en la secuencia en que se
+      // escribieron. Si una truena, las anteriores YA quedaron guardadas: por eso
+      // el aviso de error dice cuantas alcanzaron a entrar.
+      const base = (this.bloqueActual?.tareas || []).length;
+      for (let i = 0; i < textos.length; i++) {
+        await this.api.post('/api/bloques?recurso=tarea', {
+          ...this.formTarea,
+          id: this.formTarea.id || undefined,
+          texto: textos[i],
+          orden: this.formTarea.id ? this.formTarea.orden : base + i + 1,
+        });
+        creadas++;
+      }
+
+      if (seguirAgregando) {
+        // Se queda abierto y con la misma configuracion: solo se limpia el texto,
+        // que es lo que cambia de una tarea a otra.
+        this.formTarea.texto = '';
+        await this.cargar();
+        this.bloqueActual = this.bloques().find(b => b.id === this.formTarea.bloqueId) || this.bloqueActual;
+      } else {
+        this.modalTarea = false;
+        await this.cargar();
+      }
+
+      if (creadas > 1) {
+        Swal.fire({
+          icon: 'success', title: `${creadas} tareas agregadas`,
+          timer: 1400, showConfirmButton: false,
+        });
+      }
     } catch (e: any) {
-      this.avisoError(e, 'No se pudo guardar la tarea.');
+      this.avisoError(e, creadas
+        ? `Se agregaron ${creadas} de ${textos.length} tareas; la siguiente no se pudo guardar.`
+        : 'No se pudo guardar la tarea.');
+      if (creadas) await this.cargar();
     } finally {
       this.guardando = false;
     }

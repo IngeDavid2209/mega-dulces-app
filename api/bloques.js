@@ -351,7 +351,10 @@ module.exports = async (req, res) => {
         const bq = await query('select id from mdtask_bloques where id = $1 and eliminado = false', [x.bloqueId]);
         if (!bq.rows[0]) return res.status(400).json({ error: 'Ese bloque no existe.' });
 
-        const id = String(b.id || ('blqt_' + ahora + '_' + Math.random().toString(36).slice(2, 6)));
+        // Sufijo largo a proposito: al dar de alta varias tareas de un golpe
+        // caen en el mismo milisegundo, y con 4 caracteres dos podian chocar; el
+        // `on conflict do update` habria pisado una con otra.
+        const id = String(b.id || ('blqt_' + ahora + '_' + Math.random().toString(36).slice(2, 12)));
         const extras = { ...((existente && existente.datos) || {}) };
         for (const c of ['requiereAntesDespues', 'requiereVariasFotos', 'tiempoEstimado', 'nota']) {
           if (b[c] !== undefined) extras[c] = b[c];

@@ -9,6 +9,7 @@
   --pz-txt: #1E293B;
   --pz-txt-2: #64748B;
   --pz-rojo: #C7382E;
+  --pz-rojo-claro: #FBE9E7;
   --pz-verde: #1F7A4D;
 }
 
@@ -36,11 +37,13 @@
   flex-wrap: wrap;
 }
 
+/* El folio va en ROJO en toda la pantalla y en el PDF: es el numero del
+   documento, y asi se distingue de un tiron del resto de los datos. */
 .promo-folio {
   font-size: 12px;
   font-weight: 700;
-  color: var(--pz-azul);
-  background: var(--pz-azul-claro);
+  color: var(--pz-rojo);
+  background: var(--pz-rojo-claro);
   border-radius: 999px;
   padding: 3px 10px;
 }
@@ -109,7 +112,7 @@
 .promo-tabla td { padding: 9px 10px; border-bottom: 1px solid #F1F5F9; vertical-align: middle; }
 .promo-tabla tbody tr:hover { background: #F8FAFC; }
 .promo-tabla .th-num { text-align: right; }
-.td-folio { font-weight: 800; font-variant-numeric: tabular-nums; color: var(--pz-azul); }
+.td-folio { font-weight: 800; font-variant-numeric: tabular-nums; color: var(--pz-rojo); }
 .td-prov { font-weight: 600; }
 .td-canal { font-weight: 700; font-size: 12px; color: var(--pz-azul); background: var(--pz-azul-claro); white-space: nowrap; }
 .td-ruta { display: flex; gap: 6px; flex-wrap: wrap; }
@@ -196,6 +199,55 @@
 .promo-input:focus { outline: none; border-color: var(--pz-azul); box-shadow: 0 0 0 3px rgba(31,78,121,.12); }
 .promo-textarea { min-height: 84px; resize: vertical; line-height: 1.5; }
 .promo-input-tabla { min-height: 32px; font-size: 12.5px; }
+
+/* "Al": el campo de texto manda y el calendario nomas lo llena. */
+.promo-al { display: flex; gap: 6px; align-items: center; }
+.promo-al > .promo-input:first-child { flex: 1 1 auto; min-width: 0; }
+.promo-al-cal { flex: 0 0 auto; width: 150px; }
+
+/* Renglon de etiqueta con su boton al lado (Mecanica). */
+.promo-label-fila {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; flex-wrap: wrap;
+}
+.promo-label-fila .promo-label { margin-bottom: 0; }
+
+/* Botones chicos: agregar/quitar renglones. */
+.promo-mini {
+  flex: 0 0 auto;
+  min-width: 28px; height: 30px;
+  padding: 0 9px;
+  border: 1px solid var(--pz-linea);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--pz-txt-2);
+  font-size: 12.5px; font-weight: 700;
+  cursor: pointer;
+}
+.promo-mini:hover { background: var(--pz-azul-claro); color: var(--pz-azul); }
+.promo-mini:disabled { opacity: .45; cursor: not-allowed; }
+.promo-mini-mas { color: var(--pz-azul); border-color: var(--pz-azul); white-space: nowrap; }
+.promo-acciones-mini {
+  display: flex; align-items: center; gap: 10px;
+  flex-wrap: wrap; margin-top: 8px;
+}
+
+/* Desglose por canal: un renglon por partida. */
+.promo-desglose { display: flex; flex-direction: column; gap: 5px; align-items: flex-start; }
+.promo-desglose .promo-linea { display: flex; gap: 5px; width: 100%; }
+.promo-desglose .promo-linea .promo-input { flex: 1 1 auto; min-width: 0; }
+
+/* Las tres rutas de Ruta Diaria (LP / ZAM / MOR). */
+.promo-ruta { display: flex; align-items: center; gap: 5px; }
+.promo-ruta-et {
+  flex: 0 0 auto;
+  min-width: 34px;
+  padding: 3px 6px;
+  border-radius: 4px;
+  background: var(--pz-azul-claro);
+  color: var(--pz-azul);
+  font-size: 11px; font-weight: 800; text-align: center;
+}
 
 .promo-rejilla {
   display: grid;

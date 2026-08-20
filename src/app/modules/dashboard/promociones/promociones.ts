@@ -63,6 +63,11 @@ export class PromocionesComponent implements OnInit {
   readonly RECURSOS = RECURSOS;
   /** Tope real de Cloudinary en subida sin firma. No es un limite que yo invente. */
   readonly MAX_ARCHIVO_MB = 10;
+  /** Renglones de codigos que se muestran de entrada: los 6 del formato en papel. */
+  readonly CODIGOS_INICIALES = 6;
+  /** Tope de codigos. El papel trae 6; aqui se pueden agregar los que hagan
+   *  falta (15, 20...). El tope solo existe para que el PDF siga siendo legible. */
+  readonly MAX_CODIGOS = 30;
 
   // ---------------- Vista ----------------
   vista = signal<'lista' | 'captura'>('lista');
@@ -102,11 +107,19 @@ export class PromocionesComponent implements OnInit {
   distribucionDe = '';
   distribucionCod = '';
   cargo: 'con' | 'sin' | '' = '';
-  porCanal: Record<string, string> = {};
+  /** Lo que se captura por canal, ya desglosado en renglones. Es una lista de
+   *  objetos (no de strings) a proposito: con strings sueltos, Angular vuelve a
+   *  crear el input en cada tecla y se pierde el cursor.
+   *  A la base sigue viajando como UN texto por canal con los renglones
+   *  separados por salto de linea, para no migrar lo ya capturado. */
+  porCanalLineas: Record<string, { v: string }[]> = {};
   rutaDiariaLP = '';
-  rutaDiariaCAN = '';
+  rutaDiariaZAM = '';
   rutaDiariaMOR = '';
   autoriza = '';
+  /** Solo para el selector de calendario del campo "Al", que acepta texto libre
+   *  ("Agotar Producto Asignado") y por eso no puede ser un input date. */
+  alCalendario = '';
 
   ngOnInit() {
     const s = localStorage.getItem('md_sesion_actual');
@@ -154,7 +167,32 @@ export class PromocionesComponent implements OnInit {
 
   irAPaso(n: 1 | 2 | 3) {
     if (!this.pasoDesbloqueado(n)) return;
+    if (n === 3) this.sembrarMecanica();
     this.paso.set(n);
+  }
+
+  /**
+   * La MECANICA del formato es, en la practica, la oferta que se negocio en el
+   * paso 2 escrita en limpio. Se copia sola la primera vez que se entra al paso
+   * 3 para no capturar lo mismo dos veces; si ya hay algo escrito NO se pisa.
+   */
+  private sembrarMecanica() {
+    if (!this.mecanica.trim() && this.oferta.trim()) this.mecanica = this.oferta.trim();
+  }
+
+  /** Botón "traer la oferta": pisa la mecanica con la oferta del paso 2. */
+  async traerOfertaAMecanica() {
+    if (!this.oferta.trim()) return;
+    if (this.mecanica.trim() && this.mecanica.trim() !== this.oferta.trim()) {
+      const r = await Swal.fire({
+        icon: 'question', title: '¿Reemplazar la mecánica?',
+        text: 'Lo que tengas escrito en Mecánica se sustituye por la oferta del paso 2.',
+        showCancelButton: true, confirmButtonText: 'Reemplazar', cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#0F172A'
+      });
+      if (!r.isConfirmed) return;
+    }
+    this.mecanica = this.oferta.trim();
   }
 
   // ================= Alta y edición =================
@@ -178,13 +216,15 @@ export class PromocionesComponent implements OnInit {
     this.agenteVentas = ''; this.periodo = '';
     this.vigenciaDel = this.fechaNegociacion; this.vigenciaAl = '';
     this.canales = {}; this.mecanica = '';
-    this.codigos = Array.from({ length: 6 }, () => ({ codigo: '', descripcion: '' }));
+    this.codigos = Array.from({ length: this.CODIGOS_INICIALES }, () => ({ codigo: '', descripcion: '' }));
     this.presupuestoTopado = ''; this.recurso = ''; this.recursoOtros = '';
     this.conceptos = ''; this.monto = null;
     this.distribucionDe = ''; this.distribucionCod = ''; this.cargo = '';
-    this.porCanal = {};
-    this.rutaDiariaLP = ''; this.rutaDiariaCAN = ''; this.rutaDiariaMOR = '';
+    this.porCanalLineas = {};
+    for (const c of CANALES) this.porCanalLineas[c] = [{ v: '' }];
+    this.rutaDiariaLP = ''; this.rutaDiariaZAM = ''; this.rutaDiariaMOR = '';
     this.autoriza = '';
+    this.alCalendario = '';
   }
 
   abrir(p: any) {
@@ -201,9 +241,12 @@ export class PromocionesComponent implements OnInit {
     this.vigenciaAl = p.vigenciaAl || '';
     this.canales = { ...(p.canales || {}) };
     this.mecanica = p.mecanica || '';
+    // Se cargan TODOS los codigos guardados (pueden ser mas de los 6 del papel)
+    // y se completa hasta 6 para que siempre haya renglones a la mano.
     if (Array.isArray(p.codigos) && p.codigos.length) {
-      this.codigos = p.codigos.concat(
-        Array.from({ length: Math.max(0, 6 - p.codigos.length) }, () => ({ codigo: '', descripcion: '' })));
+      this.codigos = p.codigos.map((c: any) => ({ codigo: c?.codigo || '', descripcion: c?.descripcion || '' }))
+        .concat(Array.from({ length: Math.max(0, this.CODIGOS_INICIALES - p.codigos.length) },
+          () => ({ codigo: '', descripcion: '' })));
     }
     this.presupuestoTopado = p.presupuestoTopado || '';
     this.recurso = p.recurso || '';
@@ -213,12 +256,16 @@ export class PromocionesComponent implements OnInit {
     this.distribucionDe = p.distribucionDe || '';
     this.distribucionCod = p.distribucionCod || '';
     this.cargo = p.cargo || '';
-    this.porCanal = { ...(p.porCanal || {}) };
+    const guardadoPorCanal = p.porCanal || {};
+    for (const c of CANALES) this.porCanalLineas[c] = this.aRenglones(guardadoPorCanal[c]);
     this.rutaDiariaLP = p.rutaDiariaLP || '';
-    this.rutaDiariaCAN = p.rutaDiariaCAN || '';
+    // rutaDiariaCAN es el nombre viejo de la misma ruta (antes decia CAN, ahora ZAM).
+    this.rutaDiariaZAM = p.rutaDiariaZAM || p.rutaDiariaCAN || '';
     this.rutaDiariaMOR = p.rutaDiariaMOR || '';
     this.autoriza = p.autoriza || '';
+    this.alCalendario = /^\d{4}-\d{2}-\d{2}$/.test(String(this.vigenciaAl || '')) ? this.vigenciaAl : '';
     this.vista.set('captura');
+    if (this.pasoDesbloqueado(3)) this.sembrarMecanica();
     this.paso.set(this.pasoDesbloqueado(3) ? 3 : (this.pasoDesbloqueado(2) ? 2 : 1));
   }
 
@@ -232,6 +279,7 @@ export class PromocionesComponent implements OnInit {
   }
 
   async guardar(avanzarA?: 1 | 2 | 3) {
+    if (avanzarA === 3) this.sembrarMecanica();
     if (!this.proveedor.trim()) {
       Swal.fire({ icon: 'warning', title: 'Falta el proveedor', confirmButtonColor: '#0F172A' });
       return;
@@ -271,9 +319,9 @@ export class PromocionesComponent implements OnInit {
         distribucionDe: this.distribucionDe,
         distribucionCod: this.distribucionCod,
         cargo: this.cargo,
-        porCanal: this.porCanal,
+        porCanal: this.porCanalTexto(),
         rutaDiariaLP: this.rutaDiariaLP,
-        rutaDiariaCAN: this.rutaDiariaCAN,
+        rutaDiariaZAM: this.rutaDiariaZAM,
         rutaDiariaMOR: this.rutaDiariaMOR,
         autoriza: this.autoriza
       };
@@ -385,6 +433,53 @@ export class PromocionesComponent implements OnInit {
   }
 
   elegirProveedor(nombre: string) { this.proveedor = nombre; }
+
+  // ---- Códigos de promoción (tantos como hagan falta) ----
+  agregarCodigo() {
+    if (this.codigos.length >= this.MAX_CODIGOS) return;
+    this.codigos = [...this.codigos, { codigo: '', descripcion: '' }];
+  }
+
+  /** Quita el renglón. Siempre queda al menos uno, para no dejar la tabla vacía. */
+  quitarCodigo(i: number) {
+    if (this.codigos.length <= 1) { this.codigos = [{ codigo: '', descripcion: '' }]; return; }
+    this.codigos = this.codigos.filter((_, k) => k !== i);
+  }
+
+  // ---- Desglose de cajas/piezas por canal ----
+  /** Texto guardado -> renglones editables (siempre al menos uno). */
+  private aRenglones(texto: any): { v: string }[] {
+    const l = String(texto == null ? '' : texto)
+      .split('\n').map(x => x.trim()).filter(Boolean);
+    return l.length ? l.map(v => ({ v })) : [{ v: '' }];
+  }
+
+  /** Renglones editables -> lo que se guarda: un texto por canal. */
+  private porCanalTexto(): Record<string, string> {
+    const salida: Record<string, string> = {};
+    for (const c of this.CANALES) {
+      const t = (this.porCanalLineas[c] || [])
+        .map(l => (l.v || '').trim()).filter(Boolean).join('\n');
+      if (t) salida[c] = t;
+    }
+    return salida;
+  }
+
+  agregarRenglon(canal: string) {
+    this.porCanalLineas[canal] = [...(this.porCanalLineas[canal] || []), { v: '' }];
+  }
+
+  quitarRenglon(canal: string, i: number) {
+    const l = (this.porCanalLineas[canal] || []).filter((_, k) => k !== i);
+    this.porCanalLineas[canal] = l.length ? l : [{ v: '' }];
+  }
+
+  /** El calendario del campo "Al" solo escribe la fecha en el campo de texto:
+   *  ese campo también acepta texto libre ("Agotar Producto Asignado"). */
+  alElegirFechaAl(fecha: string) {
+    this.alCalendario = fecha || '';
+    if (fecha) this.vigenciaAl = fecha;
+  }
 
   etiquetaEstado(e: string): string {
     return { paso1: 'Solo proveedor', paso2: 'Con oferta', paso3: 'Formato completo', cerrada: 'Cerrada' }[e] || e || '—';
@@ -498,6 +593,8 @@ export class PromocionesComponent implements OnInit {
 
       const AZUL: [number, number, number] = [31, 78, 121];
       const AZUL_CLARO: [number, number, number] = [222, 235, 247];
+      // El folio va en ROJO, como el numerado del bloque impreso.
+      const ROJO: [number, number, number] = [199, 56, 46];
       const M = 10;                        // margen
       const W = 210 - M * 2;               // ancho util
       let y = M;
@@ -562,7 +659,11 @@ export class PromocionesComponent implements OnInit {
       doc.text('FORMATO: MKTN001', xEnc + Wenc * 0.535 + 1, medio + 1.2);
       doc.rect(xEnc + Wenc * 0.77, y, Wenc * 0.23, ALTO_ENC);
       doc.setFontSize(11);
-      doc.text('Folio: ' + this.folioTexto(this.folio), xEnc + Wenc * 0.785, medio + 1.4);
+      // La palabra "Folio:" en azul y el NUMERO en rojo, como el papel numerado.
+      const xFolio = xEnc + Wenc * 0.785;
+      doc.text('Folio:', xFolio, medio + 1.4);
+      doc.setTextColor(...ROJO);
+      doc.text(this.folioTexto(this.folio), xFolio + doc.getTextWidth('Folio: '), medio + 1.4);
       doc.setTextColor(0);
       y += ALTO_ENC + 2;
 
@@ -628,6 +729,8 @@ export class PromocionesComponent implements OnInit {
       const usados = this.codigos.filter(c => c.codigo || c.descripcion);
       const filas = Math.max(1, Math.ceil(usados.length / 2));
       for (let f = 0; f < filas; f++) {
+        // Ya no son fijos 6: si se capturaron 15 o 20, la tabla puede pasar de hoja.
+        if (y + 5.5 > 285) { doc.addPage(); y = M; }
         for (let col = 0; col < 2; col++) {
           const c = usados[f * 2 + col];
           const xx = M + (W / 2) * col;
@@ -697,12 +800,15 @@ export class PromocionesComponent implements OnInit {
       doc.text('NÚMERO DE CAJAS O PIEZAS', M + 55, y + 3.9);
       doc.setTextColor(0); y += 5.5;
 
+      const desglosado = this.porCanalTexto();
       for (const c of this.CANALES) {
+        // Ruta Diaria se reparte en sus tres rutas, una por renglon; los demas
+        // canales llevan el desglose tal como se capturo (un renglon por partida).
         const texto = c === 'Ruta Diaria'
           ? [this.rutaDiariaLP && ('LP: ' + this.rutaDiariaLP),
-             this.rutaDiariaCAN && ('CAN: ' + this.rutaDiariaCAN),
-             this.rutaDiariaMOR && ('MOR: ' + this.rutaDiariaMOR)].filter(Boolean).join('   ')
-          : (this.porCanal[c] || '');
+             this.rutaDiariaZAM && ('ZAM: ' + this.rutaDiariaZAM),
+             this.rutaDiariaMOR && ('MOR: ' + this.rutaDiariaMOR)].filter(Boolean).join('\n')
+          : (desglosado[c] || '');
         const lineas = doc.splitTextToSize(String(texto), W - 55);
         const h = Math.max(5, lineas.length * 3.4 + 1.6);
         if (y + h > 285) { doc.addPage(); y = M; }

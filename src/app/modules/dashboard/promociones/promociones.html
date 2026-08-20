@@ -239,8 +239,15 @@
             </div>
             <div>
               <label class="promo-label">Al</label>
-              <input class="promo-input" type="text" [(ngModel)]="vigenciaAl"
-                     placeholder="Fecha o texto: Agotar Producto Asignado">
+              <!-- Dos controles para el mismo dato: el calendario escribe la fecha
+                   en el campo de texto, que tambien acepta "Agotar Producto Asignado". -->
+              <div class="promo-al">
+                <input class="promo-input" type="text" [(ngModel)]="vigenciaAl"
+                       placeholder="Fecha o texto: Agotar Producto Asignado">
+                <input class="promo-input promo-al-cal" type="date" [ngModel]="alCalendario"
+                       (ngModelChange)="alElegirFechaAl($event)" title="Elegir del calendario">
+              </div>
+              <span class="promo-nota">Elige del calendario o escribe texto libre.</span>
             </div>
           </div>
 
@@ -252,8 +259,18 @@
             </label>
           </div>
 
-          <label class="promo-label">Mecánica</label>
-          <textarea class="promo-input promo-textarea" rows="5" [(ngModel)]="mecanica"
+          <div class="promo-label-fila">
+            <label class="promo-label">Mecánica</label>
+            <button class="promo-mini promo-mini-mas" type="button"
+                    *ngIf="oferta.trim()" (click)="traerOfertaAMecanica()">
+              Traer la oferta del paso 2
+            </button>
+          </div>
+          <p class="promo-ayuda" *ngIf="oferta.trim()">
+            Se llenó con lo que se negoció en el paso 2. Edítalo para dejarlo como
+            se va a imprimir.
+          </p>
+          <textarea class="promo-input promo-textarea" rows="6" [(ngModel)]="mecanica"
                     placeholder="1.- Sucursales: ...&#10;2.- Sucs/Mayoreo: ...&#10;3.- PH: ..."></textarea>
 
           <label class="promo-label">Códigos de promoción</label>
@@ -262,7 +279,16 @@
               <span class="promo-codigo-n">{{ i + 1 }}</span>
               <input class="promo-input" type="text" [(ngModel)]="c.codigo" placeholder="Código">
               <input class="promo-input" type="text" [(ngModel)]="c.descripcion" placeholder="Descripción">
+              <button class="promo-mini" type="button" (click)="quitarCodigo(i)"
+                      title="Quitar este código">&times;</button>
             </div>
+          </div>
+          <div class="promo-acciones-mini">
+            <button class="promo-mini promo-mini-mas" type="button" (click)="agregarCodigo()"
+                    [disabled]="codigos.length >= MAX_CODIGOS">+ Agregar código</button>
+            <span class="promo-nota">
+              {{ codigos.length }} renglones (hasta {{ MAX_CODIGOS }}). En el PDF solo salen los que tengan algo escrito.
+            </span>
           </div>
 
           <label class="promo-label">Presupuesto (topado)</label>
@@ -309,22 +335,47 @@
           </div>
 
           <label class="promo-label">Número de cajas o piezas por canal</label>
+          <p class="promo-ayuda">
+            Cada canal puede llevar varios renglones: usa "+ Otro renglón" para
+            desglosar cada código o cantidad por separado. En el PDF cada renglón
+            sale en su propia línea.
+          </p>
           <div class="promo-tabla-marco">
             <table class="promo-tabla">
               <tbody>
                 <tr *ngFor="let c of CANALES">
                   <td class="td-canal">{{ c }}</td>
                   <td>
-                    <input class="promo-input promo-input-tabla" type="text" [(ngModel)]="porCanal[c]"
-                           placeholder="13 cj 20054 -1, 24 cj 20103...">
-                  </td>
-                </tr>
-                <tr>
-                  <td class="td-canal">Ruta Diaria, detalle</td>
-                  <td class="td-ruta">
-                    <input class="promo-input promo-input-tabla" type="text" [(ngModel)]="rutaDiariaLP" placeholder="LP:">
-                    <input class="promo-input promo-input-tabla" type="text" [(ngModel)]="rutaDiariaCAN" placeholder="CAN:">
-                    <input class="promo-input promo-input-tabla" type="text" [(ngModel)]="rutaDiariaMOR" placeholder="MOR:">
+                    <!-- Ruta Diaria no va en un solo renglón: se reparte en sus tres rutas. -->
+                    <div class="td-ruta" *ngIf="c === 'Ruta Diaria'">
+                      <label class="promo-ruta">
+                        <span class="promo-ruta-et">LP</span>
+                        <input class="promo-input promo-input-tabla" type="text"
+                               [(ngModel)]="rutaDiariaLP" placeholder="Cajas o piezas">
+                      </label>
+                      <label class="promo-ruta">
+                        <span class="promo-ruta-et">ZAM</span>
+                        <input class="promo-input promo-input-tabla" type="text"
+                               [(ngModel)]="rutaDiariaZAM" placeholder="Cajas o piezas">
+                      </label>
+                      <label class="promo-ruta">
+                        <span class="promo-ruta-et">MOR</span>
+                        <input class="promo-input promo-input-tabla" type="text"
+                               [(ngModel)]="rutaDiariaMOR" placeholder="Cajas o piezas">
+                      </label>
+                    </div>
+
+                    <div class="promo-desglose" *ngIf="c !== 'Ruta Diaria'">
+                      <div class="promo-linea" *ngFor="let l of porCanalLineas[c]; let i = index">
+                        <input class="promo-input promo-input-tabla" type="text" [(ngModel)]="l.v"
+                               placeholder="13 cj 20054 -1">
+                        <button class="promo-mini" type="button" *ngIf="porCanalLineas[c].length > 1"
+                                (click)="quitarRenglon(c, i)" title="Quitar renglón">&times;</button>
+                      </div>
+                      <button class="promo-mini promo-mini-mas" type="button" (click)="agregarRenglon(c)">
+                        + Otro renglón
+                      </button>
+                    </div>
                   </td>
                 </tr>
               </tbody>

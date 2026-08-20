@@ -28,7 +28,7 @@ async function listarBloques() {
   if (!dbConfigurada()) return [];
   const b = await query(
     `select * from mdtask_bloques where eliminado = false
-      order by coalesce(orden, 9999), hora_inicio nulls last`);
+      order by hora_inicio nulls last, coalesce(orden, 9999)`);
   if (!b.rows.length) return [];
   const ids = b.rows.map(r => r.id);
   const t = await query(

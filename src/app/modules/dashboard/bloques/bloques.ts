@@ -132,7 +132,7 @@ export class BloquesComponent implements OnInit, OnDestroy {
   bloqueVacio() {
     return {
       id: '', nombre: '', horaInicio: '07:00', horaFin: '11:00',
-      orden: null as number | null, activo: true,
+      activo: true,
       // Dias en que opera el bloque. 'diario' con nada excluido = los siete,
       // que es como se comportaban los bloques antes de esta opcion.
       diasModo: 'diario' as 'diario' | 'algunos',
@@ -151,14 +151,13 @@ export class BloquesComponent implements OnInit, OnDestroy {
       const h = Number(String(ultimo.horaFin).slice(0, 2));
       this.formBloque.horaFin = String(Math.min(h + 4, 23)).padStart(2, '0') + ':00';
     }
-    this.formBloque.orden = this.bloques().length + 1;
     this.modalBloque = true;
   }
 
   editarBloque(b: any) {
     this.formBloque = {
       id: b.id, nombre: b.nombre || '', horaInicio: b.horaInicio || '07:00',
-      horaFin: b.horaFin || '11:00', orden: b.orden ?? null, activo: b.activo !== false,
+      horaFin: b.horaFin || '11:00', activo: b.activo !== false,
       diasModo: b.diasModo === 'algunos' ? 'algunos' : 'diario',
       diasExcluidos: [...(b.diasExcluidos || [])],
       diasSemana: [...(b.diasSemana || [])],

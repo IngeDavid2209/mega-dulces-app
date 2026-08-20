@@ -260,7 +260,7 @@ module.exports = async (req, res) => {
       const args = q.id ? [String(q.id)] : [];
       const bl = await query(
         `select * from mdtask_bloques where eliminado = false ${cond}
-          order by coalesce(orden, 9999), hora_inicio nulls last`, args);
+          order by hora_inicio nulls last, coalesce(orden, 9999)`, args);
       if (q.id && !bl.rows[0]) return res.status(404).json({ error: 'No existe ese bloque.' });
 
       const ids = bl.rows.map(r => r.id);

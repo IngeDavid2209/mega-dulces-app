@@ -238,19 +238,13 @@
       <p class="bq-nota">Esto manda sobre <strong>todo el bloque</strong>: el día que no
         se hace, no se reparte ninguna de sus tareas, aunque la tarea sea diaria.</p>
 
-      <div class="bq-form-2">
-        <div>
-          <label class="bq-label">Orden en el día</label>
-          <input class="bq-input" type="number" min="1" [(ngModel)]="formBloque.orden">
-        </div>
-        <div>
-          <label class="bq-label">&nbsp;</label>
-          <label class="bq-check">
-            <input type="checkbox" [(ngModel)]="formBloque.activo">
-            <span>Activo (si lo apagas deja de repartirse)</span>
-          </label>
-        </div>
-      </div>
+      <!-- El orden en el dia ya no se captura: lo manda la HORA DE INICIO, que es
+           la verdad del bloque. Un numero aparte solo se podia contradecir con
+           el horario. -->
+      <label class="bq-check" style="margin-top:16px">
+        <input type="checkbox" [(ngModel)]="formBloque.activo">
+        <span>Activo (si lo apagas deja de repartirse)</span>
+      </label>
 
       <div class="bq-modal-acciones">
         <button class="bq-btn-ghost" (click)="modalBloque = false">Cancelar</button>

@@ -75,6 +75,35 @@ function tocaHoy(tarea, fecha, dia) {
   }
 }
 
+/**
+ * ¿Este BLOQUE opera en ese dia de la semana?
+ *
+ * Es distinto de la frecuencia de cada tarea: esto manda sobre el bloque
+ * completo. Si el bloque no opera el domingo, ese dia no se reparte ninguna de
+ * sus tareas, aunque una de ellas sea diaria.
+ *
+ * La configuracion vive en el jsonb `datos` del bloque:
+ *   diasModo 'diario'  -> todos los dias MENOS los de diasExcluidos
+ *   diasModo 'algunos' -> SOLO los dias de diasSemana
+ *
+ * Un bloque sin nada de esto (los creados antes de la opcion) opera todos los
+ * dias, que es como se comportaba antes.
+ */
+function bloqueOperaEl(bloque, dia) {
+  const d = (bloque && bloque.datos) || {};
+  const modo = String(d.diasModo || 'diario');
+
+  if (modo === 'algunos') {
+    const dias = Array.isArray(d.diasSemana) ? d.diasSemana : [];
+    // Sin dias elegidos no se reparte nada: es justo lo que se pidio al guardar,
+    // y es mas seguro que repartir los siete por descuido.
+    return dias.includes(dia);
+  }
+
+  const excluidos = Array.isArray(d.diasExcluidos) ? d.diasExcluidos : [];
+  return !excluidos.includes(dia);
+}
+
 /** ¿La asignacion esta vigente en esa fecha? */
 function vigente(asig, fecha) {
   if (asig.activa === false) return false;
@@ -186,6 +215,9 @@ async function generarDeFecha(fechaPedida) {
   const ahora = Date.now();
 
   for (const bloque of bloques) {
+    // Primero el dia del BLOQUE: si hoy no opera, ni se miran sus tareas.
+    if (!bloqueOperaEl(bloque, dia)) continue;
+
     const suyas = tareas.filter(t => t.bloqueId === bloque.id && tocaHoy(t, fecha, dia));
     if (!suyas.length) continue;   // hoy este bloque no tiene nada que repartir
 
@@ -254,4 +286,7 @@ function iniciarPoll() {
   console.log('[bloques] generador iniciado (cada 15 min, hoy y mañana)');
 }
 
-module.exports = { generarDeFecha, tick, iniciarPoll, tocaHoy, semanaIso, destinatarios, hoyMexico };
+module.exports = {
+  generarDeFecha, tick, iniciarPoll, tocaHoy, bloqueOperaEl, semanaIso,
+  destinatarios, hoyMexico,
+};

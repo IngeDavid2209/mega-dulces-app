@@ -107,11 +107,46 @@ function validarBloque(b, existente) {
   const orden = ordenRaw == null || ordenRaw === '' ? null : Number(ordenRaw);
   if (orden != null && !Number.isFinite(orden)) return { error: 'El orden debe ser un número.' };
 
+  // ---- Dias en que opera el bloque ----
+  // Viven en el jsonb `datos` (no en columnas) para no migrar la tabla.
+  //   diasModo 'diario'  -> se reparte todos los dias MENOS los de diasExcluidos
+  //   diasModo 'algunos' -> se reparte SOLO los dias de diasSemana
+  // Un bloque viejo no trae nada de esto y se comporta como 'diario' sin
+  // excepciones, que es exactamente como se comportaba antes.
+  const previos = (existente && existente.datos) || {};
+  const diasModo = String(
+    b.diasModo !== undefined ? b.diasModo : (previos.diasModo || 'diario'));
+  if (diasModo !== 'diario' && diasModo !== 'algunos') {
+    return { error: 'Los días del bloque deben ser "diario" o "algunos".' };
+  }
+
+  const diasExcluidos = b.diasExcluidos !== undefined
+    ? lista(b.diasExcluidos) : lista(previos.diasExcluidos);
+  const diasSemana = b.diasSemana !== undefined
+    ? lista(b.diasSemana) : lista(previos.diasSemana);
+
+  for (const d of diasExcluidos.concat(diasSemana)) {
+    if (!DIAS.includes(d)) return { error: 'Día no reconocido: ' + d + '.' };
+  }
+  if (diasModo === 'diario' && diasExcluidos.length === DIAS.length) {
+    return { error: 'Así el bloque no se repartiría ningún día. Deja al menos uno sin excluir.' };
+  }
+  if (diasModo === 'algunos' && !diasSemana.length) {
+    return { error: 'Elige al menos un día en que se haga el bloque.' };
+  }
+
   return {
     valor: {
       nombre, horaInicio, horaFin, orden,
       color: texto(b.color !== undefined ? b.color : (existente && existente.color)),
       activo: b.activo == null ? (existente ? existente.activo !== false : true) : b.activo !== false,
+      // Lo que se guarda en `datos`. Se limpia el array del modo que no aplica
+      // para no dejar configuraciones contradictorias guardadas.
+      datos: {
+        diasModo,
+        diasExcluidos: diasModo === 'diario' ? diasExcluidos : [],
+        diasSemana: diasModo === 'algunos' ? diasSemana : [],
+      },
     },
   };
 }
@@ -283,13 +318,16 @@ module.exports = async (req, res) => {
           `insert into mdtask_bloques
              (id, nombre, hora_inicio, hora_fin, orden, color, activo, datos,
               creado_en, creado_por, actualizado_en, eliminado)
-           values ($1,$2,$3,$4,$5,$6,$7,'{}'::jsonb,$8,$9,$10,false)
+           values ($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9,$10,$11,false)
            on conflict (id) do update set
              nombre = excluded.nombre, hora_inicio = excluded.hora_inicio,
              hora_fin = excluded.hora_fin, orden = excluded.orden, color = excluded.color,
              activo = excluded.activo, actualizado_en = excluded.actualizado_en,
+             -- merge, no reemplazo: guardar el horario no debe borrar los dias
+             datos = coalesce(mdtask_bloques.datos,'{}'::jsonb) || excluded.datos,
              eliminado = false`,
           [id, x.nombre, x.horaInicio, x.horaFin, x.orden, x.color, x.activo,
+            JSON.stringify(x.datos || {}),
             existente ? Number(existente.creado_en || ahora) : ahora,
             existente ? existente.creado_por : quien, ahora]);
 

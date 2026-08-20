@@ -216,3 +216,19 @@
   .bq-bloque-top { align-items: flex-start; }
   .bq-tab { min-width: 100%; }
 }
+
+/* ---------- Días del bloque ---------- */
+/* Un día marcado en rojo es un día que el bloque NO se hace, al contrario de
+   .active (verde/azul) que marca los días que sí. */
+.bq-dia.excluido {
+  background: #FDECEA;
+  border-color: #C7382E;
+  color: #C7382E;
+  text-decoration: line-through;
+}
+
+.bq-etq.dias {
+  background: #EEF2F9;
+  color: #1F3864;
+  white-space: nowrap;
+}

@@ -130,7 +130,15 @@ export class BloquesComponent implements OnInit, OnDestroy {
   // --- BLOQUE ----------------------------------------------------------------
 
   bloqueVacio() {
-    return { id: '', nombre: '', horaInicio: '07:00', horaFin: '11:00', orden: null as number | null, activo: true };
+    return {
+      id: '', nombre: '', horaInicio: '07:00', horaFin: '11:00',
+      orden: null as number | null, activo: true,
+      // Dias en que opera el bloque. 'diario' con nada excluido = los siete,
+      // que es como se comportaban los bloques antes de esta opcion.
+      diasModo: 'diario' as 'diario' | 'algunos',
+      diasExcluidos: [] as string[],
+      diasSemana: [] as string[],
+    };
   }
 
   abrirNuevoBloque() {
@@ -151,8 +159,38 @@ export class BloquesComponent implements OnInit, OnDestroy {
     this.formBloque = {
       id: b.id, nombre: b.nombre || '', horaInicio: b.horaInicio || '07:00',
       horaFin: b.horaFin || '11:00', orden: b.orden ?? null, activo: b.activo !== false,
+      diasModo: b.diasModo === 'algunos' ? 'algunos' : 'diario',
+      diasExcluidos: [...(b.diasExcluidos || [])],
+      diasSemana: [...(b.diasSemana || [])],
     };
     this.modalBloque = true;
+  }
+
+  /** Marca/desmarca un dia en el que el bloque NO se hace (modo diario). */
+  alternarDiaExcluido(d: string) {
+    const i = this.formBloque.diasExcluidos.indexOf(d);
+    if (i >= 0) this.formBloque.diasExcluidos.splice(i, 1);
+    else this.formBloque.diasExcluidos.push(d);
+  }
+
+  /** Marca/desmarca un dia en el que el bloque SI se hace (modo algunos). */
+  alternarDiaBloque(d: string) {
+    const i = this.formBloque.diasSemana.indexOf(d);
+    if (i >= 0) this.formBloque.diasSemana.splice(i, 1);
+    else this.formBloque.diasSemana.push(d);
+  }
+
+  /** Resumen de los dias de un bloque, para la tarjeta de la lista. */
+  diasDelBloque(b: any): string {
+    if (b?.diasModo === 'algunos') {
+      const d = (b.diasSemana || []).filter((x: string) => DIAS.includes(x));
+      if (!d.length) return 'Sin días: no se reparte';
+      // En el orden de la semana, no en el que se fueron marcando.
+      return 'Solo ' + DIAS.filter(x => d.includes(x)).map(x => x.slice(0, 3)).join(', ');
+    }
+    const ex = (b?.diasExcluidos || []).filter((x: string) => DIAS.includes(x));
+    if (!ex.length) return 'Diario';
+    return 'Diario, menos ' + DIAS.filter(x => ex.includes(x)).map(x => x.slice(0, 3)).join(', ');
   }
 
   async guardarBloque() {
@@ -163,6 +201,21 @@ export class BloquesComponent implements OnInit, OnDestroy {
     }
     if (this.formBloque.horaFin <= this.formBloque.horaInicio) {
       Swal.fire({ icon: 'warning', title: 'Revisa el horario', text: 'La hora de fin tiene que ser posterior a la de inicio.' });
+      return;
+    }
+    if (this.formBloque.diasModo === 'algunos' && !this.formBloque.diasSemana.length) {
+      Swal.fire({
+        icon: 'warning', title: 'Faltan los días',
+        text: 'Elige al menos un día en que se haga el bloque, o déjalo en Diario.',
+      });
+      return;
+    }
+    if (this.formBloque.diasModo === 'diario'
+        && this.formBloque.diasExcluidos.length === this.dias.length) {
+      Swal.fire({
+        icon: 'warning', title: 'Así no se repartiría nunca',
+        text: 'Excluiste los siete días. Deja al menos uno sin excluir.',
+      });
       return;
     }
     this.guardando = true;

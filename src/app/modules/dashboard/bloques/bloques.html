@@ -93,6 +93,7 @@
                 </div>
                 <div class="bq-bloque-nombre">{{ b.nombre }}</div>
                 <div class="bq-bloque-acciones">
+                  <span class="bq-etq dias">{{ diasDelBloque(b) }}</span>
                   @if (b.activo === false) { <span class="pill">Apagado</span> }
                   @if (puedeEditar) {
                     <button class="bq-btn-mini" (click)="editarBloque(b)">Editar</button>
@@ -198,6 +199,44 @@
         </div>
       </div>
       <p class="bq-nota">La hora de fin es la <strong>hora límite</strong> de todas las tareas del bloque.</p>
+
+      <label class="bq-label">¿Qué días se hace?</label>
+      <div class="bq-tabs">
+        <button class="bq-tab" [class.active]="formBloque.diasModo === 'diario'"
+                (click)="formBloque.diasModo = 'diario'">Diario</button>
+        <button class="bq-tab" [class.active]="formBloque.diasModo === 'algunos'"
+                (click)="formBloque.diasModo = 'algunos'">Solo ciertos días</button>
+      </div>
+
+      @if (formBloque.diasModo === 'diario') {
+        <label class="bq-label">¿Algún día NO se hace?</label>
+        <div class="bq-dias">
+          @for (d of dias; track d) {
+            <button class="bq-dia" [class.excluido]="formBloque.diasExcluidos.includes(d)"
+                    (click)="alternarDiaExcluido(d)">{{ d.slice(0, 3) }}</button>
+          }
+        </div>
+        <p class="bq-nota">
+          @if (formBloque.diasExcluidos.length) {
+            Los días en rojo se saltan; los demás sí se reparten.
+          } @else {
+            Ahora se reparte los siete días. Marca un día para que se salte (por
+            ejemplo el domingo si no se abre).
+          }
+        </p>
+      } @else {
+        <label class="bq-label">¿Qué días sí se hace?</label>
+        <div class="bq-dias">
+          @for (d of dias; track d) {
+            <button class="bq-dia" [class.active]="formBloque.diasSemana.includes(d)"
+                    (click)="alternarDiaBloque(d)">{{ d.slice(0, 3) }}</button>
+          }
+        </div>
+        <p class="bq-nota">Solo los días marcados. Sin ninguno no se reparte nunca.</p>
+      }
+
+      <p class="bq-nota">Esto manda sobre <strong>todo el bloque</strong>: el día que no
+        se hace, no se reparte ninguna de sus tareas, aunque la tarea sea diaria.</p>
 
       <div class="bq-form-2">
         <div>

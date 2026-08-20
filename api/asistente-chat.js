@@ -1290,6 +1290,47 @@ const TOOLS = [
     name: 'consultar_mis_pagos',
     description: 'Los PAGOS DE SERVICIOS (luz, agua, internet, gas, renta) de los que el usuario es responsable y siguen sin pagarse. Usala cuando pregunte si debe algun recibo o servicio ("tengo algun pago pendiente", "que recibos me tocan", "ya pague todo?"). NO es para las tareas ni para su sueldo: si pregunta por sus pendientes de trabajo, usa mis_pendientes.',
     input_schema: { type: 'object', properties: {}, required: [] }
+  },
+
+  // --- BLOQUES DE TRABAJO (tramos de horario con sus tareas) ---
+  // OJO: las tareas del dia que salen de un bloque NO necesitan herramienta
+  // propia. El generador las reparte como checklists normales, asi que
+  // mis_pendientes, consultar_tareas y entregar_item ya funcionan con ellas.
+  {
+    name: 'consultar_bloques',
+    description: 'Los BLOQUES DE TRABAJO configurados (tramos de horario del dia como Mañana 07:00-11:00) con sus tareas y a quien se le reparten. Usala cuando pregunten como esta armado el dia, que bloques hay, o que tareas tiene un bloque.',
+    input_schema: { type: 'object', properties: {}, required: [] }
+  },
+  {
+    name: 'crear_bloque',
+    description: 'Crea un BLOQUE de trabajo: un tramo de horario del dia. La hora de fin es la hora limite de todas sus tareas. Despues hay que agregarle tareas (agregar_tarea_bloque) y asignarlo desde la pantalla de Bloques. Confirma antes de crear.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        nombre: { type: 'string', description: 'Nombre del bloque. Ej: Mañana, Cierre.' },
+        hora_inicio: { type: 'string', description: 'HH:mm' },
+        hora_fin: { type: 'string', description: 'HH:mm. Es la hora limite de sus tareas.' }
+      },
+      required: ['nombre', 'hora_inicio', 'hora_fin']
+    }
+  },
+  {
+    name: 'agregar_tarea_bloque',
+    description: 'Agrega una tarea a un BLOQUE que ya existe. La tarea NO lleva hora: hereda la del bloque. Puede ser de una sola vez (tipo=unica + fecha) o rutina (tipo=rutina + frecuencia). Confirma antes de crear.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        bloque: { type: 'string', description: 'Nombre del bloque al que se agrega.' },
+        texto: { type: 'string', description: 'Que hay que hacer.' },
+        tipo: { type: 'string', enum: ['rutina', 'unica'], description: 'Por defecto rutina.' },
+        frecuencia: { type: 'string', enum: FRECUENCIAS, description: 'Si es rutina.' },
+        dias: { type: 'array', items: { type: 'string', enum: DIAS }, description: 'Si la frecuencia es Semanal o Catorcenal.' },
+        dia_mes: { type: 'integer', description: 'Si la frecuencia es Mensual o Trimestral (1-31).' },
+        fecha: { type: 'string', description: 'AAAA-MM-DD, si tipo=unica.' },
+        requiere_foto: { type: 'boolean', description: 'Si hay que pedir foto al completarla.' }
+      },
+      required: ['bloque', 'texto']
+    }
   }
 ];
 
@@ -2333,6 +2374,41 @@ async function ejecutarHerramienta(db, ctx, nombre, input) {
   }
 
   // ---- INFO ----
+  // --- BLOQUES DE TRABAJO ---
+  // Las tareas del dia que salen de los bloques ya se ven con las herramientas
+  // normales (son checklists). Esto es para consultar y armar la estructura.
+  if (nombre === 'consultar_bloques') {
+    const { listarBloques } = require('./bloques-bot');
+    const bloques = await listarBloques();
+    if (!bloques.length) return { ok: true, total: 0, mensaje: 'Todavia no hay bloques de trabajo configurados.' };
+    return {
+      ok: true, total: bloques.length,
+      bloques: bloques.map(b => ({
+        nombre: b.nombre, horario: b.horaInicio + ' a ' + b.horaFin, activo: b.activo,
+        tareas: b.tareas.filter(t => t.activo).map(t => t.texto),
+        asignado: b.asignaciones.length
+          ? b.asignaciones.map(a => (a.modo === 'porRol' ? 'rol ' + a.rol : a.personas + ' personas') + ' en ' + (a.sucursales || []).join(', ')).join(' | ')
+          : 'sin asignar'
+      }))
+    };
+  }
+
+  if (nombre === 'crear_bloque') {
+    if (!ctx.puedeAsignar) {
+      return { ok: false, mensaje: 'No tienes permiso para crear bloques de trabajo. Un administrador te lo puede activar en Personal (permiso *Crear checklists*).' };
+    }
+    const { crearBloque } = require('./bloques-bot');
+    return await crearBloque({ nombre: input.nombre, horaInicio: input.hora_inicio, horaFin: input.hora_fin }, ctx.uid);
+  }
+
+  if (nombre === 'agregar_tarea_bloque') {
+    if (!ctx.puedeAsignar) {
+      return { ok: false, mensaje: 'No tienes permiso para agregar tareas a los bloques. Un administrador te lo puede activar en Personal (permiso *Crear checklists*).' };
+    }
+    const { agregarTarea } = require('./bloques-bot');
+    return await agregarTarea(input, ctx.uid);
+  }
+
   if (nombre === 'consultar_rutinas') {
     let lista = (await pgAsignacionesList()).filter(a => a.activa !== false);
     // Alcance: quien no es admin global solo ve las rutinas de sus sucursales.

@@ -147,6 +147,13 @@ export const routes: Routes = [
     loadComponent: () => import('./modules/dashboard/promociones/promociones').then(m => m.PromocionesComponent)
   },
 
+  // 🧱 BLOQUES DE TRABAJO — el día partido en tramos de horario, con sus tareas.
+  {
+    path: 'bloques',
+    canActivate: [authGuard],
+    loadComponent: () => import('./modules/dashboard/bloques/bloques').then(m => m.BloquesComponent)
+  },
+
   // 🎫 TICKETS — vale de servicio operativo: solicitudes de servicio entre áreas,
   // con su folio, el detalle de lo realizado y las firmas del formato.
   {

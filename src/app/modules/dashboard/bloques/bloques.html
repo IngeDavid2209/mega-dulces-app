@@ -1,0 +1,377 @@
+<div class="app-layout">
+  <header class="header">
+    <div class="header-left">
+      <button class="btn-menu-mobile" (click)="toggleMenu()">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="3" y1="12" x2="21" y2="12"></line>
+          <line x1="3" y1="6" x2="21" y2="6"></line>
+          <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+      </button>
+      <div class="header-logo-wrap" style="background: transparent !important; width: auto; padding: 0 4px;">
+        <img src="https://static.wixstatic.com/media/fd397e_0fd82a1ecec84a118ceeb603b493f25a~mv2.png" style="height: 36px;">
+      </div>
+      <div class="header-brand">Mega Dulces<small>Bloques de trabajo</small></div>
+    </div>
+  </header>
+
+  <div class="main-wrapper">
+    <div class="mobile-overlay" *ngIf="isMenuOpen" (click)="toggleMenu()"></div>
+    <app-sidebar [currentUser]="currentUser" [isMenuOpen]="isMenuOpen" (closeMenu)="isMenuOpen = false"></app-sidebar>
+
+    <div class="content">
+      <div class="bq-header">
+        <div>
+          <h1 class="bq-title">Bloques de trabajo</h1>
+          <p class="bq-sub">Parte el día en tramos de horario y cuelga las tareas de cada uno.
+            La hora la manda el bloque: las tareas la heredan.</p>
+        </div>
+        @if (puedeEditar) {
+          <button class="bq-btn-primary" (click)="abrirNuevoBloque()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            Nuevo bloque
+          </button>
+        }
+      </div>
+
+      @if (cargando()) {
+        <div class="bq-empty">Cargando...</div>
+      } @else {
+
+        @if (!puedeEditar) {
+          <div class="bq-aviso">Puedes ver los bloques, pero no editarlos. Para crear o cambiar
+            bloques hace falta el permiso <strong>Crear checklists</strong>.</div>
+        }
+
+        @if (bloques().length) {
+          <div class="bq-kpis">
+            <div class="bq-kpi"><div class="bq-kpi-num">{{ bloquesActivos() }}</div><div class="bq-kpi-lbl">Bloques activos</div></div>
+            <div class="bq-kpi"><div class="bq-kpi-num">{{ totalTareas() }}</div><div class="bq-kpi-lbl">Tareas en total</div></div>
+            <div class="bq-kpi" [class.rojo]="sinAsignar().length">
+              <div class="bq-kpi-num">{{ sinAsignar().length }}</div>
+              <div class="bq-kpi-lbl">Sin asignar a nadie</div>
+            </div>
+          </div>
+        }
+
+        @if (sinAsignar().length) {
+          <div class="bq-alerta">
+            <strong>{{ sinAsignar().length }}</strong>
+            bloque{{ sinAsignar().length === 1 ? '' : 's' }} con tareas pero sin asignar:
+            nadie las va a recibir hasta que les pongas sucursal y personas.
+            <span class="bq-chips">
+              @for (b of sinAsignar(); track b.id) { <span class="bq-chip">{{ b.nombre }}</span> }
+            </span>
+          </div>
+        }
+
+        @if (!bloques().length) {
+          <div class="bq-empty">
+            Todavía no hay bloques.
+            @if (puedeEditar) {
+              <button class="bq-link" (click)="abrirNuevoBloque()">Crea el primero</button>
+              <p class="bq-nota" style="margin-top:10px">
+                Por ejemplo: <strong>Mañana</strong> de 07:00 a 11:00, y dentro las tareas de apertura.
+              </p>
+            }
+          </div>
+        }
+
+        <!-- La jornada, en orden -->
+        <div class="bq-linea">
+          @for (b of bloques(); track b.id) {
+            <div class="bq-bloque" [class.apagado]="b.activo === false">
+              <div class="bq-bloque-top">
+                <div class="bq-horario">
+                  <span class="bq-hora">{{ b.horaInicio }}</span>
+                  <span class="bq-flecha">→</span>
+                  <span class="bq-hora">{{ b.horaFin }}</span>
+                  @if (duracion(b)) { <span class="bq-dur">{{ duracion(b) }}</span> }
+                </div>
+                <div class="bq-bloque-nombre">{{ b.nombre }}</div>
+                <div class="bq-bloque-acciones">
+                  @if (b.activo === false) { <span class="pill">Apagado</span> }
+                  @if (puedeEditar) {
+                    <button class="bq-btn-mini" (click)="editarBloque(b)">Editar</button>
+                    <button class="bq-btn-mini" (click)="alternarBloque(b)">
+                      {{ b.activo === false ? 'Prender' : 'Apagar' }}
+                    </button>
+                    <button class="bq-btn-mini danger" (click)="borrarBloque(b)">Borrar</button>
+                  }
+                </div>
+              </div>
+
+              <!-- Tareas del bloque -->
+              <div class="bq-seccion">
+                <div class="bq-seccion-top">
+                  <span class="bq-seccion-tit">Tareas ({{ (b.tareas || []).length }})</span>
+                  @if (puedeEditar) {
+                    <button class="bq-link" (click)="abrirNuevaTarea(b)">+ Agregar tarea</button>
+                  }
+                </div>
+                @if (!(b.tareas || []).length) {
+                  <div class="bq-vacio-chico">Este bloque todavía no tiene tareas.</div>
+                }
+                @for (t of b.tareas; track t.id) {
+                  <div class="bq-tarea" [class.apagada]="t.activo === false">
+                    <div class="bq-tarea-main">
+                      <div class="bq-tarea-texto">
+                        {{ t.texto }}
+                        @if (t.requiereFoto) { <span class="bq-etq foto">con foto</span> }
+                        @if (t.tipo === 'unica') { <span class="bq-etq unica">una vez</span> }
+                        @if (t.activo === false) { <span class="bq-etq off">apagada</span> }
+                      </div>
+                      <div class="bq-tarea-cuando">{{ cuando(t) }} · a las {{ b.horaFin }}</div>
+                    </div>
+                    @if (puedeEditar) {
+                      <button class="bq-btn-mini" (click)="editarTarea(b, t)">Editar</button>
+                      <button class="bq-btn-mini danger" (click)="borrarTarea(t)">Quitar</button>
+                    }
+                  </div>
+                }
+              </div>
+
+              <!-- Asignaciones -->
+              <div class="bq-seccion">
+                <div class="bq-seccion-top">
+                  <span class="bq-seccion-tit">A quién le toca ({{ (b.asignaciones || []).length }})</span>
+                  @if (puedeEditar) {
+                    <button class="bq-link" (click)="abrirNuevaAsignacion(b)">+ Asignar</button>
+                  }
+                </div>
+                @if (!(b.asignaciones || []).length) {
+                  <div class="bq-vacio-chico">Sin asignar: nadie lo va a recibir.</div>
+                }
+                @for (a of b.asignaciones; track a.id) {
+                  <div class="bq-asig" [class.apagada]="a.activa === false">
+                    <div class="bq-asig-main">
+                      <div class="bq-asig-quien">{{ aQuien(a) }}</div>
+                      @if (a.fechaInicio || a.fechaFin) {
+                        <div class="bq-asig-vig">
+                          Vigencia:
+                          {{ a.fechaInicio ? fechaCorta(a.fechaInicio) : 'desde siempre' }}
+                          a {{ a.fechaFin ? fechaCorta(a.fechaFin) : 'sin fin' }}
+                        </div>
+                      }
+                    </div>
+                    @if (puedeEditar) {
+                      <button class="bq-btn-mini" (click)="editarAsignacion(b, a)">Editar</button>
+                      <button class="bq-btn-mini danger" (click)="borrarAsignacion(a)">Quitar</button>
+                    }
+                  </div>
+                }
+              </div>
+            </div>
+          }
+        </div>
+
+        @if (bloques().length) {
+          <p class="bq-nota">Las tareas se reparten solas cada 15 minutos, para hoy y para mañana.
+            Aparecen en el checklist de cada persona con la hora del bloque, y el bot de WhatsApp
+            también las ve.</p>
+        }
+      }
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ MODAL: bloque ═══════════════ -->
+@if (modalBloque) {
+  <div class="bq-modal-fondo" (click)="modalBloque = false">
+    <div class="bq-modal" (click)="$event.stopPropagation()">
+      <h2 class="bq-modal-titulo">{{ formBloque.id ? 'Editar bloque' : 'Nuevo bloque' }}</h2>
+
+      <label class="bq-label">Nombre del bloque</label>
+      <input class="bq-input" [(ngModel)]="formBloque.nombre" placeholder="Mañana, Media mañana, Cierre...">
+
+      <div class="bq-form-2">
+        <div>
+          <label class="bq-label">Empieza a las</label>
+          <input class="bq-input" type="time" [(ngModel)]="formBloque.horaInicio">
+        </div>
+        <div>
+          <label class="bq-label">Termina a las</label>
+          <input class="bq-input" type="time" [(ngModel)]="formBloque.horaFin">
+        </div>
+      </div>
+      <p class="bq-nota">La hora de fin es la <strong>hora límite</strong> de todas las tareas del bloque.</p>
+
+      <div class="bq-form-2">
+        <div>
+          <label class="bq-label">Orden en el día</label>
+          <input class="bq-input" type="number" min="1" [(ngModel)]="formBloque.orden">
+        </div>
+        <div>
+          <label class="bq-label">&nbsp;</label>
+          <label class="bq-check">
+            <input type="checkbox" [(ngModel)]="formBloque.activo">
+            <span>Activo (si lo apagas deja de repartirse)</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="bq-modal-acciones">
+        <button class="bq-btn-ghost" (click)="modalBloque = false">Cancelar</button>
+        <button class="bq-btn-primary" (click)="guardarBloque()" [disabled]="guardando">
+          {{ guardando ? 'Guardando...' : 'Guardar' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ═══════════════ MODAL: tarea ═══════════════ -->
+@if (modalTarea) {
+  <div class="bq-modal-fondo" (click)="modalTarea = false">
+    <div class="bq-modal" (click)="$event.stopPropagation()">
+      <h2 class="bq-modal-titulo">
+        {{ formTarea.id ? 'Editar tarea' : 'Nueva tarea' }}
+        <span class="bq-modal-sub">{{ bloqueActual?.nombre }} · {{ bloqueActual?.horaInicio }}-{{ bloqueActual?.horaFin }}</span>
+      </h2>
+
+      <label class="bq-label">¿Qué hay que hacer?</label>
+      <input class="bq-input" [(ngModel)]="formTarea.texto" placeholder="Ej. Barrer el piso de ventas">
+
+      <label class="bq-label">¿Se repite?</label>
+      <div class="bq-tabs">
+        <button class="bq-tab" [class.active]="formTarea.tipo === 'rutina'" (click)="formTarea.tipo = 'rutina'">
+          Sí, es rutina
+        </button>
+        <button class="bq-tab" [class.active]="formTarea.tipo === 'unica'" (click)="formTarea.tipo = 'unica'">
+          No, una sola vez
+        </button>
+      </div>
+
+      @if (formTarea.tipo === 'unica') {
+        <label class="bq-label">¿Qué día?</label>
+        <input class="bq-input" type="date" [(ngModel)]="formTarea.fecha">
+      } @else {
+        <label class="bq-label">Cada cuándo</label>
+        <select class="bq-input" [(ngModel)]="formTarea.frecuencia">
+          @for (f of frecuencias; track f) { <option [value]="f">{{ f }}</option> }
+        </select>
+
+        @if (formTarea.frecuencia === 'Semanal' || formTarea.frecuencia === 'Catorcenal') {
+          <label class="bq-label">¿Qué días?</label>
+          <div class="bq-dias">
+            @for (d of dias; track d) {
+              <button class="bq-dia" [class.active]="formTarea.diasSemana.includes(d)" (click)="alternarDia(d)">
+                {{ d.slice(0, 3) }}
+              </button>
+            }
+          </div>
+        }
+
+        @if (formTarea.frecuencia === 'Mensual' || formTarea.frecuencia === 'Trimestral') {
+          <label class="bq-label">Día del mes</label>
+          <input class="bq-input" type="number" min="1" max="31" [(ngModel)]="formTarea.diaMes">
+        }
+
+        @if (formTarea.frecuencia === 'PorEvento') {
+          <p class="bq-nota">Por evento significa que <strong>no se reparte sola</strong>:
+            queda guardada para cuando haga falta.</p>
+        }
+      }
+
+      <label class="bq-check" style="margin-top:16px">
+        <input type="checkbox" [(ngModel)]="formTarea.requiereFoto">
+        <span>Pedir foto al completarla</span>
+      </label>
+      <label class="bq-check">
+        <input type="checkbox" [(ngModel)]="formTarea.activo">
+        <span>Activa</span>
+      </label>
+
+      <p class="bq-nota">Esta tarea se entregará a las <strong>{{ bloqueActual?.horaFin }}</strong>,
+        la hora del bloque.</p>
+
+      <div class="bq-modal-acciones">
+        <button class="bq-btn-ghost" (click)="modalTarea = false">Cancelar</button>
+        <button class="bq-btn-primary" (click)="guardarTarea()" [disabled]="guardando">
+          {{ guardando ? 'Guardando...' : 'Guardar' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ═══════════════ MODAL: asignación ═══════════════ -->
+@if (modalAsignacion) {
+  <div class="bq-modal-fondo" (click)="modalAsignacion = false">
+    <div class="bq-modal" (click)="$event.stopPropagation()">
+      <h2 class="bq-modal-titulo">
+        {{ formAsignacion.id ? 'Editar asignación' : 'Asignar bloque' }}
+        <span class="bq-modal-sub">{{ bloqueActual?.nombre }}</span>
+      </h2>
+
+      <label class="bq-label">Sucursales</label>
+      <div class="bq-acciones-chicas">
+        <button class="bq-link" (click)="todasLas()">Todas</button>
+        <button class="bq-link" (click)="ninguna()">Ninguna</button>
+      </div>
+      <div class="bq-sucursales">
+        @for (s of sucursalesDisponibles(); track s) {
+          <button class="bq-suc" [class.active]="formAsignacion.sucursales.includes(s)" (click)="alternarSucursal(s)">
+            {{ s }}
+          </button>
+        }
+      </div>
+
+      <label class="bq-label">¿A quién?</label>
+      <div class="bq-tabs">
+        <button class="bq-tab" [class.active]="formAsignacion.modo === 'porRol'" (click)="formAsignacion.modo = 'porRol'">
+          Por rol
+        </button>
+        <button class="bq-tab" [class.active]="formAsignacion.modo === 'porPersonas'" (click)="formAsignacion.modo = 'porPersonas'">
+          A personas
+        </button>
+      </div>
+
+      @if (formAsignacion.modo === 'porRol') {
+        <select class="bq-input" [(ngModel)]="formAsignacion.rolObjetivo">
+          @for (r of roles; track r) { <option [value]="r">{{ r }}</option> }
+        </select>
+        <p class="bq-nota">Se le repartirá a todo el personal activo con ese rol en las sucursales elegidas.
+          Si entra alguien nuevo, también lo recibe.</p>
+      } @else {
+        <div class="bq-personas">
+          @for (p of personal(); track p.id) {
+            <button class="bq-persona" [class.active]="formAsignacion.personas.includes(p.id || p.uid)"
+                    (click)="alternarPersona(p.id || p.uid)">
+              {{ p.nombre }}
+            </button>
+          }
+        </div>
+        @if (formAsignacion.personas.length) {
+          <p class="bq-nota">Elegidas: {{ formAsignacion.personas.length }}</p>
+        }
+      }
+
+      <div class="bq-form-2">
+        <div>
+          <label class="bq-label">Desde (opcional)</label>
+          <input class="bq-input" type="date" [(ngModel)]="formAsignacion.fechaInicio">
+        </div>
+        <div>
+          <label class="bq-label">Hasta (opcional)</label>
+          <input class="bq-input" type="date" [(ngModel)]="formAsignacion.fechaFin">
+        </div>
+      </div>
+
+      <label class="bq-check">
+        <input type="checkbox" [(ngModel)]="formAsignacion.activa">
+        <span>Activa</span>
+      </label>
+
+      <div class="bq-modal-acciones">
+        <button class="bq-btn-ghost" (click)="modalAsignacion = false">Cancelar</button>
+        <button class="bq-btn-primary" (click)="guardarAsignacion()" [disabled]="guardando">
+          {{ guardando ? 'Guardando...' : 'Guardar' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}

@@ -1,0 +1,218 @@
+/* ============================================================================
+   MODULO BLOQUES DE TRABAJO — el dia partido en tramos de horario.
+   Mismo "shell" que los demas paneles; los bloques se pintan como una linea de
+   tiempo vertical, con el horario a la izquierda.
+   ============================================================================ */
+
+/* ---------- LAYOUT BASE (shell) ---------- */
+.app-layout {
+  display: flex; flex-direction: column; height: 100vh;
+  background-color: #F8FAFC; font-family: 'Inter', system-ui, sans-serif;
+}
+.header {
+  height: 60px; background: white; border-bottom: 1px solid #E2E8F0;
+  display: flex; align-items: center; padding: 0 20px; justify-content: space-between; z-index: 10;
+}
+.header-left { display: flex; align-items: center; gap: 15px; }
+.header-brand {
+  font-weight: 700; font-size: 16px; color: #0F172A;
+  display: flex; flex-direction: column; line-height: 1.2;
+}
+.header-brand small { font-size: 11px; color: #64748B; font-weight: 500; }
+.main-wrapper { display: flex; flex: 1; overflow: hidden; position: relative; }
+.content { flex: 1; padding: 30px; overflow-y: auto; }
+.btn-menu-mobile { display: none; background: transparent; border: none; color: #0F172A; cursor: pointer; }
+.mobile-overlay { display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.4); z-index: 15; }
+
+/* ---------- ENCABEZADO ---------- */
+.bq-header {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 22px 26px; margin-bottom: 20px;
+  background: linear-gradient(135deg, #FFFFFF 0%, #F8FAFF 100%);
+  border: 1px solid #E2E8F0; border-left: 4px solid #7C3AED; border-radius: 14px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 24px -12px rgba(15, 23, 42, 0.15);
+  flex-wrap: wrap;
+}
+.bq-title { font-size: 24px; font-weight: 800; color: #0F172A; margin: 0 0 4px; }
+.bq-sub { font-size: 13px; color: #64748B; margin: 0; max-width: 620px; line-height: 1.5; }
+
+/* ---------- CIFRAS Y AVISOS ---------- */
+.bq-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px; margin-bottom: 18px; }
+.bq-kpi {
+  background: #fff; border: 1px solid #E2E8F0; border-radius: 14px; padding: 18px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04); border-top: 3px solid #7C3AED;
+}
+.bq-kpi.rojo { border-top-color: #DC2626; }
+.bq-kpi-num { font-size: 30px; font-weight: 800; color: #0F172A; line-height: 1; }
+.bq-kpi-lbl { font-size: 12.5px; color: #64748B; margin-top: 6px; font-weight: 600; }
+.bq-alerta {
+  background: #FFFBEB; border: 1px solid #FDE68A; color: #92400E;
+  border-radius: 12px; padding: 12px 16px; margin-bottom: 18px; font-size: 13.5px; line-height: 1.55;
+}
+.bq-aviso {
+  background: #EFF6FF; border: 1px solid #BFDBFE; color: #1E40AF;
+  border-radius: 12px; padding: 12px 16px; margin-bottom: 18px; font-size: 13.5px;
+}
+.bq-chips { display: inline-flex; gap: 6px; flex-wrap: wrap; margin-left: 6px; }
+.bq-chip {
+  background: rgba(255, 255, 255, .75); border: 1px solid currentColor; border-radius: 999px;
+  padding: 2px 9px; font-size: 11.5px; font-weight: 600;
+}
+
+/* ---------- LA JORNADA ---------- */
+.bq-linea { display: flex; flex-direction: column; gap: 16px; }
+.bq-bloque {
+  background: #fff; border: 1px solid #E2E8F0; border-left: 4px solid #7C3AED;
+  border-radius: 14px; overflow: hidden; box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+.bq-bloque.apagado { opacity: .62; border-left-color: #CBD5E1; }
+.bq-bloque-top {
+  display: flex; align-items: center; gap: 14px; padding: 14px 18px;
+  background: linear-gradient(135deg, #FAF5FF 0%, #F8FAFF 100%);
+  border-bottom: 1px solid #E2E8F0; flex-wrap: wrap;
+}
+.bq-horario {
+  display: flex; align-items: center; gap: 6px; font-family: monospace;
+  background: #7C3AED; color: #fff; border-radius: 8px; padding: 6px 10px; white-space: nowrap;
+}
+.bq-hora { font-size: 14px; font-weight: 700; }
+.bq-flecha { opacity: .7; font-size: 12px; }
+.bq-dur { font-size: 11px; opacity: .85; margin-left: 4px; }
+.bq-bloque-nombre { font-size: 17px; font-weight: 800; color: #0F172A; flex: 1; min-width: 120px; }
+.bq-bloque-acciones { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+
+/* ---------- SECCIONES DE UN BLOQUE ---------- */
+.bq-seccion { padding: 12px 18px; border-bottom: 1px solid #F1F5F9; }
+.bq-seccion:last-child { border-bottom: none; }
+.bq-seccion-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+.bq-seccion-tit {
+  font-size: 11px; text-transform: uppercase; letter-spacing: .05em;
+  color: #94A3B8; font-weight: 800;
+}
+.bq-vacio-chico { font-size: 13px; color: #94A3B8; padding: 6px 0; font-style: italic; }
+
+/* ---------- TAREAS ---------- */
+.bq-tarea {
+  display: flex; align-items: center; gap: 10px; padding: 9px 0;
+  border-bottom: 1px dashed #F1F5F9; flex-wrap: wrap;
+}
+.bq-tarea:last-child { border-bottom: none; }
+.bq-tarea.apagada { opacity: .55; }
+.bq-tarea-main { flex: 1; min-width: 180px; }
+.bq-tarea-texto { font-size: 14px; font-weight: 600; color: #0F172A; }
+.bq-tarea-cuando { font-size: 12px; color: #64748B; margin-top: 2px; }
+.bq-etq {
+  display: inline-block; border-radius: 999px; padding: 1px 8px; margin-left: 6px;
+  font-size: 10.5px; font-weight: 700; vertical-align: middle;
+}
+.bq-etq.foto { background: #EFF6FF; color: #1D4ED8; }
+.bq-etq.unica { background: #FFFBEB; color: #B45309; }
+.bq-etq.off { background: #F1F5F9; color: #64748B; }
+
+/* ---------- ASIGNACIONES ---------- */
+.bq-asig {
+  display: flex; align-items: center; gap: 10px; padding: 9px 0;
+  border-bottom: 1px dashed #F1F5F9; flex-wrap: wrap;
+}
+.bq-asig:last-child { border-bottom: none; }
+.bq-asig.apagada { opacity: .55; }
+.bq-asig-main { flex: 1; min-width: 180px; }
+.bq-asig-quien { font-size: 13.5px; font-weight: 600; color: #334155; }
+.bq-asig-vig { font-size: 11.5px; color: #94A3B8; margin-top: 2px; }
+
+/* ---------- PILDORAS ---------- */
+.pill {
+  display: inline-block; padding: 3px 10px; border-radius: 999px;
+  font-size: 11.5px; font-weight: 700; background: #F1F5F9; color: #64748B; white-space: nowrap;
+}
+
+/* ---------- BOTONES ---------- */
+.bq-btn-primary {
+  background: #7C3AED; color: #fff; border: none; border-radius: 10px;
+  padding: 10px 18px; font-weight: 700; font-size: 14px; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 8px;
+}
+.bq-btn-primary:hover { background: #6D28D9; }
+.bq-btn-primary:disabled { opacity: .6; cursor: default; }
+.bq-btn-ghost {
+  background: transparent; color: #475569; border: 1px solid #E2E8F0; border-radius: 9px;
+  padding: 9px 14px; font-weight: 600; font-size: 13.5px; cursor: pointer;
+}
+.bq-btn-ghost:hover { background: #F1F5F9; }
+.bq-btn-mini {
+  border: 1px solid #CBD5E1; background: #fff; color: #334155; border-radius: 8px;
+  padding: 5px 11px; font-weight: 600; font-size: 12.5px; cursor: pointer;
+}
+.bq-btn-mini:hover { background: #F8FAFC; }
+.bq-btn-mini.danger { background: #fff; color: #B91C1C; border-color: #FCA5A5; }
+.bq-btn-mini.danger:hover { background: #FEF2F2; }
+.bq-link {
+  background: none; border: none; color: #7C3AED; font-weight: 700;
+  text-decoration: underline; cursor: pointer; font-size: 12.5px; padding: 0;
+}
+.bq-acciones-chicas { display: flex; gap: 12px; margin-bottom: 8px; }
+
+/* ---------- VACIOS / NOTAS ---------- */
+.bq-empty {
+  background: #fff; border: 1px dashed #CBD5E1; border-radius: 12px;
+  padding: 28px; text-align: center; color: #64748B; font-size: 14px;
+}
+.bq-nota { font-size: 12.5px; color: #94A3B8; margin: 8px 2px 0; line-height: 1.55; max-width: 760px; }
+
+/* ---------- MODALES ---------- */
+.bq-modal-fondo {
+  position: fixed; inset: 0; background: rgba(15, 23, 42, 0.45);
+  display: flex; align-items: center; justify-content: center; z-index: 50; padding: 20px;
+}
+.bq-modal {
+  background: #fff; border-radius: 16px; padding: 26px;
+  width: 100%; max-width: 620px; max-height: 90vh; overflow-y: auto;
+  box-shadow: 0 24px 60px -12px rgba(15, 23, 42, 0.35);
+}
+.bq-modal-titulo {
+  font-size: 20px; font-weight: 800; color: #0F172A; margin: 0 0 8px;
+  display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+}
+.bq-modal-sub { font-size: 13px; font-weight: 600; color: #7C3AED; }
+.bq-label { display: block; font-size: 13px; font-weight: 600; color: #334155; margin: 14px 0 5px; }
+.bq-input {
+  width: 100%; border: 1px solid #E2E8F0; border-radius: 9px; padding: 10px 12px;
+  font-size: 14px; box-sizing: border-box; background: #fff; font-family: inherit;
+}
+.bq-input:focus { outline: none; border-color: #7C3AED; box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.08); }
+.bq-form-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.bq-check { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 13.5px; color: #334155; }
+.bq-modal-acciones { display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; flex-wrap: wrap; }
+
+/* ---------- SELECTORES (tipo, dias, sucursales, personas) ---------- */
+.bq-tabs { display: flex; gap: 8px; flex-wrap: wrap; }
+.bq-tab {
+  flex: 1; min-width: 130px; border: 1px solid #E2E8F0; background: #fff; color: #475569;
+  padding: 10px 14px; border-radius: 10px; font-weight: 600; font-size: 13.5px; cursor: pointer;
+}
+.bq-tab.active { background: #7C3AED; color: #fff; border-color: #7C3AED; }
+.bq-dias { display: flex; gap: 6px; flex-wrap: wrap; }
+.bq-dia {
+  border: 1px solid #E2E8F0; background: #fff; color: #475569; border-radius: 8px;
+  padding: 7px 11px; font-weight: 700; font-size: 12.5px; cursor: pointer; min-width: 48px;
+}
+.bq-dia.active { background: #7C3AED; color: #fff; border-color: #7C3AED; }
+.bq-sucursales, .bq-personas {
+  display: flex; gap: 6px; flex-wrap: wrap; max-height: 190px; overflow-y: auto;
+  border: 1px solid #F1F5F9; border-radius: 10px; padding: 10px;
+}
+.bq-suc, .bq-persona {
+  border: 1px solid #E2E8F0; background: #fff; color: #475569; border-radius: 999px;
+  padding: 6px 12px; font-weight: 600; font-size: 12.5px; cursor: pointer;
+}
+.bq-suc.active, .bq-persona.active { background: #7C3AED; color: #fff; border-color: #7C3AED; }
+
+/* ---------- RESPONSIVE ---------- */
+@media (max-width: 768px) {
+  .content { padding: 16px; }
+  .btn-menu-mobile { display: block; }
+  .mobile-overlay { display: block; }
+  .bq-form-2 { grid-template-columns: 1fr; }
+  .bq-bloque-top { align-items: flex-start; }
+  .bq-tab { min-width: 100%; }
+}

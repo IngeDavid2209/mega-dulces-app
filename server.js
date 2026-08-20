@@ -89,6 +89,10 @@ app.all('/api/pagos-servicios', require('./api/pagos-servicios'));
 // con su folio, el detalle de lo realizado y las tres firmas del formato).
 app.all('/api/tickets', require('./api/tickets'));
 
+// 🧱 BLOQUES DE TRABAJO: tramos de horario (Mañana, Tarde...) con sus tareas.
+// El generador (api/bloques-generar.js) los materializa como checklists normales.
+app.all('/api/bloques', require('./api/bloques'));
+
 // Comprobacion de salud para Railway (healthcheckPath en railway.json).
 //
 // A proposito NO toca la base: si Postgres tarda o hipa, no queremos que el
@@ -198,6 +202,14 @@ app.listen(PORT, () => {
     } catch (e) {
       console.error('[tareas-notificar] no se pudo iniciar el poll:', e && e.message);
     }
+  }
+
+  // BLOQUES DE TRABAJO: reparte los bloques del día como checklists. Arranca
+  // SIEMPRE (no manda ningún mensaje; solo genera las tareas del día).
+  try {
+    require('./api/bloques-generar').iniciarPoll();
+  } catch (e) {
+    console.error('[bloques] no se pudo iniciar el generador:', e && e.message);
   }
 
   // PAGOS DE SERVICIOS: genera el pago de cada periodo a partir del catálogo y

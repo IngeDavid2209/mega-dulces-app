@@ -6,6 +6,8 @@ import Swal from 'sweetalert2';
 
 import { SidebarComponent } from '../../../shared/sidebar/sidebar';
 import { ApiService } from '../../../shared/api.service';
+import { CloudinaryService } from '../../../shared/cloudinary.service';
+import { PromoExpedientesComponent } from './expedientes';
 
 /** Un archivo de evidencia ya subido. */
 interface Evidencia {
@@ -58,7 +60,7 @@ const RECURSOS = [
 @Component({
   selector: 'app-promociones',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, SidebarComponent],
+  imports: [CommonModule, FormsModule, RouterModule, SidebarComponent, PromoExpedientesComponent],
   templateUrl: './promociones.html',
   styleUrls: ['./promociones.css']
 })
@@ -68,6 +70,7 @@ export class PromocionesComponent implements OnInit {
 
   private router = inject(Router);
   private api = inject(ApiService);
+  private nube = inject(CloudinaryService);
 
   readonly CANALES = CANALES;
   readonly RECURSOS = RECURSOS;
@@ -82,7 +85,21 @@ export class PromocionesComponent implements OnInit {
   readonly MAX_CODIGOS = 30;
 
   // ---------------- Vista ----------------
-  vista = signal<'lista' | 'captura'>('lista');
+  //   lista       las promociones y su avance
+  //   captura     el formato MKTN001 en sus tres pasos
+  //   seguimiento los expedientes de UNA promocion (evidencia por sucursal)
+  //   ranking     que promocion se vendio mas, en general y por sucursal
+  vista = signal<'lista' | 'captura' | 'seguimiento' | 'ranking'>('lista');
+
+  /** La promoción cuyo seguimiento se está viendo. */
+  promoSeguimiento: any = null;
+
+  /** Avance de cada promoción (expedientes, piezas, dinero), por promoId. */
+  resumen = signal<Record<string, any>>({});
+
+  /** Ranking general y por sucursal. Se carga al entrar a esa vista. */
+  ranking = signal<{ general: any[]; porCanal: any[] }>({ general: [], porCanal: [] });
+  cargandoRanking = signal(false);
   cargando = signal(false);
   guardando = signal(false);
   subiendo = signal(0);
@@ -152,12 +169,18 @@ export class PromocionesComponent implements OnInit {
   async cargarTodo() {
     this.cargando.set(true);
     try {
-      const [p, pr] = await Promise.all([
+      const [p, pr, res] = await Promise.all([
         this.api.get('/api/promociones').catch(() => ({ promociones: [] })),
-        this.api.get('/api/promo-proveedores').catch(() => ({ proveedores: [] }))
+        this.api.get('/api/promo-proveedores').catch(() => ({ proveedores: [] })),
+        // El avance es de adorno hasta que hay expedientes: si falla, la lista
+        // se ve igual, nomas sin las cifras.
+        this.api.get('/api/promo-expedientes').catch(() => ({ resumen: [] }))
       ]);
       this.promociones.set(p?.promociones || []);
       this.proveedores.set(pr?.proveedores || []);
+      const porId: Record<string, any> = {};
+      for (const x of (res?.resumen || [])) porId[x.promoId] = x;
+      this.resumen.set(porId);
     } finally {
       this.cargando.set(false);
     }
@@ -274,7 +297,67 @@ export class PromocionesComponent implements OnInit {
     this.paso.set(this.pasoDesbloqueado(3) ? 3 : (this.pasoDesbloqueado(2) ? 2 : 1));
   }
 
-  volverALista() { this.vista.set('lista'); this.cargarTodo(); }
+  volverALista() { this.vista.set('lista'); this.promoSeguimiento = null; this.cargarTodo(); }
+
+  // ================= Seguimiento y ranking =================
+  /** Abre los expedientes (evidencia por sucursal) de una promoción. */
+  abrirSeguimiento(p: any) {
+    this.promoSeguimiento = p;
+    this.vista.set('seguimiento');
+  }
+
+  async abrirRanking() {
+    this.vista.set('ranking');
+    this.cargandoRanking.set(true);
+    try {
+      const r = await this.api.get('/api/promo-expedientes?ranking=1');
+      this.ranking.set({ general: r?.general || [], porCanal: r?.porCanal || [] });
+    } catch (e: any) {
+      Swal.fire({
+        icon: 'error', title: 'No se pudo cargar el ranking',
+        text: e?.message || 'Revisa tu conexión.', confirmButtonColor: '#0F172A'
+      });
+    } finally {
+      this.cargandoRanking.set(false);
+    }
+  }
+
+  /** El ranking por sucursal, agrupado por canal (ya viene ordenado del servidor). */
+  rankingAgrupado = computed<{ canal: string; promos: any[] }[]>(() => {
+    const grupos: { canal: string; promos: any[] }[] = [];
+    for (const r of this.ranking().porCanal) {
+      const ultimo = grupos[grupos.length - 1];
+      if (ultimo && ultimo.canal === r.canal) ultimo.promos.push(r);
+      else grupos.push({ canal: r.canal, promos: [r] });
+    }
+    return grupos;
+  });
+
+  /** El avance de una promoción para la tarjeta de la lista. */
+  avanceDe(p: any): any {
+    const r = this.resumen()[p?.id];
+    const canales = Object.keys(p?.canales || {}).filter(c => p.canales[c] === true).length;
+    return {
+      canales,
+      expedientes: r?.expedientes || 0,
+      completos: r?.completos || 0,
+      piezas: r?.piezas || 0,
+      importe: r?.importe || 0,
+      tickets: r?.tickets || 0,
+    };
+  }
+
+  /** Qué tan avanzada va, en porcentaje, para la barra de la tarjeta. */
+  porcentaje(p: any): number {
+    const a = this.avanceDe(p);
+    if (!a.canales) return 0;
+    return Math.round((a.completos / a.canales) * 100);
+  }
+
+  pesos(n: any): string {
+    const v = Number(n || 0);
+    return '$' + v.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
 
   /** Estado que se guarda, para saber en que quedo cada promocion. */
   private estadoActual(): string {
@@ -374,36 +457,20 @@ export class PromocionesComponent implements OnInit {
   }
 
   private async subirUno(archivo: File) {
-    const mb = archivo.size / 1024 / 1024;
-    if (mb > this.MAX_ARCHIVO_MB) {
+    const pesado = this.nube.revisarPeso(archivo);
+    if (pesado) {
       Swal.fire({
         icon: 'warning', title: 'Archivo demasiado pesado',
-        text: `"${archivo.name}" pesa ${mb.toFixed(1)} MB. El tope por archivo son ${this.MAX_ARCHIVO_MB} MB. ` +
-              'Puedes adjuntar todos los archivos que quieras, pero de uno en uno tienen ese límite.',
-        confirmButtonColor: '#0F172A'
+        text: pesado, confirmButtonColor: '#0F172A'
       });
       return;
     }
 
     this.subiendo.set(this.subiendo() + 1);
     try {
-      const fd = new FormData();
-      fd.append('file', archivo);
-      fd.append('upload_preset', 'fotos_mega');
-      // 'auto' acepta cualquier formato, no solo imagenes (pdf, excel, xml...).
-      const resp = await fetch('https://api.cloudinary.com/v1_1/duherjgyg/auto/upload', {
-        method: 'POST', body: fd
-      });
-      const data = await resp.json().catch(() => null);
-      if (!data?.secure_url) throw new Error(data?.error?.message || 'Cloudinary no devolvió el archivo');
-
-      this.evidencias = [...this.evidencias, {
-        url: data.secure_url,
-        nombre: archivo.name,
-        tipo: archivo.type || '',
-        pesoKB: Math.round(archivo.size / 1024),
-        subidoEn: Date.now()
-      }];
+      // La subida vive en CloudinaryService: el seguimiento sube evidencia desde
+      // otras pantallas y la cuenta y el preset no pueden andar copiados.
+      this.evidencias = [...this.evidencias, await this.nube.subir(archivo)];
     } catch (e: any) {
       Swal.fire({
         icon: 'error', title: 'No se pudo subir el archivo',

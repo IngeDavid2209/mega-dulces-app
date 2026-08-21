@@ -78,6 +78,10 @@ app.all('/api/reservas-vehiculos', require('./api/reservas-vehiculos'));
 // 🏷️ Activación de promociones (formato MKTN001)
 app.all('/api/promociones', require('./api/promociones'));
 app.all('/api/promo-proveedores', require('./api/promo-proveedores'));
+// Seguimiento de la promocion: el expediente de cada canal y la lectura de los
+// tickets de venta con la IA.
+app.all('/api/promo-expedientes', require('./api/promo-expedientes'));
+app.all('/api/promo-leer-ticket', require('./api/promo-leer-ticket'));
 
 // 🧾 PAGOS DE SERVICIOS: catálogo de servicios contratados (luz, agua, internet)
 // y el pago de cada periodo. Los recordatorios y la captura del comprobante van

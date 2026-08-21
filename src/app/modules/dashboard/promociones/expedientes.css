@@ -1,0 +1,156 @@
+/* Seguimiento de una promoción: un expediente por canal.
+   Los botones .pr-btn y los campos .promo-input vienen del CSS de la pantalla
+   de promociones, que es donde vive este componente. */
+
+:host {
+  --ex-azul: #1F4E79;
+  --ex-azul-claro: #DEEBF7;
+  --ex-linea: #E2E8F0;
+  --ex-txt-2: #64748B;
+  --ex-verde: #1F7A4D;
+  --ex-verde-claro: #E8F5EE;
+  --ex-rojo: #C7382E;
+  display: block;
+}
+
+/* ---------- Encabezado ---------- */
+.exp-head {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  gap: 16px; flex-wrap: wrap;
+  padding-bottom: 14px; margin-bottom: 18px;
+  border-bottom: 2px solid var(--ex-linea);
+}
+.exp-head h2 {
+  font-size: 19px; font-weight: 800; color: #0F172A; margin: 0;
+  display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+}
+.exp-folio {
+  font-size: 12px; font-weight: 700;
+  color: var(--ex-rojo); background: #FBE9E7;
+  border-radius: 999px; padding: 3px 10px;
+}
+.exp-sub { font-size: 13px; color: var(--ex-txt-2); margin: 4px 0 0; }
+.exp-vacio { color: var(--ex-txt-2); font-size: 14px; padding: 20px 0; }
+
+/* ---------- KPI ---------- */
+.exp-kpis {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px; margin-bottom: 18px;
+}
+.exp-kpi {
+  background: #fff; border: 1px solid var(--ex-linea); border-radius: 12px;
+  padding: 12px 14px; display: flex; flex-direction: column; gap: 2px;
+}
+.exp-kpi-n { font-size: 20px; font-weight: 800; color: var(--ex-azul); font-variant-numeric: tabular-nums; }
+.exp-kpi-t { font-size: 11.5px; font-weight: 600; color: var(--ex-txt-2); text-transform: uppercase; letter-spacing: .3px; }
+
+/* ---------- Canal ---------- */
+.exp-canal {
+  border: 1px solid var(--ex-linea); border-left: 4px solid #CBD5E1;
+  border-radius: 10px; margin-bottom: 8px; background: #fff; overflow: hidden;
+}
+.exp-canal.completo { border-left-color: var(--ex-verde); }
+
+.exp-canal-top {
+  width: 100%; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 12px 14px; background: none; border: none; cursor: pointer; text-align: left;
+}
+.exp-canal-top:hover { background: #F8FAFC; }
+.exp-canal-nombre { font-weight: 800; color: #0F172A; font-size: 14.5px; flex: 0 0 auto; }
+.exp-canal-num { margin-left: auto; font-size: 12.5px; color: var(--ex-txt-2); font-variant-numeric: tabular-nums; }
+.exp-flecha { font-size: 17px; font-weight: 700; color: var(--ex-txt-2); width: 16px; text-align: center; }
+
+.exp-etq {
+  font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px;
+  background: #FFFBEB; color: #B45309; white-space: nowrap;
+}
+.exp-etq.ok { background: var(--ex-verde-claro); color: var(--ex-verde); }
+
+/* ---------- Secciones del expediente ---------- */
+.exp-cuerpo { border-top: 1px solid var(--ex-linea); padding: 4px 14px 14px; }
+
+.exp-seccion { padding: 14px 0; border-bottom: 1px dashed var(--ex-linea); }
+.exp-seccion:last-child { border-bottom: none; }
+.exp-seccion-top {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; flex-wrap: wrap;
+}
+.exp-seccion-tit { font-size: 13.5px; font-weight: 800; color: var(--ex-azul); }
+.exp-ayuda { font-size: 12px; color: var(--ex-txt-2); margin: 4px 0 8px; }
+.exp-sin { font-size: 12.5px; color: #94A3B8; font-style: italic; margin: 0; }
+
+/* ---------- Evidencias ---------- */
+.exp-tira { display: flex; flex-wrap: wrap; gap: 8px; }
+.exp-ev { position: relative; display: flex; flex-direction: column; gap: 2px; }
+.exp-mini {
+  width: 76px; height: 76px; object-fit: cover;
+  border-radius: 8px; border: 1px solid var(--ex-linea); display: block;
+}
+.exp-archivo {
+  display: flex; align-items: center; justify-content: center; text-align: center;
+  width: 76px; height: 76px; padding: 4px; box-sizing: border-box;
+  border-radius: 8px; border: 1px solid var(--ex-linea); background: #F8FAFC;
+  font-size: 10px; color: var(--ex-azul); font-weight: 600;
+  overflow: hidden; word-break: break-all;
+}
+.exp-ev-pie { font-size: 10px; color: #94A3B8; text-align: center; }
+
+.exp-x {
+  position: absolute; top: -6px; right: -6px;
+  width: 20px; height: 20px; border-radius: 50%;
+  border: 1px solid var(--ex-linea); background: #fff; color: var(--ex-txt-2);
+  font-size: 13px; line-height: 1; cursor: pointer;
+}
+.exp-x:hover { background: var(--ex-rojo); color: #fff; border-color: var(--ex-rojo); }
+
+/* ---------- Captura de la venta ---------- */
+.exp-captura {
+  display: flex; gap: 12px; flex-wrap: wrap;
+  background: #F8FAFC; border: 1px solid var(--ex-linea);
+  border-radius: 10px; padding: 12px; margin: 8px 0;
+}
+.exp-ticket {
+  width: 130px; max-height: 210px; object-fit: contain;
+  border-radius: 8px; border: 1px solid var(--ex-linea); background: #fff;
+}
+.exp-captura-datos { flex: 1 1 240px; min-width: 0; }
+
+.exp-leyendo { font-size: 12.5px; font-weight: 700; color: var(--ex-azul); margin: 0 0 8px; }
+.exp-ia {
+  font-size: 12.5px; font-weight: 700; color: var(--ex-verde);
+  background: var(--ex-verde-claro); border-radius: 8px;
+  padding: 6px 10px; margin: 0 0 10px;
+}
+.exp-ia.mala { color: #B45309; background: #FFFBEB; font-weight: 600; }
+.exp-ia small { font-weight: 600; color: var(--ex-txt-2); }
+
+.exp-campos { display: flex; gap: 10px; flex-wrap: wrap; }
+.exp-campos label { display: flex; flex-direction: column; gap: 3px; flex: 1 1 110px; }
+.exp-campos span { font-size: 11.5px; font-weight: 700; color: #334155; }
+.exp-captura-acciones { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+
+/* ---------- Tabla de ventas ---------- */
+.exp-ventas { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 12.5px; }
+.exp-ventas th {
+  text-align: left; font-size: 10.5px; text-transform: uppercase; letter-spacing: .4px;
+  color: var(--ex-txt-2); padding: 6px 8px; border-bottom: 1px solid var(--ex-linea);
+}
+.exp-ventas td { padding: 7px 8px; border-bottom: 1px solid #F1F5F9; }
+.exp-ventas .num { text-align: right; font-variant-numeric: tabular-nums; }
+.exp-ventas tfoot td {
+  font-weight: 800; color: var(--ex-azul); border-top: 2px solid var(--ex-linea); border-bottom: none;
+}
+.exp-chico { font-size: 11.5px; color: var(--ex-txt-2); }
+.exp-ver { color: var(--ex-azul); font-weight: 600; }
+
+.exp-nota-fija {
+  position: sticky; bottom: 0;
+  background: var(--ex-azul); color: #fff;
+  font-size: 12.5px; font-weight: 700; text-align: center;
+  padding: 8px; border-radius: 8px; margin: 10px 0 0;
+}
+
+@media (max-width: 640px) {
+  .exp-canal-num { margin-left: 0; width: 100%; }
+  .exp-ticket { width: 100%; max-height: 260px; }
+}

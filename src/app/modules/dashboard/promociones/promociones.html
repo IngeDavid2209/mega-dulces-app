@@ -28,10 +28,13 @@
             <h1>Activación de promociones</h1>
             <p class="promo-sub">Formato MKTN001 · Apoyo para Sell Out</p>
           </div>
-          <button class="pr-btn pr-btn-alta" (click)="nueva()">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
-            Nueva promoción
-          </button>
+          <div class="promo-head-acciones">
+            <button class="pr-btn" (click)="abrirRanking()">Ranking de ventas</button>
+            <button class="pr-btn pr-btn-alta" (click)="nueva()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+              Nueva promoción
+            </button>
+          </div>
         </section>
 
         <p class="promo-vacio" *ngIf="cargando()">Cargando…</p>
@@ -40,34 +43,54 @@
           Todavía no hay promociones capturadas. Empieza con "Nueva promoción".
         </p>
 
-        <div class="promo-tabla-marco" *ngIf="!cargando() && promociones().length > 0">
-          <table class="promo-tabla">
-            <thead>
-              <tr>
-                <th>Folio</th>
-                <th>Proveedor / Marca</th>
-                <th>Negociación</th>
-                <th>Avance</th>
-                <th class="th-num">Evidencias</th>
-                <th class="th-num">Monto</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr *ngFor="let p of promociones()">
-                <td class="td-folio">{{ folioTexto(p.folio) }}</td>
-                <td class="td-prov">{{ p.proveedor || '—' }}</td>
-                <td>{{ p.fechaNegociacion || '—' }}</td>
-                <td><span class="promo-chip">{{ etiquetaEstado(p.estado) }}</span></td>
-                <td class="th-num">{{ (p.evidencias || []).length }}</td>
-                <td class="th-num">{{ p.monto != null ? (p.monto | number:'1.2-2') : '—' }}</td>
-                <td class="td-acciones">
-                  <button class="pr-btn pr-btn-chico" (click)="abrir(p)">Abrir</button>
-                  <button class="pr-btn pr-btn-chico pr-btn-quitar" (click)="eliminar(p)">Quitar</button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+        <!-- Una tarjeta por promoción. Lo que manda aquí no es la captura del
+             formato sino el SEGUIMIENTO: cuántas sucursales ya probaron que la
+             ejecutaron y cuánto se ha vendido. -->
+        <div class="promo-tarjetas" *ngIf="!cargando() && promociones().length > 0">
+          <div class="promo-tarjeta" *ngFor="let p of promociones()">
+
+            <div class="promo-t-top">
+              <span class="promo-t-folio">{{ folioTexto(p.folio) }}</span>
+              <span class="promo-t-prov">{{ p.proveedor || 'Sin proveedor' }}</span>
+              <span class="promo-chip">{{ etiquetaEstado(p.estado) }}</span>
+            </div>
+
+            <div class="promo-t-vig">
+              <span *ngIf="p.vigenciaDel || p.vigenciaAl">
+                Vigencia: {{ p.vigenciaDel || '—' }} → {{ p.vigenciaAl || 'sin fecha' }}
+              </span>
+              <span *ngIf="!p.vigenciaDel && !p.vigenciaAl">Sin vigencia capturada</span>
+            </div>
+
+            <!-- Avance de expedientes -->
+            <div class="promo-t-avance" *ngIf="avanceDe(p).canales">
+              <div class="promo-barra">
+                <div class="promo-barra-hecho" [style.width.%]="porcentaje(p)"></div>
+              </div>
+              <span class="promo-t-avance-txt">
+                {{ avanceDe(p).completos }} de {{ avanceDe(p).canales }} sucursales completas
+              </span>
+            </div>
+            <div class="promo-t-vig" *ngIf="!avanceDe(p).canales">
+              Sin canales marcados: no hay expedientes que llenar todavía.
+            </div>
+
+            <!-- Lo vendido -->
+            <div class="promo-t-cifras">
+              <span><strong>{{ avanceDe(p).piezas }}</strong> piezas</span>
+              <span><strong>{{ pesos(avanceDe(p).importe) }}</strong> vendido</span>
+              <span><strong>{{ avanceDe(p).tickets }}</strong> tickets</span>
+              <span><strong>{{ (p.evidencias || []).length }}</strong> evidencias del acuerdo</span>
+            </div>
+
+            <div class="promo-t-acciones">
+              <button class="pr-btn pr-btn-chico pr-btn-alta" (click)="abrirSeguimiento(p)">
+                Expedientes
+              </button>
+              <button class="pr-btn pr-btn-chico" (click)="abrir(p)">Ver formato</button>
+              <button class="pr-btn pr-btn-chico pr-btn-quitar" (click)="eliminar(p)">Quitar</button>
+            </div>
+          </div>
         </div>
       </ng-container>
 
@@ -395,6 +418,74 @@
           </div>
         </section>
 
+      </ng-container>
+
+      <!-- ==================== SEGUIMIENTO (expedientes) ==================== -->
+      <ng-container *ngIf="vista() === 'seguimiento' && promoSeguimiento">
+        <app-promo-expedientes [promo]="promoSeguimiento"
+                               (volver)="volverALista()"></app-promo-expedientes>
+      </ng-container>
+
+      <!-- ==================== RANKING ==================== -->
+      <ng-container *ngIf="vista() === 'ranking'">
+        <section class="promo-head">
+          <div>
+            <h1>Ranking de ventas</h1>
+            <p class="promo-sub">Por piezas vendidas, con su importe. Sale de los tickets de cada expediente.</p>
+          </div>
+          <button class="pr-btn" (click)="volverALista()">Volver</button>
+        </section>
+
+        <p class="promo-vacio" *ngIf="cargandoRanking()">Cargando…</p>
+
+        <ng-container *ngIf="!cargandoRanking()">
+          <p class="promo-vacio" *ngIf="!ranking().general.length">
+            Todavía no hay ventas registradas. En cuanto se suban tickets en los
+            expedientes, aquí aparece qué promoción se está vendiendo más.
+          </p>
+
+          <ng-container *ngIf="ranking().general.length">
+            <h2 class="promo-rk-tit">En general</h2>
+            <div class="promo-tabla-marco">
+              <table class="promo-tabla">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Folio</th>
+                    <th>Proveedor / Marca</th>
+                    <th class="th-num">Piezas</th>
+                    <th class="th-num">Importe</th>
+                    <th class="th-num">Tickets</th>
+                    <th class="th-num">Expedientes</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let r of ranking().general; let i = index">
+                    <td class="promo-rk-lugar">{{ i + 1 }}</td>
+                    <td class="td-folio">{{ folioTexto(r.folio) }}</td>
+                    <td class="td-prov">{{ r.proveedor || '—' }}</td>
+                    <td class="th-num"><strong>{{ r.piezas }}</strong></td>
+                    <td class="th-num">{{ pesos(r.importe) }}</td>
+                    <td class="th-num">{{ r.tickets }}</td>
+                    <td class="th-num">{{ r.completos }} / {{ r.expedientes }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h2 class="promo-rk-tit">Por sucursal</h2>
+            <div class="promo-rk-canal" *ngFor="let g of rankingAgrupado()">
+              <div class="promo-rk-canal-tit">{{ g.canal }}</div>
+              <div class="promo-rk-fila" *ngFor="let r of g.promos; let i = index">
+                <span class="promo-rk-lugar">{{ i + 1 }}</span>
+                <span class="promo-rk-prov">{{ r.proveedor || '—' }}</span>
+                <span class="promo-rk-folio">{{ folioTexto(r.folio) }}</span>
+                <span class="promo-rk-num"><strong>{{ r.piezas }}</strong> pzas</span>
+                <span class="promo-rk-num">{{ pesos(r.importe) }}</span>
+              </div>
+            </div>
+          </ng-container>
+        </ng-container>
       </ng-container>
 
     </div>

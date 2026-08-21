@@ -385,3 +385,66 @@
   .promo-tabla { min-width: 560px; }
   .td-acciones { justify-content: flex-start; }
 }
+
+/* ---------- Tarjetas de la lista (seguimiento, no captura) ---------- */
+.promo-tarjetas { display: grid; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); gap: 12px; }
+
+.promo-tarjeta {
+  background: #fff; border: 1px solid var(--pz-linea); border-radius: 12px;
+  padding: 14px; display: flex; flex-direction: column; gap: 8px;
+}
+
+.promo-t-top { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.promo-t-folio {
+  font-weight: 800; font-variant-numeric: tabular-nums;
+  color: var(--pz-rojo); background: var(--pz-rojo-claro);
+  border-radius: 6px; padding: 2px 8px; font-size: 13px;
+}
+.promo-t-prov { font-weight: 700; color: #0F172A; font-size: 15px; flex: 1 1 auto; }
+.promo-t-vig { font-size: 12px; color: var(--pz-txt-2); }
+
+/* Avance de expedientes */
+.promo-t-avance { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.promo-barra {
+  flex: 1 1 120px; height: 8px; border-radius: 999px;
+  background: var(--pz-azul-claro); overflow: hidden; min-width: 90px;
+}
+.promo-barra-hecho { height: 100%; background: var(--pz-verde); border-radius: 999px; }
+.promo-t-avance-txt { font-size: 11.5px; font-weight: 700; color: var(--pz-verde); white-space: nowrap; }
+
+.promo-t-cifras {
+  display: flex; flex-wrap: wrap; gap: 4px 14px;
+  font-size: 12px; color: var(--pz-txt-2);
+  border-top: 1px dashed var(--pz-linea); padding-top: 8px;
+}
+.promo-t-cifras strong { color: var(--pz-azul); font-variant-numeric: tabular-nums; }
+.promo-t-acciones { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 2px; }
+
+/* ---------- Ranking ---------- */
+.promo-rk-tit {
+  font-size: 15px; font-weight: 800; color: #0F172A;
+  margin: 22px 0 10px; padding-bottom: 6px; border-bottom: 2px solid var(--pz-linea);
+}
+.promo-rk-lugar {
+  font-weight: 800; color: var(--pz-azul); font-variant-numeric: tabular-nums;
+  min-width: 22px; display: inline-block;
+}
+
+.promo-rk-canal {
+  border: 1px solid var(--pz-linea); border-radius: 10px;
+  padding: 10px 12px; margin-bottom: 8px; background: #fff;
+}
+.promo-rk-canal-tit {
+  font-size: 12.5px; font-weight: 800; color: var(--pz-azul);
+  background: var(--pz-azul-claro); border-radius: 6px;
+  padding: 4px 9px; display: inline-block; margin-bottom: 8px;
+}
+.promo-rk-fila {
+  display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+  padding: 5px 0; border-bottom: 1px solid #F1F5F9; font-size: 13px;
+}
+.promo-rk-fila:last-child { border-bottom: none; }
+.promo-rk-prov { font-weight: 700; color: #0F172A; flex: 1 1 auto; }
+.promo-rk-folio { font-size: 11.5px; color: var(--pz-txt-2); font-variant-numeric: tabular-nums; }
+.promo-rk-num { font-size: 12.5px; color: var(--pz-txt-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.promo-rk-num strong { color: var(--pz-azul); }

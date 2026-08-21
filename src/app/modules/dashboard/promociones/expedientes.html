@@ -1,0 +1,231 @@
+<section class="exp-head">
+  <div>
+    <h2>
+      Seguimiento
+      <span class="exp-folio">Folio {{ promo.folio == null ? '—' : (promo.folio + '') }}</span>
+    </h2>
+    <p class="exp-sub">{{ promo.proveedor }} · lo que hay que probar en cada sucursal</p>
+  </div>
+  <button class="pr-btn" (click)="volver.emit()">Volver</button>
+</section>
+
+@if (cargando()) {
+  <p class="exp-vacio">Cargando el seguimiento…</p>
+} @else if (!canales().length) {
+  <p class="exp-vacio">
+    Esta promoción no tiene canales marcados en su formato, así que no hay
+    expedientes que abrir. Márcalos en el paso 3 y vuelve aquí.
+  </p>
+} @else {
+
+  <!-- ============ KPI de la promoción ============ -->
+  <div class="exp-kpis">
+    <div class="exp-kpi">
+      <span class="exp-kpi-n">{{ completos() }} / {{ canales().length }}</span>
+      <span class="exp-kpi-t">Expedientes completos</span>
+    </div>
+    <div class="exp-kpi">
+      <span class="exp-kpi-n">{{ totalPiezas() }}</span>
+      <span class="exp-kpi-t">Piezas vendidas</span>
+    </div>
+    <div class="exp-kpi">
+      <span class="exp-kpi-n">{{ pesos(totalImporte()) }}</span>
+      <span class="exp-kpi-t">Vendido</span>
+    </div>
+    <div class="exp-kpi">
+      <span class="exp-kpi-n">{{ totalTickets() }}</span>
+      <span class="exp-kpi-t">Tickets subidos</span>
+    </div>
+  </div>
+
+  <!-- ============ Un expediente por canal ============ -->
+  @for (c of canales(); track c) {
+    <div class="exp-canal" [class.completo]="expedienteDe(c).estado === 'completo'">
+
+      <button class="exp-canal-top" (click)="abrirCanal(c)">
+        <span class="exp-canal-nombre">{{ c }}</span>
+        <span class="exp-etq" [class.ok]="expedienteDe(c).estado === 'completo'">
+          {{ queFalta(c) }}
+        </span>
+        <span class="exp-canal-num">
+          {{ expedienteDe(c).piezasTotal }} pzas · {{ pesos(expedienteDe(c).importeTotal) }}
+        </span>
+        <span class="exp-flecha">{{ abierto() === c ? '−' : '+' }}</span>
+      </button>
+
+      @if (abierto() === c) {
+        <div class="exp-cuerpo">
+
+          <!-- ---------- 1. Salida de mercancía ---------- -->
+          <div class="exp-seccion">
+            <div class="exp-seccion-top">
+              <span class="exp-seccion-tit">1. Salida de la mercancía</span>
+              <label class="pr-btn pr-btn-chico">
+                Adjuntar
+                <input type="file" multiple hidden
+                       (change)="alElegirArchivos($event, c, 'salida')">
+              </label>
+            </div>
+            <p class="exp-ayuda">El ticket o el formato con el que se le dio salida a la mercancía.</p>
+            @if (!expedienteDe(c).salida.length) {
+              <p class="exp-sin">Sin evidencia todavía.</p>
+            } @else {
+              <div class="exp-tira">
+                @for (e of expedienteDe(c).salida; track e.url) {
+                  <div class="exp-ev">
+                    <a [href]="e.url" target="_blank" rel="noopener">
+                      @if (esImagen(e)) {
+                        <img [src]="e.url" alt="" class="exp-mini">
+                      } @else {
+                        <span class="exp-archivo">{{ e.nombre }}</span>
+                      }
+                    </a>
+                    <span class="exp-ev-pie">{{ fechaHora(e.subidoEn) }}</span>
+                    <button class="exp-x" (click)="quitarEvidencia(c, 'salida', e.url)" title="Quitar">&times;</button>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+
+          <!-- ---------- 2. Exhibición ---------- -->
+          <div class="exp-seccion">
+            <div class="exp-seccion-top">
+              <span class="exp-seccion-tit">2. Exhibición del producto</span>
+              <label class="pr-btn pr-btn-chico">
+                Adjuntar
+                <input type="file" multiple accept="image/*"
+                       hidden (change)="alElegirArchivos($event, c, 'exhibicion')">
+              </label>
+            </div>
+            <p class="exp-ayuda">
+              El producto en el lugar donde debe estar. Si la promoción es de combo,
+              el combo ya exhibido.
+            </p>
+            @if (!expedienteDe(c).exhibicion.length) {
+              <p class="exp-sin">Sin foto todavía.</p>
+            } @else {
+              <div class="exp-tira">
+                @for (e of expedienteDe(c).exhibicion; track e.url) {
+                  <div class="exp-ev">
+                    <a [href]="e.url" target="_blank" rel="noopener">
+                      @if (esImagen(e)) {
+                        <img [src]="e.url" alt="" class="exp-mini">
+                      } @else {
+                        <span class="exp-archivo">{{ e.nombre }}</span>
+                      }
+                    </a>
+                    <span class="exp-ev-pie">{{ fechaHora(e.subidoEn) }}</span>
+                    <button class="exp-x" (click)="quitarEvidencia(c, 'exhibicion', e.url)" title="Quitar">&times;</button>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+
+          <!-- ---------- 3. Ventas ---------- -->
+          <div class="exp-seccion">
+            <div class="exp-seccion-top">
+              <span class="exp-seccion-tit">3. Pruebas de lo vendido</span>
+              @if (!ventaNueva[c]) {
+                <label class="pr-btn pr-btn-chico pr-btn-alta">
+                  Subir ticket
+                  <input type="file" accept="image/*" hidden (change)="alElegirTicket($event, c)">
+                </label>
+              }
+            </div>
+            <p class="exp-ayuda">
+              La foto del ticket. La IA lee el importe y tú lo confirmas antes de guardarlo.
+            </p>
+
+            <!-- Captura de la venta que se acaba de subir -->
+            @if (ventaNueva[c]) {
+              <div class="exp-captura">
+                <img [src]="ventaNueva[c].url" alt="" class="exp-ticket">
+                <div class="exp-captura-datos">
+                  @if (leyendo() === c) {
+                    <p class="exp-leyendo">Leyendo el ticket…</p>
+                  } @else if (ventaNueva[c].leidoIA) {
+                    <p class="exp-ia" [class.mala]="ventaNueva[c].leidoIA.legible === false">
+                      @if (ventaNueva[c].leidoIA.legible === false) {
+                        No se pudo leer: {{ ventaNueva[c].leidoIA.nota }}
+                      } @else {
+                        La IA leyó {{ pesos(ventaNueva[c].leidoIA.total) }}
+                        @if (ventaNueva[c].leidoIA.importes?.length > 1) {
+                          <small> (vio {{ ventaNueva[c].leidoIA.importes.length }} cantidades)</small>
+                        }
+                      }
+                    </p>
+                  }
+                  <div class="exp-campos">
+                    <label>
+                      <span>Piezas</span>
+                      <input class="promo-input" type="number" min="0" step="1"
+                             [(ngModel)]="ventaNueva[c].piezas" placeholder="0">
+                    </label>
+                    <label>
+                      <span>Importe</span>
+                      <input class="promo-input" type="number" min="0" step="0.01"
+                             [(ngModel)]="ventaNueva[c].importe" placeholder="0.00">
+                    </label>
+                  </div>
+                  <p class="exp-ayuda">Revisa los números contra la foto antes de guardar.</p>
+                  <div class="exp-captura-acciones">
+                    <button class="pr-btn pr-btn-chico" (click)="cancelarVenta(c)">Cancelar</button>
+                    <button class="pr-btn pr-btn-chico pr-btn-alta" (click)="guardarVenta(c)">
+                      Guardar venta
+                    </button>
+                  </div>
+                </div>
+              </div>
+            }
+
+            @if (!expedienteDe(c).ventas.length) {
+              <p class="exp-sin">Todavía no hay ventas registradas.</p>
+            } @else {
+              <table class="exp-ventas">
+                <thead>
+                  <tr>
+                    <th>Ticket</th>
+                    <th class="num">Piezas</th>
+                    <th class="num">Importe</th>
+                    <th>Subido</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (v of expedienteDe(c).ventas; track v.id) {
+                    <tr>
+                      <td>
+                        <a [href]="v.url" target="_blank" rel="noopener" class="exp-ver">Ver foto</a>
+                      </td>
+                      <td class="num">{{ v.piezas }}</td>
+                      <td class="num">{{ pesos(v.importe) }}</td>
+                      <td class="exp-chico">{{ fechaHora(v.subidoEn) }}</td>
+                      <td>
+                        <button class="exp-x" (click)="quitarVenta(c, v.id)" title="Quitar">&times;</button>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <td>Total</td>
+                    <td class="num">{{ expedienteDe(c).piezasTotal }}</td>
+                    <td class="num">{{ pesos(expedienteDe(c).importeTotal) }}</td>
+                    <td colspan="2"></td>
+                  </tr>
+                </tfoot>
+              </table>
+            }
+          </div>
+
+        </div>
+      }
+    </div>
+  }
+
+  @if (subiendo() > 0) {
+    <p class="exp-nota-fija">Subiendo {{ subiendo() }} archivo(s)…</p>
+  }
+}

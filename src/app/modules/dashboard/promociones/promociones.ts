@@ -25,6 +25,16 @@ const CANALES = [
   'Canindo', 'Zam. Centro', 'Mayoreo', 'Ruta Diaria', 'Ruta Vecinal'
 ] as const;
 
+/** Las tres rutas en que se reparten Ruta Diaria y Mayoreo. */
+const RUTAS = ['LP', 'ZAM', 'MOR'] as const;
+
+/** Canales que NO se capturan en un solo renglon, sino por ruta. El valor es el
+ *  prefijo con el que se guarda cada ruta en la base (rutaDiariaLP, mayoreoLP...). */
+const CANALES_POR_RUTA: Record<string, string> = {
+  'Ruta Diaria': 'rutaDiaria',
+  'Mayoreo': 'mayoreo',
+};
+
 /** Las cinco maneras de pago del formato ("Tache la aplicable"). */
 const RECURSOS = [
   'Se toma del inventario de CEDIS y se cobra con nota de crédito',
@@ -61,6 +71,8 @@ export class PromocionesComponent implements OnInit {
 
   readonly CANALES = CANALES;
   readonly RECURSOS = RECURSOS;
+  readonly RUTAS = RUTAS;
+  readonly CANALES_POR_RUTA = CANALES_POR_RUTA;
   /** Tope real de Cloudinary en subida sin firma. No es un limite que yo invente. */
   readonly MAX_ARCHIVO_MB = 10;
   /** Renglones de codigos que se muestran de entrada: los 6 del formato en papel. */
@@ -113,9 +125,10 @@ export class PromocionesComponent implements OnInit {
    *  A la base sigue viajando como UN texto por canal con los renglones
    *  separados por salto de linea, para no migrar lo ya capturado. */
   porCanalLineas: Record<string, { v: string }[]> = {};
-  rutaDiariaLP = '';
-  rutaDiariaZAM = '';
-  rutaDiariaMOR = '';
+  /** Lo capturado por ruta: canal -> { LP, ZAM, MOR }. En la base cada uno
+   *  sigue viajando plano (rutaDiariaLP, mayoreoZAM...), para no migrar lo ya
+   *  capturado. */
+  porRuta: Record<string, Record<string, string>> = {};
   autoriza = '';
   /** Solo para el selector de calendario del campo "Al", que acepta texto libre
    *  ("Agotar Producto Asignado") y por eso no puede ser un input date. */
@@ -222,7 +235,11 @@ export class PromocionesComponent implements OnInit {
     this.distribucionDe = ''; this.distribucionCod = ''; this.cargo = '';
     this.porCanalLineas = {};
     for (const c of CANALES) this.porCanalLineas[c] = [{ v: '' }];
-    this.rutaDiariaLP = ''; this.rutaDiariaZAM = ''; this.rutaDiariaMOR = '';
+    this.porRuta = {};
+    for (const c of Object.keys(CANALES_POR_RUTA)) {
+      this.porRuta[c] = {};
+      for (const r of RUTAS) this.porRuta[c][r] = '';
+    }
     this.autoriza = '';
     this.alCalendario = '';
   }
@@ -258,10 +275,13 @@ export class PromocionesComponent implements OnInit {
     this.cargo = p.cargo || '';
     const guardadoPorCanal = p.porCanal || {};
     for (const c of CANALES) this.porCanalLineas[c] = this.aRenglones(guardadoPorCanal[c]);
-    this.rutaDiariaLP = p.rutaDiariaLP || '';
-    // rutaDiariaCAN es el nombre viejo de la misma ruta (antes decia CAN, ahora ZAM).
-    this.rutaDiariaZAM = p.rutaDiariaZAM || p.rutaDiariaCAN || '';
-    this.rutaDiariaMOR = p.rutaDiariaMOR || '';
+    for (const [canal, prefijo] of Object.entries(CANALES_POR_RUTA)) {
+      for (const r of RUTAS) this.porRuta[canal][r] = p[prefijo + r] || '';
+    }
+    // rutaDiariaCAN es el nombre viejo de esa ruta (antes decia CAN, ahora ZAM).
+    if (!this.porRuta['Ruta Diaria']['ZAM'] && p.rutaDiariaCAN) {
+      this.porRuta['Ruta Diaria']['ZAM'] = p.rutaDiariaCAN;
+    }
     this.autoriza = p.autoriza || '';
     this.alCalendario = /^\d{4}-\d{2}-\d{2}$/.test(String(this.vigenciaAl || '')) ? this.vigenciaAl : '';
     this.vista.set('captura');
@@ -320,9 +340,7 @@ export class PromocionesComponent implements OnInit {
         distribucionCod: this.distribucionCod,
         cargo: this.cargo,
         porCanal: this.porCanalTexto(),
-        rutaDiariaLP: this.rutaDiariaLP,
-        rutaDiariaZAM: this.rutaDiariaZAM,
-        rutaDiariaMOR: this.rutaDiariaMOR,
+        ...this.rutasPlanas(),
         autoriza: this.autoriza
       };
 
@@ -463,6 +481,45 @@ export class PromocionesComponent implements OnInit {
       if (t) salida[c] = t;
     }
     return salida;
+  }
+
+  /** ¿Este canal se captura por rutas (LP/ZAM/MOR) en vez de un renglon? */
+  esPorRuta(canal: string): boolean {
+    return CANALES_POR_RUTA[canal] !== undefined;
+  }
+
+  /** Las rutas como se guardan en la base: { rutaDiariaLP: '...', mayoreoLP: '...' }. */
+  private rutasPlanas(): Record<string, string> {
+    const salida: Record<string, string> = {};
+    for (const [canal, prefijo] of Object.entries(CANALES_POR_RUTA)) {
+      for (const r of RUTAS) salida[prefijo + r] = (this.porRuta[canal]?.[r] || '').trim();
+    }
+    return salida;
+  }
+
+  /**
+   * Lo que quedo capturado en el renglon unico de un canal que AHORA va por
+   * rutas (le paso a Mayoreo al partirlo en LP/ZAM/MOR).
+   *
+   * Se conserva a proposito: si alguien ya habia escrito ahi, ese texto no puede
+   * desaparecer del formato nomas porque cambio la captura. Se sigue imprimiendo
+   * mientras las rutas esten vacias, y en pantalla se avisa para poder moverlo.
+   */
+  textoViejoDeCanal(canal: string): string {
+    if (!this.esPorRuta(canal)) return '';
+    if (this.textoDeRutas(canal)) return '';   // ya se capturo por ruta: manda eso
+    return (this.porCanalLineas[canal] || [])
+      .map(l => (l.v || '').trim()).filter(Boolean).join(' ');
+  }
+
+  /** Lo de un canal por rutas, ya armado para el PDF: un renglon por ruta. */
+  private textoDeRutas(canal: string): string {
+    return RUTAS
+      .map(r => {
+        const v = (this.porRuta[canal]?.[r] || '').trim();
+        return v ? r + ': ' + v : '';
+      })
+      .filter(Boolean).join('\n');
   }
 
   agregarRenglon(canal: string) {
@@ -802,12 +859,11 @@ export class PromocionesComponent implements OnInit {
 
       const desglosado = this.porCanalTexto();
       for (const c of this.CANALES) {
-        // Ruta Diaria se reparte en sus tres rutas, una por renglon; los demas
-        // canales llevan el desglose tal como se capturo (un renglon por partida).
-        const texto = c === 'Ruta Diaria'
-          ? [this.rutaDiariaLP && ('LP: ' + this.rutaDiariaLP),
-             this.rutaDiariaZAM && ('ZAM: ' + this.rutaDiariaZAM),
-             this.rutaDiariaMOR && ('MOR: ' + this.rutaDiariaMOR)].filter(Boolean).join('\n')
+        // Ruta Diaria y Mayoreo se reparten en sus tres rutas, una por renglon;
+        // los demas canales llevan el desglose tal como se capturo.
+        const texto = this.esPorRuta(c)
+          // Si todavia no se captura por ruta, sale lo que se habia escrito antes.
+          ? (this.textoDeRutas(c) || this.textoViejoDeCanal(c))
           : (desglosado[c] || '');
         const lineas = doc.splitTextToSize(String(texto), W - 55);
         const h = Math.max(5, lineas.length * 3.4 + 1.6);

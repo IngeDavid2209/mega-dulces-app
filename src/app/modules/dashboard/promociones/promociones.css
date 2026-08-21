@@ -205,13 +205,6 @@
 .promo-al > .promo-input:first-child { flex: 1 1 auto; min-width: 0; }
 .promo-al-cal { flex: 0 0 auto; width: 150px; }
 
-/* Renglon de etiqueta con su boton al lado (Mecanica). */
-.promo-label-fila {
-  display: flex; align-items: center; justify-content: space-between;
-  gap: 10px; flex-wrap: wrap;
-}
-.promo-label-fila .promo-label { margin-bottom: 0; }
-
 /* Botones chicos: agregar/quitar renglones. */
 .promo-mini {
   flex: 0 0 auto;

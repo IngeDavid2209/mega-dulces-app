@@ -193,21 +193,6 @@ export class PromocionesComponent implements OnInit {
     if (!this.mecanica.trim() && this.oferta.trim()) this.mecanica = this.oferta.trim();
   }
 
-  /** Botón "traer la oferta": pisa la mecanica con la oferta del paso 2. */
-  async traerOfertaAMecanica() {
-    if (!this.oferta.trim()) return;
-    if (this.mecanica.trim() && this.mecanica.trim() !== this.oferta.trim()) {
-      const r = await Swal.fire({
-        icon: 'question', title: '¿Reemplazar la mecánica?',
-        text: 'Lo que tengas escrito en Mecánica se sustituye por la oferta del paso 2.',
-        showCancelButton: true, confirmButtonText: 'Reemplazar', cancelButtonText: 'Cancelar',
-        confirmButtonColor: '#0F172A'
-      });
-      if (!r.isConfirmed) return;
-    }
-    this.mecanica = this.oferta.trim();
-  }
-
   // ================= Alta y edición =================
   async nueva() {
     this.limpiar();

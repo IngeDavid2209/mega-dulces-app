@@ -6,15 +6,48 @@
     </h2>
     <p class="exp-sub">{{ promo.proveedor }} · lo que hay que probar en cada sucursal</p>
   </div>
-  <button class="pr-btn" (click)="volver.emit()">Volver</button>
+  <div class="exp-head-acciones">
+    <button class="pr-btn" (click)="abrirSelector()">
+      {{ canales().length ? 'Cambiar sucursales' : 'Elegir sucursales' }}
+    </button>
+    <button class="pr-btn" (click)="volver.emit()">Volver</button>
+  </div>
 </section>
+
+<!-- ============ Elegir en qué sucursales aplica ============ -->
+@if (eligiendo()) {
+  <div class="exp-selector">
+    <p class="exp-selector-tit">¿En qué sucursales va esta promoción?</p>
+    <p class="exp-ayuda">
+      Cada una marcada abre su expediente, y ahí sube su evidencia la gente de esa
+      sucursal. Es lo mismo que marcar los canales en el formato.
+    </p>
+    <div class="exp-lugares">
+      @for (c of TODOS; track c) {
+        <label class="exp-lugar" [class.on]="marca[c]">
+          <input type="checkbox" [checked]="marca[c]" (change)="alternarMarca(c)">
+          <span>{{ c }}</span>
+        </label>
+      }
+    </div>
+    <div class="exp-selector-acciones">
+      <span class="exp-ayuda">{{ cuantasMarcadas }} marcada(s)</span>
+      <button class="pr-btn pr-btn-chico" (click)="eligiendo.set(false)">Cancelar</button>
+      <button class="pr-btn pr-btn-chico pr-btn-alta" (click)="guardarCanales()"
+              [disabled]="guardandoCanales()">
+        {{ guardandoCanales() ? 'Guardando…' : 'Guardar sucursales' }}
+      </button>
+    </div>
+  </div>
+}
 
 @if (cargando()) {
   <p class="exp-vacio">Cargando el seguimiento…</p>
 } @else if (!canales().length) {
   <p class="exp-vacio">
-    Esta promoción no tiene canales marcados en su formato, así que no hay
-    expedientes que abrir. Márcalos en el paso 3 y vuelve aquí.
+    Esta promoción todavía no tiene sucursales. Dale a <strong>Elegir sucursales</strong>
+    y marca dónde aplica: cada una abre su expediente para subir la salida de
+    mercancía, la exhibición y los tickets de venta.
   </p>
 } @else {
 

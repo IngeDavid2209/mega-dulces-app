@@ -8,6 +8,8 @@ import { SidebarComponent } from '../../../shared/sidebar/sidebar';
 import { ApiService } from '../../../shared/api.service';
 import { CloudinaryService } from '../../../shared/cloudinary.service';
 import { PromoExpedientesComponent } from './expedientes';
+// Los canales del formato viven aparte: el seguimiento tambien los necesita.
+import { CANALES, RUTAS, CANALES_POR_RUTA } from './canales';
 
 /** Un archivo de evidencia ya subido. */
 interface Evidencia {
@@ -17,25 +19,6 @@ interface Evidencia {
   pesoKB: number;
   subidoEn: number;
 }
-
-/** Los 11 canales del formato MKTN001, tal como estan impresos.
- *  Fijos a proposito: Mayoreo, Ruta Diaria y Ruta Vecinal NO son sucursales del
- *  sistema, y los nombres del papel (PH, ALP, Zam. Centro) no coinciden con los
- *  del catalogo. Amarrarlos a las sucursales solo traeria confusion. */
-const CANALES = [
-  'PH', '8 Esquinas', 'ALP', 'Yurécuaro', 'Morelia A.', 'Morelia M.',
-  'Canindo', 'Zam. Centro', 'Mayoreo', 'Ruta Diaria', 'Ruta Vecinal'
-] as const;
-
-/** Las tres rutas en que se reparten Ruta Diaria y Mayoreo. */
-const RUTAS = ['LP', 'ZAM', 'MOR'] as const;
-
-/** Canales que NO se capturan en un solo renglon, sino por ruta. El valor es el
- *  prefijo con el que se guarda cada ruta en la base (rutaDiariaLP, mayoreoLP...). */
-const CANALES_POR_RUTA: Record<string, string> = {
-  'Ruta Diaria': 'rutaDiaria',
-  'Mayoreo': 'mayoreo',
-};
 
 /** Las cinco maneras de pago del formato ("Tache la aplicable"). */
 const RECURSOS = [

@@ -28,6 +28,13 @@ const app = express();
 // Parseo de JSON en el body (Vercel lo hacia solo; aqui hay que activarlo).
 // `verify` guarda el cuerpo CRUDO en req.rawBody: lo necesita el webhook de
 // WhatsApp para validar la firma (HMAC) del evento. No cambia el parseo normal.
+// La subida de respaldo manda el archivo en base64 dentro del JSON, y eso no
+// cabe en los 2 MB del parseo general. Se monta ANTES, con su propio limite: si
+// se montara despues, el parser global ya habria rechazado el cuerpo.
+app.all('/api/subir-archivo',
+  express.json({ limit: '20mb' }),
+  require('./api/subir-archivo'));
+
 app.use(express.json({
   limit: '2mb',
   verify: (req, _res, buf) => { req.rawBody = buf; },

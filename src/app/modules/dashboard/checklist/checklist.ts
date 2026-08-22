@@ -2562,8 +2562,11 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     for (let intento = 1; intento <= 2; intento++) {
       try {
         const formData = new FormData();
-        formData.append('file', file);
+        // El preset ANTES del archivo: si la subida se corta a medias, Cloudinary
+        // ya lo leyo. Al final, se perdia y contestaba "Upload preset must be
+        // specified" aunque el preset si iba en la peticion.
         formData.append('upload_preset', uploadPreset);
+        formData.append('file', file);
         const response = await fetch(url, { method: 'POST', body: formData });
         const data = await response.json();
         if (data && data.secure_url) {
@@ -2636,8 +2639,10 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     const cloudName = 'duherjgyg';
     const uploadPreset = 'fotos_mega';
     const formData = new FormData();
-    formData.append('file', file);
+    // El preset ANTES del archivo (ver checklist.ts): si la subida se corta a
+    // medias, Cloudinary ya lo leyo y no rebota la peticion.
     formData.append('upload_preset', uploadPreset);
+    formData.append('file', file);
     try {
       const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`, { method: 'POST', body: formData });
       const data = await response.json();

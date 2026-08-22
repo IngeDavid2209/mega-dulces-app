@@ -475,8 +475,10 @@ export class TicketsComponent implements OnInit, OnDestroy {
     for (let intento = 1; intento <= 2; intento++) {
       try {
         const fd = new FormData();
-        fd.append('file', blob);
+        // El preset ANTES del archivo (ver checklist.ts): si la subida se corta,
+        // Cloudinary ya lo leyo.
         fd.append('upload_preset', uploadPreset);
+        fd.append('file', blob);
         const r = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`, { method: 'POST', body: fd });
         const d = await r.json();
         if (d && d.secure_url) return d.secure_url;

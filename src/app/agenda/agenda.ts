@@ -632,8 +632,10 @@ export class AgendaComponent implements OnInit, OnDestroy {
   /** Sube a Cloudinary. El endpoint 'auto' acepta cualquier formato, no solo imágenes. */
   private async subirArchivo(archivo: File): Promise<string | null> {
     const formData = new FormData();
-    formData.append('file', archivo);
+    // El preset ANTES del archivo (ver checklist.ts): si la subida se corta a
+    // medias, Cloudinary ya lo leyo y no rebota la peticion.
     formData.append('upload_preset', 'fotos_mega');
+    formData.append('file', archivo);
     try {
       const resp = await fetch('https://api.cloudinary.com/v1_1/duherjgyg/auto/upload', {
         method: 'POST', body: formData

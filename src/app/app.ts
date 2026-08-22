@@ -21,8 +21,21 @@ import { NotificacionesService } from './services/notificaciones';
 export class AppComponent implements OnInit {
   title = 'Mega Dulces Task';
 
-  /** El asistente de voz solo se muestra a administradores, en toda la app. */
+  /**
+   * INTERRUPTOR DEL ASISTENTE (el boton azul de chat, abajo a la derecha).
+   *
+   * APAGADO a pedido de David el 2026-08-22, mientras se trabaja en otras cosas.
+   * PARA VOLVER A MOSTRARLO: poner esto en true y desplegar. Nada del asistente
+   * se borro ni se toco: el endpoint, los permisos y el bot de WhatsApp siguen
+   * completos; nomas no se pinta el boton.
+   */
+  private readonly MOSTRAR_ASISTENTE = false;
+
+  /** El asistente solo se muestra a administradores, en toda la app. */
   esAdmin = false;
+
+  /** Lo que decide si se pinta: el interruptor de arriba Y que sea admin. */
+  get mostrarAsistente(): boolean { return this.MOSTRAR_ASISTENTE && this.esAdmin; }
 
   private firestore = inject(Firestore);
   private storage = inject(Storage);

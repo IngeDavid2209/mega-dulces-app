@@ -1,4 +1,6 @@
 <router-outlet></router-outlet>
 
-<!-- Asistente (chat con tool-use): disponible en toda la app, solo para administradores -->
-<app-asistente-chat *ngIf="esAdmin"></app-asistente-chat>
+<!-- Asistente (chat con tool-use): disponible en toda la app, solo para
+     administradores. Hoy ESCONDIDO por el interruptor MOSTRAR_ASISTENTE de
+     app.ts (ver el comentario de alla para volver a prenderlo). -->
+<app-asistente-chat *ngIf="mostrarAsistente"></app-asistente-chat>

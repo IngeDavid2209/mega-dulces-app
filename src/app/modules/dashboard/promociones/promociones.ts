@@ -289,6 +289,14 @@ export class PromocionesComponent implements OnInit {
     this.vista.set('seguimiento');
   }
 
+  /** Viene del seguimiento: abre el formato en el paso 3 (donde se eligen). */
+  marcarSucursalesEnFormato() {
+    const p = this.promoSeguimiento;
+    if (!p) return;
+    this.abrir(p);
+    if (this.pasoDesbloqueado(3)) this.paso.set(3);
+  }
+
   async abrirRanking() {
     this.vista.set('ranking');
     this.cargandoRanking.set(true);
@@ -351,6 +359,22 @@ export class PromocionesComponent implements OnInit {
 
   async guardar(avanzarA?: 1 | 2 | 3) {
     if (avanzarA === 3) this.sembrarMecanica();
+
+    // Las sucursales se eligen AQUI, al dar de alta: de los canales marcados
+    // salen los expedientes del seguimiento. Guardar el formato sin ninguna deja
+    // la promocion sin nada que llenar, asi que se avisa antes (no se bloquea:
+    // a veces se captura a medias y se completa despues).
+    if (this.paso() === 3 && !this.cuantosCanales) {
+      const r = await Swal.fire({
+        icon: 'warning', title: 'No marcaste sucursales',
+        html: 'De los <b>canales de venta participantes</b> salen los expedientes: '
+          + 'sin ninguno marcado, nadie va a poder subir la evidencia de esta promoción.',
+        showCancelButton: true,
+        confirmButtonText: 'Ir a marcarlas', cancelButtonText: 'Guardar así',
+        confirmButtonColor: '#0F172A',
+      });
+      if (r.isConfirmed) return;   // se queda en el paso 3 para marcarlas
+    }
     if (!this.proveedor.trim()) {
       Swal.fire({ icon: 'warning', title: 'Falta el proveedor', confirmButtonColor: '#0F172A' });
       return;
@@ -477,6 +501,11 @@ export class PromocionesComponent implements OnInit {
   // ================= Ayudas de la vista =================
   canalMarcado(c: string): boolean { return this.canales[c] === true; }
   alternarCanal(c: string) { this.canales[c] = !this.canales[c]; }
+
+  /** Cuántas sucursales lleva marcadas. De aquí salen los expedientes. */
+  get cuantosCanales(): number {
+    return this.CANALES.filter(c => this.canales[c] === true).length;
+  }
 
   get proveedoresSugeridos(): any[] {
     const q = this.proveedor.trim().toLowerCase();

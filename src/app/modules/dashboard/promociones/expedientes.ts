@@ -5,7 +5,6 @@ import Swal from 'sweetalert2';
 
 import { ApiService } from '../../../shared/api.service';
 import { CloudinaryService } from '../../../shared/cloudinary.service';
-import { CANALES } from './canales';
 
 /**
  * EXPEDIENTES DE UNA PROMOCION — el seguimiento de que si se ejecuto.
@@ -41,6 +40,8 @@ export class PromoExpedientesComponent implements OnInit {
   /** La promoción cuyo seguimiento se está viendo. */
   @Input({ required: true }) promo: any;
   @Output() volver = new EventEmitter<void>();
+  /** Pide abrir el formato en el paso 3, que es donde se eligen las sucursales. */
+  @Output() irAlFormato = new EventEmitter<void>();
 
   private api = inject(ApiService);
   private nube = inject(CloudinaryService);
@@ -56,15 +57,6 @@ export class PromoExpedientesComponent implements OnInit {
 
   /** Canal abierto. Vacío = se ve la lista de canales. */
   abierto = signal<string>('');
-
-  /** Todos los canales del formato, para el selector de sucursales. */
-  readonly TODOS = CANALES;
-
-  /** Se está eligiendo en qué sucursales aplica la promoción. */
-  eligiendo = signal(false);
-  /** Lo marcado en ese selector (se copia de la promoción al abrirlo). */
-  marca: Record<string, boolean> = {};
-  guardandoCanales = signal(false);
 
   /** La venta que se está capturando, por canal. */
   ventaNueva: Record<string, { url: string; nombre: string; piezas: number | null; importe: number | null; leidoIA: any }> = {};
@@ -85,72 +77,6 @@ export class PromoExpedientesComponent implements OnInit {
       });
     } finally {
       this.cargando.set(false);
-    }
-  }
-
-  // ================= Elegir las sucursales =================
-  /**
-   * Los expedientes salen de los canales MARCADOS en el formato. Si nadie los
-   * marco, el seguimiento se quedaba en blanco y no habia forma de destrabarlo
-   * sin volver al paso 3 del formato: por eso se pueden elegir aqui mismo.
-   */
-  abrirSelector() {
-    this.marca = {};
-    for (const c of this.canales()) this.marca[c] = true;
-    this.eligiendo.set(true);
-  }
-
-  alternarMarca(c: string) { this.marca[c] = !this.marca[c]; }
-
-  get cuantasMarcadas(): number {
-    return Object.keys(this.marca).filter(c => this.marca[c]).length;
-  }
-
-  async guardarCanales() {
-    const elegidos = Object.keys(this.marca).filter(c => this.marca[c]);
-    if (!elegidos.length) {
-      Swal.fire({
-        icon: 'warning', title: 'Elige al menos una sucursal',
-        text: 'Sin sucursales no hay expedientes que llenar.',
-        confirmButtonColor: '#0F172A',
-      });
-      return;
-    }
-
-    // Si se DESMARCA una sucursal que ya tiene evidencia subida, se avisa: su
-    // expediente deja de aparecer aunque las fotos sigan guardadas.
-    const conEvidencia = this.expedientes()
-      .filter(e => !elegidos.includes(e.canal))
-      .map(e => e.canal);
-    if (conEvidencia.length) {
-      const r = await Swal.fire({
-        icon: 'warning', title: 'Ojo con lo que ya se subió',
-        html: 'Estas sucursales ya tienen evidencia y las estás quitando:<br><b>'
-          + conEvidencia.join(', ') + '</b><br><br>Su expediente dejará de aparecer '
-          + '(lo subido no se borra, pero no se va a ver ni contar).',
-        showCancelButton: true, confirmButtonText: 'Quitarlas', cancelButtonText: 'Cancelar',
-        confirmButtonColor: '#C7382E',
-      });
-      if (!r.isConfirmed) return;
-    }
-
-    this.guardandoCanales.set(true);
-    try {
-      const canales: Record<string, boolean> = {};
-      for (const c of elegidos) canales[c] = true;
-      // El mismo campo que marca el paso 3 del formato: asi el formato impreso y
-      // el seguimiento dicen lo mismo.
-      await this.api.post('/api/promociones', { id: this.promo.id, canales });
-      this.promo.canales = canales;
-      this.eligiendo.set(false);
-      await this.cargar();
-    } catch (e: any) {
-      Swal.fire({
-        icon: 'error', title: 'No se pudieron guardar las sucursales',
-        text: e?.message || 'Revisa tu conexión.', confirmButtonColor: '#0F172A',
-      });
-    } finally {
-      this.guardandoCanales.set(false);
     }
   }
 

@@ -448,3 +448,16 @@
 .promo-rk-folio { font-size: 11.5px; color: var(--pz-txt-2); font-variant-numeric: tabular-nums; }
 .promo-rk-num { font-size: 12.5px; color: var(--pz-txt-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .promo-rk-num strong { color: var(--pz-azul); }
+
+/* El bloque de canales manda: de ahi salen los expedientes del seguimiento. */
+.promo-label-req {
+  display: flex; align-items: center; gap: 10px;
+  flex-wrap: wrap; margin-top: 14px;
+}
+.promo-label-req .promo-label { margin: 0; }
+.promo-req {
+  font-size: 11px; font-weight: 800;
+  padding: 2px 9px; border-radius: 999px;
+  background: #FFFBEB; color: #B45309;
+}
+.promo-req.listo { background: #E8F5EE; color: var(--pz-verde); }

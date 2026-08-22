@@ -274,7 +274,16 @@
             </div>
           </div>
 
-          <label class="promo-label">Canales de venta participantes</label>
+          <div class="promo-label-req">
+            <label class="promo-label">Canales de venta participantes</label>
+            <span class="promo-req" [class.listo]="cuantosCanales > 0">
+              {{ cuantosCanales ? cuantosCanales + ' marcado(s)' : 'Falta marcar' }}
+            </span>
+          </div>
+          <p class="promo-ayuda">
+            Aquí se define en qué sucursales va la promoción: cada canal marcado abre
+            su expediente en el seguimiento, y ahí se sube la evidencia.
+          </p>
           <div class="promo-canales">
             <label class="promo-canal" *ngFor="let c of CANALES" [class.promo-canal-on]="canalMarcado(c)">
               <input type="checkbox" [checked]="canalMarcado(c)" (change)="alternarCanal(c)">
@@ -423,7 +432,8 @@
       <!-- ==================== SEGUIMIENTO (expedientes) ==================== -->
       <ng-container *ngIf="vista() === 'seguimiento' && promoSeguimiento">
         <app-promo-expedientes [promo]="promoSeguimiento"
-                               (volver)="volverALista()"></app-promo-expedientes>
+                               (volver)="volverALista()"
+                               (irAlFormato)="marcarSucursalesEnFormato()"></app-promo-expedientes>
       </ng-container>
 
       <!-- ==================== RANKING ==================== -->

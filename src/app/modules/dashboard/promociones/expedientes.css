@@ -1,6 +1,11 @@
 /* Seguimiento de una promoción: un expediente por canal.
-   Los botones .pr-btn y los campos .promo-input vienen del CSS de la pantalla
-   de promociones, que es donde vive este componente. */
+
+   OJO: los botones y los campos se definen AQUI, no se heredan de
+   promociones.css. Angular encapsula los estilos por componente, asi que las
+   clases del componente padre no entran a este: cuando se dieron por heredadas,
+   "Adjuntar" y "Subir ticket" salieron como texto sin forma de boton. Se
+   mantienen iguales a los de la pantalla de promociones a proposito, para que
+   todo el apartado se vea de una pieza. */
 
 :host {
   --ex-azul: #1F4E79;
@@ -185,4 +190,40 @@
 
 @media (max-width: 640px) {
   .exp-lugares { grid-template-columns: 1fr 1fr; }
+}
+
+/* ---------- Botones y campos (propios del componente) ---------- */
+.pr-btn {
+  font: inherit; font-size: 13px; font-weight: 600;
+  height: 36px; padding: 0 14px;
+  border: 1px solid #CBD5E1; border-radius: 6px;
+  background: #FFF; color: #1E293B;
+  cursor: pointer;
+  display: inline-flex; align-items: center; gap: 7px;
+  white-space: nowrap;
+  transition: background .15s, border-color .15s;
+}
+.pr-btn:hover:not(:disabled) { background: #F8FAFC; border-color: #94A3B8; }
+.pr-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+.pr-btn-alta { background: var(--ex-azul); border-color: var(--ex-azul); color: #FFF; }
+.pr-btn-alta:hover:not(:disabled) { background: #17405f; border-color: #17405f; }
+
+.pr-btn-chico { height: 28px; font-size: 12px; padding: 0 10px; }
+.pr-btn-quitar { color: var(--ex-rojo); }
+.pr-btn-quitar:hover { border-color: var(--ex-rojo); background: #FBEBE9; }
+
+/* Adjuntar y Subir ticket son <label> con un input file escondido: necesitan
+   verse y comportarse como boton (el label no lo hace por si solo). */
+label.pr-btn { cursor: pointer; }
+
+.promo-input {
+  font: inherit; font-size: 13.5px;
+  width: 100%; min-height: 38px; padding: 8px 11px;
+  border: 1px solid #CBD5E1; border-radius: 6px;
+  background: #FFF; color: #1E293B; box-sizing: border-box;
+}
+.promo-input:focus {
+  outline: none; border-color: var(--ex-azul);
+  box-shadow: 0 0 0 3px rgba(31, 78, 121, .12);
 }

@@ -90,6 +90,11 @@ app.all('/api/promo-proveedores', require('./api/promo-proveedores'));
 app.all('/api/promo-expedientes', require('./api/promo-expedientes'));
 app.all('/api/promo-leer-ticket', require('./api/promo-leer-ticket'));
 
+// 🟢 VENTA DE PROMOS: el piso de venta en vivo. Nada que ver con el MKTN001 de
+// arriba (aquello es la negociación con el proveedor); esto es la promo tal como
+// la vende el vendedor, la cobra la caja y la vigila quien monitorea.
+app.all('/api/promos-venta', require('./api/promos-venta'));
+
 // 🧾 PAGOS DE SERVICIOS: catálogo de servicios contratados (luz, agua, internet)
 // y el pago de cada periodo. Los recordatorios y la captura del comprobante van
 // por WhatsApp (api/pagos-notificar.js).

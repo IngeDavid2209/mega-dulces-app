@@ -70,6 +70,15 @@ export class PersonalComponent implements OnInit, OnDestroy {
   formGrupoPagos = false;
   /** Privilegio del apartado "Tickets" / vale de servicio operativo (grupoTickets). */
   formGrupoTickets = false;
+  // 🟢 "Venta de Promos": son TRES permisos independientes, no uno. La sección es
+  // una sola pero atiende tres oficios distintos, y casi nadie hace los tres:
+  // la cajera solo reporta, el vendedor solo da de alta, el monitor solo mira.
+  /** La cajera: da la luz verde cuando se cierra la venta. */
+  formVentaPromosCaja = false;
+  /** El vendedor: crea las promos (nombre, costo, descripción, foto). */
+  formVentaPromosVendedor = false;
+  /** El monitor: ve el tablero y recibe el aviso por WhatsApp. */
+  formVentaPromosMonitor = false;
   // 🔥 NUEVO: Alcance del admin (global = todas las sucursales, sucursales = solo las asignadas)
   formAlcance: 'global' | 'sucursales' = 'global';
 
@@ -473,6 +482,9 @@ export class PersonalComponent implements OnInit, OnDestroy {
   this.formGrupoPromociones         = !!user.grupoPromociones;
   this.formGrupoPagos               = !!user.grupoPagos;
   this.formGrupoTickets             = !!user.grupoTickets;
+  this.formVentaPromosCaja          = !!user.ventaPromosCaja;
+  this.formVentaPromosVendedor      = !!user.ventaPromosVendedor;
+  this.formVentaPromosMonitor       = !!user.ventaPromosMonitor;
 
   this.isModalOpen = true;
 }
@@ -637,6 +649,13 @@ export class PersonalComponent implements OnInit, OnDestroy {
       // 🎫 Acceso a "Tickets" (vale de servicio operativo). Igual que Pagos: el
       // rol admin entra aunque no tenga la bandera.
       grupoTickets: this.formGrupoTickets === true,
+      // 🟢 "Venta de Promos": tres permisos separados, y NINGUNO se le regala al
+      // admin por ser admin. Es lo pedido: la sección aparece solo en las
+      // cuentas a las que se le prenda aquí a mano. El servidor los vuelve a
+      // revisar contra la base en cada escritura (api/promos-venta.js).
+      ventaPromosCaja: this.formVentaPromosCaja === true,
+      ventaPromosVendedor: this.formVentaPromosVendedor === true,
+      ventaPromosMonitor: this.formVentaPromosMonitor === true,
     };
 
     // Se avisa al final si la copia de respaldo no se pudo hacer. El guardado sí

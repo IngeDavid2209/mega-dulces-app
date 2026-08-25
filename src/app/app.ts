@@ -244,7 +244,12 @@ export class AppComponent implements OnInit {
       const permisos = [
         'puedeCrearChecklists', 'puedeCrearRutinas', 'puedeCrearTareasUnicas',
         'puedeVerCheckstore', 'puedeVerEstadisticas', 'puedeVerHistorial',
-        'puedeAdministrarPersonal', 'puedeVerCalendario', 'puedeAdministrarAreas'
+        'puedeAdministrarPersonal', 'puedeVerCalendario', 'puedeAdministrarAreas',
+        // 🟢 Venta de Promos. Van aquí (y no solo guardados) porque el apartado
+        // TIENE que aparecer en cuanto se le prende el permiso: se le asigna a
+        // la cajera con el turno ya empezado y no se le va a pedir que cierre
+        // sesión para poder reportar la primera venta.
+        'ventaPromosCaja', 'ventaPromosVendedor', 'ventaPromosMonitor'
       ];
       const permisoCambio = permisos.some(p => !!anterior[p] !== !!fresco[p]);
       const huboCambioCritico = campoCriticoCambio || sucCambio || areasCambio || permisoCambio;

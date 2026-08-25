@@ -1,0 +1,325 @@
+<div class="app-layout">
+
+  <header class="header">
+    <div class="header-left">
+      <button class="btn-menu-mobile" (click)="toggleMenu()" aria-label="Abrir menú">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="3" y1="12" x2="21" y2="12"></line>
+          <line x1="3" y1="6" x2="21" y2="6"></line>
+          <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+      </button>
+      <div class="header-brand">Mega Dulces Task<small>Venta de Promos</small></div>
+    </div>
+    <div class="header-right"></div>
+  </header>
+
+  <div class="main-wrapper">
+    <div class="mobile-overlay" *ngIf="isMenuOpen" (click)="toggleMenu()"></div>
+    <app-sidebar [currentUser]="currentUser" [isMenuOpen]="isMenuOpen"
+                 (closeMenu)="isMenuOpen = false"></app-sidebar>
+
+    <div class="content">
+
+      <!-- Las pestañas solo aparecen si la persona tiene más de un oficio. Quien
+           únicamente cobra ve su pantalla y nada más: no hay nada que elegir. -->
+      <nav class="vp-tabs" *ngIf="(puedeCaja ? 1 : 0) + (puedeVender ? 1 : 0) + (puedeMonitor ? 1 : 0) > 1">
+        <button *ngIf="puedeCaja" class="vp-tab" [class.on]="vista() === 'caja'" (click)="irA('caja')">
+          🟢 Dar luz verde
+        </button>
+        <button *ngIf="puedeVender" class="vp-tab" [class.on]="vista() === 'promos'" (click)="irA('promos')">
+          Promos
+        </button>
+        <button *ngIf="puedeMonitor" class="vp-tab" [class.on]="vista() === 'tablero'" (click)="irA('tablero')">
+          Tablero
+        </button>
+      </nav>
+
+      <!-- ==================== CAJA: LA LUZ VERDE ==================== -->
+      <ng-container *ngIf="vista() === 'caja'">
+
+        <section class="vp-head">
+          <div>
+            <h1>Dar luz verde</h1>
+            <p class="vp-sub">Toca la promo en cuanto se venda. Le llega al momento a quien monitorea.</p>
+          </div>
+          <!-- El selector solo aparece si de verdad hay algo que elegir. -->
+          <label class="vp-suc-sel" *ngIf="misSucursales.length > 1">
+            <span>Sucursal</span>
+            <select [ngModel]="sucursal()" (ngModelChange)="sucursal.set($event)">
+              <option value="">Elige…</option>
+              <option *ngFor="let s of misSucursales" [value]="s">{{ s }}</option>
+            </select>
+          </label>
+          <div class="vp-suc-fija" *ngIf="misSucursales.length === 1">{{ sucursal() }}</div>
+        </section>
+
+        <p class="vp-vacio" *ngIf="cargando()">Cargando…</p>
+
+        <p class="vp-vacio" *ngIf="!cargando() && !sucursal() && misSucursales.length > 1">
+          Elige tu sucursal para ver las promos que aplican ahí.
+        </p>
+
+        <p class="vp-vacio" *ngIf="!cargando() && sucursal() && promosDeCaja().length === 0">
+          Ahorita no hay promos activas para {{ sucursal() }}.
+        </p>
+
+        <!-- Tarjetas grandes: esto se usa de pie, con un cliente enfrente y a
+             veces en el celular. La foto manda, el botón es enorme. -->
+        <div class="vp-caja-grid" *ngIf="!cargando() && sucursal()">
+          <article class="vp-caja-card" *ngFor="let p of promosDeCaja()">
+
+            <div class="vp-caja-foto" [class.sinfoto]="!p.fotoUrl">
+              <img *ngIf="p.fotoUrl" [src]="p.fotoUrl" [alt]="p.nombre" loading="lazy">
+              <span *ngIf="!p.fotoUrl">Sin foto</span>
+            </div>
+
+            <div class="vp-caja-info">
+              <h2>{{ p.nombre }}</h2>
+              <p class="vp-caja-desc" *ngIf="p.descripcion">{{ p.descripcion }}</p>
+              <p class="vp-caja-costo" *ngIf="p.costo != null">{{ pesos(p.costo) }}</p>
+            </div>
+
+            <div class="vp-caja-acciones">
+              <button class="vp-btn-luz" [disabled]="guardando()" (click)="luzVerde(p, 'vendida')">
+                🟢 Se vendió
+              </button>
+              <button class="vp-btn-apartar" [disabled]="guardando()" (click)="luzVerde(p, 'asegurada')">
+                Apartada
+              </button>
+            </div>
+          </article>
+        </div>
+      </ng-container>
+
+      <!-- ==================== VENDEDOR: LAS PROMOS ==================== -->
+      <ng-container *ngIf="vista() === 'promos'">
+
+        <!-- --- Formulario de alta / edición --- -->
+        <ng-container *ngIf="edicion() as e">
+          <section class="vp-head">
+            <div>
+              <h1>{{ e.id ? 'Editar promo' : 'Nueva promo' }}</h1>
+              <p class="vp-sub">Lo que aquí se captura es lo que la caja va a ver en su pantalla.</p>
+            </div>
+            <button class="vp-btn" (click)="cancelarEdicion()">Cancelar</button>
+          </section>
+
+          <div class="vp-form">
+            <label class="vp-campo vp-campo-ancho">
+              <span>Nombre de la promo *</span>
+              <input type="text" [(ngModel)]="e.nombre" maxlength="120"
+                     placeholder="Ej. 2x1 en Paletas Payaso">
+            </label>
+
+            <label class="vp-campo vp-campo-ancho">
+              <span>Descripción</span>
+              <textarea [(ngModel)]="e.descripcion" rows="3" maxlength="600"
+                        placeholder="Qué lleva, cómo se arma, qué decirle al cliente."></textarea>
+            </label>
+
+            <label class="vp-campo">
+              <span>Costo al público</span>
+              <input type="number" [(ngModel)]="e.costo" min="0" step="0.01" placeholder="0.00">
+            </label>
+
+            <label class="vp-campo">
+              <span>Estado</span>
+              <select [(ngModel)]="e.estado">
+                <option value="activa">Activa</option>
+                <option value="pausada">Pausada</option>
+                <option value="terminada">Terminada</option>
+              </select>
+            </label>
+
+            <label class="vp-campo">
+              <span>Vigencia del</span>
+              <input type="date" [(ngModel)]="e.vigenciaDel">
+            </label>
+
+            <label class="vp-campo">
+              <span>Vigencia al</span>
+              <input type="date" [(ngModel)]="e.vigenciaAl">
+            </label>
+
+            <!-- La foto: es lo que la cajera reconoce de un vistazo, más que el
+                 nombre. Por eso tiene su propio bloque y no un input perdido. -->
+            <div class="vp-campo vp-campo-ancho">
+              <span>Foto de la promo</span>
+              <div class="vp-foto-caja">
+                <div class="vp-foto-prev" *ngIf="e.fotoUrl">
+                  <img [src]="e.fotoUrl" alt="Foto de la promo">
+                  <button class="vp-foto-quitar" type="button" (click)="quitarFoto()">Quitar</button>
+                </div>
+                <label class="vp-foto-btn" *ngIf="!e.fotoUrl">
+                  <input type="file" accept="image/*" hidden (change)="alElegirFoto($event)">
+                  {{ subiendo() ? 'Subiendo…' : 'Elegir foto' }}
+                </label>
+              </div>
+            </div>
+
+            <div class="vp-campo vp-campo-ancho">
+              <span>¿En qué sucursales aplica?</span>
+              <p class="vp-ayuda">Si no marcas ninguna, la promo le aparece a todas las cajas.</p>
+              <div class="vp-sucs">
+                <button type="button" class="vp-suc" *ngFor="let s of SUCURSALES"
+                        [class.on]="tieneSucursal(s)" (click)="alternarSucursal(s)">
+                  {{ s }}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="vp-form-pie">
+            <button class="vp-btn vp-btn-alta" [disabled]="guardando() || subiendo()" (click)="guardarPromo()">
+              {{ guardando() ? 'Guardando…' : 'Guardar promo' }}
+            </button>
+          </div>
+        </ng-container>
+
+        <!-- --- Lista de promos --- -->
+        <ng-container *ngIf="!edicion()">
+          <section class="vp-head">
+            <div>
+              <h1>Promos</h1>
+              <p class="vp-sub">Las que das de alta aquí son las que las cajas pueden reportar.</p>
+            </div>
+            <button class="vp-btn vp-btn-alta" (click)="nueva()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+              Nueva promo
+            </button>
+          </section>
+
+          <p class="vp-vacio" *ngIf="cargando()">Cargando…</p>
+          <p class="vp-vacio" *ngIf="!cargando() && promos().length === 0">
+            Todavía no hay promos. Empieza con "Nueva promo".
+          </p>
+
+          <div class="vp-lista" *ngIf="!cargando()">
+            <article class="vp-fila" *ngFor="let p of promos()" [class.apagada]="p.estado !== 'activa'">
+
+              <div class="vp-fila-foto" [class.sinfoto]="!p.fotoUrl">
+                <img *ngIf="p.fotoUrl" [src]="p.fotoUrl" [alt]="p.nombre" loading="lazy">
+              </div>
+
+              <div class="vp-fila-info">
+                <h3>{{ p.nombre }}
+                  <span class="vp-chip" [class.viva]="p.estado === 'activa'">{{ etiquetaEstado(p.estado) }}</span>
+                </h3>
+                <p class="vp-fila-desc" *ngIf="p.descripcion">{{ p.descripcion }}</p>
+                <p class="vp-fila-meta">
+                  <span *ngIf="p.costo != null">{{ pesos(p.costo) }}</span>
+                  <span>{{ p.sucursales?.length ? p.sucursales.length + ' sucursal(es)' : 'Todas las sucursales' }}</span>
+                  <span *ngIf="p.ultima">Última venta {{ hace(p.ultima) }}</span>
+                </p>
+              </div>
+
+              <div class="vp-fila-num">
+                <strong>{{ p.piezas || 0 }}</strong>
+                <span>piezas</span>
+                <em>{{ pesos(p.importe) }}</em>
+              </div>
+
+              <div class="vp-fila-acciones">
+                <button class="vp-btn vp-btn-chico" (click)="editar(p)">Editar</button>
+                <button class="vp-btn vp-btn-chico" *ngIf="p.estado === 'activa'"
+                        (click)="cambiarEstado(p, 'pausada')">Pausar</button>
+                <button class="vp-btn vp-btn-chico" *ngIf="p.estado !== 'activa'"
+                        (click)="cambiarEstado(p, 'activa')">Activar</button>
+                <button class="vp-btn vp-btn-chico vp-btn-rojo" (click)="eliminar(p)">Eliminar</button>
+              </div>
+            </article>
+          </div>
+        </ng-container>
+      </ng-container>
+
+      <!-- ==================== MONITOR: EL TABLERO ==================== -->
+      <ng-container *ngIf="vista() === 'tablero'">
+
+        <section class="vp-head">
+          <div>
+            <h1>Tablero de ventas</h1>
+            <p class="vp-sub">Se actualiza solo cada minuto. Además te llega el aviso de la app en cuanto una caja reporta.</p>
+          </div>
+          <div class="vp-rango">
+            <button class="vp-btn vp-btn-chico" [class.on]="dias() === 1" (click)="cambiarDias(1)">Hoy</button>
+            <button class="vp-btn vp-btn-chico" [class.on]="dias() === 7" (click)="cambiarDias(7)">7 días</button>
+            <button class="vp-btn vp-btn-chico" [class.on]="dias() === 30" (click)="cambiarDias(30)">30 días</button>
+          </div>
+        </section>
+
+        <div class="vp-kpis">
+          <div class="vp-kpi"><strong>{{ totalLuces() }}</strong><span>luces verdes</span></div>
+          <div class="vp-kpi"><strong>{{ totalPiezas() }}</strong><span>piezas</span></div>
+          <div class="vp-kpi"><strong>{{ pesos(totalImporte()) }}</strong><span>vendido</span></div>
+        </div>
+
+        <!-- El dato que hoy no existe: quién NO ha dado señal. Va arriba y en
+             rojo a propósito; es lo que hay que ir a preguntar. -->
+        <div class="vp-alerta" *ngIf="calladas().length > 0">
+          <strong>Sin una sola señal en este periodo:</strong>
+          <span>{{ calladas().join(' · ') }}</span>
+        </div>
+
+        <div class="vp-tablero">
+
+          <section class="vp-bloque">
+            <h2>Por promo</h2>
+            <p class="vp-vacio" *ngIf="panel().porPromo.length === 0">Nada todavía.</p>
+            <table class="vp-tabla" *ngIf="panel().porPromo.length > 0">
+              <thead>
+                <tr><th>Promo</th><th>Piezas</th><th>Importe</th><th>Apartadas</th><th>Última</th></tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let r of panel().porPromo">
+                  <td>{{ r.nombre }}</td>
+                  <td class="num">{{ r.piezas }}</td>
+                  <td class="num">{{ pesos(r.importe) }}</td>
+                  <td class="num">{{ r.aseguradas }}</td>
+                  <td class="tenue">{{ r.ultima ? hace(r.ultima) : '—' }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </section>
+
+          <section class="vp-bloque">
+            <h2>Por sucursal</h2>
+            <p class="vp-vacio" *ngIf="panel().porSucursal.length === 0">Nada todavía.</p>
+            <table class="vp-tabla" *ngIf="panel().porSucursal.length > 0">
+              <thead>
+                <tr><th>Sucursal</th><th>Piezas</th><th>Importe</th><th>Última</th></tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let r of panel().porSucursal">
+                  <td>{{ r.sucursal }}</td>
+                  <td class="num">{{ r.piezas }}</td>
+                  <td class="num">{{ pesos(r.importe) }}</td>
+                  <td class="tenue">{{ r.ultima ? hace(r.ultima) : '—' }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </section>
+        </div>
+
+        <section class="vp-bloque">
+          <h2>Lo que va entrando</h2>
+          <p class="vp-vacio" *ngIf="panel().recientes.length === 0">
+            Ninguna caja ha dado luz verde en este periodo.
+          </p>
+          <ul class="vp-pulso" *ngIf="panel().recientes.length > 0">
+            <li *ngFor="let l of panel().recientes" [class.apartada]="l.tipo === 'asegurada'">
+              <span class="vp-punto"></span>
+              <div class="vp-pulso-txt">
+                <strong>{{ l.sucursal }}</strong>
+                <span>{{ l.tipo === 'asegurada' ? 'apartó' : 'vendió' }} {{ l.piezas }} × {{ l.promoNombre }}</span>
+                <em>{{ pesos(l.importe) }} · {{ l.creadoPorNombre || 'caja' }} · {{ hace(l.creadoEn) }}</em>
+              </div>
+              <button class="vp-pulso-quitar" (click)="quitarLuz(l)" title="Quitar este reporte">×</button>
+            </li>
+          </ul>
+        </section>
+      </ng-container>
+
+    </div>
+  </div>
+</div>

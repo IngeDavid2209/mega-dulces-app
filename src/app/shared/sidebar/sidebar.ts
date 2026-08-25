@@ -53,6 +53,20 @@ export class SidebarComponent implements OnInit, OnDestroy {
     if (this.conflictosActivo) this.conflictosSvc.detener();
   }
 
+  /**
+   * ¿Se le muestra "Venta de Promos"?
+   *
+   * Con CUALQUIERA de los tres permisos basta: la sección es una sola y adentro
+   * cada quien ve lo suyo. Ni el rol admin abre esta puerta por sí solo — es a
+   * propósito, igual que Promociones y el Espacio TEC.
+   */
+  get verVentaPromos(): boolean {
+    const u = this.currentUser;
+    return u?.ventaPromosCaja === true
+        || u?.ventaPromosVendedor === true
+        || u?.ventaPromosMonitor === true;
+  }
+
   /** Solo los admins de Canindo (o admin global) ven/configuran turnos. */
   get esAdminCanindo(): boolean {
     return esAdminDeCanindo(this.currentUser);

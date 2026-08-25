@@ -7,6 +7,7 @@ import { flotillaGuard } from './services/flotilla.guard';
 import { promocionesGuard } from './services/promociones.guard';
 import { pagosGuard } from './services/pagos.guard';
 import { ticketsGuard } from './services/tickets.guard';
+import { ventaPromosGuard } from './services/venta-promos.guard';
 import { AgendaComponent } from './agenda/agenda';
 
 export const routes: Routes = [
@@ -145,6 +146,15 @@ export const routes: Routes = [
     path: 'promociones',
     canActivate: [promocionesGuard],
     loadComponent: () => import('./modules/dashboard/promociones/promociones').then(m => m.PromocionesComponent)
+  },
+
+  // 🟢 VENTA DE PROMOS — el piso de venta en vivo. Tres oficios en una sección:
+  // la caja da luz verde, el vendedor crea las promos, el monitor las vigila.
+  // Cada uno con su permiso propio (ventaPromosCaja/Vendedor/Monitor).
+  {
+    path: 'venta-promos',
+    canActivate: [ventaPromosGuard],
+    loadComponent: () => import('./modules/dashboard/venta-promos/venta-promos').then(m => m.VentaPromosComponent)
   },
 
   // 🧱 BLOQUES DE TRABAJO — el día partido en tramos de horario, con sus tareas.

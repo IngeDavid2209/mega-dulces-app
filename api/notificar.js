@@ -15,10 +15,16 @@
 //
 // Al emisor NUNCA se le notifica a sí mismo.
 //
+// El envío en sí vive en api/_push.js: los módulos del backend también avisan
+// (Venta de Promos, por ejemplo) y no pueden pasar por aquí, que exige una
+// petición del navegador con su sesión. Aquí queda lo propio del endpoint:
+// validar quién llama, armar los destinatarios y contestar.
+//
 // Variables de entorno: FIREBASE_SERVICE_ACCOUNT.
 
 const admin = require('firebase-admin');
 const { query } = require('./db'); // FERROCARRIL Etapa 10: usuarios/tokens desde Postgres
+const { enviarPush, norm } = require('./_push');
 
 let inicializado = false;
 function inicializar() {
@@ -29,10 +35,6 @@ function inicializar() {
     admin.initializeApp({ credential: admin.credential.cert(JSON.parse(raw)) });
   }
   inicializado = true;
-}
-
-function norm(s) {
-  return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
 }
 
 module.exports = async (req, res) => {
@@ -59,93 +61,28 @@ module.exports = async (req, res) => {
     const url = String(body.url || '/').trim() || '/';
     if (!titulo || !cuerpo) return res.status(400).json({ error: 'Faltan titulo y/o cuerpo.' });
 
-    const uidsDestino = new Set((Array.isArray(body.uids) ? body.uids : []).filter(Boolean).map(String));
-    const nombresDestino = new Set((Array.isArray(body.nombres) ? body.nombres : []).filter(Boolean).map(norm));
+    const uids = (Array.isArray(body.uids) ? body.uids : []).filter(Boolean).map(String);
+    const nombres = (Array.isArray(body.nombres) ? body.nombres : []).filter(Boolean).map(norm);
 
     // 3) grupoTec → sumar uids y nombres de todos los del grupo.
     if (body.grupoTec === true) {
       const tecRows = await query("select id, nombre from mdtask_usuarios where datos->>'grupoTec' = 'true'");
       tecRows.rows.forEach(u => {
-        uidsDestino.add(String(u.id));
-        if (u.nombre) nombresDestino.add(norm(u.nombre));
+        uids.push(String(u.id));
+        if (u.nombre) nombres.push(norm(u.nombre));
       });
     }
 
-    if (uidsDestino.size === 0 && nombresDestino.size === 0) {
-      return res.json({ ok: true, enviados: 0, mensaje: 'Sin destinatarios.' });
-    }
-
-    // 4) Buscar tokens que coincidan (por id de doc, por uid, o por nombre).
-    //    Nunca al emisor.
-    const tokensRes = await query('select id, uid, usuario, token from mdtask_usuarios_tokens');
-    const tokens = [];
-    const idsPorToken = new Map();
-    tokensRes.rows.forEach(row => {
-      const t = row.token;
-      if (typeof t !== 'string' || t.length <= 20) return;
-
-      const docUid = row.uid ? String(row.uid) : '';
-      const docId = String(row.id);
-      const docNombre = norm(row.usuario);
-
-      const esEmisor = (docUid && docUid === emisorUid) || docId === emisorUid;
-      if (esEmisor) return;
-
-      const coincide =
-        (docUid && uidsDestino.has(docUid)) ||
-        uidsDestino.has(docId) ||
-        (docNombre && nombresDestino.has(docNombre));
-
-      if (coincide) {
-        tokens.push(t);
-        idsPorToken.set(t, docId);
-      }
+    // 4) Enviar (nunca al emisor).
+    const r = await enviarPush({
+      uids, nombres, titulo, cuerpo, url, excluirUid: emisorUid,
     });
 
-    if (tokens.length === 0) {
-      return res.json({ ok: true, enviados: 0, mensaje: 'Los destinatarios no tienen dispositivos registrados.' });
-    }
-
-    // 5) Enviar notificación VISIBLE (data-only: el Service Worker la muestra).
-    //    Usamos data en vez de "notification" para controlar el render en el SW
-    //    y evitar notificaciones duplicadas en web.
-    let exitosos = 0, fallidos = 0;
-    const tokensInvalidos = [];
-
-    for (let i = 0; i < tokens.length; i += 500) {
-      const chunk = tokens.slice(i, i + 500);
-      const respuesta = await admin.messaging().sendEachForMulticast({
-        tokens: chunk,
-        data: {
-          tipo: 'aviso',
-          title: titulo,
-          body: cuerpo,
-          url,
-          timestamp: String(Date.now())
-        }
-      });
-      exitosos += respuesta.successCount;
-      fallidos += respuesta.failureCount;
-      respuesta.responses.forEach((r, idx) => {
-        if (!r.success) {
-          const codigo = (r.error && r.error.code) || '';
-          if (codigo.indexOf('registration-token-not-registered') >= 0 ||
-              codigo.indexOf('invalid-registration-token') >= 0) {
-            tokensInvalidos.push(chunk[idx]);
-          }
-        }
-      });
-    }
-
-    // 6) Limpiar tokens muertos (no bloqueante).
-    if (tokensInvalidos.length > 0) {
-      for (const t of tokensInvalidos) {
-        const id = idsPorToken.get(t);
-        if (id) await query('delete from mdtask_usuarios_tokens where id = $1', [String(id)]).catch(() => {});
-      }
-    }
-
-    return res.json({ ok: true, enviados: exitosos, fallidos, tokensLimpiados: tokensInvalidos.length });
+    if (r.mensaje) return res.json({ ok: true, enviados: 0, mensaje: r.mensaje });
+    return res.json({
+      ok: true, enviados: r.enviados, fallidos: r.fallidos,
+      tokensLimpiados: r.tokensLimpiados,
+    });
   } catch (e) {
     console.error('[notificar] error:', e && e.message);
     return res.status(500).json({ error: (e && e.message) || 'Error interno' });

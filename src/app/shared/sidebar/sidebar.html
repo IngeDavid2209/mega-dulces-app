@@ -1,11 +1,9 @@
 <aside class="sidebar" [class.mobile-open]="isMenuOpen" translate="no">
   <div style="display: flex; flex-direction: column; height: 100%;">
-    <div class="sidebar-header">
-      <img src="https://static.wixstatic.com/media/fd397e_0fd82a1ecec84a118ceeb603b493f25a~mv2.png" alt="Logo"
-        style="width:32px; height:32px; border-radius:6px; object-fit:contain;">
-    </div>
 
-    <nav class="sidebar-nav" style="flex: 1; padding: 16px 12px;">
+    <!-- Sin cabecera con logotipo: se quitó a propósito. El padding superior de
+         la nav es el que ahora da el aire que daba aquel bloque. -->
+    <nav class="sidebar-nav" style="flex: 1; padding: 24px 12px 16px;">
       <a class="nav-item" routerLink="/home" routerLinkActive="active" (click)="onNavClick()">
         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <rect x="3" y="3" width="7" height="7" />
@@ -58,6 +56,22 @@
           <circle cx="7.5" cy="7.5" r="1.2"></circle>
         </svg>
         Promociones
+      </a>
+
+      <!-- 🟢 Venta de Promos: el piso de venta en vivo. Visible SOLO para quien
+           tenga alguno de los TRES permisos que se asignan desde Usuarios
+           (ventaPromosCaja / ventaPromosVendedor / ventaPromosMonitor). Los
+           admins NO lo ven por ser admin, igual que Promociones y el Espacio
+           TEC: si no se les prende una bandera, no les aparece. -->
+      <a class="nav-item" routerLink="/venta-promos" routerLinkActive="active"
+         *ngIf="verVentaPromos"
+         (click)="onNavClick()"
+         title="Venta de Promos: luz verde de la caja y tablero en vivo">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="9"></circle>
+          <circle cx="12" cy="12" r="3.5"></circle>
+        </svg>
+        Venta de Promos
       </a>
 
       <!-- 🧱 Bloques de trabajo: el dia partido en tramos de horario. Lo ven

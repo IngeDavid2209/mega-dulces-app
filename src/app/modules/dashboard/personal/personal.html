@@ -467,6 +467,39 @@
               </label>
             </div>
 
+            <!-- 🟢 PRIVILEGIOS: VENTA DE PROMOS (tres oficios, tres switches) -->
+            <div class="form-group form-full" style="padding-top: 16px; border-top: 1px solid var(--border);">
+              <label class="form-label" style="margin-bottom: 10px;">🟢 Venta de Promos</label>
+              <p style="font-size:12px; color:var(--text-secondary); margin:-4px 0 12px;">
+                El apartado "Venta de Promos" solo aparece en el menú si le prendes al menos uno de estos
+                tres. Ni los administradores lo ven sin ellos. Cada quien entra únicamente a lo suyo.
+              </p>
+
+              <label class="premium-perm-item" style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+                <div class="perm-text">
+                  <strong>Cajera — dar luz verde</strong>
+                  <span>Ve las promos activas de su sucursal y avisa de un toque cuando una se vende (o se aparta). Es lo único que puede hacer: no crea promos ni ve el tablero.</span>
+                </div>
+                <div class="perm-switch"><input type="checkbox" [(ngModel)]="formVentaPromosCaja"><span class="slider"></span></div>
+              </label>
+
+              <label class="premium-perm-item" style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:12px;">
+                <div class="perm-text">
+                  <strong>Vendedor — crear y vender promos</strong>
+                  <span>Da de alta la promo con su nombre, descripción, costo y foto, y elige en qué sucursales aplica. Es lo que las cajas verán en su pantalla.</span>
+                </div>
+                <div class="perm-switch"><input type="checkbox" [(ngModel)]="formVentaPromosVendedor"><span class="slider"></span></div>
+              </label>
+
+              <label class="premium-perm-item" style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:12px;">
+                <div class="perm-text">
+                  <strong>Monitor — vigilar las ventas</strong>
+                  <span>Ve el tablero en vivo (por promo, por sucursal y qué sucursales no han dado señal) y le llega el aviso de la app en cuanto una caja da luz verde, aunque la tenga cerrada. OJO: para eso tiene que haber aceptado las notificaciones en su celular.</span>
+                </div>
+                <div class="perm-switch"><input type="checkbox" [(ngModel)]="formVentaPromosMonitor"><span class="slider"></span></div>
+              </label>
+            </div>
+
             <!-- 🔥 ALCANCE DEL ADMIN (Global vs Por sucursales) 🔥 -->
             <div class="form-group form-full" *ngIf="formRol === 'admin'"
                  style="padding-top: 16px; border-top: 1px solid var(--border);">

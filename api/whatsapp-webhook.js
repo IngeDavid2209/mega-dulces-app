@@ -68,7 +68,10 @@ async function procesarMensaje(msg) {
   // ubicacion) que responden y terminan sin guardar el hilo del asistente. Si no
   // se anota aqui, esos mensajes no cuentan como actividad y despues los avisos
   // se intentan por plantilla —que hoy rebota— en vez de por texto, que si llega.
-  try { await pgConversacionTocar(ultimos10(msg.from)); }
+  // Devuelve la actividad ANTERIOR: es el unico momento en que todavia se puede
+  // saber cuanto llevaba callado este hilo (un renglon mas abajo ya vale ahora).
+  let ultimaActividad = 0;
+  try { ultimaActividad = await pgConversacionTocar(ultimos10(msg.from)); }
   catch (e) { console.error('[wa-webhook] no se pudo registrar la actividad:', e && e.message); }
 
   const TIPOS_OK = ['text', 'location', 'image', 'audio', 'documento'];
@@ -347,13 +350,18 @@ async function procesarMensaje(msg) {
   }
 
   // Cargar historial (se reinicia si estuvo inactivo demasiado tiempo).
+  //
+  // OJO con `ultimaActividad`: es el valor de ANTES de tocar el hilo. Aqui se
+  // leia `conv.actualizado`, que para entonces ya era `Date.now()` (lo escribio
+  // este mismo mensaje al entrar), asi que `inactivo` daba false SIEMPRE y el
+  // hilo no se reiniciaba nunca. Consecuencia: el modelo seguia viendo la lista
+  // numerada de ayer y "ya hice la 5" apuntaba a otra tarea o a ninguna.
   let messages = [];
+  const inactivo = Date.now() - ultimaActividad > HORAS_RESET * 3600 * 1000;
+  if (inactivo && ultimaActividad) console.log(`[wa-webhook] hilo de ${objetivo} inactivo ${Math.round((Date.now() - ultimaActividad) / 3600000)} h: empiezo de cero`);
   try {
     const conv = await pgConversacionGet(objetivo);
-    if (conv) {
-      const inactivo = Date.now() - (conv.actualizado || 0) > HORAS_RESET * 3600 * 1000;
-      if (!inactivo && Array.isArray(conv.messages)) messages = conv.messages;
-    }
+    if (conv && !inactivo && Array.isArray(conv.messages)) messages = conv.messages;
   } catch (e) { /* si falla la lectura, arrancamos con historial vacio */ }
 
   messages.push({ role: 'user', content: texto });

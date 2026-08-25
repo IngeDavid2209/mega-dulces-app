@@ -1549,12 +1549,16 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     return checklist.items.slice(0, 4);
   }
 
-  isTareaVencida(item: any, checklistDate: string): boolean {
-    if (!checklistDate) return false;
+  /** Hora límite (epoch) de la tarea, o null si no se puede calcular. */
+  private limiteDeTarea(item: any, checklistDate: string, checklistTime?: string): number | null {
+    if (!checklistDate) return null;
     let hora = '23'; let minuto = '59';
     // 🔥 Prioriza horaLimite (campo actual) sobre time (legacy). Aplica a ambos tipos.
     // Esto evita que tareas con campos desincronizados se cierren con una hora vieja.
-    const horaUsar = item.horaLimite || item.time;
+    // Si la tarea no trae hora propia, manda la del CHECKLIST (igual que
+    // horaLimiteItem()): antes se saltaba ese escalón y la misma tarea se
+    // MOSTRABA con límite 08:00 y se JUZGABA con las 23:59.
+    const horaUsar = item?.horaLimite || item?.time || checklistTime;
     if (horaUsar && typeof horaUsar === 'string') {
       const partes = horaUsar.split(':');
       if (partes.length >= 2) {
@@ -1563,8 +1567,69 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       }
     }
     const [year, month, day] = checklistDate.split('-');
-    const deadline = new Date(Number(year), Number(month) - 1, Number(day), Number(hora), Number(minuto), 59);
-    return new Date() > deadline;
+    return new Date(Number(year), Number(month) - 1, Number(day), Number(hora), Number(minuto), 59).getTime();
+  }
+
+  /** ¿Ya pasó su hora límite? Es para MOSTRARLA como vencida, no para el justificante. */
+  isTareaVencida(item: any, checklistDate: string, checklistTime?: string): boolean {
+    const limite = this.limiteDeTarea(item, checklistDate, checklistTime);
+    return limite != null && Date.now() > limite;
+  }
+
+  /** "08:45 PM" (formato de photoTime/photoDespuesTime) + la fecha -> epoch. */
+  private horaAmPmEpoch(fecha: string, txt: any): number | null {
+    const m = /^\s*(\d{1,2}):(\d{2})\s*([AaPp])\.?[Mm]\.?\s*$/.exec(String(txt || ''));
+    if (!m || !fecha) return null;
+    let h = Number(m[1]) % 12;
+    if (m[3].toLowerCase() === 'p') h += 12;
+    const [year, month, day] = fecha.split('-');
+    return new Date(Number(year), Number(month) - 1, Number(day), h, Number(m[2]), 0).getTime();
+  }
+
+  /**
+   * CUÁNDO quedó lista la tarea (epoch), o null si no hay sello de tiempo.
+   * Se toma el sello más TARDÍO de lo que exigía: la foto de DESPUÉS manda sobre
+   * la de ANTES, y la última de "varias" sobre las anteriores.
+   */
+  private completadaEn(item: any, fecha: string): number | null {
+    if (!item || !fecha) return null;
+    const sellos: number[] = [];
+    const push = (v: any) => { const n = Number(v); if (n > 0) sellos.push(n); };
+    if (item.requiresAntesDespues) {
+      push(item.photoDespuesTimestamp);
+      push(this.horaAmPmEpoch(fecha, item.photoDespuesTime));
+      if (!sellos.length) { push(item.photoAntesTimestamp); push(this.horaAmPmEpoch(fecha, item.photoAntesTime)); }
+    } else if (item.requiresVariasFotos) {
+      for (const f of (Array.isArray(item.photos) ? item.photos : [])) {
+        push(f?.timestamp);
+        push(this.horaAmPmEpoch(fecha, f?.time));
+      }
+    } else if (item.requiresPhoto) {
+      push(item.photoTimestamp);
+      push(this.horaAmPmEpoch(fecha, item.photoTime));
+    } else {
+      push(item.checkedEn);
+    }
+    return sellos.length ? Math.max(...sellos) : null;
+  }
+
+  /**
+   * ¿Esta tarea se entrega CON RETRASO? (lo que obliga a dar justificante)
+   *
+   * ⚠️ NO es isTareaVencida(). Antes sí lo era, y ese era el bug: comparaba la
+   * hora límite contra AHORA aunque la tarea llevara horas hecha, así que quien
+   * terminaba a las 07:50 con límite 08:00 y le daba a "Enviar" a las 08:05
+   * tenía que justificar un retraso que no existió.
+   *
+   * Ahora manda CUÁNDO se hizo. Si está hecha pero no hay sello (datos de antes
+   * de que se guardaran), se conserva el criterio viejo: no se puede probar que
+   * fue a tiempo, y abrir la mano ahí dejaría pasar retrasos reales.
+   */
+  entregadaTarde(item: any, checklist: any): boolean {
+    const limite = this.limiteDeTarea(item, checklist?.date, checklist?.time);
+    if (limite == null) return false;
+    const cuando = this.esItemCompleto(item) ? this.completadaEn(item, checklist.date) : null;
+    return (cuando != null ? cuando : Date.now()) > limite;
   }
 
   esDiaCerrado(sucursal: string, fecha: Date = new Date()): boolean {
@@ -2471,7 +2536,20 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     return `Visto por ${checklist.vistoPor}${cuando}`;
   }
   volverALista() { this.checklistSeleccionado.set(null); this.vistaActual.set('lista'); }
-  toggleItem(item: any) { item.checked = !item.checked; this.actualizarEstado(); }
+  toggleItem(item: any) { item.checked = !item.checked; this.sellarCheck(item); this.actualizarEstado(); }
+
+  /**
+   * Deja constancia de CUANDO se marco (o se desmarco) la tarea.
+   *
+   * Sin este sello no habia forma de saber si el trabajo se hizo a tiempo: al
+   * entregar se comparaba la hora limite contra el reloj de ESE momento, asi que
+   * terminar 07:50 y darle a "Enviar" 07:05 pedia justificante por un retraso
+   * que no existio. Ver `entregadaTarde()`.
+   */
+  private sellarCheck(item: any) {
+    if (item.checked) item.checkedEn = Date.now();
+    else item.checkedEn = null;
+  }
 
   /** ¿Esta tarea pide alguna evidencia (foto / antes-después / varias fotos)? */
   pideEvidencia(item: any): boolean {
@@ -2490,6 +2568,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     if (!this.puedoEditarItem(item)) return;
     if (this.pideEvidencia(item)) return; // las de foto se completan subiendo evidencia
     item.checked = !item.checked;
+    this.sellarCheck(item);
     this.actualizarEstado();
   }
 
@@ -2526,7 +2605,9 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       item.pendienteDeSync = false;
       const ahora = new Date();
       item[tipoFoto + 'Time'] = ahora.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
-      if (tipoFoto === 'photoAntes') item.photoAntesTimestamp = Date.now();
+      // Sello en epoch de TODAS las fotos, no solo la de ANTES: es lo que prueba
+      // que la evidencia se subio dentro de la hora (ver `entregadaTarde()`).
+      item[tipoFoto + 'Timestamp'] = ahora.getTime();
       this.actualizarEstado();
     } else {
       // Fallback: si falla la subida online (cuota, red intermitente, etc.) la
@@ -2596,7 +2677,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     item.pendienteDeSync = true;
     const ahora = new Date();
     item[tipoFoto + 'Time'] = ahora.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
-    if (tipoFoto === 'photoAntes') item.photoAntesTimestamp = Date.now();
+    item[tipoFoto + 'Timestamp'] = ahora.getTime();
     await new Promise<void>((resolve) => {
       const reader = new FileReader();
       reader.readAsDataURL(file);
@@ -2729,7 +2810,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   /** ¿El checklist se está enviando después de la hora límite de alguna de sus tareas? */
   hayRetrasoEnChecklist(checklist: any): boolean {
     if (!checklist?.items?.length || !checklist.date) return false;
-    return checklist.items.some((i: any) => this.isTareaVencida(i, checklist.date));
+    return checklist.items.some((i: any) => this.entregadaTarde(i, checklist));
   }
 
   /**
@@ -3651,13 +3732,19 @@ export class ChecklistComponent implements OnInit, OnDestroy {
         // 🔁 En edición preservamos lo que el trabajador ya haya hecho (evidencia,
         // checks). En creación normal item.* es undefined → quedan vacíos.
         checked: item.checked || false,
+        // Los sellos de tiempo viajan con lo demas: si se caen aqui, al editar un
+        // checklist ya trabajado se perderia la prueba de que se hizo a tiempo y
+        // volveria a pedir justificante (ver entregadaTarde()).
+        checkedEn: item.checkedEn || null,
         photo: item.photo || null,
         photoTime: item.photoTime || null,
+        photoTimestamp: item.photoTimestamp || null,
         photoAntes: item.photoAntes || null,
         photoAntesTime: item.photoAntesTime || null,
         photoAntesTimestamp: item.photoAntesTimestamp || null,
         photoDespues: item.photoDespues || null,
         photoDespuesTime: item.photoDespuesTime || null,
+        photoDespuesTimestamp: item.photoDespuesTimestamp || null,
         photos: item.photos || [],
         tipo: 'tarea'
       }));

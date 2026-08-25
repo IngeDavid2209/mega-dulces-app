@@ -424,12 +424,25 @@ async function pgConversacionSet(id, { messages, uid }) {
  * habria llegado. Por eso se toca en CUANTO entra el mensaje, pase por donde pase.
  */
 async function pgConversacionTocar(id) {
+  // DEVUELVE la actividad ANTERIOR (epoch, 0 si es hilo nuevo). No es un detalle:
+  // el webhook la necesita para saber si el hilo estuvo inactivo y toca
+  // reiniciarlo, y como esta funcion se llama ANTES de leer la conversacion, si
+  // no se devolviera aqui el dato ya estaria pisado. Ese era el bug: el webhook
+  // leia `actualizado` DESPUES de tocarlo, calculaba "inactivo" contra el valor
+  // que el mismo acababa de escribir y le daba siempre false, asi que el reinicio
+  // por inactividad NUNCA ocurrio y el hilo arrastraba la numeracion de ayer.
+  let antes = 0;
+  try {
+    const r = await query('select actualizado from mdtask_wa_conversaciones where id = $1', [String(id)]);
+    antes = r.rows[0] ? Number(r.rows[0].actualizado || 0) : 0;
+  } catch (e) { /* si no se puede leer, se trata como hilo nuevo */ }
   await query(
     `insert into mdtask_wa_conversaciones (id, actualizado)
      values ($1,$2)
      on conflict (id) do update set actualizado = excluded.actualizado`,
     [String(id), Date.now()]
   );
+  return antes;
 }
 
 // -- FLOTILLA: vehiculos + reservas_vehiculos (mismo mapeo que api/vehiculos.js
@@ -579,15 +592,87 @@ function modoEvidencia(it) {
   if (it.requiresVariasFotos) return 'varias';
   return 'simple';
 }
-// Espejo de isTareaVencida(): deadline = fecha del checklist + horaLimite del item
-// (o su `time` legacy; por defecto 23:59), en hora de Mexico.
-function itemVencido(it, fecha) {
-  if (!fecha) return false;
-  const limite = epochDeMx(fecha, String(it.horaLimite || it.time || '23:59'));
+// Hora limite EFECTIVA de un item (HH:mm). Espejo de horaLimiteItem() del front:
+// la del item, la legacy `time`, y si no la del CHECKLIST. El fallback al
+// checklist faltaba aqui, asi que un item sin hora propia se MOSTRABA con la
+// hora del checklist ("limite 08:00") pero se JUZGABA con las 23:59: la lista y
+// la entrega decian cosas distintas del mismo item.
+function horaLimiteDe(it, ck) {
+  return String((it && (it.horaLimite || it.time)) || (ck && ck.time) || '23:59');
+}
+function limiteEpoch(it, ck, fecha) {
+  const f = fecha || (ck && ck.date);
+  if (!f) return null;
+  return epochDeMx(f, horaLimiteDe(it, ck));
+}
+// Espejo de isTareaVencida(): ¿YA PASO su hora limite? Es para MOSTRAR ("vencida"
+// en la lista), no para decidir si la entrega lleva justificante — para eso esta
+// itemEntregadoTarde(), que si mira cuando se hizo.
+function itemVencido(it, fecha, ck) {
+  const limite = limiteEpoch(it, ck, fecha);
   return limite != null && Date.now() > limite + 59 * 1000;
 }
+
+// "08:45 PM" (el formato que guardan photoTime/photoDespuesTime, tanto el front
+// como fmtHoraMx) + la fecha del checklist -> epoch en hora de Mexico.
+function horaAmPmEpoch(fecha, txt) {
+  const m = /^\s*(\d{1,2}):(\d{2})\s*([AaPp])\.?[Mm]\.?\s*$/.exec(String(txt || ''));
+  if (!m) return null;
+  let h = parseInt(m[1], 10) % 12;
+  if (m[3].toLowerCase() === 'p') h += 12;
+  return epochDeMx(fecha, String(h).padStart(2, '0') + ':' + m[2]);
+}
+/**
+ * CUANDO quedo lista esta tarea (epoch), si se puede saber. null = no hay sello.
+ *
+ * Se usa el sello mas TARDIO de lo que el item exigia (la de DESPUES manda sobre
+ * la de ANTES, la ultima foto de "varias" sobre las anteriores): la tarea no
+ * estuvo completa hasta esa.
+ */
+function completadaEn(it, fecha) {
+  if (!it || !fecha) return null;
+  const sellos = [];
+  const push = (v) => { const n = Number(v); if (n > 0) sellos.push(n); };
+  if (it.requiresAntesDespues) {
+    push(it.photoDespuesTimestamp);
+    push(horaAmPmEpoch(fecha, it.photoDespuesTime));
+    if (!sellos.length) { push(it.photoAntesTimestamp); push(horaAmPmEpoch(fecha, it.photoAntesTime)); }
+  } else if (it.requiresVariasFotos) {
+    for (const f of (Array.isArray(it.photos) ? it.photos : [])) {
+      push(f && f.timestamp);
+      push(horaAmPmEpoch(fecha, f && f.time));
+    }
+  } else if (it.requiresPhoto) {
+    push(it.photoTimestamp);
+    push(horaAmPmEpoch(fecha, it.photoTime));
+  } else {
+    push(it.checkedEn);
+  }
+  return sellos.length ? Math.max(...sellos) : null;
+}
+/**
+ * ¿Esta tarea se entrega con RETRASO? (lo que obliga a dar un justificante)
+ *
+ * ⚠️ NO es lo mismo que itemVencido(). Antes lo era, y ese era el bug: se
+ * comparaba la hora limite contra AHORA aunque la tarea llevara horas hecha, asi
+ * que quien terminaba a las 07:50 con limite 08:00 y mandaba "enviar" a las
+ * 08:05 tenia que justificar un retraso que no existio. Peor: la entrega
+ * automatica al cerrar la fila de fotos se saltaba esos checklists, y la persona
+ * se quedaba creyendo que ya habia entregado.
+ *
+ * Ahora se juzga por CUANDO se hizo. Si el item ya esta hecho y hay sello de
+ * tiempo, ese manda. Si esta hecho pero es de antes de que se guardaran sellos
+ * (datos viejos), se conserva el criterio anterior: no se puede probar que fue a
+ * tiempo, y abrir la mano ahi seria dejar pasar retrasos reales sin justificante.
+ */
+function itemEntregadoTarde(it, ck) {
+  const limite = limiteEpoch(it, ck, ck && ck.date);
+  if (limite == null) return false;
+  const cuando = itemHecho(it) ? completadaEn(it, ck.date) : null;
+  return (cuando != null ? cuando : Date.now()) > limite + 59 * 1000;
+}
 function checklistConRetraso(ck) {
-  return Array.isArray(ck.items) && ck.items.some(i => itemVencido(i, ck.date));
+  return Array.isArray(ck.items) && ck.items.some(i => itemEntregadoTarde(i, ck));
 }
 // Recalcula status igual que actualizarEstado() del front. Muta y devuelve el ck.
 function recalcularStatus(ck) {
@@ -630,8 +715,8 @@ function vistaChecklist(ck) {
     items: items.map((it, i) => ({
       n: i + 1, texto: String(it.text || '(sin nombre)'), hecho: itemHecho(it),
       pide_foto: itemPideEvidencia(it) ? modoEvidencia(it) : null,
-      hora_limite: it.horaLimite || it.time || null,
-      vencida: itemVencido(it, ck.date),
+      hora_limite: horaLimiteDe(it, ck),
+      vencida: itemVencido(it, ck.date, ck),
       falta: itemHecho(it) ? null : itemFalta(it),
     })),
   };
@@ -687,6 +772,70 @@ function restarDiasISO(fechaISO, dias) {
   d.setUTCDate(d.getUTCDate() - Number(dias || 0));
   return d.toISOString().slice(0, 10);
 }
+
+// ---------------------------------------------------------------------------
+//  QUE ALCANZA LA ENTREGA (distinto de que se MUESTRA).
+//
+//  La lista se limita a HOY a proposito (ver DIAS_ARRASTRE): a quien arrastraba
+//  dos semanas le caian 103 tareas y la lista dejaba de servir. Pero ese limite
+//  se colo tambien en los caminos de ENTREGAR, y ahi hizo daño: una tarea de
+//  ayer se podia VER —`mis_pendientes` acepta `fecha`— y NO se podia entregar.
+//  El bot contestaba "esa ya no esta en tu lista (puede que ya se haya
+//  entregado)", que ademas era falso: seguia abierta y nadie podia cerrarla.
+//
+//  Regla: se MUESTRA y se NUMERA lo de hoy; se ENTREGA lo de hoy MAS lo que la
+//  conversacion trae en la mano — la lista congelada que la persona acaba de
+//  leer y la fila de fotos que esta respondiendo.
+// ---------------------------------------------------------------------------
+
+// Vigencia de la lista congelada (la numeracion que se le leyo).
+const LISTA_VIGENCIA_MS = 12 * 3600 * 1000;
+
+/** La lista congelada del hilo, si sigue vigente. null si no hay o ya caduco. */
+async function listaCongelada(ctx) {
+  if (!ctx.convKey) return null;
+  try {
+    const l = await pgConversacionListaGet(ctx.convKey);
+    if (l && Array.isArray(l.tareas) && l.tareas.length && (Date.now() - Number(l.en || 0)) < LISTA_VIGENCIA_MS) return l;
+  } catch (e) { /* sin lista congelada */ }
+  return null;
+}
+
+/** Ids de checklist que la conversacion trae en la mano (lista leida + fila de fotos). */
+async function idsEnLaMano(ctx) {
+  const ids = new Set();
+  if (!ctx.convKey) return ids;
+  const l = await listaCongelada(ctx);
+  if (l) for (const t of l.tareas) if (t && t.ck) ids.add(String(t.ck));
+  try {
+    const esp = await pgConversacionEsperandoGet(ctx.convKey);
+    if (esp && Array.isArray(esp.cola)) {
+      for (const c of esp.cola.slice(Number(esp.idx || 0))) if (c && c.checklistId) ids.add(String(c.checklistId));
+    }
+  } catch (e) { /* sin fila */ }
+  return ids;
+}
+
+/**
+ * Checklists sobre los que se puede ENTREGAR: los de hoy mas los `extraIds` que
+ * sigan siendo suyos, activos y sin enviar. Nunca duplica.
+ */
+async function checklistsAlAlcance(ctx, extraIds) {
+  const lista = await pgChecklistsDeUsuario({
+    uid: ctx.uid, nombre: ctx.nombre, ...ventanaDeTrabajo(ctx.fechaHoy),
+  });
+  const vistos = new Set(lista.map(c => String(c.id)));
+  for (const id of (extraIds || [])) {
+    if (vistos.has(String(id))) continue;
+    vistos.add(String(id));
+    let ck = null;
+    try { ck = await pgChecklistGet(String(id)); } catch (e) { continue; }
+    if (!ck || ck.enviado || ck.eliminado || ck.archivado) continue;
+    if (!esMiChecklist(ctx, ck)) continue;
+    lista.push(ck);
+  }
+  return lista;
+}
 // Mismo formato de horaEnvio que guarda el front ("08:30 PM"), en hora de Mexico.
 function horaEnvioMx() {
   return new Intl.DateTimeFormat('en-US', {
@@ -719,8 +868,8 @@ async function tareasPlanas(ctx, { uid, nombre, fecha } = {}) {
         texto: String(it.text || '(sin nombre)'),
         hecho: itemHecho(it),
         pide_foto: itemPideEvidencia(it) ? modoEvidencia(it) : null,
-        hora_limite: it.horaLimite || it.time || ck.time || null,
-        vencida: itemVencido(it, ck.date),
+        hora_limite: horaLimiteDe(it, ck),
+        vencida: itemVencido(it, ck.date, ck),
         sucursal: ck.store || '',
         checklist: ck.name || '',
         checklist_id: ck.id,
@@ -768,9 +917,7 @@ async function resolverChecklistDestino(ctx, checklistId) {
     if (ck.enviado) return { error: `El checklist "${ck.name}" ya fue enviado${ck.horaEnvio ? ' a las ' + ck.horaEnvio : ''}.` };
     return { ck };
   }
-  const lista = await pgChecklistsDeUsuario({
-    uid: ctx.uid, nombre: ctx.nombre, ...ventanaDeTrabajo(ctx.fechaHoy),
-  });
+  const lista = await checklistsAlAlcance(ctx, await idsEnLaMano(ctx));
   if (!lista.length) return { error: 'No tienes checklists pendientes por entregar.' };
   if (lista.length === 1) return { ck: lista[0] };
   return {
@@ -786,13 +933,20 @@ async function resolverChecklistDestino(ctx, checklistId) {
  * Se ordena poniendo primero las YA MARCADAS (esas son las que estaba
  * entregando) y luego el resto, de la mas reciente a la mas vieja.
  */
+// Cuanto hacia atras se busca la dueña de una foto suelta. La LISTA se queda en
+// hoy (DIAS_ARRASTRE), pero una foto ya tomada no se tira por eso: quien cierra
+// de madrugada, o retoma lo de ayer, mandaba la foto y recibia "no tienes
+// ninguna tarea que pida evidencia" — con la tarea abierta y la foto perdida.
+// Si sale mas de una candidata no se adivina: se le pregunta por nombre.
+const DIAS_FOTO_ATRAS = 7;
+
 async function candidatosFoto(identidad) {
   try {
     const hoy = ahoraMexico().fechaISO;
     const cks = await pgChecklistsDeUsuario({
       uid: (identidad && identidad.uid) || undefined,
       nombre: (identidad && identidad.nombre) || undefined,
-      ...ventanaDeTrabajo(hoy),
+      desde: restarDiasISO(hoy, DIAS_FOTO_ATRAS) || undefined, hasta: hoy || undefined,
     });
     const out = [];
     for (const ck of cks) {
@@ -882,7 +1036,7 @@ async function registrarFotoEvidencia(convKey, urlFoto, identidad) {
       it.photoAntes = urlFoto; it.photoAntesTime = hora; it.photoAntesTimestamp = ahora;
       fase = 'antes'; faltaOtra = true;
     } else {
-      it.photoDespues = urlFoto; it.photoDespuesTime = hora;
+      it.photoDespues = urlFoto; it.photoDespuesTime = hora; it.photoDespuesTimestamp = ahora;
       fase = 'despues';
     }
   } else if (modoActual === 'varias') {
@@ -890,7 +1044,7 @@ async function registrarFotoEvidencia(convKey, urlFoto, identidad) {
     it.photos.push({ url: urlFoto, time: hora, timestamp: ahora });
     fase = 'varias';
   } else {
-    it.photo = urlFoto; it.photoTime = hora;
+    it.photo = urlFoto; it.photoTime = hora; it.photoTimestamp = ahora;
     fase = 'simple';
   }
   if (itemHecho(it)) { it.checked = true; it.checkedEn = ahora; it.checkedPor = 'whatsapp'; }
@@ -930,13 +1084,16 @@ async function registrarFotoEvidencia(convKey, urlFoto, identidad) {
           ...ventanaDeTrabajo(hoyISO),
         });
       } catch (e) { console.error('[entrega] no pude leer los pendientes:', e && e.message); }
-      // Respaldo: si la consulta falla, al menos los de la propia fila.
-      if (!candidatos.length) {
-        const ids = Array.from(new Set(cola.map(c => String(c.checklistId))));
-        for (const id of ids) {
-          const c = String(id) === String(ck.id) ? ck : await pgChecklistGet(id);
-          if (c) candidatos.push(c);
-        }
+      // Los checklists de la PROPIA FILA van siempre, sean de hoy o no (y aunque
+      // la consulta de arriba haya fallado). Si la fila traia una tarea de ayer,
+      // la persona acaba de mandar su foto: dejarla sin entregar porque la
+      // ventana de la lista es "solo hoy" era abandonarla a medio camino.
+      const yaEsta = new Set(candidatos.map(c => String(c.id)));
+      for (const id of new Set(cola.map(c => String(c.checklistId)))) {
+        if (yaEsta.has(id)) continue;
+        yaEsta.add(id);
+        const c = id === String(ck.id) ? ck : await pgChecklistGet(id);
+        if (c) candidatos.push(c);
       }
       for (const c of candidatos) {
         if (!c || c.enviado) continue;
@@ -1844,6 +2001,9 @@ async function ejecutarHerramienta(db, ctx, nombre, input) {
       try {
         await pgConversacionListaSet(ctx.convKey, {
           en: Date.now(),
+          // De QUE DIA es esta numeracion. Sin esto no habia forma de saber que
+          // "la 3" era de la lista del lunes y no de la de hoy.
+          fecha: input.fecha || ctx.fechaHoy || '',
           tareas: tareas.map(t => ({ n: t.n, ck: t.checklist_id, it: t.item_id, texto: t.texto })),
         });
       } catch (e) { console.error('[entrega] no pude congelar la lista:', e && e.message); }
@@ -1907,24 +2067,45 @@ async function ejecutarHerramienta(db, ctx, nombre, input) {
       // Los NUMEROS se resuelven contra la lista CONGELADA (la que la persona
       // acaba de leer). Si se recalculara aqui, un checklist nuevo entrado en
       // los ultimos minutos correria la numeracion y "la 67" cerraria otra cosa.
-      let congelada = null;
-      if (ctx.convKey) {
-        try {
-          const l = await pgConversacionListaGet(ctx.convKey);
-          // 12 h de vigencia: mas alla de eso la lista ya no es la que vio.
-          if (l && Array.isArray(l.tareas) && l.tareas.length && (Date.now() - Number(l.en || 0)) < 12 * 3600 * 1000) {
-            congelada = l.tareas;
-          }
-        } catch (e) { /* sin lista congelada, se usa la de ahora */ }
-      }
-      const porNumero = (n) => {
+      const lc = await listaCongelada(ctx);
+      const congelada = lc ? lc.tareas : null;
+
+      /**
+       * La lista congelada apunta a una tarea que HOY no aparece. Casi siempre no
+       * es que se haya perdido: es de OTRO DIA (`mis_pendientes` acepta `fecha`,
+       * pero la lista plana solo mira hoy). Antes se daba por perdida y el bot
+       * contestaba "puede que ya se haya entregado" — falso, y sin salida: esa
+       * tarea no se podia cerrar por chat de ninguna forma.
+       *
+       * Ahora se va por ella al checklist directo y solo se rinde si de verdad
+       * ya no aplica, diciendo POR QUE.
+       */
+      const rescatar = async (f, n) => {
+        const rendirse = (motivo) => ({ _perdida: true, texto: f.texto, n, motivo });
+        let ck = null;
+        try { ck = await pgChecklistGet(String(f.ck)); } catch (e) { return rendirse('no la pude leer'); }
+        if (!ck || ck.eliminado || ck.archivado) return rendirse('ya no existe');
+        if (!esMiChecklist(ctx, ck)) return rendirse('ya no esta a tu nombre');
+        if (ck.enviado) return rendirse(`ya se entrego${ck.horaEnvio ? ' a las ' + ck.horaEnvio : ''}`);
+        const its = Array.isArray(ck.items) ? ck.items : [];
+        const i = its.findIndex(x => String(x.id) === String(f.it));
+        if (i < 0) return rendirse('ya no esta en su checklist');
+        cache.set(String(ck.id), ck);
+        console.log(`[entrega] rescate: la ${n} ("${f.texto}") es del ${ck.date} y no salia en la lista de hoy`);
+        return {
+          n, texto: String(its[i].text || f.texto), hecho: itemHecho(its[i]),
+          checklist_id: ck.id, item_id: its[i].id, _idx: i,
+        };
+      };
+
+      const porNumero = async (n) => {
         if (congelada) {
           const f = congelada.find(x => Number(x.n) === n);
           if (f) {
             // Se reubica en la lista de AHORA por (checklist, item), no por posicion.
             const t = tareas.find(x => String(x.checklist_id) === String(f.ck) && String(x.item_id) === String(f.it));
             if (t) return { ...t, n };            // conserva el numero que ella leyo
-            return { _perdida: true, texto: f.texto, n };
+            return await rescatar(f, n);
           }
         }
         return tareas.find(x => x.n === n) || null;
@@ -1939,18 +2120,26 @@ async function ejecutarHerramienta(db, ctx, nombre, input) {
           const txt = String(ref).trim();
           const num = /^#?(\d{1,3})$/.exec(txt);
           let t = null;
-          if (num) t = porNumero(parseInt(num[1], 10));
+          if (num) t = await porNumero(parseInt(num[1], 10));
           else {
-            // Por TEXTO se busca en la lista de ahora: los nombres no se mueven.
+            // Por TEXTO se busca en la lista de ahora y, si no esta, en la
+            // congelada (por si es de otro dia): los nombres no se mueven.
             const obj = normaliza(txt);
-            const cands = tareas.filter(x => { const n = normaliza(x.texto); return n === obj || n.includes(obj) || obj.includes(n); });
+            const parecido = (n) => n && (n === obj || n.includes(obj) || obj.includes(n));
+            const cands = tareas.filter(x => parecido(normaliza(x.texto)));
             if (cands.length > 1) return { ok: false, mensaje: `"${txt}" coincide con varias: ${cands.slice(0, 6).map(c => c.n + '. ' + c.texto).join(' | ')}. ¿Cual?` };
             t = cands[0] || null;
+            if (!t && congelada) {
+              const yaEnLista = new Set(tareas.map(x => `${x.checklist_id}|${x.item_id}`));
+              const fs = congelada.filter(f => parecido(normaliza(f.texto)) && !yaEnLista.has(`${f.ck}|${f.it}`));
+              if (fs.length > 1) return { ok: false, mensaje: `"${txt}" coincide con varias: ${fs.slice(0, 6).map(f => f.n + '. ' + f.texto).join(' | ')}. ¿Cual?` };
+              if (fs.length === 1) t = await rescatar(fs[0], fs[0].n);
+            }
           }
           if (t && t._perdida) {
             return {
               ok: false,
-              mensaje: `La ${t.n} ("${t.texto}") ya no está en tu lista de pendientes (puede que ya se haya entregado). Vuelve a leerle sus pendientes con mis_pendientes y confirma el número.`
+              mensaje: `La ${t.n} ("${t.texto}") ${t.motivo || 'ya no esta disponible'}. Vuelve a leerle sus pendientes con mis_pendientes y confirma el número.`
             };
           }
           if (!t) return { ok: false, mensaje: `No encontre la tarea "${txt}" en tu lista. Vuelve a leerle sus pendientes con mis_pendientes.` };
@@ -2048,7 +2237,11 @@ async function ejecutarHerramienta(db, ctx, nombre, input) {
     // --- ENVIAR TODO lo que ya este completo (el caso de quien trabaja por rutinas
     //     y arrastra muchos checklists de una sola tarea cada uno) ---
     if (input.todos === true) {
-      const { checklists } = await tareasPlanas(ctx, {});
+      // Lo de hoy MAS lo que la conversacion trae en la mano (la lista que acaba
+      // de leer, la fila de fotos que esta respondiendo). Antes solo miraba hoy:
+      // quien terminaba de mandar las fotos de una tarea de ayer y decia "envia"
+      // recibia "no tienes nada pendiente por enviar" con la tarea abierta.
+      const checklists = await checklistsAlAlcance(ctx, await idsEnLaMano(ctx));
       if (!checklists.length) return { ok: false, mensaje: 'No tienes nada pendiente por enviar.' };
       const completo = (ck) => { const it = ck.items || []; return it.length > 0 && it.every(itemHecho); };
       const subiendo = checklists.some(ck => (ck.items || []).some(i => i.photo === 'subiendo...' || i.photoAntes === 'subiendo...' || i.photoDespues === 'subiendo...'));
@@ -2794,6 +2987,7 @@ function construirSystem(ctx) {
     'ENTREGAR TAREAS (lo que el colaborador tiene que hacer hoy):',
     '- "que tengo que hacer", "mis tareas", "que me falta" -> mis_pendientes. Leele la lista de "tareas" con SUS numeros y su hora limite; esa numeracion es la unica que debes usar. NO le hables de "checklists": para el son TAREAS (las rutinas llegan como muchos checklists de una sola tarea).',
     '- La lista trae SOLO LAS DE HOY. Si te pide las de otro dia ("las del lunes", "las que no entregue el sabado"), llama mis_pendientes con `fecha` en YYYY-MM-DD. Nunca le digas que arrastra tareas viejas si no se lo has consultado con fecha.',
+    '- Esas tareas de OTRO DIA SI se pueden entregar: usa entregar_item con el numero que le acabas de leer, igual que las de hoy. NO le digas que ya no se puede o que "ya no esta en la lista"; si de verdad no aplica, la herramienta te dira el motivo exacto y ese es el que le repites.',
     '- Cuando cuentes cuantas tiene, usa `pendientes` (las tareas que le faltan), NO `total_checklists`: son cosas distintas y confundirlas le da un numero falso.',
     '- "ya hice la 2" -> entregar_item item:"2". "ya hice la 1, 3 y 7" -> entregar_item tareas:["1","3","7"]. "ya termine todo" -> entregar_item todas:true. Si no tienes los numeros frescos, llama mis_pendientes primero.',
     '- FOTOS EN FILA: las tareas que piden foto NO se cierran al marcarlas; entran a una fila. Si te devuelve fotos_en_cola, pidele las fotos UNA POR UNA empezando por siguiente_foto. Cada imagen que mande se guarda sola y el sistema le confirma el avance ("3 de 12") y le pide la siguiente: TU no tienes que hacer nada entre fotos. Si es antes/despues, primero la de ANTES.',
@@ -2926,6 +3120,12 @@ module.exports.pgChecklistsDeUsuario = pgChecklistsDeUsuario;
 module.exports.pgChecklistsPendientesDeFecha = pgChecklistsPendientesDeFecha;
 module.exports.itemHecho = itemHecho;
 module.exports.itemVencido = itemVencido;
+// RETRASO (justificante) y sus piezas: distinto de "vencida". Se exportan para
+// poder probarlas sin base de datos y para que no se re-implementen por ahi.
+module.exports.itemEntregadoTarde = itemEntregadoTarde;
+module.exports.checklistConRetraso = checklistConRetraso;
+module.exports.completadaEn = completadaEn;
+module.exports.horaLimiteDe = horaLimiteDe;
 module.exports.mismoNombreEmpleado = mismoNombreEmpleado;
 module.exports.epochDeMx = epochDeMx;
 module.exports.ahoraMexico = ahoraMexico;

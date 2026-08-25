@@ -685,9 +685,11 @@ export class ReportesComponent implements OnInit, OnDestroy {
 
   /** ¿La tarea está vencida? Compara la hora límite del item (o `time` legacy)
    *  contra ahora, tomando como referencia la fecha del checklist. */
-  isTareaVencida(item: any, checklistDate: string | undefined | null): boolean {
+  isTareaVencida(item: any, checklistDate: string | undefined | null, checklistTime?: string | null): boolean {
     if (!checklistDate) return false;
-    const horaUsar = item?.horaLimite || item?.time;
+    // El fallback a la hora del CHECKLIST faltaba: un item sin hora propia se
+    // pintaba "Pendiente" hasta las 23:59 aunque su checklist cerrara a las 08:00.
+    const horaUsar = item?.horaLimite || item?.time || checklistTime;
     let hora = 23, minuto = 59;
     if (horaUsar && typeof horaUsar === 'string' && horaUsar.includes(':')) {
       const partes = horaUsar.split(':');

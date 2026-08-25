@@ -529,15 +529,15 @@
 
           <div class="audit-item-list">
             <div class="audit-item-card" *ngFor="let item of checklistSeleccionado().items"
-                 [attr.data-estado]="esItemCompleto(item, checklistSeleccionado()) ? 'hecho' : (isTareaVencida(item, checklistSeleccionado().date) ? 'vencido' : 'pendiente')">
+                 [attr.data-estado]="esItemCompleto(item, checklistSeleccionado()) ? 'hecho' : (isTareaVencida(item, checklistSeleccionado().date, checklistSeleccionado().time) ? 'vencido' : 'pendiente')">
               <div class="audit-item-header">
                 <div class="audit-item-titulo">{{ item.text }}</div>
                 <span class="audit-item-chip"
                       [class.chip-hecho]="esItemCompleto(item, checklistSeleccionado())"
-                      [class.chip-vencido]="!esItemCompleto(item, checklistSeleccionado()) && isTareaVencida(item, checklistSeleccionado().date)"
-                      [class.chip-pendiente]="!esItemCompleto(item, checklistSeleccionado()) && !isTareaVencida(item, checklistSeleccionado().date)">
+                      [class.chip-vencido]="!esItemCompleto(item, checklistSeleccionado()) && isTareaVencida(item, checklistSeleccionado().date, checklistSeleccionado().time)"
+                      [class.chip-pendiente]="!esItemCompleto(item, checklistSeleccionado()) && !isTareaVencida(item, checklistSeleccionado().date, checklistSeleccionado().time)">
                   {{ esItemCompleto(item, checklistSeleccionado()) ? 'Hecho'
-                     : (isTareaVencida(item, checklistSeleccionado().date) ? 'Vencido' : 'Pendiente') }}
+                     : (isTareaVencida(item, checklistSeleccionado().date, checklistSeleccionado().time) ? 'Vencido' : 'Pendiente') }}
                 </span>
               </div>
 

@@ -178,6 +178,122 @@
 .vp-btn-apartar:hover:not(:disabled) { background: #FDE9BE; }
 .vp-btn-apartar:disabled { opacity: .5; cursor: not-allowed; }
 
+/* ================= ENCARGOS: los clientes que vienen en camino =================
+   Esto va arriba de todo en la caja y tiene que gritar. La cajera no está
+   mirando la pantalla: la voltea a ver cuando el cliente ya está enfrente. */
+.vp-encargos {
+  border: 2px solid var(--vp-azul, #1F4E79);
+  border-radius: 12px;
+  background: #F5F9FD;
+  padding: 14px;
+  margin-bottom: 20px;
+}
+
+.vp-encargos-tit {
+  font-size: 15px;
+  font-weight: 800;
+  color: #1F4E79;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.vp-badge {
+  font-size: 12px;
+  font-weight: 800;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: #1F4E79;
+  color: #FFF;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.vp-encargo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid #D6E4F0;
+  border-radius: 10px;
+  background: #FFF;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.vp-encargo:last-of-type { margin-bottom: 0; }
+
+/* Lleva demasiado esperando: o el cliente ya se fue, o nadie lo vio. */
+.vp-encargo.viejo { border-color: #F0C4C0; background: #FFFBFA; }
+
+.vp-encargo-foto {
+  width: 54px; height: 54px; flex-shrink: 0;
+  border-radius: 8px; overflow: hidden; background: #F1F5F9;
+}
+.vp-encargo-foto img { width: 100%; height: 100%; object-fit: cover; }
+
+.vp-encargo-info { flex: 1; min-width: 160px; display: flex; flex-direction: column; gap: 2px; }
+
+/* El NOMBRE es lo más grande de la tarjeta: es con lo que la cajera empata al
+   cliente que tiene enfrente. La promo viene después. */
+.vp-encargo-cliente { font-size: 17px; font-weight: 800; color: #0F172A; line-height: 1.2; }
+.vp-encargo-que { font-size: 14px; color: var(--vp-txt); }
+.vp-encargo-meta { font-style: normal; font-size: 11px; color: #94A3B8; }
+.vp-encargo-alerta { color: var(--vp-rojo); font-weight: 700; }
+
+.vp-encargo-acciones { display: flex; align-items: center; gap: 8px; }
+
+.vp-btn-luz-chico { height: 44px; font-size: 14px; padding: 0 18px; }
+
+/* Los ya atendidos: plegados, no estorban. */
+.vp-resueltos {
+  border: 1px solid var(--vp-linea);
+  border-radius: 10px;
+  background: #FFF;
+  padding: 12px 14px;
+  margin-bottom: 20px;
+}
+
+.vp-resueltos summary {
+  font-size: 13px; font-weight: 600; color: var(--vp-txt-2); cursor: pointer;
+}
+
+.vp-resuelto {
+  display: flex; align-items: center; gap: 9px;
+  padding: 8px 2px;
+  border-bottom: 1px solid #F1F5F9;
+  font-size: 13px;
+}
+
+.vp-resuelto-txt { flex: 1; color: var(--vp-txt); }
+.vp-resuelto-txt strong { font-weight: 700; color: #0F172A; }
+.vp-resuelto-txt em { font-style: normal; color: #94A3B8; font-size: 12px; }
+
+.vp-punto.cancelado { background: var(--vp-rojo); }
+.vp-punto.espera { background: var(--vp-ambar); }
+
+/* El botón de vender del vendedor: azul, para no confundirlo con el verde de
+   la caja. Verde = venta consumada; azul = venta anunciada. */
+.vp-btn-vender {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  height: 30px;
+  padding: 0 16px;
+  border: none;
+  border-radius: 6px;
+  background: #1F4E79;
+  color: #FFF;
+  cursor: pointer;
+}
+
+.vp-btn-vender:hover:not(:disabled) { background: #163A5B; }
+.vp-btn-vender:disabled { opacity: .5; cursor: not-allowed; }
+
 /* ================= VENDEDOR: alta y lista ================= */
 .vp-form {
   display: grid;

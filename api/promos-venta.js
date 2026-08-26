@@ -20,10 +20,22 @@
 //  escriben al mismo tiempo y un guardado del objeto entero pisaria lo del
 //  vecino. Es el mismo criterio de api/promo-expedientes.js.
 //
-//    guardarPromo { promo: { id?, nombre, descripcion, costo, foto, sucursales, ... } }
-//    estadoPromo  { promoId, estado: 'activa'|'pausada'|'terminada' }
-//    luzVerde     { promoId, sucursal, tipo: 'vendida'|'asegurada', piezas, importe, nota }
-//    quitarLuz    { luzId }
+//    guardarPromo     { promo: { id?, nombre, descripcion, costo, foto, sucursales, ... } }
+//    estadoPromo      { promoId, estado: 'activa'|'pausada'|'terminada' }
+//    luzVerde         { promoId, sucursal, tipo: 'vendida'|'asegurada', piezas, importe, nota }
+//    quitarLuz        { luzId }
+//    encargar         { promoId, sucursal, piezas, cliente, nota }   <- el vendedor
+//    confirmarEncargo { encargoId }                                  <- la cajera
+//    cancelarEncargo  { encargoId, motivo }
+//
+//  EL CIRCUITO COMPLETO. El vendedor cierra el trato en el piso y manda el
+//  ENCARGO ("Juan Perez lleva 3 del combo"). Le aparece a la caja de esa
+//  sucursal. Cuando el cliente llega, la cajera confirma que si se las llevo, y
+//  ESA confirmacion es la que genera la luz verde del tablero. Si el cliente se
+//  arrepiente, se cancela y no cuenta como venta.
+//
+//  La caja tambien puede dar luz verde directa, sin encargo previo: no toda
+//  venta pasa por un vendedor (el cliente que llega solo y la ve en el mostrador).
 //
 //  EL AVISO ES DENTRO DE LA APP, NO POR WHATSAPP. Se manda como push propio
 //  (api/_push.js, el mismo canal de "nueva tarea asignada"): le llega a quien
@@ -42,6 +54,10 @@ const AVISOS_OFF = String(process.env.PROMOS_VENTA_AVISOS || '').toLowerCase() =
 
 const ESTADOS = new Set(['activa', 'pausada', 'terminada']);
 const TIPOS = new Set(['vendida', 'asegurada']);
+/** Cuantos encargos ya resueltos se le devuelven a la caja (para poder deshacer
+ *  el que se acaba de confirmar por error). No mas: es una pantalla de trabajo,
+ *  no un historial. */
+const ENCARGOS_RESUELTOS = 15;
 
 /** Texto limpio (o null): no se guardan cadenas vacias ni undefined. */
 function texto(v) {
@@ -101,6 +117,28 @@ function filaLuz(r) {
     creadoEn: Number(r.creado_en || 0),
     creadoPor: r.creado_por || null,
     creadoPorNombre: r.creado_por_nombre || '',
+  };
+}
+
+function filaEncargo(r) {
+  return {
+    id: r.id,
+    promoId: r.promo_id,
+    promoNombre: r.promo_nombre || '',
+    promoFotoUrl: r.promo_foto_url || '',
+    promoCosto: r.promo_costo == null ? null : Number(r.promo_costo),
+    sucursal: r.sucursal,
+    piezas: Number(r.piezas || 0),
+    cliente: r.cliente || '',
+    estado: r.estado || 'pendiente',
+    nota: r.nota || '',
+    creadoEn: Number(r.creado_en || 0),
+    creadoPor: r.creado_por || null,
+    creadoPorNombre: r.creado_por_nombre || '',
+    resueltoEn: r.resuelto_en == null ? null : Number(r.resuelto_en),
+    resueltoPorNombre: r.resuelto_por_nombre || '',
+    motivo: r.motivo || '',
+    luzId: r.luz_id || null,
   };
 }
 
@@ -187,6 +225,54 @@ async function avisarMonitores(luz, promo, emisorUid) {
     if (r && r.mensaje) console.log('[promos-venta] aviso:', r.mensaje);
   } catch (e) {
     console.error('[promos-venta] el aviso a los monitores no salio:', e.message);
+  }
+}
+
+/**
+ * Le avisa a las cajas de UNA sucursal que el vendedor mando un encargo.
+ *
+ * Solo a las de esa sucursal: a la cajera de Morelia no le sirve saber que en
+ * Padre Hidalgo viene un cliente, y si le llegara todo acabaria ignorando los
+ * avisos. Quien tiene "General (Acceso Total)" si los recibe todos, porque esa
+ * es justo la gente que cubre varias.
+ *
+ * Best effort, igual que el aviso a los monitores: el encargo ya quedo guardado
+ * y la caja lo ve en su pantalla aunque el push no salga.
+ */
+async function avisarCajas(encargo, promo, emisorUid) {
+  if (AVISOS_OFF) return;
+
+  let destinos = [];
+  try {
+    const r = await query(
+      `select id, nombre from mdtask_usuarios
+        where activo is not false
+          and datos->>'ventaPromosCaja' = 'true'
+          and (datos->'sucursales' @> $1::jsonb
+               or datos->'sucursales' @> '["General (Acceso Total)"]'::jsonb
+               or datos->'sucursales' is null
+               or jsonb_array_length(coalesce(datos->'sucursales', '[]'::jsonb)) = 0)`,
+      [JSON.stringify([encargo.sucursal])]);
+    destinos = r.rows;
+  } catch (e) {
+    console.error('[promos-venta] no se pudo buscar a las cajas:', e.message);
+    return;
+  }
+  if (!destinos.length) return;
+
+  const cliente = encargo.cliente || 'un cliente';
+  try {
+    await enviarPush({
+      uids: destinos.map(d => String(d.id)),
+      nombres: destinos.map(d => d.nombre).filter(Boolean),
+      titulo: '🛎️ ' + cliente + ' lleva ' + encargo.piezas + ' × ' + promo.nombre,
+      cuerpo: 'Lo mandó ' + (encargo.creadoPorNombre || 'un vendedor') +
+              ' · confírmalo cuando pase a caja',
+      url: '/venta-promos',
+      excluirUid: emisorUid,
+    });
+  } catch (e) {
+    console.error('[promos-venta] el aviso a las cajas no salio:', e.message);
   }
 }
 
@@ -295,12 +381,47 @@ module.exports = async (req, res) => {
           group by p.id
           order by (p.estado = 'activa') desc, p.creado_en desc`);
 
+      // Los encargos que la caja tiene que atender. Se piden con la sucursal
+      // porque la caja solo trabaja la suya; sin sucursal no se devuelve nada,
+      // que es lo correcto: una lista de encargos de toda la cadena no le
+      // sirve a nadie y solo confundiria a quien esta en el mostrador.
+      let encargos = [];
+      const suc = texto(q.sucursal);
+      if (suc) {
+        const e = await query(
+          `select e.*, p.nombre as promo_nombre, p.foto_url as promo_foto_url,
+                  p.costo as promo_costo
+             from mdtask_promos_encargos e
+             join mdtask_promos_venta p on p.id = e.promo_id
+            where e.sucursal = $1 and e.eliminado = false
+              and (e.estado = 'pendiente' or e.resuelto_en > $2)
+            order by (e.estado = 'pendiente') desc, e.creado_en asc
+            limit 100`,
+          [suc, Date.now() - 12 * 60 * 60 * 1000]);
+        encargos = e.rows.map(filaEncargo);
+      }
+
+      // Lo que el vendedor mando, para que vea en que quedo.
+      let mios = [];
+      if (puede.vendedor && quien) {
+        const m = await query(
+          `select e.*, p.nombre as promo_nombre, p.foto_url as promo_foto_url,
+                  p.costo as promo_costo
+             from mdtask_promos_encargos e
+             join mdtask_promos_venta p on p.id = e.promo_id
+            where e.creado_por = $1 and e.eliminado = false
+            order by e.creado_en desc limit 30`, [quien]);
+        mios = m.rows.map(filaEncargo);
+      }
+
       return res.json({
         promos: promos.rows.map(r => Object.assign(filaPromo(r), {
           piezas: Number(r.piezas || 0), importe: Number(r.importe || 0),
           vendidas: Number(r.vendidas || 0), aseguradas: Number(r.aseguradas || 0),
           ultima: r.ultima == null ? null : Number(r.ultima),
         })),
+        encargos,
+        misEncargos: mios,
         permisos: { vendedor: puede.vendedor, caja: puede.caja, monitor: puede.monitor },
       });
     }
@@ -412,6 +533,129 @@ module.exports = async (req, res) => {
         return;
       }
 
+      // --- EL VENDEDOR MANDA EL ENCARGO ---------------------------------
+      if (accion === 'encargar') {
+        if (!puede.vendedor) return prohibido(res, 'mandar encargos a caja');
+        const promoId = texto(cuerpo.promoId);
+        const sucursal = texto(cuerpo.sucursal);
+        if (!promoId || !sucursal) {
+          return res.status(400).json({ error: 'Falta la promo o la sucursal.' });
+        }
+
+        const p = await query(
+          'select * from mdtask_promos_venta where id = $1 and eliminado = false',
+          [promoId]);
+        if (!p.rows[0]) return res.status(404).json({ error: 'No existe esa promo.' });
+        const promo = filaPromo(p.rows[0]);
+        if (promo.estado !== 'activa') {
+          return res.status(409).json({ error: 'Esa promo está ' + promo.estado + '. No se puede vender.' });
+        }
+
+        const r = await query(
+          `insert into mdtask_promos_encargos
+             (id, promo_id, sucursal, piezas, cliente, estado, nota,
+              creado_en, creado_por, creado_por_nombre)
+           values ($1,$2,$3,$4,$5,'pendiente',$6,$7,$8,$9)
+           returning *`,
+          [nuevoId('en'), promoId, sucursal, piezasDe(cuerpo.piezas),
+            texto(cuerpo.cliente), texto(cuerpo.nota), ahora, quien, puede.nombre]);
+
+        const encargo = filaEncargo(Object.assign({}, r.rows[0], {
+          promo_nombre: promo.nombre, promo_foto_url: promo.fotoUrl, promo_costo: promo.costo,
+        }));
+
+        // Se contesta YA; el aviso a la caja sale despues.
+        res.json({ encargo });
+        avisarCajas(encargo, promo, quien).catch(e =>
+          console.error('[promos-venta] avisarCajas:', e.message));
+        return;
+      }
+
+      // --- LA CAJERA CONFIRMA QUE EL CLIENTE SI SE LAS LLEVO -------------
+      if (accion === 'confirmarEncargo') {
+        if (!puede.caja) return prohibido(res, 'confirmar encargos');
+        const encargoId = texto(cuerpo.encargoId);
+        if (!encargoId) return res.status(400).json({ error: 'Falta el encargo.' });
+
+        // Se toma el encargo SOLO si sigue pendiente. Si dos cajeras le pican
+        // al mismo tiempo, la segunda no encuentra fila y no se duplica la
+        // venta: el candado es el `estado = 'pendiente'` del update, no una
+        // lectura previa (que si dejaria pasar a las dos).
+        const tomado = await query(
+          `update mdtask_promos_encargos
+              set estado = 'confirmado', resuelto_en = $2,
+                  resuelto_por = $3, resuelto_por_nombre = $4
+            where id = $1 and estado = 'pendiente' and eliminado = false
+            returning *`,
+          [encargoId, ahora, quien, puede.nombre]);
+        if (!tomado.rows[0]) {
+          return res.status(409).json({ error: 'Ese encargo ya fue atendido por alguien más.' });
+        }
+        const enc = tomado.rows[0];
+
+        const p = await query(
+          'select * from mdtask_promos_venta where id = $1', [enc.promo_id]);
+        const promo = p.rows[0] ? filaPromo(p.rows[0]) : { nombre: '', costo: null };
+
+        // La confirmacion es la que produce la venta del tablero.
+        const cuantas = Number(enc.piezas) || 1;
+        const importe = promo.costo != null
+          ? Math.round(promo.costo * cuantas * 100) / 100 : 0;
+        const lz = await query(
+          `insert into mdtask_promos_luzverde
+             (id, promo_id, sucursal, tipo, piezas, importe, nota,
+              creado_en, creado_por, creado_por_nombre)
+           values ($1,$2,$3,'vendida',$4,$5,$6,$7,$8,$9)
+           returning *`,
+          [nuevoId('lv'), enc.promo_id, enc.sucursal, cuantas, importe,
+            enc.cliente ? 'Cliente: ' + enc.cliente : null,
+            ahora, quien, puede.nombre]);
+
+        await query('update mdtask_promos_encargos set luz_id = $2 where id = $1',
+          [encargoId, lz.rows[0].id]);
+
+        const luz = filaLuz(Object.assign({}, lz.rows[0], { promo_nombre: promo.nombre }));
+        const encargo = filaEncargo(Object.assign({}, enc, {
+          luz_id: lz.rows[0].id, promo_nombre: promo.nombre,
+          promo_foto_url: promo.fotoUrl, promo_costo: promo.costo,
+        }));
+
+        res.json({ encargo, luz });
+        avisarMonitores(luz, promo, quien).catch(e =>
+          console.error('[promos-venta] avisarMonitores:', e.message));
+        return;
+      }
+
+      // --- EL CLIENTE NO SE LAS LLEVO -----------------------------------
+      if (accion === 'cancelarEncargo') {
+        const encargoId = texto(cuerpo.encargoId);
+        if (!encargoId) return res.status(400).json({ error: 'Falta el encargo.' });
+
+        // La cajera cancela cualquiera de su mostrador; el vendedor solo lo
+        // suyo (se equivoco al mandarlo y lo corrige el mismo).
+        const r = puede.caja
+          ? await query(
+            `update mdtask_promos_encargos
+                set estado = 'cancelado', resuelto_en = $2, resuelto_por = $3,
+                    resuelto_por_nombre = $4, motivo = $5
+              where id = $1 and estado = 'pendiente' and eliminado = false
+              returning *`,
+            [encargoId, ahora, quien, puede.nombre, texto(cuerpo.motivo)])
+          : await query(
+            `update mdtask_promos_encargos
+                set estado = 'cancelado', resuelto_en = $2, resuelto_por = $3,
+                    resuelto_por_nombre = $4, motivo = $5
+              where id = $1 and estado = 'pendiente' and eliminado = false
+                and creado_por = $6
+              returning *`,
+            [encargoId, ahora, quien, puede.nombre, texto(cuerpo.motivo), quien]);
+
+        if (!r.rows[0]) {
+          return res.status(409).json({ error: 'Ese encargo ya fue atendido, o no es tuyo.' });
+        }
+        return res.json({ encargo: filaEncargo(r.rows[0]) });
+      }
+
       // --- Deshacer una luz verde ---------------------------------------
       if (accion === 'quitarLuz') {
         const luzId = texto(cuerpo.luzId);
@@ -429,6 +673,16 @@ module.exports = async (req, res) => {
         if (!r.rows[0]) {
           return res.status(404).json({ error: 'Esa luz verde ya no está, o no es tuya.' });
         }
+        // Si esa venta salio de un encargo, el encargo vuelve a quedar
+        // PENDIENTE. Dejarlo como "confirmado" con su venta ya borrada seria
+        // mentir: la caja lo veria atendido y el cliente se quedaria sin que
+        // nadie le cobre la promo.
+        await query(
+          `update mdtask_promos_encargos
+              set estado = 'pendiente', resuelto_en = null, resuelto_por = null,
+                  resuelto_por_nombre = null, luz_id = null
+            where luz_id = $1 and eliminado = false`, [luzId]).catch(e =>
+          console.error('[promos-venta] no se pudo revertir el encargo:', e.message));
         return res.json({ ok: true, id: luzId });
       }
 

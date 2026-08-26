@@ -42,6 +42,25 @@ interface Luz {
   creadoPorNombre: string;
 }
 
+/** Un encargo: lo que el vendedor le avisa a la caja antes de que llegue el cliente. */
+interface Encargo {
+  id: string;
+  promoId: string;
+  promoNombre: string;
+  promoFotoUrl: string;
+  promoCosto: number | null;
+  sucursal: string;
+  piezas: number;
+  cliente: string;
+  estado: 'pendiente' | 'confirmado' | 'cancelado';
+  nota: string;
+  creadoEn: number;
+  creadoPorNombre: string;
+  resueltoEn: number | null;
+  resueltoPorNombre: string;
+  motivo: string;
+}
+
 /**
  * VENTA DE PROMOS — el piso de venta, en vivo.
  *
@@ -92,6 +111,10 @@ export class VentaPromosComponent implements OnInit, OnDestroy {
   subiendo = signal(false);
 
   promos = signal<Promo[]>([]);
+  /** Encargos de MI sucursal, para la caja. */
+  encargos = signal<Encargo[]>([]);
+  /** Lo que YO mandé como vendedor, para ver en qué quedó. */
+  misEncargos = signal<Encargo[]>([]);
   /** Lo que devuelve el tablero del monitor. */
   panel = signal<{ porPromo: any[]; porSucursal: any[]; recientes: Luz[] }>({
     porPromo: [], porSucursal: [], recientes: [],
@@ -174,17 +197,28 @@ export class VentaPromosComponent implements OnInit, OnDestroy {
   toggleMenu() { this.isMenuOpen = !this.isMenuOpen; }
 
   // ================= Carga =================
-  async cargar() {
-    this.cargando.set(true);
+  async cargar(silencioso = false) {
+    if (!silencioso) this.cargando.set(true);
     try {
-      const r = await this.api.get('/api/promos-venta');
+      const suc = this.sucursal();
+      const r = await this.api.get('/api/promos-venta'
+        + (suc ? '?sucursal=' + encodeURIComponent(suc) : ''));
       this.promos.set(r?.promos || []);
+      this.encargos.set(r?.encargos || []);
+      this.misEncargos.set(r?.misEncargos || []);
     } catch (e: any) {
-      this.error('No se pudieron cargar las promos', e);
+      // En el refresco automático no se avisa: la caja está trabajando y un
+      // aviso de red cada minuto encima del mostrador es insoportable.
+      if (!silencioso) this.error('No se pudieron cargar las promos', e);
     } finally {
-      this.cargando.set(false);
+      if (!silencioso) this.cargando.set(false);
     }
   }
+
+  /** Los encargos que la caja todavía tiene que atender. */
+  pendientes = computed(() => this.encargos().filter(e => e.estado === 'pendiente'));
+  /** Los ya resueltos hace poco, por si hay que deshacer uno. */
+  resueltos = computed(() => this.encargos().filter(e => e.estado !== 'pendiente'));
 
   async cargarPanel() {
     try {
@@ -203,20 +237,36 @@ export class VentaPromosComponent implements OnInit, OnDestroy {
   irA(v: 'caja' | 'promos' | 'tablero') {
     this.vista.set(v);
     this.edicion.set(null);
+    this.detenerReloj();
     if (v === 'tablero') { this.cargarPanel(); this.arrancarReloj(); }
-    else { this.detenerReloj(); this.cargar(); }
+    else if (v === 'caja') { this.cargar(); this.arrancarReloj(); }
+    else this.cargar();
+  }
+
+  /** La caja cambió de sucursal: los encargos son otros. */
+  cambiarSucursal(s: string) {
+    this.sucursal.set(s);
+    this.cargar();
   }
 
   cambiarDias(d: number) { this.dias.set(d); this.cargarPanel(); }
 
   /**
-   * El tablero se refresca solo cada minuto mientras esta abierto. Quien
-   * monitorea lo deja puesto en una pantalla y el chiste es ver entrar las
-   * ventas sin tener que recargar.
+   * Refresco automático mientras la pantalla está abierta.
+   *
+   *   tablero  cada minuto: quien monitorea lo deja puesto y el chiste es ver
+   *            entrar las ventas sin recargar.
+   *   caja     cada 20 segundos, y más seguido a propósito: el cliente va
+   *            caminando del piso al mostrador, así que el encargo tiene que
+   *            estar en la pantalla ANTES de que llegue. El push ayuda, pero no
+   *            se puede depender de que la cajera traiga el celular en la mano.
    */
   private arrancarReloj() {
     this.detenerReloj();
-    this.reloj = setInterval(() => this.cargarPanel(), 60000);
+    const esCaja = this.vista() === 'caja';
+    this.reloj = setInterval(
+      () => esCaja ? this.cargar(true) : this.cargarPanel(),
+      esCaja ? 20000 : 60000);
   }
   private detenerReloj() {
     if (this.reloj) { clearInterval(this.reloj); this.reloj = null; }
@@ -287,6 +337,146 @@ export class VentaPromosComponent implements OnInit, OnDestroy {
     } finally {
       this.guardando.set(false);
     }
+  }
+
+  // ================= Vendedor: mandar la venta a caja =================
+  /**
+   * El vendedor cerró el trato en el piso y se lo avisa a la caja.
+   *
+   * Pide lo mínimo que la cajera necesita para reconocer al cliente cuando
+   * llegue: cuántas y a nombre de quién. El importe no se pregunta — sale del
+   * costo de la promo al confirmarse.
+   */
+  async vender(promo: Promo) {
+    const sucursales = this.misSucursales;
+    let suc = this.sucursal() || (sucursales.length === 1 ? sucursales[0] : '');
+
+    // Si la promo solo aplica en unas sucursales, la venta tiene que ser en una
+    // de esas: mandarle a Morelia un encargo de una promo que ahí no existe
+    // deja a la cajera sin poder confirmarlo y al cliente esperando.
+    const validas = promo.sucursales?.length
+      ? sucursales.filter(s => promo.sucursales.includes(s))
+      : sucursales;
+
+    if (!validas.length) {
+      Swal.fire({
+        icon: 'warning', title: 'Esta promo no aplica en tus sucursales',
+        text: 'Pídele a quien la dio de alta que la habilite donde la vas a vender.',
+        confirmButtonColor: '#0F172A',
+      });
+      return;
+    }
+    if (!suc || !validas.includes(suc)) suc = validas[0];
+
+    const opciones = validas.map(s =>
+      `<option value="${s}" ${s === suc ? 'selected' : ''}>${s}</option>`).join('');
+
+    const r = await Swal.fire({
+      title: 'Mandar a caja',
+      html:
+        `<div style="font-size:13px;color:#64748B;margin-bottom:14px">${promo.nombre}</div>` +
+        `<label style="display:block;text-align:left;font-size:12px;font-weight:700;color:#64748B;margin-bottom:4px">¿CUÁNTAS?</label>` +
+        `<input id="vp-piezas" type="number" min="1" step="1" value="1" class="swal2-input" style="margin:0 0 14px;width:100%">` +
+        `<label style="display:block;text-align:left;font-size:12px;font-weight:700;color:#64748B;margin-bottom:4px">NOMBRE DEL CLIENTE</label>` +
+        `<input id="vp-cliente" type="text" maxlength="80" placeholder="Para que la caja lo reconozca" class="swal2-input" style="margin:0 0 14px;width:100%">` +
+        (validas.length > 1
+          ? `<label style="display:block;text-align:left;font-size:12px;font-weight:700;color:#64748B;margin-bottom:4px">SUCURSAL</label>` +
+            `<select id="vp-suc" class="swal2-input" style="margin:0;width:100%">${opciones}</select>`
+          : `<input id="vp-suc" type="hidden" value="${suc}">`),
+      showCancelButton: true,
+      confirmButtonText: 'Mandar a caja',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#1F4E79',
+      focusConfirm: false,
+      preConfirm: () => {
+        const piezas = Math.max(1, Math.round(
+          Number((document.getElementById('vp-piezas') as HTMLInputElement)?.value) || 1));
+        const cliente = String(
+          (document.getElementById('vp-cliente') as HTMLInputElement)?.value || '').trim();
+        const sucursal = String(
+          (document.getElementById('vp-suc') as HTMLInputElement | HTMLSelectElement)?.value || '');
+        if (!cliente) {
+          Swal.showValidationMessage('Escribe el nombre del cliente: es como la caja lo va a identificar.');
+          return false;
+        }
+        return { piezas, cliente, sucursal };
+      },
+    });
+    if (!r.isConfirmed || !r.value) return;
+
+    this.guardando.set(true);
+    try {
+      await this.api.post('/api/promos-venta', {
+        accion: 'encargar',
+        promoId: promo.id,
+        sucursal: r.value.sucursal,
+        piezas: r.value.piezas,
+        cliente: r.value.cliente,
+      });
+      await Swal.fire({
+        icon: 'success', title: 'Mandado a caja',
+        text: `${r.value.cliente} · ${r.value.piezas} pza(s). La cajera lo confirma cuando pase a pagar.`,
+        timer: 2200, showConfirmButton: false,
+      });
+      this.cargar();
+    } catch (e: any) {
+      this.error('No se pudo mandar a caja', e);
+    } finally {
+      this.guardando.set(false);
+    }
+  }
+
+  // ================= Caja: atender los encargos =================
+  /** El cliente llegó y sí se las llevó. Esto es lo que genera la venta. */
+  async confirmarEncargo(e: Encargo) {
+    this.guardando.set(true);
+    try {
+      await this.api.post('/api/promos-venta', { accion: 'confirmarEncargo', encargoId: e.id });
+      await Swal.fire({
+        icon: 'success', title: '🟢 Venta confirmada',
+        text: `${e.cliente || 'Cliente'} · ${e.piezas} × ${e.promoNombre}`,
+        timer: 1500, showConfirmButton: false,
+      });
+      this.cargar();
+    } catch (err: any) {
+      this.error('No se pudo confirmar', err);
+      this.cargar();   // otra caja pudo haberlo tomado; se refresca para verlo
+    } finally {
+      this.guardando.set(false);
+    }
+  }
+
+  /** El cliente se arrepintió, o el encargo estaba mal. No cuenta como venta. */
+  async cancelarEncargo(e: Encargo) {
+    const r = await Swal.fire({
+      title: '¿El cliente no se las llevó?',
+      html: `<div style="font-size:13px;color:#64748B">${e.cliente || 'Cliente'} · ${e.piezas} × ${e.promoNombre}</div>`,
+      input: 'text',
+      inputPlaceholder: '¿Por qué? (opcional)',
+      showCancelButton: true,
+      confirmButtonText: 'No se las llevó',
+      cancelButtonText: 'Volver',
+      confirmButtonColor: '#C7382E',
+    });
+    if (!r.isConfirmed) return;
+    try {
+      await this.api.post('/api/promos-venta', {
+        accion: 'cancelarEncargo', encargoId: e.id, motivo: r.value || '',
+      });
+      this.cargar();
+    } catch (err: any) {
+      this.error('No se pudo cancelar', err);
+      this.cargar();
+    }
+  }
+
+  /** Cuánto lleva esperando un encargo. Lo que la caja mira de reojo. */
+  esperando(e: Encargo): string { return this.hace(e.creadoEn); }
+
+  /** Un encargo que lleva demasiado sin atenderse: o el cliente ya se fue, o
+   *  nadie lo vio. Se pinta distinto para que salte a la vista. */
+  esViejo(e: Encargo): boolean {
+    return e.estado === 'pendiente' && (Date.now() - e.creadoEn) > 45 * 60 * 1000;
   }
 
   // ================= Vendedor: alta de promos =================

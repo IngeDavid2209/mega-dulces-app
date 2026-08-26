@@ -46,13 +46,67 @@
           <!-- El selector solo aparece si de verdad hay algo que elegir. -->
           <label class="vp-suc-sel" *ngIf="misSucursales.length > 1">
             <span>Sucursal</span>
-            <select [ngModel]="sucursal()" (ngModelChange)="sucursal.set($event)">
+            <select [ngModel]="sucursal()" (ngModelChange)="cambiarSucursal($event)">
               <option value="">Elige…</option>
               <option *ngFor="let s of misSucursales" [value]="s">{{ s }}</option>
             </select>
           </label>
           <div class="vp-suc-fija" *ngIf="misSucursales.length === 1">{{ sucursal() }}</div>
         </section>
+
+        <!-- ===== LO QUE MANDARON LOS VENDEDORES =====
+             Va ARRIBA de todo y es lo primero que ve la cajera: hay un cliente
+             caminando hacia el mostrador. Las promos sueltas de abajo son para
+             el que llega sin vendedor, y por eso van después. -->
+        <section class="vp-encargos" *ngIf="sucursal() && pendientes().length > 0">
+          <h2 class="vp-encargos-tit">
+            🛎️ Clientes en camino
+            <span class="vp-badge">{{ pendientes().length }}</span>
+          </h2>
+
+          <article class="vp-encargo" *ngFor="let e of pendientes()" [class.viejo]="esViejo(e)">
+            <div class="vp-encargo-foto" *ngIf="e.promoFotoUrl">
+              <img [src]="e.promoFotoUrl" [alt]="e.promoNombre" loading="lazy">
+            </div>
+
+            <div class="vp-encargo-info">
+              <strong class="vp-encargo-cliente">{{ e.cliente || 'Sin nombre' }}</strong>
+              <span class="vp-encargo-que">{{ e.piezas }} × {{ e.promoNombre }}</span>
+              <em class="vp-encargo-meta">
+                Lo mandó {{ e.creadoPorNombre || 'un vendedor' }} · {{ esperando(e) }}
+                <span class="vp-encargo-alerta" *ngIf="esViejo(e)">· lleva mucho esperando</span>
+              </em>
+            </div>
+
+            <div class="vp-encargo-acciones">
+              <button class="vp-btn-luz vp-btn-luz-chico" [disabled]="guardando()"
+                      (click)="confirmarEncargo(e)">
+                🟢 Sí se las llevó
+              </button>
+              <button class="vp-btn vp-btn-chico vp-btn-rojo" [disabled]="guardando()"
+                      (click)="cancelarEncargo(e)">
+                No
+              </button>
+            </div>
+          </article>
+        </section>
+
+        <!-- Los ya atendidos hace poco, por si se confirmó uno por error. -->
+        <details class="vp-resueltos" *ngIf="sucursal() && resueltos().length > 0">
+          <summary>Atendidos hace poco ({{ resueltos().length }})</summary>
+          <div class="vp-resuelto" *ngFor="let e of resueltos()">
+            <span class="vp-punto" [class.cancelado]="e.estado === 'cancelado'"></span>
+            <span class="vp-resuelto-txt">
+              <strong>{{ e.cliente || 'Sin nombre' }}</strong> ·
+              {{ e.piezas }} × {{ e.promoNombre }} ·
+              {{ e.estado === 'confirmado' ? 'se las llevó' : 'no se las llevó' }}
+              <em *ngIf="e.motivo">({{ e.motivo }})</em>
+            </span>
+          </div>
+          <p class="vp-ayuda">
+            ¿Confirmaste una por error? Quítala desde el tablero, en "Lo que va entrando".
+          </p>
+        </details>
 
         <p class="vp-vacio" *ngIf="cargando()">Cargando…</p>
 
@@ -235,6 +289,13 @@
               </div>
 
               <div class="vp-fila-acciones">
+                <!-- El botón de vender solo tiene sentido en una promo viva, y
+                     va primero y destacado: es lo que el vendedor hace todo el
+                     día. Editar y pausar son de vez en cuando. -->
+                <button class="vp-btn-vender" *ngIf="p.estado === 'activa'"
+                        [disabled]="guardando()" (click)="vender(p)">
+                  Vender
+                </button>
                 <button class="vp-btn vp-btn-chico" (click)="editar(p)">Editar</button>
                 <button class="vp-btn vp-btn-chico" *ngIf="p.estado === 'activa'"
                         (click)="cambiarEstado(p, 'pausada')">Pausar</button>
@@ -244,6 +305,31 @@
               </div>
             </article>
           </div>
+
+          <!-- Lo que este vendedor mandó a caja y cómo le fue. Sin esto vende a
+               ciegas: no sabría si la cajera confirmó o si el cliente se echó
+               para atrás. -->
+          <section class="vp-bloque" *ngIf="misEncargos().length > 0" style="margin-top:20px;">
+            <h2>Lo que mandaste a caja</h2>
+            <div class="vp-resuelto" *ngFor="let e of misEncargos()">
+              <span class="vp-punto"
+                    [class.cancelado]="e.estado === 'cancelado'"
+                    [class.espera]="e.estado === 'pendiente'"></span>
+              <span class="vp-resuelto-txt">
+                <strong>{{ e.cliente || 'Sin nombre' }}</strong> ·
+                {{ e.piezas }} × {{ e.promoNombre }} · {{ e.sucursal }}
+                <em>
+                  — {{ e.estado === 'pendiente' ? 'esperando en caja'
+                      : e.estado === 'confirmado' ? 'se las llevó' : 'no se las llevó' }}
+                  · {{ hace(e.creadoEn) }}
+                </em>
+              </span>
+              <button class="vp-btn vp-btn-chico" *ngIf="e.estado === 'pendiente'"
+                      (click)="cancelarEncargo(e)" title="Me equivoqué al mandarlo">
+                Quitar
+              </button>
+            </div>
+          </section>
         </ng-container>
       </ng-container>
 

@@ -160,13 +160,27 @@
 
             <div class="vp-campo vp-campo-ancho">
               <span>¿En qué sucursales aplica?</span>
-              <p class="vp-ayuda">Si no marcas ninguna, la promo le aparece a todas las cajas.</p>
+              <!-- Solo salen las sucursales del usuario. El texto cambia porque
+                   la regla NO es la misma para los dos: dejar la lista vacía
+                   significa "en todas", y eso solo lo puede decidir quien
+                   alcanza todas. -->
+              <p class="vp-ayuda" *ngIf="alcanzaTodas">
+                Si no marcas ninguna, la promo le aparece a todas las cajas.
+              </p>
+              <p class="vp-ayuda" *ngIf="!alcanzaTodas">
+                Solo aparecen las sucursales que tienes asignadas. Marca al menos una.
+              </p>
               <div class="vp-sucs">
-                <button type="button" class="vp-suc" *ngFor="let s of SUCURSALES"
-                        [class.on]="tieneSucursal(s)" (click)="alternarSucursal(s)">
+                <button type="button" class="vp-suc" *ngFor="let s of sucursalesParaLaPromo"
+                        [class.on]="tieneSucursal(s)" [class.ajena]="esAjena(s)"
+                        (click)="alternarSucursal(s)"
+                        [title]="esAjena(s) ? 'Esta sucursal no es tuya, pero la promo ya la traía marcada' : ''">
                   {{ s }}
                 </button>
               </div>
+              <p class="vp-ayuda" *ngIf="!alcanzaTodas && edicion()?.sucursales?.length && sucursalesParaLaPromo.length > misSucursales.length">
+                Las marcadas en gris no son tuyas: venían de antes en esta promo y se conservan.
+              </p>
             </div>
           </div>
 

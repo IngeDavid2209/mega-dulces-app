@@ -125,6 +125,33 @@ export class VentaPromosComponent implements OnInit, OnDestroy {
     return propias.length ? propias : this.SUCURSALES;
   }
 
+  /** ¿Este usuario alcanza TODAS las sucursales, o solo las suyas? */
+  get alcanzaTodas(): boolean {
+    const mias: string[] = this.currentUser?.sucursales || [];
+    return !mias.length || mias.includes('General (Acceso Total)');
+  }
+
+  /**
+   * Las sucursales que se pueden marcar al dar de alta una promo: SOLO las que
+   * el usuario tiene asignadas. El vendedor de Padre Hidalgo no tiene por qué
+   * poder publicar una promo en Morelia.
+   *
+   * Se suman las que la promo YA traía marcadas aunque no sean suyas. Si no, al
+   * editar desaparecerían de la vista y nadie sabría que la promo también
+   * aplica allá: se seguirían guardando, pero a ciegas.
+   */
+  get sucursalesParaLaPromo(): string[] {
+    const mias = this.misSucursales;
+    const yaMarcadas = this.edicion()?.sucursales || [];
+    const ajenas = yaMarcadas.filter(s => !mias.includes(s));
+    return ajenas.length ? [...mias, ...ajenas] : mias;
+  }
+
+  /** ¿Esta sucursal viene marcada de antes y NO es de las suyas? (se avisa). */
+  esAjena(nombre: string): boolean {
+    return !this.misSucursales.includes(nombre);
+  }
+
   ngOnInit() {
     const s = localStorage.getItem('md_sesion_actual');
     if (s) { try { this.currentUser = JSON.parse(s); } catch { } }
@@ -266,7 +293,11 @@ export class VentaPromosComponent implements OnInit, OnDestroy {
   nueva() {
     this.edicion.set({
       id: '', nombre: '', descripcion: '', costo: null, fotoUrl: '',
-      estado: 'activa', vigenciaDel: '', vigenciaAl: '', sucursales: [],
+      estado: 'activa', vigenciaDel: '', vigenciaAl: '',
+      // A quien solo maneja unas sucursales se le marcan las suyas de entrada:
+      // es lo que va a querer el 99% de las veces, y evita el descuido de dejar
+      // la lista vacía (que significa "todas") sin haberlo pensado.
+      sucursales: this.alcanzaTodas ? [] : [...this.misSucursales],
     });
   }
 
@@ -330,6 +361,18 @@ export class VentaPromosComponent implements OnInit, OnDestroy {
       Swal.fire({
         icon: 'warning', title: 'Falta el nombre',
         text: 'La promo necesita un nombre para que la caja la reconozca.',
+        confirmButtonColor: '#0F172A',
+      });
+      return;
+    }
+
+    // Dejar la lista vacía significa "en todas las sucursales", y eso solo lo
+    // puede decidir quien alcanza todas. Si no, el vendedor de una sucursal
+    // publicaría en toda la cadena con solo no marcar nada.
+    if (!this.alcanzaTodas && !e.sucursales.length) {
+      Swal.fire({
+        icon: 'warning', title: 'Falta la sucursal',
+        text: 'Marca al menos una sucursal donde aplique la promo.',
         confirmButtonColor: '#0F172A',
       });
       return;

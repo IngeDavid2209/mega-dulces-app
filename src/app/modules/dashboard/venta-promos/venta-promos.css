@@ -248,6 +248,12 @@
 .vp-suc.on { background: var(--vp-verde-claro); border-color: var(--vp-verde); color: var(--vp-verde); }
 .vp-suc:hover:not(.on) { border-color: #94A3B8; }
 
+/* Sucursal que la promo ya traia marcada pero que NO es del usuario. Se deja
+   ver y se puede quitar, pero en gris: asi se distingue de las suyas y no
+   parece que el permiso se amplio. */
+.vp-suc.ajena { border-style: dashed; color: #94A3B8; }
+.vp-suc.ajena.on { background: #F1F5F9; border-color: #94A3B8; color: #64748B; }
+
 .vp-form-pie { display: flex; justify-content: flex-end; padding-top: 14px; border-top: 1px solid var(--vp-linea); }
 
 .vp-lista { display: flex; flex-direction: column; gap: 10px; }

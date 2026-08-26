@@ -134,10 +134,15 @@ export class VentaPromosComponent implements OnInit, OnDestroy {
   // ---------------- Permisos ----------------
   // Se leen de la sesion para pintar; el servidor los vuelve a revisar contra la
   // base en cada escritura, que es donde de verdad cuentan.
-  get puedeCaja(): boolean { return this.currentUser?.ventaPromosCaja === true || this.esAdmin; }
-  get puedeVender(): boolean { return this.currentUser?.ventaPromosVendedor === true || this.esAdmin; }
-  get puedeMonitor(): boolean { return this.currentUser?.ventaPromosMonitor === true || this.esAdmin; }
-  get esAdmin(): boolean { return this.currentUser?.rol === 'admin'; }
+  // NINGUNO se le regala al rol admin. Quien solo monitorea ve el tablero y
+  // nada mas: no le aparece la pantalla de caja ni la de dar de alta promos,
+  // aunque sea administrador. Es lo que se pidio y es lo correcto — el que
+  // vigila las ventas no es el que las captura, y darle el boton de "Se vendio"
+  // a quien mide los resultados es pedir que el numero y quien lo revisa sean
+  // la misma persona.
+  get puedeCaja(): boolean { return this.currentUser?.ventaPromosCaja === true; }
+  get puedeVender(): boolean { return this.currentUser?.ventaPromosVendedor === true; }
+  get puedeMonitor(): boolean { return this.currentUser?.ventaPromosMonitor === true; }
 
   /** Las sucursales entre las que puede reportar quien esta en caja. */
   get misSucursales(): string[] {

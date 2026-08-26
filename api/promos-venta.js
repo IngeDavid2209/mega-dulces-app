@@ -161,14 +161,19 @@ async function permisos(uid) {
   if (!fila) return abierto;
 
   const d = fila.datos || {};
-  const admin = String(fila.rol || '').trim() === 'admin';
   return {
-    // El admin entra a todo aunque no tenga las banderas. El MENU si se le
-    // esconde (eso es lo que se pidio), pero bloquearlo tambien en el servidor
-    // lo dejaria sin poder arreglar nada desde aqui.
-    vendedor: admin || d.ventaPromosVendedor === true,
-    caja: admin || d.ventaPromosCaja === true,
-    monitor: admin || d.ventaPromosMonitor === true,
+    // NINGUN permiso se le regala al rol admin, ni aqui ni en la pantalla.
+    // Antes el admin pasaba de largo "para que pudiera arreglar cosas", y eso
+    // hacia que a quien solo monitorea le apareciera el boton de dar luz verde
+    // por el simple hecho de ser administrador. La regla es la misma para
+    // todos: se tiene el permiso o no se tiene.
+    //
+    // Al administrador general no lo deja fuera: las cuentas SIN fila en la
+    // base (admin, admin-local) siguen fallando abierto mas arriba, por el
+    // motivo documentado en api/usuarios.js.
+    vendedor: d.ventaPromosVendedor === true,
+    caja: d.ventaPromosCaja === true,
+    monitor: d.ventaPromosMonitor === true,
     nombre: fila.nombre || '',
     desconocido: false,
   };

@@ -116,8 +116,8 @@ export class VentaPromosComponent implements OnInit, OnDestroy {
   /** Lo que YO mandé como vendedor, para ver en qué quedó. */
   misEncargos = signal<Encargo[]>([]);
   /** Lo que devuelve el tablero del monitor. */
-  panel = signal<{ porPromo: any[]; porSucursal: any[]; recientes: Luz[] }>({
-    porPromo: [], porSucursal: [], recientes: [],
+  panel = signal<{ porPromo: any[]; porSucursal: any[]; porVendedor: any[]; recientes: Luz[] }>({
+    porPromo: [], porSucursal: [], porVendedor: [], recientes: [],
   });
   /** Ventana del tablero, en dias. */
   dias = signal(7);
@@ -227,6 +227,7 @@ export class VentaPromosComponent implements OnInit, OnDestroy {
       this.panel.set({
         porPromo: r?.porPromo || [],
         porSucursal: r?.porSucursal || [],
+        porVendedor: r?.porVendedor || [],
         recientes: r?.recientes || [],
       });
     } catch (e: any) {
@@ -642,6 +643,13 @@ export class VentaPromosComponent implements OnInit, OnDestroy {
     this.panel().porSucursal.reduce((s, x) => s + (x.importe || 0), 0));
   totalLuces = computed(() =>
     this.panel().porSucursal.reduce((s, x) => s + (x.vendidas || 0), 0));
+
+  /** Quien va en primer lugar. Solo cuenta si de verdad vendió algo: con la
+   *  lista vacía, o con puros ceros, no hay líder que coronar. */
+  lider = computed(() => {
+    const v = this.panel().porVendedor;
+    return v.length && v[0].piezas > 0 ? v[0] : null;
+  });
 
   /** Sucursales que NO han dado una sola señal en la ventana. Es el dato que
    *  hoy no se tiene y el que de verdad duele. */

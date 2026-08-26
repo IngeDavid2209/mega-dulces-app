@@ -325,6 +325,31 @@ module.exports = async (req, res) => {
             group by sucursal
             order by piezas desc`, [desde]);
 
+        // QUIEN VENDE MAS. Sale de los ENCARGOS, no de las luces verdes, y la
+        // diferencia importa: en la luz verde queda anotada la CAJERA que
+        // cobro, no quien hizo la venta. El vendedor solo aparece en el
+        // encargo que mando desde el piso.
+        //
+        // Se cuentan tambien las canceladas a proposito. Sin ellas, quien manda
+        // encargos que despues nadie recoge se ve igual de bien que quien
+        // cierra de verdad, y esa es justo la diferencia que quien monitorea
+        // necesita ver.
+        const porVendedor = await query(
+          `select e.creado_por, e.creado_por_nombre,
+                  count(*) filter (where e.estado = 'confirmado')::int as ventas,
+                  count(*) filter (where e.estado = 'cancelado')::int  as canceladas,
+                  count(*) filter (where e.estado = 'pendiente')::int  as pendientes,
+                  coalesce(sum(e.piezas) filter (where e.estado = 'confirmado'), 0)::int as piezas,
+                  coalesce(sum(l.importe), 0)::numeric as importe,
+                  max(e.creado_en) as ultima
+             from mdtask_promos_encargos e
+             left join mdtask_promos_luzverde l
+                    on l.id = e.luz_id and l.eliminado = false
+            where e.eliminado = false and e.creado_en >= $1
+              and coalesce(e.creado_por_nombre, '') <> ''
+            group by e.creado_por, e.creado_por_nombre
+            order by piezas desc, importe desc`, [desde]);
+
         // El pulso: lo ultimo que entro, que es lo que de verdad se mira.
         const recientes = await query(
           `select l.*, p.nombre as promo_nombre
@@ -348,6 +373,21 @@ module.exports = async (req, res) => {
             piezas: Number(r.piezas || 0), importe: Number(r.importe || 0),
             ultima: r.ultima == null ? null : Number(r.ultima),
           })),
+          porVendedor: porVendedor.rows.map(r => {
+            const ventas = Number(r.ventas || 0);
+            const canceladas = Number(r.canceladas || 0);
+            const cerradas = ventas + canceladas;
+            return {
+              uid: r.creado_por, nombre: r.creado_por_nombre,
+              ventas, canceladas, pendientes: Number(r.pendientes || 0),
+              piezas: Number(r.piezas || 0), importe: Number(r.importe || 0),
+              // De lo que ya se resolvio, cuanto acabo en venta. Las pendientes
+              // NO cuentan: todavia no se sabe en que van a quedar, y meterlas
+              // castigaria al que acaba de mandar un encargo hace un minuto.
+              efectividad: cerradas ? Math.round((ventas / cerradas) * 100) : null,
+              ultima: r.ultima == null ? null : Number(r.ultima),
+            };
+          }),
           recientes: recientes.rows.map(filaLuz),
         });
       }

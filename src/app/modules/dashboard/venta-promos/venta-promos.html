@@ -361,6 +361,53 @@
           <span>{{ calladas().join(' · ') }}</span>
         </div>
 
+        <!-- ===== QUIÉN VENDE MÁS =====
+             Sale de los ENCARGOS, no de las luces verdes: en la luz verde queda
+             anotada la cajera que cobró, no quien hizo la venta. -->
+        <section class="vp-bloque" *ngIf="panel().porVendedor.length > 0">
+          <h2>Quién vende más</h2>
+
+          <div class="vp-lider" *ngIf="lider() as l">
+            <span class="vp-corona">🏆</span>
+            <div>
+              <strong>{{ l.nombre }}</strong>
+              <span>{{ l.piezas }} promociones vendidas · {{ pesos(l.importe) }}</span>
+            </div>
+          </div>
+
+          <table class="vp-tabla">
+            <thead>
+              <tr>
+                <th>#</th><th>Vendedor</th><th>Promos</th><th>Importe</th>
+                <th>Cerró</th><th>En caja</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let v of panel().porVendedor; let i = index"
+                  [class.primero]="i === 0 && v.piezas > 0">
+                <td class="pos">{{ i + 1 }}</td>
+                <td>{{ v.nombre }}</td>
+                <td class="num">{{ v.piezas }}</td>
+                <td class="num">{{ pesos(v.importe) }}</td>
+                <!-- De lo ya resuelto, cuánto acabó en venta. Distingue a quien
+                     cierra de quien solo manda gente a caja que nunca llega. -->
+                <td class="num">
+                  <span *ngIf="v.efectividad !== null"
+                        [class.vp-flojo]="v.efectividad < 60">{{ v.efectividad }}%</span>
+                  <span *ngIf="v.efectividad === null" class="tenue">—</span>
+                </td>
+                <td class="num tenue">{{ v.pendientes || '—' }}</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <p class="vp-ayuda">
+            <strong>Promos</strong> son las piezas que el cliente sí se llevó (confirmadas en caja).
+            <strong>Cerró</strong> es de cada 100 ventas que anunció, cuántas acabaron cobrándose.
+            <strong>En caja</strong> son las que están esperando al cliente ahora mismo.
+          </p>
+        </section>
+
         <div class="vp-tablero">
 
           <section class="vp-bloque">

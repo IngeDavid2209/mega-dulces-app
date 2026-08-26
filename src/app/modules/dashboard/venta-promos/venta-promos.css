@@ -474,6 +474,33 @@
 .vp-tabla td.num { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
 .vp-tabla td.tenue { color: #94A3B8; font-size: 12px; }
 
+/* Quien va ganando. Se pone arriba y grande: es lo que quien monitorea busca
+   primero, y lo que se va a leer en voz alta en la junta. */
+.vp-lider {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border: 1px solid #FCD9A4;
+  border-radius: 10px;
+  background: linear-gradient(90deg, #FEF8EC 0%, #FFF 100%);
+  margin-bottom: 14px;
+}
+
+.vp-corona { font-size: 26px; line-height: 1; }
+.vp-lider strong { display: block; font-size: 17px; font-weight: 800; color: #0F172A; }
+.vp-lider span { font-size: 13px; color: var(--vp-ambar); font-weight: 600; }
+
+.vp-tabla td.pos {
+  font-weight: 800; color: #94A3B8; width: 28px; text-align: center;
+}
+.vp-tabla tr.primero td { background: #FEF8EC; }
+.vp-tabla tr.primero td.pos { color: var(--vp-ambar); }
+
+/* Menos del 60% de lo que anuncia acaba cobrandose: no es un regaño, es una
+   señal de que hay que ir a preguntar que esta pasando. */
+.vp-flojo { color: var(--vp-rojo); font-weight: 700; }
+
 /* El pulso: la bitácora en vivo. */
 .vp-pulso { list-style: none; display: flex; flex-direction: column; gap: 2px; }
 

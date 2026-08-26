@@ -3,6 +3,9 @@ import { CommonModule } from '@angular/common';
 import { RouterOutlet, Router, NavigationEnd, NavigationError } from '@angular/router';
 import { Firestore, doc, updateDoc } from '@angular/fire/firestore';
 import { Storage, ref, uploadString, getDownloadURL } from '@angular/fire/storage';
+// Para el candado de identidad de la sesión: hay que poder preguntar quién es
+// el usuario que Firebase tiene activo AHORA, no el que había al arrancar.
+import { getAuth } from '@angular/fire/auth';
 import { SwUpdate, VersionReadyEvent } from '@angular/service-worker';
 import { filter } from 'rxjs/operators';
 import * as localforage from 'localforage';
@@ -223,7 +226,40 @@ export class AppComponent implements OnInit {
     }
 
     // Poll del perfil real y sincronización de cambios (antes era onSnapshot).
+    let reloj: any = null;
     const revisar = async () => {
+      // ─────────────────────────────────────────────────────────────────────
+      // CANDADO DE IDENTIDAD — antes de tocar nada, ¿esta sesión sigue siendo
+      // la mía?
+      //
+      // `md_sesion_actual` vive en localStorage, que TODAS las pestañas del
+      // mismo sitio comparten, y Firebase Auth solo admite un usuario activo a
+      // la vez. Si alguien entra con otra cuenta en otra pestaña, la sesión
+      // guardada deja de ser la de esta pestaña.
+      //
+      // Sin este candado pasaba lo siguiente: cada pestaña seguía consultando
+      // SU cuenta (docId quedó capturado aquí arriba) y le reescribía encima la
+      // sesión a la otra, una cada 60 s. Las dos pestañas se peleaban el mismo
+      // espacio y, como el cambio de permisos cuenta como crítico, se recargaban
+      // en turnos: el "salto de cuentas".
+      //
+      // Peor que el salto: entre recarga y recarga, la pantalla mostraba a una
+      // persona mientras las llamadas al servidor salían firmadas como la otra.
+      // En una app donde los permisos deciden quién puede autorizar y cobrar,
+      // eso no se puede dejar pasar.
+      //
+      // Al detectarlo se para el reloj y se manda a login. NO se intenta
+      // "arreglar" la sesión: no hay forma de saber cuál de las dos quería el
+      // usuario, y adivinar es justo lo que causó el problema.
+      const dueñoActual = getAuth().currentUser?.uid || null;
+      if (dueñoActual && dueñoActual !== docId) {
+        console.warn('[sesion] esta pestaña era de ' + docId + ' y la sesión ahora es de '
+          + dueñoActual + '. Se detiene la sincronización y se manda a login.');
+        if (reloj) { clearInterval(reloj); reloj = null; }
+        this.router.navigate(['/login']);
+        return;
+      }
+
       let fresco: any;
       try {
         const r = await this.api.get('/api/usuarios?id=' + encodeURIComponent(docId));
@@ -235,6 +271,19 @@ export class AppComponent implements OnInit {
       const anteriorRaw = localStorage.getItem('md_sesion_actual') || '{}';
       let anterior: any = {};
       try { anterior = JSON.parse(anteriorRaw); } catch {}
+
+      // Segunda revisión, ya con la sesión en la mano: si mientras se consultaba
+      // el perfil otra pestaña metió una cuenta distinta, esta NO se la pisa.
+      // Que la última en escribir gane es lo que hacía que las dos se turnaran
+      // el navegador indefinidamente.
+      const uidGuardado = anterior?.uid || anterior?.idFirestore || null;
+      if (uidGuardado && uidGuardado !== docId) {
+        console.warn('[sesion] la sesión guardada cambió a ' + uidGuardado
+          + ' mientras se sincronizaba ' + docId + '. No se sobrescribe.');
+        if (reloj) { clearInterval(reloj); reloj = null; }
+        this.router.navigate(['/login']);
+        return;
+      }
 
       // Cambio crítico → recarga para que todas las pantallas tomen los nuevos permisos.
       const camposCriticos = ['nombre', 'rol', 'alcance', 'cargo'];
@@ -265,7 +314,10 @@ export class AppComponent implements OnInit {
     };
 
     revisar();
-    setInterval(revisar, 60000); // cada 60s (antes era en vivo con onSnapshot)
+    // El reloj se guarda para poder pararlo: si esta pestaña deja de ser suya
+    // (ver el candado de identidad), seguir consultando cada minuto solo sirve
+    // para volver a pisar la sesión de la cuenta buena.
+    reloj = setInterval(revisar, 60000); // cada 60s (antes era en vivo con onSnapshot)
   }
 
   /**

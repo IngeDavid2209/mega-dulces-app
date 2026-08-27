@@ -59,7 +59,7 @@ Estamos migrando de Firestore a Postgres **por fases**; ambas conviven. Mientras
    referencia: `DATABASE_URL = ${{Postgres.DATABASE_URL}}`
    (asi MDTask usa la conexion **interna** del proyecto, sin costo de salida ni SSL).
 3. Redeploy de MDTask. Verificar en el navegador:
-   `https://mdtask-production.up.railway.app/api/db-health`
+   `https://mdtask-production-ed88.up.railway.app/api/db-health`
    - Antes de configurar: `{ "configured": false }`
    - Ya conectado: `{ "ok": true, "configured": true, "ahora": ... }`
 
@@ -67,12 +67,57 @@ Estamos migrando de Firestore a Postgres **por fases**; ambas conviven. Mientras
 
 ---
 
+## Dominio de produccion (Railway es el UNICO origen)
+
+**`https://mdtask-production-ed88.up.railway.app`**
+
+El sufijo `-ed88` no es un typo: Railway lo genero al recrear el servicio. El
+dominio viejo (`mdtask-production.up.railway.app`) ya NO existe — su edge
+responde 404 `Application not found`.
+
+### Vercel quedo retirado
+
+Antes el front vivia en Vercel (`md-chlist.vercel.app`) y `vercel.json` reenviaba
+`/api/*` a Railway. Eso se acabo, por dos razones:
+
+  - Vercel deshabilito el deployment por falta de pago (HTTP 402,
+    `X-Vercel-Error: DEPLOYMENT_DISABLED`): la app entera dejo de abrir.
+  - El reenvio seguia apuntando al dominio viejo de Railway. Aunque se pagara,
+    la app habria cargado sin que NINGUNA llamada a la API respondiera.
+
+Dos piezas separadas que hay que mantener en sincronia = dos formas de caerse.
+Ahora `server.js` sirve el front compilado Y las rutas `/api` desde el mismo
+origen, asi que no hay nada que sincronizar. `vercel.json` y `.vercelignore` se
+borraron; si algun dia se quiere volver a Vercel, estan en la historia de git.
+
+Lo que hacia `vercel.json` (no cachear `index.html`, `ngsw.json` y los service
+workers para que la PWA tome la version nueva sola) ya lo hace `server.js` — y
+ademas contesta 404 a los bundles viejos que ya no existen, que es lo que evita
+la pantalla en blanco despues de cada despliegue.
+
+### Si el dominio vuelve a cambiar
+
+Ya no hay rewrite que actualizar, pero quedan DOS lugares fuera del codigo y uno
+dentro. Si se olvida alguno no truena nada visible — simplemente deja de llegar:
+
+  1. **El webhook en Meta** (WhatsApp -> Configuration -> Callback URL):
+     `https://<dominio>/api/whatsapp-webhook`. Con el dominio viejo, Meta
+     entrega los mensajes a la nada y el bot deja de contestar sin ningun error
+     de nuestro lado.
+  2. **El enlace que va en los correos al personal.**
+  3. `api/tickets-notificar.js` -> `TICKETS_URL` (default). Se puede fijar por
+     variable de entorno sin tocar codigo.
+
+---
+
 ## Despues del primer deploy
 
 - Probar el asistente de voz en **Chrome (Android)**: entrar a "Mi Agenda",
   tocar el boton del microfono y dictar una tarea.
-- Cuando la URL de Railway este confirmada, hay que cambiar el enlace que va en
-  los correos a empleados (hoy apunta a `https://md-chlist.vercel.app/`).
-  Avisar al desarrollador con la URL nueva para actualizarlo.
-- Mantener Vercel prendido hasta confirmar que Railway funciona bien; luego se
-  puede apagar.
+- El enlace que va en los correos al personal debe apuntar a
+  `https://mdtask-production-ed88.up.railway.app`. El viejo
+  (`https://md-chlist.vercel.app/`) esta muerto: Vercel quedo retirado.
+- Confirmar en Meta que el **Callback URL** del webhook es
+  `https://mdtask-production-ed88.up.railway.app/api/whatsapp-webhook`.
+  Si se quedo con el dominio anterior, el bot de WhatsApp no recibe nada y no
+  contesta, sin ningun error visible en los logs.

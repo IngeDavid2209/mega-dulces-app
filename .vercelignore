@@ -1,7 +1,0 @@
-# Vercel solo sirve el frontend (Angular). El backend /api vive en Railway
-# (ver rewrite en vercel.json). Ignoramos api/ para NO generar funciones
-# serverless: el plan Hobby permite maximo 12 y el repo tiene ~31, lo que
-# hacia fallar el deploy en "Deploying outputs".
-# OJO: NO ignorar scripts/ -> el build usa scripts/generar-version.js.
-api/
-server.js

@@ -153,14 +153,26 @@ function filaEncargo(r) {
  * quien SI tiene fila se le aplica su permiso al pie de la letra.
  */
 async function permisos(uid) {
-  const abierto = { vendedor: true, caja: true, monitor: true, nombre: '', desconocido: true };
+  const abierto = {
+    vendedor: true, caja: true, monitor: true, nombre: '',
+    sucursales: [], alcanzaTodas: true, desconocido: true,
+  };
   if (!uid) return abierto;
   const r = await query(
-    'select nombre, rol, datos from mdtask_usuarios where id = $1', [String(uid)]);
+    'select nombre, rol, alcance, datos from mdtask_usuarios where id = $1', [String(uid)]);
   const fila = r.rows[0];
   if (!fila) return abierto;
 
   const d = fila.datos || {};
+  // Las sucursales del usuario mandan tambien en el TABLERO: quien monitorea
+  // Padre Hidalgo ve el tablero de Padre Hidalgo, no el de toda la empresa.
+  // Sin sucursales asignadas, o con acceso total, alcanza todas: es la misma
+  // convencion que ya usa la caja para elegir desde donde reporta.
+  const sucursales = Array.isArray(d.sucursales) ? d.sucursales : [];
+  const alcanzaTodas =
+    String(fila.alcance || '') === 'global' ||
+    !sucursales.length ||
+    sucursales.some(x => String(x || '').trim().toLowerCase() === 'general (acceso total)');
   return {
     // NINGUN permiso se le regala al rol admin, ni aqui ni en la pantalla.
     // Antes el admin pasaba de largo "para que pudiera arreglar cosas", y eso
@@ -175,6 +187,7 @@ async function permisos(uid) {
     caja: d.ventaPromosCaja === true,
     monitor: d.ventaPromosMonitor === true,
     nombre: fila.nombre || '',
+    sucursales, alcanzaTodas,
     desconocido: false,
   };
 }
@@ -304,6 +317,25 @@ module.exports = async (req, res) => {
       if (q.panel) {
         const desde = Number(q.desde) || (Date.now() - 7 * 24 * 60 * 60 * 1000);
 
+        // EL TABLERO SE ACOTA A LAS SUCURSALES DEL QUE MIRA.
+        //
+        // Quien monitorea Padre Hidalgo ve el tablero de Padre Hidalgo: sus
+        // cifras, sus vendedores y su pulso. No las de toda la empresa. Quien
+        // trae acceso total (o no tiene sucursales asignadas) sigue viendolo
+        // todo, que es la misma convencion que usa la caja para elegir desde
+        // donde reporta.
+        //
+        // El filtro va en el SQL y no en el navegador a proposito: filtrar al
+        // pintar significa que los numeros de las demas sucursales YA viajaron
+        // hasta el celular, y ahi ya no es un candado, es un adorno.
+        const soloMias = !puede.alcanzaTodas;
+        const mias = puede.sucursales;
+        const arg = soloMias ? [desde, mias] : [desde];
+        //  ...and sucursal = any($2)  — vacio cuando alcanza todas.
+        const filtroLuz = soloMias ? ' and l.sucursal = any($2)' : '';
+        const filtroLuzSolo = soloMias ? ' and sucursal = any($2)' : '';
+        const filtroEnc = soloMias ? ' and e.sucursal = any($2)' : '';
+
         const porPromo = await query(
           `select p.id, p.nombre, p.foto_url, p.costo, p.estado,
                   count(l.id) filter (where l.tipo = 'vendida')::int   as vendidas,
@@ -314,9 +346,10 @@ module.exports = async (req, res) => {
              from mdtask_promos_venta p
              left join mdtask_promos_luzverde l
                     on l.promo_id = p.id and l.eliminado = false and l.creado_en >= $1
+                       ${filtroLuz}
             where p.eliminado = false
             group by p.id, p.nombre, p.foto_url, p.costo, p.estado
-            order by piezas desc, p.nombre asc`, [desde]);
+            order by piezas desc, p.nombre asc`, arg);
 
         const porSucursal = await query(
           `select sucursal,
@@ -326,9 +359,9 @@ module.exports = async (req, res) => {
                   coalesce(sum(importe) filter (where tipo = 'vendida'), 0)::numeric as importe,
                   max(creado_en) as ultima
              from mdtask_promos_luzverde
-            where eliminado = false and creado_en >= $1
+            where eliminado = false and creado_en >= $1${filtroLuzSolo}
             group by sucursal
-            order by piezas desc`, [desde]);
+            order by piezas desc`, arg);
 
         // QUIEN VENDE MAS. Sale de los ENCARGOS, no de las luces verdes, y la
         // diferencia importa: en la luz verde queda anotada la CAJERA que
@@ -350,18 +383,18 @@ module.exports = async (req, res) => {
              from mdtask_promos_encargos e
              left join mdtask_promos_luzverde l
                     on l.id = e.luz_id and l.eliminado = false
-            where e.eliminado = false and e.creado_en >= $1
+            where e.eliminado = false and e.creado_en >= $1${filtroEnc}
               and coalesce(e.creado_por_nombre, '') <> ''
             group by e.creado_por, e.creado_por_nombre
-            order by piezas desc, importe desc`, [desde]);
+            order by piezas desc, importe desc`, arg);
 
         // El pulso: lo ultimo que entro, que es lo que de verdad se mira.
         const recientes = await query(
           `select l.*, p.nombre as promo_nombre
              from mdtask_promos_luzverde l
              join mdtask_promos_venta p on p.id = l.promo_id
-            where l.eliminado = false and l.creado_en >= $1
-            order by l.creado_en desc limit 100`, [desde]);
+            where l.eliminado = false and l.creado_en >= $1${filtroLuz}
+            order by l.creado_en desc limit 100`, arg);
 
         return res.json({
           desde,

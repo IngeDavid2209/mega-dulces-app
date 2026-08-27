@@ -159,6 +159,30 @@ export class VentaPromosComponent implements OnInit, OnDestroy {
     return !mias.length || mias.includes('General (Acceso Total)');
   }
 
+  // ================= Alcance del TABLERO =================
+  /**
+   * ¿El tablero le llega acotado a sus sucursales?
+   *
+   * Esto NO reusa `alcanzaTodas` a proposito, aunque se parezcan: aquel es el
+   * alcance para dar de alta promos, y aqui lo unico que importa es acertarle a
+   * lo que el SERVIDOR va a filtrar (ver permisos() en api/promos-venta.js).
+   * El servidor tambien deja pasar entero a quien tiene `alcance: 'global'`, y
+   * si aqui no lo contemplara, a un admin global le saldria un aviso diciendole
+   * que ve solo lo suyo mientras el tablero le muestra todo.
+   */
+  get tableroAcotado(): boolean {
+    const u = this.currentUser;
+    if (String(u?.alcance || '') === 'global') return false;
+    const mias: string[] = Array.isArray(u?.sucursales) ? u.sucursales : [];
+    if (!mias.length) return false;
+    return !mias.some(x => String(x || '').trim().toLowerCase() === 'general (acceso total)');
+  }
+
+  /** Las sucursales tal como vienen en su perfil: es por lo que filtra el servidor. */
+  get sucursalesDelTablero(): string[] {
+    return Array.isArray(this.currentUser?.sucursales) ? this.currentUser.sucursales : [];
+  }
+
   /**
    * Las sucursales que se pueden marcar al dar de alta una promo: SOLO las que
    * el usuario tiene asignadas. El vendedor de Padre Hidalgo no tiene por qué
@@ -202,6 +226,15 @@ export class VentaPromosComponent implements OnInit, OnDestroy {
   toggleMenu() { this.isMenuOpen = !this.isMenuOpen; }
 
   // ================= Carga =================
+  /**
+   * Trae las promos y los encargos.
+   *
+   * `silencioso` es lo NORMAL despues de una accion del usuario: la lista ya
+   * esta en pantalla y solo cambia un renglon. Sin el, `cargando()` se pone en
+   * true, el *ngIf del HTML tumba toda la lista y la cajera ve su pantalla en
+   * blanco justo despues de vender. El spinner se queda nada mas donde de
+   * verdad cambia todo: primera carga, cambio de vista y cambio de sucursal.
+   */
   async cargar(silencioso = false) {
     if (!silencioso) this.cargando.set(true);
     try {
@@ -331,13 +364,10 @@ export class VentaPromosComponent implements OnInit, OnDestroy {
         sucursal: this.sucursal(),
         tipo, piezas,
       });
-      await Swal.fire({
-        icon: 'success',
-        title: tipo === 'vendida' ? '🟢 Luz verde enviada' : 'Apartado registrado',
-        text: 'Ya le llegó a quien monitorea.',
-        timer: 1400, showConfirmButton: false,
-      });
-      this.cargar();
+      this.aviso(
+        tipo === 'vendida' ? '🟢 Luz verde enviada' : 'Apartado registrado',
+        'Ya le llegó a quien monitorea.');
+      this.cargar(true);
     } catch (e: any) {
       this.error('No se pudo enviar la luz verde', e);
     } finally {
@@ -419,12 +449,9 @@ export class VentaPromosComponent implements OnInit, OnDestroy {
         piezas: r.value.piezas,
         cliente: r.value.cliente,
       });
-      await Swal.fire({
-        icon: 'success', title: 'Mandado a caja',
-        text: `${r.value.cliente} · ${r.value.piezas} pza(s). La cajera lo confirma cuando pase a pagar.`,
-        timer: 2200, showConfirmButton: false,
-      });
-      this.cargar();
+      this.aviso('Mandado a caja',
+        `${r.value.cliente} · ${r.value.piezas} pza(s). La cajera lo confirma cuando pase a pagar.`);
+      this.cargar(true);
     } catch (e: any) {
       this.error('No se pudo mandar a caja', e);
     } finally {
@@ -438,15 +465,12 @@ export class VentaPromosComponent implements OnInit, OnDestroy {
     this.guardando.set(true);
     try {
       await this.api.post('/api/promos-venta', { accion: 'confirmarEncargo', encargoId: e.id });
-      await Swal.fire({
-        icon: 'success', title: '🟢 Venta confirmada',
-        text: `${e.cliente || 'Cliente'} · ${e.piezas} × ${e.promoNombre}`,
-        timer: 1500, showConfirmButton: false,
-      });
-      this.cargar();
+      this.aviso('🟢 Venta confirmada',
+        `${e.cliente || 'Cliente'} · ${e.piezas} × ${e.promoNombre}`);
+      this.cargar(true);
     } catch (err: any) {
       this.error('No se pudo confirmar', err);
-      this.cargar();   // otra caja pudo haberlo tomado; se refresca para verlo
+      this.cargar(true);   // otra caja pudo haberlo tomado; se refresca para verlo
     } finally {
       this.guardando.set(false);
     }
@@ -469,10 +493,10 @@ export class VentaPromosComponent implements OnInit, OnDestroy {
       await this.api.post('/api/promos-venta', {
         accion: 'cancelarEncargo', encargoId: e.id, motivo: r.value || '',
       });
-      this.cargar();
+      this.cargar(true);
     } catch (err: any) {
       this.error('No se pudo cancelar', err);
-      this.cargar();
+      this.cargar(true);
     }
   }
 
@@ -591,7 +615,7 @@ export class VentaPromosComponent implements OnInit, OnDestroy {
         },
       });
       this.edicion.set(null);
-      await this.cargar();
+      await this.cargar(true);
     } catch (err: any) {
       this.error('No se pudo guardar la promo', err);
     } finally {
@@ -602,7 +626,7 @@ export class VentaPromosComponent implements OnInit, OnDestroy {
   async cambiarEstado(p: Promo, estado: 'activa' | 'pausada' | 'terminada') {
     try {
       await this.api.post('/api/promos-venta', { accion: 'estadoPromo', promoId: p.id, estado });
-      this.cargar();
+      this.cargar(true);
     } catch (e: any) {
       this.error('No se pudo cambiar el estado', e);
     }
@@ -618,7 +642,7 @@ export class VentaPromosComponent implements OnInit, OnDestroy {
     if (!r.isConfirmed) return;
     try {
       await this.api.del('/api/promos-venta?id=' + encodeURIComponent(p.id));
-      this.cargar();
+      this.cargar(true);
     } catch (e: any) {
       this.error('No se pudo eliminar', e);
     }
@@ -660,7 +684,13 @@ export class VentaPromosComponent implements OnInit, OnDestroy {
    *  hoy no se tiene y el que de verdad duele. */
   calladas = computed(() => {
     const conSenal = new Set(this.panel().porSucursal.map(x => x.sucursal));
-    return this.SUCURSALES.filter(s => !conSenal.has(s));
+    // Solo se le reclama por las sucursales que de verdad le tocan. Con el
+    // tablero acotado, medir contra las ocho tiendas le pintaria en rojo a
+    // media empresa por no reportar algo que el ni siquiera puede ver.
+    const suyas = this.tableroAcotado
+      ? this.SUCURSALES.filter(s => this.sucursalesDelTablero.includes(s))
+      : this.SUCURSALES;
+    return suyas.filter(s => !conSenal.has(s));
   });
 
   // ================= Utilidades =================
@@ -691,6 +721,26 @@ export class VentaPromosComponent implements OnInit, OnDestroy {
 
   etiquetaEstado(e: string): string {
     return e === 'activa' ? 'Activa' : e === 'pausada' ? 'Pausada' : 'Terminada';
+  }
+
+  /**
+   * El "ya quedó", sin frenar a la cajera.
+   *
+   * Antes esto era un Swal de pantalla completa CON `await`: la venta ya estaba
+   * guardada, pero el codigo se quedaba parado 1.4, 1.5 o 2.2 segundos esperando
+   * a que el cartel se muriera solo, y encima sin boton para cerrarlo. Con un
+   * cliente enfrente eso se siente eterno y es lo que hacia sentir lenta la
+   * seccion: no era la red ni la base, era el cartel.
+   *
+   * Ahora es un toast de esquina y NO se le hace await: sale, la pantalla sigue
+   * viva debajo y se va solo.
+   */
+  private aviso(titulo: string, texto = '') {
+    Swal.fire({
+      toast: true, position: 'top-end', icon: 'success',
+      title: titulo, text: texto || undefined,
+      showConfirmButton: false, timer: 2200, timerProgressBar: true,
+    });
   }
 
   private error(titulo: string, e: any) {

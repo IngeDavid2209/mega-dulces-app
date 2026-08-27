@@ -340,6 +340,11 @@
           <div>
             <h1>Tablero de ventas</h1>
             <p class="vp-sub">Se actualiza solo cada minuto. Además te llega el aviso de la app en cuanto una caja reporta.</p>
+            <!-- Se dice de qué sucursales son estos números. Un tablero acotado
+                 sin avisar se lee como un tablero al que le faltan ventas. -->
+            <p class="vp-sub vp-sub-alcance" *ngIf="tableroAcotado">
+              Solo tus sucursales: <strong>{{ sucursalesDelTablero.join(' · ') }}</strong>
+            </p>
           </div>
           <div class="vp-rango">
             <button class="vp-btn vp-btn-chico" [class.on]="dias() === 1" (click)="cambiarDias(1)">Hoy</button>

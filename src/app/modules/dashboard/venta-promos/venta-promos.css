@@ -536,3 +536,8 @@
   .vp-fila-num { text-align: left; }
   .vp-tablero { grid-template-columns: 1fr; }
 }
+
+/* De qué sucursales son los números del tablero. En el gris fuerte del módulo y
+   no en un color de alerta: es un dato del tablero, no un aviso de que algo
+   falla. (Este módulo no tiene azul en su paleta; ver :host arriba.) */
+.vp-sub-alcance { color: var(--vp-txt); font-weight: 600; }

@@ -64,8 +64,13 @@ export class PersonalComponent implements OnInit, OnDestroy {
   formAreas: string[] = [];
   // 🎓 Grupo TEC: marca al usuario como miembro del apartado aislado del TEC.
   formGrupoTec = false;
-  /** Privilegio del apartado "Activación de promociones" (grupoPromociones). */
-  formGrupoPromociones = false;
+  // 🏷️ "Activación de promociones": son DOS permisos independientes, no uno.
+  // La sección es una sola pero atiende dos oficios: el que negocia y captura el
+  // formato MKTN001, y el de la sucursal que solo sube la evidencia de que la
+  // promoción sí se ejecutó ahí. El de formato alcanza todo; el de expediente
+  // no modifica nada ni quita lo ya subido, y solo llega a SUS sucursales.
+  formPromocionesFormato = false;
+  formPromocionesExpediente = false;
   /** Privilegio del apartado "Pagos de servicios" (grupoPagos). */
   formGrupoPagos = false;
   /** Privilegio del apartado "Tickets" / vale de servicio operativo (grupoTickets). */
@@ -422,7 +427,8 @@ export class PersonalComponent implements OnInit, OnDestroy {
     this.formPuedeAdministrarAreas = false;
     this.formAlcance = 'global'; // 🔥 Por defecto los admins nuevos son globales
     this.formGrupoTec = false;
-    this.formGrupoPromociones = false;
+    this.formPromocionesFormato = false;
+    this.formPromocionesExpediente = false;
   }
 
   editarUsuario(user: any) {
@@ -479,7 +485,10 @@ export class PersonalComponent implements OnInit, OnDestroy {
   this.formPuedeAdministrarPersonal = !!user.puedeAdministrarPersonal;
   this.formPuedeVerCalendario       = !!user.puedeVerCalendario;
   this.formGrupoTec                 = !!user.grupoTec;
-  this.formGrupoPromociones         = !!user.grupoPromociones;
+  // Las cuentas de antes del cambio traen solo `grupoPromociones`, que daba
+  // todo: se muestran con los dos oficios prendidos, que es lo que hoy pueden.
+  this.formPromocionesFormato       = !!(user.promocionesFormato    ?? user.grupoPromociones);
+  this.formPromocionesExpediente    = !!(user.promocionesExpediente ?? user.grupoPromociones);
   this.formGrupoPagos               = !!user.grupoPagos;
   this.formGrupoTickets             = !!user.grupoTickets;
   this.formVentaPromosCaja          = !!user.ventaPromosCaja;
@@ -639,9 +648,16 @@ export class PersonalComponent implements OnInit, OnDestroy {
       // El usuario conserva su acceso normal; sigue apareciendo en el directorio
       // y en las asignaciones. Solo ve "Espacio TEC" si esto está en true.
       grupoTec: this.formGrupoTec === true,
-      // 🏷️ Acceso a "Activación de promociones". Mismo modelo que grupoTec: es un
-      // privilegio que SUMA el apartado en el menú, y ni los admins entran sin él.
-      grupoPromociones: this.formGrupoPromociones === true,
+      // 🏷️ "Activación de promociones": dos permisos separados, y NINGUNO se le
+      // regala al admin por ser admin. El servidor los vuelve a revisar contra
+      // la base en cada escritura (api/_promo-acceso.js), así que esconder un
+      // switch aquí no es el candado: es solo la parte visible.
+      promocionesFormato: this.formPromocionesFormato === true,
+      promocionesExpediente: this.formPromocionesExpediente === true,
+      // La bandera vieja se sigue escribiendo como la SUMA de las dos: es la que
+      // miran las sesiones que todavía no se han vuelto a firmar. Se puede
+      // quitar cuando ya nadie traiga sesión de antes del cambio.
+      grupoPromociones: this.formPromocionesFormato === true || this.formPromocionesExpediente === true,
       // 🧾 Acceso a "Pagos de servicios". A diferencia de los de arriba, el rol
       // admin entra aunque no tenga la bandera: es un módulo con avisos
       // automáticos por WhatsApp y el administrador debe poder apagarlos.

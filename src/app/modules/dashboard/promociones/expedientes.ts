@@ -5,6 +5,7 @@ import Swal from 'sweetalert2';
 
 import { ApiService } from '../../../shared/api.service';
 import { CloudinaryService } from '../../../shared/cloudinary.service';
+import { puedeEnCanal, SUCURSAL_POR_CANAL } from './canales';
 
 /**
  * EXPEDIENTES DE UNA PROMOCION — el seguimiento de que si se ejecuto.
@@ -26,6 +27,25 @@ import { CloudinaryService } from '../../../shared/cloudinary.service';
  * Cada cambio se manda como una ACCION sobre el expediente (agregar evidencia,
  * agregar venta...), no como un guardado del objeto completo: varias sucursales
  * suben evidencia el mismo dia y un guardado entero pisaria lo del vecino.
+ *
+ * QUIEN SUBE QUE:
+ *
+ * Cada sucursal sube LO SUYO y nada mas. El de Padre Hidalgo sube el expediente
+ * de PH; el de Morelia no se lo puede tocar. Los canales ajenos SI se ven (para
+ * eso esta el avance de toda la promocion, "4 de 8 completas"), pero sin un solo
+ * boton para subirles nada.
+ *
+ * Mayoreo, Ruta Diaria y Ruta Vecinal quedan abiertos a proposito: no son
+ * sucursales, son formas de vender, y si se los amarraramos a alguien se
+ * quedarian sin quien los llene.
+ *
+ * Y lo que se sube, se queda: quitar evidencia o una venta es de
+ * `promocionesFormato`. La evidencia es la prueba de que la promocion se
+ * ejecuto; quien la sube no la puede desandar. Si algo entro mal, lo corrige
+ * quien manda el formato.
+ *
+ * Nada de esto es el candado de verdad: el candado esta en el servidor
+ * (api/_promo-acceso.js), que vuelve a preguntar contra la base en cada accion.
  */
 type Seccion = 'salida' | 'exhibicion';
 
@@ -61,7 +81,52 @@ export class PromoExpedientesComponent implements OnInit {
   /** La venta que se está capturando, por canal. */
   ventaNueva: Record<string, { url: string; nombre: string; piezas: number | null; importe: number | null; leidoIA: any }> = {};
 
-  ngOnInit() { this.cargar(); }
+  /** La sesión, para saber qué oficio es y qué sucursales trae. */
+  currentUser: any = null;
+
+  ngOnInit() {
+    const s = localStorage.getItem('md_sesion_actual');
+    if (s) { try { this.currentUser = JSON.parse(s); } catch { } }
+    this.cargar();
+  }
+
+  // ================= Los dos oficios =================
+  /** ¿Captura formatos? Ese alcanza todo: cualquier canal, y además quitar. */
+  get puedeFormato(): boolean {
+    const u = this.currentUser;
+    return u?.promocionesFormato === true || u?.grupoPromociones === true;
+  }
+
+  /** Las sucursales de este usuario; vacío = acceso total. */
+  private get misSucursales(): string[] {
+    return Array.isArray(this.currentUser?.sucursales) ? this.currentUser.sucursales : [];
+  }
+
+  /**
+   * ¿Puede subirle evidencia a ESTE canal?
+   *
+   * El de formato, a todos. A los demás solo los canales de sus sucursales, más
+   * Mayoreo y las rutas, que no son de nadie.
+   */
+  puedeSubirEn(canal: string): boolean {
+    if (this.puedeFormato) return true;
+    if (this.currentUser?.promocionesExpediente !== true) return false;
+    return puedeEnCanal(canal, this.misSucursales);
+  }
+
+  /** ¿A qué sucursal pertenece este canal? Vacío si no es de ninguna. */
+  sucursalDe(canal: string): string { return SUCURSAL_POR_CANAL[canal] || ''; }
+
+  /** El aviso de por qué este canal está sin botones. */
+  motivoAjeno(canal: string): string {
+    const suya = this.sucursalDe(canal);
+    if (this.currentUser?.promocionesExpediente !== true) {
+      return 'Tu permiso no incluye subir evidencia.';
+    }
+    return suya
+      ? 'Este canal es de ' + suya + '. Solo puedes subir evidencia de tus sucursales.'
+      : 'Solo puedes subir evidencia de tus sucursales.';
+  }
 
   // ================= Carga =================
   async cargar() {
@@ -110,6 +175,7 @@ export class PromoExpedientesComponent implements OnInit {
 
   // ================= Evidencia (salida y exhibición) =================
   async alElegirArchivos(ev: Event, canal: string, seccion: Seccion) {
+    if (!this.puedeSubirEn(canal)) return;
     const input = ev.target as HTMLInputElement;
     const archivos = Array.from(input.files || []);
     input.value = '';   // permite volver a elegir el mismo archivo
@@ -136,6 +202,8 @@ export class PromoExpedientesComponent implements OnInit {
   }
 
   async quitarEvidencia(canal: string, seccion: Seccion, url: string) {
+    // Lo que se sube, se queda: desandar es del que manda el formato.
+    if (!this.puedeFormato) return;
     const r = await Swal.fire({
       icon: 'warning', title: '¿Quitar esta evidencia?',
       showCancelButton: true, confirmButtonText: 'Quitar', cancelButtonText: 'Cancelar',
@@ -161,6 +229,7 @@ export class PromoExpedientesComponent implements OnInit {
    * un digito mal leido cambia el lugar de una promocion.
    */
   async alElegirTicket(ev: Event, canal: string) {
+    if (!this.puedeSubirEn(canal)) return;
     const input = ev.target as HTMLInputElement;
     const archivos = Array.from(input.files || []);
     input.value = '';
@@ -204,6 +273,7 @@ export class PromoExpedientesComponent implements OnInit {
 
   /** Guarda la venta ya revisada por una persona. */
   async guardarVenta(canal: string) {
+    if (!this.puedeSubirEn(canal)) return;
     const v = this.ventaNueva[canal];
     if (!v) return;
     if (!v.piezas && !v.importe) {
@@ -235,6 +305,7 @@ export class PromoExpedientesComponent implements OnInit {
   cancelarVenta(canal: string) { delete this.ventaNueva[canal]; }
 
   async quitarVenta(canal: string, ventaId: string) {
+    if (!this.puedeFormato) return;
     const r = await Swal.fire({
       icon: 'warning', title: '¿Quitar esta venta?',
       text: 'Se descuenta de las piezas y del importe de la promoción.',

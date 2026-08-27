@@ -22,6 +22,19 @@
 //    quitarVenta      { ventaId }
 //    nota             { nota }
 //
+//  QUIEN PUEDE QUE (se revisa contra la base, ver api/_promo-acceso.js):
+//
+//    Las acciones que SUMAN (agregarEvidencia, agregarVenta, nota) las hace
+//    quien tenga `promocionesExpediente`, y SOLO en los canales de su sucursal.
+//    El de Padre Hidalgo sube lo de PH; lo de Morelia no lo toca. Mayoreo, Ruta
+//    Diaria y Ruta Vecinal quedan abiertos: no son de ninguna sucursal.
+//
+//    Las que QUITAN o CORRIGEN (quitarEvidencia, quitarVenta, editarVenta) y el
+//    DELETE del expediente son SOLO de `promocionesFormato`. La evidencia es la
+//    prueba de que la promocion se ejecuto: quien la sube no la puede desandar,
+//    ni la suya ni la del vecino. Si algo se subio mal, lo corrige quien manda
+//    el formato.
+//
 //  Los totales (piezas, importe, cuantos tickets) los recalcula SIEMPRE el
 //  servidor sumando las ventas guardadas; nunca se toma el total que mande el
 //  navegador. Es lo que alimenta el KPI y el ranking, y si el cliente pudiera
@@ -29,6 +42,7 @@
 // ============================================================================
 const { query, dbConfigurada } = require('./db');
 const { verificarToken } = require('./_auth');
+const { permisosPromo, alcanzaCanal, prohibido } = require('./_promo-acceso');
 
 const SECCIONES = ['salida', 'exhibicion'];
 
@@ -233,6 +247,21 @@ module.exports = async (req, res) => {
         });
       }
 
+      // --- El candado: que oficio es este, y le toca este canal ---
+      const perm = await permisosPromo(usuario);
+      // Quitar y corregir NO es llenar: eso es del que manda el formato.
+      const DESHACEN = ['quitarEvidencia', 'quitarVenta', 'editarVenta'];
+      if (DESHACEN.includes(accion)) {
+        if (!perm.formato) return prohibido(res, 'quitar o corregir evidencia ya subida');
+      } else {
+        if (!perm.expediente) return prohibido(res, 'llenar expedientes');
+        if (!alcanzaCanal(perm, canal)) {
+          return res.status(403).json({
+            error: 'El canal "' + canal + '" no es de tu sucursal. Solo puedes subir evidencia de la tuya.',
+          });
+        }
+      }
+
       const id = 'exp_' + promoId + '_' + slugCanal(canal);
 
       // Se crea si no existe. `do nothing` y no `do update`: si ya esta, no se
@@ -334,6 +363,9 @@ module.exports = async (req, res) => {
 
     // --------------------------------------------------------------- DELETE
     if (req.method === 'DELETE') {
+      const permDel = await permisosPromo(usuario);
+      if (!permDel.formato) return prohibido(res, 'quitar expedientes');
+
       const id = texto(q.id);
       if (!id) return res.status(400).json({ error: 'Falta el id del expediente.' });
       const r = await query(

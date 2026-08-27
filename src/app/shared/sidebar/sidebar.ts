@@ -54,6 +54,22 @@ export class SidebarComponent implements OnInit, OnDestroy {
   }
 
   /**
+   * ¿Se le muestra "Promociones" (activación, formato MKTN001)?
+   *
+   * Con CUALQUIERA de sus dos oficios basta: `promocionesFormato` (captura el
+   * formato y alcanza todo) o `promocionesExpediente` (solo llena el expediente
+   * de su sucursal). `grupoPromociones` es la bandera vieja de cuando el
+   * apartado era un permiso único; se acepta mientras haya sesiones firmadas
+   * antes del cambio. Ni el rol admin abre esta puerta por sí solo.
+   */
+  get verPromociones(): boolean {
+    const u = this.currentUser;
+    return u?.promocionesFormato === true
+        || u?.promocionesExpediente === true
+        || u?.grupoPromociones === true;
+  }
+
+  /**
    * ¿Se le muestra "Venta de Promos"?
    *
    * Con CUALQUIERA de los tres permisos basta: la sección es una sola y adentro

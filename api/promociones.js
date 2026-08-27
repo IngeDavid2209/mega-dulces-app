@@ -8,8 +8,15 @@
 //
 // El borrado es logico a proposito: una promocion trae dinero negociado y
 // evidencia; si alguien se equivoca, se recupera.
+//
+// QUIEN PUEDE QUE:
+//   GET             cualquiera que entre al apartado (los dos oficios).
+//   POST y DELETE   SOLO `promocionesFormato`. El formato es el acuerdo con el
+//                   proveedor: quien nada mas llena expedientes lo ve, lo baja
+//                   en PDF y no le mueve nada. Ver api/_promo-acceso.js.
 const { query, dbConfigurada } = require('./db');
 const { verificarToken } = require('./_auth');
+const { permisosPromo, prohibido } = require('./_promo-acceso');
 
 /** Primer folio si la tabla esta vacia. Se puede cambiar sin tocar codigo con
  *  la variable PROMO_FOLIO_INICIAL (David dijo que despues pasa el numero). */
@@ -73,6 +80,10 @@ module.exports = async (req, res) => {
     }
 
     if (req.method === 'POST') {
+      // El alta y la edicion del formato son de un solo oficio.
+      const perm = await permisosPromo(usuario);
+      if (!perm.formato) return prohibido(res, 'dar de alta o editar el formato');
+
       const b = req.body || {};
       const id = String(b.id || ('promo_' + Date.now()));
       const ahora = Date.now();
@@ -118,6 +129,9 @@ module.exports = async (req, res) => {
     }
 
     if (req.method === 'DELETE') {
+      const permDel = await permisosPromo(usuario);
+      if (!permDel.formato) return prohibido(res, 'quitar promociones');
+
       const id = req.query?.id || (req.body || {}).id;
       if (!id) return res.status(400).json({ error: 'Falta id.' });
       await query(

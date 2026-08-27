@@ -22,9 +22,12 @@
       Esta promoción se dio de alta sin marcar en qué sucursales aplica, así que no
       hay expedientes que llenar.
     </p>
-    <button class="pr-btn pr-btn-alta" (click)="irAlFormato.emit()">
+    <button class="pr-btn pr-btn-alta" *ngIf="puedeFormato" (click)="irAlFormato.emit()">
       Marcar las sucursales en el formato
     </button>
+    <p class="exp-sin" *ngIf="!puedeFormato">
+      Avísale a quien dio de alta la promoción para que marque las sucursales.
+    </p>
   </div>
 } @else {
 
@@ -54,6 +57,11 @@
 
       <button class="exp-canal-top" (click)="abrirCanal(c)">
         <span class="exp-canal-nombre">{{ c }}</span>
+        <!-- El canal ajeno se ve (el avance de la promocion es de todos), pero
+             se dice desde el titulo que ahi no se sube nada. -->
+        @if (!puedeSubirEn(c)) {
+          <span class="exp-etq-ajeno" title="Solo lectura">Otra sucursal</span>
+        }
         <span class="exp-etq" [class.ok]="expedienteDe(c).estado === 'completo'">
           {{ queFalta(c) }}
         </span>
@@ -66,11 +74,15 @@
       @if (abierto() === c) {
         <div class="exp-cuerpo">
 
+          @if (!puedeSubirEn(c)) {
+            <p class="exp-ajeno">{{ motivoAjeno(c) }}</p>
+          }
+
           <!-- ---------- 1. Salida de mercancía ---------- -->
           <div class="exp-seccion">
             <div class="exp-seccion-top">
               <span class="exp-seccion-tit">1. Salida de la mercancía</span>
-              <label class="pr-btn pr-btn-chico">
+              <label class="pr-btn pr-btn-chico" *ngIf="puedeSubirEn(c)">
                 Adjuntar
                 <input type="file" multiple hidden
                        (change)="alElegirArchivos($event, c, 'salida')">
@@ -91,7 +103,10 @@
                       }
                     </a>
                     <span class="exp-ev-pie">{{ fechaHora(e.subidoEn) }}</span>
-                    <button class="exp-x" (click)="quitarEvidencia(c, 'salida', e.url)" title="Quitar">&times;</button>
+                    <!-- La evidencia es la prueba de que se ejecuto: quien la
+                         sube no la desanda. Solo el del formato la puede quitar. -->
+                    <button class="exp-x" *ngIf="puedeFormato"
+                            (click)="quitarEvidencia(c, 'salida', e.url)" title="Quitar">&times;</button>
                   </div>
                 }
               </div>
@@ -102,7 +117,7 @@
           <div class="exp-seccion">
             <div class="exp-seccion-top">
               <span class="exp-seccion-tit">2. Exhibición del producto</span>
-              <label class="pr-btn pr-btn-chico">
+              <label class="pr-btn pr-btn-chico" *ngIf="puedeSubirEn(c)">
                 Adjuntar
                 <input type="file" multiple accept="image/*"
                        hidden (change)="alElegirArchivos($event, c, 'exhibicion')">
@@ -126,7 +141,8 @@
                       }
                     </a>
                     <span class="exp-ev-pie">{{ fechaHora(e.subidoEn) }}</span>
-                    <button class="exp-x" (click)="quitarEvidencia(c, 'exhibicion', e.url)" title="Quitar">&times;</button>
+                    <button class="exp-x" *ngIf="puedeFormato"
+                            (click)="quitarEvidencia(c, 'exhibicion', e.url)" title="Quitar">&times;</button>
                   </div>
                 }
               </div>
@@ -137,7 +153,7 @@
           <div class="exp-seccion">
             <div class="exp-seccion-top">
               <span class="exp-seccion-tit">3. Pruebas de lo vendido</span>
-              @if (!ventaNueva[c]) {
+              @if (!ventaNueva[c] && puedeSubirEn(c)) {
                 <label class="pr-btn pr-btn-chico pr-btn-alta">
                   Subir ticket
                   <input type="file" accept="image/*" hidden (change)="alElegirTicket($event, c)">
@@ -213,7 +229,8 @@
                       <td class="num">{{ pesos(v.importe) }}</td>
                       <td class="exp-chico">{{ fechaHora(v.subidoEn) }}</td>
                       <td>
-                        <button class="exp-x" (click)="quitarVenta(c, v.id)" title="Quitar">&times;</button>
+                        <button class="exp-x" *ngIf="puedeFormato"
+                                (click)="quitarVenta(c, v.id)" title="Quitar">&times;</button>
                       </td>
                     </tr>
                   }

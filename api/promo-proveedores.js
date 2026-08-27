@@ -9,6 +9,7 @@
 //   POST /api/promo-proveedores {nombre}   -> registra o suma un uso
 const { query, dbConfigurada } = require('./db');
 const { verificarToken } = require('./_auth');
+const { permisosPromo, prohibido } = require('./_promo-acceso');
 
 /** Normaliza para comparar: sin acentos, minusculas, un solo espacio. */
 function claveDe(nombre) {
@@ -41,6 +42,11 @@ module.exports = async (req, res) => {
     }
 
     if (req.method === 'POST') {
+      // El catalogo de proveedores se llena solo, desde el paso 1 del formato:
+      // quien no captura formatos no tiene por que darle de alta marcas.
+      const perm = await permisosPromo(usuario);
+      if (!perm.formato) return prohibido(res, 'dar de alta proveedores');
+
       const nombre = String((req.body || {}).nombre || '').trim();
       if (!nombre) return res.status(400).json({ error: 'Falta el nombre del proveedor.' });
       if (nombre.length > 120) return res.status(400).json({ error: 'El nombre es demasiado largo.' });

@@ -39,6 +39,18 @@ const RECURSOS = [
  *
  * Todo se guarda en cada paso, no al final: si alguien cierra la pestaña a media
  * captura, no pierde lo escrito.
+ *
+ * DOS OFICIOS EN LA MISMA PANTALLA (ver src/app/services/promociones.guard.ts):
+ *
+ *   promocionesFormato      captura el formato, lo edita, lo quita, llena
+ *                           expedientes de donde sea y ve el KPI de ventas.
+ *   promocionesExpediente   entra a lo mismo pero SIN poder modificar: el
+ *                           formato lo ve en solo lectura (y lo baja en PDF), y
+ *                           solo sube evidencia de los canales de SU sucursal.
+ *
+ * Lo que se esconde aqui es la parte visible del candado, no el candado: el que
+ * manda es el servidor (api/_promo-acceso.js), que vuelve a preguntar contra la
+ * base en cada escritura.
  */
 @Component({
   selector: 'app-promociones',
@@ -83,6 +95,9 @@ export class PromocionesComponent implements OnInit {
   /** Ranking general y por sucursal. Se carga al entrar a esa vista. */
   ranking = signal<{ general: any[]; porCanal: any[] }>({ general: [], porCanal: [] });
   cargandoRanking = signal(false);
+
+  /** El mismo ranking, pero cargado de entrada para el KPI de la lista. */
+  kpi = signal<{ general: any[]; porCanal: any[] }>({ general: [], porCanal: [] });
   cargando = signal(false);
   guardando = signal(false);
   subiendo = signal(0);
@@ -140,6 +155,29 @@ export class PromocionesComponent implements OnInit {
     this.cargarTodo();
   }
 
+  // ================= Los dos oficios =================
+  /**
+   * ¿Captura formatos? Es el permiso que alcanza TODO: dar de alta, editar,
+   * quitar, llenar cualquier expediente y ver el KPI de ventas.
+   *
+   * `grupoPromociones` es la bandera vieja, de cuando el apartado era un solo
+   * permiso que daba todo. Se sigue respetando para que nadie se quede a medias
+   * con una sesión firmada antes del cambio.
+   */
+  get puedeFormato(): boolean {
+    const u = this.currentUser;
+    return u?.promocionesFormato === true || u?.grupoPromociones === true;
+  }
+
+  /**
+   * Lo contrario de puedeFormato, para leerlo bonito en la plantilla.
+   *
+   * Quien no captura formatos ve el formato apagado y sin botones de guardar.
+   * El filtro por sucursal NO vive aqui sino en el componente de expedientes,
+   * que es donde de veras se sube la evidencia: una sola verdad y en su lugar.
+   */
+  get soloLectura(): boolean { return !this.puedeFormato; }
+
   toggleMenu() { this.isMenuOpen = !this.isMenuOpen; }
   irA(r: string) { this.router.navigate([r]); this.isMenuOpen = false; }
 
@@ -152,18 +190,25 @@ export class PromocionesComponent implements OnInit {
   async cargarTodo() {
     this.cargando.set(true);
     try {
-      const [p, pr, res] = await Promise.all([
+      // El KPI de la lista es SOLO para quien captura formatos: es quien negocia
+      // con el proveedor y a quien le sirve saber, de un vistazo, que se esta
+      // vendiendo. A quien nada mas sube evidencia no se le pide ni se le carga.
+      const [p, pr, res, rk] = await Promise.all([
         this.api.get('/api/promociones').catch(() => ({ promociones: [] })),
         this.api.get('/api/promo-proveedores').catch(() => ({ proveedores: [] })),
         // El avance es de adorno hasta que hay expedientes: si falla, la lista
         // se ve igual, nomas sin las cifras.
-        this.api.get('/api/promo-expedientes').catch(() => ({ resumen: [] }))
+        this.api.get('/api/promo-expedientes').catch(() => ({ resumen: [] })),
+        this.puedeFormato
+          ? this.api.get('/api/promo-expedientes?ranking=1').catch(() => ({ general: [], porCanal: [] }))
+          : Promise.resolve({ general: [], porCanal: [] })
       ]);
       this.promociones.set(p?.promociones || []);
       this.proveedores.set(pr?.proveedores || []);
       const porId: Record<string, any> = {};
       for (const x of (res?.resumen || [])) porId[x.promoId] = x;
       this.resumen.set(porId);
+      this.kpi.set({ general: rk?.general || [], porCanal: rk?.porCanal || [] });
     } finally {
       this.cargando.set(false);
     }
@@ -201,6 +246,7 @@ export class PromocionesComponent implements OnInit {
 
   // ================= Alta y edición =================
   async nueva() {
+    if (!this.puedeFormato) return;
     this.limpiar();
     this.vista.set('captura');
     this.paso.set(1);
@@ -299,10 +345,15 @@ export class PromocionesComponent implements OnInit {
 
   async abrirRanking() {
     this.vista.set('ranking');
+    // Se pinta de una con lo que el KPI ya tenia y luego se refresca: asi la
+    // pantalla no arranca en blanco cuando ya conocemos las cifras.
+    if (this.kpi().general.length) this.ranking.set(this.kpi());
     this.cargandoRanking.set(true);
     try {
       const r = await this.api.get('/api/promo-expedientes?ranking=1');
-      this.ranking.set({ general: r?.general || [], porCanal: r?.porCanal || [] });
+      const fresco = { general: r?.general || [], porCanal: r?.porCanal || [] };
+      this.ranking.set(fresco);
+      this.kpi.set(fresco);
     } catch (e: any) {
       Swal.fire({
         icon: 'error', title: 'No se pudo cargar el ranking',
@@ -323,6 +374,47 @@ export class PromocionesComponent implements OnInit {
     }
     return grupos;
   });
+
+  // ================= KPI de la lista (solo para quien captura formatos) =================
+  /**
+   * Las promociones que mas se han vendido, de todas las sucursales juntas.
+   *
+   * Se recortan a tres a proposito: es un KPI de un vistazo, no el ranking. El
+   * ranking completo sigue a un boton de distancia y ahi salen las 200.
+   */
+  kpiTop = computed(() => this.kpi().general.slice(0, 3));
+
+  /**
+   * La promocion que mas se vende en CADA sucursal.
+   *
+   * `porCanal` ya viene del servidor ordenado por canal y, dentro de cada uno,
+   * por piezas: la primera de cada canal es la que gana ahi. Asi no hay que
+   * ordenar nada aqui ni pedir otra consulta.
+   */
+  kpiPorSucursal = computed<any[]>(() => {
+    const vistos = new Set<string>();
+    const mejores: any[] = [];
+    for (const r of this.kpi().porCanal) {
+      if (vistos.has(r.canal)) continue;
+      vistos.add(r.canal);
+      mejores.push(r);
+    }
+    return mejores;
+  });
+
+  /** Lo vendido en total, para el encabezado del KPI. */
+  kpiTotales = computed(() => {
+    const g = this.kpi().general;
+    return {
+      piezas: g.reduce((s, r) => s + (r.piezas || 0), 0),
+      importe: g.reduce((s, r) => s + (r.importe || 0), 0),
+      tickets: g.reduce((s, r) => s + (r.tickets || 0), 0),
+      sucursales: this.kpiPorSucursal().length,
+    };
+  });
+
+  /** ¿Ya hay ventas que enseñar? Sin esto el KPI sale vacío y estorba. */
+  kpiHayDatos = computed(() => this.kpi().general.some(r => (r.piezas || 0) > 0));
 
   /** El avance de una promoción para la tarjeta de la lista. */
   avanceDe(p: any): any {
@@ -358,6 +450,9 @@ export class PromocionesComponent implements OnInit {
   }
 
   async guardar(avanzarA?: 1 | 2 | 3) {
+    // Quien solo llena expedientes ve el formato, pero no lo guarda. Aqui ni
+    // deberia llegar (los botones no le salen); el servidor lo rechaza igual.
+    if (!this.puedeFormato) return;
     if (avanzarA === 3) this.sembrarMecanica();
 
     // Las sucursales se eligen AQUI, al dar de alta: de los canales marcados
@@ -440,6 +535,7 @@ export class PromocionesComponent implements OnInit {
   }
 
   async eliminar(p: any) {
+    if (!this.puedeFormato) return;
     const r = await Swal.fire({
       icon: 'warning', title: '¿Quitar esta promoción?',
       text: `Folio ${p.folio ?? '(sin folio)'} · ${p.proveedor || ''}. Se puede recuperar después.`,

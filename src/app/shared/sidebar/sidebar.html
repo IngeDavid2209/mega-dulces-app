@@ -45,10 +45,13 @@
       </a>
 
       <!-- 🏷️ Activacion de promociones: visible SOLO para los usuarios a los que
-           se les asigne el permiso (grupoPromociones), desde Usuarios. Los admins
-           NO lo ven por ser admin, igual que Flotilla y el Espacio TEC. -->
+           se les asigne alguno de sus DOS oficios desde Usuarios
+           (promocionesFormato = captura el formato; promocionesExpediente =
+           solo llena el expediente de su sucursal). `grupoPromociones` es la
+           bandera vieja y se acepta mientras haya sesiones sin renovar. Los
+           admins NO lo ven por ser admin, igual que Flotilla y el Espacio TEC. -->
       <a class="nav-item" routerLink="/promociones" routerLinkActive="active"
-         *ngIf="currentUser?.grupoPromociones === true"
+         *ngIf="verPromociones"
          (click)="onNavClick()"
          title="Activacion de promociones">
         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

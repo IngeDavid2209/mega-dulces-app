@@ -30,17 +30,73 @@
           </div>
           <div class="promo-head-acciones">
             <button class="pr-btn" (click)="abrirRanking()">Ranking de ventas</button>
-            <button class="pr-btn pr-btn-alta" (click)="nueva()">
+            <!-- El alta es de un solo oficio: quien nada mas llena expedientes
+                 ni ve el boton. El servidor lo rechaza igual (api/promociones.js). -->
+            <button class="pr-btn pr-btn-alta" *ngIf="puedeFormato" (click)="nueva()">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
               Nueva promoción
             </button>
           </div>
         </section>
 
+        <!-- ===== KPI: que se esta vendiendo, de un vistazo =====
+             Solo para quien captura formatos: es quien negocia con el proveedor
+             y a quien le sirve saber si lo negociado esta saliendo. Aparece solo
+             cuando YA hay ventas capturadas; en cero no dice nada y estorba. -->
+        <section class="promo-kpi" *ngIf="puedeFormato && !cargando() && kpiHayDatos()">
+          <div class="promo-kpi-cifras">
+            <div class="promo-kpi-dato">
+              <span class="promo-kpi-num">{{ kpiTotales().piezas }}</span>
+              <span class="promo-kpi-lbl">piezas vendidas</span>
+            </div>
+            <div class="promo-kpi-dato">
+              <span class="promo-kpi-num">{{ pesos(kpiTotales().importe) }}</span>
+              <span class="promo-kpi-lbl">importe</span>
+            </div>
+            <div class="promo-kpi-dato">
+              <span class="promo-kpi-num">{{ kpiTotales().tickets }}</span>
+              <span class="promo-kpi-lbl">tickets</span>
+            </div>
+            <div class="promo-kpi-dato">
+              <span class="promo-kpi-num">{{ kpiTotales().sucursales }}</span>
+              <span class="promo-kpi-lbl">sucursales vendiendo</span>
+            </div>
+          </div>
+
+          <div class="promo-kpi-cols">
+            <div class="promo-kpi-col">
+              <h2 class="promo-kpi-tit">Las que más se venden</h2>
+              <div class="promo-kpi-fila" *ngFor="let r of kpiTop(); let i = index">
+                <span class="promo-kpi-lugar">{{ i + 1 }}</span>
+                <span class="promo-kpi-prov">{{ r.proveedor || '—' }}</span>
+                <span class="promo-kpi-folio">{{ folioTexto(r.folio) }}</span>
+                <span class="promo-kpi-cifra"><strong>{{ r.piezas }}</strong> pzas</span>
+                <span class="promo-kpi-cifra">{{ pesos(r.importe) }}</span>
+              </div>
+            </div>
+
+            <div class="promo-kpi-col">
+              <h2 class="promo-kpi-tit">La mejor de cada sucursal</h2>
+              <div class="promo-kpi-fila" *ngFor="let r of kpiPorSucursal()">
+                <span class="promo-kpi-canal">{{ r.canal }}</span>
+                <span class="promo-kpi-prov">{{ r.proveedor || '—' }}</span>
+                <span class="promo-kpi-folio">{{ folioTexto(r.folio) }}</span>
+                <span class="promo-kpi-cifra"><strong>{{ r.piezas }}</strong> pzas</span>
+                <span class="promo-kpi-cifra">{{ pesos(r.importe) }}</span>
+              </div>
+            </div>
+          </div>
+
+          <button class="pr-btn pr-btn-chico promo-kpi-mas" (click)="abrirRanking()">
+            Ver el ranking completo
+          </button>
+        </section>
+
         <p class="promo-vacio" *ngIf="cargando()">Cargando…</p>
 
         <p class="promo-vacio" *ngIf="!cargando() && promociones().length === 0">
-          Todavía no hay promociones capturadas. Empieza con "Nueva promoción".
+          <ng-container *ngIf="puedeFormato">Todavía no hay promociones capturadas. Empieza con "Nueva promoción".</ng-container>
+          <ng-container *ngIf="!puedeFormato">Todavía no hay promociones capturadas. En cuanto se dé de alta una, aquí te aparecen sus expedientes para subir la evidencia de tu sucursal.</ng-container>
         </p>
 
         <!-- Una tarjeta por promoción. Lo que manda aquí no es la captura del
@@ -88,7 +144,8 @@
                 Expedientes
               </button>
               <button class="pr-btn pr-btn-chico" (click)="abrir(p)">Ver formato</button>
-              <button class="pr-btn pr-btn-chico pr-btn-quitar" (click)="eliminar(p)">Quitar</button>
+              <button class="pr-btn pr-btn-chico pr-btn-quitar" *ngIf="puedeFormato"
+                      (click)="eliminar(p)">Quitar</button>
             </div>
           </div>
         </div>
@@ -107,11 +164,29 @@
           </div>
           <div class="promo-head-acciones">
             <button class="pr-btn" (click)="volverALista()">Volver</button>
-            <button class="pr-btn pr-btn-alta" (click)="guardar()" [disabled]="guardando()">
+            <button class="pr-btn pr-btn-alta" *ngIf="puedeFormato"
+                    (click)="guardar()" [disabled]="guardando()">
               {{ guardando() ? 'Guardando…' : 'Guardar' }}
+            </button>
+            <!-- En solo lectura el formato no se guarda, pero SI se baja: es el
+                 acuerdo con el proveedor y quien llena el expediente lo necesita
+                 a la mano para saber que le toca probar. -->
+            <button class="pr-btn pr-btn-pdf" *ngIf="soloLectura" (click)="descargarPdf()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/>
+              </svg>
+              Descargar PDF
             </button>
           </div>
         </section>
+
+        <!-- Se dice con todas sus letras por que los campos estan apagados: un
+             formulario gris sin explicacion se siente como una falla. -->
+        <p class="promo-aviso-lectura" *ngIf="soloLectura">
+          Estás viendo el formato en <strong>solo lectura</strong>. Tu permiso es el de
+          llenar expedientes: sube la evidencia de tu sucursal desde “Expedientes”.
+          Este formato solo lo modifica quien lo da de alta.
+        </p>
 
         <!-- Pasos -->
         <div class="pasos">
@@ -151,6 +226,14 @@
           </button>
         </div>
 
+        <!-- Todo el formato vive dentro de un <fieldset>: con `disabled` el
+             navegador apaga de golpe cada input, select y boton de adentro, y no
+             hay que acordarse de poner el candado campo por campo (que es como
+             se cuelan los huecos). La navegacion entre pasos y el boton de PDF
+             quedan AFUERA a proposito, para que en solo lectura se pueda seguir
+             leyendo el formato completo. -->
+        <fieldset class="promo-form" [disabled]="soloLectura">
+
         <!-- ---------- PASO 1 ---------- -->
         <section class="promo-panel" *ngIf="paso() === 1">
           <h2>1. Proveedor o marca</h2>
@@ -173,7 +256,7 @@
             </div>
           </div>
 
-          <div class="promo-acciones">
+          <div class="promo-acciones" *ngIf="puedeFormato">
             <button class="pr-btn pr-btn-alta" [disabled]="!pasoDesbloqueado(2) || guardando()"
                     (click)="guardar(2)">
               {{ guardando() ? 'Guardando…' : 'Guardar y seguir' }}
@@ -225,7 +308,7 @@
             </div>
           </div>
 
-          <div class="promo-acciones">
+          <div class="promo-acciones" *ngIf="puedeFormato">
             <button class="pr-btn" (click)="irAPaso(1)">Atrás</button>
             <button class="pr-btn pr-btn-alta" [disabled]="!pasoDesbloqueado(3) || guardando()"
                     (click)="guardar(3)">
@@ -413,7 +496,7 @@
             </div>
           </div>
 
-          <div class="promo-acciones">
+          <div class="promo-acciones" *ngIf="puedeFormato">
             <button class="pr-btn" (click)="irAPaso(2)">Atrás</button>
             <button class="pr-btn pr-btn-alta" (click)="guardar()" [disabled]="guardando()">
               {{ guardando() ? 'Guardando…' : 'Guardar' }}
@@ -426,6 +509,8 @@
             </button>
           </div>
         </section>
+
+        </fieldset>
 
       </ng-container>
 
@@ -446,9 +531,9 @@
           <button class="pr-btn" (click)="volverALista()">Volver</button>
         </section>
 
-        <p class="promo-vacio" *ngIf="cargandoRanking()">Cargando…</p>
+        <p class="promo-vacio" *ngIf="cargandoRanking() && !ranking().general.length">Cargando…</p>
 
-        <ng-container *ngIf="!cargandoRanking()">
+        <ng-container *ngIf="!cargandoRanking() || ranking().general.length">
           <p class="promo-vacio" *ngIf="!ranking().general.length">
             Todavía no hay ventas registradas. En cuanto se suban tickets en los
             expedientes, aquí aparece qué promoción se está vendiendo más.

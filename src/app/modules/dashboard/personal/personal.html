@@ -434,14 +434,29 @@
               </label>
             </div>
 
-            <!-- 🏷️ PRIVILEGIO: ACTIVACIÓN DE PROMOCIONES -->
+            <!-- 🏷️ PRIVILEGIOS: ACTIVACIÓN DE PROMOCIONES (dos oficios, dos switches) -->
             <div class="form-group form-full" style="padding-top: 16px; border-top: 1px solid var(--border);">
+              <label class="form-label" style="margin-bottom: 10px;">🏷️ Activación de promociones</label>
+              <p style="font-size:12px; color:var(--text-secondary); margin:-4px 0 12px;">
+                El apartado "Promociones" solo aparece en el menú si le prendes al menos uno de estos dos.
+                Ni los administradores lo ven sin ellos. Quien captura el formato alcanza todo; quien solo
+                llena expedientes no puede modificar nada del formato ni quitar evidencia ya subida.
+              </p>
+
               <label class="premium-perm-item" style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
                 <div class="perm-text">
-                  <strong>Activación de promociones</strong>
-                  <span>Le agrega al menú el apartado "Promociones". Solo lo ve quien tenga este permiso: ni los administradores entran sin él. El usuario conserva su acceso normal según sus demás permisos.</span>
+                  <strong>Formato — dar de alta y editar</strong>
+                  <span>Captura el formato MKTN001 en sus tres pasos, lo edita, lo quita y lo baja en PDF. También llena expedientes de cualquier sucursal y ve el KPI de las promos más vendidas. Es el permiso de quien manda en el apartado.</span>
                 </div>
-                <div class="perm-switch"><input type="checkbox" [(ngModel)]="formGrupoPromociones"><span class="slider"></span></div>
+                <div class="perm-switch"><input type="checkbox" [(ngModel)]="formPromocionesFormato"><span class="slider"></span></div>
+              </label>
+
+              <label class="premium-perm-item" style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:12px;">
+                <div class="perm-text">
+                  <strong>Expediente — solo subir evidencia</strong>
+                  <span>Sube la salida, la exhibición y los tickets de venta, y NADA MÁS de los canales de las sucursales que tenga asignadas aquí arriba. El formato lo ve en solo lectura, y lo que sube ya no lo puede quitar. Mayoreo y las rutas quedan abiertos para cualquiera, porque no son de ninguna sucursal.</span>
+                </div>
+                <div class="perm-switch"><input type="checkbox" [(ngModel)]="formPromocionesExpediente"><span class="slider"></span></div>
               </label>
             </div>
 

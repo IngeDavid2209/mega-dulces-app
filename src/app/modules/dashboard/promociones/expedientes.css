@@ -227,3 +227,21 @@ label.pr-btn { cursor: pointer; }
   outline: none; border-color: var(--ex-azul);
   box-shadow: 0 0 0 3px rgba(31, 78, 121, .12);
 }
+
+/* ============================================================================
+   Canal de OTRA sucursal — se ve, pero no se toca.
+
+   Se muestra en gris y sin botones en vez de esconderlo: el avance de la
+   promocion ("4 de 8 sucursales completas") es de todos, y una lista a la que
+   le faltan renglones hace que las cuentas no cuadren y nadie entienda por que.
+   ============================================================================ */
+.exp-etq-ajeno {
+  font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px;
+  background: #F1F5F9; color: var(--ex-txt-2); white-space: nowrap;
+}
+
+.exp-ajeno {
+  background: #F8FAFC; border: 1px dashed var(--ex-linea); border-radius: 8px;
+  padding: 9px 11px; margin: 10px 0 0;
+  font-size: 12.5px; color: var(--ex-txt-2); line-height: 1.45;
+}

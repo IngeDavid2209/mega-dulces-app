@@ -8,6 +8,7 @@ import { esItemHecho } from '../../../shared/item-completado.util';
 import { ApiService } from '../../../shared/api.service';
 import { guardarListaCache, leerListaCache } from '../../../shared/lista-cache.util';
 import { avisoDeFalla, AvisoDatos } from '../../../shared/aviso-datos.util';
+import { fueraDeOperacion } from '../../../shared/medicion.util';
 
 interface DiaStat {
   fechaISO: string;     // YYYY-MM-DD
@@ -177,7 +178,7 @@ export class RankingSucursalesComponent implements OnInit, OnDestroy {
       const filas: any[] = resp.checklists || [];
       const arr: any[] = [];
       filas.forEach((c: any) => {
-        if (c.eliminado === true || c.archivado === true) return;
+        if (fueraDeOperacion(c)) return;
         arr.push({ ...c });
       });
       this.checklistsSemana.set(arr);

@@ -16,6 +16,7 @@ interface FilaRanking {
 }
 
 import { SidebarComponent } from '../../../shared/sidebar/sidebar';
+import { fueraDeOperacion } from '../../../shared/medicion.util';
 
 @Component({
   selector: 'app-estadisticas',
@@ -147,7 +148,7 @@ export class EstadisticasComponent implements OnInit, OnDestroy {
       const filas: any[] = resp.checklists || [];
       const arr: any[] = [];
       filas.forEach((c: any) => {
-        if (c.eliminado === true || c.archivado === true) return;
+        if (fueraDeOperacion(c)) return;
         if (!this.sucursalesPermitidas.includes(c.store)) return; // respeta scope del admin
         arr.push(c);
       });
@@ -176,7 +177,7 @@ export class EstadisticasComponent implements OnInit, OnDestroy {
       const fechaHoyLocal = new Date(Date.now() - offset).toISOString().split('T')[0];
 
       filas.forEach((c: any) => {
-        if (c.eliminado === true || c.archivado === true) return;
+        if (fueraDeOperacion(c)) return;
 
         // SOLO contamos las rutinas que estén etiquetadas con la fecha de HOY
         if (c.date === fechaHoyLocal && this.sucursalesPermitidas.includes(c.store)) {

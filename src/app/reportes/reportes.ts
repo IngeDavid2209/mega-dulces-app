@@ -15,6 +15,7 @@ import { ApiService } from '../shared/api.service';
 import Swal from 'sweetalert2';
 
 import { SidebarComponent } from '../shared/sidebar/sidebar';
+import { fueraDeOperacion } from '../shared/medicion.util';
 
 @Component({
   selector: 'app-reportes',
@@ -297,7 +298,7 @@ export class ReportesComponent implements OnInit, OnDestroy {
       const respChk = await this.api.get(urlChk);
       const checklists: any[] = [];
       (respChk?.checklists || []).forEach((c: any) => {
-        if (c.eliminado === true || c.archivado === true) return;
+        if (fueraDeOperacion(c)) return;
         if (!c.store || !enScope(c.store)) return;
         checklists.push(c);
       });
@@ -504,7 +505,7 @@ export class ReportesComponent implements OnInit, OnDestroy {
       const listasSinClones = new Map();
 
       filasAud.forEach((c: any) => {
-        if (c.eliminado === true || c.archivado === true) return;
+        if (fueraDeOperacion(c)) return;
 
         // 🔥 Admin limitado: descarta cualquier checklist que NO sea de sus sucursales
         if (sucursalesPermitidasUsuario !== null && !sucursalesPermitidasUsuario.includes(c.store)) return;

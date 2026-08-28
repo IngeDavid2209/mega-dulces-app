@@ -22,6 +22,7 @@ import {
   UBICACIONES_SUCURSALES, SUCURSALES_COMERCIALES, tieneCoordenadas,
   sucursalesSinUbicar, esSucursalComercial
 } from '../../../shared/sucursales-ubicaciones.util';
+import { fueraDeOperacion } from '../../../shared/medicion.util';
 
 @Component({
   selector: 'app-home',
@@ -265,7 +266,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
     let checklists = 0, enviados = 0;
 
     for (const c of this.checklistsHoy()) {
-      if (c.eliminado === true || c.archivado === true) continue;
+      if (fueraDeOperacion(c)) continue;
       checklists++;
       if (c.enviado === true) enviados++;
 
@@ -424,7 +425,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
     const acc: Record<string, any> = {};
 
     for (const c of this.checklistsHoy()) {
-      if (c.eliminado === true || c.archivado === true) continue;
+      if (fueraDeOperacion(c)) continue;
       const store = c.store;
       if (!store) continue;
 
@@ -640,7 +641,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
 
     this.checklistsHoy().forEach(c => {
       // No alertamos sobre checklists ya enviados, eliminados o archivados (eran tareas fantasma).
-      if (c.eliminado === true || c.enviado === true || c.archivado === true) return;
+      if (fueraDeOperacion(c) || c.enviado === true) return;
       (c.items || []).forEach((it: any) => {
         if (this.itemHecho(it, c)) return;
         const hl = it.horaLimite || it.time;
@@ -805,7 +806,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
 
       let arr: any[] = [];
       filas.forEach((c: any) => {
-        if (c.eliminado === true || c.archivado === true) return;
+        if (fueraDeOperacion(c)) return;
         arr.push({ ...c });
       });
       const totalCrudo = arr.length;

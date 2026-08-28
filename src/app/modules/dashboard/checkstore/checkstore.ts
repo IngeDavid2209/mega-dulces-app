@@ -10,6 +10,7 @@ import { UsuariosService } from '../../../shared/usuarios.service';
 import { ApiService } from '../../../shared/api.service';
  
 import { SidebarComponent } from '../../../shared/sidebar/sidebar';
+import { fueraDeOperacion } from '../../../shared/medicion.util';
 
 @Component({
   selector: 'app-checkstore',
@@ -264,7 +265,7 @@ export class CheckstoreComponent implements OnInit, OnDestroy {
       const fechaHoyLocal = new Date(Date.now() - offset).toISOString().split('T')[0];
  
       filas.forEach((c: any) => {
-        if (c.eliminado === true || c.archivado === true) return;
+        if (fueraDeOperacion(c)) return;
         const tiempoCreacion = typeof c.id === 'number' ? c.id : (c.timestampCreacion || ahora);
         if (c.date === fechaHoyLocal || (ahora - tiempoCreacion) <= limite24h) {
           checklistsTemp.push(c);

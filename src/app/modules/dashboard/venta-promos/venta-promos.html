@@ -25,7 +25,7 @@
            únicamente cobra ve su pantalla y nada más: no hay nada que elegir. -->
       <nav class="vp-tabs" *ngIf="(puedeCaja ? 1 : 0) + (puedeVender ? 1 : 0) + (puedeMonitor ? 1 : 0) > 1">
         <button *ngIf="puedeCaja" class="vp-tab" [class.on]="vista() === 'caja'" (click)="irA('caja')">
-          🟢 Dar luz verde
+          🟢 Aprobar ventas
         </button>
         <button *ngIf="puedeVender" class="vp-tab" [class.on]="vista() === 'promos'" (click)="irA('promos')">
           Promos
@@ -35,13 +35,13 @@
         </button>
       </nav>
 
-      <!-- ==================== CAJA: LA LUZ VERDE ==================== -->
+      <!-- ==================== CAJA: APROBAR LO QUE MANDA EL VENDEDOR ==================== -->
       <ng-container *ngIf="vista() === 'caja'">
 
         <section class="vp-head">
           <div>
-            <h1>Dar luz verde</h1>
-            <p class="vp-sub">Toca la promo en cuanto se venda. Le llega al momento a quien monitorea.</p>
+            <h1>Aprobar ventas</h1>
+            <p class="vp-sub">Los clientes que los vendedores mandan a tu caja. Apruébalas cuando pasen a pagar; le llega al momento a quien monitorea.</p>
           </div>
           <!-- El selector solo aparece si de verdad hay algo que elegir. -->
           <label class="vp-suc-sel" *ngIf="misSucursales.length > 1">
@@ -111,39 +111,19 @@
         <p class="vp-vacio" *ngIf="cargando()">Cargando…</p>
 
         <p class="vp-vacio" *ngIf="!cargando() && !sucursal() && misSucursales.length > 1">
-          Elige tu sucursal para ver las promos que aplican ahí.
+          Elige tu sucursal para ver los clientes que vienen en camino.
         </p>
 
-        <p class="vp-vacio" *ngIf="!cargando() && sucursal() && promosDeCaja().length === 0">
-          Ahorita no hay promos activas para {{ sucursal() }}.
+        <!-- La caja NO ve el catálogo de promos: solo lo que tiene que aprobar.
+             Antes había aquí una parrilla con todas las promos activas y un
+             botón "Se vendió" por cada una, para el cliente que llegaba sin
+             vendedor. Se quitó a propósito: la venta entra por el vendedor, la
+             caja la aprueba, y punto. Una pantalla con veinte botones que no le
+             tocan es una pantalla en la que se equivoca. -->
+        <p class="vp-vacio" *ngIf="!cargando() && sucursal() && pendientes().length === 0">
+          Ningún cliente en camino ahorita. Cuando un vendedor mande una venta,
+          te aparece aquí para que la apruebes.
         </p>
-
-        <!-- Tarjetas grandes: esto se usa de pie, con un cliente enfrente y a
-             veces en el celular. La foto manda, el botón es enorme. -->
-        <div class="vp-caja-grid" *ngIf="!cargando() && sucursal()">
-          <article class="vp-caja-card" *ngFor="let p of promosDeCaja()">
-
-            <div class="vp-caja-foto" [class.sinfoto]="!p.fotoUrl">
-              <img *ngIf="p.fotoUrl" [src]="p.fotoUrl" [alt]="p.nombre" loading="lazy">
-              <span *ngIf="!p.fotoUrl">Sin foto</span>
-            </div>
-
-            <div class="vp-caja-info">
-              <h2>{{ p.nombre }}</h2>
-              <p class="vp-caja-desc" *ngIf="p.descripcion">{{ p.descripcion }}</p>
-              <p class="vp-caja-costo" *ngIf="p.costo != null">{{ pesos(p.costo) }}</p>
-            </div>
-
-            <div class="vp-caja-acciones">
-              <button class="vp-btn-luz" [disabled]="guardando()" (click)="luzVerde(p, 'vendida')">
-                🟢 Se vendió
-              </button>
-              <button class="vp-btn-apartar" [disabled]="guardando()" (click)="luzVerde(p, 'asegurada')">
-                Apartada
-              </button>
-            </div>
-          </article>
-        </div>
       </ng-container>
 
       <!-- ==================== VENDEDOR: LAS PROMOS ==================== -->

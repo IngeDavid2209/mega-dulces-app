@@ -311,69 +311,16 @@ export class VentaPromosComponent implements OnInit, OnDestroy {
     if (this.reloj) { clearInterval(this.reloj); this.reloj = null; }
   }
 
-  // ================= Caja: la luz verde =================
-  /** Las promos que la caja puede reportar: vivas y marcadas para su sucursal. */
-  promosDeCaja = computed(() => {
-    const suc = this.sucursal();
-    return this.promos().filter(p => {
-      if (p.estado !== 'activa') return false;
-      // Una promo sin sucursales marcadas aplica en todas: es lo que se espera
-      // de una promo general, y obliga menos al que la da de alta.
-      if (!p.sucursales?.length) return true;
-      return p.sucursales.includes(suc);
-    });
-  });
-
-  /**
-   * El toque de luz verde.
-   *
-   * Pregunta lo MINIMO: cuantas piezas. El importe se calcula solo con el costo
-   * de la promo, porque quien esta en caja tiene un cliente enfrente y cada
-   * campo de mas es una razon para no usar esto.
-   */
-  async luzVerde(promo: Promo, tipo: 'vendida' | 'asegurada') {
-    if (!this.sucursal()) {
-      Swal.fire({
-        icon: 'warning', title: 'Falta la sucursal',
-        text: 'Elige desde qué sucursal estás reportando.',
-        confirmButtonColor: '#0F172A',
-      });
-      return;
-    }
-
-    const r = await Swal.fire({
-      title: tipo === 'vendida' ? '¿Cuántas se vendieron?' : '¿Cuántas apartó?',
-      html: `<div style="font-size:13px;color:#64748B;margin-bottom:10px">${promo.nombre}</div>`,
-      input: 'number',
-      inputValue: 1,
-      inputAttributes: { min: '1', step: '1' },
-      showCancelButton: true,
-      confirmButtonText: tipo === 'vendida' ? 'Dar luz verde' : 'Apartar',
-      cancelButtonText: 'Cancelar',
-      confirmButtonColor: tipo === 'vendida' ? '#1F7A4D' : '#B45309',
-    });
-    if (!r.isConfirmed) return;
-
-    const piezas = Math.max(1, Math.round(Number(r.value) || 1));
-
-    this.guardando.set(true);
-    try {
-      await this.api.post('/api/promos-venta', {
-        accion: 'luzVerde',
-        promoId: promo.id,
-        sucursal: this.sucursal(),
-        tipo, piezas,
-      });
-      this.aviso(
-        tipo === 'vendida' ? '🟢 Luz verde enviada' : 'Apartado registrado',
-        'Ya le llegó a quien monitorea.');
-      this.cargar(true);
-    } catch (e: any) {
-      this.error('No se pudo enviar la luz verde', e);
-    } finally {
-      this.guardando.set(false);
-    }
-  }
+  // ================= Caja: aprobar lo que manda el vendedor =================
+  //
+  // Aqui vivian `promosDeCaja` (el catalogo de promos vivas de la sucursal) y
+  // `luzVerde` (reportar una venta directa, "Se vendio" / "Apartada"). Se
+  // quitaron los dos: la caja ya no ve el catalogo, solo la fila de clientes en
+  // camino que le mandan los vendedores, y la aprueba con confirmarEncargo().
+  //
+  // Con eso desaparecio tambien el tipo 'asegurada' (Apartada): no se usaba.
+  // La tabla de luces verdes se sigue llenando, pero desde confirmarEncargo,
+  // que es donde de verdad se cierra la venta.
 
   // ================= Vendedor: mandar la venta a caja =================
   /**

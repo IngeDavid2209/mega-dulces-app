@@ -1880,3 +1880,17 @@
 .rep-pct.bajo { background: #FEE2E2; color: #B91C1C; }
 .rep-pct.medio { background: #FEF3C7; color: #92400E; }
 .rep-pct.alto { background: #DCFCE7; color: #166534; }
+
+/* Aviso dentro del desplegable de empleados: explica que la lista viene
+   recortada por la sucursal elegida. Sin esto, ver 8 nombres donde antes
+   había 150 se lee como que la lista se rompió. */
+.audit-dropdown-nota {
+  padding: 7px 12px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #1D4ED8;
+  background: #EFF6FF;
+  border-radius: 6px 6px 0 0;
+}

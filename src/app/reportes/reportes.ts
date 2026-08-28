@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, ActivatedRoute } from '@angular/router';
 import { Firestore, doc, deleteDoc, setDoc } from '@angular/fire/firestore';
-import { sucursalesPermitidas } from '../shared/permisos.util';
+import { sucursalesPermitidas, puedeSerAsignado } from '../shared/permisos.util';
 import { nivelDeCargo } from '../shared/nivel-jerarquico.util';
 import { esItemHecho } from '../shared/item-completado.util';
 import { ApiService } from '../shared/api.service';
@@ -64,20 +64,31 @@ export class ReportesComponent implements OnInit, OnDestroy {
   private api = inject(ApiService); // FERROCARRIL: usuarios desde Postgres
   private busquedaSub: any = null;
 
+  /**
+   * Cierra los desplegables al hacer clic fuera de ellos.
+   *
+   * OJO CON LAS CLASES: tienen que ser las que de verdad están en el HTML.
+   * Antes buscaba `.autocomplete-empleados` y `.autocomplete-sucursales`, que no
+   * existen en ninguna parte —la plantilla se renombró a `audit-*` y esto se
+   * quedó atrás—, así que `closest()` siempre devolvía null y el manejador
+   * cerraba la lista SIEMPRE. Como este listener corre en el mismo clic que
+   * enfoca el campo, la secuencia era: abre en el focus, cierra en el clic. La
+   * lista nunca se alcanzaba a ver.
+   */
   @HostListener('document:click', ['$event'])
   onClickOutside(event: Event) {
     const target = event.target as HTMLElement;
 
     // Cerrar dropdown de EMPLEADOS al hacer click afuera
-    if (!target.closest('.autocomplete-empleados')) {
+    if (!target.closest('.audit-autocomplete--empleado')) {
       this.mostrarDropdownEmpleados = false;
       if (this.empleadoSeleccionado !== this.textoBusquedaEmpleado) {
         this.textoBusquedaEmpleado = this.empleadoSeleccionado || 'Todos los empleados';
       }
     }
 
-    // 🆕 Cerrar dropdown de SUCURSALES al hacer click afuera
-    if (!target.closest('.autocomplete-sucursales')) {
+    // Cerrar dropdown de SUCURSALES al hacer click afuera
+    if (!target.closest('.audit-autocomplete--sucursal')) {
       this.mostrarDropdownSucursales = false;
       if (this.sucursalSeleccionada !== this.textoBusquedaSucursal) {
         this.textoBusquedaSucursal = this.sucursalSeleccionada || 'Todas las sucursales';
@@ -184,9 +195,28 @@ export class ReportesComponent implements OnInit, OnDestroy {
     return this._cacheResultadosOrdenados;
   }
 
+  /**
+   * Llena el filtro de Empleado.
+   *
+   * REGLA: si el robot le puede asignar tareas a alguien, Auditoría tiene que
+   * poder encontrarlo. Por eso el criterio es el MISMO que usa el robot para
+   * repartir (`trabajador` o `admin`), y no solo `trabajador`.
+   *
+   * Antes filtraba únicamente por rol 'trabajador', y eso escondía del filtro a
+   * los puestos operativos que tienen cuenta admin: las cuatro Encargadas de
+   * Sucursal, Coordinación de Compras y Operaciones de Zona — entre las seis,
+   * 16 tareas del Manual Corporativo. Justo la gente que más hay que auditar era
+   * la que no se podía buscar.
+   *
+   * Se ordena por nombre porque la lista ahora es más larga y se recorre a ojo.
+   */
   async cargarEmpleados() {
     const r = await this.api.get('/api/usuarios');
-    const lista = (r.usuarios || []).filter((u: any) => u.rol === 'trabajador');
+    const lista = (r.usuarios || [])
+      .filter((u: any) => (u.rol === 'trabajador' || u.rol === 'admin')
+                          && u.activo !== false
+                          && !!(u.nombre || '').trim())
+      .sort((a: any, b: any) => (a.nombre || '').localeCompare(b.nombre || ''));
     this.empleados.set(lista);
   }
 
@@ -351,12 +381,35 @@ export class ReportesComponent implements OnInit, OnDestroy {
   // ============================================================================
   //  EMPLEADOS — getters y handlers
   // ============================================================================
+  /**
+   * Los empleados que ofrece el desplegable.
+   *
+   * Si hay una sucursal elegida, solo sale la gente dada de alta AHÍ. Antes
+   * ofrecía la plantilla completa, así que se podía armar una combinación
+   * imposible —una cajera de Canindo filtrada por Padre Hidalgo— que devuelve
+   * cero resultados sin decir por qué.
+   *
+   * El criterio de pertenencia es `puedeSerAsignado`, el MISMO que usa el robot
+   * para decidir a quién le puede tocar algo en esa sucursal. Así el filtro
+   * ofrece exactamente a quien puede tener tareas ahí: incluye a los admin
+   * globales y respeta el comodín «General (Acceso Total)».
+   */
   get empleadosFiltrados() {
-    if (this.textoBusquedaEmpleado === 'Todos los empleados' || this.textoBusquedaEmpleado.trim() === '') {
-      return this.empleados();
+    let lista = this.empleados();
+
+    if (this.sucursalSeleccionada) {
+      lista = lista.filter(u => puedeSerAsignado(u, [this.sucursalSeleccionada]));
     }
-    const termino = this.textoBusquedaEmpleado.toLowerCase();
-    return this.empleados().filter(emp => emp.nombre.toLowerCase().includes(termino));
+
+    const t = this.textoBusquedaEmpleado;
+    if (t === 'Todos los empleados' || t.trim() === '') return lista;
+    const termino = t.toLowerCase();
+    return lista.filter(emp => (emp.nombre || '').toLowerCase().includes(termino));
+  }
+
+  /** ¿El desplegable de empleados está recortado por la sucursal elegida? */
+  get empleadosRecortadosPorSucursal(): boolean {
+    return !!this.sucursalSeleccionada;
   }
 
   seleccionarEmpleado(nombreEmpleado: string) {
@@ -400,6 +453,18 @@ export class ReportesComponent implements OnInit, OnDestroy {
     } else {
       this.sucursalSeleccionada = nombreSucursal;
       this.textoBusquedaSucursal = nombreSucursal;
+
+      // Si el empleado que estaba elegido no pertenece a esta sucursal, se
+      // suelta. Dejarlo puesto produce una búsqueda que no puede dar nada y que
+      // se lee como «no hay tareas» cuando en realidad es una combinación
+      // imposible.
+      if (this.empleadoSeleccionado) {
+        const emp = this.empleados().find(u => u.nombre === this.empleadoSeleccionado);
+        if (emp && !puedeSerAsignado(emp, [nombreSucursal])) {
+          this.empleadoSeleccionado = '';
+          this.textoBusquedaEmpleado = 'Todos los empleados';
+        }
+      }
     }
     this.mostrarDropdownSucursales = false;
   }

@@ -178,7 +178,7 @@
             </div>
 
             <!-- ===================== FILTRO POR EMPLEADO ===================== -->
-            <div class="audit-filter-field audit-filter-field--wide audit-autocomplete">
+            <div class="audit-filter-field audit-filter-field--wide audit-autocomplete audit-autocomplete--empleado">
               <label class="audit-filter-label" for="audit-empleado">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
                   <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
@@ -187,16 +187,24 @@
                 Empleado
               </label>
               <div class="audit-input-wrap">
+                <!-- autocomplete="off" + name sin sentido para el navegador: sin eso,
+                     Chrome abre SU propia lista con lo que ya se tecleó aquí antes, y
+                     encima de la nuestra se ven dos listas a la vez. `role="combobox"`
+                     además le dice al navegador y al lector de pantalla que esto es un
+                     desplegable propio, no un campo de texto suelto. -->
                 <input id="audit-empleado" type="text" class="audit-input" [(ngModel)]="textoBusquedaEmpleado"
                        (input)="onInputBusqueda()" (focus)="onFocusBusqueda()"
-                       placeholder="Todos los empleados">
+                       placeholder="Todos los empleados"
+                       autocomplete="off" name="audit-empleado-q" spellcheck="false"
+                       role="combobox" aria-autocomplete="list" aria-controls="audit-empleado-lista"
+                       [attr.aria-expanded]="mostrarDropdownEmpleados">
                 <svg class="audit-input-caret" width="16" height="16" viewBox="0 0 24 24" fill="none"
                      stroke="currentColor" stroke-width="2.5" aria-hidden="true">
                   <polyline points="6 9 12 15 18 9"></polyline>
                 </svg>
               </div>
 
-              <div class="audit-dropdown" *ngIf="mostrarDropdownEmpleados">
+              <div class="audit-dropdown" id="audit-empleado-lista" role="listbox" *ngIf="mostrarDropdownEmpleados">
                 <div class="audit-dropdown-item audit-dropdown-item--all" (click)="seleccionarEmpleado('')">
                   Todos los empleados
                 </div>
@@ -205,14 +213,22 @@
                   <div class="audit-dropdown-avatar">{{ emp.nombre.charAt(0) | uppercase }}</div>
                   <span>{{ emp.nombre }}</span>
                 </div>
+                <div class="audit-dropdown-nota" *ngIf="empleadosRecortadosPorSucursal">
+                  Solo el personal dado de alta en {{ sucursalSeleccionada }}
+                </div>
                 <div class="audit-dropdown-empty" *ngIf="empleadosFiltrados.length === 0">
-                  No se encontraron empleados.
+                  <ng-container *ngIf="empleadosRecortadosPorSucursal">
+                    Nadie está dado de alta en {{ sucursalSeleccionada }} con ese nombre.
+                  </ng-container>
+                  <ng-container *ngIf="!empleadosRecortadosPorSucursal">
+                    No se encontraron empleados.
+                  </ng-container>
                 </div>
               </div>
             </div>
 
             <!-- ===================== FILTRO POR SUCURSAL ===================== -->
-            <div class="audit-filter-field audit-filter-field--wide audit-autocomplete">
+            <div class="audit-filter-field audit-filter-field--wide audit-autocomplete audit-autocomplete--sucursal">
               <label class="audit-filter-label" for="audit-sucursal">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
                   <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"></path>
@@ -223,14 +239,17 @@
               <div class="audit-input-wrap">
                 <input id="audit-sucursal" type="text" class="audit-input" [(ngModel)]="textoBusquedaSucursal"
                        (input)="onInputBusquedaSucursal()" (focus)="onFocusBusquedaSucursal()"
-                       placeholder="Todas las sucursales">
+                       placeholder="Todas las sucursales"
+                       autocomplete="off" name="audit-sucursal-q" spellcheck="false"
+                       role="combobox" aria-autocomplete="list" aria-controls="audit-sucursal-lista"
+                       [attr.aria-expanded]="mostrarDropdownSucursales">
                 <svg class="audit-input-caret" width="16" height="16" viewBox="0 0 24 24" fill="none"
                      stroke="currentColor" stroke-width="2.5" aria-hidden="true">
                   <polyline points="6 9 12 15 18 9"></polyline>
                 </svg>
               </div>
 
-              <div class="audit-dropdown" *ngIf="mostrarDropdownSucursales">
+              <div class="audit-dropdown" id="audit-sucursal-lista" role="listbox" *ngIf="mostrarDropdownSucursales">
                 <div class="audit-dropdown-item audit-dropdown-item--all" (click)="seleccionarSucursal('')">
                   Todas las sucursales
                 </div>

@@ -154,17 +154,28 @@
       </section>
 
       <!-- ---------- Mapa real + rendimiento por área ---------- -->
-      <section class="mando-grid mando-grid-mapa">
+      <!-- ══ LO QUE NECESITA ATENCIÓN ══
+           Va primero a propósito: un tablero que abre con lo que va bien
+           esconde justo aquello por lo que se abre el tablero. Las alertas
+           y el rendimiento peor-primero mandan; los reconocimientos cierran. -->
+      <section class="mando-grid mando-grid-atencion">
         <div class="panel">
-          <div class="panel-header">
-            <h3>Mapa de operación</h3>
-            <span class="panel-hint">Ubicación real de cada sucursal</span>
+          <div class="panel-header panel-header-danger">
+            <h3>Alertas críticas</h3>
+            <span class="badge-counter">{{ alertasCriticas().length }}</span>
           </div>
-          <div class="panel-body">
-            <app-mapa-sucursales
-              [puntos]="puntosMapa()"
-              [pendientes]="sucursalesPendientesMapa()">
-            </app-mapa-sucursales>
+          <div class="panel-body panel-body-scroll">
+            <div *ngIf="alertasCriticas().length === 0" class="empty-msg">Sin alertas. Todo en orden.</div>
+            <div class="alert-item" *ngFor="let a of alertasCriticas()">
+              <div class="alert-dot"></div>
+              <div class="alert-content">
+                <div class="alert-title">{{ a.tarea }}</div>
+                <div class="alert-meta">
+                  <span>{{ a.empleado }} · {{ a.sucursal }}</span>
+                </div>
+                <div class="alert-time">Vencida desde las {{ a.limite }}</div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -244,8 +255,21 @@
         </div>
       </section>
 
-      <!-- ---------- Tendencia + reconocimientos ---------- -->
-      <section class="mando-grid mando-grid-tendencia">
+      <!-- ══ CONTEXTO ══  dónde y cómo viene la semana -->
+      <section class="mando-grid mando-grid-contexto">
+        <div class="panel">
+          <div class="panel-header">
+            <h3>Mapa de operación</h3>
+            <span class="panel-hint">Ubicación real de cada sucursal</span>
+          </div>
+          <div class="panel-body">
+            <app-mapa-sucursales
+              [puntos]="puntosMapa()"
+              [pendientes]="sucursalesPendientesMapa()">
+            </app-mapa-sucursales>
+          </div>
+        </div>
+
         <div class="panel">
           <div class="panel-header">
             <h3>Tendencia de la semana</h3>
@@ -258,6 +282,10 @@
           </div>
         </div>
 
+      </section>
+
+      <!-- ══ LO QUE VA BIEN ══  al final, que es donde toca -->
+      <section class="mando-grid mando-grid-tres">
         <div class="panel">
           <div class="panel-header">
             <h3>Reconocimientos del día</h3>
@@ -298,30 +326,6 @@
             </div>
           </div>
         </div>
-      </section>
-
-      <!-- ---------- Alertas + actividad + herramientas ---------- -->
-      <section class="mando-grid mando-grid-tres">
-        <div class="panel">
-          <div class="panel-header panel-header-danger">
-            <h3>Alertas críticas</h3>
-            <span class="badge-counter">{{ alertasCriticas().length }}</span>
-          </div>
-          <div class="panel-body panel-body-scroll">
-            <div *ngIf="alertasCriticas().length === 0" class="empty-msg">Sin alertas. Todo en orden.</div>
-            <div class="alert-item" *ngFor="let a of alertasCriticas()">
-              <div class="alert-dot"></div>
-              <div class="alert-content">
-                <div class="alert-title">{{ a.tarea }}</div>
-                <div class="alert-meta">
-                  <span>{{ a.empleado }} · {{ a.sucursal }}</span>
-                </div>
-                <div class="alert-time">Vencida desde las {{ a.limite }}</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
         <div class="panel">
           <div class="panel-header">
             <h3>Actividad reciente</h3>

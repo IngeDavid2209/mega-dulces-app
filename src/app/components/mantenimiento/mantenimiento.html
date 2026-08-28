@@ -1,0 +1,47 @@
+<div class="mnt-fondo">
+  <div class="mnt-tarjeta" role="status" aria-live="polite">
+
+    <img class="mnt-logo"
+         src="https://static.wixstatic.com/media/fd397e_0fd82a1ecec84a118ceeb603b493f25a~mv2.png"
+         alt="Mega Dulces">
+
+    <div class="mnt-icono" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+           stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>
+      </svg>
+    </div>
+
+    <h1 class="mnt-titulo">{{ titulo }}</h1>
+    <p class="mnt-mensaje">{{ mensaje }}</p>
+
+    <!-- Lo que la gente de verdad quiere saber: que no perdió nada. -->
+    <div class="mnt-tranquiliza">
+      <span aria-hidden="true">✓</span>
+      <div>
+        Tus tareas, tus fotos y tu historial siguen guardados. Cuando la app
+        vuelva, todo estará donde lo dejaste.
+      </div>
+    </div>
+
+    <div class="mnt-acciones">
+      <button type="button" class="mnt-btn mnt-btn-primario" (click)="reintentar()">
+        Volver a intentar
+      </button>
+      <button type="button" class="mnt-btn mnt-btn-secundario"
+              *ngIf="haySesion" (click)="cambiarDeCuenta()">
+        Cambiar de cuenta
+      </button>
+    </div>
+
+    <!-- Diagnóstico. Discreto, pero visible: es lo que permite corregir la lista
+         de exentos sin adivinar si el desarrollador se queda fuera. -->
+    <div class="mnt-pie">
+      <div class="mnt-identidad">
+        La app te ve como: <strong>{{ identidad }}</strong>
+      </div>
+      <div class="mnt-sello">{{ sello }}</div>
+    </div>
+
+  </div>
+</div>

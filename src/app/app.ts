@@ -11,13 +11,15 @@ import { filter } from 'rxjs/operators';
 import * as localforage from 'localforage';
 
 import { AsistenteChatComponent } from './shared/asistente-chat/asistente-chat';
+import { MantenimientoComponent } from './components/mantenimiento/mantenimiento';
 import { ApiService } from './shared/api.service';
 import { NotificacionesService } from './services/notificaciones';
+import { debeVerMantenimiento, MANTENIMIENTO_ACTIVO } from './shared/mantenimiento.util';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, CommonModule, AsistenteChatComponent],
+  imports: [RouterOutlet, CommonModule, AsistenteChatComponent, MantenimientoComponent],
   templateUrl: './app.html',
   styleUrls: ['./app.css']
 })
@@ -36,6 +38,18 @@ export class AppComponent implements OnInit {
 
   /** El asistente solo se muestra a administradores, en toda la app. */
   esAdmin = false;
+
+  /**
+   * 🚧 ¿Se pinta el aviso de mantenimiento en vez de la app?
+   *
+   * La compuerta vive AQUÍ, en la raíz, y no en un guard de ruta a propósito:
+   * hay rutas sin guard (`/calendario`, `/agenda`) y el `**` manda al login, así
+   * que un guard habría dejado huecos por donde entrar escribiendo la URL.
+   * Desde la raíz se cubren todas las rutas de una vez, sin excepción posible.
+   *
+   * El interruptor y la lista de exentos están en shared/mantenimiento.util.ts.
+   */
+  verMantenimiento = false;
 
   /** Lo que decide si se pinta: el interruptor de arriba Y que sea admin. */
   get mostrarAsistente(): boolean { return this.MOSTRAR_ASISTENTE && this.esAdmin; }
@@ -58,6 +72,39 @@ export class AppComponent implements OnInit {
     }
   }
 
+  /**
+   * Relee sesión + ruta y decide si toca el aviso de mantenimiento.
+   *
+   * Se llama al arrancar y en cada navegación, que es lo que cubre los tres
+   * momentos que importan: abrir la app con sesión vieja, entrar al login, y
+   * el instante justo después de iniciar sesión.
+   */
+  private actualizarMantenimiento() {
+    if (!MANTENIMIENTO_ACTIVO) { this.verMantenimiento = false; return; }
+    let user: any = null;
+    try {
+      const raw = localStorage.getItem('md_sesion_actual');
+      user = raw ? JSON.parse(raw) : null;
+    } catch { user = null; }
+
+    // Se miran las DOS urls: la del router y la de la barra de direcciones.
+    //
+    // Al arrancar, este método corre antes de que termine la primera
+    // navegación, y en ese momento `router.url` todavía dice '/'. Si solo se
+    // mirara esa, abrir la app directo en /login pintaba el aviso un instante
+    // antes de corregirse: un parpadeo justo en la pantalla por la que tiene
+    // que entrar quien va a levantar el mantenimiento.
+    const rutaRouter = this.router.url;
+    const rutaNavegador = (() => {
+      try { return window.location.pathname; } catch { return rutaRouter; }
+    })();
+
+    // Abierta si CUALQUIERA de las dos lo dice: durante una navegación las dos
+    // se desfasan por un momento y conviene errar del lado de no tapar.
+    this.verMantenimiento =
+      debeVerMantenimiento(user, rutaRouter) && debeVerMantenimiento(user, rutaNavegador);
+  }
+
   ngOnInit() {
     // 🛡️ ALMACENAMIENTO PERSISTENTE: pedimos al navegador que NO borre los datos
     // del sitio bajo presión de espacio. Sin esto, en móviles (sobre todo iOS)
@@ -70,9 +117,15 @@ export class AppComponent implements OnInit {
     // Mostrar/ocultar el asistente de voz según el rol, y re-evaluar en cada
     // navegación (cubre login, logout y cambios de pantalla).
     this.actualizarEsAdmin();
+    // 🚧 Compuerta de mantenimiento: se evalúa igual que el asistente, al
+    // arrancar y en cada navegación (cubre login, logout y cambio de pantalla).
+    this.actualizarMantenimiento();
     this.router.events
       .pipe(filter((e): e is NavigationEnd => e instanceof NavigationEnd))
-      .subscribe(() => this.actualizarEsAdmin());
+      .subscribe(() => {
+        this.actualizarEsAdmin();
+        this.actualizarMantenimiento();
+      });
 
     // 🔄 AUTO-ACTUALIZACIÓN DE LA PWA INSTALADA 🔄
     this.vigilarActualizaciones();

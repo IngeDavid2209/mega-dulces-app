@@ -1,0 +1,144 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   🚧 PANTALLA DE MANTENIMIENTO
+   Ocupa la ventana completa y no depende de ningún estilo global de la app:
+   tiene que verse bien aunque se muestre antes de que cargue cualquier otra
+   pantalla. Se ve en celulares de sucursal la mayor parte de las veces, así
+   que el tamaño de letra y el área de los botones están pensados para eso.
+   ═══════════════════════════════════════════════════════════════════════════ */
+:host { display: block; }
+
+.mnt-fondo {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 22px;
+  box-sizing: border-box;
+  background: linear-gradient(160deg, #0F172A 0%, #1E293B 100%);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  overflow-y: auto;
+  z-index: 9999;
+}
+
+.mnt-tarjeta {
+  width: 100%;
+  max-width: 440px;
+  background: #FFFFFF;
+  border-radius: 18px;
+  padding: 34px 28px 22px;
+  box-sizing: border-box;
+  text-align: center;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, .35);
+}
+
+.mnt-logo {
+  height: 42px;
+  width: auto;
+  object-fit: contain;
+  margin-bottom: 20px;
+}
+
+/* Ámbar de "obra en proceso", no rojo: esto no es un error, es una pausa
+   anunciada. El rojo haría pensar que algo se rompió. */
+.mnt-icono {
+  width: 62px;
+  height: 62px;
+  margin: 0 auto 18px;
+  border-radius: 50%;
+  background: #FEF3C7;
+  color: #B45309;
+  display: grid;
+  place-items: center;
+}
+.mnt-icono svg { width: 30px; height: 30px; }
+
+.mnt-titulo {
+  margin: 0 0 10px;
+  font-size: 22px;
+  font-weight: 800;
+  color: #0F172A;
+  letter-spacing: -0.2px;
+}
+
+.mnt-mensaje {
+  margin: 0 0 18px;
+  font-size: 14.5px;
+  line-height: 1.6;
+  color: #475569;
+}
+
+.mnt-tranquiliza {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  text-align: left;
+  padding: 12px 14px;
+  margin-bottom: 22px;
+  border-radius: 10px;
+  background: #F0FDF4;
+  border: 1px solid #A7F3D0;
+  color: #065F46;
+  font-size: 13px;
+  line-height: 1.55;
+}
+.mnt-tranquiliza > span {
+  flex: 0 0 auto;
+  font-weight: 900;
+  color: #047857;
+  line-height: 1.4;
+}
+
+.mnt-acciones {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-bottom: 22px;
+}
+
+.mnt-btn {
+  flex: 1 1 150px;
+  min-height: 44px;          /* área de toque cómoda en celular */
+  padding: 12px 18px;
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background .15s, border-color .15s;
+}
+
+.mnt-btn-primario {
+  background: #0F172A;
+  color: #FFFFFF;
+  border: 1px solid #0F172A;
+}
+.mnt-btn-primario:hover { background: #1E293B; }
+
+.mnt-btn-secundario {
+  background: #FFFFFF;
+  color: #475569;
+  border: 1px solid #CBD5E1;
+}
+.mnt-btn-secundario:hover { background: #F8FAFC; border-color: #94A3B8; }
+
+.mnt-pie {
+  padding-top: 16px;
+  border-top: 1px solid #F1F5F9;
+  display: grid;
+  gap: 4px;
+}
+.mnt-identidad {
+  font-size: 11.5px;
+  color: #94A3B8;
+  line-height: 1.5;
+  word-break: break-word;
+}
+.mnt-identidad strong { color: #64748B; font-weight: 700; }
+.mnt-sello { font-size: 10.5px; color: #CBD5E1; }
+
+@media (max-width: 420px) {
+  .mnt-tarjeta { padding: 26px 20px 18px; border-radius: 14px; }
+  .mnt-titulo { font-size: 20px; }
+  .mnt-btn { flex: 1 1 100%; }
+}

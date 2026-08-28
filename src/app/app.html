@@ -1,6 +1,15 @@
-<router-outlet></router-outlet>
+<!-- 🚧 MODO MANTENIMIENTO
+     Mientras el interruptor de shared/mantenimiento.util.ts esté prendido, todo
+     el que no esté en la lista de exentos ve el aviso en lugar de la app. La
+     compuerta está aquí, en la raíz, para que no quede ninguna ruta por la que
+     entrar escribiendo la URL a mano: el router-outlet simplemente no se pinta.
+     El login sigue abierto (lo decide rutaAbiertaEnMantenimiento) porque es el
+     único camino para que la cuenta exenta se identifique. -->
+<app-mantenimiento *ngIf="verMantenimiento"></app-mantenimiento>
+
+<router-outlet *ngIf="!verMantenimiento"></router-outlet>
 
 <!-- Asistente (chat con tool-use): disponible en toda la app, solo para
      administradores. Hoy ESCONDIDO por el interruptor MOSTRAR_ASISTENTE de
      app.ts (ver el comentario de alla para volver a prenderlo). -->
-<app-asistente-chat *ngIf="mostrarAsistente"></app-asistente-chat>
+<app-asistente-chat *ngIf="mostrarAsistente && !verMantenimiento"></app-asistente-chat>

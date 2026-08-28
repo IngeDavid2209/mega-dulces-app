@@ -6,6 +6,7 @@ import { Auth, signInWithEmailAndPassword } from '@angular/fire/auth';
 import Swal from 'sweetalert2';
 import { APP_BUILD_SELLO } from '../../shared/version';
 import { NotificacionesService } from '../../services/notificaciones';
+import { MANTENIMIENTO_ACTIVO, MANTENIMIENTO_TITULO } from '../../shared/mantenimiento.util';
 
 @Component({
   selector: 'app-login',
@@ -21,6 +22,17 @@ export class LoginComponent {
 
   /** Sello de versión del build (fecha + hora). Se muestra al pie del login. */
   readonly buildSello = APP_BUILD_SELLO;
+
+  /**
+   * 🚧 Aviso de mantenimiento en el propio login.
+   *
+   * El login queda abierto durante el mantenimiento porque es el único camino
+   * para que entre la cuenta que sí puede trabajar. Pero dejarlo sin aviso hace
+   * que la gente teclee su contraseña para topar con el cartel un segundo
+   * después. Se les dice antes.
+   */
+  readonly enMantenimiento = MANTENIMIENTO_ACTIVO;
+  readonly tituloMantenimiento = MANTENIMIENTO_TITULO;
 
   private auth = inject(Auth);
   private router = inject(Router);

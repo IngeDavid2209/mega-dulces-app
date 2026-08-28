@@ -193,3 +193,34 @@
 .footer-link:hover {
   color: var(--primary-navy);
 }
+/* ═══════════════════════════════════════════════════════════════════════════
+   🚧 AVISO DE MANTENIMIENTO EN EL LOGIN
+   Va entre el subtítulo del portal y la tarjeta de acceso: se lee antes de
+   llegar a los campos, que es justo el punto. El formulario NO se deshabilita
+   porque la cuenta exenta entra por aquí.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.login-mantenimiento {
+  width: 100%;
+  max-width: 380px;
+  margin: 0 auto 16px;
+  padding: 13px 16px;
+  box-sizing: border-box;
+  border-radius: 10px;
+  background: rgba(254, 243, 199, 0.96);
+  border: 1px solid #FCD34D;
+  text-align: left;
+}
+
+.lm-titulo {
+  font-size: 13px;
+  font-weight: 800;
+  color: #78350F;
+  letter-spacing: 0.2px;
+  margin-bottom: 5px;
+}
+
+.lm-texto {
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: #92400E;
+}

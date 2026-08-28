@@ -21,6 +21,18 @@
 
     <div class="portal-subtitle">PORTAL DE ACCESO</div>
 
+    <!-- 🚧 Aviso de mantenimiento. Se pinta solo mientras el interruptor de
+         shared/mantenimiento.util.ts esté prendido. El formulario sigue activo
+         a propósito: la cuenta exenta tiene que poder entrar por aquí. -->
+    <div class="login-mantenimiento" *ngIf="enMantenimiento">
+      <div class="lm-titulo">🚧 {{ tituloMantenimiento }}</div>
+      <div class="lm-texto">
+        Estamos actualizando el apartado de Tareas. Por ahora el acceso está
+        limitado al equipo de sistemas; vuelve más tarde. Tus tareas y tu
+        historial están a salvo.
+      </div>
+    </div>
+
     <div class="login-card">
       <form (ngSubmit)="ingresar()">
 

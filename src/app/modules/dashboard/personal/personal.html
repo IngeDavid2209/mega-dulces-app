@@ -109,6 +109,26 @@
                       <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
                     </svg> Migrar cargos Prevención
                   </button>
+                  <!-- 🎯 Quién está recibiendo sus tareas de manual y quién no.
+                       Es el tablero que hay que dejar en cero tras el cambio. -->
+                  <button (click)="cerrarAccionesMenu(); revisarCoberturaPuestos()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M9 11l3 3L22 4"></path>
+                      <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"></path>
+                    </svg> Cobertura de puestos
+                  </button>
+                  <!-- 📋 Cruce con la Lista de Raya. Muestra el resultado antes de
+                       escribir: el puesto decide qué tareas del manual recibe cada
+                       quien, y un amarre equivocado se lo cambia a la persona
+                       equivocada. Es de un solo uso. -->
+                  <button (click)="cerrarAccionesMenu(); abrirImportarNomina()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"></path>
+                      <polyline points="14 2 14 8 20 8"></polyline>
+                      <line x1="8" y1="13" x2="16" y2="13"></line>
+                      <line x1="8" y1="17" x2="13" y2="17"></line>
+                    </svg> Asignar puestos desde nómina
+                  </button>
                 </ng-container>
               </div>
             </div>
@@ -326,7 +346,7 @@
                   <div class="uc-perms"
                     *ngIf="user.puedeCrearChecklists || user.puedeCrearRutinas || user.puedeCrearTareasUnicas || user.puedeVerCheckstore || user.puedeVerEstadisticas || user.puedeVerHistorial || user.puedeAdministrarPersonal || user.puedeVerCalendario">
                     <span class="uc-perm" *ngIf="user.puedeCrearChecklists">Gestión Checklists</span>
-                    <span class="uc-perm" *ngIf="user.puedeCrearRutinas">Gestión Rutinas</span>
+                    <span class="uc-perm" *ngIf="user.puedeCrearRutinas">Manual por Puesto</span>
                     <span class="uc-perm" *ngIf="user.puedeCrearTareasUnicas">Tareas Únicas</span>
                     <span class="uc-perm" *ngIf="user.puedeVerCheckstore">Acceso Checkstore</span>
                     <span class="uc-perm" *ngIf="user.puedeVerEstadisticas">Reportes</span>
@@ -370,49 +390,44 @@
               <input class="form-input" type="text" [(ngModel)]="formNombre" placeholder="Ej: Ivette Cruz Oceguera">
             </div>
             <div class="form-row">
+              <!-- 🎯 PUESTO DEL ORGANIGRAMA 2026
+                   Antes esto era una lista suelta de cargos que ya no coincidía
+                   con el organigrama. Ahora sale del catálogo, y es el campo que
+                   decide qué tareas de manual recibe la persona: un puesto en
+                   blanco significa que no recibe ninguna. -->
               <div class="form-group">
-                <label class="form-label">Cargo / Puesto</label>
-                <select class="form-input select-input" [(ngModel)]="formCargo">
-                  <optgroup label="ZONA COMERCIAL">
-                    <option value="Trabajador General">Trabajador General</option>
-                    <option value="Jefe de zona">Jefe de zona</option>
-                    <option value="Encargado(a) de tienda">Encargado(a) de tienda</option>
-                    <option value="Auxiliar de encargado">Auxiliar de encargado</option>
-                    <option value="Encargada de operaciones y almacén">Encargada de operaciones y almacén</option>
-                    <option value="Auxiliar de cajas">Auxiliar de cajas</option>
-                  </optgroup>
-                  <optgroup label="ZONA ADMINISTRATIVA">
-                    <option value="Director General">Director General</option>
-                    <option value="Administrador Megadulces">Administrador Megadulces</option>
-                    <option value="Jefe Regional">Jefe Regional</option>
-                    <option value="Auxiliar Administrativo">Auxiliar Administrativo</option>
-                    <option value="Caja General">Caja General</option>
-                    <option value="Auxiliar Caja General">Auxiliar Caja General</option>
-                    <option value="Jefatura Finanzas">Jefatura Finanzas</option>
-                    <option value="Auxiliar Finanzas">Auxiliar Finanzas</option>
-                    <option value="Coordinador de Prevención">Coordinador de Prevención</option>
-                    <option value="Auxiliar de Prevención">Auxiliar de Prevención</option>
-                    <option value="Jefatura Tesorería">Jefatura Tesorería</option>
-                    <option value="Encargado de Activos e Insumos">Encargado de Activos e Insumos</option>
-                    <option value="Jefatura RRHH">Jefatura RRHH</option>
-                    <option value="Auxiliar RRHH">Auxiliar RRHH</option>
-                    <option value="Sistemas">Sistemas</option>
-                    <option value="Jefatura Sistemas">Jefatura Sistemas</option>
-                    <option value="Coordinador MKT">Coordinador MKT</option>
-                    <option value="Jefatura MKT">Jefatura MKT</option>
-                    <option value="Auxiliar de mercadotecnia">Auxiliar de mercadotecnia</option>
-                    <option value="Coordinación de Branding y Ecommerce">Coordinación de Branding y Ecommerce</option>
-                    <option value="Diseñadora Practicante">Diseñadora Practicante</option>
-                    <option value="Productora de Contenido Multimedia">Productora de Contenido Multimedia</option>
-                    <option value="Jefatura Compras">Jefatura Compras</option>
-                    <option value="Auxiliar Compras">Auxiliar Compras</option>
-                    <option value="Jefe Mantenimiento">Jefe Mantenimiento</option>
-                    <option value="Intendencia">Intendencia</option>
-                    <option value="Coordinador Contabilidad">Coordinador Contabilidad</option>
-                    <option value="Auxiliar de Contabilidad">Auxiliar de Contabilidad</option>
-                    <option value="Practicante">Practicante</option>
+                <label class="form-label">Puesto (Organigrama 2026)</label>
+                <select class="form-input select-input" [(ngModel)]="formPuestoId" (ngModelChange)="alCambiarPuesto()">
+                  <option value="">— Sin puesto asignado —</option>
+                  <optgroup *ngFor="let g of gruposPuestos" [label]="g.etiqueta">
+                    <option *ngFor="let p of g.puestos" [value]="p.id">{{ p.nombre }}</option>
                   </optgroup>
                 </select>
+
+                <!-- Qué le va a llegar con el puesto elegido. Se muestra aquí para
+                     que la consecuencia de la captura sea visible al capturarla. -->
+                <div class="puesto-manual-info" *ngIf="formPuestoId && manualDelPuestoForm()">
+                  <span class="pmi-badge">📕 MANUAL</span>
+                  <div class="pmi-texto">
+                    <strong>{{ manualDelPuestoForm()?.documento }}</strong>
+                    <span *ngIf="manualDelPuestoForm()?.codigo"> · {{ manualDelPuestoForm()?.codigo }}</span>
+                    <br>
+                    Recibirá <strong>{{ tareasDelPuestoForm() }}</strong> tarea(s) automática(s) que no se pueden editar.
+                  </div>
+                </div>
+                <div class="puesto-manual-info pmi-vacio" *ngIf="formPuestoId && !manualDelPuestoForm()">
+                  <span class="pmi-badge pmi-badge-gris">SIN MANUAL</span>
+                  <div class="pmi-texto">
+                    Este puesto aún no tiene Manual Corporativo levantado, así que no
+                    recibirá tareas automáticas. Se le pueden asignar tareas normales.
+                  </div>
+                </div>
+                <div class="puesto-manual-info pmi-alerta" *ngIf="!formPuestoId">
+                  <span class="pmi-badge pmi-badge-rojo">ATENCIÓN</span>
+                  <div class="pmi-texto">
+                    Sin puesto no recibe ninguna tarea de manual. Elige su puesto del organigrama.
+                  </div>
+                </div>
               </div>
               <div class="form-group">
                 <label class="form-label">Nivel de Acceso</label>
@@ -568,8 +583,12 @@
                       class="slider"></span></div>
                 </label>
                 <label class="premium-perm-item">
-                  <div class="perm-text"><strong>Configuración de Rutinas</strong><span>Habilita la programación de
-                      tareas automáticas.</span></div>
+                  <!-- El permiso sigue llamandose puedeCrearRutinas en la base
+                       (hay miles de fichas guardadas con ese nombre), pero ya no
+                       habilita configurar nada: abre la consulta del Manual por
+                       Puesto. La etiqueta dice lo que de verdad hace. -->
+                  <div class="perm-text"><strong>Ver Manual por Puesto</strong><span>Consultar qué tareas
+                      del Manual Corporativo recibe cada puesto.</span></div>
                   <div class="perm-switch"><input type="checkbox" [(ngModel)]="formPuedeCrearRutinas"><span
                       class="slider"></span></div>
                 </label>
@@ -734,3 +753,12 @@
     </div>
   </div>
 </div>
+
+<!-- 📋 Vista previa del cruce con la nómina. No escribe nada: emite la lista
+     aprobada y personal.ts hace el guardado con su dual-write de siempre. -->
+<app-importar-nomina
+  *ngIf="mostrarImportarNomina"
+  [usuarios]="usuarios()"
+  (aplicar)="aplicarCambiosNomina($event)"
+  (cerrar)="mostrarImportarNomina = false">
+</app-importar-nomina>

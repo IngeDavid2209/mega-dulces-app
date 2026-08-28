@@ -1,0 +1,266 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   🏛️ VISTA POR ORGANIGRAMA — "Tareas del Manual"
+   Dos columnas: el menú de la estructura a la izquierda, el puesto abierto a la
+   derecha. En celular se apilan y el menú se queda arriba.
+   ═══════════════════════════════════════════════════════════════════════════ */
+:host { display: block; }
+
+.org {
+  background: #fff;
+  border: 1px solid #E2E8F0;
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 18px;
+}
+
+.org-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 15px 18px;
+  border-bottom: 1px solid #F1F5F9;
+  background: #FCFCFD;
+}
+.org-titulo { margin: 0 0 3px; font-size: 15px; font-weight: 800; color: #0F172A; }
+.org-sub { font-size: 12.5px; color: #64748B; }
+.org-check {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-size: 12.5px; font-weight: 600; color: #475569;
+  cursor: pointer; user-select: none;
+}
+
+.org-cuerpo { display: grid; grid-template-columns: 292px 1fr; min-height: 340px; }
+
+/* ── Menú ────────────────────────────────────────────────────────────────── */
+.org-menu {
+  border-right: 1px solid #F1F5F9;
+  padding: 10px;
+  max-height: 620px;
+  overflow-y: auto;
+  background: #FCFCFD;
+}
+.org-unidad { margin-bottom: 3px; }
+
+.org-unidad-cab {
+  width: 100%;
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 9px;
+  background: transparent; border: none; cursor: pointer;
+  text-align: left; font-family: inherit;
+  border-radius: 7px;
+}
+.org-unidad-cab:hover { background: #F1F5F9; }
+.org-unidad-nombre {
+  flex: 1; min-width: 0;
+  font-size: 10.5px; font-weight: 800; letter-spacing: .5px;
+  color: #475569; text-transform: uppercase;
+}
+.org-unidad-badge {
+  flex: 0 0 auto;
+  background: #1E3A8A; color: #fff;
+  font-size: 10px; font-weight: 800;
+  border-radius: 999px; padding: 1px 7px; min-width: 18px; text-align: center;
+}
+.org-chevron {
+  flex: 0 0 auto; font-size: 16px; color: #94A3B8; line-height: 1;
+  transition: transform .15s ease;
+}
+.org-chevron.girado { transform: rotate(90deg); }
+
+.org-puestos { padding: 2px 0 6px 14px; display: grid; gap: 2px; }
+
+.org-puesto {
+  width: 100%;
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 9px;
+  background: transparent; border: none; cursor: pointer;
+  text-align: left; font-family: inherit;
+  border-radius: 7px;
+  border-left: 2px solid #E2E8F0;
+}
+.org-puesto:hover { background: #F1F5F9; }
+.org-puesto.activo {
+  background: #0F172A; border-left-color: #FCD34D;
+}
+.org-puesto.activo .org-puesto-nombre { color: #fff; }
+/* Un puesto sin manual se ve apagado, no roto: es un documento pendiente. */
+.org-puesto.sin-manual .org-puesto-nombre { color: #94A3B8; font-weight: 500; }
+
+.org-puesto-nombre {
+  flex: 1; min-width: 0;
+  font-size: 12.5px; font-weight: 600; color: #1E293B;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.org-puesto-datos { flex: 0 0 auto; display: flex; align-items: center; gap: 5px; }
+
+.org-pill {
+  font-size: 10px; font-weight: 800;
+  border-radius: 4px; padding: 1px 6px; min-width: 18px; text-align: center;
+}
+.org-pill-manual { background: #FEF3C7; color: #92400E; }
+.org-pill-nada   { background: #F1F5F9; color: #CBD5E1; }
+
+.org-avance {
+  font-size: 11px; font-weight: 800;
+  border-radius: 4px; padding: 1px 6px;
+}
+.org-avance.grande { font-size: 14px; padding: 2px 9px; }
+/* Verde cumplido, ámbar en curso, rojo en cero: el color es el dato. */
+.av-bien  { background: #DCFCE7; color: #166534; }
+.av-medio { background: #FEF3C7; color: #92400E; }
+.av-cero  { background: #FEE2E2; color: #991B1B; }
+.av-nada  { background: #F1F5F9; color: #94A3B8; }
+
+.org-vencidas {
+  font-size: 10px; font-weight: 800;
+  background: #DC2626; color: #fff;
+  border-radius: 999px; padding: 1px 6px; min-width: 17px; text-align: center;
+}
+
+.org-menu-vacio { padding: 18px 10px; font-size: 12.5px; color: #94A3B8; text-align: center; }
+
+/* ── Detalle ─────────────────────────────────────────────────────────────── */
+.org-detalle { padding: 16px 18px; max-height: 620px; overflow-y: auto; }
+
+.org-invita { text-align: center; padding: 54px 20px; color: #64748B; }
+.org-invita-icono { font-size: 34px; margin-bottom: 10px; }
+.org-invita h4 { margin: 0 0 6px; font-size: 15px; color: #0F172A; font-weight: 700; }
+.org-invita p { margin: 0 auto; font-size: 13px; line-height: 1.55; max-width: 46ch; }
+
+.org-det-head { display: flex; align-items: flex-start; gap: 11px; margin-bottom: 16px; }
+.org-volver {
+  flex: 0 0 auto;
+  width: 28px; height: 28px; border-radius: 7px;
+  border: 1px solid #E2E8F0; background: #fff; color: #475569;
+  cursor: pointer; font-size: 15px; line-height: 1;
+}
+.org-volver:hover { background: #F8FAFC; }
+.org-det-titulo { margin: 0 0 3px; font-size: 16px; font-weight: 800; color: #0F172A; }
+.org-det-manual { font-size: 12px; color: #64748B; line-height: 1.5; }
+.org-det-sinmanual { color: #B45309; }
+
+.org-bloque { margin-bottom: 22px; }
+.org-bloque-titulo {
+  font-size: 10.5px; font-weight: 800; letter-spacing: .6px;
+  color: #64748B; text-transform: uppercase; margin-bottom: 9px;
+}
+.org-bloque-nota { font-weight: 600; letter-spacing: 0; text-transform: none; color: #94A3B8; }
+.org-nada { font-size: 12.5px; color: #94A3B8; margin: 0; }
+
+/* Tarea del manual */
+.org-tarea {
+  padding: 12px 14px; margin-bottom: 9px;
+  border-radius: 9px; background: #FFFDF7; border: 1px solid #FDE68A;
+}
+.org-tarea-cab { display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap; margin-bottom: 7px; }
+.org-tarea-nombre { font-size: 13.5px; font-weight: 800; color: #0F172A; }
+.org-tarea-codigo {
+  font-size: 10px; font-weight: 800; color: #92400E;
+  background: #FEF3C7; border: 1px solid #FCD34D;
+  border-radius: 4px; padding: 1px 6px; white-space: nowrap;
+}
+.org-tarea-meta { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+.org-meta {
+  font-size: 10.5px; font-weight: 700; color: #475569;
+  background: #fff; border: 1px solid #E2E8F0;
+  border-radius: 999px; padding: 1px 8px; white-space: nowrap;
+}
+.org-meta-evento { background: #EFF6FF; border-color: #BFDBFE; color: #1D4ED8; }
+.org-meta-solo   { background: #F1F5F9; border-color: #CBD5E1; color: #64748B; }
+.org-tarea-nota {
+  margin: 0 0 8px; font-size: 11.5px; line-height: 1.5; color: #78350F;
+  background: #FEF3C7; border-left: 3px solid #FCD34D;
+  border-radius: 0 5px 5px 0; padding: 7px 10px;
+}
+.org-items { margin: 0; padding-left: 20px; display: grid; gap: 3px; }
+.org-items li { font-size: 12.5px; color: #1E293B; line-height: 1.45; }
+.org-item-bloque {
+  display: inline-block; margin-right: 6px; padding: 0 6px;
+  border-radius: 3px; background: #E2E8F0; color: #475569;
+  font-size: 9.5px; font-weight: 800; text-transform: uppercase; vertical-align: 1px;
+}
+
+/* Sucursal */
+.org-suc {
+  padding: 11px 13px; margin-bottom: 10px;
+  border-radius: 9px; border: 1px solid #E2E8F0; background: #FCFCFD;
+}
+.org-suc-cab { display: flex; align-items: center; gap: 9px; margin-bottom: 7px; }
+.org-suc-nombre { flex: 1; min-width: 0; font-size: 13px; font-weight: 800; color: #0F172A; }
+.org-suc-personas { font-size: 11.5px; color: #64748B; white-space: nowrap; }
+.org-suc-barra {
+  height: 5px; border-radius: 999px; background: #E2E8F0;
+  overflow: hidden; margin-bottom: 10px;
+}
+.org-suc-barra > span { display: block; height: 100%; border-radius: 999px; }
+.org-suc-barra > span.av-bien  { background: #16A34A; }
+.org-suc-barra > span.av-medio { background: #F59E0B; }
+.org-suc-barra > span.av-cero  { background: #DC2626; }
+.org-suc-barra > span.av-nada  { background: #CBD5E1; }
+
+/* Persona */
+.org-persona { padding: 7px 0; border-top: 1px solid #F1F5F9; }
+.org-persona:first-of-type { border-top: none; }
+.org-persona-cab { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
+.org-avatar {
+  flex: 0 0 auto;
+  width: 24px; height: 24px; border-radius: 50%;
+  background: #DBEAFE; color: #1E40AF;
+  font-size: 10px; font-weight: 800;
+  display: grid; place-items: center;
+}
+.org-persona-nombre { flex: 1; min-width: 0; font-size: 12.5px; font-weight: 700; color: #1E293B; }
+.org-persona-frac { font-size: 11.5px; font-weight: 700; color: #64748B; white-space: nowrap; }
+
+.org-entrega {
+  width: 100%;
+  display: flex; align-items: center; gap: 9px;
+  padding: 7px 10px; margin: 3px 0 0 32px;
+  width: calc(100% - 32px);
+  border-radius: 7px; border: 1px solid #E2E8F0; background: #fff;
+  cursor: pointer; text-align: left; font-family: inherit;
+}
+.org-entrega:hover { background: #F8FAFC; border-color: #CBD5E1; }
+.org-entrega.vencida { border-color: #FECACA; background: #FEF2F2; }
+.org-entrega.completa { border-color: #A7F3D0; background: #F0FDF4; }
+.org-entrega-nombre {
+  flex: 1; min-width: 0; font-size: 12.5px; color: #1E293B; font-weight: 600;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.org-entrega-datos { flex: 0 0 auto; display: flex; align-items: center; gap: 8px; }
+.org-entrega-hora { font-size: 11px; color: #94A3B8; }
+.org-entrega-frac { font-size: 11.5px; font-weight: 800; color: #475569; }
+.org-entrega-estado {
+  font-size: 9.5px; font-weight: 800; text-transform: uppercase;
+  background: #FEE2E2; color: #991B1B;
+  border-radius: 3px; padding: 1px 5px;
+}
+.org-entrega-estado.ok { background: #DCFCE7; color: #166534; }
+
+/* Los que no recibieron nada */
+.org-sinentrega {
+  margin-top: 14px; padding: 12px 14px;
+  border-radius: 9px; background: #F8FAFC; border: 1px dashed #CBD5E1;
+}
+.org-sinentrega-titulo { font-size: 12px; font-weight: 800; color: #475569; margin-bottom: 4px; }
+.org-sinentrega-por-que { margin: 0 0 8px; font-size: 11.5px; color: #64748B; line-height: 1.5; }
+.org-sinentrega-lista { display: flex; gap: 6px; flex-wrap: wrap; }
+.org-chip {
+  font-size: 11.5px; font-weight: 600; color: #475569;
+  background: #fff; border: 1px solid #E2E8F0;
+  border-radius: 999px; padding: 3px 10px;
+}
+.org-chip small { color: #94A3B8; font-weight: 500; margin-left: 5px; }
+
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+@media (max-width: 860px) {
+  .org-cuerpo { grid-template-columns: 1fr; }
+  .org-menu {
+    border-right: none; border-bottom: 1px solid #F1F5F9;
+    max-height: 280px;
+  }
+  .org-detalle { max-height: none; }
+  .org-entrega { margin-left: 0; width: 100%; }
+}

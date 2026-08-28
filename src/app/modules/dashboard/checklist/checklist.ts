@@ -11,11 +11,12 @@ import { nivelDeCargo } from '../../../shared/nivel-jerarquico.util';
 import { TareaEquipo, FaseEquipo, ItemEquipo, SubtareaEquipo } from '../../../shared/tareas-equipo.types';
 import { esItemHecho, tieneEvidencia } from '../../../shared/item-completado.util';
 import { obtenerSemanaISO, obtenerNombreDia } from '../../../shared/descansos.util';
-import { RobotRutinasV2Service } from '../../../shared/robot-rutinas-v2.service';
+import { RobotManualService } from '../../../shared/robot-manual.service';
+import { resolverPuesto } from '../../../shared/puesto.util';
+import { nombrePuesto } from '../../../shared/organigrama.catalogo';
+import { tareasAutomaticasDePuesto } from '../../../shared/tareas-manual.catalogo';
 import { NotificacionesService } from '../../../services/notificaciones';
 import { ApiService } from '../../../shared/api.service';
-import { RutinaMaestra } from '../../../shared/rutinas.types';
-import { AsignacionRutina } from '../../../shared/asignaciones.types';
 import { comprimirImagenSiAplica } from '../../../shared/imagen.util';
 import { ConfigTurnos, EvaluacionTurno, evaluarAsignacion, etiquetaTurno } from '../../../shared/turnos.util';
 import { resolverAsignadoTarea, mapaNombreAUid } from '../../../shared/reasignacion-turnos.util';
@@ -26,11 +27,12 @@ import { avisoDeFalla, AvisoDatos } from '../../../shared/aviso-datos.util';
 
 import { SidebarComponent } from '../../../shared/sidebar/sidebar';
 import { PanelResponsablesComponent } from './panel-responsables';
+import { VistaOrganigramaComponent } from './vista-organigrama';
 
 @Component({
   selector: 'app-checklist',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, SidebarComponent, PanelResponsablesComponent],
+  imports: [CommonModule, FormsModule, RouterModule, SidebarComponent, PanelResponsablesComponent, VistaOrganigramaComponent],
   templateUrl: './checklist.html',
   styleUrls: ['./checklist.css']
 })
@@ -142,6 +144,26 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   checklistToDelete: any = null;
 
   checklists = signal<any[]>([]);
+
+  /**
+   * 📕 MODO DE LA PANTALLA
+   *
+   * El mismo componente sirve dos apartados del menú, y la única diferencia es
+   * qué mitad de la lista muestra:
+   *
+   *   /tareas-manual  → modoManual = true   solo las tareas del Manual
+   *                     Corporativo (las que entrega el robot y nadie edita).
+   *   /checklist      → modoManual = false  todo lo demás: lo que se asigna a
+   *                     mano, tareas únicas, de equipo, del día.
+   *
+   * Se resuelve con un componente y no con dos porque toda la maquinaria de
+   * cumplir una tarea —evidencia, fotos antes/después, comentarios, envío,
+   * retrasos, offline— vive aquí. Duplicarla para la mitad de la lista sería
+   * mantener dos veces lo más delicado de la app.
+   *
+   * El valor viene de `data.modoManual` en app.routes.ts.
+   */
+  modoManual = false;
   // 📡 true cuando el último poll a la nube falló: la vista sigue mostrando la
   // última lista buena (cache) y enseña un aviso, en vez de una lista vacía que
   // parezca "se borraron las tareas".
@@ -196,6 +218,23 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   ];
 
   // ===== Tareas de Equipo (proyectos colaborativos en fases) =====
+  /**
+   * 🧹 INTERRUPTOR DE "TAREAS EN EQUIPO" (proyectos por fases)
+   *
+   * APAGADO a pedido de David el 2026-08-28, junto con la limpieza del menú.
+   *
+   * PARA VOLVER A PRENDERLO: poner esto en true y desplegar (`railway up`).
+   * Nada se borró: la tabla `mdtask_tareas_equipo`, su endpoint, los tipos y
+   * TODA la lógica de fases, items, subtareas y cierre siguen completos. Lo
+   * único que se apaga es la interfaz y el poll que la alimentaba.
+   *
+   * Mismo criterio que MOSTRAR_ASISTENTE en app.ts: un apartado que se retira
+   * pero se quiere poder recuperar sin reconstruirlo.
+   */
+  private readonly MOSTRAR_TAREAS_EQUIPO = false;
+  /** Lo que consultan las plantillas para saber si pintar algo de equipo. */
+  get mostrarTareasEquipo(): boolean { return this.MOSTRAR_TAREAS_EQUIPO; }
+
   tareasEquipo = signal<TareaEquipo[]>([]);
   tareaEquipoSeleccionada = signal<TareaEquipo | null>(null);
   vistaEquipo = signal<'lista' | 'detalle'>('lista');
@@ -305,7 +344,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
 
   private firestore = inject(Firestore);
   private route = inject(ActivatedRoute);
-  private robotV2 = inject(RobotRutinasV2Service);
+  private robotManual = inject(RobotManualService);
   private usuariosSvc = inject(UsuariosService);
   private noti = inject(NotificacionesService);
   private api = inject(ApiService);
@@ -337,14 +376,24 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     if (raw && raw.length > 0) this.procesarUsuariosCompartidos(raw);
   });
 
-  // 🤖 Robot V2 (Fase 4): cache local del catálogo y las asignaciones.
-  // Cuando cualquiera de los dos cambia (o cuando cargamos por primera vez),
-  // se dispara `correrRobotV2()` para generar checklists del día desde el
-  // nuevo modelo (catálogo + asignaciones). Convive con el V1 (moldes).
-  private catalogoV2: RutinaMaestra[] = [];
-  private asignacionesV2: AsignacionRutina[] = [];
-  private usuariosV2: any[] = [];
-  private robotV2Corriendo = false;
+  // 🤖 Robot de Manual: la plantilla completa, que es lo único que necesita
+  // para saber qué le toca a cada quien (puesto → tareas de su manual).
+  // Antes aquí vivían además el catálogo y las asignaciones de rutinas; ese
+  // modelo se retiró: ya no hay nada que capturar.
+  private plantillaUsuarios: any[] = [];
+  private robotManualCorriendo = false;
+  /**
+   * Cuándo terminó la última corrida del robot.
+   *
+   * Hace falta porque la plantilla se refresca cada 30 segundos y cada refresco
+   * dispara el robot; sin este freno serían dos peticiones por minuto y por
+   * cliente abierto para descubrir, casi siempre, que ya no hay nada que
+   * entregar. Con esto la primera corrida es inmediata y las siguientes solo
+   * cada tantos minutos, que es de sobra: lo que puede cambiar a media jornada
+   * es un descanso o un turno, no la lista de tareas del manual.
+   */
+  private robotManualUltimaCorrida = 0;
+  private readonly ROBOT_MANUAL_ESPERA_MS = 5 * 60 * 1000;
 
   private sucursalesAdministrativas = [
     'ADMINISTRADORES DEL SISTEMA',
@@ -819,6 +868,35 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     return this._cacheChecklistsOrdenados;
   }
 
+  /**
+   * 🏛️ Cómo se agrupa el apartado del Manual: por persona (lo de siempre) o por
+   * el organigrama (unidad → puesto → sucursal).
+   *
+   * Conviven a propósito, no se reemplazan: la vista por persona es la que ya se
+   * usa todos los días, y la del organigrama contesta otra pregunta —cómo va el
+   * mismo puesto entre sucursales—. Cada jefe usa la que le sirve.
+   *
+   * Solo aplica en /tareas-manual: agrupar por organigrama las tareas libres no
+   * significaría nada, porque esas no salen de un puesto.
+   */
+  agrupacion = signal<'persona' | 'organigrama'>('persona');
+  get verPorOrganigrama(): boolean {
+    return this.modoManual && this.agrupacion() === 'organigrama';
+  }
+
+  /**
+   * La plantilla que recibe la vista del organigrama.
+   *
+   * Le hace falta para dos cosas: resolver el puesto de cada checklist viejo que
+   * no trae `_puestoId`, y —la que de verdad importa— saber quién OCUPA un
+   * puesto aunque hoy no haya recibido nada. Sin eso, alguien que se quedó sin
+   * su checklist simplemente no aparecería, y no aparecer se lee como que va
+   * bien.
+   */
+  get plantillaParaOrganigrama(): any[] {
+    return this.plantillaUsuarios;
+  }
+
   /** Vista agrupada por persona (solo para admin/supervisor con varias personas). */
   agruparPorPersona = signal<boolean>(true);
   /** Nombres (en minusculas) de los grupos colapsados. */
@@ -872,10 +950,21 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   private _cacheFiltradosHuella = '';
   private _cacheFiltrados: any[] = [];
   get checklistsFiltrados() {
-    const huella = `${this.checklists().length}-${this.vistaTareas}-${this.terminoBusquedaChecklist}-${this.currentUser?.nombre || ''}`;
+    const huella = `${this.checklists().length}-${this.vistaTareas}-${this.terminoBusquedaChecklist}-${this.currentUser?.nombre || ''}-${this.modoManual}`;
     if (huella === this._cacheFiltradosHuella) return this._cacheFiltrados;
     this._cacheFiltradosHuella = huella;
     let lista = this.checklists();
+
+    // 📕 Separación manual / libre. Este es el único punto donde hay que
+    // filtrar: las tres vistas derivadas (mandos, operativos, agrupada por
+    // persona) se calculan a partir de aquí, así que nada se puede colar por
+    // otro lado. Una tarea pertenece a exactamente uno de los dos apartados.
+    lista = lista.filter(c => this.esTareaDeManual(c) === this.modoManual);
+
+    // Cuántas hay en ESTE apartado antes de aplicar la búsqueda. El estado
+    // vacío lo necesita para no confundir dos cosas muy distintas: "no tienes
+    // tareas de este tipo" y "tu búsqueda no encontró nada".
+    this._totalEnEsteModo = lista.length;
 
     // Filtro por pestaña (Mis / Equipo / Todas). Solo aplica si el usuario
     // puede alternar — para trabajadores puros, la lista ya viene filtrada por
@@ -901,6 +990,38 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     return lista;
   }
 
+  /** Total del apartado actual sin contar la búsqueda (lo llena el getter de arriba). */
+  private _totalEnEsteModo = 0;
+  get totalEnEsteModo(): number {
+    this.checklistsFiltrados;   // asegura que el cache esté al día
+    return this._totalEnEsteModo;
+  }
+
+  /**
+   * Por qué este trabajador no ve ninguna tarea del Manual.
+   *
+   * Existe porque una sección vacía sin explicación se lee como que la app está
+   * rota, y aquí hay tres causas muy distintas con arreglos muy distintos: que
+   * no le hayan capturado el puesto (lo arregla un admin en Usuarios), que su
+   * puesto todavía no tenga manual levantado (no lo arregla nadie en la app), o
+   * que hoy simplemente no le toque nada.
+   */
+  motivoSinTareasManual(): string {
+    const r = resolverPuesto(this.currentUser);
+    if (!r.puestoId) {
+      return 'Tu puesto no está capturado en el organigrama, así que la app no sabe qué ' +
+             'checklists del manual te tocan. Pídele a un administrador que te asigne tu ' +
+             'puesto en la sección de Usuarios.';
+    }
+    if (tareasAutomaticasDePuesto(r.puestoId).length === 0) {
+      return `El puesto "${nombrePuesto(r.puestoId)}" todavía no tiene su Manual Corporativo ` +
+             'levantado, así que no recibe tareas automáticas. Cuando el manual se autorice, ' +
+             'sus checklists van a aparecer aquí solos.';
+    }
+    return 'Hoy no tienes pendientes del manual. Puede ser que ya las enviaste, que es tu ' +
+           'día de descanso o que la hora de esas tareas cae fuera de tu turno.';
+  }
+
   mostrarToast(mensaje: string) {
     this.toastMessage = mensaje;
     setTimeout(() => { this.toastMessage = ''; }, 3500);
@@ -909,6 +1030,18 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   ngOnInit() {
     const sesion = localStorage.getItem('md_sesion_actual');
     if (sesion) this.currentUser = JSON.parse(sesion);
+
+    // 📕 Qué mitad de la lista toca pintar. Se lee de la ruta (ver modoManual).
+    // Va suscrito y no leído una sola vez: si algún día las dos rutas comparten
+    // el componente sin recrearlo, el modo tiene que seguir el cambio o la
+    // pantalla se quedaría mostrando la mitad equivocada.
+    this.route.data.subscribe(d => {
+      const nuevo = d['modoManual'] === true;
+      if (nuevo !== this.modoManual) {
+        this.modoManual = nuevo;
+        this._cacheFiltradosHuella = '';   // invalida el cache de la lista
+      }
+    });
     // Listener compartido de usuarios (refcount; no abre uno duplicado si ya existe).
     this.usuariosSvc.iniciar();
     this.conectarRadarNube();
@@ -1104,8 +1237,8 @@ export class ChecklistComponent implements OnInit, OnDestroy {
    */
   procesarUsuariosCompartidos(todosLosUsuarios: any[]) {
     // Cache para el Robot V2 (necesita expandir roles → personas)
-    this.usuariosV2 = todosLosUsuarios;
-    this.dispararRobotV2();
+    this.plantillaUsuarios = todosLosUsuarios;
+    this.dispararRobotManual();
 
     const todasLasSucursales = [
       'ADMINISTRADORES DEL SISTEMA', 'Canindo', 'La Piedad Abastos', '8 Esquinas', 'Padre Hidalgo',
@@ -1193,38 +1326,20 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     // El effect _usuariosEffect llama procesarUsuariosCompartidos() cada vez que
     // se actualiza. No abrimos onSnapshot duplicado aqui.
 
-    // FERROCARRIL Etapa 5: moldes_checklists desde Postgres (poll; antes onSnapshot).
-    const recargarMoldes = async () => {
-      const resp = await this.api.get('/api/moldes-checklists').catch((e: any) => { console.error('[checklist] poll moldes', e); return null; });
-      if (!resp) return;
-      this.ejecutarRobotRutinas(resp.items || []);
-    };
-    recargarMoldes();
-    const idRadarMoldes = setInterval(recargarMoldes, 20000);
-    this.destructoresRadares.push(() => clearInterval(idRadarMoldes));
-
-    // 🤖 ROBOT V2 (Fase 4): catalogo_rutinas + asignaciones_rutinas para generar
-    // checklists desde el modelo nuevo. Convive con el V1.
-    // FERROCARRIL Etapa 4: desde Postgres (poll; antes onSnapshot).
-    const recargarCatalogoV2 = async () => {
-      const resp = await this.api.get('/api/catalogo-rutinas').catch((e: any) => { console.error('[checklist] poll catalogo', e); return null; });
-      if (!resp) return;
-      this.catalogoV2 = (resp.items || []).filter((d: any) => d.activa !== false) as RutinaMaestra[];
-      this.dispararRobotV2();
-    };
-    recargarCatalogoV2();
-    const idRadarCatalogo = setInterval(recargarCatalogoV2, 20000);
-    this.destructoresRadares.push(() => clearInterval(idRadarCatalogo));
-
-    const recargarAsignacionesV2 = async () => {
-      const resp = await this.api.get('/api/asignaciones-rutinas').catch((e: any) => { console.error('[checklist] poll asignaciones', e); return null; });
-      if (!resp) return;
-      this.asignacionesV2 = (resp.items || []).filter((d: any) => d.activa !== false) as AsignacionRutina[];
-      this.dispararRobotV2();
-    };
-    recargarAsignacionesV2();
-    const idRadarAsignaciones = setInterval(recargarAsignacionesV2, 20000);
-    this.destructoresRadares.push(() => clearInterval(idRadarAsignaciones));
+    // 🤖 ROBOT DE MANUAL: reintento periódico de la entrega del día.
+    //
+    // Ya no se consultan `moldes_checklists`, `catalogo_rutinas` ni
+    // `asignaciones_rutinas`: el modelo de rutinas quedó retirado y sus tablas
+    // se conservan solo como historial. Lo que se necesita es la plantilla, y
+    // esa llega por el listener compartido de UsuariosService, que dispara
+    // `dispararRobotManual()` desde procesarUsuariosCompartidos().
+    //
+    // Este intervalo existe por dos razones concretas: que la primera corrida
+    // pudo fallar por red, y que a media jornada puede cambiar un descanso o un
+    // turno. El robot es idempotente, así que reintentar no cuesta nada, y su
+    // propio freno de cadencia decide si la vuelta llega a hacer trabajo.
+    const idRadarManual = setInterval(() => this.dispararRobotManual(), 5 * 60 * 1000);
+    this.destructoresRadares.push(() => clearInterval(idRadarManual));
 
     // 🕐 Config de turnos de Canindo: para bloquear asignaciones fuera de turno.
     // FERROCARRIL Etapa 9 (config): turnos desde Postgres (poll; antes onSnapshot).
@@ -1491,9 +1606,14 @@ export class ChecklistComponent implements OnInit, OnDestroy {
         if (actualizado) this.tareaEquipoSeleccionada.set(actualizado);
       }
     };
-    recargarTareasEquipo();
-    const idRadarTareasEquipo = setInterval(recargarTareasEquipo, 20000);
-    this.destructoresRadares.push(() => clearInterval(idRadarTareasEquipo));
+    // 🧹 Con el apartado retirado no se pide la colección: sin esto seguirían
+    // saliendo tres peticiones por minuto por cliente abierto para llenar una
+    // lista que ya nadie ve.
+    if (this.MOSTRAR_TAREAS_EQUIPO) {
+      recargarTareasEquipo();
+      const idRadarTareasEquipo = setInterval(recargarTareasEquipo, 20000);
+      this.destructoresRadares.push(() => clearInterval(idRadarTareasEquipo));
+    }
 
     // Notificaciones (campana): migradas a Postgres (API). Poll cada 20s.
     this.cargarNotificaciones();
@@ -1691,107 +1811,39 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * 🤖 Robot V2 (Fase 4): genera checklists del día desde catálogo + asignaciones.
+   * 🤖 Robot de Manual: entrega las tareas del día según el PUESTO de cada
+   * persona, tomadas de su Manual Corporativo de Operación.
    *
-   * Se llama cada vez que cambian los caches (catálogo, asignaciones o usuarios).
-   * Es idempotente: el service no recrea checklists que ya existen.
+   * Se dispara cada vez que se actualiza la plantilla. Es idempotente: el
+   * service no recrea un checklist que ya existe, así que puede correr tantas
+   * veces como haga falta sin duplicar ni pisar lo ya contestado.
    *
-   * Convive con el V1 (moldes). Cuando la migración termine (Fase 5) se podrá
-   * apagar el V1 quitando el `radarMoldes` y este método se quedará solo.
+   * No necesita catálogo ni asignaciones: no hay nada que capturar. Quien tiene
+   * puesto y manual, recibe sus tareas.
    */
-  private dispararRobotV2() {
-    // Necesitamos al menos algo del catálogo y de asignaciones; usuarios puede
-    // estar vacío si la asignación es 'porPersonas' (el robot no lo necesita).
-    if (this.robotV2Corriendo) return;
-    if (!this.catalogoV2.length || !this.asignacionesV2.length) return;
+  private dispararRobotManual() {
+    if (this.robotManualCorriendo) return;
+    if (!this.plantillaUsuarios.length) return;
+    // Freno de cadencia (ver ROBOT_MANUAL_ESPERA_MS). La primera corrida pasa
+    // derecho porque `ultimaCorrida` arranca en 0.
+    if (Date.now() - this.robotManualUltimaCorrida < this.ROBOT_MANUAL_ESPERA_MS) return;
 
-    this.robotV2Corriendo = true;
-    this.robotV2.generarChecklistsDeFecha(
-      this.catalogoV2,
-      this.asignacionesV2,
-      this.usuariosV2,
+    this.robotManualCorriendo = true;
+    this.robotManual.generarTareasDeFecha(
+      this.plantillaUsuarios,
       new Date(),
       {
         esDiaCerrado: (suc, f) => this.esDiaCerrado(suc, f),
         esSucursalAdministrativa: (suc) => this.esSucursalAdministrativa(suc)
       }
-    ).catch(err => {
-      console.error('[Robot V2] Error al generar checklists:', err);
+    ).then(r => {
+      if (r.creados > 0) console.log(`[Robot Manual] ${r.creados} tarea(s) de manual entregadas.`);
+    }).catch(err => {
+      console.error('[Robot Manual] Error al generar tareas:', err);
     }).finally(() => {
-      this.robotV2Corriendo = false;
+      this.robotManualUltimaCorrida = Date.now();
+      this.robotManualCorriendo = false;
     });
-  }
-
-  async ejecutarRobotRutinas(moldes: any[]) {
-    const fechaActual = new Date();
-    const offset = fechaActual.getTimezoneOffset() * 60000;
-    const fechaLocal = new Date(fechaActual.getTime() - offset);
-    const fechaString = fechaLocal.toISOString().split('T')[0];
-    const diasTexto = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
-    const diaHoyTexto = diasTexto[fechaLocal.getDay()];
-    const diaMesActual = fechaLocal.getDate();
-    const esDomingo = fechaLocal.getDay() === 0;
-
-    for (const molde of moldes) {
-      // 🚚 Fase 5: si el molde ya fue migrado al nuevo modelo, lo skipeamos
-      // para que el Robot V2 sea el único que genere checklists.
-      if (molde._pausadoPorMigracion === true || molde._migradoA) continue;
-
-      if (this.esDiaCerrado(molde.store, fechaActual)) continue;
-      if (esDomingo && this.esSucursalAdministrativa(molde.store) && molde.frecuencia === 'Diaria') continue;
-
-      if (molde.frecuencia === 'Semanal' || molde.frecuencia === 'Catorcenal') {
-        if (molde.diaSemana && molde.diaSemana !== diaHoyTexto) continue;
-        if (molde.frecuencia === 'Catorcenal' && molde.timestampCreacion) {
-          const semanaActual = this.getWeekNumber(fechaLocal);
-          const semanaCreacion = this.getWeekNumber(new Date(molde.timestampCreacion));
-          if (Math.abs(semanaActual - semanaCreacion) % 2 !== 0) continue;
-        }
-      }
-
-      if (molde.frecuencia === 'Mensual' || molde.frecuencia === 'Trimestral') {
-        const diaObjetivo = parseInt(molde.diaMes || '1', 10);
-        const ultimoDiaDelMesActual = new Date(fechaLocal.getFullYear(), fechaLocal.getMonth() + 1, 0).getDate();
-        const diaRealAProcesar = diaObjetivo > ultimoDiaDelMesActual ? ultimoDiaDelMesActual : diaObjetivo;
-        if (diaMesActual !== diaRealAProcesar) continue;
-        if (molde.frecuencia === 'Trimestral' && molde.timestampCreacion) {
-          const mesActual = fechaLocal.getMonth();
-          const mesCreacion = new Date(molde.timestampCreacion).getMonth();
-          if (Math.abs(mesActual - mesCreacion) % 3 !== 0) continue;
-        }
-      }
-      // 📅 Vigencia: solo aplican items cuya fechaInicio ya pasó (o no tiene) Y cuya fechaFin no ha pasado (o no tiene).
-      const itemsVigentes = molde.items.filter((item: any) => {
-        const empezo = !item.fechaInicio || fechaString >= item.fechaInicio;
-        const noTermino = !item.fechaFin || fechaString <= item.fechaFin;
-        return empezo && noTermino;
-      });
-      if (itemsVigentes.length === 0) continue;
-      const llavePeriodo = this.obtenerLlavePeriodo(molde.frecuencia, fechaActual);
-      const checklistId = `${molde.id}_${llavePeriodo}`;
-      const docRef = doc(this.firestore, 'checklists', checklistId);
-      // FERROCARRIL: verificación de existencia (idempotencia) contra Postgres.
-      // ⚠️ FAIL-SAFE: si la consulta FALLA, asumimos que SÍ existe para NO recrear
-      // (y así no pisar con items vacíos un checklist ya entregado). Ver comentario
-      // equivalente en robot-rutinas-v2.service.ts.
-      const yaExiste = await this.api.get('/api/checklists?id=' + encodeURIComponent(checklistId))
-        .then((r: any) => !!r?.checklist).catch(() => true);
-      if (!yaExiste) {
-        const nuevoChecklist = {
-          id: checklistId, timestampCreacion: Date.now(), name: `${molde.name} (${molde.frecuencia})`,
-          assigned: molde.assigned, store: molde.store, date: fechaString, time: '23:59',
-          status: 'pendiente', enviado: false, createdBy: molde.createdBy || 'Robot de Rutinas', notaEmpleado: '',
-          items: itemsVigentes.map((i: any) => ({
-            ...i,
-            horaInicio: i.horaInicio || null,
-            horaLimite: i.horaLimite || null,
-            checked: false, photo: null, photoTime: null, photoAntes: null, photoAntesTime: null, photoAntesTimestamp: null, photos: []
-          }))
-        };
-        await setDoc(docRef, nuevoChecklist);
-        await this.api.guardarChecklist(nuevoChecklist);
-      }
-    }
   }
 
   async guardarEnLaNube(checklist: any) {
@@ -2231,8 +2283,59 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     }
   }
 
+  // ==========================================================================
+  //  📕 TAREAS DE MANUAL — el candado
+  // ==========================================================================
+
+  /**
+   * ¿Esta tarea la entregó el Manual Corporativo?
+   *
+   * Se comprueba con la bandera que pone el robot. Si es de manual, NADIE la
+   * edita ni la borra: ni el trabajador, ni el Encargado, ni el admin global.
+   * Un checklist de manual es la evidencia de un documento controlado; si se
+   * pudiera recortar desde la app, el documento dejaría de valer.
+   *
+   * Lo que sí se puede hacer con ella es lo que el manual espera: cumplirla,
+   * marcar sus puntos de control y dejar observaciones.
+   */
+  esTareaDeManual(checklist: any): boolean {
+    return checklist?._origenManual === true || checklist?.datos?._origenManual === true;
+  }
+
+  /** Código del anexo/formato del manual (CEDIS-CH-01, Anexo A...), para la píldora. */
+  codigoFormatoManual(checklist: any): string {
+    return checklist?._formatoCodigo || checklist?.datos?._formatoCodigo || '';
+  }
+
+  /** Tooltip de la píldora: de qué documento sale esta tarea. */
+  tituloManual(checklist: any): string {
+    const doc = checklist?._manualDocumento || checklist?.datos?._manualDocumento || '';
+    const ver = checklist?._manualVersion || checklist?.datos?._manualVersion || '';
+    const nota = checklist?._nota || checklist?.datos?._nota || '';
+    const cab = [doc, ver].filter(Boolean).join(' · ') || 'Manual Corporativo de Operación';
+    return nota ? `${cab}\n\n${nota}` : `${cab}\n\nNo se puede editar ni eliminar.`;
+  }
+
+  /** El aviso que se muestra cuando alguien intenta tocar una tarea de manual. */
+  private avisarTareaBloqueada(checklist: any) {
+    const doc = checklist?._manualDocumento || checklist?.datos?._manualDocumento || 'su Manual Corporativo de Operación';
+    const codigo = checklist?._manualCodigo || checklist?.datos?._manualCodigo || '';
+    Swal.fire({
+      icon: 'info',
+      title: 'Tarea del Manual Corporativo',
+      html: `Esta tarea viene de <b>${doc}</b>${codigo ? ` (${codigo})` : ''} y no se puede editar ni eliminar.<br><br>` +
+            `Los checklists del manual son documentos controlados: cambian con una nueva versión autorizada, no desde la app. ` +
+            `Lo que sí puedes hacer es cumplirla y dejar tus observaciones.<br><br>` +
+            `Si necesitas una tarea distinta, créala en el apartado de <b>Tareas</b>, que es libre.`,
+      confirmButtonColor: '#0F172A',
+      confirmButtonText: 'Entendido',
+    });
+  }
+
   eliminarChecklist(checklist: any, event: Event) {
     event.stopPropagation();
+    // 📕 Candado del manual: primero que nada, antes de cualquier otra regla.
+    if (this.esTareaDeManual(checklist)) { this.avisarTareaBloqueada(checklist); return; }
     // Tarea propia del usuario: la puede eliminar el mismo, sin contraseña ni admin.
     if (this.esTareaPropiaMia(checklist)) { this.eliminarTareaPropia(checklist); return; }
     this.checklistToDelete = checklist;
@@ -2436,6 +2539,9 @@ export class ChecklistComponent implements OnInit, OnDestroy {
    * - En cualquier otro caso → editor de Tarea Única.
    */
   editarChecklist(checklist: any, event: Event) {
+    event.stopPropagation();
+    // 📕 Candado del manual: no se edita ni siendo admin global.
+    if (this.esTareaDeManual(checklist)) { this.avisarTareaBloqueada(checklist); return; }
     // Tarea propia: edición simple (solo nombre + hora), no el wizard completo.
     if (this.esTareaPropiaMia(checklist)) { this.editarTareaPropia(checklist, event); return; }
     const esRutina = /\((Diaria|Semanal|Catorcenal|Mensual|Trimestral)\)$/.test(checklist?.name || '');
@@ -2823,7 +2929,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       Swal.fire({ icon: 'error', title: 'Solo administradores', confirmButtonColor: '#0F172A' });
       return;
     }
-    const usuarios = this.usuariosV2 || [];
+    const usuarios = this.plantillaUsuarios || [];
 
     // 🔒 Guarda crítica: si la lista de usuarios aún no cargó, TODO nombre se
     // vería como "inexistente" y borraríamos TODAS las pendientes. Abortamos.

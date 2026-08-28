@@ -1,0 +1,191 @@
+<section class="org">
+
+  <!-- ══════════════ ENCABEZADO ══════════════ -->
+  <header class="org-head">
+    <div>
+      <h3 class="org-titulo">Organigrama 2026</h3>
+      <div class="org-sub">
+        {{ resumen().puestos }} puesto(s) en {{ resumen().unidades }} unidad(es) ·
+        {{ resumen().entregas }} tarea(s) del manual entregada(s) hoy
+      </div>
+    </div>
+    <label class="org-check" [title]="'Hay ' + resumen().puestosSinManual + ' puestos del organigrama sin manual levantado'">
+      <input type="checkbox"
+             [ngModel]="soloConManual()"
+             (ngModelChange)="soloConManual.set($event)">
+      Solo puestos con manual
+    </label>
+  </header>
+
+  <div class="org-cuerpo">
+
+    <!-- ══════════════ MENÚ: UNIDAD → PUESTO ══════════════ -->
+    <nav class="org-menu" aria-label="Organigrama">
+      <div class="org-unidad" *ngFor="let g of grupos()">
+
+        <button class="org-unidad-cab" (click)="alternarUnidad(g.unidad)"
+                [attr.aria-expanded]="unidadAbierta(g.unidad)">
+          <span class="org-chevron" [class.girado]="unidadAbierta(g.unidad)">›</span>
+          <span class="org-unidad-nombre">{{ g.etiqueta }}</span>
+          <span class="org-unidad-badge" *ngIf="g.entregasHoy > 0">{{ g.entregasHoy }}</span>
+        </button>
+
+        <div class="org-puestos" *ngIf="unidadAbierta(g.unidad)">
+          <button class="org-puesto"
+                  *ngFor="let f of g.filas; trackBy: trackPuesto"
+                  [class.activo]="puestoActivo() === f.puesto.id"
+                  [class.sin-manual]="!f.tieneManual"
+                  (click)="elegirPuesto(f.puesto.id)">
+            <span class="org-puesto-nombre">{{ f.puesto.nombre }}</span>
+
+            <span class="org-puesto-datos">
+              <!-- Cuántas manda su manual -->
+              <span class="org-pill org-pill-manual" *ngIf="f.tieneManual"
+                    [title]="f.tareasManual + ' tarea(s) que manda su manual'">
+                {{ f.tareasManual }}
+              </span>
+              <span class="org-pill org-pill-nada" *ngIf="!f.tieneManual" title="Sin manual levantado">
+                —
+              </span>
+
+              <!-- Cómo va hoy -->
+              <span class="org-avance" *ngIf="f.porcentaje !== null"
+                    [ngClass]="claseAvance(f.porcentaje)">
+                {{ f.porcentaje }}%
+              </span>
+              <span class="org-vencidas" *ngIf="f.pendientesVencidas > 0"
+                    [title]="f.pendientesVencidas + ' vencida(s)'">
+                {{ f.pendientesVencidas }}
+              </span>
+            </span>
+          </button>
+        </div>
+      </div>
+
+      <p class="org-menu-vacio" *ngIf="grupos().length === 0">
+        Nada que mostrar con este filtro.
+      </p>
+    </nav>
+
+    <!-- ══════════════ DETALLE DEL PUESTO ══════════════ -->
+    <div class="org-detalle">
+
+      <!-- Sin puesto elegido -->
+      <div class="org-invita" *ngIf="!puestoActivo()">
+        <div class="org-invita-icono" aria-hidden="true">🏛️</div>
+        <h4>Elige un puesto del organigrama</h4>
+        <p>
+          Vas a ver lo que su Manual Corporativo le manda y, debajo, quién lo está
+          cumpliendo hoy, separado por sucursal.
+        </p>
+      </div>
+
+      <ng-container *ngIf="puestoActivo()">
+        <header class="org-det-head">
+          <button class="org-volver" (click)="volverAlMenu()" title="Cerrar el puesto">←</button>
+          <div>
+            <h4 class="org-det-titulo">{{ puestoActivoNombre() }}</h4>
+            <div class="org-det-manual" *ngIf="manualActivo()">
+              {{ manualActivo()?.documento }}
+              <span *ngIf="manualActivo()?.codigo"> · {{ manualActivo()?.codigo }}</span>
+              · {{ manualActivo()?.version }}
+            </div>
+            <div class="org-det-manual org-det-sinmanual" *ngIf="!manualActivo()">
+              Este puesto todavía no tiene Manual Corporativo levantado, así que no
+              recibe tareas automáticas.
+            </div>
+          </div>
+        </header>
+
+        <!-- ── LO QUE MANDA EL MANUAL ── -->
+        <div class="org-bloque" *ngIf="tareasDelManual().length > 0">
+          <div class="org-bloque-titulo">Lo que manda el manual</div>
+
+          <article class="org-tarea" *ngFor="let t of tareasDelManual(); trackBy: trackTarea">
+            <header class="org-tarea-cab">
+              <span class="org-tarea-nombre">{{ t.nombre }}</span>
+              <span class="org-tarea-codigo" *ngIf="t.codigoFormato">{{ t.codigoFormato }}</span>
+            </header>
+            <div class="org-tarea-meta">
+              <span class="org-meta">{{ textoMomento(t) }}</span>
+              <span class="org-meta">{{ textoFrecuencia(t) }}</span>
+              <span class="org-meta">Hasta las {{ t.horaLimite }}</span>
+              <span class="org-meta org-meta-evento" *ngIf="t.porEvento">Por evento</span>
+              <span class="org-meta org-meta-solo" *ngIf="t.soloPorEvento">No se entrega sola</span>
+              <span class="org-meta">{{ t.items.length }} punto(s) de control</span>
+            </div>
+            <p class="org-tarea-nota" *ngIf="t.nota">{{ t.nota }}</p>
+            <ol class="org-items">
+              <li *ngFor="let it of t.items">
+                <span class="org-item-bloque" *ngIf="it.bloque">{{ it.bloque }}</span>{{ it.texto }}
+              </li>
+            </ol>
+          </article>
+        </div>
+
+        <!-- ── QUIÉN LO CUMPLE HOY ── -->
+        <div class="org-bloque">
+          <div class="org-bloque-titulo">
+            Quién lo cumple hoy
+            <span class="org-bloque-nota" *ngIf="cumplimiento().length > 1">
+              (peor avance primero)
+            </span>
+          </div>
+
+          <p class="org-nada" *ngIf="cumplimiento().length === 0">
+            Hoy no hay ninguna tarea del manual entregada para este puesto.
+          </p>
+
+          <div class="org-suc" *ngFor="let s of cumplimiento(); trackBy: trackSucursal">
+            <div class="org-suc-cab">
+              <span class="org-suc-nombre">{{ s.sucursal }}</span>
+              <span class="org-suc-personas">{{ s.personas.length }} persona(s)</span>
+              <span class="org-avance grande" [ngClass]="claseAvance(s.porcentaje)">{{ s.porcentaje }}%</span>
+            </div>
+            <div class="org-suc-barra">
+              <span [style.width.%]="s.porcentaje" [ngClass]="claseAvance(s.porcentaje)"></span>
+            </div>
+
+            <div class="org-persona" *ngFor="let p of s.personas; trackBy: trackPersona">
+              <div class="org-persona-cab">
+                <span class="org-avatar">{{ p.iniciales }}</span>
+                <span class="org-persona-nombre">{{ p.nombre }}</span>
+                <span class="org-persona-frac">{{ p.completados }}/{{ p.totalItems }}</span>
+              </div>
+              <button class="org-entrega"
+                      *ngFor="let e of p.entregas"
+                      [class.vencida]="e.vencida"
+                      [class.completa]="e.completa"
+                      (click)="abrirEntrega(e)"
+                      [title]="'Abrir ' + e.titulo">
+                <span class="org-entrega-nombre">{{ e.titulo }}</span>
+                <span class="org-entrega-datos">
+                  <span class="org-entrega-hora">{{ e.hora }}</span>
+                  <span class="org-entrega-frac">{{ e.completados }}/{{ e.totalItems }}</span>
+                  <span class="org-entrega-estado" *ngIf="e.vencida">vencida</span>
+                  <span class="org-entrega-estado ok" *ngIf="e.completa">lista</span>
+                </span>
+              </button>
+            </div>
+          </div>
+
+          <!-- La mitad que un tablero normalmente esconde -->
+          <div class="org-sinentrega" *ngIf="sinEntrega().length > 0">
+            <div class="org-sinentrega-titulo">
+              Tienen este puesto pero hoy no recibieron nada ({{ sinEntrega().length }})
+            </div>
+            <p class="org-sinentrega-por-que">
+              Suele ser día de descanso, hora fuera de su turno, o que les falta
+              sucursal capturada. Si no es ninguna de esas, revisa su puesto en Usuarios.
+            </p>
+            <div class="org-sinentrega-lista">
+              <span class="org-chip" *ngFor="let u of sinEntrega()">
+                {{ u.nombre }} <small>{{ u.sucursales }}</small>
+              </span>
+            </div>
+          </div>
+        </div>
+      </ng-container>
+    </div>
+  </div>
+</section>

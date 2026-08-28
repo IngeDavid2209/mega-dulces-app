@@ -2722,6 +2722,23 @@
   letter-spacing: 0.3px;
 }
 
+/* 📕 Tarea entregada por el Manual Corporativo. Ámbar, no azul: tiene que
+   leerse distinto de "Enviado" a un metro de distancia, porque significa otra
+   cosa (esta no se toca). Ocupa el lugar donde las demás traen editar/borrar. */
+.cl-pill-manual {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: #FEF3C7;
+  color: #92400E;
+  border: 1px solid #FCD34D;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+  cursor: help;
+}
+
 .cl-actions {
   display: flex;
   gap: 4px;

@@ -1,0 +1,182 @@
+<div class="imn-overlay" (click)="cerrar.emit()"></div>
+
+<div class="imn-modal" role="dialog" aria-label="Asignar puestos desde la nómina">
+
+  <header class="imn-head">
+    <div>
+      <h3>Asignar puestos desde la nómina</h3>
+      <p class="imn-sub">
+        Lista de Raya del período 35 (22–28/Ago/2026) cruzada contra la plantilla.
+        Nada se guarda hasta que lo apruebes.
+      </p>
+    </div>
+    <button class="imn-x" (click)="cerrar.emit()" aria-label="Cerrar">&times;</button>
+  </header>
+
+  <div class="imn-cuerpo" *ngIf="resumen() as r">
+
+    <!-- ══════════ RESUMEN ══════════ -->
+    <div class="imn-kpis">
+      <div class="imn-kpi ok">
+        <span class="imn-kpi-n">{{ r.claros.length }}</span>
+        <span class="imn-kpi-l">Amarre claro</span>
+      </div>
+      <div class="imn-kpi duda">
+        <span class="imn-kpi-n">{{ r.dudas.length }}</span>
+        <span class="imn-kpi-l">Con duda</span>
+      </div>
+      <div class="imn-kpi">
+        <span class="imn-kpi-n">{{ r.noEncontrados.length }}</span>
+        <span class="imn-kpi-l">No están en la app</span>
+      </div>
+      <div class="imn-kpi">
+        <span class="imn-kpi-n">{{ r.sinPuesto.length }}</span>
+        <span class="imn-kpi-l">Puesto sin equivalente</span>
+      </div>
+      <div class="imn-kpi">
+        <span class="imn-kpi-n">{{ r.usuariosFueraDeNomina.length }}</span>
+        <span class="imn-kpi-l">En la app, no en la nómina</span>
+      </div>
+    </div>
+
+    <!-- Aviso cuando hay puestos que se van a CAMBIAR -->
+    <div class="imn-aviso" *ngIf="cuantosCambian() > 0">
+      <strong>{{ cuantosCambian() }}</strong> persona(s) ya tienen un puesto capturado y la
+      nómina dice otro. Van marcadas con <span class="imn-tag-cambia">cambia</span> abajo —
+      revísalas: cambiar un puesto cambia las tareas del manual que recibe.
+    </div>
+
+    <!-- ══════════ AMARRE CLARO ══════════ -->
+    <section class="imn-bloque" *ngIf="r.claros.length > 0">
+      <div class="imn-bloque-cab">
+        <h4>Amarre claro ({{ r.claros.length }})</h4>
+        <div class="imn-acciones-mini">
+          <button (click)="marcarTodos()">Marcar todo</button>
+          <button (click)="desmarcarTodos()">Desmarcar todo</button>
+        </div>
+      </div>
+      <div class="imn-tabla">
+        <div class="imn-fila imn-fila-cab">
+          <span></span>
+          <span>En la app</span>
+          <span>En la nómina</span>
+          <span>Puesto que queda</span>
+          <span>Tareas</span>
+        </div>
+        <label class="imn-fila" *ngFor="let c of r.claros; trackBy: trackCruce"
+               [class.excluida]="!estaIncluida(c)">
+          <input type="checkbox" [checked]="estaIncluida(c)" (change)="alternar(c)">
+          <span class="imn-nombre">{{ nombreApp(c) }}</span>
+          <span class="imn-nomina">
+            {{ c.fila.nombre }}
+            <small>{{ c.fila.puestoNomina }} · {{ c.fila.centro }}</small>
+          </span>
+          <span class="imn-puesto">
+            {{ c.puestoNuevo }}
+            <small class="imn-antes" *ngIf="c.cambiaPuesto">
+              <span class="imn-tag-cambia">cambia</span> antes: {{ c.puestoActual }}
+            </small>
+            <small class="imn-suc" *ngIf="c.sucursalAllenar && llenarSucursales()">
+              + sucursal: {{ c.sucursalAllenar }}
+            </small>
+            <!-- Se distingue lo que corrigió una persona de lo que salió del PDF. -->
+            <small class="imn-corregido" *ngIf="c.fila.corregido"
+                   [title]="c.fila.corregido">
+              <span class="imn-tag-corr">corregido a mano</span>
+            </small>
+          </span>
+          <span class="imn-tareas" [class.cero]="c.tareas === 0">{{ c.tareas }}</span>
+        </label>
+      </div>
+    </section>
+
+    <!-- ══════════ CON DUDA ══════════ -->
+    <section class="imn-bloque" *ngIf="r.dudas.length > 0">
+      <div class="imn-bloque-cab">
+        <h4>Con duda ({{ r.dudas.length }})</h4>
+      </div>
+      <p class="imn-nota">
+        Varias personas de la app comparten palabras con el nombre de la nómina, o dos
+        filas apuntan a la misma persona. No se resuelve solo: elige tú, o déjalo
+        en blanco para no tocar a nadie.
+      </p>
+      <div class="imn-tabla">
+        <div class="imn-fila imn-fila-duda" *ngFor="let c of r.dudas; trackBy: trackCruce">
+          <span class="imn-nomina">
+            {{ c.fila.nombre }}
+            <small>{{ c.fila.puestoNomina }} · {{ c.fila.centro }}</small>
+          </span>
+          <select (change)="elegirCandidato(c, $any($event.target).value)">
+            <option value="-1">— no asignar —</option>
+            <option *ngFor="let cand of c.candidatos; let i = index" [value]="i">
+              {{ cand.usuario.nombre }} ({{ cand.comunes }} palabras)
+            </option>
+          </select>
+          <span class="imn-puesto">
+            {{ c.puestoNuevo }}
+            <small class="imn-antes" *ngIf="c.cambiaPuesto">
+              <span class="imn-tag-cambia">cambia</span> antes: {{ c.puestoActual }}
+            </small>
+          </span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════ NO ENCONTRADOS ══════════ -->
+    <details class="imn-detalle" *ngIf="r.noEncontrados.length > 0">
+      <summary>No están en la app ({{ r.noEncontrados.length }})</summary>
+      <p class="imn-nota">
+        Aparecen en la nómina pero nadie en la app se les parece. Puede ser que no
+        tengan cuenta todavía, o que su nombre esté escrito muy distinto.
+      </p>
+      <div class="imn-chips">
+        <span class="imn-chip" *ngFor="let c of r.noEncontrados">
+          {{ c.fila.nombre }} <small>{{ c.fila.puestoNomina }}</small>
+        </span>
+      </div>
+    </details>
+
+    <!-- ══════════ SIN EQUIVALENTE EN EL ORGANIGRAMA ══════════ -->
+    <details class="imn-detalle" *ngIf="r.sinPuesto.length > 0">
+      <summary>Puestos que no existen en el organigrama ({{ r.sinPuesto.length }})</summary>
+      <p class="imn-nota">
+        No se les inventa un puesto a propósito: entregarles las tareas de otro puesto
+        sería peor que dejarlos pendientes. Falta definirlos en el organigrama.
+      </p>
+      <div class="imn-chips">
+        <span class="imn-chip" *ngFor="let c of r.sinPuesto">
+          {{ c.fila.puestoNomina }} <small>{{ c.fila.nombre }}</small>
+        </span>
+      </div>
+    </details>
+
+    <!-- ══════════ EN LA APP, FUERA DE LA NÓMINA ══════════ -->
+    <details class="imn-detalle" *ngIf="r.usuariosFueraDeNomina.length > 0">
+      <summary>En la app pero no en esta nómina ({{ r.usuariosFueraDeNomina.length }})</summary>
+      <p class="imn-nota">
+        No se tocan: conservan el puesto que tengan. Revisa si alguno ya no trabaja
+        aquí, porque seguiría recibiendo tareas.
+      </p>
+      <div class="imn-chips">
+        <span class="imn-chip" *ngFor="let u of r.usuariosFueraDeNomina">
+          {{ u.nombre }} <small>{{ u.cargo || 'sin cargo' }}</small>
+        </span>
+      </div>
+    </details>
+  </div>
+
+  <!-- ══════════ PIE ══════════ -->
+  <footer class="imn-pie">
+    <label class="imn-check">
+      <input type="checkbox" [ngModel]="llenarSucursales()" (ngModelChange)="llenarSucursales.set($event)">
+      Llenar también la sucursal a quien no tenga ninguna
+      <small>({{ cuantasSucursales() }})</small>
+    </label>
+    <div class="imn-pie-btns">
+      <button class="imn-btn" (click)="cerrar.emit()">Cancelar</button>
+      <button class="imn-btn imn-btn-ok" [disabled]="aAplicar().length === 0" (click)="confirmar()">
+        Aplicar {{ aAplicar().length }} puesto(s)
+      </button>
+    </div>
+  </footer>
+</div>

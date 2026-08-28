@@ -40,8 +40,19 @@
         <div class="section-header"
           style="display: flex; flex-wrap: wrap; gap: 15px; align-items: center; justify-content: space-between;">
           <div style="flex: 1; min-width: 200px;">
-            <div class="section-title">Checklists Operativos</div>
-            <div class="section-sub">Gestión de rutinas y tareas del equipo</div>
+            <!-- 📕 El mismo componente sirve los dos apartados; el encabezado
+                 dice en cuál estás para que no se confundan nunca. -->
+            <div class="section-title">
+              {{ modoManual ? 'Tareas del Manual' : 'Tareas fuera del manual' }}
+            </div>
+            <div class="section-sub" *ngIf="modoManual">
+              Checklists del Manual Corporativo de Operación. Se entregan solas según el
+              puesto de cada persona y no se pueden editar ni borrar: solo cumplirse.
+            </div>
+            <div class="section-sub" *ngIf="!modoManual">
+              Todo lo que se asigna a mano: tareas únicas, de equipo y del día. Aquí sí se
+              crea, se edita y se borra libremente.
+            </div>
           </div>
           <div
             style="display: flex; gap: 15px; flex-wrap: wrap; align-items: center; flex: 2; justify-content: flex-end;">
@@ -60,7 +71,7 @@
               <!-- Estos tres se esconden cuando el panel de responsables está en
                    pantalla: ese panel ya trae sus propios botones de alta. -->
               <button class="btn-secondary"
-                *ngIf="(currentUser?.rol === 'admin' || currentUser?.puedeCrearChecklists) && !mostrandoPanelResponsables"
+                *ngIf="(currentUser?.rol === 'admin' || currentUser?.puedeCrearChecklists) && !mostrandoPanelResponsables && !modoManual"
                 (click)="abrirModalRutinas()">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                   style="margin-right: 6px;">
@@ -70,7 +81,7 @@
                 </svg> Bloque de Rutinas
               </button>
               <button class="btn-primary"
-                *ngIf="(currentUser?.rol === 'admin' || currentUser?.puedeCrearChecklists) && !mostrandoPanelResponsables"
+                *ngIf="(currentUser?.rol === 'admin' || currentUser?.puedeCrearChecklists) && !mostrandoPanelResponsables && !modoManual"
                 (click)="abrirModal()">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                   style="margin-right: 6px;">
@@ -78,7 +89,11 @@
                   <line x1="5" y1="12" x2="19" y2="12"></line>
                 </svg> Tareas Únicas
               </button>
-              <button class="btn-equipo btn-primary" *ngIf="!mostrandoPanelResponsables"
+              <!-- 🧹 "Tareas en Equipo" quedó retirado (MOSTRAR_TAREAS_EQUIPO en
+                   checklist.ts). El botón, el listado, el detalle y el asistente de
+                   alta se esconden juntos; la lógica sigue completa por si vuelve. -->
+              <button class="btn-equipo btn-primary"
+                *ngIf="mostrarTareasEquipo && !mostrandoPanelResponsables && !modoManual"
                 (click)="abrirModalEquipo()">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                      style="margin-right: 6px;">
@@ -89,7 +104,7 @@
                 </svg>
                 Tareas en Equipo
               </button>
-              <button class="btn-secondary" *ngIf="currentUser?.rol === 'admin'"
+              <button class="btn-secondary" *ngIf="currentUser?.rol === 'admin' && !modoManual"
                 (click)="limpiarHuerfanas()" title="Borrar tareas y limpiar asignaciones de personas dadas de baja">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                   style="margin-right: 6px;">
@@ -105,7 +120,7 @@
 
         <!-- ===================== PROYECTOS EN EQUIPO (lista) ===================== -->
         <section class="eq-list-section"
-                 *ngIf="vistaEquipo() === 'lista' && tareasEquipo().length > 0">
+                 *ngIf="mostrarTareasEquipo && vistaEquipo() === 'lista' && tareasEquipo().length > 0">
           <div class="eq-list-head">
             <div>
               <h3 class="eq-list-title">Proyectos en equipo</h3>
@@ -152,7 +167,7 @@
         </section>
 
         <!-- ===================== DETALLE DE PROYECTO EN EQUIPO ===================== -->
-        <section class="eq-detalle" *ngIf="vistaEquipo() === 'detalle' && tareaEquipoSeleccionada() as proyecto">
+        <section class="eq-detalle" *ngIf="mostrarTareasEquipo && vistaEquipo() === 'detalle' && tareaEquipoSeleccionada() as proyecto">
           <button class="btn-back" (click)="volverDeEquipoDetalle()">← Volver al listado</button>
 
           <div class="eq-detalle-head">
@@ -391,9 +406,34 @@
                 <span class="vista-tab-badge">{{ contadorTodasChecklists }}</span>
               </button>
             </section>
+
+            <!-- 🏛️ Cómo agrupar: por persona (lo de siempre) o recorriendo el
+                 organigrama. Solo en el apartado del Manual: agrupar por puesto
+                 las tareas libres no significaría nada, esas no salen de un
+                 puesto. Y solo para quien ve más que lo suyo. -->
+            <span class="cl-toolbar-sep"
+                  *ngIf="modoManual && puedeFiltrarVista && vistaHistorial() === 'pendientes'"></span>
+            <section class="vista-tabs"
+                     *ngIf="modoManual && puedeFiltrarVista && vistaHistorial() === 'pendientes'">
+              <button class="vista-tab"
+                      [class.vista-tab-active]="agrupacion() === 'persona'"
+                      (click)="agrupacion.set('persona')"
+                      title="Agrupar por colaborador">
+                Por persona
+              </button>
+              <button class="vista-tab"
+                      [class.vista-tab-active]="agrupacion() === 'organigrama'"
+                      (click)="agrupacion.set('organigrama')"
+                      title="Recorrer el organigrama: unidad, puesto y sucursal">
+                Por organigrama
+              </button>
+            </section>
           </div>
 
-          <div class="cl-toolbar-der" *ngIf="vistaHistorial() === 'pendientes'">
+          <!-- 📕 "Agregar mi tarea" no aplica en el apartado del Manual: ahí solo
+               entra lo que entrega el robot desde el documento. Una tarea propia
+               es, por definición, de las libres. -->
+          <div class="cl-toolbar-der" *ngIf="vistaHistorial() === 'pendientes' && !modoManual">
             <!-- Cualquier trabajador puede sumar una tarea propia a su día -->
             <button class="btn-primary" (click)="abrirModalTareaDia()">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -471,7 +511,16 @@
                       style="padding:2px 9px; border-radius:999px; background:#F1F5F9; color:#64748B; font-size:11px; font-weight:800; white-space:nowrap;">
                   Sin revisar
                 </span>
-                <div class="cl-actions">
+                <!-- 📕 Tarea del Manual Corporativo: se marca con su código de
+                     formato y NO trae botones de editar ni eliminar. El candado
+                     de verdad está en checklist.ts (esTareaDeManual); esto solo
+                     evita ofrecer una acción que va a ser rechazada. -->
+                <span *ngIf="esTareaDeManual(checklist)"
+                      class="cl-pill-manual"
+                      [title]="tituloManual(checklist)">
+                  🔒 MANUAL{{ codigoFormatoManual(checklist) ? ' · ' + codigoFormatoManual(checklist) : '' }}
+                </span>
+                <div class="cl-actions" *ngIf="!esTareaDeManual(checklist)">
                   <button class="cl-icon-btn cl-icon-edit"
                           *ngIf="currentUser?.rol === 'admin' || checklist.createdBy === currentUser?.nombre"
                           (click)="editarChecklist(checklist, $event)" title="Editar">
@@ -536,12 +585,28 @@
              puede ver a todo el equipo. El trabajador sigue con la lista de
              siempre, con sus tarjetas grandes. Abrir una tarea de aquí lleva a la
              MISMA vista de detalle con fotos: no se cambió nada de la entrega. -->
-        <app-panel-responsables
-          *ngIf="vistaEquipo() === 'lista' && vistaHistorial() === 'pendientes' && agruparPorPersona() && puedeFiltrarVista && vistaTareas === 'todas'"
+        <!-- ══════════ VISTA POR ORGANIGRAMA (solo apartado del Manual) ══════════
+             Recorre unidad → puesto y muestra lo que manda el manual junto con
+             quién lo cumple hoy, separado por sucursal. Abrir una tarea desde
+             aquí lleva a la MISMA vista de detalle de siempre: esto es
+             navegación, no un segundo flujo de entrega. -->
+        <app-vista-organigrama
+          *ngIf="verPorOrganigrama && vistaEquipo() === 'lista' && vistaHistorial() === 'pendientes'"
           [checklists]="checklistsFiltrados"
-          [puedeCrear]="currentUser?.rol === 'admin' || currentUser?.puedeCrearChecklists"
+          [usuarios]="plantillaParaOrganigrama"
+          (abrir)="verDetalle($event)">
+        </app-vista-organigrama>
+
+        <!-- 📕 En el apartado del Manual el panel NO ofrece crear ni editar: esas
+             tareas las entrega el robot desde el documento y no se tocan.
+             Notificar SÍ se deja: recordarle a alguien su checklist del manual es
+             justo lo que un Encargado necesita poder hacer. -->
+        <app-panel-responsables
+          *ngIf="!verPorOrganigrama && vistaEquipo() === 'lista' && vistaHistorial() === 'pendientes' && agruparPorPersona() && puedeFiltrarVista && vistaTareas === 'todas'"
+          [checklists]="checklistsFiltrados"
+          [puedeCrear]="!modoManual && (currentUser?.rol === 'admin' || currentUser?.puedeCrearChecklists)"
           [puedeNotificar]="currentUser?.rol === 'admin' || currentUser?.puedeCrearChecklists"
-          [puedeEditar]="currentUser?.rol === 'admin'"
+          [puedeEditar]="!modoManual && currentUser?.rol === 'admin'"
           (abrir)="verDetalle($event)"
           (crear)="altaDesdePanel($event)"
           (notificar)="abrirModalNotificacion($event)"
@@ -551,7 +616,7 @@
 
         <!-- VISTA LISTA (plana por nivel) -->
         <div class="checklist-grid"
-             *ngIf="vistaEquipo() === 'lista' && vistaHistorial() === 'pendientes' && (!agruparPorPersona() || !puedeFiltrarVista || vistaTareas !== 'todas')">
+             *ngIf="!verPorOrganigrama && vistaEquipo() === 'lista' && vistaHistorial() === 'pendientes' && (!agruparPorPersona() || !puedeFiltrarVista || vistaTareas !== 'todas')">
           <ng-container *ngFor="let checklist of checklistsOrdenadosPorNivel; let i = index; trackBy: trackByChecklist">
             <!-- Encabezado de la sección Mandos cuando arranca con un mando y hay operativos detrás -->
             <div *ngIf="i === 0 && nivelDelAssigned(checklist.assigned) === 'mando' && checklistsDeOperativos.length > 0"
@@ -570,27 +635,46 @@
         </div>
 
         <!-- Estado vacío (compartido por ambas vistas) -->
-        <div class="checklist-grid" *ngIf="vistaEquipo() === 'lista' && vistaHistorial() === 'pendientes' && checklistsFiltrados.length === 0">
+        <div class="checklist-grid" *ngIf="!verPorOrganigrama && vistaEquipo() === 'lista' && vistaHistorial() === 'pendientes' && checklistsFiltrados.length === 0">
           <div class="empty-state">
             <div class="empty-state-icon"><svg width="48" height="48" viewBox="0 0 24 24" fill="none"
                 stroke="currentColor" stroke-width="2">
                 <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
                 <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
               </svg></div>
-            <h3 *ngIf="checklists().length === 0">No hay tareas asignadas</h3>
-            <h3 *ngIf="checklists().length > 0">No se encontraron resultados</h3>
-            <p *ngIf="checklists().length === 0 && (currentUser?.rol === 'admin' || currentUser?.puedeCrearChecklists)">
-              Crea el primer checklist para tu equipo.</p>
-            <p
-              *ngIf="checklists().length === 0 && currentUser?.rol === 'trabajador' && !currentUser?.puedeCrearChecklists">
-              Actualmente no tienes checklists pendientes.</p>
-            <p *ngIf="checklists().length > 0">Intenta buscar con otro nombre, empleado o sucursal.</p>
-            <button type="button" class="btn-secondary"
-                    *ngIf="checklists().length === 0"
-                    (click)="mostrarDiagnostico()"
-                    style="margin-top: 14px; font-size: 13px;">
-              🩺 ¿Por qué no veo tareas?
-            </button>
+            <!-- OJO: el mensaje se decide con `totalEnEsteModo`, NO con
+                 `checklists().length`. Esa última es la lista COMPLETA (manual +
+                 libres), y al separar los dos apartados hacía que a quien no
+                 tuviera tareas de manual pero sí libres se le dijera "no se
+                 encontraron resultados, intenta buscar con otro nombre" — un
+                 mensaje de búsqueda cuando nadie estaba buscando. -->
+
+            <!-- Caso 1: no hay NADA en este apartado -->
+            <ng-container *ngIf="totalEnEsteModo === 0">
+              <h3 *ngIf="modoManual">No tienes tareas del manual</h3>
+              <h3 *ngIf="!modoManual">No hay tareas asignadas</h3>
+
+              <!-- En el apartado del manual se explica la causa concreta, que es
+                   distinta según el puesto de cada quien. -->
+              <p *ngIf="modoManual">{{ motivoSinTareasManual() }}</p>
+
+              <p *ngIf="!modoManual && (currentUser?.rol === 'admin' || currentUser?.puedeCrearChecklists)">
+                Crea el primer checklist para tu equipo.</p>
+              <p *ngIf="!modoManual && currentUser?.rol === 'trabajador' && !currentUser?.puedeCrearChecklists">
+                Actualmente no tienes checklists pendientes.</p>
+
+              <button type="button" class="btn-secondary"
+                      (click)="mostrarDiagnostico()"
+                      style="margin-top: 14px; font-size: 13px;">
+                🩺 ¿Por qué no veo tareas?
+              </button>
+            </ng-container>
+
+            <!-- Caso 2: sí hay en este apartado, pero la búsqueda no encontró -->
+            <ng-container *ngIf="totalEnEsteModo > 0">
+              <h3>No se encontraron resultados</h3>
+              <p>Intenta buscar con otro nombre, empleado o sucursal.</p>
+            </ng-container>
           </div>
         </div>
 
@@ -2068,7 +2152,7 @@
 
       <!-- MODAL DE TAREA EN EQUIPO (igual que tenías) -->
       <!-- ===================== MODAL TAREA DE EQUIPO (wizard 4 pasos) ===================== -->
-      <div class="modal-overlay" *ngIf="isModalEquipoOpen">
+      <div class="modal-overlay" *ngIf="mostrarTareasEquipo && isModalEquipoOpen">
         <div class="modal eq-modal">
           <div class="eq-modal-head">
             <div>

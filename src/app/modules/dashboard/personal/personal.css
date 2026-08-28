@@ -1167,3 +1167,54 @@
   .user-card { padding: 16px; }
   .acciones-menu { min-width: 220px; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   🎯 PUESTO DEL ORGANIGRAMA — aviso de consecuencia
+   Se pinta debajo del selector de puesto, en la ficha del colaborador. Existe
+   porque elegir un puesto no es capturar un dato decorativo: define qué
+   checklists del Manual Corporativo va a recibir esa persona todos los días.
+   Quien captura tiene que verlo en el momento de capturar, no enterarse
+   después de que alguien llevaba semanas sin sus tareas.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.puesto-manual-info {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #FFFBEB;
+  border: 1px solid #FDE68A;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: #78350F;
+}
+
+.puesto-manual-info.pmi-vacio {
+  background: #F8FAFC;
+  border-color: #E2E8F0;
+  color: #475569;
+}
+
+.puesto-manual-info.pmi-alerta {
+  background: #FEF2F2;
+  border-color: #FECACA;
+  color: #7F1D1D;
+}
+
+.pmi-badge {
+  flex: 0 0 auto;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: #FDE68A;
+  color: #78350F;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+}
+
+.pmi-badge-gris { background: #E2E8F0; color: #475569; }
+.pmi-badge-rojo { background: #FECACA; color: #7F1D1D; }
+
+.pmi-texto { flex: 1 1 auto; min-width: 0; }

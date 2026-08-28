@@ -1,0 +1,240 @@
+<div class="app-layout" translate="no">
+  <header class="header">
+    <div class="header-left">
+      <button class="btn-menu-mobile" (click)="toggleMenu()" aria-label="Menu">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="3" y1="12" x2="21" y2="12"></line>
+          <line x1="3" y1="6" x2="21" y2="6"></line>
+          <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+      </button>
+      <div class="header-logo-wrap">
+        <img src="https://static.wixstatic.com/media/fd397e_0fd82a1ecec84a118ceeb603b493f25a~mv2.png"
+             style="height: 36px; object-fit: contain;">
+      </div>
+      <div class="header-brand">Mega Dulces<small>Panel Enterprise</small></div>
+    </div>
+  </header>
+
+  <div class="main-wrapper">
+    <div class="mobile-overlay" *ngIf="isMenuOpen" (click)="toggleMenu()"></div>
+    <app-sidebar [currentUser]="currentUser" [isMenuOpen]="isMenuOpen"
+                 (closeMenu)="isMenuOpen = false"></app-sidebar>
+
+    <main class="content">
+
+    <header class="page-head">
+      <div class="ph-icon">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+        </svg>
+      </div>
+      <div>
+        <h1>Manual por Puesto</h1>
+        <p class="sub">
+          Organigrama 2026 &middot; Que tareas recibe automaticamente cada puesto segun su
+          Manual Corporativo de Operacion.
+        </p>
+      </div>
+    </header>
+
+    <!-- Aviso de solo lectura. Va arriba y no se puede cerrar: es la regla que
+         explica por que esta pantalla no tiene un solo boton de guardar. -->
+    <div class="mp-aviso">
+      <span class="mp-aviso-icono">&#128274;</span>
+      <div>
+        <strong>Esta pantalla es de consulta.</strong>
+        Las tareas del manual no se crean, editan ni borran desde la app: son
+        documentos controlados y cambian con una version nueva del manual,
+        autorizada por Direccion. Para tareas libres &mdash;lo del dia, lo que pida la
+        Jefatura&mdash; usa el apartado de <a routerLink="/checklist">Tareas</a>.
+      </div>
+    </div>
+
+    <!-- ═══════════════ TABLERO DE COBERTURA ═══════════════ -->
+    <section class="mp-tablero">
+      <div class="mp-kpi">
+        <span class="mp-kpi-num">{{ totalPuestos }}</span>
+        <span class="mp-kpi-lbl">Puestos en el organigrama</span>
+      </div>
+      <div class="mp-kpi">
+        <span class="mp-kpi-num">{{ puestosConManual }}</span>
+        <span class="mp-kpi-lbl">Con manual publicado</span>
+        <span class="mp-kpi-pie">{{ totalManuales }} documento(s)</span>
+      </div>
+      <div class="mp-kpi">
+        <span class="mp-kpi-num">{{ totalTareas }}</span>
+        <span class="mp-kpi-lbl">Tareas automáticas</span>
+        <span class="mp-kpi-pie">en todo el catálogo</span>
+      </div>
+      <div class="mp-kpi mp-kpi-ok">
+        <span class="mp-kpi-num">{{ cobertura().recibiendo }}</span>
+        <span class="mp-kpi-lbl">Personas recibiendo tareas</span>
+        <span class="mp-kpi-pie">de {{ cobertura().total }} activas</span>
+      </div>
+      <div class="mp-kpi" [class.mp-kpi-alerta]="cobertura().sinPuesto > 0">
+        <span class="mp-kpi-num">{{ cobertura().sinPuesto }}</span>
+        <span class="mp-kpi-lbl">Sin puesto capturado</span>
+        <span class="mp-kpi-pie">
+          <ng-container *ngIf="cobertura().sinPuesto > 0">no reciben nada · corregir en Personal</ng-container>
+          <ng-container *ngIf="cobertura().sinPuesto === 0">todo en orden</ng-container>
+        </span>
+      </div>
+      <div class="mp-kpi">
+        <span class="mp-kpi-num">{{ cobertura().sinManual }}</span>
+        <span class="mp-kpi-lbl">Con puesto, esperando manual</span>
+        <span class="mp-kpi-pie">falta levantar el documento</span>
+      </div>
+    </section>
+
+    <!-- ═══════════════ FILTROS ═══════════════ -->
+    <section class="mp-filtros">
+      <div class="mp-buscador">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <input type="text"
+               [ngModel]="busqueda()"
+               (ngModelChange)="busqueda.set($event)"
+               placeholder="Buscar puesto, manual o tarea (ej. cierre, caducidades, checado)...">
+      </div>
+      <label class="mp-check">
+        <input type="checkbox"
+               [ngModel]="soloConManual()"
+               (ngModelChange)="soloConManual.set($event)">
+        Solo puestos con manual
+      </label>
+      <button class="mp-btn-limpiar" *ngIf="busqueda() || soloConManual()" (click)="limpiarFiltros()">
+        Limpiar
+      </button>
+    </section>
+
+    <!-- ═══════════════ HOJA POR UNIDAD ═══════════════ -->
+    <div class="mp-vacio" *ngIf="!hayResultados()">
+      <p>Nada coincide con la búsqueda.</p>
+      <button class="mp-btn-limpiar" (click)="limpiarFiltros()">Ver todo</button>
+    </div>
+
+    <section class="mp-unidad" *ngFor="let g of grupos()">
+      <h2 class="mp-unidad-titulo">{{ g.etiqueta }}</h2>
+
+      <div class="mp-fila"
+           *ngFor="let f of g.filas"
+           [class.mp-fila-abierta]="esAbierto(f.puesto.id)"
+           [class.mp-fila-sin-manual]="!f.manual">
+
+        <!-- Cabecera de la fila: clic para abrir el detalle -->
+        <button class="mp-fila-cab" (click)="alternarDetalle(f.puesto.id)"
+                [attr.aria-expanded]="esAbierto(f.puesto.id)">
+          <span class="mp-chevron" [class.girado]="esAbierto(f.puesto.id)">›</span>
+
+          <span class="mp-fila-nombre">
+            {{ f.puesto.nombre }}
+            <small class="mp-fila-nivel">{{ f.puesto.nivel }}</small>
+          </span>
+
+          <span class="mp-fila-manual" *ngIf="f.manual">
+            <span class="mp-badge-manual">📕 {{ f.manual.codigo || 'MANUAL' }}</span>
+            <span class="mp-fila-tareas">{{ f.automaticas }} tarea(s)</span>
+          </span>
+          <span class="mp-fila-manual" *ngIf="!f.manual">
+            <span class="mp-badge-pendiente">sin manual</span>
+          </span>
+
+          <span class="mp-fila-ocupantes"
+                [class.mp-fila-vacante]="f.ocupantes.length === 0"
+                [title]="f.ocupantes.join(', ')">
+            <ng-container *ngIf="f.ocupantes.length > 0">
+              {{ f.ocupantes.length }} persona(s)
+            </ng-container>
+            <ng-container *ngIf="f.ocupantes.length === 0">vacante</ng-container>
+          </span>
+        </button>
+
+        <!-- Detalle -->
+        <div class="mp-detalle" *ngIf="esAbierto(f.puesto.id)">
+
+          <!-- Sin manual: se dice por qué no recibe nada, sin rodeos -->
+          <div class="mp-detalle-vacio" *ngIf="!f.manual">
+            A este puesto todavía no le llega su Manual Corporativo de Operación, así
+            que no recibe tareas automáticas. No se le inventan: cuando el manual se
+            levante y se autorice, sus checklists aparecen aquí y en el apartado de
+            Tareas de su gente.
+          </div>
+
+          <ng-container *ngIf="f.manual">
+            <!-- Ficha del documento -->
+            <div class="mp-doc">
+              <div class="mp-doc-linea">
+                <span class="mp-doc-etq">Documento</span>
+                <span>{{ f.manual.documento }}</span>
+              </div>
+              <div class="mp-doc-linea" *ngIf="f.manual.codigo">
+                <span class="mp-doc-etq">Código</span>
+                <span>{{ f.manual.codigo }}</span>
+              </div>
+              <div class="mp-doc-linea">
+                <span class="mp-doc-etq">Versión</span>
+                <span>{{ f.manual.version }}</span>
+              </div>
+              <div class="mp-doc-linea">
+                <span class="mp-doc-etq">Archivo</span>
+                <span class="mp-doc-archivo">{{ f.manual.archivo }}</span>
+              </div>
+            </div>
+
+            <!-- Quién ocupa el puesto hoy -->
+            <div class="mp-ocupantes" *ngIf="f.ocupantes.length > 0">
+              <span class="mp-doc-etq">Lo reciben hoy</span>
+              <span class="mp-chip" *ngFor="let n of f.ocupantes">{{ n }}</span>
+            </div>
+
+            <!-- Las tareas -->
+            <article class="mp-tarea" *ngFor="let t of f.manual.tareas">
+              <header class="mp-tarea-cab">
+                <h3>{{ t.nombre }}</h3>
+                <span class="mp-tarea-codigo" *ngIf="t.codigoFormato">{{ t.codigoFormato }}</span>
+              </header>
+
+              <div class="mp-tarea-meta">
+                <span class="mp-meta">{{ textoMomento(t) }}</span>
+                <span class="mp-meta">{{ textoFrecuencia(t) }}</span>
+                <span class="mp-meta">Hasta las {{ t.horaLimite }}</span>
+                <span class="mp-meta mp-meta-evento" *ngIf="t.porEvento">Por evento</span>
+                <span class="mp-meta mp-meta-manualsolo" *ngIf="t.soloPorEvento">
+                  No se entrega sola
+                </span>
+              </div>
+
+              <p class="mp-tarea-nota" *ngIf="t.nota">{{ t.nota }}</p>
+
+              <ol class="mp-items">
+                <li *ngFor="let it of t.items">
+                  <span class="mp-item-bloque" *ngIf="it.bloque">{{ it.bloque }}</span>
+                  {{ it.texto }}
+                </li>
+              </ol>
+            </article>
+
+            <!-- Anexos del manual que a propósito no se automatizaron -->
+            <div class="mp-noauto" *ngIf="f.manual.formatosNoAutomatizados?.length">
+              <span class="mp-doc-etq">Formatos del manual que NO se automatizaron</span>
+              <p class="mp-noauto-por-que">
+                Son bitácoras y registros por renglón (diferencias, caducidades,
+                incidencias): historiales, no listas de verificación. Se siguen
+                llenando por el medio que defina el área.
+              </p>
+              <ul>
+                <li *ngFor="let n of f.manual.formatosNoAutomatizados">{{ n }}</li>
+              </ul>
+            </div>
+          </ng-container>
+        </div>
+      </div>
+    </section>
+
+    </main>
+  </div>
+</div>

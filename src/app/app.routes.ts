@@ -1,9 +1,7 @@
 import { Routes } from '@angular/router';
 
-import { CalendarioComponent } from './modules/dashboard/calendario/calendario';
 import { authGuard } from './services/auth.guard';
 import { soloTecGuard } from './services/tec.guard';
-import { flotillaGuard } from './services/flotilla.guard';
 import { promocionesGuard } from './services/promociones.guard';
 import { pagosGuard } from './services/pagos.guard';
 import { ticketsGuard } from './services/tickets.guard';
@@ -12,7 +10,6 @@ import { AgendaComponent } from './agenda/agenda';
 
 export const routes: Routes = [
   { path: '', redirectTo: 'login', pathMatch: 'full' },
-  { path: 'calendario', component: CalendarioComponent },
   { path: 'agenda', component: AgendaComponent },
   // El Login es público, cualquiera puede verlo
   { 
@@ -27,9 +24,24 @@ export const routes: Routes = [
     loadComponent: () => import('./modules/dashboard/home/home').then(m => m.HomeComponent) 
   },
   { 
-    path: 'checklist', 
+    // ✏️ TAREAS FUERA DEL MANUAL — lo que se asigna a mano: tareas únicas, de
+    // equipo, del día. Aquí sí se crea, se edita y se borra.
+    path: 'checklist',
     canActivate: [authGuard],
-    loadComponent: () => import('./modules/dashboard/checklist/checklist').then(m => m.ChecklistComponent) 
+    data: { modoManual: false },
+    loadComponent: () => import('./modules/dashboard/checklist/checklist').then(m => m.ChecklistComponent)
+  },
+
+  // 📕 TAREAS DEL MANUAL — los checklists del Manual Corporativo que entrega el
+  // robot según el puesto de cada persona. Mismo componente que /checklist: la
+  // única diferencia es `modoManual`, que decide qué mitad de la lista se pinta
+  // y esconde todo lo de crear. Toda la maquinaria de cumplir una tarea
+  // (evidencia, fotos, envío, offline) es la misma y no se duplica.
+  {
+    path: 'tareas-manual',
+    canActivate: [authGuard],
+    data: { modoManual: true },
+    loadComponent: () => import('./modules/dashboard/checklist/checklist').then(m => m.ChecklistComponent)
   },
   { 
     path: 'checkstore', 
@@ -65,11 +77,6 @@ export const routes: Routes = [
   },
   
   // 🔥 PANEL DE ÁREAS OPERATIVAS 🔥
-  {
-    path: 'areas',
-    canActivate: [authGuard],
-    loadComponent: () => import('./modules/dashboard/areas/areas').then(m => m.AreasComponent)
-  },
 
   // 📅 DÍAS DE DESCANSO SEMANALES
   {
@@ -78,33 +85,25 @@ export const routes: Routes = [
     loadComponent: () => import('./modules/dashboard/descansos/descansos').then(m => m.DescansosComponent)
   },
 
-  // 📋 CATÁLOGO DE RUTINAS MAESTRAS (Fase 1 de la refactorización)
+  // 📕 MANUAL POR PUESTO — reemplaza al sistema de Rutinas (Catálogo,
+  // Asignación, Programación y Migración). Ya no se captura qué se hace ni a
+  // quién se le asigna: el puesto del organigrama decide, y las tareas salen
+  // del Manual Corporativo de Operación. Pantalla de solo consulta.
   {
-    path: 'rutinas',
+    path: 'manual-puestos',
     canActivate: [authGuard],
-    loadComponent: () => import('./modules/dashboard/rutinas-catalogo/rutinas-catalogo').then(m => m.RutinasCatalogoComponent)
+    loadComponent: () => import('./modules/dashboard/manual-puestos/manual-puestos').then(m => m.ManualPuestosComponent)
   },
 
-  // 📌 ASIGNACIÓN DE RUTINAS (Fase 2)
-  {
-    path: 'asignaciones-rutinas',
-    canActivate: [authGuard],
-    loadComponent: () => import('./modules/dashboard/asignaciones-rutinas/asignaciones-rutinas').then(m => m.AsignacionesRutinasComponent)
-  },
-
-  // 📅 PROGRAMACIÓN DE RUTINAS (Fase 3) — vista previa de próximos días
-  {
-    path: 'programacion-rutinas',
-    canActivate: [authGuard],
-    loadComponent: () => import('./modules/dashboard/programacion-rutinas/programacion-rutinas').then(m => m.ProgramacionRutinasComponent)
-  },
-
-  // 🚚 MIGRACIÓN DEL SISTEMA LEGACY (Fase 5) — solo admin global
-  {
-    path: 'migracion-rutinas',
-    canActivate: [authGuard],
-    loadComponent: () => import('./modules/dashboard/migracion-rutinas/migracion-rutinas').then(m => m.MigracionRutinasComponent)
-  },
+  // Las rutas del modelo retirado (/rutinas, /asignaciones-rutinas,
+  // /programacion-rutinas, /migracion-rutinas) se van a la pantalla nueva.
+  // Se mantienen como redirección, no se borran a secas: hay gente con esos
+  // enlaces guardados en el navegador y en mensajes de WhatsApp, y un "**"
+  // que los tira al login se lee como que la app se rompió.
+  { path: 'rutinas',                redirectTo: 'manual-puestos', pathMatch: 'full' },
+  { path: 'asignaciones-rutinas',   redirectTo: 'manual-puestos', pathMatch: 'full' },
+  { path: 'programacion-rutinas',   redirectTo: 'manual-puestos', pathMatch: 'full' },
+  { path: 'migracion-rutinas',      redirectTo: 'manual-puestos', pathMatch: 'full' },
 
   // 📤 TAREAS QUE EL ADMIN HA ASIGNADO A OTROS
   {
@@ -114,11 +113,6 @@ export const routes: Routes = [
   },
 
   // 🕐 TURNOS DE CANINDO (manana/tarde) — solo admins de Canindo
-  {
-    path: 'turnos',
-    canActivate: [authGuard],
-    loadComponent: () => import('./modules/dashboard/turnos/turnos').then(m => m.TurnosComponent)
-  },
 
   // 🔥 NUEVA RUTA: PERFIL DEL USUARIO 🔥
   {
@@ -135,11 +129,6 @@ export const routes: Routes = [
   },
 
   // 🚗 FLOTILLA — reservas/itinerario de los vehiculos de la empresa (gateado por grupoFlotilla)
-  {
-    path: 'flotilla',
-    canActivate: [flotillaGuard],
-    loadComponent: () => import('./modules/dashboard/flotilla/flotilla').then(m => m.FlotillaComponent)
-  },
 
   // 🏷️ ACTIVACIÓN DE PROMOCIONES — visible solo para quien tenga grupoPromociones
   {
@@ -158,11 +147,6 @@ export const routes: Routes = [
   },
 
   // 🧱 BLOQUES DE TRABAJO — el día partido en tramos de horario, con sus tareas.
-  {
-    path: 'bloques',
-    canActivate: [authGuard],
-    loadComponent: () => import('./modules/dashboard/bloques/bloques').then(m => m.BloquesComponent)
-  },
 
   // 🎫 TICKETS — vale de servicio operativo: solicitudes de servicio entre áreas,
   // con su folio, el detalle de lo realizado y las firmas del formato.
@@ -182,6 +166,27 @@ export const routes: Routes = [
 
   
   
+  // ══════════════════════════════════════════════════════════════════════════
+  //  APARTADOS RETIRADOS DEL MENÚ (2026-08-28)
+  //
+  //  Se quitaron del sidebar y aquí se les cierra la puerta: quien tenga el
+  //  enlace guardado en el navegador o en un WhatsApp cae en el Dashboard en
+  //  vez de entrar. NO se borró su código ni sus datos — volver a abrir
+  //  cualquiera es quitar su línea de aquí y devolver su bloque de ruta.
+  //
+  //  Dos consecuencias que quedan asumidas a propósito:
+  //    · /turnos era el único editor de la config de turnos de Canindo, que el
+  //      robot del manual sigue leyendo para no entregar tareas fuera de turno.
+  //      La config sigue vigente tal como quedó; ya nadie la puede cambiar.
+  //    · /areas era el único editor de `areas_operativas`, catálogo que el
+  //      Dashboard sigue leyendo. Queda sin pantalla de edición.
+  // ══════════════════════════════════════════════════════════════════════════
+  { path: 'bloques',    redirectTo: 'home', pathMatch: 'full' },
+  { path: 'flotilla',   redirectTo: 'home', pathMatch: 'full' },
+  { path: 'turnos',     redirectTo: 'home', pathMatch: 'full' },
+  { path: 'calendario', redirectTo: 'home', pathMatch: 'full' },
+  { path: 'areas',      redirectTo: 'home', pathMatch: 'full' },
+
   // Cualquier ruta que no exista o intente saltarse el sistema, al login
   { path: '**', redirectTo: 'login' }
 ];

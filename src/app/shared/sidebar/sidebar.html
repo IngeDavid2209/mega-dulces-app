@@ -14,12 +14,29 @@
         Dashboard
       </a>
 
-      <a class="nav-item" routerLink="/checklist" routerLinkActive="active" (click)="onNavClick()">
+      <!-- 📕 TAREAS DEL MANUAL — las que entrega solo el robot según el puesto
+           de cada persona, tomadas del Manual Corporativo. No se crean ni se
+           editan: se cumplen. Va ANTES de las libres a propósito: es lo
+           obligatorio del puesto y es lo primero que le debe saltar a la vista. -->
+      <a class="nav-item" routerLink="/tareas-manual" routerLinkActive="active" (click)="onNavClick()"
+         title="Checklists de tu Manual Corporativo de Operación (solo cumplir)">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+        </svg>
+        Tareas del Manual
+      </a>
+
+      <!-- ✏️ TAREAS FUERA DEL MANUAL — lo que se asigna a mano. Misma pantalla
+           que la de arriba (data.modoManual en app.routes.ts decide cuál mitad
+           de la lista se pinta); antes se llamaba "Checklist". -->
+      <a class="nav-item" routerLink="/checklist" routerLinkActive="active" (click)="onNavClick()"
+         title="Tareas asignadas a mano: únicas, de equipo y del día">
         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <polyline points="9 11 12 14 22 4" />
           <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />
         </svg>
-        Checklist
+        Tareas fuera del manual
       </a>
 
       <a class="nav-item" routerLink="/agenda" routerLinkActive="active" (click)="onNavClick()">
@@ -77,20 +94,6 @@
         Venta de Promos
       </a>
 
-      <!-- 🧱 Bloques de trabajo: el dia partido en tramos de horario. Lo ven
-           quienes pueden asignar tareas (crear checklists) y los admins. -->
-      <a class="nav-item" routerLink="/bloques" routerLinkActive="active"
-         *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeCrearChecklists"
-         (click)="onNavClick()"
-         title="Bloques de trabajo: tramos de horario con sus tareas">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <rect x="3" y="4" width="18" height="5" rx="1"></rect>
-          <rect x="3" y="11" width="18" height="5" rx="1"></rect>
-          <rect x="3" y="18" width="12" height="3" rx="1"></rect>
-        </svg>
-        Bloques
-      </a>
-
       <!-- 🎫 Tickets: vale de servicio operativo. Visible para los designados
            (grupoTickets) y para el admin. -->
       <a class="nav-item" routerLink="/tickets" routerLinkActive="active"
@@ -118,32 +121,6 @@
           <path d="M8 16h4"></path>
         </svg>
         Pagos
-      </a>
-
-      <!-- 🚗 Flotilla: reservas de vehiculos. Visible SOLO para los usuarios
-           designados (grupoFlotilla). Los admins NO lo ven por ser admin. -->
-      <a class="nav-item" routerLink="/flotilla" routerLinkActive="active"
-         *ngIf="currentUser?.grupoFlotilla === true"
-         (click)="onNavClick()"
-         title="Aparta un vehiculo de la empresa y revisa el itinerario">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M3 13l2-5a2 2 0 0 1 1.9-1.4h10.2A2 2 0 0 1 19 8l2 5"></path>
-          <path d="M5 13h14v4a1 1 0 0 1-1 1h-1a1 1 0 0 1-1-1v-1H8v1a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1z"></path>
-          <circle cx="7.5" cy="15.5" r="0.5"></circle>
-          <circle cx="16.5" cy="15.5" r="0.5"></circle>
-        </svg>
-        Flotilla
-      </a>
-
-      <a class="nav-item" routerLink="/turnos" routerLinkActive="active"
-         *ngIf="esAdminCanindo"
-         (click)="onNavClick()"
-         title="Turnos manana/tarde de Canindo: define quien va en cada turno">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="12" cy="12" r="9"></circle>
-          <polyline points="12 7 12 12 15 14"></polyline>
-        </svg>
-        Turnos Canindo
       </a>
 
       <a class="nav-item" routerLink="/checkstore" routerLinkActive="active"
@@ -195,63 +172,20 @@
         Cierre Mensual
       </a>
 
-      <a class="nav-item" routerLink="/calendario" routerLinkActive="active"
-         *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeVerCalendario"
-         (click)="onNavClick()">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-          <line x1="16" y1="2" x2="16" y2="6"></line>
-          <line x1="8" y1="2" x2="8" y2="6"></line>
-          <line x1="3" y1="10" x2="21" y2="10"></line>
-        </svg>
-        Calendario
-      </a>
-
-      <a class="nav-item" routerLink="/rutinas" routerLinkActive="active"
+      <!-- 📕 MANUAL POR PUESTO
+           Reemplaza los cuatro apartados de Rutinas (Catálogo, Asignación,
+           Programación y Migración Legacy). Ya no hay nada que capturar: el
+           puesto del organigrama decide qué tareas recibe cada quien, y esas
+           tareas salen del Manual Corporativo. Esta pantalla es de consulta. -->
+      <a class="nav-item" routerLink="/manual-puestos" routerLinkActive="active"
          *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeCrearRutinas"
-         (click)="onNavClick()">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="12" cy="12" r="4"></circle>
-          <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"></path>
-        </svg>
-        Catálogo de Rutinas
-      </a>
-
-      <a class="nav-item" routerLink="/asignaciones-rutinas" routerLinkActive="active"
-         *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeCrearRutinas"
-         (click)="onNavClick()">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <polyline points="9 11 12 14 22 4"></polyline>
-          <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
-        </svg>
-        Asignación de Rutinas
-        <span class="nav-badge-conf" *ngIf="conflictosRutinas > 0">{{ conflictosRutinas }}</span>
-      </a>
-
-      <a class="nav-item" routerLink="/programacion-rutinas" routerLinkActive="active"
-         *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeCrearRutinas"
-         (click)="onNavClick()">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-          <line x1="16" y1="2" x2="16" y2="6"></line>
-          <line x1="8" y1="2" x2="8" y2="6"></line>
-          <line x1="3" y1="10" x2="21" y2="10"></line>
-          <circle cx="12" cy="16" r="1.5" fill="currentColor" stroke="none"></circle>
-        </svg>
-        Programación de Rutinas
-      </a>
-
-      <a class="nav-item" routerLink="/migracion-rutinas" routerLinkActive="active"
-         *ngIf="currentUser?.rol === 'admin' && (currentUser?.alcance === 'global' || !currentUser?.alcance)"
          (click)="onNavClick()"
-         title="Migración del sistema legacy (solo admin global)">
+         title="Qué tareas recibe cada puesto según su Manual Corporativo (solo consulta)">
         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <polyline points="17 1 21 5 17 9"></polyline>
-          <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
-          <polyline points="7 23 3 19 7 15"></polyline>
-          <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
+          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
         </svg>
-        Migración Legacy
+        Manual por Puesto
       </a>
 
       <a class="nav-item" routerLink="/reportes" routerLinkActive="active"
@@ -276,18 +210,6 @@
           <path d="M16 3.13a4 4 0 010 7.75" />
         </svg>
         Usuarios
-      </a>
-
-      <a class="nav-item" routerLink="/areas" routerLinkActive="active"
-         *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeAdministrarAreas"
-         (click)="onNavClick()">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <rect x="3" y="3" width="7" height="7"></rect>
-          <rect x="14" y="3" width="7" height="7"></rect>
-          <rect x="14" y="14" width="7" height="7"></rect>
-          <rect x="3" y="14" width="7" height="7"></rect>
-        </svg>
-        Áreas de Trabajo
       </a>
 
       <a class="nav-item" routerLink="/descansos" routerLinkActive="active"

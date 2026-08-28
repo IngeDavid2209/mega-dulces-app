@@ -4,7 +4,6 @@ import { RouterModule, Router } from '@angular/router';
 import { APP_BUILD_SELLO } from '../version';
 import { esAdminDeCanindo } from '../permisos.util';
 import { cerrarSesionSegura } from '../sesion.util';
-import { ConflictosRutinasService } from '../conflictos-rutinas.service';
 
 /**
  * Sidebar compartido del panel administrativo.
@@ -34,24 +33,13 @@ export class SidebarComponent implements OnInit, OnDestroy {
   readonly buildSello = APP_BUILD_SELLO;
 
   private router = inject(Router);
-  private conflictosSvc = inject(ConflictosRutinasService);
-  private conflictosActivo = false;
 
-  /** ¿Este usuario gestiona rutinas? (para mostrar el badge de conflictos). */
-  get gestionaRutinas(): boolean {
-    return this.currentUser?.rol === 'admin' || !!this.currentUser?.puedeCrearRutinas;
-  }
-  /** Conteo de conflictos de rutinas (próximos 7 días). */
-  get conflictosRutinas(): number {
-    return this.gestionaRutinas ? this.conflictosSvc.count() : 0;
-  }
-
-  ngOnInit() {
-    if (this.gestionaRutinas) { this.conflictosActivo = true; this.conflictosSvc.iniciar(); }
-  }
-  ngOnDestroy() {
-    if (this.conflictosActivo) this.conflictosSvc.detener();
-  }
+  // El badge de "conflictos de rutinas" desapareció junto con el modelo de
+  // rutinas. Ya no hay conflicto que detectar: nadie asigna una rutina a una
+  // persona que descansa, porque nadie asigna nada — el puesto decide y el
+  // robot ya omite a quien descansa o está fuera de turno.
+  ngOnInit() { /* sin listeners propios */ }
+  ngOnDestroy() { /* sin listeners propios */ }
 
   /**
    * ¿Se le muestra "Promociones" (activación, formato MKTN001)?

@@ -16,6 +16,9 @@ import {
 import Swal from 'sweetalert2';
 import { esAdmin, esAdminGlobal, esAdminLimitado, normalizarNombre, mismoEmpleadoNombre, sucursalesPermitidas } from '../../../shared/permisos.util';
 import { nivelDeUsuario, NivelJerarquico } from '../../../shared/nivel-jerarquico.util';
+import { puestosPorUnidad, puestoPorId, nombrePuesto } from '../../../shared/organigrama.catalogo';
+import { resolverPuesto, usuariosSinPuesto, usuariosConPuestoPorAlias } from '../../../shared/puesto.util';
+import { manualDePuesto, tareasAutomaticasDePuesto } from '../../../shared/tareas-manual.catalogo';
 // 🔥 Para crear usuarios sin desloguear al admin (segunda app Firebase temporal)
 import { initializeApp, deleteApp } from 'firebase/app';
 import { getAuth as getAuthSecondary, createUserWithEmailAndPassword as createUserSecondary, signOut as signOutSecondary } from 'firebase/auth';
@@ -24,11 +27,12 @@ import { firebaseConfig } from '../../../app.config';
 
 
 import { SidebarComponent } from '../../../shared/sidebar/sidebar';
+import { ImportarNominaComponent, CambioPuesto } from './importar-nomina';
 
 @Component({
   selector: 'app-personal',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, SidebarComponent],
+  imports: [CommonModule, FormsModule, RouterModule, SidebarComponent, ImportarNominaComponent],
   templateUrl: './personal.html',
   styleUrls: ['./personal.css']
 })
@@ -52,6 +56,14 @@ export class PersonalComponent implements OnInit, OnDestroy {
   /** Mostrar en claro la contraseña que ya tenía (soporte). */
   verPasswordActual = false;
   formRol = 'trabajador'; formCargo = 'Trabajador General';
+  /**
+   * 🎯 Puesto del organigrama 2026. Es lo que decide qué tareas de manual
+   * recibe la persona, así que es el campo que de verdad importa capturar.
+   * `formCargo` se conserva y se mantiene sincronizado con el nombre del
+   * puesto, porque media app (buscador, reportes, Excel, nivel jerárquico)
+   * sigue leyendo `cargo`.
+   */
+  formPuestoId = '';
   formPuedeCrearChecklists = false;
   formPuedeCrearRutinas = false;
   formPuedeCrearTareasUnicas = false;
@@ -414,6 +426,7 @@ export class PersonalComponent implements OnInit, OnDestroy {
     this.formNombre = ''; this.formUsuario = ''; this.formCorreo = ''; this.formPassword = '';
     this.passwordActual = ''; this.verPasswordActual = false;
     this.formRol = 'trabajador'; this.formCargo = 'Trabajador General';
+    this.formPuestoId = '';
     this.formPuedeCrearChecklists = false;
     this.formPuedeCrearRutinas = false;
     this.formPuedeCrearTareasUnicas = false;
@@ -471,6 +484,9 @@ export class PersonalComponent implements OnInit, OnDestroy {
   this.formTelefono  = user.telefono || ''; // 🔥 FIX: cargaba vacío antes
   this.formRol       = user.rol;
   this.formCargo     = user.cargo    || 'Trabajador General';
+  // 🎯 Puesto: si nunca se capturó, se precarga el que se deduce del cargo
+  // viejo para que el admin solo tenga que confirmarlo, no adivinarlo.
+  this.formPuestoId  = resolverPuesto(user).puestoId || '';
   this.formSucursales = user.sucursales ? [...user.sucursales] : [];
   this.formAreas      = user.areas      ? [...user.areas]      : [];
   this.formAlcance    = user.alcance === 'sucursales' ? 'sucursales' : 'global';
@@ -632,6 +648,7 @@ export class PersonalComponent implements OnInit, OnDestroy {
       nombre: this.formNombre, usuario: this.formUsuario, correo: this.formCorreo,
       password: String(this.formPassword || '').trim() ? this.formPassword : this.passwordActual,
       rol: this.formRol, cargo: this.formCargo, telefono: this.formTelefono,
+      puestoId: this.formPuestoId || null,
       alcance: alcanceFinal,
       puedeCrearChecklists: this.formRol === 'admin' ? true : this.formPuedeCrearChecklists,
       puedeCrearRutinas: this.formRol === 'admin' ? true : this.formPuedeCrearRutinas,
@@ -915,6 +932,168 @@ export class PersonalComponent implements OnInit, OnDestroy {
       icon: 'success', title: 'Índice sincronizado',
       html: `Listos: <strong>${ok}</strong><br>Omitidos (sin usuario/correo): <strong>${sin}</strong>`,
       confirmButtonColor: '#0F172A'
+    });
+  }
+
+  // ==========================================================================
+  //  🎯 PUESTOS DEL ORGANIGRAMA 2026
+  // ==========================================================================
+
+  // ── 📋 Importación de puestos desde la nómina (un solo uso) ──────────────
+
+  /** ¿Está abierta la vista previa del cruce con la nómina? */
+  mostrarImportarNomina = false;
+
+  abrirImportarNomina() { this.mostrarImportarNomina = true; }
+
+  /**
+   * Escribe los puestos que la vista previa dejó aprobados.
+   *
+   * Va uno por uno con el mismo dual-write que usa el resto de esta pantalla
+   * (Firestore de respaldo + Postgres, que es de donde lee la app). No se hace
+   * en paralelo a propósito: son ~180 escrituras y lanzarlas todas de golpe
+   * contra el serverless termina en peticiones abortadas y un resultado a
+   * medias que nadie sabría cómo reparar.
+   */
+  async aplicarCambiosNomina(cambios: CambioPuesto[]) {
+    this.mostrarImportarNomina = false;
+    if (!cambios.length) return;
+
+    Swal.fire({
+      title: 'Guardando puestos…',
+      html: `0 de ${cambios.length}`,
+      allowOutsideClick: false,
+      didOpen: () => Swal.showLoading(),
+    });
+
+    let ok = 0;
+    const fallidos: string[] = [];
+    for (const c of cambios) {
+      const docId = c.usuario.idFirestore || c.usuario.uid || c.usuario.id;
+      if (!docId) { fallidos.push(c.usuario.nombre || '(sin id)'); continue; }
+
+      // `cargo` se mantiene sincronizado con el nombre del puesto porque media
+      // app lo sigue leyendo (buscador, reportes, Excel, nivel jerárquico).
+      const campos: any = { puestoId: c.puestoId, cargo: c.cargo };
+      if (c.sucursal) campos.sucursales = [c.sucursal];
+
+      try {
+        await this.api.patch('/api/usuarios', { id: docId, ...campos });
+        // El respaldo de Firestore es best-effort: si falla, el dato bueno ya
+        // quedó en Postgres, que es de donde la app lee.
+        await setDoc(doc(this.firestore, 'usuarios', docId), campos, { merge: true })
+          .catch(e => console.error('[nomina] respaldo Firestore', c.usuario.nombre, e));
+        ok++;
+      } catch (e) {
+        console.error('[nomina] no se pudo guardar', c.usuario.nombre, e);
+        fallidos.push(c.usuario.nombre || docId);
+      }
+      Swal.update({ html: `${ok + fallidos.length} de ${cambios.length}` });
+    }
+
+    this.usuariosSvc.refrescar();
+
+    Swal.fire({
+      icon: fallidos.length ? 'warning' : 'success',
+      title: fallidos.length ? 'Guardado con pendientes' : 'Puestos asignados',
+      html: `Se guardaron <strong>${ok}</strong> de <strong>${cambios.length}</strong>.` +
+            (fallidos.length
+              ? `<br><br>No se pudieron guardar ${fallidos.length}:<br>` +
+                `<small style="color:#94a3b8">${fallidos.slice(0, 12).join(', ')}` +
+                `${fallidos.length > 12 ? '…' : ''}</small>` +
+                `<br><br>Vuelve a correr la importación: los que ya quedaron no se repiten.`
+              : `<br><br>Revisa <em>Cobertura de puestos</em> para ver qué falta.`),
+      confirmButtonColor: '#0F172A',
+    });
+  }
+
+  /** Los puestos agrupados por unidad, para pintar el selector con optgroups. */
+  gruposPuestos = puestosPorUnidad();
+
+  /**
+   * Al elegir un puesto, `cargo` se sincroniza con su nombre oficial.
+   *
+   * Es a propósito: `cargo` es el campo que llevan años leyendo el buscador, los
+   * reportes, el Excel y el cálculo de nivel jerárquico. Si el puesto y el cargo
+   * se separaran, la ficha diría una cosa y los reportes otra.
+   */
+  alCambiarPuesto() {
+    const p = puestoPorId(this.formPuestoId);
+    if (p) this.formCargo = p.nombre;
+  }
+
+  /** El manual ligado al puesto que está seleccionado en el formulario. */
+  manualDelPuestoForm() {
+    return manualDePuesto(this.formPuestoId);
+  }
+
+  /** Cuántas tareas automáticas recibirá quien tenga el puesto seleccionado. */
+  tareasDelPuestoForm(): number {
+    return tareasAutomaticasDePuesto(this.formPuestoId).length;
+  }
+
+  /** Nombre del puesto de un usuario de la lista, resuelto (explícito o por alias). */
+  puestoDe(u: any): string {
+    const r = resolverPuesto(u);
+    return r.puesto ? r.puesto.nombre : '';
+  }
+
+  /** ¿El puesto de esta persona se está deduciendo del cargo viejo? */
+  puestoEsPorAlias(u: any): boolean {
+    return resolverPuesto(u).origen === 'alias';
+  }
+
+  /**
+   * Reporte de cobertura de puestos.
+   *
+   * Es el tablero que hay que dejar en cero después del cambio: mientras alguien
+   * aparezca "sin puesto", esa persona NO está recibiendo las tareas de su
+   * manual, y el silencio es el peor síntoma posible. Se resuelve abriendo su
+   * ficha y eligiendo su puesto.
+   */
+  async revisarCoberturaPuestos() {
+    const lista = this.usuarios().filter(u => u.activo !== false);
+    const sinPuesto = usuariosSinPuesto(lista);
+    const porAlias = usuariosConPuestoPorAlias(lista);
+    const conManual = lista.filter(u => {
+      const id = resolverPuesto(u).puestoId;
+      return id && tareasAutomaticasDePuesto(id).length > 0;
+    });
+
+    const filas = (arr: any[], extra?: (u: any) => string) => arr.length === 0
+      ? '<tr><td colspan="3" style="padding:8px;color:#94a3b8">Ninguno 🎉</td></tr>'
+      : arr.map(u => `<tr>
+          <td style="padding:4px 8px;text-align:left">${u.nombre || '(sin nombre)'}</td>
+          <td style="padding:4px 8px;color:#94a3b8;text-align:left">${u.cargo || '—'}</td>
+          <td style="padding:4px 8px;text-align:left">${extra ? extra(u) : ''}</td>
+        </tr>`).join('');
+
+    Swal.fire({
+      title: 'Cobertura de puestos',
+      width: 780,
+      html: `
+        <div style="text-align:left;font-size:13px">
+          <p style="margin:0 0 14px">
+            <b>${conManual.length}</b> de <b>${lista.length}</b> personas activas están recibiendo
+            tareas de su Manual Corporativo.
+          </p>
+
+          <h4 style="margin:14px 0 6px;color:#B91C1C">Sin puesto (${sinPuesto.length}) — no reciben nada</h4>
+          <p style="margin:0 0 6px;color:#64748b">Abre su ficha y elige su puesto del organigrama.</p>
+          <table style="width:100%;border-collapse:collapse;font-size:12px">
+            <tr style="color:#64748b"><th style="text-align:left;padding:4px 8px">Nombre</th><th style="text-align:left;padding:4px 8px">Cargo capturado</th><th></th></tr>
+            ${filas(sinPuesto)}
+          </table>
+
+          <h4 style="margin:18px 0 6px;color:#B45309">Puesto deducido del cargo viejo (${porAlias.length})</h4>
+          <p style="margin:0 0 6px;color:#64748b">Funcionan, pero conviene confirmarlos con el selector: si alguien reescribe el cargo, dejan de resolver.</p>
+          <table style="width:100%;border-collapse:collapse;font-size:12px">
+            <tr style="color:#64748b"><th style="text-align:left;padding:4px 8px">Nombre</th><th style="text-align:left;padding:4px 8px">Cargo capturado</th><th style="text-align:left;padding:4px 8px">Se lee como</th></tr>
+            ${filas(porAlias.map(x => x.usuario), u => nombrePuesto(resolverPuesto(u).puestoId))}
+          </table>
+        </div>`,
+      confirmButtonColor: '#0F172A',
+      confirmButtonText: 'Cerrar',
     });
   }
 

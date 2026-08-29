@@ -106,6 +106,51 @@
 .mp-kpi-alerta .mp-kpi-num { color: #B91C1C; }
 .mp-kpi-alerta .mp-kpi-pie { color: #DC2626; font-weight: 600; }
 
+/* Un <button> trae su propia tipografia y alineado del navegador; sin esto la
+   tarjeta se ve distinta de sus vecinas y delata que es "la rara". */
+.mp-kpi-boton {
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  width: 100%;
+  transition: border-color .15s, box-shadow .15s;
+}
+.mp-kpi-boton:hover { border-color: #F87171; box-shadow: 0 2px 8px rgba(220,38,38,.12); }
+.mp-kpi-boton:focus-visible { outline: 2px solid #DC2626; outline-offset: 2px; }
+.mp-kpi-abierto { border-color: #DC2626; }
+
+/* ── Quienes no tienen puesto ────────────────────────────────────────────── */
+.mp-sinpuesto {
+  background: #fff;
+  border: 1px solid #FECACA;
+  border-radius: 10px;
+  padding: 16px 18px;
+  margin-bottom: 16px;
+}
+.mp-sinpuesto-cab { display: flex; flex-direction: column; gap: 3px; margin-bottom: 10px; }
+.mp-sinpuesto-cab strong { font-size: 14px; color: #B91C1C; }
+.mp-sinpuesto-cab span { font-size: 12px; color: #64748B; }
+.mp-sinpuesto-cab a { color: #0F172A; font-weight: 700; }
+.mp-sinpuesto-nota {
+  font-size: 12px;
+  color: #64748B;
+  line-height: 1.5;
+  background: #F8FAFC;
+  border-left: 3px solid #CBD5E1;
+  padding: 8px 12px;
+  margin-bottom: 12px;
+}
+/* La tabla se desborda sola en pantallas chicas; el cuerpo de la pagina nunca
+   debe agarrar scroll horizontal. */
+.mp-sinpuesto-tabla { width: 100%; border-collapse: collapse; font-size: 13px; display: block; overflow-x: auto; }
+.mp-sinpuesto-tabla th {
+  text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .4px;
+  color: #94A3B8; padding: 6px 10px; border-bottom: 1px solid #E2E8F0; white-space: nowrap;
+}
+.mp-sinpuesto-tabla td { padding: 8px 10px; border-bottom: 1px solid #F1F5F9; color: #334155; }
+.mp-sp-nombre { font-weight: 700; color: #0F172A; white-space: nowrap; }
+.mp-sp-vacio { color: #94A3B8; font-style: italic; }
+
 /* ── Filtros ─────────────────────────────────────────────────────────────── */
 .mp-filtros {
   display: flex;

@@ -122,6 +122,35 @@ export class ManualPuestosComponent implements OnInit, OnDestroy {
     return { total: act.length, recibiendo, sinPuesto, sinManual };
   });
 
+  // ── QUIENES NO TIENEN PUESTO ────────────────────────────────────────────
+  //
+  // El numero solo dice cuanta gente esta fuera; para arreglarlo hace falta
+  // saber QUIENES son y, sobre todo, QUE dice su ficha. Casi siempre el
+  // problema no es que el campo este vacio, sino que el cargo escrito a mano
+  // ("Ayudante General", "Implementacion Kepler") no coincide con ningun
+  // puesto ni alias del organigrama. Sin ver ese texto, la correccion es a
+  // ciegas.
+  verSinPuesto = signal(false);
+
+  alternarSinPuesto() { this.verSinPuesto.update(v => !v); }
+
+  sinPuesto = computed(() => {
+    const filas = this.activos()
+      .filter(u => !resolverPuesto(u).puestoId)
+      .map(u => ({
+        nombre: u.nombre || '(sin nombre)',
+        // Lo que trae la ficha hoy. Es el texto que hay que hacer coincidir.
+        cargo: (u.cargo || '').trim(),
+        sucursal: (u.sucursal || (u.sucursales && u.sucursales[0]) || '').trim(),
+        rol: u.rol || '',
+      }));
+
+    // Por sucursal y luego por nombre: la correccion se hace plaza por plaza.
+    return filas.sort((a, b) =>
+      (a.sucursal || 'zzz').localeCompare(b.sucursal || 'zzz') ||
+      a.nombre.localeCompare(b.nombre));
+  });
+
   /** La hoja completa, agrupada por unidad del organigrama. */
   grupos = computed<GrupoUnidad[]>(() => {
     const term = normalizarNombre(this.busqueda());

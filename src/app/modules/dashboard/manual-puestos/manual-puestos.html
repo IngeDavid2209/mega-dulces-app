@@ -73,19 +73,61 @@
         <span class="mp-kpi-lbl">Personas recibiendo tareas</span>
         <span class="mp-kpi-pie">de {{ cobertura().total }} activas</span>
       </div>
-      <div class="mp-kpi" [class.mp-kpi-alerta]="cobertura().sinPuesto > 0">
+      <!-- Esta tarjeta se abre: el numero dice cuantos estan fuera, pero para
+           corregirlo hace falta la lista. Solo es boton cuando hay a quien
+           mostrar; con cero, un boton que abre una lista vacia enganaria. -->
+      <button *ngIf="cobertura().sinPuesto > 0" type="button"
+              class="mp-kpi mp-kpi-alerta mp-kpi-boton"
+              [class.mp-kpi-abierto]="verSinPuesto()"
+              (click)="alternarSinPuesto()"
+              [attr.aria-expanded]="verSinPuesto()">
         <span class="mp-kpi-num">{{ cobertura().sinPuesto }}</span>
         <span class="mp-kpi-lbl">Sin puesto capturado</span>
         <span class="mp-kpi-pie">
-          <ng-container *ngIf="cobertura().sinPuesto > 0">no reciben nada · corregir en Personal</ng-container>
-          <ng-container *ngIf="cobertura().sinPuesto === 0">todo en orden</ng-container>
+          {{ verSinPuesto() ? 'ocultar la lista' : 'ver quiénes son' }}
         </span>
+      </button>
+      <div *ngIf="cobertura().sinPuesto === 0" class="mp-kpi">
+        <span class="mp-kpi-num">0</span>
+        <span class="mp-kpi-lbl">Sin puesto capturado</span>
+        <span class="mp-kpi-pie">todo en orden</span>
       </div>
       <div class="mp-kpi">
         <span class="mp-kpi-num">{{ cobertura().sinManual }}</span>
         <span class="mp-kpi-lbl">Con puesto, esperando manual</span>
         <span class="mp-kpi-pie">falta levantar el documento</span>
       </div>
+    </section>
+
+    <!-- ═══════════ QUIENES NO TIENEN PUESTO ═══════════ -->
+    <section class="mp-sinpuesto" *ngIf="verSinPuesto() && sinPuesto().length > 0">
+      <div class="mp-sinpuesto-cab">
+        <strong>{{ sinPuesto().length }} persona(s) sin puesto del organigrama</strong>
+        <span>No reciben ninguna tarea del manual. Se corrige en <a routerLink="/personal">Personal</a>.</span>
+      </div>
+      <div class="mp-sinpuesto-nota">
+        Casi siempre el campo no está vacío: el cargo escrito a mano no coincide
+        con ningún puesto ni alias del organigrama. Abajo se muestra el texto que
+        trae hoy cada ficha, que es lo que hay que hacer coincidir.
+      </div>
+      <table class="mp-sinpuesto-tabla">
+        <thead>
+          <tr><th>Persona</th><th>Cargo en su ficha</th><th>Sucursal</th></tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let p of sinPuesto()">
+            <td class="mp-sp-nombre">{{ p.nombre }}</td>
+            <td>
+              <span *ngIf="p.cargo">{{ p.cargo }}</span>
+              <em *ngIf="!p.cargo" class="mp-sp-vacio">sin cargo capturado</em>
+            </td>
+            <td>
+              <span *ngIf="p.sucursal">{{ p.sucursal }}</span>
+              <em *ngIf="!p.sucursal" class="mp-sp-vacio">sin sucursal</em>
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </section>
 
     <!-- ═══════════════ FILTROS ═══════════════ -->

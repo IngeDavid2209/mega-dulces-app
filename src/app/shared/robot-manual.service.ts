@@ -32,6 +32,7 @@ import { esDiaDescansoEnFecha, obtenerSemanaISO } from './descansos.util';
 import { puestoIdDe } from './puesto.util';
 import { nombrePuesto } from './organigrama.catalogo';
 import { HorarioSucursal, limiteAperturaDe, trabajaEsteDia } from './horarios-sucursal.util';
+import { evidenciaDe } from './evidencia-manual';
 import {
   TareaManual, FrecuenciaManual, manualDePuesto, tareasAutomaticasDePuesto,
 } from './tareas-manual.catalogo';
@@ -333,7 +334,12 @@ export class RobotManualService {
     const real = tarea.momento === 'apertura' ? limiteAperturaDe(sucursal, this.horarios) : null;
     const horaLimite = real ? real.hora : tarea.horaLimite;
 
-    const items = tarea.items.map((it, i) => ({
+    const items = tarea.items.map((it, i) => {
+      // Que evidencia pide ESTE punto. Viene de evidencia-manual.ts, aparte del
+      // catalogo, porque no sale del documento sino de una decision de la app.
+      const ev = evidenciaDe(tarea.id, i, it.texto);
+
+      return {
       id: `${tarea.id}_${i}`,
       // El bloque de la jornada va como prefijo para no perder el dato que
       // trae el anexo (Inicio, Surtido, Checado...).
@@ -347,16 +353,32 @@ export class RobotManualService {
       photos: [],
       horaInicio: null,
       horaLimite,
-      // El manual no pide fotografía en sus anexos: pide firma y observación.
-      // No se le inventa evidencia fotográfica obligatoria al documento.
-      requiresPhoto: false,
+      // ── EVIDENCIA ────────────────────────────────────────────────────────
+      // Los anexos del manual piden marcar, firmar y observar: la fotografia no
+      // sale del documento. Lo que se pide aqui es de la app, y esta racionado a
+      // proposito — 50 puntos de 377 piden foto. Si la pidieran todos, en dos
+      // semanas serian fotos al piso para poder avanzar.
+      // OJO con esta linea: la pantalla mete el selector de archivo DENTRO de la
+      // rama de requiresPhoto. Un punto con permiteDocumentos pero sin
+      // requiresPhoto cae en la galeria de fotos, que solo acepta imagenes y
+      // solo abre la camara: la persona no podria adjuntar el PDF que se le
+      // esta pidiendo. Por eso un documento tambien enciende requiresPhoto.
+      requiresPhoto: !!ev?.foto || !!ev?.documento,
+      requiresVariasFotos: !!ev?.variasFotos,
+      // Antes/despues no lo pide ningun punto de estos manuales.
       requiresAntesDespues: false,
-      requiresVariasFotos: false,
+      // Donde no se exige evidencia, se PERMITE: cualquiera puede adjuntar una
+      // foto si quiere dejar constancia, sin que el checklist se lo exija.
+      permiteFotos: !ev?.foto && !ev?.variasFotos && !ev?.documento,
+      // El punto se refiere a un documento que YA existe (factura, poliza,
+      // tarjeta de circulacion): se adjunta el archivo, no se fotografia.
+      permiteDocumentos: !!ev?.documento,
       tiempoEstimadoMin: null,
-      requiereMonto: false,
-      requiereFolio: false,
-      requiereComentario: false,
-    }));
+      requiereMonto: !!ev?.monto,
+      requiereFolio: !!ev?.folio,
+      requiereComentario: !!ev?.comentario,
+      };
+    });
 
     return {
       id: checklistId,

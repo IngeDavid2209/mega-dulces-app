@@ -57,7 +57,7 @@ export interface FilaNomina {
   corregido?: string;
 }
 
-import { correccionDe, ALTAS_MANUALES } from './nomina-correcciones';
+import { correccionDe, ALTAS_MANUALES, sucursalPorCentro } from './nomina-correcciones';
 
 export const NOMINA_PUESTOS: FilaNomina[] = [
   { nombre: 'CARRILLO CONTRERAS MIRIAM JAZMIN', puestoNomina: 'Cajera', centro: '8 Esquinas', puestoId: 'cajero-sucursal', sucursal: '8 Esquinas' },
@@ -259,9 +259,14 @@ export const NOMINA_PUESTOS: FilaNomina[] = [
  */
 export function nominaEfectiva(): FilaNomina[] {
   const delPdf = NOMINA_PUESTOS.map(f => {
+    // La sucursal solo se rellena si el documento la dejo vacia: lo que el PDF
+    // ya resolvio manda sobre el mapa de centros.
+    const suc = f.sucursal || sucursalPorCentro(f.centro);
+    const base = suc === f.sucursal ? f : { ...f, sucursal: suc };
+
     const c = correccionDe(f.nombre);
-    if (!c) return f;
-    return { ...f, puestoId: c.puestoId, corregido: `${c.motivo} (${c.quien})` };
+    if (!c) return base;
+    return { ...base, puestoId: c.puestoId, corregido: `${c.motivo} (${c.quien})` };
   });
 
   // Las altas manuales van al final, marcadas para que se vea que no salieron

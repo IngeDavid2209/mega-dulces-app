@@ -78,6 +78,39 @@ export const ALTAS_MANUALES: AltaManual[] = [
   },
 ];
 
+// ════════════════════════════════════════════════════════════════════════════
+//  CENTRO DE COSTO → SUCURSAL DEL CATÁLOGO
+//
+//  La nómina nombra los centros como los nombra la nómina, y no siempre
+//  coinciden con el catálogo de la app. Ocho personas de "Damaso" quedaron sin
+//  sucursal, sin tareas y fuera de todos los filtros porque ese nombre no
+//  existe en el catálogo — y no existía porque NO ES UNA PLAZA QUE FALTE: es
+//  la calle donde está la sucursal que la app ya tenía con otro nombre.
+//
+//      Nómina:  "Damaso"
+//      App:     "Zamora Centro"  ·  C. Dámaso Cárdenas 7, Jardines de Catedral
+//      Talento: zamora-catedral  ·  misma dirección, confirmada en su catálogo
+//
+//  Solo se aplica cuando la fila viene SIN sucursal. Nunca pisa lo que el
+//  documento ya resolvió: si el PDF y este mapa discrepan, gana el documento.
+// ════════════════════════════════════════════════════════════════════════════
+
+export const SUCURSAL_POR_CENTRO: Record<string, string> = {
+  // Confirmado por David el 2026-08-29, cruzando la dirección contra el
+  // catálogo de Mega Talento.
+  'Damaso': 'Zamora Centro',
+
+  // PENDIENTE · 'Promotoras Santa Ana' (2 personas) sigue sin sucursal.
+  // La sospecha razonable es "Padre Hidalgo" —que está en Santa Ana Pacueco—,
+  // pero nadie lo ha confirmado y mandar a dos promotoras a la sucursal
+  // equivocada es peor que dejarlas sin tareas. Se queda fuera a propósito.
+};
+
+/** La sucursal que le toca a un centro sin equivalente, si alguien la mapeó. */
+export function sucursalPorCentro(centro: string): string | null {
+  return SUCURSAL_POR_CENTRO[(centro || '').trim()] || null;
+}
+
 /** Índice por nombre normalizado, armado una sola vez. */
 const INDICE: Map<string, CorreccionNomina> = (() => {
   const m = new Map<string, CorreccionNomina>();

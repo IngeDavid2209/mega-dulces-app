@@ -31,6 +31,7 @@ import { ConfigTurnos, fechaISO, rutinaPermitidaEnTurno } from './turnos.util';
 import { esDiaDescansoEnFecha, obtenerSemanaISO } from './descansos.util';
 import { puestoIdDe } from './puesto.util';
 import { nombrePuesto } from './organigrama.catalogo';
+import { HorarioSucursal, limiteAperturaDe } from './horarios-sucursal.util';
 import {
   TareaManual, FrecuenciaManual, manualDePuesto, tareasAutomaticasDePuesto,
 } from './tareas-manual.catalogo';
@@ -55,6 +56,22 @@ export class RobotManualService {
   private api = inject(ApiService);
 
   /**
+   * Horarios reales de las sucursales, leidos de Mega Talento UNA vez por
+   * corrida. Si la lectura falla se queda vacio y todo sigue con las horas del
+   * catalogo: que RH no conteste no puede dejar a nadie sin sus tareas.
+   */
+  private horarios: HorarioSucursal[] = [];
+
+  private async cargarHorarios(): Promise<void> {
+    try {
+      const r: any = await this.api.get('/api/horarios-sucursal');
+      this.horarios = Array.isArray(r?.items) ? r.items : [];
+    } catch {
+      this.horarios = [];
+    }
+  }
+
+  /**
    * Genera los checklists de manual que corresponden a la fecha dada.
    *
    * @param usuarios Plantilla completa (trabajadores y admins: hay puestos
@@ -70,6 +87,8 @@ export class RobotManualService {
     const omitidos: { nombre: string; motivo: string }[] = [];
     let creados = 0;
     if (!usuarios?.length) return { creados, omitidos };
+
+    await this.cargarHorarios();
 
     const fechaYmd = this.toYmd(fecha);
     const diaHoy = DIAS_SEMANA[fecha.getDay()];
@@ -296,6 +315,14 @@ export class RobotManualService {
     const { checklistId, tarea, puestoId, sucursal, destinatario, destinatarioUid, fechaYmd } = args;
     const manual = manualDePuesto(puestoId);
 
+    // La apertura vence en funcion de la hora a la que ESTA sucursal abre de
+    // verdad, no de una hora igual para todos. Solo la apertura: mover el
+    // cierre a la hora de salida volveria vencidas de golpe las tareas de todo
+    // el que termina a esa hora, que es justo el dano que esto viene a evitar.
+    // Sin horario capturado se queda la del catalogo, sin inventar nada.
+    const real = tarea.momento === 'apertura' ? limiteAperturaDe(sucursal, this.horarios) : null;
+    const horaLimite = real ? real.hora : tarea.horaLimite;
+
     const items = tarea.items.map((it, i) => ({
       id: `${tarea.id}_${i}`,
       // El bloque de la jornada va como prefijo para no perder el dato que
@@ -309,7 +336,7 @@ export class RobotManualService {
       photoAntesTimestamp: null,
       photos: [],
       horaInicio: null,
-      horaLimite: tarea.horaLimite,
+      horaLimite,
       // El manual no pide fotografía en sus anexos: pide firma y observación.
       // No se le inventa evidencia fotográfica obligatoria al documento.
       requiresPhoto: false,
@@ -329,7 +356,7 @@ export class RobotManualService {
       assignedUid: destinatarioUid,
       store: sucursal,
       date: fechaYmd,
-      time: tarea.horaLimite,
+      time: horaLimite,
       status: 'pendiente',
       enviado: false,
       createdBy: 'Manual Corporativo',

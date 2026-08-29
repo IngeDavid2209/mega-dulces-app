@@ -12,6 +12,8 @@ import { esAdminGlobal, sucursalesPermitidas, esSupervisor, mismoEmpleadoNombre 
 import { nivelDeUsuario } from '../../../shared/nivel-jerarquico.util';
 import { esItemHecho, tieneEvidencia } from '../../../shared/item-completado.util';
 import { UsuariosService } from '../../../shared/usuarios.service';
+import { resolverPuesto } from '../../../shared/puesto.util';
+import { nombrePuesto } from '../../../shared/organigrama.catalogo';
 import { ApiService } from '../../../shared/api.service';
 import {
   guardarListaCache, leerListaCacheConEdad, textoAntiguedad
@@ -573,6 +575,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
       .slice(0, 4)
       .map(e => ({
         nombre: e.nombre,
+        puesto: e.puesto,
         detalle: `${e.total} tareas completas, sin pendientes`
       }));
   });
@@ -584,13 +587,37 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
       .map(s => s.nombre)
   );
 
+  /**
+   * Puesto por nombre, a partir de la ficha de la persona. Es el respaldo para
+   * las tareas libres, que no traen puesto sellado.
+   */
+  private puestoPorNombre = computed(() => {
+    const m = new Map<string, string>();
+    for (const u of this.usuarios()) {
+      if (!u?.nombre) continue;
+      const r = resolverPuesto(u);
+      const p = r.puestoId ? nombrePuesto(r.puestoId) : (u.cargo || '');
+      if (p) m.set((u.nombre || '').trim().toLowerCase(), p);
+    }
+    return m;
+  });
+
   // ------- Top empleados (hoy) -------
   topEmpleados = computed(() => {
     const stats: Record<string, any> = {};
+    const fichas = this.puestoPorNombre();
     this.checklistsHoy().forEach(c => {
       if (!c.assigned) return;
       if (!stats[c.assigned]) {
-        stats[c.assigned] = { nombre: c.assigned, total: 0, completadas: 0 };
+        stats[c.assigned] = { nombre: c.assigned, total: 0, completadas: 0, puesto: '' };
+      }
+      // El robot sella `_puestoId` en cada tarea del manual, asi que ahi el
+      // puesto viaja con la tarea y no hay que buscarlo. Las tareas libres no
+      // lo traen: para esas se cae a la ficha de la persona.
+      if (!stats[c.assigned].puesto) {
+        stats[c.assigned].puesto = c._puestoId
+          ? nombrePuesto(c._puestoId)
+          : (fichas.get((c.assigned || '').trim().toLowerCase()) || '');
       }
       (c.items || []).forEach((it: any) => {
         stats[c.assigned].total++;

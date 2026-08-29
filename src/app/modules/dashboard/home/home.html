@@ -299,7 +299,9 @@
               <div class="reco-avatar">{{ iniciales(r.nombre) }}</div>
               <div>
                 <div class="reco-nombre">{{ r.nombre }}</div>
-                <div class="reco-detalle">{{ r.detalle }}</div>
+                <div class="reco-detalle">
+                  <ng-container *ngIf="r.puesto">{{ r.puesto }} · </ng-container>{{ r.detalle }}
+                </div>
               </div>
             </div>
 
@@ -316,7 +318,9 @@
                 <div class="rank-pos rank-pos-{{ i + 1 }}">{{ i + 1 }}</div>
                 <div class="rank-info">
                   <div class="rank-name">{{ e.nombre }}</div>
-                  <div class="rank-detail">{{ e.completadas }} / {{ e.total }} tareas</div>
+                  <div class="rank-detail">
+                    <ng-container *ngIf="e.puesto">{{ e.puesto }} · </ng-container>{{ e.completadas }} / {{ e.total }} tareas
+                  </div>
                 </div>
                 <div class="rank-pct"
                      [ngClass]="e.porcentaje >= 80 ? 'pct-ok' : e.porcentaje >= 50 ? 'pct-warn' : 'pct-bad'">

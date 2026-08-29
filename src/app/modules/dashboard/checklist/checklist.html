@@ -470,6 +470,8 @@
                 <div class="cl-title">{{ checklist.name }}</div>
                 <div class="cl-meta-line">
                   <span class="cl-meta-item cl-meta-empleado">{{ checklist.assigned }}</span>
+                  <span class="cl-meta-item cl-meta-puesto"
+                        *ngIf="puestoDelAssigned(checklist.assigned) as puesto">{{ puesto }}</span>
                   <button class="cl-bell" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeCrearChecklists"
                           (click)="$event.stopPropagation(); abrirModalNotificacion(checklist.assigned)" title="Enviar alerta">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -714,7 +716,9 @@
           <div class="detail-title">{{ checklistSeleccionado().name }}</div>
           <div class="detail-meta">
             <span style="display: flex; align-items: center; gap: 8px;">
-              <strong>Usuario:</strong> {{ checklistSeleccionado().assigned }}
+              <strong>Usuario:</strong> {{ checklistSeleccionado().assigned }}<span
+                *ngIf="puestoDelAssigned(checklistSeleccionado().assigned) as puesto"
+                style="color:#64748B; font-weight:600;">&nbsp;· {{ puesto }}</span>
               <button class="btn-bell" *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeCrearChecklists"
                 (click)="abrirModalNotificacion(checklistSeleccionado().assigned)" title="Enviar Alerta">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

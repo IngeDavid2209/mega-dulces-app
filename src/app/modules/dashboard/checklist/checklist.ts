@@ -800,17 +800,45 @@ export class ChecklistComponent implements OnInit, OnDestroy {
    * detection. Ahora es O(1).
    */
   private _nivelPorNombre = new Map<string, 'mando' | 'operativo'>();
+  /**
+   * Puesto del organigrama por nombre, en el MISMO recorrido que el nivel.
+   * Resolverlo en la plantilla costaria una busqueda por tarjeta y por ciclo de
+   * deteccion; aqui se paga una vez.
+   */
+  private _puestoPorNombre = new Map<string, string>();
   private _empleadosVersion = -1;
   private actualizarMapaNivelSiCambio() {
     const empleados = this.empleados();
     if (empleados.length === this._empleadosVersion) return;
     this._empleadosVersion = empleados.length;
     const mapa = new Map<string, 'mando' | 'operativo'>();
+    const puestos = new Map<string, string>();
     for (const e of empleados) {
       if (!e?.nombre) continue;
-      mapa.set((e.nombre || '').trim().toLowerCase(), nivelDeCargo(e.cargo));
+      const k = (e.nombre || '').trim().toLowerCase();
+      mapa.set(k, nivelDeCargo(e.cargo));
+
+      // El puesto del organigrama si se pudo resolver; si no, el cargo tal como
+      // lo trae la ficha. Nunca se inventa: quien no tiene ninguno no muestra
+      // nada, que es la senal de que le falta asignarlo.
+      const r = resolverPuesto(e);
+      const nombreP = r.puestoId ? nombrePuesto(r.puestoId) : (e.cargo || '');
+      if (nombreP) puestos.set(k, nombreP);
     }
     this._nivelPorNombre = mapa;
+    this._puestoPorNombre = puestos;
+  }
+
+  /**
+   * El puesto de la persona a la que esta asignado un checklist, o '' si no se
+   * le conoce. Se muestra junto al nombre: dos personas distintas pueden verse
+   * igual en una lista de 500 tarjetas, y el puesto es lo que dice de que va la
+   * tarea sin tener que abrirla.
+   */
+  puestoDelAssigned(assigned: string | undefined | null): string {
+    if (!assigned) return '';
+    this.actualizarMapaNivelSiCambio();
+    return this._puestoPorNombre.get(assigned.trim().toLowerCase()) || '';
   }
 
   /**

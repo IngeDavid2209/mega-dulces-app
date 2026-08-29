@@ -2662,6 +2662,18 @@
   color: var(--text-main);
   font-weight: 600;
 }
+/* El puesto va junto al nombre pero en segundo plano: el nombre es quien
+   responde, el puesto solo explica de que va la tarea. Si pesaran igual, la
+   linea se leeria como dos datos y no como uno con su aclaracion. */
+.cl-meta-puesto {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+.cl-meta-puesto::before {
+  content: '·';
+  margin: 0 5px;
+  color: #CBD5E1;
+}
 .cl-meta-sep {
   color: #CBD5E1;
   font-weight: 700;

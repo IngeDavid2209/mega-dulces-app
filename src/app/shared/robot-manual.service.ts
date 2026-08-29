@@ -31,7 +31,7 @@ import { ConfigTurnos, fechaISO, rutinaPermitidaEnTurno } from './turnos.util';
 import { esDiaDescansoEnFecha, obtenerSemanaISO } from './descansos.util';
 import { puestoIdDe } from './puesto.util';
 import { nombrePuesto } from './organigrama.catalogo';
-import { HorarioSucursal, limiteAperturaDe } from './horarios-sucursal.util';
+import { HorarioSucursal, limiteAperturaDe, trabajaEsteDia } from './horarios-sucursal.util';
 import {
   TareaManual, FrecuenciaManual, manualDePuesto, tareasAutomaticasDePuesto,
 } from './tareas-manual.catalogo';
@@ -180,6 +180,16 @@ export class RobotManualService {
           // Domingo en sucursal administrativa: misma regla que traía el robot
           // anterior, no se entregan las diarias.
           if (esDomingo && tarea.frecuencia === 'Diaria' && hooks.esSucursalAdministrativa?.(sucursal)) continue;
+
+          // Y el día que RH tiene capturado como cerrado. El horario del
+          // checador dice que ninguna plaza trabaja en domingo; entregar ahí
+          // llena el lunes de incumplidas que nadie pudo hacer.
+          //
+          // Solo se omite cuando el dato EXISTE y dice que no. Si la sucursal
+          // no tiene horario capturado, `trabajaEsteDia` devuelve null y aquí
+          // no se hace nada: sin dato no se inventa un cierre, porque dejar sin
+          // tareas a una plaza que sí abrió es peor que la molestia contraria.
+          if (tarea.frecuencia === 'Diaria' && trabajaEsteDia(sucursal, fecha.getDay(), this.horarios) === false) continue;
 
           // Fuera de turno a la hora en que vence la tarea.
           if (configTurnos?.habilitado && uid &&

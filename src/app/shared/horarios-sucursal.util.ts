@@ -128,3 +128,29 @@ export function limiteAperturaDe(
     sucursalTalento: id,
   };
 }
+
+/**
+ * ¿Esta sucursal trabaja este día, según el horario que capturó RH?
+ *
+ * Devuelve null cuando NO HAY DATO, y esa distinción es la importante: null no
+ * es "sí" ni "no", es "nadie lo ha dicho". Quien llama tiene que decidir a
+ * propósito qué hacer con la duda, en vez de que un `false` silencioso deje sin
+ * tareas a una plaza que sí abre.
+ *
+ * Los días vienen como los guarda Postgres: 0=domingo .. 6=sábado, igual que
+ * `Date.getDay()`.
+ */
+export function trabajaEsteDia(
+  sucursal: string,
+  diaSemana: number,
+  horarios: HorarioSucursal[],
+): boolean | null {
+  const id = SUCURSAL_A_TALENTO[(sucursal || '').trim()];
+  if (!id) return null;
+
+  const filas = horarios.filter(h => h.sucursal_id === id && Array.isArray(h.dias) && h.dias.length);
+  if (!filas.length) return null;
+
+  // Basta que UN turno cubra el día para que la sucursal cuente como abierta.
+  return filas.some(h => h.dias.includes(diaSemana));
+}

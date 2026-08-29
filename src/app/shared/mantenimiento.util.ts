@@ -29,7 +29,7 @@
 // ============================================================================
 
 /** El interruptor. true = app cerrada para todos menos los exentos. */
-export const MANTENIMIENTO_ACTIVO = true;
+export const MANTENIMIENTO_ACTIVO = false;
 
 /**
  * Cuentas que SÍ pueden trabajar durante el mantenimiento.

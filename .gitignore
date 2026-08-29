@@ -52,3 +52,6 @@ Thumbs.db
 /backend
 .env
 service-account.json
+
+# Ajustes locales de Claude Code (permisos de esta maquina, no del repo)
+.claude/

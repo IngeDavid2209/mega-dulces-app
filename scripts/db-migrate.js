@@ -18,6 +18,18 @@ async function migrar() {
   }
   const pool = getPool();
   const client = await pool.connect();
+
+  // Los `raise notice` de las migraciones se estaban PERDIENDO. Sin esto, el
+  // unico rastro de una migracion era "aplicada", que solo dice que corrio sin
+  // reventar — no si hizo algo. La 037 reparte puestos entre 186 personas y la
+  // 038 corrige a una: "aplicada" se ve igual si acertaron a todas o a ninguna,
+  // y una migracion que no encontro a nadie es exactamente el caso que hay que
+  // detectar.
+  client.on('notice', (n) => {
+    const msg = (n && (n.message || n.detail)) || '';
+    if (msg) console.log('[migrate][sql]', msg);
+  });
+
   try {
     await client.query('create table if not exists _migraciones (id text primary key, aplicada_en bigint)');
     const dir = path.join(__dirname, 'sql');

@@ -135,8 +135,13 @@ export const PUESTOS_ORGANIGRAMA: PuestoOrganigrama[] = [
   { id: 'intendencia', nombre: 'Intendencia', unidad: 'sucursal', nivel: 'operativo', reportaA: 'encargado-sucursal' },
 
   // ==================== OPERACIONES DE ZONA (TLMK) ========================
+  // Los tres ultimos alias son como le dicen en la empresa (David, 2026-08-29).
+  // El comentario va AQUI y no dentro del arreglo: dentro, corta los bloques de
+  // los scripts que leen este archivo y la comprobacion de colisiones da un
+  // falso negativo justo sobre lo que se acaba de agregar.
   { id: 'coordinador-operaciones-zona', nombre: 'Coordinador de Operaciones de Zona', unidad: 'operaciones-zona', nivel: 'coordinacion', reportaA: 'gerencia-zona',
-    aliasCargos: ['Supervisor Operativo TLMK', 'Coordinador de Operaciones'] },
+    aliasCargos: ['Supervisor Operativo TLMK', 'Coordinador de Operaciones',
+                  'Encargado de TLMK', 'Encargado TLMK', 'Supervisor Tlmkt'] },
   { id: 'recepcion-mercancia-zona', nombre: 'Recepción de Mercancía de Zona', unidad: 'operaciones-zona', nivel: 'operativo', reportaA: 'coordinador-operaciones-zona' },
   { id: 'empaque', nombre: 'Empaque', unidad: 'operaciones-zona', nivel: 'operativo', reportaA: 'coordinador-operaciones-zona' },
   { id: 'surtidor-zona', nombre: 'Surtidor de Zona', unidad: 'operaciones-zona', nivel: 'operativo', reportaA: 'coordinador-operaciones-zona' },

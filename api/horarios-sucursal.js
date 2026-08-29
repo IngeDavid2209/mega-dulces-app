@@ -21,7 +21,36 @@
 //  esto devuelve horarios y nada más: ni checadas, ni empleados, ni códigos de
 //  reloj. Nada de lo que hay en las otras tablas del checador pasa por aquí.
 // ============================================================================
-const { query, dbConfigurada } = require('./db');
+const { Pool } = require('pg');
+
+// ─── DE DONDE SE LEEN ───────────────────────────────────────────────────────
+// Mega Talento NO comparte la base de MDTask, aunque vivan en el mismo proyecto
+// de Railway: el 2026-08-29 este mismo endpoint lo comprobo devolviendo 42P01
+// (la tabla no existe aqui). Necesita su propia cadena.
+//
+// TALENTO_DATABASE_URL se pone en Railway como REFERENCIA —${{Postgres.DATABASE_URL}}—
+// para que la contrasena nunca pase por un archivo, un chat ni un historial de
+// comandos: Railway la resuelve en el arranque y nadie llega a verla.
+//
+// Sin la variable esto no truena: contesta que no esta configurado y el robot
+// sigue con su hora por defecto. Un horario que falta no puede tumbar la app.
+const TALENTO_URL = process.env.TALENTO_DATABASE_URL || '';
+
+let pool = null;
+function talento() {
+  if (!TALENTO_URL) return null;
+  if (!pool) {
+    pool = new Pool({
+      connectionString: TALENTO_URL,
+      ssl: { rejectUnauthorized: false },
+      max: 2,                          // esto solo lee un punado de filas al dia
+      idleTimeoutMillis: 10000,
+      connectionTimeoutMillis: 8000,
+    });
+    pool.on('error', (e) => console.error('[horarios-sucursal] pool:', e.message));
+  }
+  return pool;
+}
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -36,12 +65,18 @@ module.exports = async (req, res) => {
     });
   }
 
-  if (!dbConfigurada()) {
-    return res.json({ ok: false, configured: false, items: [] });
+  const p = talento();
+  if (!p) {
+    return res.json({
+      ok: false,
+      configured: false,
+      items: [],
+      mensaje: 'Falta TALENTO_DATABASE_URL: todavia no hay lectura de horarios.',
+    });
   }
 
   try {
-    const r = await query(`
+    const r = await p.query(`
       SELECT sucursal_id, area_id, nombre, dias, entrada,
              inicio_comida, fin_comida, salida, tolerancia_min, activo
         FROM horarios_sucursal
@@ -59,9 +94,9 @@ module.exports = async (req, res) => {
       return res.json({
         ok: false,
         configured: true,
-        baseCompartida: false,
+        tablaPresente: false,
         items: [],
-        mensaje: 'La tabla horarios_sucursal no está en esta base: Mega Talento usa otra.',
+        mensaje: 'TALENTO_DATABASE_URL apunta a una base que no tiene horarios_sucursal.',
       });
     }
     return res.status(500).json({ ok: false, configured: true, error: msg });

@@ -857,8 +857,12 @@
                     <polyline points="14 2 14 8 20 8"></polyline>
                   </svg>
                   {{ item.permiteDocumentos ? 'Adjuntar Documento' : 'Adjuntar Evidencia' }}
+                  <!-- Sin lista de tipos cuando es documento: se comprobo contra
+                       Cloudinary que la cuenta acepta raw sin firmar (docx, xlsx,
+                       pptx) ademas de pdf, asi que restringir aqui solo servia
+                       para que el explorador escondiera archivos que si suben. -->
                   <input type="file"
-                    [accept]="item.permiteDocumentos ? 'image/*, application/pdf, .xls, .xlsx, .doc, .docx, .csv' : 'image/*'"
+                    [accept]="item.permiteDocumentos ? '' : 'image/*'"
                     [attr.capture]="(esUbaldoMantenimiento || item.permiteDocumentos) ? null : 'environment'"
                     (change)="onFileSelected($event, item, 'photo')" style="display: none;">
                 </label>

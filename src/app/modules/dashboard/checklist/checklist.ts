@@ -2684,6 +2684,31 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     const checklistActual = this.checklistSeleccionado();
     if (!checklistActual) return;
 
+    // ── Tope de tamaño ────────────────────────────────────────────────────
+    // Las imagenes se comprimen mas abajo, asi que este tope es para los
+    // documentos, que suben tal cual. Cloudinary corta la subida sin firmar
+    // alrededor de los 10 MB, y sin este aviso el usuario solo veria el error
+    // generico de "no se pudo subir" y volveria a intentar con el mismo
+    // archivo. Decirle el tamano real es lo que le permite resolverlo.
+    const esImagen = (fileOriginal.type || '').startsWith('image/');
+    const TOPE_MB = 10;
+    if (!esImagen && fileOriginal.size > TOPE_MB * 1024 * 1024) {
+      const mb = (fileOriginal.size / (1024 * 1024)).toFixed(1);
+      event.target.value = '';
+      await Swal.fire({
+        icon: 'warning',
+        title: 'El archivo pesa demasiado',
+        html: `<div style="text-align:left">
+                 <p><strong>${fileOriginal.name}</strong> pesa ${mb} MB y el limite son ${TOPE_MB} MB.</p>
+                 <p style="font-size:13px;color:#64748B;margin-top:8px">
+                   Si es un PDF escaneado, vuelve a guardarlo en menor calidad.
+                   Si son varias hojas, adjunta solo la que hace falta.</p>
+               </div>`,
+        confirmButtonColor: '#0F172A'
+      });
+      return;
+    }
+
     // Compresión cliente: bajamos JPGs de 4-6 MB a ~300 KB antes de subir.
     // Si no es imagen (PDF, etc.) o ya es pequeña, devuelve el original sin tocar.
     let file: File;

@@ -309,6 +309,24 @@ solo porque el typo cayó en la palabra que la llave no usaba.
     que disparaba a las 21:00 del 31); y la primera verificación dio **ceros falsos** porque Git
     Bash convirtió `origin/main:.github/...` en `origin\main;...`, el comando falló y `grep -c`
     contó sobre entrada vacía. Rehecho en PowerShell.
+- **31/ago/2026 — 049 dio la causa raíz, y NO es de Yadira.** El caso no se puede decidir con
+  datos, y por debajo apareció algo peor.
+  - **Las dos fichas comparten el mismo `usuario`: `yadira.campero`.** Y `api/login-usuario.js`
+    línea 25 resuelve con `where lower(usuario) = $1 or lower(correo) = $1 **limit 1**`, **sin
+    `order by`**. Con dos filas que comparten el usuario, Postgres devuelve la que encuentre
+    primero y eso puede cambiar entre planes de consulta: **la misma persona con las mismas
+    credenciales aterriza en una ficha u otra según el día.** Eso explica que las DOS tengan
+    latido (30/jun y 24/jun) — no había fantasma.
+  - **El caso queda sin decidir, por regla (§8.5).** Las tres señales fallan: los dos únicos
+    checklists trabajados traen `uid=(sin uid)`, son del 19/may, `created_by = Luis Francisco
+    Lopez` y sin enviar; ambas fichas tienen latido; y ninguna tiene token de dispositivo
+    (`dispositivos=0` en las dos). Se le pregunta a ella o a su Gerente.
+  - **Esto reordena la prioridad.** Un `usuario` duplicado no es un problema de reporte: es de
+    identidad en el login. Mientras exista, cualquier corrección sobre una de las dos fichas
+    puede aplicarse a la cuenta por la que ella NO entró ese día. **Medir cuántos `usuario`
+    están duplicados va antes de la 050.**
+  - **Y sube al guardián v2:** el colapso por `usuario` es una señal **más dura** que el
+    parecido de nombres — es una colisión exacta en la llave de acceso, no un parecido.
 - **31/ago/2026 — 049 y el apretón del KPI.**
   - **049, solo lee.** Las dos consultas de David para saber **por cuál ficha entra** Yadira.
     "Quién trabajó" no es "por dónde entra": la señal definitiva es el `assigned_uid` de los

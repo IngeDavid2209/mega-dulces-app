@@ -332,6 +332,17 @@ leen de git, y las nuevas salen de **compilar `nav.config.ts` y llamar al `menuD
 **Hay que volver a correrla antes del paso 4.3**, que reemplaza los predicados por la función de
 alcance. Sin ella no habría forma de saber si ese reemplazo cambió audiencias.
 
+**Y la prueba se caducó a sí misma un commit después de escribirla.** Estaba anclada a `HEAD~1`,
+así que en cuanto se commiteó *la propia prueba*, `HEAD~1` ya era el sidebar nuevo: se comparaba
+contra sí misma y marcaba las 15 rutas como «ganadas». Es el corolario (e) —un control anclado a
+algo que se mueve caduca— aplicándose **a la prueba escrita para ese corolario, el mismo día**.
+
+Peor: el guardián no lo detectó, porque el sidebar nuevo conserva un `nav-item` (el de Perfil, en
+el pie), así que `viejas.size === 0` era falso y la comparación pasaba. Corregido con el SHA fijo
+`78b89a3` y una guardia que exige que el commit de referencia **tenga las condiciones de permiso**
+—las 11 que el paso 4.1 eliminó—, que es la marca real de «este commit es anterior al cambio».
+Probados los dos caminos: con el SHA bueno pasa, con `HEAD~1` aborta explicando por qué.
+
 ### Listo y SIN DESPLEGAR — el orden importa
 
 **`053_desactivar_correo_compartido.sql` está commiteada pero NO desplegada, a propósito.**

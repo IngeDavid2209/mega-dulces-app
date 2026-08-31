@@ -33,7 +33,15 @@
 const { execSync } = require('child_process');
 const fs = require('fs');
 
-const COMMIT_VIEJO = process.argv[2] || 'HEAD~1';
+// FIJADO POR SHA, no por HEAD~1. Al principio era relativo, y un commit despues
+// -el de esta misma prueba- HEAD~1 ya apuntaba al sidebar NUEVO: la prueba se
+// comparaba contra si misma y marcaba las 15 rutas como "ganadas". Es el
+// corolario (e) de la §8.11 -un control anclado a algo que se mueve caduca-
+// aplicandose a la prueba escrita para ese corolario, el mismo dia.
+//
+// 78b89a3 es el ultimo commit ANTES del paso 4.1. Es una referencia estable: el
+// menu viejo no va a cambiar nunca mas.
+const COMMIT_VIEJO = process.argv[2] || '78b89a3';
 
 function abortar(motivo) {
   console.error('');
@@ -62,7 +70,22 @@ for (const b of htmlViejo.match(/<a class="nav-item"[\s\S]*?<\/a>/g) || []) {
   viejas.set(r[1], cond ? cond[1] : null);
 }
 if (viejas.size === 0) abortar('cero entradas en el sidebar.html viejo. El formato cambió.');
-console.log('[menu] condiciones viejas leídas de %s → %d rutas', COMMIT_VIEJO, viejas.size);
+
+// GUARDIA DE FIXTURE, y hace falta: `viejas.size === 0` NO alcanzaba. El sidebar
+// nuevo conserva un `nav-item` -el de Perfil, en el pie- asi que apuntar al
+// commit equivocado devolvia 1 ruta en vez de 0, pasaba el guardian, y producia
+// una comparacion limpia y completamente falsa.
+//
+// La marca de que el commit es el correcto es que su sidebar.html TENGA las
+// condiciones de permiso: son exactamente lo que el paso 4.1 elimino.
+const condicionesViejas = (htmlViejo.match(/ngIf="[^"]*(?:puede|grupo)[^"]*"/g) || []).length;
+if (condicionesViejas < 5) {
+  abortar('el commit ' + COMMIT_VIEJO + ' NO es anterior al paso 4.1: su sidebar.html tiene ' +
+    condicionesViejas + ' condiciones de permiso (se esperan ~11). ' +
+    'Comparar contra el menu nuevo lo compara consigo mismo y todo sale "igual" o todo "ganado".');
+}
+console.log('[menu] condiciones viejas leídas de %s → %d rutas, %d condiciones de permiso',
+  COMMIT_VIEJO, viejas.size, condicionesViejas);
 
 // Los dos getters que no eran banderas simples, también del código viejo.
 function cuerpoGetter(nombre) {

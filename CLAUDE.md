@@ -286,7 +286,16 @@ de que exista la plaza sería partir el problema en dos, no resolverlo.
     problema no existe». El control correcto afirma la cubeta: «los casos del 22/may están en E».
     Y el negativo —«un caso que sé legítimo NO debe aparecer»— prueba que discrimina.
     **Un control que pasa por el camino equivocado da confianza falsa, y eso es peor que fallar.**
-    **(d)** la disciplina aplica también a la **conclusión**, no solo al dato: una media verdad en
+    **(d)** **un control anclado a datos de producción caduca cuando arreglas los datos.** Es la
+    contraparte de todo lo anterior: no basta que el control mida el mecanismo correcto, también
+    tiene que sobrevivir a que el mundo cambie — o se vuelve un aborto permanente que alguien
+    silencia en tres semanas porque «siempre falla». El control tiene que **distinguir «la
+    consulta está mal» de «el fixture cambió»** (la misma diferencia que «no pude leer» contra
+    «no hay nada», un nivel más arriba) y, cuando el caso se remedie, **actualizarse en el mismo
+    commit que lo remedia**. En `diagnostico-asignaciones-huerfanas.js` eso está implementado:
+    comprueba su propia premisa y sale con código 3 —«resultados válidos, control caducado»—
+    en vez de fingir un fallo de consulta.
+    **(e)** la disciplina aplica también a la **conclusión**, no solo al dato: una media verdad en
     este archivo se vuelve doctrina en dos semanas. Si la interpretación no está cerrada, se anota
     el número y se marca la interpretación como pendiente.
 12. **Cuidado con los nombres heredados de Firestore.** Los campos del documento y las columnas
@@ -295,6 +304,16 @@ de que exista la plaza sería partir el problema en dos, no resolverlo.
     columna devuelve cero documentos, sin error.
 
 ## 9. Bitácora del plan
+
+### Mañana, el arranque
+
+Corto, y en este orden:
+
+1. **El mensaje a la Gerente de Morelia Abastos:** «avísame antes de pedirle a Yadira que empiece
+   a entrar». Es el único pendiente que se vuelve **irreparable** si se hace en el otro orden —
+   en cuanto ella abra la app, las dos fichas tienen trabajo real y la fusión queda bloqueada.
+2. Los dos scripts con la `DATABASE_URL` pública a mano: `diagnostico-divergencia.js` (paso 0.2)
+   y `diagnostico-silencio-por-unidad.js` (la partición que desbloquea la interpretación).
 
 ### La Fase 0 ya se pagó sola
 
@@ -310,7 +329,9 @@ tocar**.
 3. **El selector que asigna a fichas ajenas.** Una Encargada real puede asignar trabajo a
    cualquier ficha del sistema, incluidas cuentas de prueba de otra plaza.
 
-Ninguno se habría visto leyendo código. Los tres aparecieron al preguntarle a la base.
+Ninguno se habría visto leyendo código. Y no salieron de **medir**: salieron de **verificar lo
+que se medía** — dos de los tres aparecieron mientras se comprobaba otra cosa. Esa distinción es
+lo que vale más que los tres hallazgos juntos, y es de lo que habla la §8.11.
 
 
 

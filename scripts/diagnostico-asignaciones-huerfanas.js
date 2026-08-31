@@ -208,6 +208,49 @@ async function main() {
   const esCaso = c => c.fecha === '2026-05-22' && /pimentel/i.test(c.created_by || '');
   const enE = E.filter(esCaso);
   const enCualquiera = [...A, ...B, ...C, ...D, ...E].filter(esCaso);
+
+  // ── ¿SIGUE EN PIE LA PREMISA DEL CONTROL? ─────────────────────────────
+  //
+  // ESTE CONTROL CADUCA EN CUANTO SE ARREGLEN LOS DATOS QUE LO SOSTIENEN, y hay
+  // que decirlo antes de que pase. Depende de que las fichas `Miriam` y
+  // `EL DAVE` sigan ACTIVAS y SIN SUCURSALES: eso es lo que las manda a la
+  // cubeta E. En la lista de pendientes está sacar el correo compartido, y el
+  // camino natural es desactivar la ficha no atribuible. Ese día `activo` pasa a
+  // false, los casos se van a la cubeta B, y `enE` queda en 0.
+  //
+  // Sin esta comprobación, el script abortaria en CADA corrida con un mensaje
+  // que suena a "la consulta esta mal" cuando lo que cambio fue el mundo. Y un
+  // aborto permanente es un control que alguien silencia en tres semanas porque
+  // "siempre falla".
+  //
+  // Asi que se distinguen las dos cosas -es la misma diferencia entre "no pude
+  // leer" y "no hay nada", un nivel mas arriba-. Y CUANDO SE REMEDIE EL CASO,
+  // ESTE CONTROL SE ACTUALIZA EN EL MISMO COMMIT: se busca otro par de fichas
+  // sin plaza con trabajo asignado, o se deja escrito que el mecanismo quedo sin
+  // control y por que.
+  const fichasControl = ['miriam', 'el dave'].map(k => porNombre.get(k)).filter(Boolean);
+  const premisaViva = fichasControl.length === 2
+    && fichasControl.every(u => u.activo !== false)
+    && fichasControl.every(u => {
+      const suyas = [...(Array.isArray(u.sucursales) ? u.sucursales : []), u.sucursal_simple]
+        .map(norm).filter(Boolean);
+      return suyas.length === 0;
+    });
+
+  if (!premisaViva) {
+    console.log('');
+    console.log('⚠ CONTROL CADUCADO — no es que la consulta esté mal.');
+    console.log('  Este control positivo dependía de que "Miriam" y "EL DAVE" siguieran activas');
+    console.log('  y sin sucursales. Ya no cumplen esa premisa, así que el mecanismo de la');
+    console.log('  cubeta E QUEDÓ SIN VERIFICAR en esta corrida.');
+    console.log('  Los números de arriba son válidos; lo que falta es el control.');
+    console.log('  Ancla el control a otro par de fichas sin plaza con trabajo asignado,');
+    console.log('  o deja escrito que el mecanismo quedó sin control y por qué.');
+    console.log('');
+    console.log('  (código de salida 3 = resultados válidos, control caducado)');
+    process.exitCode = 3;
+    return;
+  }
   console.log('POSITIVO · casos del 22/may por Claudia Pimentel → en la cubeta E: %d (en cualquiera: %d)',
     enE.length, enCualquiera.length);
   if (enE.length === 0) {

@@ -244,8 +244,18 @@ de que exista la plaza sería partir el problema en dos, no resolverlo.
    Él sí puede usar sus credenciales; lo que no puede pasar es que terminen en el repo.
 8. **Escribe pruebas** para toda regla que produzca un número de una persona (cumplimiento,
    retraso, turno, descanso, productividad).
-9. **Recuerda que `git push` no despliega.** Cuando un paso esté listo, dímelo y recuérdame
-   correr `railway up`.
+9. **Sube y despliega tú, sin preguntar** (David, 31/ago/2026 — reemplaza al "recuérdame
+   correr `railway up`"). Al cerrar un paso: `git push` a `main` **y** `railway up` si tocó
+   `src/`, `api/`, `server.js`, `package.json`, `Dockerfile` o `angular.json`. Si no tocó
+   ninguno, no despliegues: dilo y explica por qué no hacía falta.
+   - **Esto NO releva la regla 2.** Sigue habiendo propuesta de 5 líneas y confirmación *antes
+     de escribir código*. Lo que se delegó es publicar lo ya acordado, no decidir qué se hace.
+   - **Verifica que llegó, con su cifra** (regla 11): que `HEAD == origin/main`, y para la app
+     un marcador dentro del código servido —presente en `dist/`, ausente en lo que se sirve
+     ahora— no la fecha del `ngsw.json`. Ese método ya dio tres falsos positivos en un día.
+   - **Agrupa.** El 31/ago hubo nueve despliegues y eso, por sí solo, atascó la navegación de
+     los clientes: cada `railway up` cambia los hashes de los chunks y una PWA abierta con el
+     índice anterior pide archivos que ya no existen. Menos despliegues es menos riesgo.
 10. **Mantén este archivo al día**: cuando termines un paso, actualiza la tabla de la §7 y
     anota lo aprendido en la sección de abajo.
 11. **Un cero no es un resultado hasta que sepas de cuántas líneas salió.** El 31/ago/2026, tres
@@ -277,6 +287,13 @@ de que exista la plaza sería partir el problema en dos, no resolverlo.
     que disparaba a las 21:00 del 31); y la primera verificación dio **ceros falsos** porque Git
     Bash convirtió `origin/main:.github/...` en `origin\main;...`, el comando falló y `grep -c`
     contó sobre entrada vacía. Rehecho en PowerShell.
+- **31/ago/2026 — cambio de regla: el despliegue se delega.** David pidió que las
+  actualizaciones se suban solas (§8.9 reescrita). Estado al momento del cambio: nada sin
+  commitear, `HEAD == origin/main`, y **cero** archivos de app tocados desde `565ea1f` (el
+  último `railway up`), así que producción estaba al día. La condición para desplegar queda
+  explícita —haber tocado `src/`, `api/`, `server.js`, `package.json`, `Dockerfile` o
+  `angular.json`— para no repetir los nueve despliegues del día, que atascaron la navegación de
+  los clientes por sí solos.
 - **31/ago/2026 — paso 0.2, pendiente de correr.** `scripts/diagnostico-divergencia.js` listo.
   Mide la dirección que importa: **documentos que existen solo en Firestore**, porque son los
   que la app no muestra (lee Postgres). Lo inverso —filas que Postgres tiene y Firestore no— es

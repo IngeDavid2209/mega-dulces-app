@@ -141,3 +141,10 @@
 .pr-grupo-kpi strong.pr-nd    { color: #94A3B8; }
 .pr-grupo-kpi small { font-size: 10px; color: #94A3B8; }
 .pr-tabla-grupo { border-radius: 0 0 10px 10px; margin-bottom: 0; border-top: 0; }
+
+/* ── Filtro de zonas ─────────────────────────────────────────────────────── */
+.pr-zonas { flex-wrap: wrap; }
+/* El boton de "sin zona" es un PENDIENTE, no una zona mas: se distingue para
+   que nadie lo lea como una region de la empresa. */
+.pr-btn-pendiente { color: #92400E !important; }
+.pr-btn-pendiente.activo { background: #FEF3C7 !important; color: #92400E !important; }

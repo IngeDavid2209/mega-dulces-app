@@ -67,6 +67,12 @@
             <span class="pr-cob-lbl">puntos hechos sin sello: no se pueden situar en el tiempo</span>
           </div>
         </div>
+        <div class="pr-cob-nota" *ngIf="sinZona().length > 0">
+          <strong>Sin zona asignada:</strong> {{ sinZona().join(' · ') }}.
+          No se les puso una “a ojo”: meter una plaza en la zona equivocada haría
+          que su Gerente lea números que no son suyos, y eso no se nota hasta
+          mucho después. Dime de qué zona es cada una y quedan dentro.
+        </div>
         <div class="pr-cob-nota" *ngIf="cobertura().sinHorario.length > 0">
           <strong>Sin horario en Mega Talento:</strong>
           {{ cobertura().sinHorario.join(' · ') }}.
@@ -84,6 +90,19 @@
         <div class="pr-rango">
           <button *ngFor="let d of [1, 7, 15, 30]" [class.activo]="dias() === d" (click)="cambiarDias(d)">
             {{ d === 1 ? 'Hoy' : d + ' días' }}
+          </button>
+        </div>
+        <div class="pr-rango pr-zonas">
+          <button [class.activo]="zona() === null" (click)="zona.set(null)">Todas las zonas</button>
+          <button *ngFor="let z of zonas" [class.activo]="zona() === z.clave" (click)="zona.set(z.clave)">
+            {{ z.nombre }}
+          </button>
+          <!-- Solo aparece si de verdad hay sucursales sin zona: un boton que
+               siempre lleva a una lista vacia solo estorba. -->
+          <button *ngIf="sinZona().length > 0" class="pr-btn-pendiente"
+                  [class.activo]="zona() === 'ninguna'" (click)="zona.set('ninguna')"
+                  [title]="'Sin zona: ' + sinZona().join(', ')">
+            Sin zona ({{ sinZona().length }})
           </button>
         </div>
         <input *ngIf="vista() === 'persona'" class="pr-buscar" type="text"

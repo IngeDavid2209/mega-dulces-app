@@ -37,6 +37,7 @@ import { HorarioSucursal, SUCURSAL_A_TALENTO } from '../../../shared/horarios-su
 import { resolverPuesto } from '../../../shared/puesto.util';
 import { nombrePuesto } from '../../../shared/organigrama.catalogo';
 import { medir, pct, Medicion, ventanaDeTurno } from '../../../shared/productividad.util';
+import { ZONAS, ClaveZona, zonaDeSucursal, nombreZona, sucursalesSinZona } from '../../../shared/zonas.util';
 
 @Component({
   selector: 'app-productividad',
@@ -66,6 +67,9 @@ export class ProductividadComponent implements OnInit, OnDestroy {
   /** 'sucursal' | 'persona' */
   vista = signal<'sucursal' | 'persona'>('sucursal');
   busqueda = signal('');
+  /** null = todas las zonas. 'ninguna' = solo las sucursales sin zona asignada. */
+  zona = signal<ClaveZona | 'ninguna' | null>(null);
+  zonas = ZONAS;
 
   private destructores: (() => void)[] = [];
 
@@ -177,15 +181,41 @@ export class ProductividadComponent implements OnInit, OnDestroy {
     return m;
   });
 
-  /** Solo lo que este usuario tiene permitido ver. */
+  /**
+   * Solo lo que este usuario tiene permitido ver, y de la zona elegida.
+   *
+   * El filtro de zona va AQUI y no en cada tabla: es el unico punto por donde
+   * pasan los datos, asi que las dos vistas y el resumen de cobertura quedan
+   * coherentes por construccion. Filtrar en cada tabla habria dejado el resumen
+   * hablando de toda la empresa mientras la tabla mostraba una zona.
+   */
   private visibles = computed(() => {
     const todo = this.checklists();
-    if (esAdminGlobal(this.currentUser)) return todo;
-    const permitidas = sucursalesPermitidas(this.currentUser) || [];
-    if (!permitidas.length) return todo;
-    const set = new Set(permitidas.map((s: string) => (s || '').trim().toLowerCase()));
-    return todo.filter(c => set.has((c.store || '').trim().toLowerCase()));
+
+    let base = todo;
+    if (!esAdminGlobal(this.currentUser)) {
+      const permitidas = sucursalesPermitidas(this.currentUser) || [];
+      if (permitidas.length) {
+        const set = new Set(permitidas.map((s: string) => (s || '').trim().toLowerCase()));
+        base = todo.filter(c => set.has((c.store || '').trim().toLowerCase()));
+      }
+    }
+
+    const z = this.zona();
+    if (z == null) return base;
+    if (z === 'ninguna') return base.filter(c => zonaDeSucursal(c.store || '') == null);
+    return base.filter(c => zonaDeSucursal(c.store || '') === z);
   });
+
+  /** Sucursales presentes en los datos que aun no tienen zona asignada. */
+  sinZona = computed(() =>
+    sucursalesSinZona([...new Set(this.checklists().map(c => c.store || ''))])
+  );
+
+  nombreZona(z: ClaveZona | 'ninguna' | null): string {
+    if (z === 'ninguna') return 'Sin zona asignada';
+    return nombreZona(z as ClaveZona);
+  }
 
   porSucursal = computed<Medicion[]>(() =>
     medir(this.visibles(), this.horarios(), c => c.store || '')

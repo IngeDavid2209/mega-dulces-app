@@ -1,0 +1,22 @@
+/* Barra de pestañas de Control operativo */
+.ctl-tabs {
+  display: flex;
+  gap: 2px;
+  flex-wrap: wrap;
+  border-bottom: 1px solid #E2E8F0;
+  margin-bottom: 18px;
+}
+.ctl-tab {
+  font-size: 13px;
+  font-weight: 700;
+  color: #64748B;
+  padding: 10px 16px;
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  white-space: nowrap;
+}
+.ctl-tab:hover { color: #0F172A; }
+/* La activa se marca con la línea inferior, no con fondo: el contenido de abajo
+   es denso y un bloque de color compite con los números. */
+.ctl-tab.activa { color: #0F172A; border-bottom-color: #0F172A; }

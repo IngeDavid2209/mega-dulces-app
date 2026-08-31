@@ -29,6 +29,10 @@
  * existe. Así se llegó a 19.
  */
 
+// El permiso del cascaron NO se repite aqui: se importa de su propia
+// definicion, para que menu y guard cambien juntos o no cambien.
+import { veControl } from '../../modules/dashboard/control/control.tabs';
+
 export type SeccionNav = 'mi-trabajo' | 'verifico' | 'control' | 'definiciones';
 
 export interface SeccionInfo {
@@ -132,8 +136,11 @@ export const NAV: EntradaNav[] = [
   // agrupados, que es lo que se puede hacer sin tocar cuatro componentes.
   { seccion: 'control', etiqueta: 'Sucursales', ruta: '/checkstore',
     icono: 'tienda', ve: (u) => esAdmin(u) || u?.puedeVerCheckstore },
-  { seccion: 'control', etiqueta: 'Estadísticas', ruta: '/estadisticas',
-    icono: 'grafica', ve: (u) => esAdmin(u) || u?.puedeVerEstadisticas },
+  // Control operativo: una entrada por las cuatro pantallas de analisis. Se ve
+  // si se ve AL MENOS UNA pestaña; cada pestaña se gatea aparte por su propio
+  // permiso. Entrar al cascaron nunca da acceso a una pestaña.
+  { seccion: 'control', etiqueta: 'Control operativo', ruta: '/control',
+    icono: 'grafica', ve: veControl },
   { seccion: 'control', etiqueta: 'Ranking Semanal', ruta: '/ranking-sucursales',
     icono: 'trofeo', ve: (u) => esAdmin(u) || u?.puedeVerEstadisticas || u?.puedeVerCheckstore },
   { seccion: 'control', etiqueta: 'Productividad y turno', ruta: '/productividad',

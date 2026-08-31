@@ -132,8 +132,23 @@ try {
 } catch (e) {
   abortar('no se pudo compilar nav.config.ts: ' + String(e.stdout || e.message).slice(0, 300));
 }
-const compilado = path.join(tmp, 'nav.config.js');
-if (!fs.existsSync(compilado)) abortar('tsc no produjo ' + compilado);
+// Se BUSCA el archivo emitido en vez de asumir su ruta. Antes se daba por
+// hecho que estaria en la raiz del outDir, y eso valia solo mientras
+// nav.config.ts no importara nada: en cuanto empezo a importar `veControl`, tsc
+// emitio un arbol y la prueba aborto diciendo "tsc no produjo ..." — que suena a
+// fallo del compilador cuando era un supuesto mio caducado.
+function buscar(dir, nombre) {
+  for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+    const p = path.join(dir, e.name);
+    if (e.isDirectory()) { const r = buscar(p, nombre); if (r) return r; }
+    else if (e.name === nombre) return p;
+  }
+  return null;
+}
+const compilado = buscar(tmp, 'nav.config.js');
+if (!compilado) {
+  abortar('tsc no emitio nav.config.js en ' + tmp + '. Revisa la salida del compilador.');
+}
 const NAVMOD = require(compilado);
 
 if (typeof NAVMOD.menuDe !== 'function' || !Array.isArray(NAVMOD.NAV)) {
@@ -171,7 +186,7 @@ function rutasNuevas(u) {
 //
 // Hoy esta vacio, asi que la prueba mide exactamente lo mismo que antes.
 const FUNDIDAS = {
-  // '/estadisticas':       '/control',
+  '/estadisticas': '/control',   // paso 2a
   // '/ranking-sucursales': '/control',
   // '/productividad':      '/control',
   // '/checkstore':         '/control',
@@ -251,15 +266,43 @@ for (const { nombre, u } of USUARIOS) {
   console.log('── %s ──', nombre);
   console.log('   antes: %d entradas · ahora: %d', antes.length, ahora.length);
 
-  const { verificadas, problemas } = revisarFusiones(nombre, perdio, ahora, FUNDIDAS, rutasDelNav);
+  const mapa = FUNDIDAS;
+  const { verificadas, problemas } = revisarFusiones(nombre, perdio, ahora, mapa, rutasDelNav);
   for (const v of verificadas) console.log('   ✓ fusión verificada: %s', v);
   for (const p of problemas) {
     difs++;
     console.log('   ✗ %s · %s', p.origen, p.motivo);
   }
-  if (gano.length) { difs += gano.length; console.log('   ✗ GANA:   %s', gano.join(' ')); }
-  if (!problemas.length && !gano.length && !verificadas.length) console.log('   ✓ misma audiencia');
-  else if (!problemas.length && !gano.length) console.log('   ✓ sin pérdidas de acceso');
+  // ── ¿UNA RUTA GANADA ES ESCALADA? ──────────────────────────────────────
+  //
+  // Aqui aparece, gratis, la comprobacion que faltaba. El destino de una fusion
+  // ES una ruta nueva, asi que sin esto la prueba lo reporta como "GANA" y falla
+  // por diseño. Pero perdonarlo a secas seria peor: dejaria pasar el riesgo real
+  // de fundir pantallas con permisos distintos.
+  //
+  // La regla: el destino es legitimo para un perfil SOLO si ese perfil tenia al
+  // menos UNO de los origenes que apuntan a el. Si lo gana sin tener ninguno, es
+  // ESCALADA — alguien se lleva una pantalla que nunca le tocaba, regalada por
+  // una reorganizacion de menu.
+  const ganoLimpio = [], escalada = [];
+  for (const r of gano) {
+    const origenes = Object.keys(mapa).filter(o => mapa[o] === r);
+    if (origenes.length === 0) { escalada.push({ ruta: r, motivo: 'no es destino de ninguna fusion declarada' }); continue; }
+    const tenia = origenes.filter(o => antes.includes(o));
+    if (tenia.length === 0) {
+      escalada.push({ ruta: r,
+        motivo: 'ESCALADA: es destino de [' + origenes.join(', ') + '] y este perfil no tenia ninguna' });
+      continue;
+    }
+    ganoLimpio.push(r + ' ← ' + tenia.join(', '));
+  }
+  for (const g of ganoLimpio) console.log('   ✓ destino legítimo: %s', g);
+  for (const e of escalada) { difs++; console.log('   ✗ %s · %s', e.ruta, e.motivo); }
+  if (!problemas.length && !escalada.length && !verificadas.length && !ganoLimpio.length) {
+    console.log('   ✓ misma audiencia');
+  } else if (!problemas.length && !escalada.length) {
+    console.log('   ✓ sin pérdidas ni escaladas');
+  }
   if (ahora.length > 7) {
     console.log('   ⚠ ve %d entradas · el objetivo del documento 4 son 7 (falta el paso 4.1b)', ahora.length);
   }

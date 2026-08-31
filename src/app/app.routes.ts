@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 
 import { authGuard } from './services/auth.guard';
+import { tabControlGuard, primeraTabControlGuard } from './services/control.guards';
 import { soloTecGuard } from './services/tec.guard';
 import { promocionesGuard } from './services/promociones.guard';
 import { pagosGuard } from './services/pagos.guard';
@@ -48,11 +49,6 @@ export const routes: Routes = [
     canActivate: [authGuard],
     loadComponent: () => import('./modules/dashboard/checkstore/checkstore').then(m => m.CheckstoreComponent) 
   },
-  {
-    path: 'estadisticas',
-    canActivate: [authGuard],
-    loadComponent: () => import('./modules/dashboard/estadisticas/estadisticas').then(m => m.EstadisticasComponent)
-  },
   // 🏆 RANKING SEMANAL DE SUCURSALES
   {
     path: 'ranking-sucursales',
@@ -84,6 +80,34 @@ export const routes: Routes = [
     canActivate: [authGuard],
     loadComponent: () => import('./modules/dashboard/descansos/descansos').then(m => m.DescansosComponent)
   },
+
+  // 🎛️ CONTROL OPERATIVO · el cascaron de las pantallas de analisis.
+  //
+  // La pestaña va en la URL como ruta HIJA, no como ?tab=. Eso da tres cosas: el
+  // redirectTo de cada ruta vieja aterriza en SU pestaña y no en la de por
+  // defecto (hay enlaces viejos en WhatsApp), el boton atras del navegador
+  // funciona entre pestañas, y el guard por pestaña sale de la propia ruta —que
+  // es lo que impide que entrar al cascaron regale acceso a las demas.
+  {
+    path: 'control',
+    canActivate: [authGuard],
+    loadComponent: () => import('./modules/dashboard/control/control').then(m => m.ControlComponent),
+    children: [
+      // Sin pestaña: se manda a la primera que este usuario pueda abrir. No es
+      // un redirectTo fijo porque la pestaña por defecto depende del permiso.
+      { path: '', canActivate: [primeraTabControlGuard], children: [] },
+      {
+        path: 'estadisticas',
+        canActivate: [tabControlGuard],
+        loadComponent: () => import('./modules/dashboard/estadisticas/estadisticas').then(m => m.EstadisticasComponent)
+      },
+    ]
+  },
+
+  // La ruta vieja NO se borra: aterriza en SU pestaña. Va en el mismo cambio en
+  // que estadisticas.html perdio su marco — si siguiera sirviendo el componente,
+  // esa URL mostraria una pantalla sin sidebar.
+  { path: 'estadisticas', redirectTo: 'control/estadisticas', pathMatch: 'full' },
 
   // 📈 PRODUCTIVIDAD CONTRA EL TURNO: lo hecho cruzado con el horario que RH
   // captura en Mega Talento.

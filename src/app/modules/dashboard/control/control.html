@@ -1,0 +1,43 @@
+<div class="app-layout">
+  <header class="header">
+    <div class="header-left">
+      <button class="btn-menu-mobile" (click)="toggleMenu()">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="3" y1="12" x2="21" y2="12"></line>
+          <line x1="3" y1="6" x2="21" y2="6"></line>
+          <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+      </button>
+      <div class="header-logo-wrap" style="background: transparent !important;">
+        <img src="https://static.wixstatic.com/media/fd397e_0fd82a1ecec84a118ceeb603b493f25a~mv2.png" alt="Mega Dulces"
+             style="height: 36px; width: auto; object-fit: contain;">
+      </div>
+      <div class="header-brand">Mega Dulces<small>Control operativo</small></div>
+    </div>
+    <div class="header-right"></div>
+  </header>
+
+  <div class="main-wrapper">
+    <div class="mobile-overlay" *ngIf="isMenuOpen" (click)="toggleMenu()"></div>
+    <app-sidebar [currentUser]="currentUser" [isMenuOpen]="isMenuOpen" (closeMenu)="isMenuOpen = false"></app-sidebar>
+
+    <main class="content">
+
+      <!-- La barra solo lleva las pestañas de este usuario. Una pestaña visible
+           que rebota al hacer clic enseña que la app falla, cuando lo que hay es
+           un permiso que no tiene. -->
+      <nav class="ctl-tabs" *ngIf="tabs().length > 0">
+        <a *ngFor="let t of tabs()"
+           class="ctl-tab"
+           [routerLink]="['/control', t.ruta]"
+           routerLinkActive="activa">{{ t.etiqueta }}</a>
+      </nav>
+
+      <!-- Solo la pestaña activa se instancia. Ver la cabecera de control.ts:
+           montar las cuatro las pondría a pedir rangos solapados de checklists
+           con poll propio, y esta pantalla sería la más lenta de la app. -->
+      <router-outlet></router-outlet>
+
+    </main>
+  </div>
+</div>

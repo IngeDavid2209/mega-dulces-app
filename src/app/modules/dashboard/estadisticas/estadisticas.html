@@ -1,29 +1,9 @@
-<div class="app-layout">
-  <header class="header">
-    <div class="header-left">
-      <button class="btn-menu-mobile" (click)="toggleMenu()">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-          stroke-linecap="round" stroke-linejoin="round">
-          <line x1="3" y1="12" x2="21" y2="12"></line>
-          <line x1="3" y1="6" x2="21" y2="6"></line>
-          <line x1="3" y1="18" x2="21" y2="18"></line>
-        </svg>
-      </button>
-      <div class="header-logo-wrap"
-        style="background: transparent !important; box-shadow: none; width: auto; padding: 0 4px;">
-        <img src="https://static.wixstatic.com/media/fd397e_0fd82a1ecec84a118ceeb603b493f25a~mv2.png" alt="Mega Dulces"
-          style="height: 36px; width: auto; object-fit: contain;">
-      </div>
-      <div class="header-brand">Mega Dulces<small>Panel Enterprise</small></div>
-    </div>
-    <div class="header-right"></div>
-  </header>
-
-  <div class="main-wrapper">
-    <div class="mobile-overlay" *ngIf="isMenuOpen" (click)="toggleMenu()"></div>
-    <app-sidebar [currentUser]="currentUser" [isMenuOpen]="isMenuOpen" (closeMenu)="isMenuOpen = false"></app-sidebar>
-
-    <div class="content">
+<!-- Estadisticas SIN MARCO: vive dentro del cascaron de Control operativo
+     (/control/estadisticas), que monta header, sidebar y overlay una sola
+     vez. Su <app-sidebar> y su <header> se quitaron EN EL MISMO cambio en
+     que /estadisticas paso a redirectTo: si la ruta siguiera viva sin marco,
+     esa URL serviria una pantalla sin sidebar, y hay enlaces de esos
+     circulando por WhatsApp. Las dos cosas van juntas o ninguna. -->
 
       <!-- ====================== HERO EJECUTIVO ====================== -->
       <section class="exec-hero">
@@ -235,6 +215,3 @@
         </div>
       </section>
 
-    </div>
-  </div>
-</div>

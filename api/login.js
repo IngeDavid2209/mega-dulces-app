@@ -41,10 +41,49 @@ module.exports = async (req, res) => {
     const password = String(b.password || '');
     if (!entrada || !password) return res.status(400).json({ error: 'Falta usuario o contraseña.' });
 
+    // ── POR QUE ESTE `order by` EXISTE ──────────────────────────────────
+    // Aqui decia `limit 1` a secas. Con dos fichas que comparten `usuario` o
+    // `correo` -y el 31/ago/2026 se midieron TRES usuarios y DOS correos
+    // repetidos- Postgres devolvia la que encontrara primero, y eso puede
+    // cambiar entre planes de consulta. Consecuencias reales, no teoricas:
+    //
+    //   · La persona SE CONVIERTE en la ficha que gane el sorteo, y su
+    //     contrasena se valida contra el hash de ESA fila. Yadira Campero
+    //     tenia latidos en las dos, en dias distintos.
+    //   · Peor: la comprobacion de `activo === false` esta MAS ABAJO, despues
+    //     de validar la contrasena. Si la ficha desactivada gana, la persona
+    //     queda FUERA de la app aunque exista una activa con el mismo usuario.
+    //
+    // EL ARREGLO ES DETERMINISMO, NO NEGATIVA. La tentacion era devolver error
+    // ante la ambiguedad -"no adivinar"- pero esa regla es para ESCRIBIR datos,
+    // no para dejar entrar a alguien: dejaria a una Encargada sin poder
+    // trabajar hoy. Con un orden estable deja de brincar entre fichas, entra
+    // siempre a la misma, y la colision queda gritada en el log.
+    //
+    // El orden: activas primero, luego las que tienen puesto, luego el latido
+    // mas reciente, y `id` como desempate para que sea estable de verdad.
+    // El `~ '^[0-9]+$'` evita que un ultimoLatido no numerico truene el cast.
     const r = await query(
-      'select * from mdtask_usuarios where lower(usuario) = $1 or lower(correo) = $1 limit 1',
+      `select * from mdtask_usuarios u
+        where lower(u.usuario) = $1 or lower(u.correo) = $1
+     order by (u.activo is not false) desc,
+              (coalesce(u.datos->>'puestoId', '') <> '') desc,
+              case when u.datos->>'ultimoLatido' ~ '^[0-9]+$'
+                   then (u.datos->>'ultimoLatido')::bigint else 0 end desc,
+              u.id
+        limit 3`,
       [entrada]
     );
+
+    // La colision no se calla: si hay mas de una ficha para la misma entrada,
+    // queda en el log con nombre e id para poder resolverla. No se imprime
+    // ninguna contrasena ni hash.
+    if (r.rows.length > 1) {
+      console.error('[login] COLISION DE IDENTIDAD para "%s": %d fichas -> %s',
+        entrada, r.rows.length,
+        r.rows.map(x => `${x.id}:${x.nombre}${x.activo === false ? '(inactiva)' : ''}`).join(' | '));
+    }
+
     const row = r.rows[0];
     const ok = row && (await verificarPassword(row, password));
     if (!ok) return res.status(401).json({ error: 'Usuario o contraseña incorrectos.' });

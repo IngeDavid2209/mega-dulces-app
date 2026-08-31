@@ -184,7 +184,7 @@ Orden por **dependencia y riesgo**, no por importancia. Un paso ≤ 3 días. Mar
 
 | Fase | Objetivo | Semanas | Depende de | Estado |
 |---|---|---|---|---|
-| 0 | Medir antes de tocar (divergencia, KPIs congelados, detener `corte.js`) | 0.5 | — | 🔄 **0.1 ✅ · 0.3 ✅ (migración 045) · falta 0.2** |
+| 0 | Medir antes de tocar (divergencia, KPIs congelados, detener `corte.js`, **el silencio**) | 0.5 | — | 🔄 **0.1 ✅ · 0.3 ✅ · 0.4 silencio: medido, interpretación pendiente · falta 0.2** |
 | 2 | Que los números digan la verdad (hecho ≠ justificado + primeras pruebas) | 1 | 0 | ⬜ **adelantada: va antes de la 1** |
 | 1 | Cerrar el ferrocarril: una sola base | 3 | 0 | ⬜ |
 | 3 | La estructura como dato (unidad, sucursal, ámbito, puesto, plaza, cobertura) | 4 | 1 | ⬜ |
@@ -309,6 +309,42 @@ solo porque el typo cayó en la palabra que la llave no usaba.
     que disparaba a las 21:00 del 31); y la primera verificación dio **ceros falsos** porque Git
     Bash convirtió `origin/main:.github/...` en `origin\main;...`, el comando falló y `grep -c`
     contó sobre entrada vacía. Rehecho en PowerShell.
+- **31/ago/2026 — el tercer número de la Fase 0: EL SILENCIO. Medido; interpretación PENDIENTE.**
+  - **El dato, con su denominador:** de **97** fichas activas **con puesto**, **60 están en
+    silencio** — **33 nunca han entrado**, 13 sin entrar hace más de 60 días, 14 entre 30 y 60.
+    Sobre **150** fichas activas en total. Fuente: migración 050.
+  - **NO se escribe todavía qué significa.** La lectura fácil —"el 62% no usa el sistema"— es una
+    media verdad, y una media verdad en el contexto permanente se vuelve doctrina en dos semanas.
+    Es la disciplina del cero falso un nivel más arriba: **aplicada a la conclusión, no al dato.**
+  - **Falta partir los 60 por unidad, y por qué cambia todo:** de los 15 silencios más largos, al
+    menos 12 **no son puestos de sucursal** (`coordinador-operaciones-zona`, `surtidor-zona`,
+    `vendedor-rd`, `vendedor-mayoreo`, `aux-reparto`, `analista-ordenes-entrada`,
+    `servicios-al-personal`, `auxiliar-auditoria-prevencion`). Son **dos problemas con respuestas
+    opuestas**:
+    - **Plaza de sucursal en silencio = adopción.** Se resuelve hablando con su Gerente.
+    - **Plaza de CEDIS, ventas, zona o administrativa en silencio = les emitimos obligaciones
+      sin haberles construido nada.** No tienen ámbito, ni pantalla, ni unidad en ningún
+      tablero. «SISTEMAS al 3%» con 3 puestos en todo el organigrama es eso, no desidia.
+  - **El hallazgo 5 estorba justo en el primer diagnóstico que importa:** ese cruce puesto→unidad
+    **no se puede escribir en SQL**, porque la unidad no está en la base — vive en
+    `organigrama.catalogo.ts` (89 puestos: cedis 15, sucursal 14, administrativa 14, ventas 11,
+    comercial-marketing 11, operaciones-zona 9, staff-zona 5, capital-humano 5, sistemas 3, zona
+    1, dirección 1). Por eso el split va como **script de Node que LEA el catálogo** y cruce
+    contra la base. **Copiar la lista a un `VALUES` sería exactamente la lista local que el
+    modelo prohíbe.**
+  - **Ambigüedad de datos que salió de paso:** el catálogo de ubicaciones tiene `Canindo`
+    (`Block P Bodega 6` — una bodega) **y** una entrada aparte `CEDIS` con dirección vacía. El
+    concepto está duplicado. 9 de los 15 silencios más largos son de Canindo, así que resolver
+    cuál es cuál cambia la lectura de ese grupo.
+  - **Regla que esto deja:** mientras no exista la partición, **ningún porcentaje de esos
+    tableros sube a Dirección.** El riesgo de hoy es que alguien vea «Padre Hidalgo 2%» y hable
+    con una persona por un número que mide emisiones al vacío. El invariante «un cumplimiento sin
+    fidelidad no se reporta» dejó de ser teoría.
+  - **Y lo que más pesa de mi lado:** tres de las cuatro asignaciones de puesto que hice el
+    30/ago —`JUAN MANUEL ESPINOZA ALACARAZ`, `JOSE DE JESUS ZAVALA VILLALOBOS`,
+    `MANUEL MEDIAN ESPINOZA`— son a fichas que **NUNCA han entrado**. Correctas técnicamente y
+    casi vacías operativamente: pasé un día persiguiendo typos cuando el problema era que nadie
+    está abriendo la app.
 - **31/ago/2026 — el caso Yadira se reencuadra: no es higiene de datos, es adopción.**
   - **El bug real está en `api/login.js:45`**, no en `login-usuario.js:25`. Mismo patrón
     (`where lower(usuario) = $1 or lower(correo) = $1 limit 1`, sin `order by`) pero **ése es el

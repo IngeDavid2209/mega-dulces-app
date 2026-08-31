@@ -21,10 +21,28 @@ module.exports = async (req, res) => {
   try {
     const entrada = String(req.query?.usuario || '').trim().toLowerCase();
     if (!entrada) return res.status(400).json({ error: 'Falta usuario.' });
+    // Mismo orden estable que api/login.js, y por el mismo motivo: con dos
+    // fichas que comparten usuario o correo, un `limit 1` suelto devolvia una u
+    // otra segun el plan de consulta. Este endpoint solo resuelve usuario→correo
+    // para el camino viejo de Firebase, pero si devuelve un correo distinto al
+    // que login.js elige, la persona acaba autenticandose contra otra ficha.
+    // Los dos tienen que ordenar IGUAL o la incoherencia sigue viva.
     const r = await query(
-      'select correo from mdtask_usuarios where lower(usuario) = $1 or lower(correo) = $1 limit 1',
+      `select u.correo, u.id, u.nombre, u.activo from mdtask_usuarios u
+        where lower(u.usuario) = $1 or lower(u.correo) = $1
+     order by (u.activo is not false) desc,
+              (coalesce(u.datos->>'puestoId', '') <> '') desc,
+              case when u.datos->>'ultimoLatido' ~ '^[0-9]+$'
+                   then (u.datos->>'ultimoLatido')::bigint else 0 end desc,
+              u.id
+        limit 3`,
       [entrada]
     );
+    if (r.rows.length > 1) {
+      console.error('[login-usuario] COLISION DE IDENTIDAD para "%s": %d fichas -> %s',
+        entrada, r.rows.length,
+        r.rows.map(x => `${x.id}:${x.nombre}${x.activo === false ? '(inactiva)' : ''}`).join(' | '));
+    }
     return res.json({ correo: (r.rows[0] && r.rows[0].correo) || '' });
   } catch (e) {
     console.error('[login-usuario] error:', e && e.message);

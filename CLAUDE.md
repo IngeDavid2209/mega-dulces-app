@@ -309,6 +309,43 @@ solo porque el typo cayó en la palabra que la llave no usaba.
     que disparaba a las 21:00 del 31); y la primera verificación dio **ceros falsos** porque Git
     Bash convirtió `origin/main:.github/...` en `origin\main;...`, el comando falló y `grep -c`
     contó sobre entrada vacía. Rehecho en PowerShell.
+- **31/ago/2026 — `login.js` arreglado y VERIFICADO, sin que nadie iniciara sesión.**
+  - **El orden estable** quedó en `api/login.js` y `api/login-usuario.js`, idéntico en los dos:
+    activas primero, luego con puesto, luego latido más reciente, `id` como desempate. Si los
+    dos no ordenaran igual, `login-usuario` podría devolver un correo distinto al que `login`
+    elige y la incoherencia seguiría viva aunque cada uno fuera determinista por separado.
+  - **Tercera consecuencia del `limit 1`, que no se había visto:** la comprobación de
+    `activo === false` está **después** de validar la contraseña. Si la ficha desactivada ganaba
+    el sorteo, la persona quedaba **fuera de la app** aunque existiera una activa con su mismo
+    usuario. Eso hace del orden por `activo` una protección, no una cosmética.
+  - **Verificado con un intento fallido, sin tocar la cuenta de nadie:** un POST a `/api/login`
+    con `mataviejitas778@gmail.com` y contraseña deliberadamente incorrecta devolvió 401 y el log
+    gritó `[login] COLISION DE IDENTIDAD ... 2 fichas -> …:Miriam | …:EL DAVE`. El
+    `console.error` está en la línea 82 y `verificarPassword` en la 88, así que **una colisión es
+    observable también en los intentos fallidos** — que es donde tiene que verse.
+  - **Regla nueva que deja:** `mataviejitas778@gmail.com` debe salir como dirección de una cuenta
+    de producción, sea de quien sea. El día que aparezca en una captura frente a Dirección o a un
+    auditor, la conversación va a ser sobre eso y no sobre la operación.
+- **31/ago/2026 — la ficha "Miriam" no es "real o de pruebas": es NO ATRIBUIBLE.**
+  - En la nómina hay **dos** Miriam, las dos en sucursal: `CARRILLO CONTRERAS MIRIAM JAZMIN`
+    (Cajera, 8 Esquinas) y `RODRIGUEZ SANCHEZ MIRIAM JUDITH` (Anaquelista, Canindo). Así que
+    aunque se decidiera que la ficha es una persona, **no se puede decir cuál**. El criterio pasa
+    de «real o de pruebas» a «ficha no atribuible con acceso potencial a una cuenta compartida».
+  - **Mi criterio de la 051 era flojo, y fijarlo por adelantado no lo volvió bueno.** Lo único
+    que disparó "parece real" fue `checklists > 0`, y un checklist asignado prueba que **alguien
+    escribió ese nombre**, no que exista una persona que use la cuenta. Metí como evidencia de
+    identidad justo el dato que el hallazgo 1 vuelve poco fiable. Las dos señales fuertes
+    —latido y puesto— están ausentes en ambas fichas. Revisar el criterio cuando llegó el dato
+    **sí** es el método funcionando; lo que falló fue el criterio, no la disciplina.
+  - **El discriminador ya estaba en la tabla:** `store` del checklist, con `created_by` y
+    `timestamp_creacion`. Va en la 052.
+- **31/ago/2026 — la guardia de un diagnóstico es de COBERTURA, no de totales.**
+  Al escribir el split por unidad iba a validar «parseé 89 puestos y 11 unidades». No sirve: 89
+  con uno malformado y otro contado doble también da 89. La guardia que importa es que **todo
+  `puestoId` presente en la base exista en el catálogo parseado**, y si falta uno, abortar con la
+  lista — porque ése es justo el que iba a quedar sin unidad y a desaparecer del reporte en
+  silencio. Es la regla del cero falso afinada: **verifica la entrada que de verdad usas, no un
+  proxy de ella.** (Y el parseo se contrastó contra un `grep` independiente: 89 y 89.)
 - **31/ago/2026 — el tercer número de la Fase 0: EL SILENCIO. Medido; interpretación PENDIENTE.**
   - **El dato, con su denominador:** de **97** fichas activas **con puesto**, **60 están en
     silencio** — **33 nunca han entrado**, 13 sin entrar hace más de 60 días, 14 entre 30 y 60.

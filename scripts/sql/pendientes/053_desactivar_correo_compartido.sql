@@ -5,7 +5,16 @@
 --   "Miriam"  (usuario miriam)    · no atribuible
 --
 -- ═══════════════════════════════════════════════════════════════════════
---  ⚠ ORDEN OBLIGATORIO: ESTA MIGRACION VA DESPUES DE MEDIR
+--  ⚠ ESTA EN pendientes/ PARA QUE NINGUN DESPLIEGUE LA APLIQUE POR ACCIDENTE
+-- ═══════════════════════════════════════════════════════════════════════
+-- Vivia en `scripts/sql/` y eso era un accidente esperando: el runner aplica
+-- TODO lo que hay ahi en el proximo arranque, sin importar por que se
+-- desplego. Un despliegue del sidebar, o de cualquier otra cosa, la habria
+-- ejecutado — y con eso se destruye la medicion de abajo.
+--
+-- Para aplicarla: mover a `scripts/sql/` y desplegar. Nada mas.
+--
+--  ⚠ ORDEN OBLIGATORIO: VA DESPUES DE MEDIR
 -- ═══════════════════════════════════════════════════════════════════════
 -- `scripts/diagnostico-asignaciones-huerfanas.js` mide la cubeta E -fichas sin
 -- plaza asignadas a una sucursal real, que es el mecanismo del selector- y hoy

@@ -305,6 +305,30 @@ de que exista la plaza sería partir el problema en dos, no resolverlo.
 
 ## 9. Bitácora del plan
 
+### Listo y SIN DESPLEGAR — el orden importa
+
+**`053_desactivar_correo_compartido.sql` está commiteada pero NO desplegada, a propósito.**
+Desactiva `Miriam` y `EL DAVE`, y esas dos son hoy las únicas fichas conocidas que ejercen la
+**cubeta E** de `diagnostico-asignaciones-huerfanas.js` —el mecanismo del selector—. Si la
+migración corre antes del script, pasan a inactivas, caen en la cubeta B, y **la medición se
+destruye sin poder recuperarla** sin reactivarlas.
+
+Orden obligatorio: **medir → desplegar la 053**, y el despliegue **cuando el piso ya cerró**
+(cada `railway up` cambia los hashes de los chunks).
+
+**`scripts/sql/pendientes/054_yadira_campero.sql`** está escrita y **no se aplica sola**:
+`db-migrate.js` hace `readdirSync` sobre `scripts/sql` **sin recursión**, así que la subcarpeta
+es invisible para el runner. Verificado: el runner lista 53 archivos y ninguno es la 054. Si
+viviera un nivel arriba, el próximo despliegue la ejecutaría y **adivinaría** la respuesta que
+todavía no tenemos. Lleva dos candados propios: aborta si `v_ficha_vigente` sigue en `'PENDIENTE'`,
+y aborta si la ficha a desactivar **ya tiene trabajo real** — o sea, si el reloj ya corrió.
+
+**El control positivo de huérfanas dejó de poder caducar.** En vez de re-anclarlo a otro par de
+nombres, ahora se construye **desde los datos**: busca cualquier ficha activa sin sucursal con
+trabajo en una sucursal real y exige que ese checklist esté en E. Si no existe ninguno, lo **dice**
+—«el mecanismo quedó sin verificar», código 3— en vez de fingir un fallo de consulta. Y distingue
+las dos lecturas posibles de ese vacío: que el hueco se cerró, o que la consulta ya no lo detecta.
+
 ### Mañana, el arranque
 
 Corto, y en este orden:

@@ -205,63 +205,56 @@ async function main() {
   // el mecanismo que se quiere medir, el del store, quedaba sin ejercer. Un
   // control que pasa por otro camino da confianza falsa, y eso es peor que
   // fallar: verifica que aparece, no que aparece POR LO QUE SE ESTA MIDIENDO.
-  const esCaso = c => c.fecha === '2026-05-22' && /pimentel/i.test(c.created_by || '');
-  const enE = E.filter(esCaso);
-  const enCualquiera = [...A, ...B, ...C, ...D, ...E].filter(esCaso);
+  // ── CONTROL POSITIVO, AUTO-RENOVABLE ────────────────────────────────
+  //
+  // Antes estaba anclado a que "Miriam" y "EL DAVE" siguieran activas y sin
+  // sucursales, y la migracion 053 las desactiva — asi que el control habria
+  // abortado en cada corrida a partir de hoy, con un mensaje que suena a "la
+  // consulta esta mal" cuando lo que cambio fue el mundo. Y un aborto permanente
+  // es un control que alguien silencia en tres semanas porque "siempre falla".
+  //
+  // En vez de re-anclarlo a otro par de nombres -que caducaria igual- el control
+  // se construye DESDE LOS DATOS: busca cualquier ficha activa sin ninguna
+  // sucursal que tenga trabajo asignado en una sucursal real, y exige que ESE
+  // checklist este en la cubeta E. Mientras exista un caso, el mecanismo queda
+  // verificado; cuando no exista ninguno, lo DICE en vez de fingir un fallo.
+  const candidatos = [];
+  for (const c of rc.rows) {
+    const u = porNombre.get(norm(c.assigned));
+    if (!u || u.activo === false) continue;
+    const st = norm(c.store);
+    if (!sucursales.has(st)) continue;
+    const suyas = [...(Array.isArray(u.sucursales) ? u.sucursales : []), u.sucursal_simple]
+      .map(norm).filter(Boolean);
+    if (suyas.length === 0) candidatos.push(c);
+  }
 
-  // ── ¿SIGUE EN PIE LA PREMISA DEL CONTROL? ─────────────────────────────
-  //
-  // ESTE CONTROL CADUCA EN CUANTO SE ARREGLEN LOS DATOS QUE LO SOSTIENEN, y hay
-  // que decirlo antes de que pase. Depende de que las fichas `Miriam` y
-  // `EL DAVE` sigan ACTIVAS y SIN SUCURSALES: eso es lo que las manda a la
-  // cubeta E. En la lista de pendientes está sacar el correo compartido, y el
-  // camino natural es desactivar la ficha no atribuible. Ese día `activo` pasa a
-  // false, los casos se van a la cubeta B, y `enE` queda en 0.
-  //
-  // Sin esta comprobación, el script abortaria en CADA corrida con un mensaje
-  // que suena a "la consulta esta mal" cuando lo que cambio fue el mundo. Y un
-  // aborto permanente es un control que alguien silencia en tres semanas porque
-  // "siempre falla".
-  //
-  // Asi que se distinguen las dos cosas -es la misma diferencia entre "no pude
-  // leer" y "no hay nada", un nivel mas arriba-. Y CUANDO SE REMEDIE EL CASO,
-  // ESTE CONTROL SE ACTUALIZA EN EL MISMO COMMIT: se busca otro par de fichas
-  // sin plaza con trabajo asignado, o se deja escrito que el mecanismo quedo sin
-  // control y por que.
-  const fichasControl = ['miriam', 'el dave'].map(k => porNombre.get(k)).filter(Boolean);
-  const premisaViva = fichasControl.length === 2
-    && fichasControl.every(u => u.activo !== false)
-    && fichasControl.every(u => {
-      const suyas = [...(Array.isArray(u.sucursales) ? u.sucursales : []), u.sucursal_simple]
-        .map(norm).filter(Boolean);
-      return suyas.length === 0;
-    });
-
-  if (!premisaViva) {
+  if (candidatos.length === 0) {
     console.log('');
-    console.log('⚠ CONTROL CADUCADO — no es que la consulta esté mal.');
-    console.log('  Este control positivo dependía de que "Miriam" y "EL DAVE" siguieran activas');
-    console.log('  y sin sucursales. Ya no cumplen esa premisa, así que el mecanismo de la');
-    console.log('  cubeta E QUEDÓ SIN VERIFICAR en esta corrida.');
-    console.log('  Los números de arriba son válidos; lo que falta es el control.');
-    console.log('  Ancla el control a otro par de fichas sin plaza con trabajo asignado,');
-    console.log('  o deja escrito que el mecanismo quedó sin control y por qué.');
+    console.log('⚠ EL MECANISMO DE LA CUBETA E QUEDO SIN VERIFICAR en esta corrida.');
+    console.log('  No hay en la base ninguna ficha activa sin sucursal con trabajo asignado en');
+    console.log('  una sucursal real, asi que no habia caso con el que ejercer la cubeta E.');
+    console.log('  Eso PUEDE ser buena noticia -que el hueco se cerro- o puede ser que la');
+    console.log('  consulta ya no lo detecte. Son cosas distintas y esta corrida no las separa.');
+    console.log('  Los numeros de arriba SI son validos; lo que falta es el control.');
     console.log('');
-    console.log('  (código de salida 3 = resultados válidos, control caducado)');
+    console.log('  (codigo de salida 3 = resultados validos, mecanismo sin verificar)');
     process.exitCode = 3;
     return;
   }
-  console.log('POSITIVO · casos del 22/may por Claudia Pimentel → en la cubeta E: %d (en cualquiera: %d)',
-    enE.length, enCualquiera.length);
-  if (enE.length === 0) {
-    abortar(
-      'el control POSITIVO falló: los casos del 22/may NO están en la cubeta E, que es la que ' +
-      'mide el mecanismo del selector' +
-      (enCualquiera.length > 0
-        ? '. Aparecen en otra cubeta (' + enCualquiera.length + '), asi que el script encuentra por otro camino y E podria estar muerta.'
-        : '. No aparecen en ninguna cubeta.')
-    );
+
+  const idsE = new Set(E.map(c => c.id));
+  const fuera = candidatos.filter(c => !idsE.has(c.id));
+  console.log('POSITIVO · casos que DEBEN estar en E: %d · efectivamente en E: %d',
+    candidatos.length, candidatos.length - fuera.length);
+  if (fuera.length > 0) {
+    fuera.slice(0, 5).forEach(c =>
+      console.log('           !! "%s" · store=%s · quedo FUERA de E', c.assigned, c.store));
+    abortar('el control POSITIVO fallo: ' + fuera.length + ' caso(s) que cumplen la definicion ' +
+      'de la cubeta E no cayeron en ella. La consulta no esta midiendo lo que cree.');
   }
+  candidatos.slice(0, 3).forEach(c =>
+    console.log('           ej: %s · "%s" · store=%s', c.fecha, c.assigned, c.store));
 
   // ── CONTROL NEGATIVO: lo que el robot generó hoy NO debe caer ───────────
   const hoy = new Date();

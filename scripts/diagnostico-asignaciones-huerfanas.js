@@ -67,7 +67,7 @@ function abortar(motivo, detalle) {
 /** Mismo criterio que shared/permisos.util.ts: sin acentos, minúsculas, un espacio. */
 function norm(t) {
   return String(t || '')
-    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')   // marcas combinantes, escapadas para que se puedan leer
     .replace(/\s+/g, ' ')
     .trim()
     .toLowerCase();
@@ -117,7 +117,15 @@ async function main() {
   if (rc.rows.length === 0) abortar('cero checklists. No se leyó nada.');
   console.log('[huerfanas] checklists leídos → %d', rc.rows.length);
 
-  const A = [], B = [], C = [], D = [];   // D = store que no cuadra
+  // A: no cruza con ninguna ficha · B: ficha desactivada · C: activa sin puesto
+  // D: store ajeno a las sucursales del asignado (ficha CON sucursales)
+  // E: ficha SIN NINGUNA sucursal, asignada a una sucursal real  <- el selector
+  //
+  // D y E son EXCLUYENTES entre si por construccion (una tiene sucursales y la
+  // otra no), pero NINGUNA es excluyente con A/B/C: un mismo checklist puede
+  // estar en C y en E a la vez. Los numeros NO suman al denominador, y la salida
+  // lo dice para que nadie los sume.
+  const A = [], B = [], C = [], D = [], E = [];
   for (const c of rc.rows) {
     const k = norm(c.assigned);
     if (!k) { A.push(c); continue; }
@@ -139,9 +147,18 @@ async function main() {
         [...(Array.isArray(u.sucursales) ? u.sucursales : []), u.sucursal_simple]
           .map(norm).filter(Boolean)
       );
-      if (esSucursalReal && !global && st !== norm('General (Acceso Total)')
-          && suyas.size > 0 && !suyas.has(st)) {
-        D.push({ ...c, suyas: [...suyas].join(', ') });
+      const juzgable = esSucursalReal && !global && st !== norm('General (Acceso Total)');
+      if (juzgable) {
+        if (suyas.size === 0) {
+          // EL CASO DEL SELECTOR. Antes esta rama no existia: el guardian
+          // `suyas.size > 0` la descartaba, asi que las fichas sin plaza -que son
+          // justo las que el selector ofrece de mas- no se juzgaban NUNCA. El
+          // control positivo pasaba por la cubeta C y D quedaba sin ejercer: un
+          // D=0 se habria leido como "el problema no existe".
+          E.push(c);
+        } else if (!suyas.has(st)) {
+          D.push({ ...c, suyas: [...suyas].join(', ') });
+        }
       }
     }
   }
@@ -160,13 +177,20 @@ async function main() {
     B.length, pct(B.length));
   console.log('C · ficha activa SIN PUESTO ............. %d (%s)  ← legítimo: tareas libres',
     C.length, pct(C.length));
-  console.log('D · store ajeno a las sucursales del asignado . %d (%s)', D.length, pct(D.length));
+  console.log('D · store ajeno a SUS sucursales ......... %d (%s)  ← tiene plazas, y no es ésa',
+    D.length, pct(D.length));
+  console.log('E · ficha SIN plaza, asignada a una real . %d (%s)  ← EL CASO DEL SELECTOR',
+    E.length, pct(E.length));
+  console.log('');
+  console.log('OJO: las cubetas NO son excluyentes entre sí. Un mismo checklist puede estar');
+  console.log('     en C y en E a la vez, así que estos números NO suman al denominador.');
 
   const muestra = (arr, n = 8) => arr.slice(0, n).forEach(c =>
     console.log('      %s · "%s" · store=%s · creado_por=%s',
       c.fecha, c.assigned, c.store || '(vacío)', c.created_by || '(sin creador)'));
 
   if (A.length) { console.log(''); console.log('  Muestra de A:'); muestra(A); }
+  if (E.length) { console.log(''); console.log('  Muestra de E (el selector):'); muestra(E); }
   if (D.length) {
     console.log(''); console.log('  Muestra de D (con las sucursales que sí son suyas):');
     D.slice(0, 8).forEach(c => console.log('      %s · "%s" · store=%s · suyas=[%s] · creado_por=%s',
@@ -176,19 +200,31 @@ async function main() {
   // ── CONTROL POSITIVO: los dos del 22/may 13:11:11 ──────────────────────
   console.log('');
   console.log('──────── controles ────────');
-  const objetivo = [...A, ...B, ...C, ...D].filter(c =>
-    c.fecha === '2026-05-22' && /pimentel/i.test(c.created_by || ''));
-  console.log('POSITIVO · asignaciones del 22/may por Claudia Pimentel en alguna cubeta: %d',
-    objetivo.length);
-  if (objetivo.length === 0) {
-    abortar('el control POSITIVO falló: los casos conocidos del 22/may no aparecen en ninguna cubeta. La consulta no está midiendo lo que cree.');
+  // El control afirma LA CUBETA, no la aparicion. Antes miraba si los casos
+  // salian en CUALQUIERA de las cubetas, y pasaban por C -sin puesto- mientras
+  // el mecanismo que se quiere medir, el del store, quedaba sin ejercer. Un
+  // control que pasa por otro camino da confianza falsa, y eso es peor que
+  // fallar: verifica que aparece, no que aparece POR LO QUE SE ESTA MIDIENDO.
+  const esCaso = c => c.fecha === '2026-05-22' && /pimentel/i.test(c.created_by || '');
+  const enE = E.filter(esCaso);
+  const enCualquiera = [...A, ...B, ...C, ...D, ...E].filter(esCaso);
+  console.log('POSITIVO · casos del 22/may por Claudia Pimentel → en la cubeta E: %d (en cualquiera: %d)',
+    enE.length, enCualquiera.length);
+  if (enE.length === 0) {
+    abortar(
+      'el control POSITIVO falló: los casos del 22/may NO están en la cubeta E, que es la que ' +
+      'mide el mecanismo del selector' +
+      (enCualquiera.length > 0
+        ? '. Aparecen en otra cubeta (' + enCualquiera.length + '), asi que el script encuentra por otro camino y E podria estar muerta.'
+        : '. No aparecen en ninguna cubeta.')
+    );
   }
 
   // ── CONTROL NEGATIVO: lo que el robot generó hoy NO debe caer ───────────
   const hoy = new Date();
   const hoyISO = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`;
   const delRobotHoy = rc.rows.filter(c => c.fecha === hoyISO && c.created_by === 'Manual Corporativo');
-  const idsMarcados = new Set([...A, ...B, ...C, ...D].map(c => c.id));
+  const idsMarcados = new Set([...A, ...B, ...C, ...D, ...E].map(c => c.id));
   const falsosPositivos = delRobotHoy.filter(c => idsMarcados.has(c.id));
 
   console.log('NEGATIVO · checklists del robot de hoy: %d · marcados por error: %d',

@@ -277,10 +277,15 @@ de que exista la plaza sería partir el problema en dos, no resolverlo.
     paréntesis).
     **(b)** la guardia va sobre **la entrada que de verdad usas**, no sobre un proxy de ella: que
     todo `puestoId` de la base exista en el catálogo, no que el catálogo sume 89.
-    **(c)** toda herramienta de verificación lleva **control positivo Y negativo**. Un control
-    positivo —«encuentra el caso conocido»— lo pasa también una consulta que marca TODO. El
-    negativo —«un caso que sé legítimo NO debe aparecer»— es el que prueba que **discrimina**, no
-    solo que encuentra. Sin él verificas el artefacto otra vez.
+    **(c)** toda herramienta de verificación lleva **control positivo Y negativo**, y el positivo
+    tiene que **afirmar el mecanismo, no la aparición**. Un control que dice «encuentra el caso
+    conocido» lo pasa una consulta que marca TODO — y, peor, lo pasa **por otro camino**: en el
+    script del selector los dos casos del 22/may caían en la cubeta C (ficha sin puesto) mientras
+    la cubeta D —la que mide el `store`— **no se ejercía nunca**, porque su guardián excluía a las
+    fichas sin sucursal, que son justo las del hallazgo. Un `D = 0` se habría leído como «el
+    problema no existe». El control correcto afirma la cubeta: «los casos del 22/may están en E».
+    Y el negativo —«un caso que sé legítimo NO debe aparecer»— prueba que discrimina.
+    **Un control que pasa por el camino equivocado da confianza falsa, y eso es peor que fallar.**
     **(d)** la disciplina aplica también a la **conclusión**, no solo al dato: una media verdad en
     este archivo se vuelve doctrina en dos semanas. Si la interpretación no está cerrada, se anota
     el número y se marca la interpretación como pendiente.

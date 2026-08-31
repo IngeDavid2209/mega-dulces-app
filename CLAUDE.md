@@ -325,8 +325,16 @@ Compara cuatro usuarios sintéticos —admin global, admin de sucursales, superv
 operadora sin ninguna— y **ninguna de las dos lógicas se transcribe**: las condiciones viejas se
 leen de git, y las nuevas salen de **compilar `nav.config.ts` y llamar al `menuDe()` real**.
 
-**Resultado al 31/ago: los cuatro perfiles ven exactamente las mismas rutas que antes** (15, 14,
-11 y 4). Y de paso mide el pendiente: un admin global ve **15**, y el objetivo del documento 4 son
+**Resultado al 31/ago: los DIEZ perfiles ven exactamente las mismas rutas que antes.** Los cuatro
+estructurales (15, 14, 11 y 4) más **seis de promos, uno por permiso**.
+
+Esos seis no eran un extra: los cuatro primeros **no tenían ninguna bandera de promos**, así que
+los dos lados devolvían `false` para `/promociones` y `/venta-promos` y **el verde pasaba sin
+ejercer esos predicados** — el mismo fallo del control que pasa por el camino equivocado, aquí por
+omisión. Y son justo los más frágiles: no eran banderas simples sino getters con **tres permisos
+cada uno**, donde basta cualquiera. Un `&&` donde iba un `||` dejaría fuera a dos tercios de la
+gente de promociones sin que nadie lo note hasta que reclamen. La prueba ahora **aborta** si
+ningún perfil llega a ver esas dos rutas. Y de paso mide el pendiente: un admin global ve **15**, y el objetivo del documento 4 son
 **7** — la diferencia es el paso 4.1b.
 
 **Hay que volver a correrla antes del paso 4.3**, que reemplaza los predicados por la función de

@@ -163,6 +163,26 @@ const USUARIOS = [
       rol: 'trabajador', puedeVerCheckstore: true, puedeVerEstadisticas: true,
       puedeVerHistorial: true, puedeAdministrarPersonal: true } },
   { nombre: 'operadora sin banderas', u: { rol: 'trabajador' } },
+
+  // ── UNA BANDERA DE PROMOS A LA VEZ ────────────────────────────────────
+  //
+  // Los cuatro de arriba cubren lo estructural pero NO TIENEN NINGUNA bandera de
+  // promos, asi que los dos lados devolvian false para /promociones y
+  // /venta-promos: el verde pasaba SIN EJERCER esos predicados. Es el mismo
+  // fallo del control que pasa por el camino equivocado, aqui por omision.
+  //
+  // Y son justo los dos que mas se pueden desviar: no eran banderas simples sino
+  // getters con TRES permisos cada uno, y basta cualquiera. Un `&&` donde iba un
+  // `||` deja fuera a dos tercios de la gente de promociones sin que nadie lo
+  // note hasta que alguien reclame que le desaparecio el menu.
+  //
+  // Seis perfiles, uno por permiso, para que cada rama se pruebe sola.
+  { nombre: 'promos · solo formato',    u: { rol: 'trabajador', promocionesFormato: true } },
+  { nombre: 'promos · solo expediente', u: { rol: 'trabajador', promocionesExpediente: true } },
+  { nombre: 'promos · solo grupo',      u: { rol: 'trabajador', grupoPromociones: true } },
+  { nombre: 'venta · solo caja',        u: { rol: 'trabajador', ventaPromosCaja: true } },
+  { nombre: 'venta · solo vendedor',    u: { rol: 'trabajador', ventaPromosVendedor: true } },
+  { nombre: 'venta · solo monitor',     u: { rol: 'trabajador', ventaPromosMonitor: true } },
 ];
 
 // ── La comparación ────────────────────────────────────────────────────────
@@ -185,11 +205,25 @@ for (const { nombre, u } of USUARIOS) {
   }
 }
 
+// ── ¿SE EJERCIERON LAS RUTAS DE PROMOS? ──────────────────────────────────
+// Sin esto, agregar los perfiles no garantiza nada: si manana alguien les quita
+// las banderas, el verde vuelve a pasar por omision y nadie se entera.
+const ejercidas = new Set();
+for (const { u } of USUARIOS) for (const r of rutasNuevas(u)) ejercidas.add(r);
+for (const r of ['/promociones', '/venta-promos']) {
+  if (!ejercidas.has(r)) {
+    abortar('ningun perfil de prueba llego a ver ' + r + ', asi que su predicado NO se ejercio. ' +
+      'Un verde que pasa porque los dos lados estan apagados no prueba nada.');
+  }
+}
+console.log('');
+console.log('✓ rutas de promos ejercidas por al menos un perfil: /promociones, /venta-promos');
+
 console.log('');
 if (difs > 0) {
   abortar(difs + ' diferencia(s) de audiencia entre el menú viejo y el nuevo. ' +
     'El paso 4.1 NO debe cambiar quien ve que: si una es intencional, se documenta y se ajusta esta prueba.');
 }
-console.log('✓ Los cuatro perfiles ven exactamente las mismas rutas que antes.');
+console.log('✓ Los %d perfiles ven exactamente las mismas rutas que antes.', USUARIOS.length);
 console.log('  (%d rutas viejas leídas de git · %d entradas nuevas del módulo COMPILADO.)',
   viejas.size, NAVMOD.NAV.length);

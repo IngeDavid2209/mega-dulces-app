@@ -1,30 +1,33 @@
 /**
  * 🗺️ ZONAS · a qué gerencia pertenece cada sucursal
  *
- * Las zonas no las invento: el propio organigrama las nombra en el comentario
- * de su nivel `'zona'` — «Gerencias de Zona (La Piedad, Morelia, Zamora)».
- * Son tres, y cada una tiene su Gerente.
+ * Son CINCO: Morelia, Zamora, La Piedad, Padre Hidalgo y Yurécuaro.
  *
- * ─── LO QUE NO SE ASIGNÓ, Y POR QUÉ ─────────────────────────────────────────
- * Seis sucursales caen solas por ciudad. Dos NO:
+ * ─── OJO: EL ORGANIGRAMA DICE TRES, Y ESTÁ INCOMPLETO ───────────────────────
+ * El comentario de su nivel `'zona'` dice «Gerencias de Zona (La Piedad,
+ * Morelia, Zamora)», y de ahí salió la primera versión de este archivo. David
+ * corrigió el 2026-08-31: Padre Hidalgo y Yurécuaro también son zonas, no
+ * sucursales que cuelguen de otra.
  *
- *   · Padre Hidalgo está en Santa Ana Pacueco, GUANAJUATO. Geográficamente
- *     pega con La Piedad, pero es otro estado y nadie ha dicho de qué gerencia
- *     cuelga. Son 39 personas, la plaza más grande de la empresa.
- *   · Yurécuaro no cae obvio: queda entre La Piedad y Zamora.
+ * Tiene sentido visto de cerca — Padre Hidalgo son 39 personas, más grande que
+ * varias zonas completas— pero no se podía deducir del documento. Queda anotado
+ * aquí para que el siguiente que lo lea no repita el error: ese comentario del
+ * organigrama hay que actualizarlo.
  *
- * Podría ponerlas donde "se ve que van" y nadie lo notaría hasta que un Gerente
- * de Zona lea un número que no es el suyo, tome una decisión con él, y el error
- * salga a la luz meses después sin dejar rastro de dónde vino. Así que se
- * quedan en `null` y la pantalla las muestra como "sin zona asignada", que es
- * un pendiente visible en vez de una mentira invisible.
+ * Y vale la pena decir cómo se resolvió: la primera versión dejó esas dos
+ * plazas SIN zona en vez de ponerlas donde "se veía que iban". Si las hubiera
+ * metido en La Piedad por cercanía geográfica, hoy su Gerente estaría leyendo
+ * números de gente que no es suya, y nadie lo habría notado. El pendiente
+ * visible es lo que hizo que David lo corrigiera en un mensaje.
  *
  * El corporativo y el CEDIS no son zona: no cuelgan de una Gerencia de Zona
  * sino de Dirección. Tienen su propio grupo para que no ensucien la
  * comparación entre plazas, que es para lo que sirve este filtro.
  */
 
-export type ClaveZona = 'morelia' | 'zamora' | 'la-piedad' | 'corporativo' | null;
+export type ClaveZona =
+  | 'morelia' | 'zamora' | 'la-piedad' | 'padre-hidalgo' | 'yurecuaro'
+  | 'corporativo' | null;
 
 export interface Zona {
   clave: Exclude<ClaveZona, null>;
@@ -35,6 +38,8 @@ export const ZONAS: Zona[] = [
   { clave: 'morelia',     nombre: 'Zona Morelia' },
   { clave: 'zamora',      nombre: 'Zona Zamora' },
   { clave: 'la-piedad',   nombre: 'Zona La Piedad' },
+  { clave: 'padre-hidalgo', nombre: 'Zona Padre Hidalgo' },
+  { clave: 'yurecuaro',   nombre: 'Zona Yurécuaro' },
   { clave: 'corporativo', nombre: 'Corporativo y CEDIS' },
 ];
 
@@ -48,6 +53,10 @@ const POR_SUCURSAL: Record<string, Exclude<ClaveZona, null>> = {
   'La Piedad Abastos': 'la-piedad',
   '8 Esquinas':        'la-piedad',
 
+  // ── Zonas de una sola plaza (David, 2026-08-31) ───────────────────────
+  'Padre Hidalgo':     'padre-hidalgo',
+  'Yurécuaro':         'yurecuaro',
+
   // ── No cuelgan de una Gerencia de Zona, sino de Dirección ─────────────
   'CEDIS':                 'corporativo',
   'OFICINAS CORPORATIVAS': 'corporativo',
@@ -59,11 +68,6 @@ const POR_SUCURSAL: Record<string, Exclude<ClaveZona, null>> = {
   'COMPRAS':       'corporativo',
   'MKT':           'corporativo',
   'MANTENIMIENTO': 'corporativo',
-
-  // ── SIN ASIGNAR A PROPÓSITO ───────────────────────────────────────────
-  // 'Padre Hidalgo' → Santa Ana Pacueco, Guanajuato. 39 personas.
-  // 'Yurécuaro'     → entre La Piedad y Zamora.
-  // Ver la cabecera: se quedan fuera hasta que alguien lo confirme.
 };
 
 /** La zona de una sucursal, o null si nadie se la ha asignado. */

@@ -25,7 +25,11 @@
 /** Bloque de primer nivel del organigrama, para agrupar en las pantallas. */
 export type UnidadOrganigrama =
   | 'direccion'
-  | 'zona'                  // Gerencias de Zona (La Piedad, Morelia, Zamora)
+  | 'zona'                  // Gerencias de Zona: La Piedad, Morelia, Zamora,
+                            // Padre Hidalgo y Yurecuaro. Son CINCO. Aqui decia
+                            // solo las tres primeras, y esa lista incompleta hizo
+                            // que el filtro de zonas naciera sin las otras dos
+                            // (corregido por David el 2026-08-31).
   | 'staff-zona'
   | 'ventas'
   | 'sucursal'

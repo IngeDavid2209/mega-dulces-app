@@ -4,6 +4,7 @@ import { RouterModule, Router } from '@angular/router';
 import { APP_BUILD_SELLO } from '../version';
 import { esAdminDeCanindo } from '../permisos.util';
 import { cerrarSesionSegura } from '../sesion.util';
+import { menuDe, totalVisible } from './nav.config';
 
 /**
  * Sidebar compartido del panel administrativo.
@@ -33,6 +34,30 @@ export class SidebarComponent implements OnInit, OnDestroy {
   readonly buildSello = APP_BUILD_SELLO;
 
   private router = inject(Router);
+
+  /**
+   * El menú de quien entró, agrupado por sección. Se calcula, no se escribe.
+   *
+   * Es un método y no un `computed` porque `currentUser` llega por `@Input()`,
+   * no por signal: envolverlo en un signal aquí obligaría a tocar las once
+   * pantallas que le pasan el usuario, y eso es otro paso. Angular lo llama en
+   * cada ciclo de detección, pero son 21 entradas con predicados de una línea —
+   * el costo es despreciable y medible si algún día deja de serlo.
+   */
+  menu() {
+    return menuDe(this.currentUser);
+  }
+
+  /**
+   * Cuántas entradas ve. El objetivo del documento 4 es SIETE por nivel, y hoy
+   * un admin global ve bastante más: alcanzarlo exige fundir Estadísticas,
+   * Ranking, Productividad y Checkstore en una sola pantalla con pestañas, que
+   * es el resto del paso 4.1. Se expone el número para que el avance sea
+   * medible en vez de una impresión.
+   */
+  totalEntradas(): number {
+    return totalVisible(this.currentUser);
+  }
 
   // El badge de "conflictos de rutinas" desapareció junto con el modelo de
   // rutinas. Ya no hay conflicto que detectar: nadie asigna una rutina a una

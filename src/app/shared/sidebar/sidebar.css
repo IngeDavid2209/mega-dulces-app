@@ -33,3 +33,18 @@
   justify-content: center;
   line-height: 1;
 }
+
+/* ── Encabezados de sección ──────────────────────────────────────────────
+   Discretos a propósito: son señales de agrupación, no entradas. Si pesaran
+   como una entrada, el menú volvería a leerse como una lista de veinte cosas
+   — que es justo lo que se vino a quitar. */
+.nav-seccion {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .7px;
+  color: #94A3B8;
+  padding: 0 12px;
+  margin: 18px 0 6px;
+}
+.nav-seccion:first-child { margin-top: 0; }

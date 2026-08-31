@@ -4,232 +4,134 @@
     <!-- Sin cabecera con logotipo: se quitó a propósito. El padding superior de
          la nav es el que ahora da el aire que daba aquel bloque. -->
     <nav class="sidebar-nav" style="flex: 1; padding: 24px 12px 16px;">
-      <a class="nav-item" routerLink="/home" routerLinkActive="active" (click)="onNavClick()">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <rect x="3" y="3" width="7" height="7" />
-          <rect x="14" y="3" width="7" height="7" />
-          <rect x="3" y="14" width="7" height="7" />
-          <rect x="14" y="14" width="7" height="7" />
-        </svg>
-        Dashboard
-      </a>
 
-      <!-- 📕 TAREAS DEL MANUAL — las que entrega solo el robot según el puesto
-           de cada persona, tomadas del Manual Corporativo. No se crean ni se
-           editan: se cumplen. Va ANTES de las libres a propósito: es lo
-           obligatorio del puesto y es lo primero que le debe saltar a la vista. -->
-      <a class="nav-item" routerLink="/tareas-manual" routerLinkActive="active" (click)="onNavClick()"
-         title="Checklists de tu Manual Corporativo de Operación (solo cumplir)">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
-          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
-        </svg>
-        Tareas del Manual
-      </a>
+      <!-- ═══════════════════════════════════════════════════════════════
+           EL MENÚ SE RECORRE, NO SE ESCRIBE.
 
-      <!-- ✏️ TAREAS FUERA DEL MANUAL — lo que se asigna a mano. Misma pantalla
-           que la de arriba (data.modoManual en app.routes.ts decide cuál mitad
-           de la lista se pinta); antes se llamaba "Checklist". -->
-      <a class="nav-item" routerLink="/checklist" routerLinkActive="active" (click)="onNavClick()"
-         title="Tareas asignadas a mano: únicas, de equipo y del día">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <polyline points="9 11 12 14 22 4" />
-          <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />
-        </svg>
-        Tareas fuera del manual
-      </a>
+           Antes aquí había 19 entradas a mano con doce `*ngIf` de permisos
+           repartidos entre ellas. Ahora la única fuente es `nav.config.ts`:
+           una entrada que no esté en ese arreglo NO EXISTE, y quién la ve se
+           decide en un solo lugar en vez de en doce condiciones sueltas.
 
-      <a class="nav-item" routerLink="/agenda" routerLinkActive="active" (click)="onNavClick()">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
-          <polyline points="17 21 17 13 7 13 7 21"></polyline>
-          <polyline points="7 3 7 8 15 8"></polyline>
-        </svg>
-        Agenda Personal
-      </a>
+           Las cuatro secciones van siempre en el mismo orden, y una sección
+           sin entradas visibles no se pinta — por eso «Lo que verifico» está
+           declarada pero invisible: sin plaza no hay muestra que mostrar, y
+           llenarla con lo que hay sería fingir que ese nivel ya ocurre.
+           ═══════════════════════════════════════════════════════════════ -->
+      <ng-container *ngFor="let grupo of menu()">
+        <div class="nav-seccion" [title]="grupo.seccion.proposito">{{ grupo.seccion.titulo }}</div>
 
-      <!-- 🎓 Espacio TEC: visible SOLO si el admin le activó el privilegio (grupoTec).
-           Ya NO se muestra a todo admin: un admin que administre el TEC también debe
-           tener el privilegio activado en su propia cuenta para verlo. -->
-      <a class="nav-item" routerLink="/tec" routerLinkActive="active"
-         *ngIf="currentUser?.grupoTec === true"
-         (click)="onNavClick()">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M22 10v6M2 10l10-5 10 5-10 5z"></path>
-          <path d="M6 12v5c3 3 9 3 12 0v-5"></path>
-        </svg>
-        Espacio TEC
-      </a>
+        <a *ngFor="let e of grupo.entradas"
+           class="nav-item" [routerLink]="e.ruta" routerLinkActive="active"
+           (click)="onNavClick()">
+          <ng-container [ngSwitch]="e.icono">
+          <ng-container *ngSwitchCase="'manual'"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+                      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+                    </svg></ng-container>
+          <ng-container *ngSwitchCase="'check'"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <polyline points="9 11 12 14 22 4" />
+                      <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />
+                    </svg></ng-container>
+          <ng-container *ngSwitchCase="'agenda'"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                      <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                      <polyline points="7 3 7 8 15 8"></polyline>
+                    </svg></ng-container>
+          <ng-container *ngSwitchCase="'tec'"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M22 10v6M2 10l10-5 10 5-10 5z"></path>
+                      <path d="M6 12v5c3 3 9 3 12 0v-5"></path>
+                    </svg></ng-container>
+          <ng-container *ngSwitchCase="'ticket'"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M3 9V6a1 1 0 0 1 1-1h16a1 1 0 0 1 1 1v3a2 2 0 0 0 0 4v3a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-3a2 2 0 0 0 0-4z"></path>
+                      <path d="M9 5v14" stroke-dasharray="2 2"></path>
+                    </svg></ng-container>
+          <ng-container *ngSwitchCase="'pago'"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M4 4h16v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"></path>
+                      <path d="M8 8h8"></path>
+                      <path d="M8 12h8"></path>
+                      <path d="M8 16h4"></path>
+                    </svg></ng-container>
+          <ng-container *ngSwitchCase="'tienda'"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+                      <polyline points="9 22 9 12 15 12 15 22" />
+                    </svg></ng-container>
+          <ng-container *ngSwitchCase="'grafica'"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <line x1="18" y1="20" x2="18" y2="10" />
+                      <line x1="12" y1="20" x2="12" y2="4" />
+                      <line x1="6" y1="20" x2="6" y2="14" />
+                    </svg></ng-container>
+          <ng-container *ngSwitchCase="'trofeo'"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path>
+                      <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path>
+                      <path d="M4 22h16"></path>
+                      <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"></path>
+                      <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"></path>
+                      <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"></path>
+                    </svg></ng-container>
+          <ng-container *ngSwitchCase="'reloj'"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="12" cy="12" r="9"></circle>
+                      <path d="M12 7v5l3 2"></path>
+                    </svg></ng-container>
+          <ng-container *ngSwitchCase="'lupa'"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+                      <polyline points="14 2 14 8 20 8" />
+                      <line x1="16" y1="13" x2="8" y2="13" />
+                      <line x1="16" y1="17" x2="8" y2="17" />
+                    </svg></ng-container>
+          <ng-container *ngSwitchCase="'pdf'"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                      <polyline points="14 2 14 8 20 8"></polyline>
+                      <line x1="16" y1="13" x2="8" y2="13"></line>
+                      <line x1="16" y1="17" x2="8" y2="17"></line>
+                      <polyline points="10 9 9 9 8 9"></polyline>
+                    </svg></ng-container>
+          <ng-container *ngSwitchCase="'libro'"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                    </svg></ng-container>
+          <ng-container *ngSwitchCase="'gente'"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
+                      <circle cx="9" cy="7" r="4" />
+                      <path d="M23 21v-2a4 4 0 00-3-3.87" />
+                      <path d="M16 3.13a4 4 0 010 7.75" />
+                    </svg></ng-container>
+          <ng-container *ngSwitchCase="'calendario'"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg></ng-container>
+          <ng-container *ngSwitchCase="'area'"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+                      <polyline points="9 22 9 12 15 12 15 22" />
+                    </svg></ng-container>
+          <ng-container *ngSwitchCase="'bloque'"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                    </svg></ng-container>
+          <ng-container *ngSwitchCase="'camion'"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M4 4h16v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"></path>
+                      <path d="M8 8h8"></path>
+                      <path d="M8 12h8"></path>
+                      <path d="M8 16h4"></path>
+                    </svg></ng-container>
+          <ng-container *ngSwitchCase="'inicio'"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <rect x="3" y="3" width="7" height="7" />
+                      <rect x="14" y="3" width="7" height="7" />
+                      <rect x="3" y="14" width="7" height="7" />
+                      <rect x="14" y="14" width="7" height="7" />
+                    </svg></ng-container>
+          <ng-container *ngSwitchCase="'promo'"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M20.6 12.6 12.6 20.6a2 2 0 0 1-2.8 0l-6.4-6.4a2 2 0 0 1-.6-1.4V4a1 1 0 0 1 1-1h8.8a2 2 0 0 1 1.4.6l6.6 6.6a2 2 0 0 1 0 2.8z"></path>
+                      <circle cx="7.5" cy="7.5" r="1.2"></circle>
+                    </svg></ng-container>
+          <ng-container *ngSwitchCase="'venta'"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="12" cy="12" r="9"></circle>
+                      <circle cx="12" cy="12" r="3.5"></circle>
+                    </svg></ng-container>
+          </ng-container>
+          {{ e.etiqueta }}
+        </a>
+      </ng-container>
 
-      <!-- 🏷️ Activacion de promociones: visible SOLO para los usuarios a los que
-           se les asigne alguno de sus DOS oficios desde Usuarios
-           (promocionesFormato = captura el formato; promocionesExpediente =
-           solo llena el expediente de su sucursal). `grupoPromociones` es la
-           bandera vieja y se acepta mientras haya sesiones sin renovar. Los
-           admins NO lo ven por ser admin, igual que Flotilla y el Espacio TEC. -->
-      <a class="nav-item" routerLink="/promociones" routerLinkActive="active"
-         *ngIf="verPromociones"
-         (click)="onNavClick()"
-         title="Activacion de promociones">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M20.6 12.6 12.6 20.6a2 2 0 0 1-2.8 0l-6.4-6.4a2 2 0 0 1-.6-1.4V4a1 1 0 0 1 1-1h8.8a2 2 0 0 1 1.4.6l6.6 6.6a2 2 0 0 1 0 2.8z"></path>
-          <circle cx="7.5" cy="7.5" r="1.2"></circle>
-        </svg>
-        Promociones
-      </a>
-
-      <!-- 🟢 Venta de Promos: el piso de venta en vivo. Visible SOLO para quien
-           tenga alguno de los TRES permisos que se asignan desde Usuarios
-           (ventaPromosCaja / ventaPromosVendedor / ventaPromosMonitor). Los
-           admins NO lo ven por ser admin, igual que Promociones y el Espacio
-           TEC: si no se les prende una bandera, no les aparece. -->
-      <a class="nav-item" routerLink="/venta-promos" routerLinkActive="active"
-         *ngIf="verVentaPromos"
-         (click)="onNavClick()"
-         title="Venta de Promos: luz verde de la caja y tablero en vivo">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="12" cy="12" r="9"></circle>
-          <circle cx="12" cy="12" r="3.5"></circle>
-        </svg>
-        Venta de Promos
-      </a>
-
-      <!-- 🎫 Tickets: vale de servicio operativo. Visible para los designados
-           (grupoTickets) y para el admin. -->
-      <a class="nav-item" routerLink="/tickets" routerLinkActive="active"
-         *ngIf="currentUser?.grupoTickets === true || currentUser?.rol === 'admin'"
-         (click)="onNavClick()"
-         title="Tickets: vale de servicio operativo">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M3 9V6a1 1 0 0 1 1-1h16a1 1 0 0 1 1 1v3a2 2 0 0 0 0 4v3a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-3a2 2 0 0 0 0-4z"></path>
-          <path d="M9 5v14" stroke-dasharray="2 2"></path>
-        </svg>
-        Tickets
-      </a>
-
-      <!-- 🧾 Pagos de servicios: luz, agua, internet y demas recibos por
-           sucursal. Visible para los designados (grupoPagos) y para el admin,
-           que debe poder entrar a apagar un aviso mal configurado. -->
-      <a class="nav-item" routerLink="/pagos" routerLinkActive="active"
-         *ngIf="currentUser?.grupoPagos === true || currentUser?.rol === 'admin'"
-         (click)="onNavClick()"
-         title="Pagos de servicios: luz, agua, internet y comprobantes">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M4 4h16v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"></path>
-          <path d="M8 8h8"></path>
-          <path d="M8 12h8"></path>
-          <path d="M8 16h4"></path>
-        </svg>
-        Pagos
-      </a>
-
-      <a class="nav-item" routerLink="/checkstore" routerLinkActive="active"
-         *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeVerCheckstore"
-         (click)="onNavClick()">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
-          <polyline points="9 22 9 12 15 12 15 22" />
-        </svg>
-        Sucursales
-      </a>
-
-      <a class="nav-item" routerLink="/estadisticas" routerLinkActive="active"
-         *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeVerEstadisticas"
-         (click)="onNavClick()">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <line x1="18" y1="20" x2="18" y2="10" />
-          <line x1="12" y1="20" x2="12" y2="4" />
-          <line x1="6" y1="20" x2="6" y2="14" />
-        </svg>
-        Estadísticas
-      </a>
-
-      <a class="nav-item" routerLink="/ranking-sucursales" routerLinkActive="active"
-         *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeVerEstadisticas || currentUser?.puedeVerCheckstore"
-         (click)="onNavClick()">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path>
-          <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path>
-          <path d="M4 22h16"></path>
-          <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"></path>
-          <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"></path>
-          <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"></path>
-        </svg>
-        Ranking Semanal
-      </a>
-
-      <a class="nav-item" routerLink="/productividad" routerLinkActive="active"
-         *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeVerEstadisticas || currentUser?.puedeVerCheckstore"
-         (click)="onNavClick()">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="12" cy="12" r="9"></circle>
-          <path d="M12 7v5l3 2"></path>
-        </svg>
-        Productividad y turno
-      </a>
-
-      <a class="nav-item" routerLink="/cierre-mensual" routerLinkActive="active"
-         *ngIf="currentUser?.rol === 'admin' && (currentUser?.alcance === 'global' || !currentUser?.alcance)"
-         (click)="onNavClick()"
-         title="Genera el PDF mensual con todas las tareas y fotos por sucursal">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-          <polyline points="14 2 14 8 20 8"></polyline>
-          <line x1="16" y1="13" x2="8" y2="13"></line>
-          <line x1="16" y1="17" x2="8" y2="17"></line>
-          <polyline points="10 9 9 9 8 9"></polyline>
-        </svg>
-        Cierre Mensual
-      </a>
-
-      <!-- 📕 MANUAL POR PUESTO
-           Reemplaza los cuatro apartados de Rutinas (Catálogo, Asignación,
-           Programación y Migración Legacy). Ya no hay nada que capturar: el
-           puesto del organigrama decide qué tareas recibe cada quien, y esas
-           tareas salen del Manual Corporativo. Esta pantalla es de consulta. -->
-      <a class="nav-item" routerLink="/manual-puestos" routerLinkActive="active"
-         *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeCrearRutinas"
-         (click)="onNavClick()"
-         title="Qué tareas recibe cada puesto según su Manual Corporativo (solo consulta)">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
-          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
-        </svg>
-        Manual por Puesto
-      </a>
-
-      <a class="nav-item" routerLink="/reportes" routerLinkActive="active"
-         *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeVerHistorial"
-         (click)="onNavClick()">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
-          <polyline points="14 2 14 8 20 8" />
-          <line x1="16" y1="13" x2="8" y2="13" />
-          <line x1="16" y1="17" x2="8" y2="17" />
-        </svg>
-        Auditoría
-      </a>
-
-      <a class="nav-item" routerLink="/personal" routerLinkActive="active"
-         *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeAdministrarPersonal"
-         (click)="onNavClick()">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
-          <circle cx="9" cy="7" r="4" />
-          <path d="M23 21v-2a4 4 0 00-3-3.87" />
-          <path d="M16 3.13a4 4 0 010 7.75" />
-        </svg>
-        Usuarios
-      </a>
-
-      <a class="nav-item" routerLink="/descansos" routerLinkActive="active"
-         *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeAdministrarPersonal"
-         (click)="onNavClick()">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-        </svg>
-        Días de Descanso
-      </a>
     </nav>
 
     <div class="bottom-nav" style="margin-top: auto; padding: 0 12px 20px 12px;">

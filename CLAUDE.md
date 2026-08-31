@@ -259,18 +259,51 @@ de que exista la plaza sería partir el problema en dos, no resolverlo.
      índice anterior pide archivos que ya no existen. Menos despliegues es menos riesgo.
 10. **Mantén este archivo al día**: cuando termines un paso, actualiza la tabla de la §7 y
     anota lo aprendido en la sección de abajo.
-11. **Un cero no es un resultado hasta que sepas de cuántas líneas salió.** El 31/ago/2026, tres
-    veces en un día, un `0` o un `OK` vino de un comando que no midió nada (una ruta que Git Bash
-    convirtió mal, un `grep -c` sobre entrada vacía). Todo script de diagnóstico **imprime el
-    tamaño de sus entradas antes de concluir** y **aborta** si alguna viene vacía: "no pude leer"
-    y "no hay nada" son cosas distintas y se ven idénticas. Aplica igual a las verificaciones que
-    hagas tú: cita la cifra de la que sale el cero.
+11. **ANTES DE VERIFICAR, DI QUÉ PREGUNTA ESTÁS CONTESTANDO.** El artefacto casi siempre pasa
+    la prueba; la pregunta casi nunca. El 31/ago/2026 esto falló **cuatro veces en un día**, y
+    las cuatro eran la misma falla — verificar el artefacto en lugar de la pregunta:
+    - el `0` comprobaba «¿corrió el comando?» en vez de «¿midió algo?»;
+    - el «89 puestos y 11 unidades» comprobaba «¿parseé?» en vez de «¿cubrí lo que uso?»;
+    - dos turnos enteros comprobaban «¿cuál de las dos fichas?» en vez de «¿alguien usa alguna?»
+      —los latidos de junio estaban en pantalla y nunca se compararon contra hoy—;
+    - y el «62%» iba a comprobar «¿el número es correcto?» en vez de «¿la conclusión es
+      correcta?».
+    Corolarios operativos, que son casos de la misma regla:
+    **(a)** un cero no es un resultado hasta que sepas de cuántas líneas salió; Todo script de diagnóstico
+    **imprime el tamaño de sus entradas antes de concluir** y **aborta** si alguna viene vacía:
+    «no pude leer» y «no hay nada» se ven idénticos. Cita siempre la cifra de la que sale el cero
+    — también en tus propias verificaciones, y también en las herramientas que escribas para
+    verificar (un auditor de `raise notice` dio un falso positivo por contar comas sin respetar
+    paréntesis).
+    **(b)** la guardia va sobre **la entrada que de verdad usas**, no sobre un proxy de ella: que
+    todo `puestoId` de la base exista en el catálogo, no que el catálogo sume 89.
+    **(c)** la disciplina aplica también a la **conclusión**, no solo al dato: una media verdad en
+    este archivo se vuelve doctrina en dos semanas. Si la interpretación no está cerrada, se anota
+    el número y se marca la interpretación como pendiente.
 12. **Cuidado con los nombres heredados de Firestore.** Los campos del documento y las columnas
     de Postgres NO coinciden: en Firestore la fecha es `date`, en Postgres es `fecha` (el mapeo
     completo está en `scripts/migrar-checklists.js`). Consultar Firestore con el nombre de la
     columna devuelve cero documentos, sin error.
 
 ## 9. Bitácora del plan
+
+### La Fase 0 ya se pagó sola
+
+El 31/ago/2026 el proyecto ganó **tres hallazgos que no estaban en ninguno de los cinco
+documentos** de la revisión, y los tres salieron del mismo sitio: de ir a **medir antes de
+tocar**.
+
+1. **El silencio.** 60 de 97 fichas activas con puesto no han abierto la app en más de 30 días;
+   33 nunca. Los tableros estaban leyendo eso como incumplimiento.
+2. **La colisión de identidad en el login.** `limit 1` sin `order by` en `api/login.js`: una
+   persona entraba a dos cuentas distintas según el día, y una ficha desactivada podía dejarla
+   fuera de la app.
+3. **El selector que asigna a fichas ajenas.** Una Encargada real puede asignar trabajo a
+   cualquier ficha del sistema, incluidas cuentas de prueba de otra plaza.
+
+Ninguno se habría visto leyendo código. Los tres aparecieron al preguntarle a la base.
+
+
 
 ### Marcador corrido: correcciones de identidad por nombre
 
@@ -309,6 +342,16 @@ solo porque el typo cayó en la palabra que la llave no usaba.
     que disparaba a las 21:00 del 31); y la primera verificación dio **ceros falsos** porque Git
     Bash convirtió `origin/main:.github/...` en `origin\main;...`, el comando falló y `grep -c`
     contó sobre entrada vacía. Rehecho en PowerShell.
+- **31/ago/2026 — HALLAZGO NUEVO: el selector de personas asigna a fichas ajenas.**
+  No es una anécdota de la 052, es un hueco propio. El 22/may a las **13:11:11**, *Claudia
+  Pimentel Duran* hizo una asignación en bloque en **La Piedad Abastos** y el selector le ofreció
+  dos fichas que no son de esa plaza — una de ellas una cuenta de pruebas (`EL DAVE`). **Una
+  Encargada real puede asignar trabajo a cualquier ficha del sistema y nada la detiene.**
+  - **Completa el cuadro del silencio:** el robot emite al vacío (60 de 97) **y las personas
+    también**. Los dos inflan denominadores que los tableros muestran como incumplimiento.
+  - **Pendiente, script barato:** cuántos checklists tienen un `assigned` que no corresponde a
+    ninguna ficha activa con puesto, y cuántos tienen un `store` que no coincide con las
+    sucursales del asignado. El segundo probablemente lleva meses.
 - **31/ago/2026 — 052 cierra el correo compartido, y destapa un límite del determinismo.**
   - **`EL DAVE` es dato de pruebas, con evidencia:** 5 checklists de un punto en `SISTEMAS`,
     creados por *Administrador Supremo* el 6, 7 y 8 de mayo — **tres el mismo día en siete
@@ -320,16 +363,23 @@ solo porque el typo cayó en la palabra que la llave no usaba.
     plaza. No es de pruebas —la creó una persona real en una sucursal real— pero **no es
     atribuible a nadie**. El filo de privacidad sigue **latente, no realizado**: ninguna de las
     dos se ha abierto jamás.
-  - **EL LÍMITE DEL DETERMINISMO, que es el hallazgo que importa.** La prueba del orden nuevo con
+  - **EL ORDEN PRIORIZA ACCESO SOBRE HISTORIAL, Y ESO ES LO CORRECTO.** La prueba con
     `yadira.campero` devolvió:
     `#1 Yadira Campero Ortiz (puesto=encargado-sucursal, latido 24/jun)` ·
     `#2 Yaadira Campero Ortiz (sin puesto, latido 30/jun)`.
-    Gana la #1 **por tener puesto, aunque la #2 tenga el latido más reciente** — y la #2 es la que
-    tiene 17 checklists y tres meses de historia. El orden está implementado fielmente
-    (`puesto` antes que `latido`), pero la manda a la ficha con el puesto y **sin su historia**.
-    **El determinismo compró previsibilidad, no corrección:** antes se equivocaba al azar, ahora
-    se equivoca siempre igual. No se arregla cambiando la prioridad global —cualquier orden
-    acierta en unos casos y falla en otros—: **se arregla resolviendo el duplicado.**
+    Gana la #1 por tener puesto, aunque la #2 tenga el latido más reciente. **No es un defecto:**
+    mira qué ve ella en cada una. En Yaadira —historial, sin puesto— vería sus 17 checklists
+    viejos y **nada nuevo**, porque el robot emite por `puestoId` y esa ficha no tiene. En Yadira
+    ve el trabajo de hoy y no ve su historia. Para alguien que necesita trabajar, la segunda es la
+    buena: **perder de vista el historial es un problema de reporte; no poder ver tus tareas es un
+    problema de acceso, y un login se ordena por acceso.** El historial se recupera al resolver el
+    duplicado. **No cambies este orden creyendo que es una deuda.**
+  - **RIESGO CON RELOJ, y es el que nadie había nombrado.** El día que su Gerente le diga «empieza
+    a usar la app», ella va a aterrizar en la ficha con puesto y va a **generar historia ahí**. En
+    ese momento las dos fichas tienen trabajo real y la regla de «un empate no se resuelve»
+    **bloquea la fusión**. Así que el orden de los movimientos importa: **resolver el duplicado
+    ANTES de la conversación con la Gerente, no después.** Hoy el reloj está parado porque nadie
+    entra desde junio; arranca el primer día que alguien la anime a entrar.
 - **31/ago/2026 — `login.js` arreglado y VERIFICADO, sin que nadie iniciara sesión.**
   - **El orden estable** quedó en `api/login.js` y `api/login-usuario.js`, idéntico en los dos:
     activas primero, luego con puesto, luego latido más reciente, `id` como desempate. Si los

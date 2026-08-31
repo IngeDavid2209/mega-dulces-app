@@ -89,6 +89,12 @@ export const routes: Routes = [
   // Asignación, Programación y Migración). Ya no se captura qué se hace ni a
   // quién se le asigna: el puesto del organigrama decide, y las tareas salen
   // del Manual Corporativo de Operación. Pantalla de solo consulta.
+  // Productividad contra el turno: lo hecho cruzado con el horario de RH.
+  {
+    path: 'productividad',
+    canActivate: [authGuard],
+    loadComponent: () => import('./modules/dashboard/productividad/productividad').then(m => m.ProductividadComponent)
+  },
   {
     path: 'manual-puestos',
     canActivate: [authGuard],

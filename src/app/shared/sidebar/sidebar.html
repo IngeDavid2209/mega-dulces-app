@@ -158,6 +158,16 @@
         Ranking Semanal
       </a>
 
+      <a class="nav-item" routerLink="/productividad" routerLinkActive="active"
+         *ngIf="currentUser?.rol === 'admin' || currentUser?.puedeVerEstadisticas || currentUser?.puedeVerCheckstore"
+         (click)="onNavClick()">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="9"></circle>
+          <path d="M12 7v5l3 2"></path>
+        </svg>
+        Productividad y turno
+      </a>
+
       <a class="nav-item" routerLink="/cierre-mensual" routerLinkActive="active"
          *ngIf="currentUser?.rol === 'admin' && (currentUser?.alcance === 'global' || !currentUser?.alcance)"
          (click)="onNavClick()"

@@ -1,0 +1,244 @@
+<div class="app-layout">
+  <header class="header">
+    <div class="header-left">
+      <button class="btn-menu-mobile" (click)="toggleMenu()">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="3" y1="12" x2="21" y2="12"></line>
+          <line x1="3" y1="6" x2="21" y2="6"></line>
+          <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+      </button>
+      <div class="header-logo-wrap" style="background: transparent !important;">
+        <img src="https://static.wixstatic.com/media/fd397e_0fd82a1ecec84a118ceeb603b493f25a~mv2.png" alt="Mega Dulces"
+             style="height: 36px; width: auto; object-fit: contain;">
+      </div>
+      <div class="header-brand">Mega Dulces<small>Productividad y turno</small></div>
+    </div>
+    <div class="header-right"></div>
+  </header>
+
+  <div class="main-wrapper">
+    <div class="mobile-overlay" *ngIf="isMenuOpen" (click)="toggleMenu()"></div>
+    <app-sidebar [currentUser]="currentUser" [isMenuOpen]="isMenuOpen" (closeMenu)="isMenuOpen = false"></app-sidebar>
+
+    <main class="content">
+
+      <!-- ═══════════ QUE SIGNIFICA ESTA PANTALLA ═══════════ -->
+      <section class="pr-intro">
+        <h1>Productividad contra el turno</h1>
+        <p>
+          Lo que se hizo, cruzado con la hora a la que la sucursal de verdad abre y
+          cierra. El horario viene del checador de <strong>Mega Talento</strong>,
+          donde lo captura RH.
+        </p>
+        <p class="pr-intro-clave">
+          El cumplimiento a secas no distingue entre quien hizo sus veinte puntos
+          a lo largo del turno, quien los palomeó todos en dos minutos al final, y
+          quien los marcó a las 23:40 en una plaza que cierra a las 18:00. Las
+          tres salen al 100%. Aquí se separan.
+        </p>
+      </section>
+
+      <!-- ═══════════ AVISO DE RED ═══════════ -->
+      <div class="pr-aviso-red" *ngIf="sinConexion() && aviso().titulo">
+        <strong>{{ aviso().titulo }}</strong>
+        <span>{{ aviso().detalle }}</span>
+        <span class="pr-aviso-red-pie">Se muestra el último dato bueno, no una tabla vacía.</span>
+      </div>
+
+      <!-- ═══════════ QUE TAN MEDIBLE ES ESTO ═══════════ -->
+      <!-- Va ARRIBA de los numeros a proposito: quien lee la tabla tiene que
+           saber primero de que tamano es el hueco, no descubrirlo despues. -->
+      <section class="pr-cobertura">
+        <div class="pr-cob-titulo">Antes de leer los números</div>
+        <div class="pr-cob-grid">
+          <div class="pr-cob-item">
+            <span class="pr-cob-num">{{ cobertura().conHorario }} / {{ cobertura().sucursales }}</span>
+            <span class="pr-cob-lbl">sucursales con horario capturado</span>
+          </div>
+          <div class="pr-cob-item">
+            <span class="pr-cob-num">
+              {{ cobertura().pctSello == null ? '—' : cobertura().pctSello + '%' }}
+            </span>
+            <span class="pr-cob-lbl">de lo hecho tiene sello de hora</span>
+          </div>
+          <div class="pr-cob-item">
+            <span class="pr-cob-num">{{ cobertura().sinSello }}</span>
+            <span class="pr-cob-lbl">puntos hechos sin sello: no se pueden situar en el tiempo</span>
+          </div>
+        </div>
+        <div class="pr-cob-nota" *ngIf="cobertura().sinHorario.length > 0">
+          <strong>Sin horario en Mega Talento:</strong>
+          {{ cobertura().sinHorario.join(' · ') }}.
+          A esas plazas <em>no</em> se les calcula “dentro de turno” — la columna sale
+          vacía en vez de inventar un horario. Se arregla capturándolo allá.
+        </div>
+      </section>
+
+      <!-- ═══════════ CONTROLES ═══════════ -->
+      <section class="pr-filtros">
+        <div class="pr-tabs">
+          <button [class.activo]="vista() === 'sucursal'" (click)="vista.set('sucursal')">Por sucursal</button>
+          <button [class.activo]="vista() === 'persona'" (click)="vista.set('persona')">Por colaborador</button>
+        </div>
+        <div class="pr-rango">
+          <button *ngFor="let d of [1, 7, 15, 30]" [class.activo]="dias() === d" (click)="cambiarDias(d)">
+            {{ d === 1 ? 'Hoy' : d + ' días' }}
+          </button>
+        </div>
+        <input *ngIf="vista() === 'persona'" class="pr-buscar" type="text"
+               placeholder="Buscar persona o puesto…"
+               [ngModel]="busqueda()" (ngModelChange)="busqueda.set($event)"
+               autocomplete="off" name="pr-q-libre">
+      </section>
+
+      <div class="pr-cargando" *ngIf="cargando()">Midiendo…</div>
+
+      <!-- ═══════════ POR SUCURSAL ═══════════ -->
+      <section class="pr-tabla-wrap" *ngIf="!cargando() && vista() === 'sucursal'">
+        <table class="pr-tabla">
+          <thead>
+            <tr>
+              <th>Sucursal</th>
+              <th>Horario</th>
+              <th>Cumplimiento</th>
+              <th>A tiempo</th>
+              <th>Dentro de turno</th>
+              <th>Sin sello</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let m of porSucursal(); trackBy: trackClave">
+              <td class="pr-nombre">{{ m.clave }}</td>
+              <td class="pr-horario">{{ horarioTexto(m.clave) }}</td>
+              <td>
+                <span class="pr-pct" [ngClass]="claseNivel(pct(m.hechos, m.asignados))">
+                  {{ pct(m.hechos, m.asignados) == null ? '—' : pct(m.hechos, m.asignados) + '%' }}
+                </span>
+                <span class="pr-sub">{{ m.hechos }} de {{ m.asignados }}</span>
+              </td>
+              <td>
+                <span class="pr-pct" [ngClass]="claseNivel(pct(m.aTiempo, m.aTiempo + m.tarde))">
+                  {{ pct(m.aTiempo, m.aTiempo + m.tarde) == null ? '—' : pct(m.aTiempo, m.aTiempo + m.tarde) + '%' }}
+                </span>
+                <span class="pr-sub" *ngIf="m.tarde > 0">{{ m.tarde }} tarde</span>
+              </td>
+              <td>
+                <ng-container *ngIf="m.dentroTurno + m.fueraTurno > 0; else sinTurno">
+                  <span class="pr-pct" [ngClass]="claseNivel(pct(m.dentroTurno, m.dentroTurno + m.fueraTurno))">
+                    {{ pct(m.dentroTurno, m.dentroTurno + m.fueraTurno) }}%
+                  </span>
+                  <span class="pr-sub pr-fuera" *ngIf="m.fueraTurno > 0">
+                    {{ m.fueraTurno }} fuera de horario
+                  </span>
+                </ng-container>
+                <ng-template #sinTurno><span class="pr-nd-txt">sin horario</span></ng-template>
+              </td>
+              <td>
+                <span *ngIf="m.sinSello > 0" class="pr-sinsello">{{ m.sinSello }}</span>
+                <span *ngIf="m.sinSello === 0" class="pr-nd-txt">—</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- ═══════════ POR COLABORADOR ═══════════ -->
+      <section class="pr-tabla-wrap" *ngIf="!cargando() && vista() === 'persona'">
+        <table class="pr-tabla">
+          <thead>
+            <tr>
+              <th>Colaborador</th>
+              <th>Cumplimiento</th>
+              <th>A tiempo</th>
+              <th>Dentro de turno</th>
+              <th>Ritmo</th>
+              <th>Sin sello</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let m of porPersona(); trackBy: trackClave">
+              <td class="pr-nombre">
+                {{ m.clave }}
+                <span class="pr-puesto" *ngIf="m.puesto">{{ m.puesto }}</span>
+                <span class="pr-suc" *ngIf="m.sucursal">{{ m.sucursal }}</span>
+              </td>
+              <td>
+                <span class="pr-pct" [ngClass]="claseNivel(pct(m.hechos, m.asignados))">
+                  {{ pct(m.hechos, m.asignados) == null ? '—' : pct(m.hechos, m.asignados) + '%' }}
+                </span>
+                <span class="pr-sub">{{ m.hechos }} de {{ m.asignados }}</span>
+              </td>
+              <td>
+                <span class="pr-pct" [ngClass]="claseNivel(pct(m.aTiempo, m.aTiempo + m.tarde))">
+                  {{ pct(m.aTiempo, m.aTiempo + m.tarde) == null ? '—' : pct(m.aTiempo, m.aTiempo + m.tarde) + '%' }}
+                </span>
+                <span class="pr-sub" *ngIf="m.tarde > 0">{{ m.tarde }} tarde</span>
+              </td>
+              <td>
+                <ng-container *ngIf="m.dentroTurno + m.fueraTurno > 0; else sinTurnoP">
+                  <span class="pr-pct" [ngClass]="claseNivel(pct(m.dentroTurno, m.dentroTurno + m.fueraTurno))">
+                    {{ pct(m.dentroTurno, m.dentroTurno + m.fueraTurno) }}%
+                  </span>
+                  <span class="pr-sub pr-fuera" *ngIf="m.fueraTurno > 0">{{ m.fueraTurno }} fuera</span>
+                </ng-container>
+                <ng-template #sinTurnoP><span class="pr-nd-txt">sin horario</span></ng-template>
+              </td>
+              <td>
+                <span *ngIf="m.minutosActividad != null && !deUnaSentada(m)" class="pr-ritmo">
+                  {{ m.minutosActividad }} min
+                </span>
+                <span *ngIf="deUnaSentada(m)" class="pr-sentada"
+                      title="Todos sus puntos quedaron sellados en menos de 5 minutos">
+                  de una sentada
+                </span>
+                <span *ngIf="m.minutosActividad == null" class="pr-nd-txt">—</span>
+              </td>
+              <td>
+                <span *ngIf="m.sinSello > 0" class="pr-sinsello">{{ m.sinSello }}</span>
+                <span *ngIf="m.sinSello === 0" class="pr-nd-txt">—</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <p class="pr-vacio" *ngIf="porPersona().length === 0">
+          Nadie coincide con la búsqueda en este rango de días.
+        </p>
+      </section>
+
+      <!-- ═══════════ COMO LEER LAS COLUMNAS ═══════════ -->
+      <section class="pr-leyenda" *ngIf="!cargando()">
+        <div class="pr-ley-titulo">Cómo leer esto</div>
+        <dl>
+          <dt>Cumplimiento</dt>
+          <dd>Puntos hechos entre los que le tocaban. Se mide como proporción a
+              propósito: una Cajera tiene 23 tareas y un Anaquelista 18, y comparar
+              cuántos puntos hizo cada uno premiaría al que tiene más puesto encima.</dd>
+
+          <dt>A tiempo</dt>
+          <dd>De lo que tiene sello de hora, cuánto quedó listo antes de su límite.</dd>
+
+          <dt>Dentro de turno</dt>
+          <dd>Sellado entre la entrada y la salida reales de esa sucursal. Un punto
+              fuera de horario <strong>no es necesariamente una falta</strong>: puede
+              ser un turno cubierto o una urgencia. Vale la pena mirarlo, no
+              castigarlo de entrada.</dd>
+
+          <dt>Ritmo · “de una sentada”</dt>
+          <dd>Minutos entre el primer y el último sello del día. Cuando todo cabe en
+              menos de cinco minutos, el checklist se llenó de golpe y no durante la
+              jornada. Puede ser <em>exactamente</em> lo que el trabajo permite —una
+              cajera no va a sacar el teléfono entre dos clientes—, así que es una
+              señal para preguntar, no un veredicto.</dd>
+
+          <dt>Sin sello</dt>
+          <dd>Puntos hechos que no se pueden situar en el tiempo, casi todos de antes
+              de que la app guardara la hora de cada palomeo. No cuentan ni como
+              puntuales ni como tardíos: se muestran aparte para que nadie los lea
+              como si fueran buenos ni como si fueran malos.</dd>
+        </dl>
+      </section>
+
+    </main>
+  </div>
+</div>

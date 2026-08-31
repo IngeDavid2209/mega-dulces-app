@@ -246,8 +246,9 @@ de que exista la plaza sería partir el problema en dos, no resolverlo.
    retraso, turno, descanso, productividad).
 9. **Sube y despliega tú, sin preguntar** (David, 31/ago/2026 — reemplaza al "recuérdame
    correr `railway up`"). Al cerrar un paso: `git push` a `main` **y** `railway up` si tocó
-   `src/`, `api/`, `server.js`, `package.json`, `Dockerfile` o `angular.json`. Si no tocó
-   ninguno, no despliegues: dilo y explica por qué no hacía falta.
+   `src/`, `api/`, `server.js`, `package.json`, `Dockerfile`, `angular.json` **o
+   `scripts/sql/`** (una migración solo corre al arrancar: sin despliegue no se aplica). Si no
+   tocó ninguno, no despliegues: dilo y explica por qué no hacía falta.
    - **Esto NO releva la regla 2.** Sigue habiendo propuesta de 5 líneas y confirmación *antes
      de escribir código*. Lo que se delegó es publicar lo ya acordado, no decidir qué se hace.
    - **Verifica que llegó, con su cifra** (regla 11): que `HEAD == origin/main`, y para la app
@@ -271,6 +272,27 @@ de que exista la plaza sería partir el problema en dos, no resolverlo.
 
 ## 9. Bitácora del plan
 
+### Marcador corrido: correcciones de identidad por nombre
+
+> Sirve para la Fase 3 mejor que cualquier argumento técnico. «Seis en un día» lo entiende
+> Dirección; «0 llaves foráneas en 36 tablas» no.
+
+| # | Fecha | Persona | Qué falló |
+|---|---|---|---|
+| 1 | 31/ago | Fernando Espitia | ficha sin `puestoId`; el cruce de la 037 no lo alcanzó |
+| 2 | 31/ago | Manuel Medina | ficha capturada como **MEDIAN** — un typo lo dejó sin tareas |
+| 3 | 31/ago | Francisco Cendejas | baja no reflejada; seguía activo |
+| 4 | 31/ago | Nery Ramírez Chavolla | baja no reflejada; seguía activo |
+| 5 | 31/ago | María Dolores Berber Tovar | **dos fichas**, apellidos invertidos; la viva tenía 129 tareas y un espacio final en el nombre |
+| 6 | 31/ago | Yadira Campero Ortiz | **dos fichas**, una con doble 'a' (**Yaadira**); las dos con tareas → sin resolver |
+
+Patrón: **cuatro de las seis** son la misma falla — la identidad se cruza por texto, así que un
+typo, un espacio o un apellido invertido crean una segunda persona que el sistema trata como
+real. Y también apareció al revés: `JUAN MANUEL ESPINOZA ALACARAZ` (por *Alcaraz*) cruzó bien
+solo porque el typo cayó en la palabra que la llave no usaba.
+
+
+
 > Actualiza esto al cerrar cada paso: fecha, paso, qué se movió, qué se aprendió.
 
 - **31/ago/2026 — paso 0.3 (adelantado, sin saberlo).** La migración 045 midió la distorsión de
@@ -287,6 +309,28 @@ de que exista la plaza sería partir el problema en dos, no resolverlo.
     que disparaba a las 21:00 del 31); y la primera verificación dio **ceros falsos** porque Git
     Bash convirtió `origin/main:.github/...` en `origin\main;...`, el comando falló y `grep -c`
     contó sobre entrada vacía. Rehecho en PowerShell.
+- **31/ago/2026 — pasos 047 y 048.** Dos migraciones y el mecanismo de exclusión del KPI.
+  - **047, solo lee.** (a) La consulta de David: puntos con `permiteFotos` **por fecha**, junto
+    a `checklists` y `puntos` — la fila de hoy es la que dice si el arreglo del robot está
+    desplegado, porque ese arreglo tiene dos mitades independientes (código y dato) y la 046
+    solo cubrió la segunda. (b) **Guardián de duplicados:** pares (sucursal, puesto) con más de
+    una ficha activa, marcando `[MANDO]` como pista. Es una detección, no un módulo: cabe en el
+    congelamiento.
+  - **048, Yadira Campero.** Reporta y **se abstiene por diseño**: con la captura, las dos
+    fichas tenían puntos asignados (76 y 230), así que por la regla de "no resolver un empate"
+    no toca nada. El reporte se amplió para que la decisión sea posible: además del conteo,
+    imprime **puntos trabajados**, **checklists entregados** y **rango de fechas** de cada
+    ficha. Una ficha con 0 trabajados y solo fechas de hoy es el robot repartiendo, no una
+    persona usando la app. La reversa está escrita en la cabecera del archivo.
+  - **`medicion.util.ts` ahora honra `_excluidoKpi`.** Es el mecanismo que faltaba: desactivar
+    una ficha detiene la sangría pero deja sus puntos en el denominador para siempre. Ahora se
+    marca con motivo, autor y evento, y las **7 pantallas** que consumen esa regla lo respetan
+    solas. Queda inerte hasta que algo se marque.
+  - **Lo aprendido, dos veces sobre mí mismo:** un `raise notice` con `%%` (que es un `%`
+    literal) dejaba 4 marcadores para 5 argumentos y habría reventado la migración. Y el auditor
+    que escribí para detectarlo dio un **falso positivo** porque contaba comas sin respetar
+    paréntesis: `coalesce(r.desde,'-')` lleva una dentro. La §8.11 aplica también a las
+    herramientas de verificación.
 - **31/ago/2026 — cambio de regla: el despliegue se delega.** David pidió que las
   actualizaciones se suban solas (§8.9 reescrita). Estado al momento del cambio: nada sin
   commitear, `HEAD == origin/main`, y **cero** archivos de app tocados desde `565ea1f` (el

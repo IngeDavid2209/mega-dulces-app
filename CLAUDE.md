@@ -277,7 +277,11 @@ de que exista la plaza sería partir el problema en dos, no resolverlo.
     paréntesis).
     **(b)** la guardia va sobre **la entrada que de verdad usas**, no sobre un proxy de ella: que
     todo `puestoId` de la base exista en el catálogo, no que el catálogo sume 89.
-    **(c)** la disciplina aplica también a la **conclusión**, no solo al dato: una media verdad en
+    **(c)** toda herramienta de verificación lleva **control positivo Y negativo**. Un control
+    positivo —«encuentra el caso conocido»— lo pasa también una consulta que marca TODO. El
+    negativo —«un caso que sé legítimo NO debe aparecer»— es el que prueba que **discrimina**, no
+    solo que encuentra. Sin él verificas el artefacto otra vez.
+    **(d)** la disciplina aplica también a la **conclusión**, no solo al dato: una media verdad en
     este archivo se vuelve doctrina en dos semanas. Si la interpretación no está cerrada, se anota
     el número y se marca la interpretación como pendiente.
 12. **Cuidado con los nombres heredados de Firestore.** Los campos del documento y las columnas
@@ -342,6 +346,13 @@ solo porque el typo cayó en la palabra que la llave no usaba.
     que disparaba a las 21:00 del 31); y la primera verificación dio **ceros falsos** porque Git
     Bash convirtió `origin/main:.github/...` en `origin\main;...`, el comando falló y `grep -c`
     contó sobre entrada vacía. Rehecho en PowerShell.
+- **31/ago/2026 — PARAR EL RELOJ DE YADIRA CUESTA UNA FRASE, NO CÓDIGO.**
+  El riesgo no es la conversación con su Gerente: es **el primer login de Yadira**. En cuanto
+  entre, la ficha con puesto genera historia, las dos tienen trabajo real, y la regla de «un
+  empate no se resuelve» bloquea la fusión para siempre.
+  Así que el pedido a la Gerente es angosto y fácil de cumplir: **«avísame antes de pedirle que
+  empiece a entrar»**. Puede hablar con ella mañana de lo que quiera; lo único que no puede pasar
+  es que abra la app antes de que el duplicado esté resuelto.
 - **31/ago/2026 — HALLAZGO NUEVO: el selector de personas asigna a fichas ajenas.**
   No es una anécdota de la 052, es un hueco propio. El 22/may a las **13:11:11**, *Claudia
   Pimentel Duran* hizo una asignación en bloque en **La Piedad Abastos** y el selector le ofreció

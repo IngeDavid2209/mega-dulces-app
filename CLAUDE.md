@@ -286,7 +286,13 @@ de que exista la plaza sería partir el problema en dos, no resolverlo.
     problema no existe». El control correcto afirma la cubeta: «los casos del 22/may están en E».
     Y el negativo —«un caso que sé legítimo NO debe aparecer»— prueba que discrimina.
     **Un control que pasa por el camino equivocado da confianza falsa, y eso es peor que fallar.**
-    **(d)** **un control anclado a datos de producción caduca cuando arreglas los datos.** Es la
+    **(d)** **si tu verificador parsea algo, primero verifica el parser — o mejor, no parsees.**
+    La prueba de audiencias del menú leía `nav.config.ts` con expresiones regulares: encontró 18
+    entradas de 24 y reportó como «perdidas» cinco rutas que **sí estaban** en el arreglo. Un
+    parser roto no da error: da una lista más corta y una conclusión falsa, y se acaba depurando
+    lo que está bien. Se resolvió **compilando** el archivo con `tsc` y usando el `menuDe()` real
+    — así deja de existir una tercera versión de la lógica que pueda discrepar de las otras dos.
+    **(e)** **un control anclado a datos de producción caduca cuando arreglas los datos.** Es la
     contraparte de todo lo anterior: no basta que el control mida el mecanismo correcto, también
     tiene que sobrevivir a que el mundo cambie — o se vuelve un aborto permanente que alguien
     silencia en tres semanas porque «siempre falla». El control tiene que **distinguir «la
@@ -295,7 +301,7 @@ de que exista la plaza sería partir el problema en dos, no resolverlo.
     commit que lo remedia**. En `diagnostico-asignaciones-huerfanas.js` eso está implementado:
     comprueba su propia premisa y sale con código 3 —«resultados válidos, control caducado»—
     en vez de fingir un fallo de consulta.
-    **(e)** la disciplina aplica también a la **conclusión**, no solo al dato: una media verdad en
+    **(f)** la disciplina aplica también a la **conclusión**, no solo al dato: una media verdad en
     este archivo se vuelve doctrina en dos semanas. Si la interpretación no está cerrada, se anota
     el número y se marca la interpretación como pendiente.
 12. **Cuidado con los nombres heredados de Firestore.** Los campos del documento y las columnas
@@ -304,6 +310,27 @@ de que exista la plaza sería partir el problema en dos, no resolverlo.
     columna devuelve cero documentos, sin error.
 
 ## 9. Bitácora del plan
+
+### La primera prueba del proyecto sobre quién ve qué
+
+`scripts/prueba-menu-audiencias.js` — no necesita credenciales ni base, corre en segundos.
+
+Tapa un hueco real del paso 4.1: el criterio de aceptación comparó **el conjunto de rutas** del
+`NAV` contra el `sidebar.html` anterior, y eso atrapó tres rutas caídas. Pero **no comprobó quién
+las ve**: un predicado que quedara más estricto —una entrada que antes veía una trabajadora y
+ahora pide `esAdmin`— pasaba ese chequeo sin ruido. Y el `grep` sobre el bundle confirma que el
+código se sirvió, no que el menú se pinte bien.
+
+Compara cuatro usuarios sintéticos —admin global, admin de sucursales, supervisora con banderas,
+operadora sin ninguna— y **ninguna de las dos lógicas se transcribe**: las condiciones viejas se
+leen de git, y las nuevas salen de **compilar `nav.config.ts` y llamar al `menuDe()` real**.
+
+**Resultado al 31/ago: los cuatro perfiles ven exactamente las mismas rutas que antes** (15, 14,
+11 y 4). Y de paso mide el pendiente: un admin global ve **15**, y el objetivo del documento 4 son
+**7** — la diferencia es el paso 4.1b.
+
+**Hay que volver a correrla antes del paso 4.3**, que reemplaza los predicados por la función de
+alcance. Sin ella no habría forma de saber si ese reemplazo cambió audiencias.
 
 ### Listo y SIN DESPLEGAR — el orden importa
 
@@ -410,6 +437,10 @@ solo porque el typo cayó en la palabra que la llave no usaba.
   Encargada real puede asignar trabajo a cualquier ficha del sistema y nada la detiene.**
   - **Completa el cuadro del silencio:** el robot emite al vacío (60 de 97) **y las personas
     también**. Los dos inflan denominadores que los tableros muestran como incumplimiento.
+  - **Nota sobre el endpoint de diagnóstico autenticado:** queda aparcado porque **hoy no hace
+    falta**, no porque sea un puente que se demuela. Eso último era falso: `api/db.js` sobrevive
+    intacto a la Fase 1 y a la Fase 9. Archivar algo por la razón equivocada hace que dentro de
+    dos meses nadie lo reconsidere.
   - **Pendiente, script barato:** cuántos checklists tienen un `assigned` que no corresponde a
     ninguna ficha activa con puesto, y cuántos tienen un `store` que no coincide con las
     sucursales del asignado. El segundo probablemente lleva meses.

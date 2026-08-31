@@ -61,13 +61,33 @@ export function cuentaEnOperacion(c: any): boolean {
   if (c.eliminado === true) return false;
   if (c.archivado === true) return false;
   if (c.origenTec === true) return false;   // el Espacio TEC se mide aparte
-  if (c._excluidoKpi === true) return false;  // exclusión documentada, ver arriba
+  // Excluye solo si viene CON motivo. Antes bastaba la bandera, y
+  // `motivoExclusion` rellenaba con 'sin motivo registrado' — que es
+  // exactamente la exclusión que en tres meses nadie puede explicar. Una
+  // bandera a medio escribir ahora NO saca nada del KPI: se queda contando,
+  // que es el lado seguro del error.
+  if (exclusionDocumentada(c)) return false;
   return true;
+}
+
+/** ¿Trae la bandera Y el motivo? Las dos, o no cuenta como exclusión. */
+export function exclusionDocumentada(c: any): boolean {
+  return !!c && c._excluidoKpi === true
+    && String(c._excluidoMotivo || '').trim().length > 0;
 }
 
 /** El motivo por el que un checklist quedó fuera del KPI, o '' si sí cuenta. */
 export function motivoExclusion(c: any): string {
-  return c && c._excluidoKpi === true ? String(c._excluidoMotivo || 'sin motivo registrado') : '';
+  return exclusionDocumentada(c) ? String(c._excluidoMotivo).trim() : '';
+}
+
+/**
+ * La bandera puesta a medias: `_excluidoKpi` sin motivo. NO excluye nada, pero
+ * es un error de captura que conviene poder listar en vez de que se pierda en
+ * silencio — alguien quiso excluir algo y no dejó dicho por qué.
+ */
+export function exclusionSinMotivo(c: any): boolean {
+  return !!c && c._excluidoKpi === true && !exclusionDocumentada(c);
 }
 
 /** El negativo, para los `if (...) return;` que ya existen en las pantallas. */

@@ -309,6 +309,35 @@ solo porque el typo cayó en la palabra que la llave no usaba.
     que disparaba a las 21:00 del 31); y la primera verificación dio **ceros falsos** porque Git
     Bash convirtió `origin/main:.github/...` en `origin\main;...`, el comando falló y `grep -c`
     contó sobre entrada vacía. Rehecho en PowerShell.
+- **31/ago/2026 — 049 y el apretón del KPI.**
+  - **049, solo lee.** Las dos consultas de David para saber **por cuál ficha entra** Yadira.
+    "Quién trabajó" no es "por dónde entra": la señal definitiva es el `assigned_uid` de los
+    checklists trabajados, respaldada por `ultimoLatido` (lo escribe `app.ts:178`, en
+    milisegundos) y por los tokens de dispositivo. Si las tres se contradicen, se le pregunta a
+    ella — no se decide en SQL.
+  - **`_excluidoKpi` ahora exige motivo.** Antes bastaba la bandera y `motivoExclusion`
+    rellenaba con `'sin motivo registrado'`: justo la exclusión que en tres meses nadie puede
+    explicar. Se agregó `exclusionDocumentada()` —bandera **y** motivo— y `exclusionSinMotivo()`
+    para poder listar las puestas a medias en vez de perderlas. Una bandera incompleta deja el
+    checklist **contando**, que es el lado seguro del error.
+  - **Lista de compras de la Fase 3 (los 16 pares del guardián v1).** No son ruido: son plazas
+    que el sistema no puede distinguir. Cinco anaquelistas en Canindo aparecen "repetidos"
+    porque no existe el ámbito — es el problema del pasillo entrando por otra puerta.
+    Canindo: anaquelista×5, vendedor-rd×4, surtidor-zona×3, cajero×3 · 8 Esquinas:
+    anaquelista×5 · Padre Hidalgo: anaquelista×5, cajero×3, surtidor-ventas×2 · La Piedad
+    Abastos: cajero×2, anaquelista×2 · Yurécuaro: anaquelista×2 · MKT: aux-mercadotecnia×2 ·
+    RH: servicios-al-personal×2 · COMPRAS: analista-ordenes-entrada×2.
+  - **Artefactos de captura, NO duplicados** (regla: arreglar la comparación, nunca el dato):
+    `LUISA RENATAHERNANDEZ GARCIA` sin espacio, `VICTOR  MANUEL ZALAPA` con dos, espacios
+    finales en tres nombres, y `Maria selene olivarez gonzales` donde la nómina dice *OLIVARES*.
+    `RENATAHERNANDEZ` no va a tokenizar bien nunca.
+  - **Riesgo abierto: emisiones con fecha futura.** Hay 15 checklists fechados 01/sep con 29
+    puntos, creados hoy. `home.ts` está cubierto porque compara `c.date === hoyISO()` —igualdad
+    exacta, no rango— y `ranking`, `productividad`, `calendario` y `cierre-mensual` mandan
+    `hasta`. **Expuestas:** `checkstore.ts:270` acepta por `(ahora - creación) <= 24h`, así que
+    un checklist de mañana creado hoy entra; y `estadisticas.ts` agrega en 249 y 278 **sin cota
+    de fecha** sobre un `?desde=` sin `hasta`. Es la clase de error que arruinaría el cierre
+    diario de la Fase 6.
 - **31/ago/2026 — pasos 047 y 048.** Dos migraciones y el mecanismo de exclusión del KPI.
   - **047, solo lee.** (a) La consulta de David: puntos con `permiteFotos` **por fecha**, junto
     a `checklists` y `puntos` — la fila de hoy es la que dice si el arreglo del robot está

@@ -165,6 +165,21 @@ if (NAVMOD.NAV.length !== rutasEnTexto) {
     rutasEnTexto + ' rutas. Algo no cuadra.');
 }
 
+// Las pestañas de Control salen de SU definicion real, compilada junto al NAV.
+// Reimplementar aqui "quien ve que pestaña" seria una tercera version de la
+// logica — justo lo que se evito al compilar nav.config en vez de parsearlo.
+let TABSDE = () => [];
+{
+  const tabsJs = buscar(tmp, 'control.tabs.js');
+  if (tabsJs) {
+    const M = require(tabsJs);
+    if (typeof M.tabsVisibles === 'function') TABSDE = M.tabsVisibles;
+    console.log('[menu] control.tabs.ts COMPILADO → %d pestañas', (M.TABS_CONTROL || []).length);
+  } else {
+    console.log('[menu] (sin control.tabs.js: aun no hay pestañas que verificar)');
+  }
+}
+
 /** Rutas visibles para este usuario, usando el menuDe() real de la app. */
 function rutasNuevas(u) {
   return NAVMOD.menuDe(u).flatMap(g => g.entradas.map(e => e.ruta)).sort();
@@ -186,7 +201,19 @@ function rutasNuevas(u) {
 //
 // Hoy esta vacio, asi que la prueba mide exactamente lo mismo que antes.
 const FUNDIDAS = {
-  '/estadisticas': '/control',   // paso 2a
+  // ⚠ EL DESTINO ES LA PESTAÑA, NO EL CASCARON, y la diferencia solo se nota
+  // cuando hay mas de una pestaña — o sea, cuando ya seria tarde.
+  //
+  // Con UNA sola pestaña, "se ve /control" y "se ve la pestaña" son lo mismo, y
+  // apuntar al cascaron funciona. Con dos dejan de serlo, y el control se
+  // debilita EN SILENCIO: un usuario con solo `puedeVerEstadisticas` hoy ve
+  // Estadisticas, Ranking y Productividad. Si el `ve` de Ranking se escribe
+  // demasiado estrecho, ese usuario PIERDE Ranking — pero sigue viendo el
+  // cascaron por la pestaña de Estadisticas, asi que un control que preguntara
+  // "¿ve /control?" contestaria que si y pasaria en verde.
+  //
+  // Preguntando por la pestaña, la perdida sale a la luz.
+  '/estadisticas': '/control/estadisticas',   // paso 2a
   // '/ranking-sucursales': '/control',
   // '/productividad':      '/control',
   // '/checkstore':         '/control',
@@ -198,7 +225,7 @@ const FUNDIDAS = {
  * Devuelve { verificadas, problemas } — no aborta, para que el autodiagnostico
  * de mas abajo pueda ejercitarla sin matar el proceso.
  */
-function revisarFusiones(perfil, faltantes, rutasVisibles, mapa, rutasDelNav) {
+function revisarFusiones(perfil, faltantes, rutasVisibles, mapa, rutasDelNav, tabsDe, perfilUsuario) {
   const verificadas = [];
   const problemas = [];
   for (const origen of faltantes) {
@@ -208,6 +235,24 @@ function revisarFusiones(perfil, faltantes, rutasVisibles, mapa, rutasDelNav) {
     }
     const destino = mapa[origen];
     if (!destino) { verificadas.push(origen + ' → (retirada a proposito)'); continue; }
+    // Un destino con pestaña -/control/xxx- se resuelve contra las pestañas que
+    // ESTE usuario puede abrir, no contra la visibilidad del cascaron.
+    const m = /^(\/[^/]+)\/(.+)$/.exec(destino);
+    if (m) {
+      const [, padre, tab] = m;
+      if (!rutasDelNav.has(padre)) {
+        problemas.push({ origen, motivo: 'su destino ' + destino + ': el cascaron ' + padre + ' NO EXISTE en el NAV' });
+        continue;
+      }
+      if (!tabsDe(perfilUsuario).some(t => t.ruta === tab)) {
+        problemas.push({ origen,
+          motivo: 'su destino ' + destino + ': la PESTAÑA no es visible para "' + perfil +
+                  '" (el cascaron si, pero eso no basta)' });
+        continue;
+      }
+      verificadas.push(origen + ' → ' + destino);
+      continue;
+    }
     if (!rutasDelNav.has(destino)) {
       problemas.push({ origen, motivo: 'su destino ' + destino + ' NO EXISTE en el NAV' });
       continue;
@@ -267,7 +312,7 @@ for (const { nombre, u } of USUARIOS) {
   console.log('   antes: %d entradas · ahora: %d', antes.length, ahora.length);
 
   const mapa = FUNDIDAS;
-  const { verificadas, problemas } = revisarFusiones(nombre, perdio, ahora, mapa, rutasDelNav);
+  const { verificadas, problemas } = revisarFusiones(nombre, perdio, ahora, mapa, rutasDelNav, TABSDE, u);
   for (const v of verificadas) console.log('   ✓ fusión verificada: %s', v);
   for (const p of problemas) {
     difs++;
@@ -286,7 +331,7 @@ for (const { nombre, u } of USUARIOS) {
   // una reorganizacion de menu.
   const ganoLimpio = [], escalada = [];
   for (const r of gano) {
-    const origenes = Object.keys(mapa).filter(o => mapa[o] === r);
+    const origenes = Object.keys(mapa).filter(o => (mapa[o] || '').split('/')[1] === r.split('/')[1]);
     if (origenes.length === 0) { escalada.push({ ruta: r, motivo: 'no es destino de ninguna fusion declarada' }); continue; }
     const tenia = origenes.filter(o => antes.includes(o));
     if (tenia.length === 0) {

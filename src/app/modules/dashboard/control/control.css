@@ -20,3 +20,21 @@
 /* La activa se marca con la línea inferior, no con fondo: el contenido de abajo
    es denso y un bloque de color compite con los números. */
 .ctl-tab.activa { color: #0F172A; border-bottom-color: #0F172A; }
+
+/* ── La única clase del marco que NO está en src/styles.css ──────────────────
+   Las otras nueve que usa esta plantilla —app-layout, header, header-left,
+   header-brand, header-right, main-wrapper, mobile-overlay, content,
+   btn-menu-mobile— sí están en el CSS global, así que el cascarón las hereda.
+   `header-logo-wrap` no: vive duplicada en el CSS de cada pantalla, y como
+   estos estilos van encapsulados por componente, aquí habría salido sin regla.
+   Copiada de estadisticas.css, que es de donde vino este marco. */
+.header-logo-wrap {
+  width: 32px;
+  height: 32px;
+  background-color: var(--primary-navy) !important;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+}

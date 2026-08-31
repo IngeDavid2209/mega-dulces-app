@@ -1,10 +1,31 @@
 name: Robot de Corte Mensual Mega Dulces
 
 on:
-  schedule:
-    # Se ejecuta el día 1 de cada mes a las 3:00 AM
-    - cron: '0 3 1 * *'
-  workflow_dispatch: # Nos permite probarlo manualmente dándole a un botón
+  # ── EL DISPARO AUTOMATICO ESTA DETENIDO (paso 0.1, 31/ago/2026) ──────────
+  #
+  # Corria con:  - cron: '0 3 1 * *'
+  #
+  # POR QUE SE DETUVO. `scripts/corte.js` lee Firestore y BORRA los checklists
+  # enviados (batch.delete, linea 96). Postgres no se entera: no hay una sola
+  # mencion de DATABASE_URL ni de mdtask_ en ese script. Desde que las lecturas
+  # de la app se movieron a Postgres, cada corte mensual ampliaba la divergencia
+  # entre las dos bases, y el respaldo que llega por correo sale de la base que
+  # ya NO es la fuente de lectura.
+  #
+  # OJO CON LA HORA, que es lo que casi se nos va: el cron de GitHub es UTC.
+  # '0 3 1 * *' son las 03:00 UTC del dia 1, o sea las 21:00 hora de Mexico
+  # (UTC-6) del ULTIMO DIA DEL MES. No dispara a las 3 de la manana del dia 1
+  # como decia el comentario original: dispara la noche anterior.
+  #
+  # SE QUEDA `workflow_dispatch`. El corte sigue existiendo y se puede correr a
+  # mano cuando haga falta; lo que se quita es que se dispare solo contra una
+  # base que ya no manda. Se reactiva devolviendo el bloque `schedule`, que
+  # queda en el historial de git.
+  #
+  # Y OJO CON COMO SE DESACTIVA: GitHub Actions lee los workflows programados de
+  # la rama por defecto. Esto NO surte efecto hasta que el cambio esta en `main`
+  # en el remoto. Un commit local deja el cron vivo.
+  workflow_dispatch: # Correrlo a mano, desde el boton "Run workflow".
 
 jobs:
   respaldo-y-limpieza:

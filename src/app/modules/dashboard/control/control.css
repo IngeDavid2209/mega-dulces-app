@@ -14,11 +14,21 @@
   border-bottom: 1px solid #E2E8F0;
   margin: calc(-1 * clamp(20px, 2.2vw, 36px)) calc(-1 * clamp(20px, 2.4vw, 44px)) 22px;
   padding: 0 clamp(20px, 2.4vw, 44px);
-  background: var(--bg-app, #F8FAFC);
-  position: sticky;
-  top: 0;
-  z-index: 5;
 }
+
+/* ── SIN `position: sticky`, y es a proposito ────────────────────────────────
+   Lo habia puesto por iniciativa propia: la barra pegada al hacer scroll no
+   estaba en lo que se pidio -"pegada bajo el header" es otra cosa-.
+
+   Y agregaba un riesgo que no puedo comprobar: sticky dentro de un contenedor
+   con `overflow-y: auto` y con margenes negativos es la combinacion que produce
+   el clasico "se pega 30px mas arriba y el contenido se ve por debajo". Eso no
+   lo caza ningun build, y si estuviera mal, los pasos 2b, 2c y 2d lo heredarian
+   — el arreglo pasaria de una pantalla a cuatro.
+
+   Un adorno que nadie pidio no justifica un riesgo que nadie puede verificar
+   hoy. Si al usarlo con cuatro pestañas hace falta, se agrega entonces y se
+   mira. */
 .ctl-tab {
   font-size: 13px;
   font-weight: 700;

@@ -184,7 +184,7 @@ Orden por **dependencia y riesgo**, no por importancia. Un paso ≤ 3 días. Mar
 
 | Fase | Objetivo | Semanas | Depende de | Estado |
 |---|---|---|---|---|
-| 0 | Medir antes de tocar (divergencia, KPIs congelados, detener `corte.js`) | 0.5 | — | 🔄 0.1 y 0.3 hechos · falta medir la divergencia |
+| 0 | Medir antes de tocar (divergencia, KPIs congelados, detener `corte.js`) | 0.5 | — | 🔄 **0.1 ✅ · 0.3 ✅ (migración 045) · falta 0.2** |
 | 2 | Que los números digan la verdad (hecho ≠ justificado + primeras pruebas) | 1 | 0 | ⬜ **adelantada: va antes de la 1** |
 | 1 | Cerrar el ferrocarril: una sola base | 3 | 0 | ⬜ |
 | 3 | La estructura como dato (unidad, sucursal, ámbito, puesto, plaza, cobertura) | 4 | 1 | ⬜ |
@@ -236,14 +236,28 @@ de que exista la plaza sería partir el problema en dos, no resolverlo.
    obligaciones que no le tocan a una persona real.
 6. **Nunca escribas a la base de Mega Talento** (`TALENTO_DATABASE_URL`), ni a producción sin
    que yo lo pida explícitamente.
-7. **No toques secretos.** `.env.local`, `backend/.env` y `backend/service-account.json` están
-   fuera de git y ahí se quedan. No los leas ni los copies a ningún archivo.
+7. **No toques secretos — la regla es para ti, Claude, no para David.** No leas ni copies
+   `.env.local`, `backend/.env` ni `backend/service-account.json`, y no los reproduzcas en
+   ningún archivo, log ni respuesta. Cuando un script necesite credenciales, escríbelo para que
+   las tome de **variables de entorno en tiempo de ejecución** (como ya hace Railway con
+   `FIREBASE_SERVICE_ACCOUNT` y `DATABASE_URL`), que nunca las imprima, y que David lo corra.
+   Él sí puede usar sus credenciales; lo que no puede pasar es que terminen en el repo.
 8. **Escribe pruebas** para toda regla que produzca un número de una persona (cumplimiento,
    retraso, turno, descanso, productividad).
 9. **Recuerda que `git push` no despliega.** Cuando un paso esté listo, dímelo y recuérdame
    correr `railway up`.
 10. **Mantén este archivo al día**: cuando termines un paso, actualiza la tabla de la §7 y
     anota lo aprendido en la sección de abajo.
+11. **Un cero no es un resultado hasta que sepas de cuántas líneas salió.** El 31/ago/2026, tres
+    veces en un día, un `0` o un `OK` vino de un comando que no midió nada (una ruta que Git Bash
+    convirtió mal, un `grep -c` sobre entrada vacía). Todo script de diagnóstico **imprime el
+    tamaño de sus entradas antes de concluir** y **aborta** si alguna viene vacía: "no pude leer"
+    y "no hay nada" son cosas distintas y se ven idénticas. Aplica igual a las verificaciones que
+    hagas tú: cita la cifra de la que sale el cero.
+12. **Cuidado con los nombres heredados de Firestore.** Los campos del documento y las columnas
+    de Postgres NO coinciden: en Firestore la fecha es `date`, en Postgres es `fecha` (el mapeo
+    completo está en `scripts/migrar-checklists.js`). Consultar Firestore con el nombre de la
+    columna devuelve cero documentos, sin error.
 
 ## 9. Bitácora del plan
 
@@ -253,19 +267,21 @@ de que exista la plaza sería partir el problema en dos, no resolverlo.
   la regla de cumplimiento: `por_justificacion = 1` punto en toda la empresa. Consecuencia: la
   Fase 2 se adelanta antes de la Fase 1, y el paso 0.3 (congelar KPIs) se reduce a conservar la
   salida de la 045.
-- **31/ago/2026 — paso 0.1, HECHO.** Se quitó el bloque `schedule` de
-  `.github/workflows/robot.yml`; queda solo `workflow_dispatch`. El corte sigue existiendo y se
-  corre a mano; lo que se detuvo es que se dispare solo contra una base que ya no manda.
-  - **Criterio verificado:** `grep -c '^\s*schedule:'` → 0, `grep -c '^\s*- cron:'` → 0,
-    `workflow_dispatch:` → 1. Y en el remoto, `gh workflow view` ya no reporta disparo programado.
-  - **Reversa:** devolver el bloque `schedule`, que queda en el historial de git.
-  - **Lo aprendido, y por poco:** el cron es **UTC**. `'0 3 1 * *'` no dispara a las 3:00 AM del
-    día 1 como decía su propio comentario — dispara a las **21:00 hora de México del último día
-    del mes**. Se detuvo con 9 h 20 min de margen sobre el corte de agosto. El comentario
-    equivocado llevaba meses ahí y nadie lo había leído dos veces.
-  - **Segunda cosa aprendida:** para GitHub Actions, `git push` a `main` **es** el despliegue.
-    Un commit local con el cron quitado deja el cron vivo, porque Actions lee los workflows
-    programados de la rama por defecto en el remoto.
+- **31/ago/2026 — paso 0.1 ✅ hecho.** Quitado el bloque `schedule` de
+  `.github/workflows/robot.yml`; queda solo `workflow_dispatch` y un comentario con el cron
+  anterior. Verificado **contra `origin/main`**, que es la única fuente que Actions lee: 51
+  líneas traídas del remoto, `schedule:` → 0, `- cron:` → 0, `workflow_dispatch:` → 1. El corte
+  de agosto no corrió. Margen: 9 h 20 min.
+  - Dos cosas casi arruinan la verificación, y las dos dejaron regla nueva (§8.11):
+    el **comentario del propio workflow mentía** ("día 1 a las 3:00 AM" — el cron es UTC, así
+    que disparaba a las 21:00 del 31); y la primera verificación dio **ceros falsos** porque Git
+    Bash convirtió `origin/main:.github/...` en `origin\main;...`, el comando falló y `grep -c`
+    contó sobre entrada vacía. Rehecho en PowerShell.
+- **31/ago/2026 — paso 0.2, pendiente de correr.** `scripts/diagnostico-divergencia.js` listo.
+  Mide la dirección que importa: **documentos que existen solo en Firestore**, porque son los
+  que la app no muestra (lee Postgres). Lo inverso —filas que Postgres tiene y Firestore no— es
+  el histórico de los cortes y es esperado: `corte.js` borraba todo `enviado == true` sin filtro
+  de fecha. Corre con `FIREBASE_SERVICE_ACCOUNT` y la `DATABASE_URL` **pública** de Railway.
 
 ---
 

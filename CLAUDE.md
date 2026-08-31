@@ -309,6 +309,32 @@ solo porque el typo cayó en la palabra que la llave no usaba.
     que disparaba a las 21:00 del 31); y la primera verificación dio **ceros falsos** porque Git
     Bash convirtió `origin/main:.github/...` en `origin\main;...`, el comando falló y `grep -c`
     contó sobre entrada vacía. Rehecho en PowerShell.
+- **31/ago/2026 — el caso Yadira se reencuadra: no es higiene de datos, es adopción.**
+  - **El bug real está en `api/login.js:45`**, no en `login-usuario.js:25`. Mismo patrón
+    (`where lower(usuario) = $1 or lower(correo) = $1 limit 1`, sin `order by`) pero **ése es el
+    que autentica y emite el JWT**; el otro solo resuelve usuario→correo para el camino viejo de
+    Firebase. La fila que Postgres devuelva primero es la ficha en la que la persona **se
+    convierte**, y contra el hash de esa fila se valida su contraseña. El arreglo cubre los dos.
+  - **Se arregla con determinismo, no con negativa.** La tentación es aplicar "no adivinar" y
+    devolver error ante la ambigüedad, pero eso deja fuera de la app a una Encargada que
+    necesita trabajar hoy: **la regla de no adivinar es para escribir datos, no para dejar
+    entrar a alguien.** Un `order by` estable (activo, luego con puesto, luego latido más
+    reciente, luego id) más un `console.error` que nombre la colisión.
+  - **LO QUE NO VI EN MI PROPIA SALIDA: los dos latidos son de JUNIO** (30/jun y 24/jun) y hoy
+    es 31/ago. **Nadie ha entrado por ninguna de las dos en más de dos meses.** Eso cambia el
+    caso entero: la Encargada de Morelia Abastos no está usando la app, y desde el 28/ago el
+    robot le emite ~10 puntos diarios a una cuenta que nadie abre. Su cumplimiento no está
+    hundido por un duplicado — está hundido porque ahí nadie opera el sistema. Es
+    `no_ejecutado` / `no_asignado`, una falla de supervisión, y **es exactamente el hueco que
+    predice el modelo: hoy la ausencia y el incumplimiento se ven idénticos.**
+  - **Corrección de marco, verificada:** la ficha bien escrita **no nació de mi 039**. Su latido
+    del 24/jun lo prueba —un latido lo escribe `app.ts:178` en una sesión, que requiere que la
+    fila existiera— y se comprobó que 039 hizo `coalesce(u.datos,'{}') || jsonb_build_object(…)`
+    sobre el `datos` propio de cada ficha, sin copiar ningún blob, y que **ninguna** migración
+    038–046 inserta usuarios. Mi migración volvió **caro** el duplicado; no lo creó.
+  - **Cómo se dice ante Dirección, con precisión:** NO es que "dos personas puedan entrar a la
+    misma cuenta" —eso sería peor y no está probado—. Es que **una persona entra a dos cuentas
+    distintas y el sistema la cuenta como dos.** Exacto, y más fuerte que el marcador de seis.
 - **31/ago/2026 — 049 dio la causa raíz, y NO es de Yadira.** El caso no se puede decidir con
   datos, y por debajo apareció algo peor.
   - **Las dos fichas comparten el mismo `usuario`: `yadira.campero`.** Y `api/login-usuario.js`

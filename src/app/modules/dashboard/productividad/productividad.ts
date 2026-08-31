@@ -25,7 +25,7 @@
 import { Component, signal, computed, effect, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterModule } from '@angular/router';
+import { RouterModule, Router } from '@angular/router';
 import { SidebarComponent } from '../../../shared/sidebar/sidebar';
 import { ApiService } from '../../../shared/api.service';
 import { UsuariosService } from '../../../shared/usuarios.service';
@@ -47,6 +47,7 @@ import { medir, pct, Medicion, ventanaDeTurno } from '../../../shared/productivi
 })
 export class ProductividadComponent implements OnInit, OnDestroy {
   private api = inject(ApiService);
+  private router = inject(Router);
   private usuariosSvc = inject(UsuariosService);
 
   currentUser: any = null;
@@ -78,7 +79,14 @@ export class ProductividadComponent implements OnInit, OnDestroy {
   });
 
   ngOnInit() {
-    try { this.currentUser = JSON.parse(localStorage.getItem('currentUser') || 'null'); } catch { this.currentUser = null; }
+    // La clave es 'md_sesion_actual'. Antes aqui decia 'currentUser', que NO
+    // existe: currentUser quedaba en null, el sidebar renderizaba el menu de
+    // trabajador y el perfil caia al texto por defecto "Colaborador". Parecia
+    // que la app degradaba la sesion del administrador, y lo unico que pasaba
+    // es que esta pantalla la leia de un cajon vacio.
+    const sesion = localStorage.getItem('md_sesion_actual');
+    if (!sesion) { this.router.navigate(['/login']); return; }
+    try { this.currentUser = JSON.parse(sesion); } catch { this.currentUser = null; }
     this.cargar();
   }
 

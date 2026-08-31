@@ -367,9 +367,17 @@ export class RobotManualService {
       requiresVariasFotos: !!ev?.variasFotos,
       // Antes/despues no lo pide ningun punto de estos manuales.
       requiresAntesDespues: false,
-      // Donde no se exige evidencia, se PERMITE: cualquiera puede adjuntar una
-      // foto si quiere dejar constancia, sin que el checklist se lo exija.
-      permiteFotos: !ev?.foto && !ev?.variasFotos && !ev?.documento,
+      // NO se enciende permiteFotos en todo. Aqui decia
+      // `!ev?.foto && !ev?.variasFotos && !ev?.documento`, con la idea de que
+      // cualquiera pudiera adjuntar una foto donde quisiera. El efecto fue que
+      // el bloque de evidencia de la plantilla -DOSCIENTAS lineas por punto- se
+      // renderizaba en casi todos: de unos 95 puntos con UI de foto se paso a
+      // los 377. Un checklist de 23 puntos multiplico su DOM por cuatro y la
+      // app se puso a trabar en los celulares.
+      //
+      // Nadie pidio esa foto opcional en todos los puntos: fue idea mia. Se
+      // quita. Los puntos que SI piden foto o documento la siguen pidiendo.
+      permiteFotos: false,
       // El punto se refiere a un documento que YA existe (factura, poliza,
       // tarjeta de circulacion): se adjunta el archivo, no se fotografia.
       permiteDocumentos: !!ev?.documento,

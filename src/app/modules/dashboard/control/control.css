@@ -1,10 +1,23 @@
-/* Barra de pestañas de Control operativo */
+/* ── Barra de pestañas, pegada bajo el header ────────────────────────────────
+   Los márgenes negativos sacan la barra del padding de `.content` para que la
+   línea inferior llegue de borde a borde y no quede flotando 20-44px adentro;
+   el padding horizontal se devuelve a las pestañas para que su texto siga
+   alineado con el contenido de abajo.
+
+   ⚠ ACOPLADO: los tres clamp() son EXACTAMENTE el padding de `.content` en
+   src/styles.css. Si aquel cambia, éste queda desalineado sin dar ningún error
+   — con una pestaña se nota poco, con cuatro un desfase de 16px se ve. */
 .ctl-tabs {
   display: flex;
   gap: 2px;
   flex-wrap: wrap;
   border-bottom: 1px solid #E2E8F0;
-  margin-bottom: 18px;
+  margin: calc(-1 * clamp(20px, 2.2vw, 36px)) calc(-1 * clamp(20px, 2.4vw, 44px)) 22px;
+  padding: 0 clamp(20px, 2.4vw, 44px);
+  background: var(--bg-app, #F8FAFC);
+  position: sticky;
+  top: 0;
+  z-index: 5;
 }
 .ctl-tab {
   font-size: 13px;

@@ -13,7 +13,26 @@
 
 import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
+
 import { TABS_CONTROL, primeraTab } from '../modules/dashboard/control/control.tabs';
+
+/*
+ * ─── POR QUE ESTOS DOS GUARDS DEVUELVEN UrlTree Y NO `navigate() + false` ───
+ *
+ * El resto de los guards de la app usan `navigate()` y devuelven false, y ahi se
+ * quedan: cambiarlos seria tocar codigo que funciona sin motivo. Pero estos dos
+ * son la excepcion, y vale la pena por una razon concreta.
+ *
+ * `navigate()` ARRANCA UNA SEGUNDA NAVEGACION mientras la primera se esta
+ * cancelando. Suele funcionar; cuando no, deja la URL desincronizada del
+ * componente pintado, o tira un "cancelled navigation" que no se reproduce a
+ * voluntad. Devolver un UrlTree hace que el router cancele y redirija en UNA
+ * sola operacion.
+ *
+ * Importa mas aqui que en los guards viejos porque estos redirigen a un HERMANO
+ * dentro del mismo padre —de /control/x a /control/y, con el cascaron ya
+ * montado—, que es justo donde esa carrera se manifiesta.
+ */
 
 /** La sesión, de la MISMA clave que usa el resto de la app (`md_sesion_actual`). */
 function usuario(): any {
@@ -41,18 +60,14 @@ export const tabControlGuard: CanActivateFn = (route) => {
   // Una pestaña que no está en el catálogo NO pasa. Es el lado seguro: si
   // alguien agrega una ruta hija y olvida registrarla, se cierra en vez de
   // quedar abierta para todos.
-  if (!tab) {
-    router.navigate(['/home']);
-    return false;
-  }
+  if (!tab) return router.parseUrl('/home');
   if (tab.ve(u)) return true;
 
   // Sin permiso para ESTA pestaña: se manda a la primera que sí sea suya. Así
   // un enlace viejo de WhatsApp a una pantalla que ya no le toca lo deja en
   // Control con lo que sí puede ver, en vez de expulsarlo al Dashboard.
   const primera = primeraTab(u);
-  router.navigate(primera ? ['/control', primera.ruta] : ['/home']);
-  return false;
+  return router.parseUrl(primera ? `/control/${primera.ruta}` : '/home');
 };
 
 /**
@@ -66,6 +81,5 @@ export const tabControlGuard: CanActivateFn = (route) => {
 export const primeraTabControlGuard: CanActivateFn = () => {
   const router = inject(Router);
   const primera = primeraTab(usuario());
-  router.navigate(primera ? ['/control', primera.ruta] : ['/home']);
-  return false;
+  return router.parseUrl(primera ? `/control/${primera.ruta}` : '/home');
 };

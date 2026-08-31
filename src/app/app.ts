@@ -391,11 +391,84 @@ export class AppComponent implements OnInit {
       /failed to fetch dynamically imported module|error loading dynamically imported module|importing a module script failed|chunkloaderror|dynamically imported module/i
         .test(String(msg ?? ''));
 
+    /**
+     * Borra el cache del Service Worker y lo da de baja.
+     *
+     * Hace falta porque recargar NO SIEMPRE BASTA. El Service Worker sirve su
+     * propio `ngsw.json`, y si ese indice quedo de un despliegue anterior, la
+     * recarga vuelve a pedir los mismos chunks con hash viejo que el servidor ya
+     * no tiene. La app entra en un empate: recarga, falla, recarga, falla — y en
+     * cuanto el candado anti-bucle entra, la navegacion se muere EN SILENCIO y el
+     * usuario solo ve que el menu no responde.
+     *
+     * Borrando el cache y dando de baja el worker, la siguiente carga va directo
+     * al servidor y toma el indice bueno. Se pierde el modo sin conexion hasta
+     * que el worker se vuelva a registrar solo, que pasa en esa misma carga.
+     */
+    const purgarServiceWorker = async () => {
+      try {
+        if ('caches' in window) {
+          const nombres = await caches.keys();
+          await Promise.all(nombres.filter(n => /ngsw|angular/i.test(n)).map(n => caches.delete(n)));
+        }
+        if (navigator.serviceWorker?.getRegistrations) {
+          const regs = await navigator.serviceWorker.getRegistrations();
+          await Promise.all(regs.map(r => r.unregister()));
+        }
+      } catch (e) {
+        console.warn('[chunk] no se pudo purgar el service worker', e);
+      }
+    };
+
+    /**
+     * Ultimo recurso: DECIRLO. Un menu que no responde y no explica nada es el
+     * peor final posible — el usuario concluye que la app esta rota y no hay
+     * forma de que adivine que la solucion es un refresco duro.
+     */
+    const avisarSinSalida = () => {
+      if (document.getElementById('md-aviso-version')) return;
+      const d = document.createElement('div');
+      d.id = 'md-aviso-version';
+      d.setAttribute('role', 'alert');
+      d.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:99999;'
+        + 'background:#0F172A;color:#fff;padding:14px 18px;font:600 14px system-ui,sans-serif;'
+        + 'display:flex;gap:14px;align-items:center;justify-content:center;flex-wrap:wrap;'
+        + 'box-shadow:0 -2px 12px rgba(0,0,0,.25)';
+      d.innerHTML = '<span>Hay una version nueva y esta pantalla no pudo cargar. '
+        + 'Recarga para continuar.</span>';
+      const b = document.createElement('button');
+      b.textContent = 'Recargar ahora';
+      b.style.cssText = 'font:700 14px system-ui,sans-serif;background:#fff;color:#0F172A;'
+        + 'border:0;border-radius:8px;padding:8px 16px;cursor:pointer';
+      b.onclick = async () => { await purgarServiceWorker(); document.location.reload(); };
+      d.appendChild(b);
+      document.body.appendChild(d);
+    };
+
     const recargarUnaVez = (motivo: string) => {
-      // Candado anti-bucle: no recargar más de una vez cada 20 s.
+      // Candado anti-bucle, pero ESCALANDO en vez de rendirse en silencio:
+      //   1er fallo -> recarga normal, que casi siempre basta.
+      //   2o fallo  -> purga el cache del Service Worker y recarga.
+      //   3er fallo -> avisa al usuario, porque ya no hay nada mas que intentar
+      //                automaticamente y callarse seria dejarle una app muerta.
       const ahora = Date.now();
       const ultima = Number(sessionStorage.getItem('md_reload_chunk') || '0');
-      if (ahora - ultima < 20000) return;
+      const intentos = Number(sessionStorage.getItem('md_reload_chunk_n') || '0');
+
+      if (ahora - ultima < 20000) {
+        if (intentos >= 2) avisarSinSalida();
+        return;
+      }
+
+      if (intentos >= 1) {
+        sessionStorage.setItem('md_reload_chunk', String(ahora));
+        sessionStorage.setItem('md_reload_chunk_n', String(intentos + 1));
+        console.warn('[chunk] segundo fallo — purgando service worker:', motivo);
+        if (intentos >= 2) { avisarSinSalida(); return; }
+        purgarServiceWorker().finally(() => document.location.reload());
+        return;
+      }
+      sessionStorage.setItem('md_reload_chunk_n', String(intentos + 1));
       // Offline: recargar NO baja el chunk que falta; dejaría la app en blanco.
       // Esperamos a tener red y reintentamos una vez.
       if (!navigator.onLine) {

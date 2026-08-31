@@ -85,16 +85,18 @@ export const routes: Routes = [
     loadComponent: () => import('./modules/dashboard/descansos/descansos').then(m => m.DescansosComponent)
   },
 
-  // 📕 MANUAL POR PUESTO — reemplaza al sistema de Rutinas (Catálogo,
-  // Asignación, Programación y Migración). Ya no se captura qué se hace ni a
-  // quién se le asigna: el puesto del organigrama decide, y las tareas salen
-  // del Manual Corporativo de Operación. Pantalla de solo consulta.
-  // Productividad contra el turno: lo hecho cruzado con el horario de RH.
+  // 📈 PRODUCTIVIDAD CONTRA EL TURNO: lo hecho cruzado con el horario que RH
+  // captura en Mega Talento.
   {
     path: 'productividad',
     canActivate: [authGuard],
     loadComponent: () => import('./modules/dashboard/productividad/productividad').then(m => m.ProductividadComponent)
   },
+
+  // 📕 MANUAL POR PUESTO — reemplaza al sistema de Rutinas (Catálogo,
+  // Asignación, Programación y Migración). Ya no se captura qué se hace ni a
+  // quién se le asigna: el puesto del organigrama decide, y las tareas salen
+  // del Manual Corporativo de Operación. Pantalla de solo consulta.
   {
     path: 'manual-puestos',
     canActivate: [authGuard],

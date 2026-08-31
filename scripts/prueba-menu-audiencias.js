@@ -155,6 +155,58 @@ function rutasNuevas(u) {
   return NAVMOD.menuDe(u).flatMap(g => g.entradas.map(e => e.ruta)).sort();
 }
 
+// ── FUSIONES DECLARADAS ───────────────────────────────────────────────────
+//
+// Cuando cuatro pantallas se vuelven una con pestañas, sus rutas DESAPARECEN del
+// menu a proposito. Sin este mapa la prueba reportaria
+// "PIERDE: /estadisticas /productividad /ranking-sucursales" y fallaria por
+// diseño — y una prueba que falla por diseño es una prueba que alguien silencia
+// en tres semanas.
+//
+// PERO NO BASTA TOLERAR LA AUSENCIA. Eso convertiria el mapa en una lista de
+// excepciones, que es como se apagan los controles. Para cada fusion declarada
+// se verifica que el DESTINO exista en el NAV y sea VISIBLE PARA EL MISMO PERFIL
+// que veia el origen. Asi la fusion deja de ser una perdida perdonada y se
+// vuelve una verificacion mas fuerte: nadie perdio acceso, solo cambio de puerta.
+//
+// Hoy esta vacio, asi que la prueba mide exactamente lo mismo que antes.
+const FUNDIDAS = {
+  // '/estadisticas':       '/control',
+  // '/ranking-sucursales': '/control',
+  // '/productividad':      '/control',
+  // '/checkstore':         '/control',
+  // '/reportes':           '/control',
+};
+
+/**
+ * Revisa las rutas que faltan en el menu nuevo para UN perfil.
+ * Devuelve { verificadas, problemas } — no aborta, para que el autodiagnostico
+ * de mas abajo pueda ejercitarla sin matar el proceso.
+ */
+function revisarFusiones(perfil, faltantes, rutasVisibles, mapa, rutasDelNav) {
+  const verificadas = [];
+  const problemas = [];
+  for (const origen of faltantes) {
+    if (!(origen in mapa)) {
+      problemas.push({ origen, motivo: 'no esta declarada como fusion: es una perdida real' });
+      continue;
+    }
+    const destino = mapa[origen];
+    if (!destino) { verificadas.push(origen + ' → (retirada a proposito)'); continue; }
+    if (!rutasDelNav.has(destino)) {
+      problemas.push({ origen, motivo: 'su destino ' + destino + ' NO EXISTE en el NAV' });
+      continue;
+    }
+    if (!rutasVisibles.includes(destino)) {
+      problemas.push({ origen,
+        motivo: 'su destino ' + destino + ' existe pero NO es visible para "' + perfil + '"' });
+      continue;
+    }
+    verificadas.push(origen + ' → ' + destino);
+  }
+  return { verificadas, problemas };
+}
+
 // ── Los cuatro usuarios sintéticos ────────────────────────────────────────
 const USUARIOS = [
   { nombre: 'admin global', u: { rol: 'admin' } },
@@ -186,6 +238,7 @@ const USUARIOS = [
 ];
 
 // ── La comparación ────────────────────────────────────────────────────────
+const rutasDelNav = new Set(NAVMOD.NAV.filter(e => !e.oculta).map(e => e.ruta));
 let difs = 0;
 for (const { nombre, u } of USUARIOS) {
   const antes = [...viejas.keys()].filter(r => r !== '/perfil' && veViejo(r, u)).sort();
@@ -197,12 +250,64 @@ for (const { nombre, u } of USUARIOS) {
   console.log('');
   console.log('── %s ──', nombre);
   console.log('   antes: %d entradas · ahora: %d', antes.length, ahora.length);
-  if (perdio.length) { difs += perdio.length; console.log('   ✗ PIERDE: %s', perdio.join(' ')); }
-  if (gano.length)   { difs += gano.length;   console.log('   ✗ GANA:   %s', gano.join(' ')); }
-  if (!perdio.length && !gano.length) console.log('   ✓ misma audiencia');
+
+  const { verificadas, problemas } = revisarFusiones(nombre, perdio, ahora, FUNDIDAS, rutasDelNav);
+  for (const v of verificadas) console.log('   ✓ fusión verificada: %s', v);
+  for (const p of problemas) {
+    difs++;
+    console.log('   ✗ %s · %s', p.origen, p.motivo);
+  }
+  if (gano.length) { difs += gano.length; console.log('   ✗ GANA:   %s', gano.join(' ')); }
+  if (!problemas.length && !gano.length && !verificadas.length) console.log('   ✓ misma audiencia');
+  else if (!problemas.length && !gano.length) console.log('   ✓ sin pérdidas de acceso');
   if (ahora.length > 7) {
     console.log('   ⚠ ve %d entradas · el objetivo del documento 4 son 7 (falta el paso 4.1b)', ahora.length);
   }
+}
+
+// ── AUTODIAGNÓSTICO DEL MECANISMO DE FUSIONES ────────────────────────────
+//
+// Con FUNDIDAS vacío, `revisarFusiones` no se ejerce en ninguna corrida — y un
+// mecanismo que nunca corre puede estar roto desde el día que se escribió. Así
+// que se le pasan tres casos armados a mano y se exige el veredicto correcto de
+// cada uno. Es el control NEGATIVO del paso 0: prueba que la función distingue,
+// no solo que existe.
+{
+  const nav = new Set(['/control', '/mis-tareas']);
+
+  const casos = [
+    { nombre: 'destino visible → verifica',
+      perfil: 'operadora', faltantes: ['/estadisticas'], visibles: ['/control'],
+      mapa: { '/estadisticas': '/control' }, esperaProblema: false },
+
+    { nombre: 'destino INVISIBLE para el perfil → problema',
+      perfil: 'operadora', faltantes: ['/estadisticas'], visibles: ['/mis-tareas'],
+      mapa: { '/estadisticas': '/control' }, esperaProblema: true },
+
+    { nombre: 'destino que NO existe en el NAV → problema',
+      perfil: 'operadora', faltantes: ['/estadisticas'], visibles: [],
+      mapa: { '/estadisticas': '/inventada' }, esperaProblema: true },
+
+    { nombre: 'ausencia NO declarada → problema',
+      perfil: 'operadora', faltantes: ['/estadisticas'], visibles: ['/control'],
+      mapa: {}, esperaProblema: true },
+  ];
+
+  for (const c of casos) {
+    const r = revisarFusiones(c.perfil, c.faltantes, c.visibles, c.mapa, nav);
+    const hubo = r.problemas.length > 0;
+    if (hubo !== c.esperaProblema) {
+      abortar('el AUTODIAGNÓSTICO del mecanismo de fusiones falló en el caso "' + c.nombre +
+        '": se esperaba ' + (c.esperaProblema ? 'un problema' : 'ningún problema') +
+        ' y hubo ' + (hubo ? r.problemas.map(p => p.motivo).join('; ') : 'ninguno') +
+        '. Con FUNDIDAS vacío este mecanismo no se ejerce solo, así que sin este ' +
+        'autodiagnóstico podría estar roto sin que nada lo dijera.');
+    }
+  }
+  console.log('');
+  console.log('✓ mecanismo de fusiones: los %d casos del autodiagnóstico dan el veredicto correcto',
+    casos.length);
+  console.log('  (destino visible · destino invisible para el perfil · destino inexistente · ausencia sin declarar)');
 }
 
 // ── ¿SE EJERCIERON LAS RUTAS DE PROMOS? ──────────────────────────────────

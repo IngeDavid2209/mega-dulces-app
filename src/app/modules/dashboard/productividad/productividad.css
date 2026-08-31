@@ -111,3 +111,33 @@
   .pr-filtros { gap: 8px; }
   .pr-buscar { min-width: 100%; }
 }
+
+/* "sin horario" es un dato que FALTA en Mega Talento y se puede ir a capturar;
+   el guion es simplemente que aun no hay nada hecho. Se ven distinto porque se
+   arreglan distinto. */
+.pr-sinhorario {
+  display: inline-block; font-size: 11px; font-weight: 700; color: #92400E;
+  background: #FEF3C7; border: 1px solid #FDE68A; padding: 2px 8px; border-radius: 999px;
+}
+
+/* ── Colaboradores agrupados por sucursal ────────────────────────────────── */
+.pr-grupo { margin-bottom: 20px; }
+.pr-grupo-cab {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+  gap: 12px; padding: 10px 14px;
+  background: #0F172A; color: #fff;
+  border-radius: 10px 10px 0 0;
+}
+.pr-grupo-id { display: flex; flex-direction: column; gap: 1px; }
+.pr-grupo-nombre { font-size: 14px; font-weight: 800; }
+.pr-grupo-horario { font-size: 11px; color: #94A3B8; font-variant-numeric: tabular-nums; }
+.pr-grupo-kpis { display: flex; flex-wrap: wrap; gap: 18px; }
+.pr-grupo-kpi { display: flex; flex-direction: column; align-items: flex-end; }
+.pr-grupo-kpi strong { font-size: 16px; font-weight: 800; font-variant-numeric: tabular-nums; }
+/* En cabecera oscura los colores del semaforo se aclaran, o no se leen. */
+.pr-grupo-kpi strong.pr-bien  { color: #4ADE80; }
+.pr-grupo-kpi strong.pr-medio { color: #FBBF24; }
+.pr-grupo-kpi strong.pr-mal   { color: #F87171; }
+.pr-grupo-kpi strong.pr-nd    { color: #94A3B8; }
+.pr-grupo-kpi small { font-size: 10px; color: #94A3B8; }
+.pr-tabla-grupo { border-radius: 0 0 10px 10px; margin-bottom: 0; border-top: 0; }

@@ -132,7 +132,11 @@
                     {{ m.fueraTurno }} fuera de horario
                   </span>
                 </ng-container>
-                <ng-template #sinTurno><span class="pr-nd-txt">sin horario</span></ng-template>
+                <ng-template #sinTurno>
+                  <span class="pr-nd-txt" *ngIf="tieneHorario(m)"
+                        title="La sucursal si tiene horario; lo que falta son puntos hechos con sello de hora">—</span>
+                  <span class="pr-sinhorario" *ngIf="!tieneHorario(m)">sin horario</span>
+                </ng-template>
               </td>
               <td>
                 <span *ngIf="m.sinSello > 0" class="pr-sinsello">{{ m.sinSello }}</span>
@@ -143,65 +147,101 @@
         </table>
       </section>
 
-      <!-- ═══════════ POR COLABORADOR ═══════════ -->
-      <section class="pr-tabla-wrap" *ngIf="!cargando() && vista() === 'persona'">
-        <table class="pr-tabla">
-          <thead>
-            <tr>
-              <th>Colaborador</th>
-              <th>Cumplimiento</th>
-              <th>A tiempo</th>
-              <th>Dentro de turno</th>
-              <th>Ritmo</th>
-              <th>Sin sello</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let m of porPersona(); trackBy: trackClave">
-              <td class="pr-nombre">
-                {{ m.clave }}
-                <span class="pr-puesto" *ngIf="m.puesto">{{ m.puesto }}</span>
-                <span class="pr-suc" *ngIf="m.sucursal">{{ m.sucursal }}</span>
-              </td>
-              <td>
-                <span class="pr-pct" [ngClass]="claseNivel(pct(m.hechos, m.asignados))">
-                  {{ pct(m.hechos, m.asignados) == null ? '—' : pct(m.hechos, m.asignados) + '%' }}
-                </span>
-                <span class="pr-sub">{{ m.hechos }} de {{ m.asignados }}</span>
-              </td>
-              <td>
-                <span class="pr-pct" [ngClass]="claseNivel(pct(m.aTiempo, m.aTiempo + m.tarde))">
-                  {{ pct(m.aTiempo, m.aTiempo + m.tarde) == null ? '—' : pct(m.aTiempo, m.aTiempo + m.tarde) + '%' }}
-                </span>
-                <span class="pr-sub" *ngIf="m.tarde > 0">{{ m.tarde }} tarde</span>
-              </td>
-              <td>
-                <ng-container *ngIf="m.dentroTurno + m.fueraTurno > 0; else sinTurnoP">
-                  <span class="pr-pct" [ngClass]="claseNivel(pct(m.dentroTurno, m.dentroTurno + m.fueraTurno))">
-                    {{ pct(m.dentroTurno, m.dentroTurno + m.fueraTurno) }}%
-                  </span>
-                  <span class="pr-sub pr-fuera" *ngIf="m.fueraTurno > 0">{{ m.fueraTurno }} fuera</span>
-                </ng-container>
-                <ng-template #sinTurnoP><span class="pr-nd-txt">sin horario</span></ng-template>
-              </td>
-              <td>
-                <span *ngIf="m.minutosActividad != null && !deUnaSentada(m)" class="pr-ritmo">
-                  {{ m.minutosActividad }} min
-                </span>
-                <span *ngIf="deUnaSentada(m)" class="pr-sentada"
-                      title="Todos sus puntos quedaron sellados en menos de 5 minutos">
-                  de una sentada
-                </span>
-                <span *ngIf="m.minutosActividad == null" class="pr-nd-txt">—</span>
-              </td>
-              <td>
-                <span *ngIf="m.sinSello > 0" class="pr-sinsello">{{ m.sinSello }}</span>
-                <span *ngIf="m.sinSello === 0" class="pr-nd-txt">—</span>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-        <p class="pr-vacio" *ngIf="porPersona().length === 0">
+      <!-- ═══════════ POR COLABORADOR, AGRUPADO POR SUCURSAL ═══════════ -->
+      <section *ngIf="!cargando() && vista() === 'persona'">
+
+        <div class="pr-grupo" *ngFor="let g of gruposPersona()">
+          <!-- Cabecera de la plaza: su resumen, para no obligar a sumar de cabeza -->
+          <div class="pr-grupo-cab">
+            <div class="pr-grupo-id">
+              <span class="pr-grupo-nombre">{{ g.sucursal }}</span>
+              <span class="pr-grupo-horario">{{ g.horario }}</span>
+            </div>
+            <div class="pr-grupo-kpis">
+              <span class="pr-grupo-kpi">
+                <strong [ngClass]="claseNivel(g.cumplimiento)">
+                  {{ g.cumplimiento == null ? '—' : g.cumplimiento + '%' }}
+                </strong>
+                <small>{{ g.hechos }} de {{ g.asignados }}</small>
+              </span>
+              <span class="pr-grupo-kpi">
+                <strong>{{ g.personas }}</strong>
+                <small>{{ g.personas === 1 ? 'persona' : 'personas' }}</small>
+              </span>
+              <span class="pr-grupo-kpi" *ngIf="g.fuera > 0">
+                <strong class="pr-medio">{{ g.fuera }}</strong>
+                <small>fuera de turno</small>
+              </span>
+              <span class="pr-grupo-kpi" *ngIf="g.sentadas > 0">
+                <strong class="pr-medio">{{ g.sentadas }}</strong>
+                <small>de una sentada</small>
+              </span>
+            </div>
+          </div>
+
+          <div class="pr-tabla-wrap pr-tabla-grupo">
+            <table class="pr-tabla">
+              <thead>
+                <tr>
+                  <th>Colaborador</th>
+                  <th>Cumplimiento</th>
+                  <th>A tiempo</th>
+                  <th>Dentro de turno</th>
+                  <th>Ritmo</th>
+                  <th>Sin sello</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let m of g.gente; trackBy: trackClave">
+                  <td class="pr-nombre">
+                    {{ m.clave }}
+                    <span class="pr-puesto" *ngIf="m.puesto">{{ m.puesto }}</span>
+                  </td>
+                  <td>
+                    <span class="pr-pct" [ngClass]="claseNivel(pct(m.hechos, m.asignados))">
+                      {{ pct(m.hechos, m.asignados) == null ? '—' : pct(m.hechos, m.asignados) + '%' }}
+                    </span>
+                    <span class="pr-sub">{{ m.hechos }} de {{ m.asignados }}</span>
+                  </td>
+                  <td>
+                    <span class="pr-pct" [ngClass]="claseNivel(pct(m.aTiempo, m.aTiempo + m.tarde))">
+                      {{ pct(m.aTiempo, m.aTiempo + m.tarde) == null ? '—' : pct(m.aTiempo, m.aTiempo + m.tarde) + '%' }}
+                    </span>
+                    <span class="pr-sub" *ngIf="m.tarde > 0">{{ m.tarde }} tarde</span>
+                  </td>
+                  <td>
+                    <ng-container *ngIf="m.dentroTurno + m.fueraTurno > 0; else sinTurnoP">
+                      <span class="pr-pct" [ngClass]="claseNivel(pct(m.dentroTurno, m.dentroTurno + m.fueraTurno))">
+                        {{ pct(m.dentroTurno, m.dentroTurno + m.fueraTurno) }}%
+                      </span>
+                      <span class="pr-sub pr-fuera" *ngIf="m.fueraTurno > 0">{{ m.fueraTurno }} fuera</span>
+                    </ng-container>
+                    <ng-template #sinTurnoP>
+                      <span class="pr-nd-txt" *ngIf="tieneHorario(m)">—</span>
+                      <span class="pr-sinhorario" *ngIf="!tieneHorario(m)">sin horario</span>
+                    </ng-template>
+                  </td>
+                  <td>
+                    <span *ngIf="m.minutosActividad != null && !deUnaSentada(m)" class="pr-ritmo">
+                      {{ m.minutosActividad }} min
+                    </span>
+                    <span *ngIf="deUnaSentada(m)" class="pr-sentada"
+                          title="Todos sus puntos quedaron sellados en menos de 5 minutos">
+                      de una sentada
+                    </span>
+                    <span *ngIf="m.minutosActividad == null" class="pr-nd-txt">—</span>
+                  </td>
+                  <td>
+                    <span *ngIf="m.sinSello > 0" class="pr-sinsello">{{ m.sinSello }}</span>
+                    <span *ngIf="m.sinSello === 0" class="pr-nd-txt">—</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <p class="pr-vacio" *ngIf="gruposPersona().length === 0">
           Nadie coincide con la búsqueda en este rango de días.
         </p>
       </section>

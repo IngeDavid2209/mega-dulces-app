@@ -197,6 +197,51 @@ export class ProductividadComponent implements OnInit, OnDestroy {
     return f.sort((a, b) => (pct(b.hechos, b.asignados) ?? -1) - (pct(a.hechos, a.asignados) ?? -1));
   });
 
+  /**
+   * Los colaboradores AGRUPADOS POR SUCURSAL.
+   *
+   * Una lista plana de 150 nombres no se lee: para saber como va una plaza hay
+   * que ir cazando sus filas entre las de las demas. Agrupada, cada Encargada ve
+   * su gente junta y se puede comparar plaza contra plaza sin cambiar de vista.
+   *
+   * El grupo trae su propio resumen para no obligar a sumar de cabeza.
+   */
+  gruposPersona = computed(() => {
+    const filas = this.porPersona();
+    const mapa = new Map<string, Medicion[]>();
+    for (const m of filas) {
+      const k = (m.sucursal || '(sin sucursal)').trim();
+      const arr = mapa.get(k) || [];
+      arr.push(m);
+      mapa.set(k, arr);
+    }
+
+    const grupos = [...mapa.entries()].map(([sucursal, gente]) => {
+      const asignados = gente.reduce((a, m) => a + m.asignados, 0);
+      const hechos = gente.reduce((a, m) => a + m.hechos, 0);
+      const fuera = gente.reduce((a, m) => a + m.fueraTurno, 0);
+      const sentadas = gente.filter(m => this.deUnaSentada(m)).length;
+      return {
+        sucursal,
+        gente: gente.slice().sort((a, b) =>
+          (pct(b.hechos, b.asignados) ?? -1) - (pct(a.hechos, a.asignados) ?? -1)
+          || a.clave.localeCompare(b.clave)),
+        personas: gente.length,
+        asignados, hechos, fuera, sentadas,
+        cumplimiento: pct(hechos, asignados),
+        horario: this.horarioTexto(sucursal),
+      };
+    });
+
+    // Lo que va peor arriba, como el Dashboard tras la observacion del jefe.
+    // '(sin sucursal)' al final: no es una plaza, es un dato que falta.
+    return grupos.sort((a, b) => {
+      if (a.sucursal === '(sin sucursal)') return 1;
+      if (b.sucursal === '(sin sucursal)') return -1;
+      return (a.cumplimiento ?? 101) - (b.cumplimiento ?? 101);
+    });
+  });
+
   /** Resumen honesto de qué tan medible es lo que se está viendo. */
   cobertura = computed(() => {
     const filas = this.porSucursal();
@@ -227,6 +272,18 @@ export class ProductividadComponent implements OnInit, OnDestroy {
     const v = ventanaDeTurno(sucursal, hoy, this.horarios());
     if (!v) return 'sin horario capturado';
     return v.textoEntrada + ' – ' + v.textoSalida;
+  }
+
+  /**
+   * ¿Esta fila tiene horario capturado en Mega Talento?
+   *
+   * Hace falta distinguirlo de "no hay nada hecho todavia". Las dos cosas
+   * dejaban la columna de turno sin numero, y al ponerles la misma etiqueta la
+   * tabla se contradecia a si misma: la fila de Morelia Madero mostraba
+   * "08:00 - 18:00" en una columna y "sin horario" en la siguiente.
+   */
+  tieneHorario(m: Medicion): boolean {
+    return m.dias > 0 && m.diasSinHorario < m.dias;
   }
 
   /** Clase de color por porcentaje. Sin dato NO se pinta de rojo. */

@@ -309,6 +309,27 @@ solo porque el typo cayó en la palabra que la llave no usaba.
     que disparaba a las 21:00 del 31); y la primera verificación dio **ceros falsos** porque Git
     Bash convirtió `origin/main:.github/...` en `origin\main;...`, el comando falló y `grep -c`
     contó sobre entrada vacía. Rehecho en PowerShell.
+- **31/ago/2026 — 052 cierra el correo compartido, y destapa un límite del determinismo.**
+  - **`EL DAVE` es dato de pruebas, con evidencia:** 5 checklists de un punto en `SISTEMAS`,
+    creados por *Administrador Supremo* el 6, 7 y 8 de mayo — **tres el mismo día en siete
+    minutos** (18:37, 18:43, 18:44). Es alguien probando el flujo, no operación.
+  - **`Miriam` NO es atribuible, y el `store` lo prueba:** su único checklist está en **La Piedad
+    Abastos**, y las dos Miriam de la nómina están en **8 Esquinas** y **Canindo**. Se creó el
+    22/may a las 13:11:11, el **mismo segundo** que el sexto de EL DAVE, los dos por *Claudia
+    Pimentel Duran*: una asignación en bloque cuyo selector incluyó fichas fantasma ajenas a esa
+    plaza. No es de pruebas —la creó una persona real en una sucursal real— pero **no es
+    atribuible a nadie**. El filo de privacidad sigue **latente, no realizado**: ninguna de las
+    dos se ha abierto jamás.
+  - **EL LÍMITE DEL DETERMINISMO, que es el hallazgo que importa.** La prueba del orden nuevo con
+    `yadira.campero` devolvió:
+    `#1 Yadira Campero Ortiz (puesto=encargado-sucursal, latido 24/jun)` ·
+    `#2 Yaadira Campero Ortiz (sin puesto, latido 30/jun)`.
+    Gana la #1 **por tener puesto, aunque la #2 tenga el latido más reciente** — y la #2 es la que
+    tiene 17 checklists y tres meses de historia. El orden está implementado fielmente
+    (`puesto` antes que `latido`), pero la manda a la ficha con el puesto y **sin su historia**.
+    **El determinismo compró previsibilidad, no corrección:** antes se equivocaba al azar, ahora
+    se equivoca siempre igual. No se arregla cambiando la prioridad global —cualquier orden
+    acierta en unos casos y falla en otros—: **se arregla resolviendo el duplicado.**
 - **31/ago/2026 — `login.js` arreglado y VERIFICADO, sin que nadie iniciara sesión.**
   - **El orden estable** quedó en `api/login.js` y `api/login-usuario.js`, idéntico en los dos:
     activas primero, luego con puesto, luego latido más reciente, `id` como desempate. Si los

@@ -50,11 +50,6 @@ export const routes: Routes = [
     loadComponent: () => import('./modules/dashboard/checkstore/checkstore').then(m => m.CheckstoreComponent) 
   },
   // 🏆 RANKING SEMANAL DE SUCURSALES
-  {
-    path: 'ranking-sucursales',
-    canActivate: [authGuard],
-    loadComponent: () => import('./modules/dashboard/ranking-sucursales/ranking-sucursales').then(m => m.RankingSucursalesComponent)
-  },
   // 📄 CIERRE MENSUAL DE OPERACIONES (PDF con fotos por sucursal)
   {
     path: 'cierre-mensual',
@@ -101,6 +96,11 @@ export const routes: Routes = [
         canActivate: [tabControlGuard],
         loadComponent: () => import('./modules/dashboard/estadisticas/estadisticas').then(m => m.EstadisticasComponent)
       },
+      {
+        path: 'ranking',
+        canActivate: [tabControlGuard],
+        loadComponent: () => import('./modules/dashboard/ranking-sucursales/ranking-sucursales').then(m => m.RankingSucursalesComponent)
+      },
     ]
   },
 
@@ -108,6 +108,7 @@ export const routes: Routes = [
   // que estadisticas.html perdio su marco — si siguiera sirviendo el componente,
   // esa URL mostraria una pantalla sin sidebar.
   { path: 'estadisticas', redirectTo: 'control/estadisticas', pathMatch: 'full' },
+  { path: 'ranking-sucursales', redirectTo: 'control/ranking', pathMatch: 'full' },
 
   // 📈 PRODUCTIVIDAD CONTRA EL TURNO: lo hecho cruzado con el horario que RH
   // captura en Mega Talento.

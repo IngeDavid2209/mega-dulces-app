@@ -213,7 +213,8 @@ const FUNDIDAS = {
   // "¿ve /control?" contestaria que si y pasaria en verde.
   //
   // Preguntando por la pestaña, la perdida sale a la luz.
-  '/estadisticas': '/control/estadisticas',   // paso 2a
+  '/estadisticas':       '/control/estadisticas',   // paso 2a
+  '/ranking-sucursales': '/control/ranking',        // paso 2b
   // '/ranking-sucursales': '/control',
   // '/productividad':      '/control',
   // '/checkstore':         '/control',

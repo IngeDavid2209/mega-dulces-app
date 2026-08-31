@@ -62,7 +62,13 @@ export const TABS_CONTROL: TabControl[] = [
   { ruta: 'estadisticas', etiqueta: 'Estadísticas',
     ve: (u) => esAdmin(u) || u?.puedeVerEstadisticas },
 
-  // 2b · Ranking Semanal        ve: esAdmin || puedeVerEstadisticas || puedeVerCheckstore
+  // Ranking es la PRIMERA pestaña que hace que "ver el cascaron" y "ver la
+  // pestaña" dejen de ser lo mismo: su permiso es MAS ANCHO que el de
+  // Estadisticas -incluye puedeVerCheckstore-, asi que hay usuarios que ven el
+  // cascaron por una y no por la otra. De ahi que la prueba de audiencias
+  // pregunte por la pestaña y no por /control.
+  { ruta: 'ranking', etiqueta: 'Ranking Semanal',
+    ve: (u) => esAdmin(u) || u?.puedeVerEstadisticas || u?.puedeVerCheckstore },
   // 2c · Productividad y turno  ve: esAdmin || puedeVerEstadisticas || puedeVerCheckstore
   // 2d · Sucursales             ve: esAdmin || puedeVerCheckstore
 ];

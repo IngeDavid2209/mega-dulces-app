@@ -21,7 +21,7 @@
     <div class="mobile-overlay" *ngIf="isMenuOpen" (click)="toggleMenu()"></div>
     <app-sidebar [currentUser]="currentUser" [isMenuOpen]="isMenuOpen" (closeMenu)="isMenuOpen = false"></app-sidebar>
 
-    <main class="content">
+    <main class="content" #cuerpo>
 
       <!-- La barra solo lleva las pestañas de este usuario. Una pestaña visible
            que rebota al hacer clic enseña que la app falla, cuando lo que hay es
@@ -36,7 +36,10 @@
       <!-- Solo la pestaña activa se instancia. Ver la cabecera de control.ts:
            montar las cuatro las pondría a pedir rangos solapados de checklists
            con poll propio, y esta pantalla sería la más lenta de la app. -->
-      <router-outlet></router-outlet>
+      <!-- (activate) dispara justo cuando el router monta la pestaña nueva, que
+           es exactamente "cambio de pestaña" — sin suscribirse a eventos del
+           router ni adivinar con la URL. -->
+      <router-outlet (activate)="alCambiarPestana()"></router-outlet>
 
     </main>
   </div>

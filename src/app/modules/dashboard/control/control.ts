@@ -24,7 +24,7 @@
  *   · y el guard por pestaña sale de la propia ruta hija, que es lo que impide
  *     que entrar al cascarón regale acceso a las demás.
  */
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, ElementRef, OnInit, ViewChild, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { SidebarComponent } from '../../../shared/sidebar/sidebar';
@@ -60,6 +60,26 @@ export class ControlComponent implements OnInit {
   }
 
   toggleMenu() { this.isMenuOpen = !this.isMenuOpen; }
+
+  @ViewChild('cuerpo') private cuerpo?: ElementRef<HTMLElement>;
+
+  /**
+   * Al cambiar de pestaña, el scroll vuelve arriba.
+   *
+   * `.content` tiene `overflow-y: auto`, asi que es EL contenedor que scrollea —
+   * no la ventana. Y un contenedor conserva su posicion al cambiar de hijo: si
+   * bajas media pagina en Estadisticas y cambias a Ranking, aterrizas a media
+   * pagina de Ranking sin haber bajado, mirando una tabla que empieza mas arriba
+   * de lo que ves. Con una sola pestaña esto no podia pasar; con dos, si.
+   *
+   * `scrollTop = 0` y no `scrollTo({behavior:'smooth'})`: el contenido de la
+   * pestaña nueva ya se esta montando, y una animacion sobre algo que aparece
+   * al mismo tiempo se ve como un tiron, no como suavidad.
+   */
+  alCambiarPestana() {
+    const el = this.cuerpo?.nativeElement;
+    if (el) el.scrollTop = 0;
+  }
 
   /** Cuántas pestañas existen en total, para poder decir "1 de 4" al construir. */
   totalTabs = TABS_CONTROL.length;

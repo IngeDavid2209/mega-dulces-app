@@ -506,6 +506,45 @@ más que el positivo**: un rescate que recarga cuando no debe es un bucle para 1
 0"` y el `if` daba verde en
 el primer intento con la app vieja todavía servida. El `last-modified` lo delató.
 
+### El cuelgue de «VERIFICANDO...» — cinco `await` sin tope, y el peor era el último
+
+El síntoma real no era «no abre»: era **«ingreso los datos y el botón se queda en
+VERIFICANDO...»**. Ese texto sale de `login.html:53` (`ingresando ? 'VERIFICANDO...' : ...`), así
+que la palabra que David usó **localizaba el archivo** — dos turnos se fueron buscando en el
+lugar equivocado por no preguntar antes qué decía el botón.
+
+**Y `ingresar()` tiene un `finally` que apaga esa bandera.** Con el `finally` presente, un
+spinner eterno **no puede ser un error atrapado**: es un `await` que nunca vuelve. No hay
+excepción, no hay nada en la consola, y desde fuera «no me deja entrar» se ve idéntico esté la
+contraseña mal, la red bloqueada o el perfil incompleto. Eso es lo que hizo que las cinco horas
+de diagnóstico no encontraran nada: no había nada que encontrar, había un silencio.
+
+**El peor de los cinco, y por qué:** `await navigator.storage.persist()` está **después** de
+guardar `md_sesion_actual`. Si se colgaba ahí, la sesión **ya estaba guardada**: la persona
+quedaba autenticada, mirando «VERIFICANDO...» para siempre, y **con recargar entraba**. El login
+había funcionado y la pantalla decía lo contrario. Pedir almacenamiento persistente es una
+mejora, no un requisito: **nada opcional merece bloquear el acceso de nadie.** Ahora va sin
+`await`.
+
+Los otros cuatro llevan tope **con nombre del paso** —buscar tu usuario 15s, validar tu
+contraseña 20s, obtener tu credencial 15s, leer tu perfil 15s, más los dos `res.json()` a 10s—.
+
+**Y un tope NO SE TRAGA.** Los dos `try/catch` internos se comían cualquier fallo y mostraban
+«Usuario no encontrado» o «Perfil incompleto»: eso manda a revisar la base cuando lo que hubo fue
+una espera sin respuesta. Los topes se relanzan y la pantalla dice «Se agotó el tiempo al
+\<paso\>. No es tu contraseña».
+
+**Lo que se arregló no es el tope: es que el síntoma dejó de ser un misterio y pasó a ser una
+frase.** Firebase Auth vive en `identitytoolkit.googleapis.com`, otro dominio: una red que deja
+pasar `railway.app` y bloquea `googleapis.com` produce exactamente este cuelgue. Antes se
+callaba; ahora lo nombra.
+
+**Regla que deja, y es de diagnóstico antes que de código:** cuando alguien reporta un síntoma,
+**pregunta el texto literal que ve en pantalla antes de investigar**. `grep` sobre esa cadena
+localiza el archivo en un segundo. Aquí se probaron hashes, endpoints, Firebase, CSP,
+mantenimiento y service workers —todo sano— cuando la palabra «verificar» ya apuntaba a
+`login.html:53`.
+
 ### 4.1b DESPLEGADO — 1/sep/2026 14:37:59 GMT
 
 Verificado en producción, con marcador validado en las dos direcciones:

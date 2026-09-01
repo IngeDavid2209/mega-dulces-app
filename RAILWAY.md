@@ -121,3 +121,21 @@ dentro. Si se olvida alguno no truena nada visible — simplemente deja de llega
   `https://mdtask-production-ed88.up.railway.app/api/whatsapp-webhook`.
   Si se quedo con el dominio anterior, el bot de WhatsApp no recibe nada y no
   contesta, sin ningun error visible en los logs.
+
+## Replicas: UNA, y por que importa (paso 0.4 del plan)
+
+**Medido el 1/sep/2026: `numReplicas = 1`** en los 15 service instances del entorno
+`production`, y el log muestra un unico `escuchando en el puerto 8080`.
+
+Comprobar asi (no por el numero de lineas de poll en el log, que sale truncado):
+
+    railway status --json    # buscar deploy.numReplicas
+
+**No subir a mas de una replica.** Los cuatro polls -flotilla, tareas, bloques, pagos-
+arrancan dentro de `app.listen` en `server.js`, sin marca de idempotencia por periodo.
+Con dos replicas, cada aviso se manda dos veces: la gente recibe el WhatsApp duplicado
+y no hay nada en la app que lo impida. El interruptor `AVISOS_APAGADOS=1` existe para
+taparlo a mano, que es un parche, no una solucion.
+
+Para poder escalar hace falta el paso 9.1 del plan: sacar los polls del servidor web a
+un proceso aparte con marca de idempotencia. Hasta entonces, una replica.

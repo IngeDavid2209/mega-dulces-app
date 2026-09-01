@@ -1,11 +1,11 @@
 :host {
-  --primary-navy: #0F172A;
+  --primary-navy: var(--neutral-900);
   --primary-blue: #1E40AF;
-  --text-main: #1E293B;
-  --text-muted: #64748B;
-  --bg-app: #F8FAFC;
+  --text-main: var(--neutral-800);
+  --text-muted: var(--neutral-500);
+  --bg-app: var(--neutral-50);
   --bg-sidebar: #FFFFFF;
-  --border: #E2E8F0;
+  --border: var(--neutral-200);
 }
 
 /* Base Layout - Igual al resto de tus pantallas */
@@ -15,7 +15,7 @@
   height: 100vh;
   overflow: hidden;
   background-color: var(--bg-app);
-  font-family: 'Inter', system-ui, sans-serif;
+  font-family: var(--font-body);
 }
 
 .header {
@@ -116,7 +116,7 @@
 
 .btn-nav:hover {
   color: var(--primary-navy);
-  background: #F8FAFC;
+  background: var(--neutral-50);
 }
 
 /* ======================================================= */
@@ -133,7 +133,7 @@
 .calendar-header {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  background: #F8FAFC;
+  background: var(--neutral-50);
   border-bottom: 1px solid var(--border);
 }
 
@@ -166,11 +166,11 @@
 }
 
 .calendar-cell:hover:not(.empty) {
-  background: #F1F5F9;
+  background: var(--neutral-100);
 }
 
 .calendar-cell.empty {
-  background: #F8FAFC;
+  background: var(--neutral-50);
   cursor: default;
 }
 
@@ -673,7 +673,7 @@
 }
 
 .cal-quick-btn--primary:hover {
-  background: #F1F5F9;
+  background: var(--neutral-100);
 }
 
 .cal-quick-date {
@@ -731,7 +731,7 @@
   letter-spacing: 0.7px;
   margin-bottom: 14px;
   padding-bottom: 12px;
-  border-bottom: 1px solid #F1F5F9;
+  border-bottom: 1px solid var(--neutral-100);
 }
 
 .cal-filter-title svg {
@@ -766,7 +766,7 @@
 }
 
 .cal-filter-label svg {
-  color: #94A3B8;
+  color: var(--neutral-400);
 }
 
 .cal-input {
@@ -786,7 +786,7 @@
 }
 
 .cal-input:hover {
-  border-color: #CBD5E1;
+  border-color: var(--neutral-300);
 }
 
 .cal-input:focus {
@@ -931,7 +931,7 @@
 }
 
 .cal-calendar .calendar-header {
-  background: linear-gradient(180deg, #FAFBFF 0%, #F1F5F9 100%);
+  background: linear-gradient(180deg, #FAFBFF 0%, var(--neutral-100) 100%);
   border-bottom: 1px solid var(--border);
 }
 
@@ -942,7 +942,7 @@
 }
 
 .cal-day-name--weekend {
-  color: #94A3B8 !important;
+  color: var(--neutral-400) !important;
 }
 
 /* Celdas */
@@ -964,10 +964,10 @@
 .cal-calendar .calendar-cell.empty {
   background: repeating-linear-gradient(
     135deg,
-    #F8FAFC,
-    #F8FAFC 8px,
-    #F1F5F9 8px,
-    #F1F5F9 16px
+    var(--neutral-50),
+    var(--neutral-50) 8px,
+    var(--neutral-100) 8px,
+    var(--neutral-100) 16px
   );
   opacity: 0.6;
 }
@@ -979,7 +979,7 @@
   left: 0;
   right: 0;
   height: 4px;
-  background: #CBD5E1;
+  background: var(--neutral-300);
 }
 
 .calendar-cell[data-estado="completo"] .cal-cell-bar {
@@ -1105,7 +1105,7 @@
   text-transform: uppercase;
   letter-spacing: 0.6px;
   padding-right: 14px;
-  border-right: 1px solid #E2E8F0;
+  border-right: 1px solid var(--neutral-200);
 }
 
 .cal-legend-items {

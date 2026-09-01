@@ -1,11 +1,11 @@
 :host {
-  --primary-navy: #0F172A;
+  --primary-navy: var(--neutral-900);
   --primary-blue: #1E40AF;
-  --text-main: #1E293B;
-  --text-muted: #64748B;
-  --bg-app: #F8FAFC;
+  --text-main: var(--neutral-800);
+  --text-muted: var(--neutral-500);
+  --bg-app: var(--neutral-50);
   --bg-sidebar: #FFFFFF;
-  --border: #E2E8F0;
+  --border: var(--neutral-200);
   --card: #FFFFFF;
   --shadow: 0 1px 3px 0 rgba(0,0,0,0.08), 0 1px 2px -1px rgba(0,0,0,0.06);
 }
@@ -72,7 +72,7 @@
   color: var(--text-main);
   cursor: pointer;
 }
-.cm-nav-btn:hover { border-color: var(--primary-navy); background: #F8FAFC; }
+.cm-nav-btn:hover { border-color: var(--primary-navy); background: var(--neutral-50); }
 .cm-month-input {
   height: 42px;
   font-size: 14px;
@@ -109,8 +109,8 @@
   margin-top: 4px;
 }
 .cm-kpi-destacado {
-  background: linear-gradient(135deg, #0F172A 0%, #1E40AF 100%);
-  border-color: #0F172A;
+  background: linear-gradient(135deg, var(--neutral-900) 0%, #1E40AF 100%);
+  border-color: var(--neutral-900);
 }
 .cm-kpi-destacado .cm-kpi-num { color: white; }
 .cm-kpi-destacado .cm-kpi-lbl { color: rgba(255,255,255,0.85); }
@@ -146,7 +146,7 @@
   box-shadow: 0 4px 12px rgba(15, 23, 42, 0.25);
 }
 .cm-btn-pdf:hover:not(:disabled) {
-  background: #1E293B;
+  background: var(--neutral-800);
   transform: translateY(-2px);
   box-shadow: 0 6px 18px rgba(15, 23, 42, 0.3);
 }
@@ -365,7 +365,7 @@
 .cm-suc-card {
   background: var(--card);
   border: 1px solid var(--border);
-  border-left: 4px solid #CBD5E1;
+  border-left: 4px solid var(--neutral-300);
   border-radius: 12px;
   padding: 16px 18px;
   box-shadow: var(--shadow);
@@ -380,7 +380,7 @@
 }
 .cm-suc-nombre { font-weight: 800; font-size: 15px; color: var(--text-main); }
 .cm-suc-pct { font-weight: 900; font-size: 18px; color: var(--text-main); }
-.cm-suc-bar { height: 8px; background: #F1F5F9; border-radius: 999px; overflow: hidden; margin-bottom: 10px; }
+.cm-suc-bar { height: 8px; background: var(--neutral-100); border-radius: 999px; overflow: hidden; margin-bottom: 10px; }
 .cm-suc-bar-fill {
   height: 100%;
   background: linear-gradient(90deg, #1E40AF, #3B82F6);
@@ -393,7 +393,7 @@
 
 .cm-suc-meta { font-size: 12px; color: var(--text-muted); }
 .cm-suc-meta strong { color: var(--text-main); font-weight: 700; }
-.cm-meta-sep { color: #CBD5E1; margin: 0 4px; }
+.cm-meta-sep { color: var(--neutral-300); margin: 0 4px; }
 
 /* Estados loading / vacío */
 .cm-loading, .cm-empty {

@@ -8,21 +8,21 @@
 /* ---------- LAYOUT BASE (shell) ---------- */
 .app-layout {
   display: flex; flex-direction: column; height: 100vh;
-  background-color: #F8FAFC; font-family: 'Inter', system-ui, sans-serif;
+  background-color: var(--neutral-50); font-family: var(--font-body);
 }
 .header {
-  height: 60px; background: white; border-bottom: 1px solid #E2E8F0;
+  height: 60px; background: white; border-bottom: 1px solid var(--neutral-200);
   display: flex; align-items: center; padding: 0 20px; justify-content: space-between; z-index: 10;
 }
 .header-left { display: flex; align-items: center; gap: 15px; }
 .header-brand {
-  font-weight: 700; font-size: 16px; color: #0F172A;
+  font-weight: 700; font-size: 16px; color: var(--neutral-900);
   display: flex; flex-direction: column; line-height: 1.2;
 }
-.header-brand small { font-size: 11px; color: #64748B; font-weight: 500; }
+.header-brand small { font-size: 11px; color: var(--neutral-500); font-weight: 500; }
 .main-wrapper { display: flex; flex: 1; overflow: hidden; position: relative; }
 .content { flex: 1; padding: 30px; overflow-y: auto; }
-.btn-menu-mobile { display: none; background: transparent; border: none; color: #0F172A; cursor: pointer; }
+.btn-menu-mobile { display: none; background: transparent; border: none; color: var(--neutral-900); cursor: pointer; }
 .mobile-overlay { display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.4); z-index: 15; }
 
 /* ---------- ENCABEZADO ---------- */
@@ -30,37 +30,37 @@
   display: flex; align-items: center; justify-content: space-between; gap: 16px;
   padding: 22px 26px; margin-bottom: 20px;
   background: linear-gradient(135deg, #FFFFFF 0%, #F8FAFF 100%);
-  border: 1px solid #E2E8F0; border-left: 4px solid #1F3864; border-radius: 14px;
+  border: 1px solid var(--neutral-200); border-left: 4px solid #1F3864; border-radius: 14px;
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 24px -12px rgba(15, 23, 42, 0.15);
   flex-wrap: wrap;
 }
-.tk-title { font-size: 24px; font-weight: 800; color: #0F172A; margin: 0 0 4px; }
-.tk-sub { font-size: 13px; color: #64748B; margin: 0; }
+.tk-title { font-size: 24px; font-weight: 800; color: var(--neutral-900); margin: 0 0 4px; }
+.tk-sub { font-size: 13px; color: var(--neutral-500); margin: 0; }
 
 /* ---------- CIFRAS ---------- */
 .tk-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px; margin-bottom: 18px; }
 .tk-kpi {
-  background: #fff; border: 1px solid #E2E8F0; border-radius: 14px; padding: 18px;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04); border-top: 3px solid #CBD5E1;
+  background: #fff; border: 1px solid var(--neutral-200); border-radius: 14px; padding: 18px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04); border-top: 3px solid var(--neutral-300);
 }
 .tk-kpi.ambar { border-top-color: #F59E0B; }
 .tk-kpi.azul { border-top-color: #1F3864; }
 .tk-kpi.verde { border-top-color: #059669; }
-.tk-kpi-num { font-size: 30px; font-weight: 800; color: #0F172A; line-height: 1; }
-.tk-kpi-lbl { font-size: 12.5px; color: #64748B; margin-top: 6px; font-weight: 600; }
+.tk-kpi-num { font-size: 30px; font-weight: 800; color: var(--neutral-900); line-height: 1; }
+.tk-kpi-lbl { font-size: 12.5px; color: var(--neutral-500); margin-top: 6px; font-weight: 600; }
 
 /* ---------- FILTROS ---------- */
 .tk-filtros { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
-.tk-filtros label { font-size: 13px; color: #475569; font-weight: 600; }
+.tk-filtros label { font-size: 13px; color: var(--neutral-600); font-weight: 600; }
 .tk-filtros select, .tk-buscar {
-  border: 1px solid #E2E8F0; border-radius: 8px; padding: 7px 10px; font-size: 14px; background: #fff;
+  border: 1px solid var(--neutral-200); border-radius: 8px; padding: 7px 10px; font-size: 14px; background: #fff;
 }
 .tk-buscar { flex: 1; min-width: 200px; }
 
 /* ---------- LISTA ---------- */
 .tk-lista { display: flex; flex-direction: column; gap: 8px; }
 .tk-row {
-  background: #fff; border: 1px solid #E2E8F0; border-left: 4px solid #CBD5E1; border-radius: 10px;
+  background: #fff; border: 1px solid var(--neutral-200); border-left: 4px solid var(--neutral-300); border-radius: 10px;
   padding: 12px 14px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; cursor: pointer;
   transition: box-shadow .15s, transform .05s;
 }
@@ -74,8 +74,8 @@
   background: #EEF2F9; border-radius: 6px; padding: 4px 8px; white-space: nowrap;
 }
 .tk-row-main { flex: 1; min-width: 200px; }
-.tk-row-act { font-weight: 700; color: #0F172A; font-size: 14.5px; }
-.tk-row-meta { color: #64748B; font-size: 12.5px; margin-top: 2px; }
+.tk-row-act { font-weight: 700; color: var(--neutral-900); font-size: 14.5px; }
+.tk-row-meta { color: var(--neutral-500); font-size: 12.5px; margin-top: 2px; }
 .tk-dias {
   font-size: 11.5px; font-weight: 700; color: #B45309; background: #FFFBEB;
   border-radius: 999px; padding: 2px 8px; white-space: nowrap;
@@ -84,7 +84,7 @@
 /* ---------- PILDORAS ---------- */
 .pill {
   display: inline-block; padding: 3px 10px; border-radius: 999px;
-  font-size: 11.5px; font-weight: 700; white-space: nowrap; background: #F1F5F9; color: #64748B;
+  font-size: 11.5px; font-weight: 700; white-space: nowrap; background: var(--neutral-100); color: var(--neutral-500);
 }
 .pill-abierto { background: #FFFBEB; color: #B45309; }
 .pill-proceso { background: #EEF2F9; color: #1F3864; }
@@ -132,31 +132,31 @@
 .vale-val.ancho { min-width: 240px; }
 .vale-val.sinlbl { width: 100%; }
 .vale-input {
-  width: 100%; border: none; border-bottom: 1px dotted #94A3B8; background: transparent;
-  font-size: 14px; padding: 4px 2px; color: #0F172A; font-family: inherit;
+  width: 100%; border: none; border-bottom: 1px dotted var(--neutral-400); background: transparent;
+  font-size: 14px; padding: 4px 2px; color: var(--neutral-900); font-family: inherit;
 }
 .vale-input:focus { outline: none; border-bottom: 2px solid #1F3864; }
-.vale-input:disabled { color: #334155; border-bottom-style: solid; border-bottom-color: #E2E8F0; }
+.vale-input:disabled { color: var(--neutral-700); border-bottom-style: solid; border-bottom-color: var(--neutral-200); }
 .vale-area {
   width: 100%; border: none; background: transparent; resize: vertical;
-  font-size: 13.5px; font-family: inherit; color: #0F172A; padding: 4px 2px;
+  font-size: 13.5px; font-family: inherit; color: var(--neutral-900); padding: 4px 2px;
   line-height: 1.7;
   /* Renglones como los del formato en papel */
-  background-image: repeating-linear-gradient(to bottom, transparent 0 22px, #E2E8F0 22px 23px);
+  background-image: repeating-linear-gradient(to bottom, transparent 0 22px, var(--neutral-200) 22px 23px);
 }
 .vale-area:focus { outline: none; }
-.vale-area:disabled { color: #334155; }
+.vale-area:disabled { color: var(--neutral-700); }
 
 .vale-banda {
   background: #1F3864; color: #fff; text-align: center; font-size: 11.5px;
   font-weight: 800; letter-spacing: .4px; padding: 6px 10px; border-top: 1px solid #1F3864;
 }
 .casilla {
-  font-size: 11px; font-weight: 700; color: #64748B; border: 1.5px solid #CBD5E1;
+  font-size: 11px; font-weight: 700; color: var(--neutral-500); border: 1.5px solid var(--neutral-300);
   border-radius: 4px; padding: 3px 8px; white-space: nowrap;
 }
 .casilla.marcada { background: #1F3864; color: #fff; border-color: #1F3864; }
-.radio { font-size: 12.5px; font-weight: 700; color: #334155; display: inline-flex; align-items: center; gap: 5px; }
+.radio { font-size: 12.5px; font-weight: 700; color: var(--neutral-700); display: inline-flex; align-items: center; gap: 5px; }
 
 /* ---------- FIRMAS ---------- */
 .vale-firmas { display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid #1F3864; }
@@ -170,13 +170,13 @@
   padding: 10px; min-height: 118px; display: flex; flex-direction: column;
   align-items: center; justify-content: center; gap: 4px;
 }
-.firma-vacia { font-size: 10px; color: #94A3B8; font-weight: 700; margin-bottom: 6px; }
+.firma-vacia { font-size: 10px; color: var(--neutral-400); font-weight: 700; margin-bottom: 6px; }
 .firma-img { max-width: 100%; height: 54px; object-fit: contain; }
 .firma-nombre {
-  font-size: 12.5px; font-weight: 700; color: #0F172A; text-align: center;
-  border-top: 1px solid #334155; padding-top: 4px; width: 88%;
+  font-size: 12.5px; font-weight: 700; color: var(--neutral-900); text-align: center;
+  border-top: 1px solid var(--neutral-700); padding-top: 4px; width: 88%;
 }
-.firma-fecha { font-size: 10.5px; color: #64748B; }
+.firma-fecha { font-size: 10.5px; color: var(--neutral-500); }
 
 /* ---------- BOTONES ---------- */
 .tk-btn-primary {
@@ -187,16 +187,16 @@
 .tk-btn-primary:hover { background: #2A4A80; }
 .tk-btn-primary:disabled { opacity: .6; cursor: default; }
 .tk-btn-ghost {
-  background: transparent; color: #475569; border: 1px solid #E2E8F0; border-radius: 9px;
+  background: transparent; color: var(--neutral-600); border: 1px solid var(--neutral-200); border-radius: 9px;
   padding: 9px 14px; font-weight: 600; font-size: 13.5px; cursor: pointer;
   display: inline-flex; align-items: center; gap: 6px;
 }
-.tk-btn-ghost:hover { background: #F1F5F9; }
+.tk-btn-ghost:hover { background: var(--neutral-100); }
 .tk-btn-mini {
-  border: 1px solid #CBD5E1; background: #fff; color: #334155; border-radius: 8px;
+  border: 1px solid var(--neutral-300); background: #fff; color: var(--neutral-700); border-radius: 8px;
   padding: 7px 13px; font-weight: 600; font-size: 13px; cursor: pointer;
 }
-.tk-btn-mini:hover { background: #F8FAFC; }
+.tk-btn-mini:hover { background: var(--neutral-50); }
 .tk-btn-mini:disabled { opacity: .55; cursor: default; }
 .tk-btn-mini.ok { background: #059669; color: #fff; border-color: #059669; }
 .tk-btn-mini.ok:hover { background: #047857; }
@@ -213,10 +213,10 @@
 
 /* ---------- VACIOS / NOTAS ---------- */
 .tk-empty {
-  background: #fff; border: 1px dashed #CBD5E1; border-radius: 12px;
-  padding: 28px; text-align: center; color: #64748B; font-size: 14px;
+  background: #fff; border: 1px dashed var(--neutral-300); border-radius: 12px;
+  padding: 28px; text-align: center; color: var(--neutral-500); font-size: 14px;
 }
-.tk-nota { font-size: 12.5px; color: #94A3B8; margin: 8px 2px 0; line-height: 1.55; max-width: 760px; }
+.tk-nota { font-size: 12.5px; color: var(--neutral-400); margin: 8px 2px 0; line-height: 1.55; max-width: 760px; }
 
 /* ---------- MODALES ---------- */
 .tk-modal-fondo {
@@ -229,13 +229,13 @@
   box-shadow: 0 24px 60px -12px rgba(15, 23, 42, 0.35);
 }
 .tk-modal-titulo {
-  font-size: 20px; font-weight: 800; color: #0F172A; margin: 0 0 6px;
+  font-size: 20px; font-weight: 800; color: var(--neutral-900); margin: 0 0 6px;
   display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap;
 }
 .tk-modal-folio { font-family: monospace; font-size: 15px; color: #1F3864; font-weight: 800; }
-.tk-label { display: block; font-size: 13px; font-weight: 600; color: #334155; margin: 14px 0 5px; }
+.tk-label { display: block; font-size: 13px; font-weight: 600; color: var(--neutral-700); margin: 14px 0 5px; }
 .tk-input {
-  width: 100%; border: 1px solid #E2E8F0; border-radius: 9px; padding: 10px 12px;
+  width: 100%; border: 1px solid var(--neutral-200); border-radius: 9px; padding: 10px 12px;
   font-size: 14px; box-sizing: border-box; background: #fff; font-family: inherit;
 }
 .tk-input:focus { outline: none; border-color: #1F3864; box-shadow: 0 0 0 3px rgba(31, 56, 100, 0.08); }
@@ -245,7 +245,7 @@
 /* ---------- LIENZO DE FIRMA ---------- */
 .firma-modal { max-width: 540px; }
 .firma-lienzo-caja {
-  position: relative; margin-top: 14px; border: 2px dashed #CBD5E1; border-radius: 12px;
+  position: relative; margin-top: 14px; border: 2px dashed var(--neutral-300); border-radius: 12px;
   background: #FCFDFF; height: 190px; overflow: hidden;
 }
 .firma-lienzo {
@@ -255,7 +255,7 @@
 }
 .firma-linea {
   position: absolute; left: 24px; right: 24px; bottom: 34px;
-  border-bottom: 1px solid #94A3B8; pointer-events: none;
+  border-bottom: 1px solid var(--neutral-400); pointer-events: none;
 }
 
 /* ---------- RESPONSIVE ---------- */

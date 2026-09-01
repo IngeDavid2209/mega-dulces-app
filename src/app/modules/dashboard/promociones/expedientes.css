@@ -10,8 +10,8 @@
 :host {
   --ex-azul: #1F4E79;
   --ex-azul-claro: #DEEBF7;
-  --ex-linea: #E2E8F0;
-  --ex-txt-2: #64748B;
+  --ex-linea: var(--neutral-200);
+  --ex-txt-2: var(--neutral-500);
   --ex-verde: #1F7A4D;
   --ex-verde-claro: #E8F5EE;
   --ex-rojo: #C7382E;
@@ -26,7 +26,7 @@
   border-bottom: 2px solid var(--ex-linea);
 }
 .exp-head h2 {
-  font-size: 19px; font-weight: 800; color: #0F172A; margin: 0;
+  font-size: 19px; font-weight: 800; color: var(--neutral-900); margin: 0;
   display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
 }
 .exp-folio {
@@ -51,7 +51,7 @@
 
 /* ---------- Canal ---------- */
 .exp-canal {
-  border: 1px solid var(--ex-linea); border-left: 4px solid #CBD5E1;
+  border: 1px solid var(--ex-linea); border-left: 4px solid var(--neutral-300);
   border-radius: 10px; margin-bottom: 8px; background: #fff; overflow: hidden;
 }
 .exp-canal.completo { border-left-color: var(--ex-verde); }
@@ -60,8 +60,8 @@
   width: 100%; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
   padding: 12px 14px; background: none; border: none; cursor: pointer; text-align: left;
 }
-.exp-canal-top:hover { background: #F8FAFC; }
-.exp-canal-nombre { font-weight: 800; color: #0F172A; font-size: 14.5px; flex: 0 0 auto; }
+.exp-canal-top:hover { background: var(--neutral-50); }
+.exp-canal-nombre { font-weight: 800; color: var(--neutral-900); font-size: 14.5px; flex: 0 0 auto; }
 .exp-canal-num { margin-left: auto; font-size: 12.5px; color: var(--ex-txt-2); font-variant-numeric: tabular-nums; }
 .exp-flecha { font-size: 17px; font-weight: 700; color: var(--ex-txt-2); width: 16px; text-align: center; }
 
@@ -82,7 +82,7 @@
 }
 .exp-seccion-tit { font-size: 13.5px; font-weight: 800; color: var(--ex-azul); }
 .exp-ayuda { font-size: 12px; color: var(--ex-txt-2); margin: 4px 0 8px; }
-.exp-sin { font-size: 12.5px; color: #94A3B8; font-style: italic; margin: 0; }
+.exp-sin { font-size: 12.5px; color: var(--neutral-400); font-style: italic; margin: 0; }
 
 /* ---------- Evidencias ---------- */
 .exp-tira { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -94,11 +94,11 @@
 .exp-archivo {
   display: flex; align-items: center; justify-content: center; text-align: center;
   width: 76px; height: 76px; padding: 4px; box-sizing: border-box;
-  border-radius: 8px; border: 1px solid var(--ex-linea); background: #F8FAFC;
+  border-radius: 8px; border: 1px solid var(--ex-linea); background: var(--neutral-50);
   font-size: 10px; color: var(--ex-azul); font-weight: 600;
   overflow: hidden; word-break: break-all;
 }
-.exp-ev-pie { font-size: 10px; color: #94A3B8; text-align: center; }
+.exp-ev-pie { font-size: 10px; color: var(--neutral-400); text-align: center; }
 
 .exp-x {
   position: absolute; top: -6px; right: -6px;
@@ -111,7 +111,7 @@
 /* ---------- Captura de la venta ---------- */
 .exp-captura {
   display: flex; gap: 12px; flex-wrap: wrap;
-  background: #F8FAFC; border: 1px solid var(--ex-linea);
+  background: var(--neutral-50); border: 1px solid var(--ex-linea);
   border-radius: 10px; padding: 12px; margin: 8px 0;
 }
 .exp-ticket {
@@ -131,7 +131,7 @@
 
 .exp-campos { display: flex; gap: 10px; flex-wrap: wrap; }
 .exp-campos label { display: flex; flex-direction: column; gap: 3px; flex: 1 1 110px; }
-.exp-campos span { font-size: 11.5px; font-weight: 700; color: #334155; }
+.exp-campos span { font-size: 11.5px; font-weight: 700; color: var(--neutral-700); }
 .exp-captura-acciones { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
 
 /* ---------- Tabla de ventas ---------- */
@@ -140,7 +140,7 @@
   text-align: left; font-size: 10.5px; text-transform: uppercase; letter-spacing: .4px;
   color: var(--ex-txt-2); padding: 6px 8px; border-bottom: 1px solid var(--ex-linea);
 }
-.exp-ventas td { padding: 7px 8px; border-bottom: 1px solid #F1F5F9; }
+.exp-ventas td { padding: 7px 8px; border-bottom: 1px solid var(--neutral-100); }
 .exp-ventas .num { text-align: right; font-variant-numeric: tabular-nums; }
 .exp-ventas tfoot td {
   font-weight: 800; color: var(--ex-azul); border-top: 2px solid var(--ex-linea); border-bottom: none;
@@ -167,7 +167,7 @@
   border: 1px solid var(--ex-linea); border-radius: 12px;
   padding: 14px; margin-bottom: 16px; background: #fff;
 }
-.exp-selector-tit { font-size: 14px; font-weight: 800; color: #0F172A; margin: 0 0 2px; }
+.exp-selector-tit { font-size: 14px; font-weight: 800; color: var(--neutral-900); margin: 0 0 2px; }
 
 .exp-lugares {
   display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
@@ -176,9 +176,9 @@
 .exp-lugar {
   display: flex; align-items: center; gap: 8px;
   padding: 6px 8px; border-radius: 8px;
-  font-size: 13px; color: #334155; cursor: pointer;
+  font-size: 13px; color: var(--neutral-700); cursor: pointer;
 }
-.exp-lugar:hover { background: #F8FAFC; }
+.exp-lugar:hover { background: var(--neutral-50); }
 .exp-lugar.on { background: var(--ex-azul-claro); color: var(--ex-azul); font-weight: 700; }
 .exp-lugar input { flex: 0 0 auto; width: 16px; height: 16px; accent-color: var(--ex-azul); }
 
@@ -196,14 +196,14 @@
 .pr-btn {
   font: inherit; font-size: 13px; font-weight: 600;
   height: 36px; padding: 0 14px;
-  border: 1px solid #CBD5E1; border-radius: 6px;
-  background: #FFF; color: #1E293B;
+  border: 1px solid var(--neutral-300); border-radius: 6px;
+  background: #FFF; color: var(--neutral-800);
   cursor: pointer;
   display: inline-flex; align-items: center; gap: 7px;
   white-space: nowrap;
   transition: background .15s, border-color .15s;
 }
-.pr-btn:hover:not(:disabled) { background: #F8FAFC; border-color: #94A3B8; }
+.pr-btn:hover:not(:disabled) { background: var(--neutral-50); border-color: var(--neutral-400); }
 .pr-btn:disabled { opacity: .5; cursor: not-allowed; }
 
 .pr-btn-alta { background: var(--ex-azul); border-color: var(--ex-azul); color: #FFF; }
@@ -220,8 +220,8 @@ label.pr-btn { cursor: pointer; }
 .promo-input {
   font: inherit; font-size: 13.5px;
   width: 100%; min-height: 38px; padding: 8px 11px;
-  border: 1px solid #CBD5E1; border-radius: 6px;
-  background: #FFF; color: #1E293B; box-sizing: border-box;
+  border: 1px solid var(--neutral-300); border-radius: 6px;
+  background: #FFF; color: var(--neutral-800); box-sizing: border-box;
 }
 .promo-input:focus {
   outline: none; border-color: var(--ex-azul);
@@ -237,11 +237,11 @@ label.pr-btn { cursor: pointer; }
    ============================================================================ */
 .exp-etq-ajeno {
   font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px;
-  background: #F1F5F9; color: var(--ex-txt-2); white-space: nowrap;
+  background: var(--neutral-100); color: var(--ex-txt-2); white-space: nowrap;
 }
 
 .exp-ajeno {
-  background: #F8FAFC; border: 1px dashed var(--ex-linea); border-radius: 8px;
+  background: var(--neutral-50); border: 1px dashed var(--ex-linea); border-radius: 8px;
   padding: 9px 11px; margin: 10px 0 0;
   font-size: 12.5px; color: var(--ex-txt-2); line-height: 1.45;
 }

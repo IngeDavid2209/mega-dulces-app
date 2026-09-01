@@ -1,11 +1,11 @@
 :host {
-  --primary-navy: #0F172A;
+  --primary-navy: var(--neutral-900);
   --primary-blue: #1E40AF;
-  --text-main: #1E293B;
-  --text-muted: #64748B;
-  --bg-app: #F8FAFC;
+  --text-main: var(--neutral-800);
+  --text-muted: var(--neutral-500);
+  --bg-app: var(--neutral-50);
   --bg-sidebar: #FFFFFF;
-  --border: #E2E8F0;
+  --border: var(--neutral-200);
   --card: #FFFFFF;
   --shadow: 0 1px 3px 0 rgba(0,0,0,0.08), 0 1px 2px -1px rgba(0,0,0,0.06);
   --shadow-lg: 0 4px 6px -1px rgba(0,0,0,0.08), 0 2px 4px -2px rgba(0,0,0,0.05);
@@ -75,9 +75,9 @@
   cursor: pointer;
   transition: all 0.15s ease;
 }
-.rank-nav-btn:hover { border-color: var(--primary-navy); background: #F8FAFC; }
+.rank-nav-btn:hover { border-color: var(--primary-navy); background: var(--neutral-50); }
 .rank-nav-hoy { background: var(--primary-navy); color: white; border-color: var(--primary-navy); }
-.rank-nav-hoy:hover { background: #1E293B; color: white; }
+.rank-nav-hoy:hover { background: var(--neutral-800); color: white; }
 
 /* ============================================================
    KPIs RESUMEN
@@ -136,7 +136,7 @@
 }
 .rank-row:last-child { border-bottom: none; }
 .rank-row-head {
-  background: linear-gradient(180deg, #F8FAFC 0%, #F1F5F9 100%);
+  background: linear-gradient(180deg, var(--neutral-50) 0%, var(--neutral-100) 100%);
   font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
@@ -159,13 +159,13 @@
   justify-content: center;
   width: 38px; height: 38px;
   border-radius: 50%;
-  background: #F1F5F9;
+  background: var(--neutral-100);
   color: var(--text-muted);
   font-weight: 800;
   font-size: 14px;
 }
 .rank-puesto-badge.top-oro    { background: linear-gradient(135deg, #FBBF24, #F59E0B); color: white; box-shadow: 0 4px 12px rgba(245,158,11,0.35); }
-.rank-puesto-badge.top-plata  { background: linear-gradient(135deg, #CBD5E1, #94A3B8); color: white; box-shadow: 0 3px 8px rgba(148,163,184,0.35); }
+.rank-puesto-badge.top-plata  { background: linear-gradient(135deg, var(--neutral-300), var(--neutral-400)); color: white; box-shadow: 0 3px 8px rgba(148,163,184,0.35); }
 .rank-puesto-badge.top-bronce { background: linear-gradient(135deg, #D97706, #B45309); color: white; box-shadow: 0 3px 8px rgba(180,83,9,0.30); }
 
 .rank-col-sucursal { min-width: 0; }
@@ -212,7 +212,7 @@
   width: 100%;
   max-width: 28px;
   height: 56px;
-  background: #F1F5F9;
+  background: var(--neutral-100);
   border-radius: 4px;
   position: relative;
   overflow: hidden;
@@ -231,12 +231,12 @@
   font-weight: 700;
   color: var(--text-main);
 }
-.rank-dia-cell.dia-vacio .rank-dia-barra-wrap { background: repeating-linear-gradient(45deg, #F1F5F9, #F1F5F9 4px, #E2E8F0 4px, #E2E8F0 8px); }
+.rank-dia-cell.dia-vacio .rank-dia-barra-wrap { background: repeating-linear-gradient(45deg, var(--neutral-100), var(--neutral-100) 4px, var(--neutral-200) 4px, var(--neutral-200) 8px); }
 .rank-dia-cell.dia-futuro { opacity: 0.35; }
 .rank-dia-cell.dia-hoy .rank-dia-barra-wrap {
   border: 2px solid var(--primary-blue);
 }
-.rank-dia-pct-vacio { color: #94A3B8; font-weight: 600; }
+.rank-dia-pct-vacio { color: var(--neutral-400); font-weight: 600; }
 
 /* Promedio (círculo final) */
 .rank-col-promedio {
@@ -296,7 +296,7 @@
 }
 
 /* Nota explicativa + chip de muestra baja (Ranking) */
-.rank-nota { margin: 4px 0 0; font-size: 12px; color: #94A3B8; max-width: 680px; line-height: 1.4; }
+.rank-nota { margin: 4px 0 0; font-size: 12px; color: var(--neutral-400); max-width: 680px; line-height: 1.4; }
 .rank-muestra-baja { display: inline-block; margin-left: 8px; font-size: 10.5px; font-weight: 700; color: #92400E; background: #FEF3C7; border-radius: 999px; padding: 2px 8px; vertical-align: middle; }
 
 /* Divisor del grupo "pocas tareas" */
@@ -305,4 +305,4 @@
 .rank-row-baja .rank-prom-circle { filter: saturate(.7); }
 
 /* Fracción bajo el círculo de % (claridad: 25/34) */
-.rank-prom-frac { text-align: center; font-size: 11px; font-weight: 700; color: #94A3B8; margin-top: 4px; }
+.rank-prom-frac { text-align: center; font-size: 11px; font-weight: 700; color: var(--neutral-400); margin-top: 4px; }

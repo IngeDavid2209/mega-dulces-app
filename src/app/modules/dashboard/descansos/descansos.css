@@ -5,12 +5,12 @@
 
 :host {
   display: block;
-  --primary-navy: #0F172A;
+  --primary-navy: var(--neutral-900);
   --primary-blue: #1E40AF;
-  --text-main: #1E293B;
-  --text-muted: #64748B;
-  --bg-app: #F8FAFC;
-  --border: #E2E8F0;
+  --text-main: var(--neutral-800);
+  --text-muted: var(--neutral-500);
+  --bg-app: var(--neutral-50);
+  --border: var(--neutral-200);
 }
 
 .app-layout {
@@ -19,7 +19,7 @@
   height: 100vh;
   overflow: hidden;
   background: var(--bg-app);
-  font-family: 'Inter', system-ui, sans-serif;
+  font-family: var(--font-body);
 }
 
 .header {
@@ -234,7 +234,7 @@
 }
 
 .desc-quick-btn--bulk:hover {
-  background: #F1F5F9;
+  background: var(--neutral-100);
 }
 
 
@@ -263,7 +263,7 @@
   margin-bottom: 8px;
 }
 
-.desc-filter-label svg { color: #94A3B8; }
+.desc-filter-label svg { color: var(--neutral-400); }
 
 .desc-input {
   width: 100%;
@@ -318,7 +318,7 @@
 }
 
 .desc-grid-header {
-  background: linear-gradient(180deg, #FAFBFF 0%, #F1F5F9 100%);
+  background: linear-gradient(180deg, #FAFBFF 0%, var(--neutral-100) 100%);
   border-bottom: 2px solid var(--border);
 }
 
@@ -364,7 +364,7 @@
 }
 
 .desc-grid-row {
-  border-bottom: 1px solid #F1F5F9;
+  border-bottom: 1px solid var(--neutral-100);
   transition: background 0.15s;
 }
 
@@ -429,19 +429,19 @@
   min-height: 66px;
   background: #FFFFFF;
   border: none;
-  border-left: 1px solid #F1F5F9;
+  border-left: 1px solid var(--neutral-100);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #CBD5E1;
+  color: var(--neutral-300);
   transition: background 0.15s, color 0.15s;
   padding: 0;
 }
 
 .desc-cell:hover:not(.selected) {
-  background: #F8FAFC;
-  color: #94A3B8;
+  background: var(--neutral-50);
+  color: var(--neutral-400);
 }
 
 .desc-cell.selected {
@@ -460,7 +460,7 @@
   justify-content: center;
   gap: 8px;
   padding: 14px 12px;
-  border-left: 1px solid #F1F5F9;
+  border-left: 1px solid var(--neutral-100);
 }
 
 .desc-total-badge {
@@ -478,8 +478,8 @@
 }
 
 .desc-total-badge--zero {
-  background: #F1F5F9;
-  color: #94A3B8;
+  background: var(--neutral-100);
+  color: var(--neutral-400);
 }
 
 .desc-clear-btn {
@@ -576,7 +576,7 @@
   height: 18px;
   border-radius: 4px;
   background: #FFFFFF;
-  border: 1.5px solid #CBD5E1;
+  border: 1.5px solid var(--neutral-300);
 }
 
 .desc-legend-swatch--marcado {

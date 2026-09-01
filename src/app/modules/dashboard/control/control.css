@@ -11,7 +11,7 @@
   display: flex;
   gap: 2px;
   flex-wrap: wrap;
-  border-bottom: 1px solid #E2E8F0;
+  border-bottom: 1px solid var(--neutral-200);
   margin: calc(-1 * clamp(20px, 2.2vw, 36px)) calc(-1 * clamp(20px, 2.4vw, 44px)) 22px;
   padding: 0 clamp(20px, 2.4vw, 44px);
 }
@@ -32,17 +32,17 @@
 .ctl-tab {
   font-size: 13px;
   font-weight: 700;
-  color: #64748B;
+  color: var(--neutral-500);
   padding: 10px 16px;
   text-decoration: none;
   border-bottom: 2px solid transparent;
   margin-bottom: -1px;
   white-space: nowrap;
 }
-.ctl-tab:hover { color: #0F172A; }
+.ctl-tab:hover { color: var(--neutral-900); }
 /* La activa se marca con la línea inferior, no con fondo: el contenido de abajo
    es denso y un bloque de color compite con los números. */
-.ctl-tab.activa { color: #0F172A; border-bottom-color: #0F172A; }
+.ctl-tab.activa { color: var(--neutral-900); border-bottom-color: var(--neutral-900); }
 
 /* ── La única clase del marco que NO está en src/styles.css ──────────────────
    Las otras nueve que usa esta plantilla —app-layout, header, header-left,

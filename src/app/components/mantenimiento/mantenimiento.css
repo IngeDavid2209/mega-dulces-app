@@ -14,8 +14,8 @@
   place-items: center;
   padding: 22px;
   box-sizing: border-box;
-  background: linear-gradient(160deg, #0F172A 0%, #1E293B 100%);
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background: linear-gradient(160deg, var(--neutral-900) 0%, var(--neutral-800) 100%);
+  font-family: var(--font-body);
   overflow-y: auto;
   z-index: 9999;
 }
@@ -56,7 +56,7 @@
   margin: 0 0 10px;
   font-size: 22px;
   font-weight: 800;
-  color: #0F172A;
+  color: var(--neutral-900);
   letter-spacing: -0.2px;
 }
 
@@ -64,7 +64,7 @@
   margin: 0 0 18px;
   font-size: 14.5px;
   line-height: 1.6;
-  color: #475569;
+  color: var(--neutral-600);
 }
 
 .mnt-tranquiliza {
@@ -109,33 +109,33 @@
 }
 
 .mnt-btn-primario {
-  background: #0F172A;
+  background: var(--neutral-900);
   color: #FFFFFF;
-  border: 1px solid #0F172A;
+  border: 1px solid var(--neutral-900);
 }
-.mnt-btn-primario:hover { background: #1E293B; }
+.mnt-btn-primario:hover { background: var(--neutral-800); }
 
 .mnt-btn-secundario {
   background: #FFFFFF;
-  color: #475569;
-  border: 1px solid #CBD5E1;
+  color: var(--neutral-600);
+  border: 1px solid var(--neutral-300);
 }
-.mnt-btn-secundario:hover { background: #F8FAFC; border-color: #94A3B8; }
+.mnt-btn-secundario:hover { background: var(--neutral-50); border-color: var(--neutral-400); }
 
 .mnt-pie {
   padding-top: 16px;
-  border-top: 1px solid #F1F5F9;
+  border-top: 1px solid var(--neutral-100);
   display: grid;
   gap: 4px;
 }
 .mnt-identidad {
   font-size: 11.5px;
-  color: #94A3B8;
+  color: var(--neutral-400);
   line-height: 1.5;
   word-break: break-word;
 }
-.mnt-identidad strong { color: #64748B; font-weight: 700; }
-.mnt-sello { font-size: 10.5px; color: #CBD5E1; }
+.mnt-identidad strong { color: var(--neutral-500); font-weight: 700; }
+.mnt-sello { font-size: 10.5px; color: var(--neutral-300); }
 
 @media (max-width: 420px) {
   .mnt-tarjeta { padding: 26px 20px 18px; border-radius: 14px; }

@@ -63,7 +63,7 @@
   gap: 8px;
   font-weight: 800;
   font-size: 15px;
-  color: #0F172A;
+  color: var(--neutral-900);
 }
 .av-dot {
   width: 9px;
@@ -76,7 +76,7 @@
   border: none;
   font-size: 26px;
   line-height: 1;
-  color: #64748B;
+  color: var(--neutral-500);
   cursor: pointer;
 }
 
@@ -91,7 +91,7 @@
 }
 .av-state-left { align-items: stretch; text-align: left; }
 
-.av-hint { margin: 0; font-size: 15px; color: #334155; line-height: 1.45; }
+.av-hint { margin: 0; font-size: 15px; color: var(--neutral-700); line-height: 1.45; }
 .av-center { text-align: center; }
 .av-error { color: #DC2626; font-weight: 600; }
 
@@ -99,8 +99,8 @@
   margin: 0;
   font-size: 16px;
   font-weight: 600;
-  color: #0F172A;
-  background: #F1F5F9;
+  color: var(--neutral-900);
+  background: var(--neutral-100);
   border-radius: 10px;
   padding: 10px 14px;
   width: 100%;
@@ -161,18 +161,18 @@
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.4px;
-  color: #64748B;
+  color: var(--neutral-500);
   margin: 6px 0 -6px;
 }
 .av-input {
   width: 100%;
   box-sizing: border-box;
   padding: 11px 13px;
-  border: 1px solid #CBD5E1;
+  border: 1px solid var(--neutral-300);
   border-radius: 10px;
   font-size: 15px;
   font-family: inherit;
-  color: #0F172A;
+  color: var(--neutral-900);
   resize: vertical;
 }
 .av-input:focus { outline: none; border-color: #2563EB; }
@@ -208,15 +208,15 @@
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  background: #F8FAFC;
-  border: 1px solid #E2E8F0;
+  background: var(--neutral-50);
+  border: 1px solid var(--neutral-200);
   border-radius: 10px;
   padding: 10px 12px;
 }
 .av-item-texto {
   font-size: 15px;
   font-weight: 600;
-  color: #0F172A;
+  color: var(--neutral-900);
 }
 .av-chip {
   flex-shrink: 0;
@@ -224,8 +224,8 @@
   font-weight: 800;
   padding: 3px 9px;
   border-radius: 20px;
-  background: #F1F5F9;
-  color: #475569;
+  background: var(--neutral-100);
+  color: var(--neutral-600);
   white-space: nowrap;
 }
 .av-chip-hoy { background: #EFF6FF; color: #1D4ED8; }
@@ -243,8 +243,8 @@
 }
 .av-btn-primary { background: #2563EB; color: #fff; }
 .av-btn-primary:hover { background: #1D4ED8; }
-.av-btn-ghost { background: #fff; color: #475569; border-color: #CBD5E1; }
-.av-btn-ghost:hover { background: #F8FAFC; }
+.av-btn-ghost { background: #fff; color: var(--neutral-600); border-color: var(--neutral-300); }
+.av-btn-ghost:hover { background: var(--neutral-50); }
 
 /* Enlace discreto (ej. "Prefiero escribir") */
 .av-link {

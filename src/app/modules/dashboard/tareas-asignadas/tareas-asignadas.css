@@ -1,14 +1,14 @@
 .ta-stat {
   background: #fff;
-  border: 1px solid #E2E8F0;
+  border: 1px solid var(--neutral-200);
   border-radius: 12px;
   padding: 12px 18px;
   display: flex;
   flex-direction: column;
   min-width: 110px;
 }
-.ta-stat-num { font-size: 24px; font-weight: 800; color: #0F172A; }
-.ta-stat-lbl { font-size: 12px; color: #64748B; text-transform: uppercase; letter-spacing: .4px; }
+.ta-stat-num { font-size: 24px; font-weight: 800; color: var(--neutral-900); }
+.ta-stat-lbl { font-size: 12px; color: var(--neutral-500); text-transform: uppercase; letter-spacing: .4px; }
 .ta-stat-pend .ta-stat-num { color: #DC2626; }
 .ta-stat-ok .ta-stat-num { color: #16A34A; }
 
@@ -20,29 +20,29 @@
 }
 .ta-filtros select, .ta-filtros input {
   padding: 9px 12px;
-  border: 1px solid #CBD5E1;
+  border: 1px solid var(--neutral-300);
   border-radius: 8px;
   font-size: 14px;
   background: #fff;
-  color: #0F172A;
+  color: var(--neutral-900);
 }
 .ta-limpiar {
   padding: 9px 16px;
-  border: 1px solid #CBD5E1;
+  border: 1px solid var(--neutral-300);
   border-radius: 8px;
   background: #fff;
-  color: #475569;
+  color: var(--neutral-600);
   font-weight: 600;
   cursor: pointer;
 }
-.ta-limpiar:hover { background: #F8FAFC; }
+.ta-limpiar:hover { background: var(--neutral-50); }
 
-.ta-msg { text-align: center; padding: 30px; color: #94A3B8; font-size: 15px; }
+.ta-msg { text-align: center; padding: 30px; color: var(--neutral-400); font-size: 15px; }
 .ta-error { color: #DC2626; }
 
 .ta-card {
   background: #fff;
-  border: 1px solid #E2E8F0;
+  border: 1px solid var(--neutral-200);
   border-radius: 12px;
   padding: 14px 16px;
   margin-bottom: 10px;
@@ -55,15 +55,15 @@
 
 .ta-check {
   width: 22px; height: 22px; flex-shrink: 0; margin-top: 2px;
-  border-radius: 6px; border: 2px solid #CBD5E1;
+  border-radius: 6px; border: 2px solid var(--neutral-300);
   display: flex; align-items: center; justify-content: center;
 }
 .ta-check.on { background: #16A34A; border-color: #16A34A; }
 
 .ta-card-body { flex: 1; min-width: 0; }
 .ta-card-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
-.ta-texto { font-weight: 700; font-size: 16px; color: #0F172A; }
-.ta-texto.tachado { text-decoration: line-through; color: #94A3B8; }
+.ta-texto { font-weight: 700; font-size: 16px; color: var(--neutral-900); }
+.ta-texto.tachado { text-decoration: line-through; color: var(--neutral-400); }
 
 .ta-estado {
   flex-shrink: 0; font-size: 11px; font-weight: 800; padding: 3px 10px;
@@ -75,7 +75,7 @@
 .ta-persona { font-size: 13px; font-weight: 700; color: #2563EB; }
 .ta-chip {
   font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 20px;
-  background: #F1F5F9; color: #475569;
+  background: var(--neutral-100); color: var(--neutral-600);
 }
 .ta-prio-alta { background: #FEF2F2; color: #DC2626; }
 .ta-prio-media { background: #FFF7ED; color: #C2410C; }

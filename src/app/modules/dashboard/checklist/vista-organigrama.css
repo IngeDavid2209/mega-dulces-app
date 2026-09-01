@@ -7,7 +7,7 @@
 
 .org {
   background: #fff;
-  border: 1px solid #E2E8F0;
+  border: 1px solid var(--neutral-200);
   border-radius: 12px;
   overflow: hidden;
   margin-bottom: 18px;
@@ -20,14 +20,14 @@
   gap: 14px;
   flex-wrap: wrap;
   padding: 15px 18px;
-  border-bottom: 1px solid #F1F5F9;
+  border-bottom: 1px solid var(--neutral-100);
   background: #FCFCFD;
 }
-.org-titulo { margin: 0 0 3px; font-size: 15px; font-weight: 800; color: #0F172A; }
-.org-sub { font-size: 12.5px; color: #64748B; }
+.org-titulo { margin: 0 0 3px; font-size: 15px; font-weight: 800; color: var(--neutral-900); }
+.org-sub { font-size: 12.5px; color: var(--neutral-500); }
 .org-check {
   display: inline-flex; align-items: center; gap: 7px;
-  font-size: 12.5px; font-weight: 600; color: #475569;
+  font-size: 12.5px; font-weight: 600; color: var(--neutral-600);
   cursor: pointer; user-select: none;
 }
 
@@ -195,30 +195,30 @@
 /* ── Detalle ─────────────────────────────────────────────────────────────── */
 .org-detalle { padding: 16px 18px; max-height: 620px; overflow-y: auto; }
 
-.org-invita { text-align: center; padding: 54px 20px; color: #64748B; }
+.org-invita { text-align: center; padding: 54px 20px; color: var(--neutral-500); }
 .org-invita-icono { font-size: 34px; margin-bottom: 10px; }
-.org-invita h4 { margin: 0 0 6px; font-size: 15px; color: #0F172A; font-weight: 700; }
+.org-invita h4 { margin: 0 0 6px; font-size: 15px; color: var(--neutral-900); font-weight: 700; }
 .org-invita p { margin: 0 auto; font-size: 13px; line-height: 1.55; max-width: 46ch; }
 
 .org-det-head { display: flex; align-items: flex-start; gap: 11px; margin-bottom: 16px; }
 .org-volver {
   flex: 0 0 auto;
   width: 28px; height: 28px; border-radius: 7px;
-  border: 1px solid #E2E8F0; background: #fff; color: #475569;
+  border: 1px solid var(--neutral-200); background: #fff; color: var(--neutral-600);
   cursor: pointer; font-size: 15px; line-height: 1;
 }
-.org-volver:hover { background: #F8FAFC; }
-.org-det-titulo { margin: 0 0 3px; font-size: 16px; font-weight: 800; color: #0F172A; }
-.org-det-manual { font-size: 12px; color: #64748B; line-height: 1.5; }
+.org-volver:hover { background: var(--neutral-50); }
+.org-det-titulo { margin: 0 0 3px; font-size: 16px; font-weight: 800; color: var(--neutral-900); }
+.org-det-manual { font-size: 12px; color: var(--neutral-500); line-height: 1.5; }
 .org-det-sinmanual { color: #B45309; }
 
 .org-bloque { margin-bottom: 22px; }
 .org-bloque-titulo {
   font-size: 10.5px; font-weight: 800; letter-spacing: .6px;
-  color: #64748B; text-transform: uppercase; margin-bottom: 9px;
+  color: var(--neutral-500); text-transform: uppercase; margin-bottom: 9px;
 }
-.org-bloque-nota { font-weight: 600; letter-spacing: 0; text-transform: none; color: #94A3B8; }
-.org-nada { font-size: 12.5px; color: #94A3B8; margin: 0; }
+.org-bloque-nota { font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--neutral-400); }
+.org-nada { font-size: 12.5px; color: var(--neutral-400); margin: 0; }
 
 /* Tarea del manual */
 .org-tarea {
@@ -226,7 +226,7 @@
   border-radius: 9px; background: #FFFDF7; border: 1px solid #FDE68A;
 }
 .org-tarea-cab { display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap; margin-bottom: 7px; }
-.org-tarea-nombre { font-size: 13.5px; font-weight: 800; color: #0F172A; }
+.org-tarea-nombre { font-size: 13.5px; font-weight: 800; color: var(--neutral-900); }
 .org-tarea-codigo {
   font-size: 10px; font-weight: 800; color: #92400E;
   background: #FEF3C7; border: 1px solid #FCD34D;
@@ -234,45 +234,45 @@
 }
 .org-tarea-meta { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
 .org-meta {
-  font-size: 10.5px; font-weight: 700; color: #475569;
-  background: #fff; border: 1px solid #E2E8F0;
+  font-size: 10.5px; font-weight: 700; color: var(--neutral-600);
+  background: #fff; border: 1px solid var(--neutral-200);
   border-radius: 999px; padding: 1px 8px; white-space: nowrap;
 }
 .org-meta-evento { background: #EFF6FF; border-color: #BFDBFE; color: #1D4ED8; }
-.org-meta-solo   { background: #F1F5F9; border-color: #CBD5E1; color: #64748B; }
+.org-meta-solo   { background: var(--neutral-100); border-color: var(--neutral-300); color: var(--neutral-500); }
 .org-tarea-nota {
   margin: 0 0 8px; font-size: 11.5px; line-height: 1.5; color: #78350F;
   background: #FEF3C7; border-left: 3px solid #FCD34D;
   border-radius: 0 5px 5px 0; padding: 7px 10px;
 }
 .org-items { margin: 0; padding-left: 20px; display: grid; gap: 3px; }
-.org-items li { font-size: 12.5px; color: #1E293B; line-height: 1.45; }
+.org-items li { font-size: 12.5px; color: var(--neutral-800); line-height: 1.45; }
 .org-item-bloque {
   display: inline-block; margin-right: 6px; padding: 0 6px;
-  border-radius: 3px; background: #E2E8F0; color: #475569;
+  border-radius: 3px; background: var(--neutral-200); color: var(--neutral-600);
   font-size: 9.5px; font-weight: 800; text-transform: uppercase; vertical-align: 1px;
 }
 
 /* Sucursal */
 .org-suc {
   padding: 11px 13px; margin-bottom: 10px;
-  border-radius: 9px; border: 1px solid #E2E8F0; background: #FCFCFD;
+  border-radius: 9px; border: 1px solid var(--neutral-200); background: #FCFCFD;
 }
 .org-suc-cab { display: flex; align-items: center; gap: 9px; margin-bottom: 7px; }
-.org-suc-nombre { flex: 1; min-width: 0; font-size: 13px; font-weight: 800; color: #0F172A; }
-.org-suc-personas { font-size: 11.5px; color: #64748B; white-space: nowrap; }
+.org-suc-nombre { flex: 1; min-width: 0; font-size: 13px; font-weight: 800; color: var(--neutral-900); }
+.org-suc-personas { font-size: 11.5px; color: var(--neutral-500); white-space: nowrap; }
 .org-suc-barra {
-  height: 5px; border-radius: 999px; background: #E2E8F0;
+  height: 5px; border-radius: 999px; background: var(--neutral-200);
   overflow: hidden; margin-bottom: 10px;
 }
 .org-suc-barra > span { display: block; height: 100%; border-radius: 999px; }
 .org-suc-barra > span.av-bien  { background: #16A34A; }
 .org-suc-barra > span.av-medio { background: #F59E0B; }
 .org-suc-barra > span.av-cero  { background: #DC2626; }
-.org-suc-barra > span.av-nada  { background: #CBD5E1; }
+.org-suc-barra > span.av-nada  { background: var(--neutral-300); }
 
 /* Persona */
-.org-persona { padding: 7px 0; border-top: 1px solid #F1F5F9; }
+.org-persona { padding: 7px 0; border-top: 1px solid var(--neutral-100); }
 .org-persona:first-of-type { border-top: none; }
 .org-persona-cab { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
 .org-avatar {
@@ -282,27 +282,27 @@
   font-size: 10px; font-weight: 800;
   display: grid; place-items: center;
 }
-.org-persona-nombre { flex: 1; min-width: 0; font-size: 12.5px; font-weight: 700; color: #1E293B; }
-.org-persona-frac { font-size: 11.5px; font-weight: 700; color: #64748B; white-space: nowrap; }
+.org-persona-nombre { flex: 1; min-width: 0; font-size: 12.5px; font-weight: 700; color: var(--neutral-800); }
+.org-persona-frac { font-size: 11.5px; font-weight: 700; color: var(--neutral-500); white-space: nowrap; }
 
 .org-entrega {
   width: 100%;
   display: flex; align-items: center; gap: 9px;
   padding: 7px 10px; margin: 3px 0 0 32px;
   width: calc(100% - 32px);
-  border-radius: 7px; border: 1px solid #E2E8F0; background: #fff;
+  border-radius: 7px; border: 1px solid var(--neutral-200); background: #fff;
   cursor: pointer; text-align: left; font-family: inherit;
 }
-.org-entrega:hover { background: #F8FAFC; border-color: #CBD5E1; }
+.org-entrega:hover { background: var(--neutral-50); border-color: var(--neutral-300); }
 .org-entrega.vencida { border-color: #FECACA; background: #FEF2F2; }
 .org-entrega.completa { border-color: #A7F3D0; background: #F0FDF4; }
 .org-entrega-nombre {
-  flex: 1; min-width: 0; font-size: 12.5px; color: #1E293B; font-weight: 600;
+  flex: 1; min-width: 0; font-size: 12.5px; color: var(--neutral-800); font-weight: 600;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .org-entrega-datos { flex: 0 0 auto; display: flex; align-items: center; gap: 8px; }
-.org-entrega-hora { font-size: 11px; color: #94A3B8; }
-.org-entrega-frac { font-size: 11.5px; font-weight: 800; color: #475569; }
+.org-entrega-hora { font-size: 11px; color: var(--neutral-400); }
+.org-entrega-frac { font-size: 11.5px; font-weight: 800; color: var(--neutral-600); }
 .org-entrega-estado {
   font-size: 9.5px; font-weight: 800; text-transform: uppercase;
   background: #FEE2E2; color: #991B1B;
@@ -313,17 +313,17 @@
 /* Los que no recibieron nada */
 .org-sinentrega {
   margin-top: 14px; padding: 12px 14px;
-  border-radius: 9px; background: #F8FAFC; border: 1px dashed #CBD5E1;
+  border-radius: 9px; background: var(--neutral-50); border: 1px dashed var(--neutral-300);
 }
-.org-sinentrega-titulo { font-size: 12px; font-weight: 800; color: #475569; margin-bottom: 4px; }
-.org-sinentrega-por-que { margin: 0 0 8px; font-size: 11.5px; color: #64748B; line-height: 1.5; }
+.org-sinentrega-titulo { font-size: 12px; font-weight: 800; color: var(--neutral-600); margin-bottom: 4px; }
+.org-sinentrega-por-que { margin: 0 0 8px; font-size: 11.5px; color: var(--neutral-500); line-height: 1.5; }
 .org-sinentrega-lista { display: flex; gap: 6px; flex-wrap: wrap; }
 .org-chip {
-  font-size: 11.5px; font-weight: 600; color: #475569;
-  background: #fff; border: 1px solid #E2E8F0;
+  font-size: 11.5px; font-weight: 600; color: var(--neutral-600);
+  background: #fff; border: 1px solid var(--neutral-200);
   border-radius: 999px; padding: 3px 10px;
 }
-.org-chip small { color: #94A3B8; font-weight: 500; margin-left: 5px; }
+.org-chip small { color: var(--neutral-400); font-weight: 500; margin-left: 5px; }
 
 /* ── Responsive ──────────────────────────────────────────────────────────── */
 @media (max-width: 860px) {

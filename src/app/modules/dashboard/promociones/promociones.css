@@ -5,9 +5,9 @@
 :host {
   --pz-azul: #1F4E79;
   --pz-azul-claro: #DEEBF7;
-  --pz-linea: #E2E8F0;
-  --pz-txt: #1E293B;
-  --pz-txt-2: #64748B;
+  --pz-linea: var(--neutral-200);
+  --pz-txt: var(--neutral-800);
+  --pz-txt-2: var(--neutral-500);
   --pz-rojo: #C7382E;
   --pz-rojo-claro: #FBE9E7;
   --pz-verde: #1F7A4D;
@@ -28,7 +28,7 @@
 .promo-head h1 {
   font-size: 21px;
   font-weight: 800;
-  color: #0F172A;
+  color: var(--neutral-900);
   letter-spacing: -0.2px;
   line-height: 1.2;
   display: flex;
@@ -58,7 +58,7 @@
   font-weight: 600;
   height: 36px;
   padding: 0 14px;
-  border: 1px solid #CBD5E1;
+  border: 1px solid var(--neutral-300);
   border-radius: 6px;
   background: #FFF;
   color: var(--pz-txt);
@@ -71,7 +71,7 @@
 }
 
 .pr-btn svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-.pr-btn:hover:not(:disabled) { background: #F8FAFC; border-color: #94A3B8; }
+.pr-btn:hover:not(:disabled) { background: var(--neutral-50); border-color: var(--neutral-400); }
 .pr-btn:disabled { opacity: .5; cursor: not-allowed; }
 
 .pr-btn-alta { background: var(--pz-azul); border-color: var(--pz-azul); color: #FFF; }
@@ -109,8 +109,8 @@
   white-space: nowrap;
 }
 
-.promo-tabla td { padding: 9px 10px; border-bottom: 1px solid #F1F5F9; vertical-align: middle; }
-.promo-tabla tbody tr:hover { background: #F8FAFC; }
+.promo-tabla td { padding: 9px 10px; border-bottom: 1px solid var(--neutral-100); vertical-align: middle; }
+.promo-tabla tbody tr:hover { background: var(--neutral-50); }
 .promo-tabla .th-num { text-align: right; }
 .td-folio { font-weight: 800; font-variant-numeric: tabular-nums; color: var(--pz-rojo); }
 .td-prov { font-weight: 600; }
@@ -159,7 +159,7 @@
 .paso-activo { border-color: var(--pz-azul); color: var(--pz-azul); }
 .paso-activo .paso-num { background: var(--pz-azul); color: #FFF; }
 .paso-bloqueado { opacity: .55; cursor: not-allowed; }
-.paso-linea { flex: 0 0 18px; height: 1px; background: #CBD5E1; }
+.paso-linea { flex: 0 0 18px; height: 1px; background: var(--neutral-300); }
 
 /* ---------- Panel de captura ---------- */
 .promo-panel {
@@ -189,7 +189,7 @@
   width: 100%;
   min-height: 38px;
   padding: 8px 11px;
-  border: 1px solid #CBD5E1;
+  border: 1px solid var(--neutral-300);
   border-radius: 6px;
   background: #FFF;
   color: var(--pz-txt);
@@ -259,7 +259,7 @@
   font-weight: 800;
   letter-spacing: .4px;
   text-transform: uppercase;
-  color: #94A3B8;
+  color: var(--neutral-400);
 }
 
 .promo-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 7px; }
@@ -277,7 +277,7 @@
 }
 
 .promo-chip-btn:hover { border-color: var(--pz-azul); color: var(--pz-azul); }
-.promo-chip-btn small { color: #94A3B8; font-weight: 500; margin-left: 4px; }
+.promo-chip-btn small { color: var(--neutral-400); font-weight: 500; margin-left: 4px; }
 
 /* ---------- Canales y recursos ---------- */
 .promo-canales { display: flex; flex-wrap: wrap; gap: 7px; }
@@ -336,7 +336,7 @@
   border: 1px solid var(--pz-linea);
   border-radius: 8px;
   padding: 8px 10px;
-  background: #F8FAFC;
+  background: var(--neutral-50);
   min-width: 0;
 }
 
@@ -358,10 +358,10 @@
 }
 
 .promo-ev-nombre:hover { color: var(--pz-azul); text-decoration: underline; }
-.promo-ev-peso { font-size: 11px; color: #94A3B8; }
+.promo-ev-peso { font-size: 11px; color: var(--neutral-400); }
 
 .promo-ev-quitar {
-  border: 0; background: transparent; color: #94A3B8;
+  border: 0; background: transparent; color: var(--neutral-400);
   font-size: 20px; line-height: 1; cursor: pointer; padding: 0 2px; flex-shrink: 0;
 }
 
@@ -400,7 +400,7 @@
   color: var(--pz-rojo); background: var(--pz-rojo-claro);
   border-radius: 6px; padding: 2px 8px; font-size: 13px;
 }
-.promo-t-prov { font-weight: 700; color: #0F172A; font-size: 15px; flex: 1 1 auto; }
+.promo-t-prov { font-weight: 700; color: var(--neutral-900); font-size: 15px; flex: 1 1 auto; }
 .promo-t-vig { font-size: 12px; color: var(--pz-txt-2); }
 
 /* Avance de expedientes */
@@ -422,7 +422,7 @@
 
 /* ---------- Ranking ---------- */
 .promo-rk-tit {
-  font-size: 15px; font-weight: 800; color: #0F172A;
+  font-size: 15px; font-weight: 800; color: var(--neutral-900);
   margin: 22px 0 10px; padding-bottom: 6px; border-bottom: 2px solid var(--pz-linea);
 }
 .promo-rk-lugar {
@@ -441,10 +441,10 @@
 }
 .promo-rk-fila {
   display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
-  padding: 5px 0; border-bottom: 1px solid #F1F5F9; font-size: 13px;
+  padding: 5px 0; border-bottom: 1px solid var(--neutral-100); font-size: 13px;
 }
 .promo-rk-fila:last-child { border-bottom: none; }
-.promo-rk-prov { font-weight: 700; color: #0F172A; flex: 1 1 auto; }
+.promo-rk-prov { font-weight: 700; color: var(--neutral-900); flex: 1 1 auto; }
 .promo-rk-folio { font-size: 11.5px; color: var(--pz-txt-2); font-variant-numeric: tabular-nums; }
 .promo-rk-num { font-size: 12.5px; color: var(--pz-txt-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .promo-rk-num strong { color: var(--pz-azul); }
@@ -499,7 +499,7 @@
 }
 .promo-kpi-fila {
   display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap;
-  padding: 6px 0; border-bottom: 1px solid #F1F5F9; font-size: 13px;
+  padding: 6px 0; border-bottom: 1px solid var(--neutral-100); font-size: 13px;
 }
 .promo-kpi-fila:last-child { border-bottom: none; }
 .promo-kpi-lugar {
@@ -512,7 +512,7 @@
   background: var(--pz-azul-claro); border-radius: 6px; padding: 3px 8px;
   white-space: nowrap;
 }
-.promo-kpi-prov { font-weight: 700; color: #0F172A; flex: 1 1 auto; min-width: 0; }
+.promo-kpi-prov { font-weight: 700; color: var(--neutral-900); flex: 1 1 auto; min-width: 0; }
 .promo-kpi-folio {
   font-size: 11.5px; color: var(--pz-txt-2); font-variant-numeric: tabular-nums;
 }
@@ -544,7 +544,7 @@
 .promo-form:disabled input,
 .promo-form:disabled select,
 .promo-form:disabled textarea {
-  background: #F8FAFC; color: #0F172A; opacity: 1; -webkit-text-fill-color: #0F172A;
+  background: var(--neutral-50); color: var(--neutral-900); opacity: 1; -webkit-text-fill-color: var(--neutral-900);
   cursor: default;
 }
 .promo-form:disabled { cursor: default; }
@@ -552,5 +552,5 @@
 .promo-aviso-lectura {
   background: var(--pz-azul-claro); border: 1px solid #BFD9F0;
   border-radius: 10px; padding: 10px 12px; margin-bottom: 14px;
-  font-size: 13px; color: #0F172A; line-height: 1.45;
+  font-size: 13px; color: var(--neutral-900); line-height: 1.45;
 }

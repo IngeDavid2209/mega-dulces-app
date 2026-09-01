@@ -69,13 +69,13 @@
   border-bottom: 1px solid #EEF2F6;
   flex-shrink: 0;
 }
-.ac-title { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 15px; color: #0F172A; }
+.ac-title { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 15px; color: var(--neutral-900); }
 .ac-dot { width: 9px; height: 9px; border-radius: 50%; background: #22C55E; transition: background .2s; }
 .ac-dot-habla { background: #2563EB; animation: ac-blink 1s infinite; }
 .ac-dot-escucha { background: #DC2626; animation: ac-blink 1s infinite; }
 @keyframes ac-blink { 50% { opacity: .35; } }
-.ac-estado { font-size: 12px; font-weight: 600; color: #64748B; }
-.ac-close { background: none; border: none; font-size: 26px; line-height: 1; color: #64748B; cursor: pointer; }
+.ac-estado { font-size: 12px; font-weight: 600; color: var(--neutral-500); }
+.ac-close { background: none; border: none; font-size: 26px; line-height: 1; color: var(--neutral-500); cursor: pointer; }
 
 /* Cuerpo del chat */
 .ac-body {
@@ -85,7 +85,7 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
-  background: #F8FAFC;
+  background: var(--neutral-50);
 }
 
 .ac-msg { display: flex; }
@@ -108,8 +108,8 @@
 }
 .ac-msg-bot .ac-burbuja {
   background: #fff;
-  color: #0F172A;
-  border: 1px solid #E2E8F0;
+  color: var(--neutral-900);
+  border: 1px solid var(--neutral-200);
   border-bottom-left-radius: 4px;
 }
 
@@ -135,7 +135,7 @@
 /* Indicador "escribiendo" */
 .ac-escribiendo { display: flex; gap: 4px; align-items: center; }
 .ac-escribiendo span {
-  width: 7px; height: 7px; border-radius: 50%; background: #94A3B8;
+  width: 7px; height: 7px; border-radius: 50%; background: var(--neutral-400);
   animation: ac-bounce 1.2s infinite ease-in-out;
 }
 .ac-escribiendo span:nth-child(2) { animation-delay: 0.15s; }
@@ -158,7 +158,7 @@
   flex: 1;
   min-width: 0;
   padding: 11px 14px;
-  border: 1px solid #CBD5E1;
+  border: 1px solid var(--neutral-300);
   border-radius: 22px;
   font-size: 15px;
   outline: none;
@@ -176,11 +176,11 @@
   justify-content: center;
   cursor: pointer;
 }
-.ac-mic { background: #F1F5F9; color: #475569; }
-.ac-mic:hover { background: #E2E8F0; }
+.ac-mic { background: var(--neutral-100); color: var(--neutral-600); }
+.ac-mic:hover { background: var(--neutral-200); }
 .ac-mic-on { background: #FEE2E2; color: #DC2626; animation: ac-pulse 1.2s infinite; }
 @keyframes ac-pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(220,38,38,.4); } 50% { box-shadow: 0 0 0 6px rgba(220,38,38,0); } }
 
 .ac-send { background: #2563EB; color: #fff; }
 .ac-send:hover { background: #1D4ED8; }
-.ac-send:disabled { background: #CBD5E1; cursor: default; }
+.ac-send:disabled { background: var(--neutral-300); cursor: default; }

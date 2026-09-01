@@ -1,20 +1,188 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+/* ═══════════════════════════════════════════════════════════════════════════
+   DESIGN SYSTEM "MERCADO" — Mega Dulces · perfil Operations
+   ═══════════════════════════════════════════════════════════════════════════
+   Que un supervisor que usa las dos apps sienta que son la misma empresa.
+
+   Las dos decisiones que separan esto del SaaS generico, y que son las que hay
+   que cuidar al tocar cualquier componente:
+
+     1. LOS NEUTRALES SON CALIDOS (Stone). No Zinc, no Slate, no Gray. Es la
+        palanca que mata el frio SaaS y la mas facil de romper sin darse
+        cuenta, porque el gris frio es el default de todo. Esta app venia
+        justamente en Slate de Tailwind (#0F172A, #64748B, #F8FAFC, #E2E8F0).
+     2. EL COLOR TIENE TRES ROLES QUE NO SE MEZCLAN: amarillo es sello de
+        marca, sunset (#F05A28) es accion, ember es IA.
+
+   No se inventan hex, tamaños, radios ni duraciones. Si hace falta algo que no
+   esta aqui, se pide; no se improvisa en un componente.
+   ═══════════════════════════════════════════════════════════════════════════ */
+/* Las fuentes se cargan con <link> en index.html: un @import bloquea el
+   parseo del CSS y retrasa el primer pintado. */
 
 :root {
-  --primary-navy: #0F172A;
-  --primary-blue: #1E40AF;
-  --text-main: #1E293B;
-  --text-muted: #64748B;
-  --bg-app: #F8FAFC;
-  --bg-sidebar: #FFFFFF;
-  --border: #E2E8F0;
-  --green: #10B981;
-  --red: #EF4444;
-  --card: #FFFFFF;
-  --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
-  --shadow-lg: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
-  --radius: 8px;
-  --radius-sm: 6px;
+  /* ── TIPOGRAFÍA ───────────────────────────────────────────────────────── */
+  --font-body: 'Hanken Grotesk', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'Geist Mono', ui-monospace, 'Courier New', monospace;
+  /* --font-display (Poppins) es SOLO storefront. En Operations no se usa. */
+
+  --fs-display: 2.5rem;    /* 40px — headline metric, UNA por vista */
+  --fs-h1:      1.875rem;  /* 30px — storefront only */
+  --fs-h2:      1.25rem;   /* 20px — page-head de apartado */
+  --fs-h3:      1rem;      /* 16px — título de panel */
+  --fs-lg:      1.125rem;  /* 18px */
+  --fs-body:    0.875rem;  /* 14px — body default */
+  --fs-sm:      0.8125rem; /* 13px — celda de tabla (base Operations) */
+  --fs-xs:      0.75rem;   /* 12px — metadatos, hint */
+  --fs-micro:   0.6875rem; /* 11px — column header, KPI label */
+  --fs-nano:    0.625rem;  /* 10px — último recurso */
+
+  --fw-regular: 400;  --fw-medium: 500;  --fw-bold: 700;
+  --fw-black:   800;  /* sólo headline metric */
+
+  /* ── BRAND (cálido) ───────────────────────────────────────────────────── */
+  --brand-50:#FFFEF0; --brand-100:#FFF8BC; --brand-200:#FEEC7C; --brand-300:#FDE044;
+  --brand-400:#FDE707; /* SELLO. Nunca fondo con texto blanco (APCA ~10) */
+  --brand-500:#F8B400; --brand-600:#F68F1E;
+  --brand-700:#F05A28; /* SUNSET = --action */
+  --brand-800:#C53E15; --brand-900:#8C2308; --brand-950:#4B1300;
+
+  /* ── NEUTRALES — Stone cálido (NO Zinc/Slate/Gray) ────────────────────── */
+  --neutral-50:#FBF9F6;  --neutral-100:#F5F1EA; --neutral-200:#E8E2D7;
+  --neutral-300:#D8CFC0; --neutral-400:#B0A595; --neutral-500:#837A6C;
+  --neutral-600:#5E564B; --neutral-700:#463F36; --neutral-800:#2B2620;
+  --neutral-900:#1A1611; --neutral-950:#100D09;
+
+  /* ── ACCIÓN ───────────────────────────────────────────────────────────── */
+  --action:       #F05A28;
+  --action-hover: #D2451C;
+  --action-press: #B83C15;
+  --action-ink:   #FFFFFF;
+  --action-ring:  rgba(240, 90, 40, 0.30);
+
+  /* ── IA — ember (mata el morado/azul genérico) ────────────────────────── */
+  --ember-from:   #F8B400;
+  --ember-to:     #F05A28;
+  --ember-grad:   linear-gradient(135deg, #F8B400 0%, #F05A28 100%);
+  --ember-soft:   rgba(248, 180, 0, 0.12);
+  --ember-border: rgba(240, 90, 40, 0.30);
+
+  /* ── SEMÁNTICOS — fg sólido · soft-bg chip · soft-fg texto sobre el chip ─ */
+  --ok-fg:#16A34A;   --ok-soft-bg:#DCFCE7;   --ok-soft-fg:#166534;   --ok-border:#BBF7D0;
+  --warn-fg:#F59E0B; --warn-soft-bg:#FEF3C7; --warn-soft-fg:#92400E; --warn-border:#FDE68A;
+  --bad-fg:#DC2626;  --bad-soft-bg:#FEE2E2;  --bad-soft-fg:#991B1B;  --bad-border:#FECACA;
+  --info-fg:#2563EB; --info-soft-bg:#DBEAFE; --info-soft-fg:#1E40AF; --info-border:#BFDBFE;
+
+  /* ── SUPERFICIES — LIGHT ──────────────────────────────────────────────── */
+  --layout-bg:      var(--neutral-100);
+  --card-bg:        #FFFFFF;
+  --sidebar-bg:     #FFFFFF;
+  --surface-ground: var(--neutral-50);
+  --border-color:   var(--neutral-200);
+  --text-main:      var(--neutral-950);
+  --text-muted:     var(--neutral-600);
+  --text-faint:     var(--neutral-400);
+  --text-disabled:  rgba(16, 13, 9, 0.45);
+  --ink-rgb: 16, 13, 9;   /* tinta de overlays — se voltea en dark */
+
+  --shadow-float: 0 2px 6px rgba(16,13,9,.10), 0 12px 28px -14px rgba(16,13,9,.18);
+
+  /* ── INTERACCIÓN — overlays por alpha. Una definición sirve light+dark ─── */
+  --overlay-hover:    rgba(var(--ink-rgb), 0.045);
+  --overlay-active:   rgba(var(--ink-rgb), 0.09);
+  --overlay-selected: rgba(var(--ink-rgb), 0.07);
+
+  /* ── RADIOS ───────────────────────────────────────────────────────────── */
+  --r-sm:8px; --r-md:12px; --r-lg:16px; --r-xl:20px; --r-2xl:24px; --r-pill:999px;
+
+  /* ── SPACING — base 4px, único origen de paddings/gaps/margins ────────── */
+  --sp-1:.25rem; --sp-2:.5rem; --sp-3:.75rem; --sp-4:1rem; --sp-5:1.25rem;
+  --sp-6:1.5rem; --sp-8:2rem;  --sp-10:2.5rem; --sp-12:3rem;
+
+  /* ── MOTION — techo duro 350ms ────────────────────────────────────────── */
+  --dur-micro:120ms; --dur-short:150ms; --dur-standard:250ms; --dur-max:350ms;
+  --ease-standard:   cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-emphasized: cubic-bezier(0.2, 0, 0, 1);
+  --ease-decelerate: cubic-bezier(0, 0, 0.2, 1);
+  --ease-accelerate: cubic-bezier(0.4, 0, 1, 1);
+  --ease-drawer:     cubic-bezier(0.32, 0.72, 0, 1);
+
+  /* ── DENSIDAD — la decide el PUNTERO, no la pantalla ──────────────────── */
+  --row-h-xs:24px; --row-h-sm:32px; --row-h-md:40px; --row-h-lg:48px; --row-h-xl:64px;
+  --row-h: var(--row-h-md);   /* Operations = compact++ */
+  --tap-min: 0px;
+
+  /* ═════════════════════════════════════════════════════════════════════
+     PUENTE CON LOS 14 TOKENS VIEJOS
+     ─────────────────────────────────────────────────────────────────────
+     Estos nombres tienen 1,040 usos repartidos en 37 hojas de estilo. NO se
+     borran: se REMAPEAN. Asi la app entera cambia de temperatura sin abrir
+     esos 37 archivos, y los que siguen con hex a mano quedan desentonando a
+     proposito — la propia pantalla se vuelve el marcador de que falta migrar.
+
+     Cuando un componente se migre, se cambia su `var(--viejo)` por el token
+     de Mercado que le toque y este puente se va quedando sin usuarios.
+     ═════════════════════════════════════════════════════════════════════ */
+  --primary-navy: var(--neutral-950);
+  /* Era #1E40AF. En Mercado el rol de accion es sunset, nunca azul: el azul
+     sobrevive solo como --info-*, que es otro rol. */
+  --primary-blue:  var(--action);
+  --bg-app:        var(--layout-bg);
+  --bg-sidebar:    var(--sidebar-bg);
+  --border:        var(--border-color);
+  --green:         var(--ok-fg);
+  --red:           var(--bad-fg);
+  --card:          var(--card-bg);
+  /* §4: dentro de la pagina se usa borde hairline, NUNCA sombra difusa — es el
+     tell #1 del dashboard generico. La sombra se reserva a los overlays. */
+  --shadow:        none;
+  --shadow-lg:     var(--shadow-float);
+  --radius:        var(--r-sm);
+  --radius-sm:     var(--r-sm);
+}
+
+/* Touch sube filas y hit areas. Mouse mantiene compacto. */
+@media (pointer: coarse) {
+  :root { --row-h-sm:44px; --row-h-md:48px; --tap-min:44px; }
+}
+
+/* ── DARK — zinc neutro. NO espresso: eso es del storefront. ───────────── */
+body.theme-monochrome {
+  --layout-bg:#111111; --card-bg:#1A1A1A; --sidebar-bg:#1A1A1A;
+  --surface-ground:#141414; --border-color:#2A2A2A;
+  --text-main:#FBF4E9; --text-muted:#B0A595; --text-faint:#837A6C;
+  --text-disabled: rgba(251,244,233,.45);
+  --ink-rgb: 251, 249, 246;
+  --ember-soft: rgba(248,180,0,.16);
+  --shadow-float: 0 2px 6px rgba(0,0,0,.4), 0 12px 28px -14px rgba(0,0,0,.6);
+}
+
+/* ── DATOS: mono + tabular obligatorio ────────────────────────────────────
+   Todo folio, cantidad, fecha, hora, monto, porcentaje o score. Sin
+   `tabular-nums` las columnas bailan de fila en fila y se pierde el "esto es
+   serio", que es la mitad de la tesis. Se aplica con la clase `.dato`. */
+.dato, .tabular {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+
+/* ── FOCO — piso de accesibilidad, no extra ──────────────────────────────
+   2px con el anillo de accion, en TODO lo interactivo. */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--action);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px var(--action-ring);
+}
+
+/* ── MOTION — nada se mueve para quien pidió que no se mueva ─────────────
+   El techo duro de 350ms vive en los tokens; esto es el interruptor global. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 *, *::before, *::after {
@@ -24,7 +192,8 @@
 }
 
 html, body {
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-body);
+  font-size: var(--fs-body);
   color: var(--text-main);
   margin: 0 !important;
   padding: 0 !important;
@@ -176,7 +345,7 @@ select.form-input, select.select-input {
   width: 100%;
   transition: background 0.2s ease;
   margin-bottom: 16px;
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-body);
 }
 
 .logout-btn:hover {

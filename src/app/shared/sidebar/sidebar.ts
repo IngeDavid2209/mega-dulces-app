@@ -44,8 +44,31 @@ export class SidebarComponent implements OnInit, OnDestroy {
    * cada ciclo de detección, pero son 21 entradas con predicados de una línea —
    * el costo es despreciable y medible si algún día deja de serlo.
    */
+  private _cacheUser: any = null;
+  private _cacheMenu: any[] = [];
+
+  /**
+   * ⚠️ DEVUELVE LA MISMA REFERENCIA MIENTRAS EL USUARIO NO CAMBIE.
+   *
+   * Antes era `return menuDe(this.currentUser)` a secas, y eso CONGELABA LA APP
+   * en produccion (1/sep/2026). `sidebar.html` hace
+   * `*ngFor="let grupo of menu()"` con otro `*ngFor` anidado y un `[ngSwitch]`
+   * de 21 ramas de SVG dentro. Angular llama `menu()` en CADA ciclo de
+   * deteccion de cambios, y al comparar por identidad veia un arreglo nuevo:
+   * destruia y recreaba las 21 entradas completas —con sus SVG y sus
+   * `routerLinkActive`, que se re-suscriben— en cada click, cada respuesta HTTP
+   * y cada tick de los cuatro polls.
+   *
+   * La comparacion es por IDENTIDAD y eso basta porque `currentUser` llega por
+   * `@Input()` desde un campo plano del padre (`home.ts:39`), no de un getter
+   * que fabrique objetos.
+   */
   menu() {
-    return menuDe(this.currentUser);
+    if (this.currentUser !== this._cacheUser) {
+      this._cacheUser = this.currentUser;
+      this._cacheMenu = menuDe(this.currentUser);
+    }
+    return this._cacheMenu;
   }
 
   /**

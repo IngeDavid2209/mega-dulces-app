@@ -5,8 +5,15 @@
     <div>
       <h3 class="org-titulo">Organigrama 2026</h3>
       <div class="org-sub">
-        {{ resumen().puestos }} puesto(s) en {{ resumen().unidades }} unidad(es) ·
-        {{ resumen().entregas }} tarea(s) del manual entregada(s) hoy
+        {{ resumen().puestos }} puesto(s) ·
+        {{ resumen().entregas }} tarea(s) del manual entregada(s) hoy<span
+          *ngIf="resumen().huerfanas > 0"> · {{ resumen().huerfanas }} sin puesto</span>
+      </div>
+      <!-- Un reportaA roto haría que una rama entera dejara de dibujarse. Hoy
+           son cero; si deja de serlo, se ve aquí y no cuando alguien lo note. -->
+      <div class="org-alerta" *ngIf="resumen().fueraDelArbol > 0">
+        ⚠ {{ resumen().fueraDelArbol }} puesto(s) con jefe inexistente o en ciclo:
+        salen arriba, fuera de su lugar.
       </div>
     </div>
     <label class="org-check" [title]="'Hay ' + resumen().puestosSinManual + ' puestos del organigrama sin manual levantado'">
@@ -19,50 +26,87 @@
 
   <div class="org-cuerpo">
 
-    <!-- ══════════════ MENÚ: UNIDAD → PUESTO ══════════════ -->
+    <!-- ══════════════ LA PIRÁMIDE ══════════════
+         Un puesto por fila, sangrada según su profundidad en el organigrama.
+         La lista viene ya aplanada del componente: con hasta cinco niveles, una
+         plantilla recursiva montaría un componente por nivel para no ganar nada.
+         El número grande de cada fila es el de SU RAMA COMPLETA -ponderado por
+         puntos de control-; el chico entre paréntesis es lo suyo propio. -->
     <nav class="org-menu" aria-label="Organigrama">
-      <div class="org-unidad" *ngFor="let g of grupos()">
+      <div class="org-fila-wrap" *ngFor="let f of filas(); trackBy: trackPuesto">
+        <button class="org-puesto org-nivel-{{ f.profundidad }}"
+                [style.paddingLeft.px]="10 + f.profundidad * 18"
+                [class.activo]="puestoActivo() === f.puesto.id"
+                [class.sin-manual]="!f.tieneManual"
+                [class.con-rama]="f.hijos.length > 0"
+                (click)="elegirPuesto(f.puesto.id)">
 
-        <button class="org-unidad-cab" (click)="alternarUnidad(g.unidad)"
-                [attr.aria-expanded]="unidadAbierta(g.unidad)">
-          <span class="org-chevron" [class.girado]="unidadAbierta(g.unidad)">›</span>
-          <span class="org-unidad-nombre">{{ g.etiqueta }}</span>
-          <span class="org-unidad-badge" *ngIf="g.entregasHoy > 0">{{ g.entregasHoy }}</span>
-        </button>
+          <!-- El chevron pliega la rama y NO abre el puesto: son dos acciones
+               distintas y compartir el click hacía imposible plegar sin abrir. -->
+          <span class="org-chevron"
+                *ngIf="f.hijos.length > 0"
+                [class.girado]="!nodoPlegado(f.puesto.id)"
+                (click)="alternarNodo(f.puesto.id); $event.stopPropagation()"
+                [attr.aria-expanded]="!nodoPlegado(f.puesto.id)"
+                [attr.title]="(nodoPlegado(f.puesto.id) ? 'Mostrar' : 'Esconder') + ' los ' + f.cuantosDebajo + ' puesto(s) de esta rama'">›</span>
+          <span class="org-chevron org-chevron-hueco" *ngIf="f.hijos.length === 0"></span>
 
-        <div class="org-puestos" *ngIf="unidadAbierta(g.unidad)">
-          <button class="org-puesto"
-                  *ngFor="let f of g.filas; trackBy: trackPuesto"
-                  [class.activo]="puestoActivo() === f.puesto.id"
-                  [class.sin-manual]="!f.tieneManual"
-                  (click)="elegirPuesto(f.puesto.id)">
-            <span class="org-puesto-nombre">{{ f.puesto.nombre }}</span>
+          <span class="org-puesto-nombre">{{ f.puesto.nombre }}</span>
 
-            <span class="org-puesto-datos">
-              <!-- Cuántas manda su manual -->
-              <span class="org-pill org-pill-manual" *ngIf="f.tieneManual"
-                    [title]="f.tareasManual + ' tarea(s) que manda su manual'">
-                {{ f.tareasManual }}
-              </span>
-              <span class="org-pill org-pill-nada" *ngIf="!f.tieneManual" title="Sin manual levantado">
-                —
-              </span>
-
-              <!-- Cómo va hoy -->
-              <span class="org-avance" *ngIf="f.porcentaje !== null"
-                    [ngClass]="claseAvance(f.porcentaje)">
-                {{ f.porcentaje }}%
-              </span>
-              <span class="org-vencidas" *ngIf="f.pendientesVencidas > 0"
-                    [title]="f.pendientesVencidas + ' vencida(s)'">
-                {{ f.pendientesVencidas }}
-              </span>
+          <span class="org-puesto-datos">
+            <span class="org-rama" *ngIf="f.cuantosDebajo > 0"
+                  [title]="f.cuantosDebajo + ' puesto(s) debajo'">
+              {{ f.cuantosDebajo }}
             </span>
-          </button>
-        </div>
+
+            <span class="org-pill org-pill-manual" *ngIf="f.tieneManual"
+                  [title]="f.tareasManual + ' tarea(s) que manda su manual'">
+              {{ f.tareasManual }}
+            </span>
+            <span class="org-pill org-pill-nada" *ngIf="!f.tieneManual" title="Sin manual levantado">—</span>
+
+            <!-- El avance de la RAMA. Con subordinados se enseña también el
+                 propio, porque un jefe al 40% no dice lo mismo si ese 40 es
+                 suyo o de las trece plazas que tiene debajo. -->
+            <span class="org-avance" *ngIf="f.porcentajeArbol !== null"
+                  [ngClass]="claseAvance(f.porcentajeArbol)"
+                  [title]="f.hechosArbol + ' de ' + f.puntosArbol + ' puntos de control de toda la rama'">
+              {{ f.porcentajeArbol }}%
+            </span>
+            <span class="org-propio"
+                  *ngIf="f.cuantosDebajo > 0 && f.porcentaje !== null"
+                  [title]="'Del puesto solo, sin contar a quienes le reportan'">
+              ({{ f.porcentaje }}%)
+            </span>
+
+            <span class="org-vencidas" *ngIf="f.vencidasArbol > 0"
+                  [title]="f.vencidasArbol + ' vencida(s) en la rama'">
+              {{ f.vencidasArbol }}
+            </span>
+          </span>
+        </button>
       </div>
 
-      <p class="org-menu-vacio" *ngIf="grupos().length === 0">
+      <!-- ─── AL PIE: LO QUE NO CUELGA DE NINGÚN PUESTO ───
+           No se reparte por parecido. Un puesto adivinado le entrega a una
+           persona real obligaciones que no le tocan; y verlas aquí es además la
+           lista de a quién le falta ficha. -->
+      <div class="org-huerfanos" *ngIf="huerfanos().length > 0">
+        <div class="org-huerfanos-cab">
+          Sin puesto en el organigrama ({{ resumen().personasSinPuesto }})
+        </div>
+        <div class="org-huerfano" *ngFor="let h of huerfanos(); trackBy: trackHuerfano">
+          <span class="org-huerfano-nombre">{{ h.nombre }}</span>
+          <span class="org-huerfano-suc">{{ h.sucursal }}</span>
+          <span class="org-pill org-pill-nada">{{ h.entregas }}</span>
+        </div>
+        <p class="org-huerfanos-pie">
+          Sus tareas no se cuentan en ninguna rama. Se resuelve capturando su
+          puesto en Usuarios, no adivinándolo aquí.
+        </p>
+      </div>
+
+      <p class="org-menu-vacio" *ngIf="filas().length === 0 && huerfanos().length === 0">
         Nada que mostrar con este filtro.
       </p>
     </nav>

@@ -264,3 +264,61 @@
   .org-detalle { max-height: none; }
   .org-entrega { margin-left: 0; width: 100%; }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   LA PIRAMIDE
+   La sangria la pone el componente con paddingLeft segun la profundidad, no
+   una clase por nivel: los niveles son cinco hoy y podrian ser seis mañana.
+   Aqui solo va la guia vertical que hace que la rama se lea como rama.
+   ══════════════════════════════════════════════════════════════════════════ */
+.org-fila-wrap { position: relative; }
+
+/* Los puestos con gente debajo se leen como mando: un pelo mas oscuros y con
+   la barra de la izquierda marcada. Sin esto, cinco niveles sangrados se ven
+   como una lista con margenes raros. */
+.org-puesto.con-rama { border-left-color: #94A3B8; }
+.org-puesto.con-rama .org-puesto-nombre { font-weight: 700; color: #0F172A; }
+.org-nivel-0 .org-puesto-nombre { font-size: 13px; letter-spacing: .2px; }
+
+/* Hueco del mismo ancho que el chevron, para que los nombres de las hojas
+   queden alineados con los de sus hermanos que si tienen rama. */
+.org-chevron-hueco { width: 9px; display: inline-block; }
+.org-chevron { cursor: pointer; padding: 0 2px; }
+.org-chevron:hover { color: #0F172A; }
+
+/* Cuantos puestos cuelgan de este. */
+.org-rama {
+  flex: 0 0 auto;
+  background: #E2E8F0; color: #475569;
+  font-size: 9.5px; font-weight: 800;
+  border-radius: 999px; padding: 1px 6px;
+}
+.org-puesto.activo .org-rama { background: #334155; color: #E2E8F0; }
+
+/* El avance del puesto SOLO, junto al de su rama. Deliberadamente discreto:
+   el numero que manda es el de la rama. */
+.org-propio { flex: 0 0 auto; font-size: 10px; color: #94A3B8; font-weight: 600; }
+.org-puesto.activo .org-propio { color: #CBD5E1; }
+
+/* ── Al pie: quienes no cuelgan de ningun puesto ────────────────────────── */
+.org-huerfanos {
+  margin-top: 14px; padding: 10px 9px;
+  border-top: 1px dashed #CBD5E1;
+}
+.org-huerfanos-cab {
+  font-size: 10.5px; font-weight: 800; letter-spacing: .5px;
+  color: #B45309; text-transform: uppercase; margin-bottom: 6px;
+}
+.org-huerfano {
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px 4px; border-radius: 6px;
+}
+.org-huerfano:hover { background: #FEF3C7; }
+.org-huerfano-nombre { flex: 1; min-width: 0; font-size: 12px; color: #1E293B; }
+.org-huerfano-suc { flex: 0 0 auto; font-size: 10.5px; color: #94A3B8; }
+.org-huerfanos-pie { margin: 8px 4px 0; font-size: 10.5px; color: #94A3B8; line-height: 1.45; }
+
+/* El aviso de un organigrama roto. Tiene que verse mal a proposito. */
+.org-alerta {
+  margin-top: 6px; font-size: 11px; font-weight: 700; color: #B91C1C;
+}

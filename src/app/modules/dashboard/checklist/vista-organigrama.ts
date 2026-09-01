@@ -5,7 +5,8 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 
 import {
-  PUESTOS_ORGANIGRAMA, PuestoOrganigrama, puestosPorUnidad, UnidadOrganigrama
+  PUESTOS_ORGANIGRAMA, PuestoOrganigrama, NodoOrganigrama,
+  arbolOrganigrama, puestosFueraDelArbol
 } from '../../../shared/organigrama.catalogo';
 import { resolverPuesto } from '../../../shared/puesto.util';
 import {
@@ -69,25 +70,43 @@ interface SucursalVista {
   porcentaje: number;
 }
 
-/** Una fila de puesto en el menú. */
-interface FilaPuesto {
+/**
+ * Un puesto dentro de la PIRÁMIDE, con lo suyo y lo de todo lo que cuelga.
+ *
+ * Dos juegos de cifras a propósito: las `...Hoy` son del puesto solo, y las
+ * `...Arbol` incluyen a sus subordinados. Un Gerente de Zona al 40% no dice lo
+ * mismo si ese 40 es suyo o de las trece plazas que tiene debajo.
+ */
+interface FilaArbol {
   puesto: PuestoOrganigrama;
+  /** 0 = Dirección General. Es lo que sangra la fila. */
+  profundidad: number;
   /** Cuántas tareas manda su manual (0 = todavía no tiene manual). */
   tareasManual: number;
   tieneManual: boolean;
-  /** Cuántas entregas hay hoy para ese puesto. */
+
+  /** Del puesto, sin contar a nadie debajo. */
   entregasHoy: number;
-  /** Avance agregado del puesto hoy (null si no hay entregas). */
-  porcentaje: number | null;
   pendientesVencidas: number;
+  porcentaje: number | null;
+
+  /** Del puesto MÁS todo su subárbol. */
+  entregasArbol: number;
+  vencidasArbol: number;
+  puntosArbol: number;
+  hechosArbol: number;
+  porcentajeArbol: number | null;
+  /** Cuántos puestos cuelgan debajo (a cualquier profundidad). */
+  cuantosDebajo: number;
+
+  hijos: FilaArbol[];
 }
 
-interface GrupoUnidad {
-  unidad: UnidadOrganigrama;
-  etiqueta: string;
-  filas: FilaPuesto[];
-  entregasHoy: number;
-  conManual: number;
+/** Una persona con tareas cuyo puesto no se pudo resolver. */
+interface HuerfanoVista {
+  nombre: string;
+  sucursal: string;
+  entregas: number;
 }
 
 @Component({
@@ -116,9 +135,6 @@ export class VistaOrganigramaComponent {
   /** Puesto abierto. null = solo el menú. */
   puestoActivo = signal<string | null>(null);
 
-  /** Unidades desplegadas en el menú. */
-  unidadesAbiertas = signal<Set<UnidadOrganigrama>>(new Set());
-
   /** Esconde los puestos que todavía no tienen manual (son 70 de 89). */
   soloConManual = signal(true);
 
@@ -136,6 +152,13 @@ export class VistaOrganigramaComponent {
    */
   private porPuesto = computed(() => {
     const mapa = new Map<string, any[]>();
+    /**
+     * Lo que NO cruzó a ningún puesto. Antes se descartaba con un `continue` y
+     * desaparecía sin dejar rastro — que es el modo de fallo del hallazgo 1: un
+     * apellido mal escrito y esa persona deja de existir para el tablero, en
+     * silencio. Ahora se junta aquí y se pinta al pie de la pirámide.
+     */
+    const huerfanos: any[] = [];
 
     // Índices de la plantilla: uid y nombre normalizado -> puestoId.
     const puestoPorUid = new Map<string, string>();
@@ -155,59 +178,139 @@ export class VistaOrganigramaComponent {
       let pid: string | undefined = c._puestoId || c?.datos?._puestoId;
       if (!pid && c.assignedUid) pid = puestoPorUid.get(String(c.assignedUid));
       if (!pid) pid = puestoPorNombre.get(normalizarNombre(c.assigned));
-      if (!pid) continue;                     // sin puesto: no cae en el árbol
+      if (!pid) { huerfanos.push(c); continue; }   // sin puesto: se cuenta aparte
       const arr = mapa.get(pid) || [];
       arr.push(c);
       mapa.set(pid, arr);
     }
-    return mapa;
+    return { mapa, huerfanos };
   });
 
   // ==========================================================================
   //  EL MENÚ
   // ==========================================================================
 
-  grupos = computed<GrupoUnidad[]>(() => {
-    const porP = this.porPuesto();
+  /**
+   * 🔺 LA PIRÁMIDE. Un puesto por nodo, colgando de quien le manda.
+   *
+   * ─── EL NÚMERO DE UN NODO ES LA SUMA DE LO QUE CUELGA, PONDERADA ──────────
+   * Se suman PUNTOS DE CONTROL —los items de cada checklist—, no porcentajes.
+   * Promediar los porcentajes de los hijos haría que un puesto con 3 puntos
+   * pesara igual que uno con 60, y el número de la zona dejaría de significar
+   * nada. Es el invariante de agregación del modelo: nunca promediar promedios.
+   */
+  arbol = computed<FilaArbol[]>(() => {
+    const { mapa } = this.porPuesto();
     const soloManual = this.soloConManual();
 
-    return puestosPorUnidad().map(g => {
-      const filas: FilaPuesto[] = g.puestos.map(p => {
-        const entregas = porP.get(p.id) || [];
-        const tot = entregas.reduce((n, c) => n + (c.items?.length || 0), 0);
-        const hechos = entregas.reduce((n, c) => n + (c.calcCompletados || 0), 0);
-        return {
-          puesto: p,
-          tareasManual: tareasAutomaticasDePuesto(p.id).length,
-          tieneManual: !!manualDePuesto(p.id),
-          entregasHoy: entregas.length,
-          porcentaje: entregas.length ? Math.round((hechos / (tot || 1)) * 100) : null,
-          pendientesVencidas: entregas.filter(c => this.esVencida(c)).length,
-        };
-      }).filter(f => {
-        // Un puesto sin manual y sin nada entregado no aporta: se esconde salvo
-        // que se pida ver el organigrama completo.
-        if (!soloManual) return true;
-        return f.tieneManual || f.entregasHoy > 0;
-      });
+    const construir = (n: NodoOrganigrama): FilaArbol => {
+      const entregas = mapa.get(n.puesto.id) || [];
+      const puntos = entregas.reduce((s, c) => s + (c.items?.length || 0), 0);
+      const hechos = entregas.reduce((s, c) => s + (c.calcCompletados || 0), 0);
+      const vencidas = entregas.filter(c => this.esVencida(c)).length;
+      const hijos = n.hijos.map(construir);
+
+      const puntosArbol = hijos.reduce((s, h) => s + h.puntosArbol, puntos);
+      const hechosArbol = hijos.reduce((s, h) => s + h.hechosArbol, hechos);
 
       return {
-        unidad: g.unidad,
-        etiqueta: g.etiqueta,
-        filas,
-        entregasHoy: filas.reduce((n, f) => n + f.entregasHoy, 0),
-        conManual: filas.filter(f => f.tieneManual).length,
+        puesto: n.puesto,
+        profundidad: n.profundidad,
+        tareasManual: tareasAutomaticasDePuesto(n.puesto.id).length,
+        tieneManual: !!manualDePuesto(n.puesto.id),
+
+        entregasHoy: entregas.length,
+        pendientesVencidas: vencidas,
+        porcentaje: entregas.length ? Math.round((hechos / (puntos || 1)) * 100) : null,
+
+        entregasArbol: hijos.reduce((s, h) => s + h.entregasArbol, entregas.length),
+        vencidasArbol: hijos.reduce((s, h) => s + h.vencidasArbol, vencidas),
+        puntosArbol,
+        hechosArbol,
+        porcentajeArbol: puntosArbol ? Math.round((hechosArbol / puntosArbol) * 100) : null,
+        cuantosDebajo: hijos.reduce((s, h) => s + h.cuantosDebajo + 1, 0),
+        hijos,
       };
-    }).filter(g => g.filas.length > 0);
+    };
+
+    let filas = arbolOrganigrama().map(construir);
+
+    // El filtro PODA DE ABAJO HACIA ARRIBA. Un jefe sin manual propio pero con
+    // gente debajo que sí lo tiene se conserva: quitarlo cortaría la rama y sus
+    // subordinados desaparecerían de la pirámide sin que nadie lo note.
+    if (soloManual) {
+      const podar = (f: FilaArbol): FilaArbol | null => {
+        const hijos = f.hijos.map(podar).filter((h): h is FilaArbol => h !== null);
+        if (!f.tieneManual && f.entregasHoy === 0 && hijos.length === 0) return null;
+        return { ...f, hijos };
+      };
+      filas = filas.map(podar).filter((f): f is FilaArbol => f !== null);
+    }
+    return filas;
   });
 
-  /** Totales del encabezado. */
+  /** Nodos plegados, por id de puesto. */
+  plegados = signal<Set<string>>(new Set());
+
+  /**
+   * La pirámide aplanada en el orden en que se pinta, respetando lo plegado.
+   *
+   * Se aplana en vez de usar una plantilla recursiva: Angular sabe hacer
+   * recursión con `ng-template`, pero cada nivel monta un componente más y aquí
+   * hay hasta cinco. Con la lista plana y un `paddingLeft` por profundidad es un
+   * solo `*ngFor` — y es también lo que permite plegar sin recalcular el árbol.
+   */
+  filas = computed<FilaArbol[]>(() => {
+    const cerrados = this.plegados();
+    const out: FilaArbol[] = [];
+    const recorrer = (fs: FilaArbol[]) => {
+      for (const f of fs) {
+        out.push(f);
+        if (!cerrados.has(f.puesto.id)) recorrer(f.hijos);
+      }
+    };
+    recorrer(this.arbol());
+    return out;
+  });
+
+  /**
+   * Las tareas de gente cuyo puesto no se pudo resolver, agrupadas por persona.
+   *
+   * Van al pie de la pirámide y NO se reparten por parecido: un puesto adivinado
+   * le entrega a una persona real obligaciones que no le tocan. Verlas aquí es
+   * además la lista de a quién le falta ficha.
+   */
+  huerfanos = computed<HuerfanoVista[]>(() => {
+    const { huerfanos } = this.porPuesto();
+    const mapa = new Map<string, HuerfanoVista>();
+    for (const c of huerfanos) {
+      const nombre = (c.assigned || 'Sin asignar').trim();
+      const k = nombre.toLowerCase();
+      const h = mapa.get(k) || { nombre, sucursal: (c.store || 'sin sucursal').trim(), entregas: 0 };
+      h.entregas++;
+      mapa.set(k, h);
+    }
+    return [...mapa.values()].sort((a, b) => b.entregas - a.entregas || a.nombre.localeCompare(b.nombre));
+  });
+
+  /**
+   * Totales del encabezado.
+   *
+   * `entregas + huerfanas` tiene que dar EXACTAMENTE el total de la pestaña. Si
+   * no cuadra, alguien se está contando dos veces o se está perdiendo, y los dos
+   * números están a la vista justo para que eso no pase inadvertido.
+   */
   resumen = computed(() => {
-    const gs = this.grupos();
+    const planas: FilaArbol[] = [];
+    const recorrer = (fs: FilaArbol[]) => { for (const f of fs) { planas.push(f); recorrer(f.hijos); } };
+    recorrer(this.arbol());
+    const huer = this.huerfanos();
     return {
-      unidades: gs.length,
-      puestos: gs.reduce((n, g) => n + g.filas.length, 0),
-      entregas: gs.reduce((n, g) => n + g.entregasHoy, 0),
+      puestos: planas.length,
+      entregas: planas.reduce((n, f) => n + f.entregasHoy, 0),
+      huerfanas: huer.reduce((n, h) => n + h.entregas, 0),
+      personasSinPuesto: huer.length,
+      fueraDelArbol: puestosFueraDelArbol().length,
       puestosSinManual: PUESTOS_ORGANIGRAMA.filter(
         p => p.vigente !== false && !manualDePuesto(p.id)
       ).length,
@@ -237,7 +340,7 @@ export class VistaOrganigramaComponent {
   cumplimiento = computed<SucursalVista[]>(() => {
     const id = this.puestoActivo();
     if (!id) return [];
-    const entregas = this.porPuesto().get(id) || [];
+    const entregas = this.porPuesto().mapa.get(id) || [];
 
     // sucursal -> persona -> entregas
     const porSuc = new Map<string, Map<string, EntregaVista[]>>();
@@ -304,7 +407,7 @@ export class VistaOrganigramaComponent {
     const id = this.puestoActivo();
     if (!id) return [];
     const conEntrega = new Set(
-      (this.porPuesto().get(id) || []).map(c => normalizarNombre(c.assigned))
+      (this.porPuesto().mapa.get(id) || []).map(c => normalizarNombre(c.assigned))
     );
     return this.personal()
       .filter(u => u.activo !== false)
@@ -322,14 +425,13 @@ export class VistaOrganigramaComponent {
   //  ACCIONES
   // ==========================================================================
 
-  alternarUnidad(u: UnidadOrganigrama) {
-    const s = new Set(this.unidadesAbiertas());
-    s.has(u) ? s.delete(u) : s.add(u);
-    this.unidadesAbiertas.set(s);
+  /** Plegar un nodo esconde su rama, no la borra: los totales no cambian. */
+  alternarNodo(id: string) {
+    const s = new Set(this.plegados());
+    s.has(id) ? s.delete(id) : s.add(id);
+    this.plegados.set(s);
   }
-  unidadAbierta(u: UnidadOrganigrama): boolean {
-    return this.unidadesAbiertas().has(u);
-  }
+  nodoPlegado(id: string): boolean { return this.plegados().has(id); }
 
   elegirPuesto(id: string) {
     this.puestoActivo.set(this.puestoActivo() === id ? null : id);
@@ -396,7 +498,8 @@ export class VistaOrganigramaComponent {
     return 'av-cero';
   }
 
-  trackPuesto(_: number, f: FilaPuesto) { return f.puesto.id; }
+  trackPuesto(_: number, f: FilaArbol) { return f.puesto.id; }
+  trackHuerfano(_: number, h: HuerfanoVista) { return h.nombre; }
   trackSucursal(_: number, s: SucursalVista) { return s.sucursal; }
   trackPersona(_: number, p: PersonaVista) { return p.nombre; }
   trackTarea(_: number, t: TareaManual) { return t.id; }

@@ -279,3 +279,119 @@ export function puestosPorUnidad(): { unidad: UnidadOrganigrama; etiqueta: strin
     puestos: PUESTOS_ORGANIGRAMA.filter(p => p.unidad === unidad && p.vigente !== false),
   })).filter(g => g.puestos.length > 0);
 }
+
+// ============================================================================
+//  🔺 LA PIRÁMIDE: el organigrama como árbol, desde `reportaA`
+// ============================================================================
+
+/** Un puesto con lo que le reporta. `profundidad` 0 es la raíz. */
+export interface NodoOrganigrama {
+  puesto: PuestoOrganigrama;
+  profundidad: number;
+  hijos: NodoOrganigrama[];
+}
+
+/**
+ * El organigrama como árbol, armado desde `reportaA`.
+ *
+ * ─── NADIE SE PIERDE, NUNCA ─────────────────────────────────────────────────
+ * Un árbol construido a la ligera pierde gente en silencio, y ése es justo el
+ * modo de fallo que no se nota: un puesto cuyo `reportaA` apunta a un id que ya
+ * no existe simplemente deja de dibujarse, y con él toda su rama. Nadie lo
+ * reclama porque nadie sabe que debía estar.
+ *
+ * Aquí eso no puede pasar. Se recorre desde las raíces y, al final, **todo
+ * puesto que no haya sido visitado se agrega como raíz** — sea porque su jefe
+ * no existe o porque quedó en un ciclo. Sale feo y arriba, que es exactamente
+ * como debe salir un dato roto: visible.
+ *
+ * Medido el 1/sep/2026 sobre los 89 puestos: 1 raíz (`direccion-general`),
+ * 0 `reportaA` rotos, 0 ciclos, profundidad máxima 4. Si algún día eso deja de
+ * ser cierto, `puestosFueraDelArbol()` lo dice sin que nadie tenga que mirar.
+ */
+export function arbolOrganigrama(incluirRetirados = false): NodoOrganigrama[] {
+  const puestos = PUESTOS_ORGANIGRAMA.filter(p => incluirRetirados || p.vigente !== false);
+  const porId = new Map(puestos.map(p => [p.id, p]));
+
+  const hijosDe = new Map<string, PuestoOrganigrama[]>();
+  for (const p of puestos) {
+    // Un `reportaA` que no resuelve NO se hereda al vacío: el puesto pasa a ser
+    // raíz. Perderlo sería peor que enseñarlo fuera de lugar.
+    const jefe = p.reportaA && porId.has(p.reportaA) ? p.reportaA : null;
+    if (!jefe) continue;
+    const arr = hijosDe.get(jefe) || [];
+    arr.push(p);
+    hijosDe.set(jefe, arr);
+  }
+
+  const visitados = new Set<string>();
+  const construir = (p: PuestoOrganigrama, profundidad: number): NodoOrganigrama => {
+    visitados.add(p.id);
+    const hijos = (hijosDe.get(p.id) || [])
+      // La guardia contra ciclos: un hijo ya visitado no se vuelve a descender.
+      // Sin esto un `reportaA` circular cuelga el navegador, no da error.
+      .filter(h => !visitados.has(h.id))
+      .sort(compararHermanos)
+      .map(h => construir(h, profundidad + 1));
+    return { puesto: p, profundidad, hijos };
+  };
+
+  const raices = puestos
+    .filter(p => !p.reportaA || !porId.has(p.reportaA))
+    .sort(compararHermanos);
+  const arbol = raices.map(r => construir(r, 0));
+
+  // Lo que quedó fuera (solo puede ser un ciclo) se agrega arriba, visible.
+  for (const p of puestos) {
+    if (!visitados.has(p.id)) arbol.push(construir(p, 0));
+  }
+  return arbol;
+}
+
+/**
+ * Los puestos que NO cuelgan limpiamente de la raíz: `reportaA` roto o ciclo.
+ * Hoy son cero. Existe para que el día que dejen de serlo se sepa por un número
+ * y no porque alguien note que a una rama le falta gente.
+ */
+export function puestosFueraDelArbol(): { id: string; motivo: string }[] {
+  const puestos = PUESTOS_ORGANIGRAMA.filter(p => p.vigente !== false);
+  const porId = new Map(puestos.map(p => [p.id, p]));
+  const fuera: { id: string; motivo: string }[] = [];
+  for (const p of puestos) {
+    if (!p.reportaA) continue;                       // raíz legítima
+    if (!porId.has(p.reportaA)) {
+      fuera.push({ id: p.id, motivo: 'reportaA apunta a ' + p.reportaA + ', que no existe' });
+      continue;
+    }
+    let cur: PuestoOrganigrama | undefined = p;
+    const visto = new Set<string>();
+    while (cur && cur.reportaA) {
+      if (visto.has(cur.id)) { fuera.push({ id: p.id, motivo: 'ciclo de reportaA' }); break; }
+      visto.add(cur.id);
+      cur = porId.get(cur.reportaA);
+    }
+  }
+  return fuera;
+}
+
+/**
+ * Orden entre hermanos: primero el que manda.
+ *
+ * `nivel` viene del catálogo y es lo que hace que la pirámide se lea como
+ * pirámide y no como una lista: dentro de una misma rama, la coordinación va
+ * antes que el operativo aunque alfabéticamente sea al revés.
+ */
+const PESO_NIVEL: Record<NivelPuesto, number> = {
+  'direccion': 0, 'gerencia': 1, 'jefatura': 2, 'coordinacion': 3,
+  'supervision': 4, 'operativo': 5, 'practicante': 6,
+};
+
+function compararHermanos(a: PuestoOrganigrama, b: PuestoOrganigrama): number {
+  const pa = PESO_NIVEL[a.nivel] ?? 9;
+  const pb = PESO_NIVEL[b.nivel] ?? 9;
+  if (pa !== pb) return pa - pb;
+  const ua = ORDEN_UNIDADES.indexOf(a.unidad);
+  const ub = ORDEN_UNIDADES.indexOf(b.unidad);
+  if (ua !== ub) return ua - ub;
+  return a.nombre.localeCompare(b.nombre);
+}

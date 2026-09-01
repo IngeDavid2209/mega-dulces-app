@@ -56,7 +56,11 @@ modelo operativo acordado con Dirección.
 - **Una migración ya aplicada NO se edita.** Está registrada por nombre de archivo en
   `_migraciones`: editarla no cambia nada en la base y destruye el registro de lo que
   realmente corrió. Todo arreglo va en una migración nueva.
-- **Commit selectivo, nunca `git commit -a`.** El repo no tiene `.gitattributes` ni
+- **Commit selectivo, nunca `git commit -a` — y `git add -u` es lo mismo con otro
+  nombre.** Agrega todo lo modificado y rastreado, así que basta un archivo sucio para
+  que el commit contenga algo que su mensaje no menciona (pasó el 31/ago con
+  `version.ts`). Siempre `git add` con rutas explícitas, una por una, aunque solo se vean
+  tres archivos. El repo no tiene `.gitattributes` ni
   `core.autocrlf` configurado, así que según desde dónde se lea el árbol de trabajo puede
   aparecer completo como modificado (puro cambio CRLF/LF). Se agregan a mano los archivos del
   paso y nada más.
@@ -188,7 +192,7 @@ Orden por **dependencia y riesgo**, no por importancia. Un paso ≤ 3 días. Mar
 | 2 | Que los números digan la verdad (hecho ≠ justificado + primeras pruebas) | 1 | 0 | ⬜ **adelantada: va antes de la 1** |
 | 1 | Cerrar el ferrocarril: una sola base | 3 | 0 | ⬜ |
 | 3 | La estructura como dato (unidad, sucursal, ámbito, puesto, plaza, cobertura) | 4 | 1 | ⬜ |
-| 4 | Navegación (4.1 se puede hacer YA, sin dependencias) | 1.5 | — / 3 | ⬜ |
+| 4 | Navegación (4.1 se puede hacer YA, sin dependencias) | 1.5 | — / 3 | 🔄 **4.1 ✅ · 4.1b: 2a–2d ✅ (15→12 entradas) · falta el Paso 3 para llegar a 7 · 4.3 espera Fase 3** |
 | 5 | Verificación con muestra + hallazgos + causas | 2 | 3 | ⬜ |
 | 6 | Tablero por nivel + cierre diario + roll-up | 2 | 5 | ⬜ |
 | 7 | La norma como dato (manual y organigrama fuera del código) | 3 | 3 | ⬜ |
@@ -212,7 +216,7 @@ extra por la fase que se indica):
 
 | Qué se hizo | Choca con | La absorbe |
 |---|---|---|
-| Entrada de menú 20: "Productividad y turno" | Congelamiento §7 | 4.1 (se funde en Control) |
+| ~~Entrada de menú 20: "Productividad y turno"~~ **SALDADA 31/ago (paso 2c)** | Congelamiento §7 | 4.1 — hoy es pestaña de Control, no entrada |
 | Mapa nuevo por texto en `zonas.util.ts → POR_SUCURSAL` | Hallazgo 1 | 3.1 (semilla de unidades) |
 | `productividad.util.ts` hereda el defecto de `esItemHecho` | Invariante §5.3 | 2.1 |
 | `productividad.util.ts` sin pruebas (calcula cumplimiento, puntualidad, turno, ritmo) | §8.8 | 2.2 — **primera prueba a escribir** |
@@ -286,6 +290,12 @@ de que exista la plaza sería partir el problema en dos, no resolverlo.
     problema no existe». El control correcto afirma la cubeta: «los casos del 22/may están en E».
     Y el negativo —«un caso que sé legítimo NO debe aparecer»— prueba que discrimina.
     **Un control que pasa por el camino equivocado da confianza falsa, y eso es peor que fallar.**
+    Y hay una variante que no se ve mirando el control, sino **la muestra**: el chequeo de
+    escalada por pestaña (31/ago) estaba bien escrito, pero los diez perfiles de prueba veían
+    las CUATRO pestañas o NINGUNA, así que recorría sin **comparar** un solo `ve` contra el de
+    al lado. **Un control correcto sobre una muestra que no discrimina no discrimina.** Hizo
+    falta agregar dos perfiles de **subconjunto estricto** —y no el mismo subconjunto— más una
+    guardia que aborta si algún día nadie ejerce uno.
     **(d)** **si tu verificador parsea algo, primero verifica el parser — o mejor, no parsees.**
     La prueba de audiencias del menú leía `nav.config.ts` con expresiones regulares: encontró 18
     entradas de 24 y reportó como «perdidas» cinco rutas que **sí estaban** en el arreglo. Un
@@ -351,7 +361,82 @@ el pie), así que `viejas.size === 0` era falso y la comparación pasaba. Correg
 —las 11 que el paso 4.1 eliminó—, que es la marca real de «este commit es anterior al cambio».
 Probados los dos caminos: con el SHA bueno pasa, con `HEAD~1` aborta explicando por qué.
 
+### 4.1b — las cuatro pantallas de análisis son una, con pestañas
+
+`/estadisticas`, `/ranking-sucursales`, `/productividad` y `/checkstore` pasaron a ser
+pestañas de `/control`. **Cuatro entradas de menú se volvieron una: 15 → 12** para un admin
+global. El objetivo del documento 4 son **7**; los cinco que faltan son el Paso 3.
+
+Las cuatro rutas viejas **siguen vivas como `redirectTo`** a su pestaña, y cada una en el
+mismo commit en que su plantilla perdió el marco — si la ruta siguiera sirviendo el
+componente, esa URL mostraría una pantalla sin sidebar. **Ningún `.ts` de las cuatro se
+tocó** (`git diff` vacío en los cuatro): solo perdieron header, sidebar y overlay, que ahora
+monta el cascarón una sola vez.
+
+**El riesgo de esta fusión nunca fue romper: era ESCALAR PRIVILEGIOS.** Las cuatro tenían
+permisos distintos, y Sucursales es la más estrecha (no incluye `puedeVerEstadisticas`). Si
+el cascarón se viera con la unión, quien solo tenía Sucursales se llevaría Estadísticas de
+regalo. La regla quedó de dos niveles y en **un solo archivo** (`control.tabs.ts`): el
+cascarón se ve si se ve al menos una pestaña; cada pestaña se gatea por su propio permiso,
+con el mismo `ve` que usan la barra, el guard de la ruta hija y el menú.
+
+**Lo que enseñó el paso 2b y no estaba en el plan:** hasta 2a lo único sin verificar era
+estático —se pinta o no se pinta—, y de eso el build cubre casi todo. **Desde que hay dos
+pestañas hay comportamiento** —montar, destruir, recrear, redirigir— y **el build no ejecuta
+nada: compila.** De ahí salió el arreglo del scroll (`.content` tiene `overflow-y: auto` y
+conservaba su posición al cambiar de hijo: bajabas media página en Estadísticas y aterrizabas
+a media página en Ranking). Es una línea, y costaba lo mismo hoy que dentro de un mes: la
+diferencia era si la encontraba yo o una Encargada.
+
+**Dos miradas de treinta segundos, y ven cosas distintas.** Con dos pestañas: que la pantalla
+aparezca dentro del cascarón, la línea de la barra de borde a borde, el cambio de pestaña y el
+scroll. Con cuatro: que la barra no envuelva feo en móvil y que las cuatro quepan — con dos,
+`flex-wrap` no envuelve nunca, así que esa pregunta **no existía** todavía.
+
+### La prueba de audiencias ahora ve las escaladas, no solo las pérdidas
+
+`prueba-menu-audiencias.js` comparaba **rutas del menú**, y desde 2b las cuatro fusiones
+aterrizan en la misma: `/control`. Ahí las pestañas son indistinguibles — un perfil «gana
+/control» una sola vez y basta haber tenido UNA de las cuatro pantallas para pasar en verde;
+**las otras tres viajaban de polizón.**
+
+Ahora recorre las pestañas de cada perfil y exige que cada una sea **reclamable** por una
+pantalla que ese perfil ya veía.
+
+**Y escribir el caso no bastaba** — es el corolario (c) por una puerta nueva. Los diez
+perfiles veían las **cuatro pestañas o ninguna**, así que el chequeo recorría sin comparar un
+solo `ve` contra el de al lado. Hicieron falta dos perfiles de **subconjunto estricto**, y no
+el mismo subconjunto:
+
+| perfil | ve | no ve |
+|---|---|---|
+| solo `puedeVerCheckstore` | ranking, productividad, sucursales | **estadísticas** |
+| solo `puedeVerEstadisticas` | estadísticas, ranking, productividad | **sucursales** |
+
+Entre los dos, cada pestaña queda excluida de al menos un perfil. Y la prueba **aborta** si
+algún día nadie ejerce un subconjunto estricto, o si el recorrido sale en cero — un cero ahí
+no es «sin escaladas», es «sin medir».
+
+**Control negativo corrido:** ensanchar el `ve` de Sucursales con `puedeVerEstadisticas` la
+hace salir con código 2, nombrando la pestaña y el perfil correctos; restaurada, vuelve a 0.
+(Al primer intento el reemplazo pegó en la línea equivocada —Ranking, que ya era ancha— y el
+no-op dio un verde que casi leo como «el control no detecta». **Un control negativo que no
+cambia nada prueba tanto como un cero sin denominador.**)
+
+### `version.ts` dejó de rastrearse, y por qué eso era un riesgo
+
+`scripts/generar-version.js` lo reescribe en cada `npm run build`, así que llevaba **todo el
+día modificado** en el árbol. Un archivo que siempre aparece sucio es un archivo que deja de
+leerse: obliga a filtrar mentalmente cada `git status`, y así un `git add -u` lo coló en un
+commit cuyo mensaje hablaba solo del scroll. Daño cero —Railway lo regenera al construir— pero
+el mensaje decía una cosa y el commit contenía otra, que es la familia de fallas del día.
+
+No rompe el clon limpio: `build` y `start` son `node scripts/generar-version.js && ng ...`, y
+el Dockerfile corre `npm run build`, así que existe antes de que `login.ts` y
+`mantenimiento.ts` lo importen.
+
 ### Listo y SIN DESPLEGAR — el orden importa
+
 
 **`053_desactivar_correo_compartido.sql` está commiteada pero NO desplegada, a propósito.**
 Desactiva `Miriam` y `EL DAVE`, y esas dos son hoy las únicas fichas conocidas que ejercen la

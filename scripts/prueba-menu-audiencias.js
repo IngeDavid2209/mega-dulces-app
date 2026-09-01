@@ -489,6 +489,76 @@ console.log('✓ escalada por pestaña: %d pestañas revisadas · %d perfil(es) 
   tabsRevisadas, perfilesConSubconjunto.length);
 for (const x of perfilesConSubconjunto) console.log('    %s', x);
 
+// ── ¿LAS RUTAS VIEJAS ATERRIZAN DONDE DICE LA FUSION? ────────────────────
+//
+// Las cuatro rutas viejas son las que estan en el historial de WhatsApp, y son
+// las UNICAS que la gente real va a tocar el primer dia. Su modo de fallo no es
+// visual: si el destino de un `redirectTo` no coincide EXACTO con el segmento
+// de la ruta hija, Angular NO da error — cae al wildcard y la persona aterriza
+// en el login. Verde en compilacion, rojo en la cara de una Encargada.
+//
+// NO SE PARSEA app.routes.ts (corolario (d)): se aplastan los espacios UNA vez
+// y a partir de ahi todo es comparacion de cadenas exactas. Un parser roto
+// devuelve una lista mas corta y una conclusion falsa; una cadena que no
+// aparece, no aparece.
+const RUTAS_TS = 'src/app/app.routes.ts';
+const TABS_TODAS = TABSDE({ rol: 'admin' });
+
+function revisarRutas(plano) {
+  const fallas = [];
+  // (1) cada pestaña tiene ruta hija Y va gateada por su propio guard
+  for (const t of TABS_TODAS) {
+    if (!plano.includes("path: '" + t.ruta + "', canActivate: [tabControlGuard],")) {
+      fallas.push("la pestaña '" + t.ruta + "' no tiene ruta hija con tabControlGuard");
+    }
+  }
+  // (2) ni una hija de mas: un guard suelto es una hija que quedo huerfana al
+  //     renombrar, o una pestaña que no esta en el catalogo
+  const guardas = plano.split('canActivate: [tabControlGuard]').length - 1;
+  if (guardas !== TABS_TODAS.length) {
+    fallas.push('hay ' + guardas + ' rutas hijas con tabControlGuard y ' +
+                TABS_TODAS.length + ' pestañas');
+  }
+  // (3) cada fusion declarada tiene su redirectTo realmente escrito
+  for (const origen of Object.keys(FUNDIDAS)) {
+    const destino = FUNDIDAS[origen];
+    if (!destino) continue;
+    if (!plano.includes("path: '" + origen.slice(1) + "', redirectTo: '" + destino.slice(1) + "'")) {
+      fallas.push(origen + ' no redirige a ' + destino + ' (el enlace viejo cae al wildcard)');
+    }
+  }
+  return fallas;
+}
+
+const textoRutas = fs.readFileSync(path.join(__dirname, '..', RUTAS_TS), 'utf8');
+if (textoRutas.length < 500) {
+  abortar('app.routes.ts vino con ' + textoRutas.length + ' caracteres. Eso es "no pude ' +
+    'leerlo", no "esta bien".');
+}
+const planoRutas = textoRutas.replace(/\s+/g, ' ');
+
+// Control NEGATIVO del chequeo: con un segmento renombrado tiene que quejarse.
+// Sin esto, "0 fallas" podria significar que la funcion no esta mirando nada.
+{
+  const nombre = TABS_TODAS[0].ruta;
+  const aguja = "path: '" + nombre + "', canActivate: [tabControlGuard],";
+  const roto = planoRutas.replace(aguja, "path: '" + nombre + "XX', canActivate: [tabControlGuard],");
+  if (roto === planoRutas) {
+    abortar('el control negativo de rutas no cambio NADA: no probo nada. La aguja era ' + aguja);
+  }
+  if (revisarRutas(roto).length === 0) {
+    abortar("renombre el segmento de la pestaña '" + nombre + "' y el chequeo de rutas NO se " +
+      'quejo. Ese chequeo no esta mirando lo que dice mirar.');
+  }
+}
+
+const fallasRutas = revisarRutas(planoRutas);
+for (const f of fallasRutas) { difs++; console.log('   ✗ ruta · %s', f); }
+console.log('');
+console.log('✓ rutas: las %d pestañas tienen hija gateada · las %d rutas viejas redirigen a SU pestaña',
+  TABS_TODAS.length, Object.keys(FUNDIDAS).filter(function (o) { return FUNDIDAS[o]; }).length);
+for (const o of Object.keys(FUNDIDAS)) if (FUNDIDAS[o]) console.log('    %s → %s', o, FUNDIDAS[o]);
+
 console.log('');
 if (difs > 0) {
   abortar(difs + ' diferencia(s) de audiencia entre el menú viejo y el nuevo. ' +

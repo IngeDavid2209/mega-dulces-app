@@ -152,6 +152,19 @@ body.theme-monochrome {
   --text-main:#FBF4E9; --text-muted:#B0A595; --text-faint:#837A6C;
   --text-disabled: rgba(251,244,233,.45);
   --ink-rgb: 251, 249, 246;
+  /* ⚠️ LOS OVERLAYS HAY QUE REDECLARARLOS AQUI, y no es redundante.
+     `--overlay-*` se declara en `:root` como `rgba(var(--ink-rgb), a)`, y una
+     custom property con `var()` adentro se SUSTITUYE en el elemento donde se
+     declara. Como este bloque cuelga de `body` -hijo de `:root`-, cambiar
+     `--ink-rgb` aqui NO rehace los overlays: body hereda el valor ya
+     sustituido con la tinta clara.
+     Medido el 1/sep en Chrome: en tema oscuro `--overlay-hover` seguia dando
+     rgba(16,13,9,.043) — un velo casi negro sobre fondo negro, o sea un hover
+     invisible. Se ve solo midiendo el valor computado; a ojo parece que "no
+     tiene hover". */
+  --overlay-hover:    rgba(251, 249, 246, 0.045);
+  --overlay-active:   rgba(251, 249, 246, 0.09);
+  --overlay-selected: rgba(251, 249, 246, 0.07);
   --ember-soft: rgba(248,180,0,.16);
   --shadow-float: 0 2px 6px rgba(0,0,0,.4), 0 12px 28px -14px rgba(0,0,0,.6);
 }

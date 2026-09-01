@@ -6,13 +6,14 @@
 :host { display: block; }
 
 .org {
-  background: #fff;
+  background: var(--card-bg);
   border: 1px solid var(--neutral-200);
   border-radius: 12px;
   overflow: hidden;
   margin-bottom: 18px;
 }
 
+.org-head > div:first-child { min-width: 0; flex: 1 1 260px; }
 .org-head {
   display: flex;
   align-items: flex-start;
@@ -21,11 +22,16 @@
   flex-wrap: wrap;
   padding: 15px 18px;
   border-bottom: 1px solid var(--neutral-100);
-  background: #FCFCFD;
+  background: var(--surface-ground);
 }
 .org-titulo { margin: 0 0 3px; font-size: 15px; font-weight: 800; color: var(--neutral-900); }
 .org-sub { font-size: 12.5px; color: var(--neutral-500); }
+/* 1.5 — se salia del borde derecho a 1280px. `flex-wrap` ya estaba, pero sin
+   `flex-shrink:0` el checkbox se encogia por debajo de su texto en vez de
+   bajar de renglon, y sin `min-width:0` en el bloque de la izquierda el titulo
+   nunca cedia espacio. Hacen falta los dos. */
 .org-check {
+  flex: 0 0 auto;
   display: inline-flex; align-items: center; gap: 7px;
   font-size: 12.5px; font-weight: 600; color: var(--neutral-600);
   cursor: pointer; user-select: none;
@@ -50,20 +56,20 @@
   padding: 14px;
   max-height: 640px;
   overflow-y: auto;
-  background: #F2F2F7;                      /* systemGroupedBackground */
+  background: var(--layout-bg);                      /* systemGroupedBackground */
   -webkit-overflow-scrolling: touch;
 }
-.org-cuerpo.con-detalle .org-menu { border-right: 1px solid #E5E5EA; }
+.org-cuerpo.con-detalle .org-menu { border-right: 1px solid var(--neutral-200); }
 
 .org-pista {
   margin: 0 0 10px 4px;
-  font-size: 12.5px; color: #8E8E93;
+  font-size: 12.5px; color: var(--text-muted);
 }
 
 /* La tarjeta. Una sola para todo el arbol: partirla por unidad rompería la
    continuidad de la piramide, que es justo lo que se vino a enseñar. */
 .org-lista {
-  background: #fff;
+  background: var(--card-bg);
   border-radius: 12px;
   overflow: hidden;
 }
@@ -74,6 +80,7 @@
    una sola fila. Es lo mismo que hace iOS en pantalla ancha. */
 .org-cuerpo:not(.con-detalle) .org-lista,
 .org-cuerpo:not(.con-detalle) .org-huerfanos,
+.org-cuerpo:not(.con-detalle) .org-cab,
 .org-cuerpo:not(.con-detalle) .org-pista { max-width: 820px; }
 
 .org-fila-wrap { position: relative; }
@@ -90,46 +97,78 @@
 /* Separador de un pelo, sangrado como en iOS: empieza donde empieza el texto,
    no en el borde de la tarjeta. */
 .org-fila-wrap + .org-fila-wrap .org-puesto {
-  box-shadow: inset 0 .5px 0 0 #E5E5EA;
+  box-shadow: inset 0 .5px 0 0 var(--neutral-200);
 }
-.org-puesto:active { background: #D1D1D6; }
-.org-puesto:hover  { background: #F7F7FA; }
+.org-puesto:active { background: var(--overlay-active); }
+.org-puesto:hover  { background: var(--overlay-hover); }
 
 /* Seleccionado: relleno gris de iOS, NO un bloque azul marino. */
-.org-puesto.activo { background: #E5E5EA; }
-.org-puesto.activo .org-puesto-nombre { color: #000; font-weight: 600; }
+.org-puesto.activo { background: var(--neutral-200); }
+.org-puesto.activo .org-puesto-nombre { color: var(--text-main); font-weight: 600; }
 
 /* Un puesto sin manual se ve apagado, no roto: es un documento pendiente. */
-.org-puesto.sin-manual .org-puesto-nombre { color: #8E8E93; font-weight: 400; }
+.org-puesto.sin-manual .org-puesto-nombre { color: var(--text-muted); font-weight: 400; }
 
 /* Los que tienen gente debajo se leen como mando. */
-.org-puesto.con-rama .org-puesto-nombre { font-weight: 600; color: #000; }
+.org-puesto.con-rama .org-puesto-nombre { font-weight: 600; color: var(--text-main); }
 .org-nivel-0 .org-puesto-nombre { font-size: 16px; }
 
 .org-puesto-nombre {
   flex: 1; min-width: 0;
-  font-size: 15px; font-weight: 400; color: #000;
+  font-size: 15px; font-weight: 400; color: var(--text-main);
   letter-spacing: -.2px;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.org-puesto-datos { flex: 0 0 auto; display: flex; align-items: center; gap: 6px; }
+/* Rejilla fija, no flex. Antes era `display:flex` y cada pastilla traia su
+   *ngIf: cuando el dato faltaba se borraba la RANURA, no solo el contenido, y
+   las demas se recorrian. Asi la primera columna decia "puestos debajo" en
+   Direccion General y "tareas del manual" en Almacenista — dos numeros
+   distintos leidos en el mismo lugar. Cinco ranuras que existen SIEMPRE: la
+   columna significa lo mismo en toda la lista y se puede leer en vertical. */
+.org-puesto-datos {
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: 34px 38px 54px 42px 32px; /* rama·manual·avance·propio·venc */
+  align-items: center;
+  gap: 0 6px;
+  font-variant-numeric: tabular-nums;
+}
+.org-puesto-datos > .org-slot { justify-self: end; text-align: right; }
+
+/* ── 1.3 · encabezado permanente ─────────────────────────────────────────
+   Reusa `.org-puesto-datos`, no repite las anchuras: si algun dia cambian, no
+   pueden desalinearse porque solo hay una definicion. El padding derecho es el
+   mismo de la fila (14px) para que los ejes coincidan. */
+.org-cab {
+  display: flex; align-items: center;
+  padding: 4px 14px 6px 10px;
+}
+.org-cab-hueco { flex: 1; min-width: 0; }
+.org-cab .org-slot {
+  font-size: var(--fs-micro);
+  font-weight: var(--fw-medium);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  line-height: 1.3;
+}
 
 /* Chevron de despliegue, a la izquierda como en una lista de carpetas. */
 .org-chevron {
   flex: 0 0 auto;
   width: 16px; text-align: center;
-  font-size: 15px; color: #C7C7CC; line-height: 1;
+  font-size: 15px; color: var(--text-faint); line-height: 1;
   cursor: pointer; border-radius: 4px;
   transition: transform .2s ease, color .15s ease;
 }
-.org-chevron:hover { color: #636366; }
+.org-chevron:hover { color: var(--text-muted); }
 .org-chevron.girado { transform: rotate(90deg); }
 .org-chevron-hueco { width: 16px; display: inline-block; }
 
 /* Cuantos puestos cuelgan de este. */
 .org-rama {
   flex: 0 0 auto;
-  background: #E5E5EA; color: #636366;
+  background: var(--neutral-200); color: var(--text-muted);
   font-size: 11px; font-weight: 600;
   border-radius: 999px; padding: 1px 7px; min-width: 20px; text-align: center;
 }
@@ -139,7 +178,7 @@
   border-radius: 999px; padding: 1px 7px; min-width: 20px; text-align: center;
 }
 .org-pill-manual { background: #FFF4D6; color: #8A6100; }
-.org-pill-nada   { background: transparent; color: #C7C7CC; }
+.org-pill-nada   { background: transparent; color: var(--text-faint); }
 
 .org-avance {
   font-size: 12px; font-weight: 600;
@@ -151,21 +190,21 @@
 .av-bien  { background: #D8F3DF; color: #1B7F3B; }
 .av-medio { background: #FFF0CC; color: #8A6100; }
 .av-cero  { background: #FFE0E0; color: #C0392B; }
-.av-nada  { background: #F2F2F7; color: #AEAEB2; }
+.av-nada  { background: var(--layout-bg); color: var(--text-faint); }
 
 /* El avance del puesto SOLO, junto al de su rama. Discreto a proposito. */
-.org-propio { flex: 0 0 auto; font-size: 11px; color: #AEAEB2; font-variant-numeric: tabular-nums; }
+.org-propio { flex: 0 0 auto; font-size: 11px; color: var(--text-faint); font-variant-numeric: tabular-nums; }
 
 .org-vencidas {
   font-size: 11px; font-weight: 700;
-  background: #FF3B30; color: #fff;
+  background: var(--bad-fg); color: var(--card-bg);
   border-radius: 999px; padding: 1px 7px; min-width: 20px; text-align: center;
 }
 
 /* ── Al pie: quienes no cuelgan de ningun puesto. Su propia tarjeta. ─────── */
 .org-huerfanos {
   margin-top: 18px;
-  background: #fff;
+  background: var(--card-bg);
   border-radius: 12px;
   overflow: hidden;
 }
@@ -176,21 +215,21 @@
 .org-huerfano {
   display: flex; align-items: center; gap: 10px;
   min-height: 40px; padding: 6px 14px;
-  box-shadow: inset 0 .5px 0 0 #E5E5EA;
+  box-shadow: inset 0 .5px 0 0 var(--neutral-200);
 }
-.org-huerfano-nombre { flex: 1; min-width: 0; font-size: 14px; color: #000;
+.org-huerfano-nombre { flex: 1; min-width: 0; font-size: 14px; color: var(--text-main);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.org-huerfano-suc { flex: 0 0 auto; font-size: 12px; color: #8E8E93; }
+.org-huerfano-suc { flex: 0 0 auto; font-size: 12px; color: var(--text-muted); }
 .org-huerfanos-pie {
   margin: 0; padding: 10px 14px 12px;
-  font-size: 12px; color: #8E8E93; line-height: 1.45;
-  box-shadow: inset 0 .5px 0 0 #E5E5EA;
+  font-size: 12px; color: var(--text-muted); line-height: 1.45;
+  box-shadow: inset 0 .5px 0 0 var(--neutral-200);
 }
 
 /* El aviso de un organigrama roto. Tiene que verse mal a proposito. */
-.org-alerta { margin-top: 6px; font-size: 12px; font-weight: 600; color: #FF3B30; }
+.org-alerta { margin-top: 6px; font-size: 12px; font-weight: 600; color: var(--bad-fg); }
 
-.org-menu-vacio { padding: 22px 10px; font-size: 13px; color: #AEAEB2; text-align: center; }
+.org-menu-vacio { padding: 22px 10px; font-size: 13px; color: var(--text-faint); text-align: center; }
 
 /* ── Detalle ─────────────────────────────────────────────────────────────── */
 .org-detalle { padding: 16px 18px; max-height: 620px; overflow-y: auto; }
@@ -204,7 +243,7 @@
 .org-volver {
   flex: 0 0 auto;
   width: 28px; height: 28px; border-radius: 7px;
-  border: 1px solid var(--neutral-200); background: #fff; color: var(--neutral-600);
+  border: 1px solid var(--neutral-200); background: var(--card-bg); color: var(--neutral-600);
   cursor: pointer; font-size: 15px; line-height: 1;
 }
 .org-volver:hover { background: var(--neutral-50); }
@@ -235,7 +274,7 @@
 .org-tarea-meta { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
 .org-meta {
   font-size: 10.5px; font-weight: 700; color: var(--neutral-600);
-  background: #fff; border: 1px solid var(--neutral-200);
+  background: var(--card-bg); border: 1px solid var(--neutral-200);
   border-radius: 999px; padding: 1px 8px; white-space: nowrap;
 }
 .org-meta-evento { background: #EFF6FF; border-color: #BFDBFE; color: #1D4ED8; }
@@ -256,7 +295,7 @@
 /* Sucursal */
 .org-suc {
   padding: 11px 13px; margin-bottom: 10px;
-  border-radius: 9px; border: 1px solid var(--neutral-200); background: #FCFCFD;
+  border-radius: 9px; border: 1px solid var(--neutral-200); background: var(--surface-ground);
 }
 .org-suc-cab { display: flex; align-items: center; gap: 9px; margin-bottom: 7px; }
 .org-suc-nombre { flex: 1; min-width: 0; font-size: 13px; font-weight: 800; color: var(--neutral-900); }
@@ -290,7 +329,7 @@
   display: flex; align-items: center; gap: 9px;
   padding: 7px 10px; margin: 3px 0 0 32px;
   width: calc(100% - 32px);
-  border-radius: 7px; border: 1px solid var(--neutral-200); background: #fff;
+  border-radius: 7px; border: 1px solid var(--neutral-200); background: var(--card-bg);
   cursor: pointer; text-align: left; font-family: inherit;
 }
 .org-entrega:hover { background: var(--neutral-50); border-color: var(--neutral-300); }
@@ -320,7 +359,7 @@
 .org-sinentrega-lista { display: flex; gap: 6px; flex-wrap: wrap; }
 .org-chip {
   font-size: 11.5px; font-weight: 600; color: var(--neutral-600);
-  background: #fff; border: 1px solid var(--neutral-200);
+  background: var(--card-bg); border: 1px solid var(--neutral-200);
   border-radius: 999px; padding: 3px 10px;
 }
 .org-chip small { color: var(--neutral-400); font-weight: 500; margin-left: 5px; }
@@ -331,7 +370,7 @@
      arbol quedaria en una tira de 300px al abrir un puesto. */
   .org-cuerpo, .org-cuerpo.con-detalle { grid-template-columns: 1fr; }
   .org-cuerpo.con-detalle .org-menu {
-    border-right: none; border-bottom: 1px solid #E5E5EA;
+    border-right: none; border-bottom: 1px solid var(--neutral-200);
     max-height: 320px;
   }
   /* Sin puesto abierto el arbol es la pantalla: no se le pone tope de alto,

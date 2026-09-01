@@ -1,6 +1,9 @@
 :host {
   --primary-navy: var(--neutral-900);
-  --primary-blue: #1E40AF;
+  /* Este :host redefinia el token y por eso el remapeo global a sunset nunca
+     llegaba a esta pantalla: el componente se pintaba su propio azul. Ahora
+     hereda. Es el antipatron de "token de componente" del §11. */
+  --primary-blue: var(--action);
   --text-main: var(--neutral-800);
   --text-muted: var(--neutral-500);
   --bg-app: var(--neutral-50);
@@ -140,10 +143,12 @@
   justify-content: center;
   height: 40px;
   padding: 0 20px;
-  background: var(--primary-navy);
-  color: #fff;
+  /* 2.2 — El unico sunset de la pantalla. §3: la accion primaria es el boton
+     que CREA algo; todo lo demas -seleccion, navegacion- usa el negro. */
+  background: var(--action);
+  color: var(--action-ink);
   border: none;
-  border-radius: 6px;
+  border-radius: var(--r-sm);
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
@@ -151,7 +156,7 @@
 }
 
 .btn-primary:hover {
-  background: var(--neutral-800);
+  background: var(--action-hover);
 }
 
 .btn-secondary {
@@ -293,9 +298,9 @@
 }
 
 .badge-en-progreso {
-  background: #EFF6FF;
-  color: #1D4ED8;
-  border-color: #BFDBFE;
+  background: var(--warn-soft-bg);
+  color: var(--warn-fg);
+  border-color: var(--warn-soft-bg);
 }
 
 .badge-completo {
@@ -1310,7 +1315,7 @@
 }
  
 .meta-assigned-by svg {
-  color: #6366F1;
+  color: var(--text-muted);
   flex-shrink: 0;
 }
  
@@ -1585,7 +1590,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 20px 28px;
-  background: linear-gradient(135deg, var(--neutral-900), #1E3A8A);
+  background: linear-gradient(135deg, var(--neutral-900), var(--border-color));
   color: #FFFFFF;
 }
 
@@ -1684,7 +1689,7 @@
 }
 
 .wizard-input:focus {
-  border-color: #2563EB;
+  border-color: var(--action);
   box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15);
 }
 
@@ -1735,15 +1740,15 @@
 }
 
 .wizard-empleado-card.selected {
-  border-color: #2563EB;
-  background: #EFF6FF;
+  border-color: var(--text-main);
+  background: var(--overlay-selected);
 }
 
 .wizard-empleado-avatar {
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #3B82F6, #1E3A8A);
+  background: linear-gradient(135deg, var(--neutral-400), var(--neutral-400));
   color: #FFFFFF;
   font-size: 20px;
   font-weight: 800;
@@ -1769,7 +1774,7 @@
   width: 30px;
   height: 30px;
   border-radius: 50%;
-  background: #2563EB;
+  background: var(--text-main);
   color: #FFFFFF;
   display: flex;
   align-items: center;
@@ -1795,7 +1800,7 @@
 .wizard-link {
   background: transparent;
   border: none;
-  color: #2563EB;
+  color: var(--action);
   font-size: 15px;
   font-weight: 700;
   cursor: pointer;
@@ -1805,7 +1810,7 @@
 }
 
 .wizard-link:hover {
-  background: #EFF6FF;
+  background: var(--action-ring);
 }
 
 .wizard-count {
@@ -1917,8 +1922,8 @@
 }
 
 .wizard-vigencia-card--inicio {
-  border-color: #BFDBFE;
-  background: linear-gradient(180deg, #EFF6FF 0%, #FFFFFF 100%);
+  border-color: var(--surface-ground);
+  background: linear-gradient(180deg, var(--surface-ground) 0%, #FFFFFF 100%);
 }
 
 .wizard-vigencia-card--fin {
@@ -1979,8 +1984,8 @@
 }
 
 .wizard-fecha-card.selected {
-  border-color: #2563EB;
-  background: #EFF6FF;
+  border-color: var(--text-main);
+  background: var(--overlay-selected);
   box-shadow: 0 4px 12px -4px rgba(37, 99, 235, 0.3);
 }
 
@@ -2052,8 +2057,8 @@
 }
 
 .wizard-frecuencia-card.selected {
-  border-color: #2563EB;
-  background: #EFF6FF;
+  border-color: var(--text-main);
+  background: var(--overlay-selected);
 }
 
 .wizard-frecuencia-icon {
@@ -2132,8 +2137,8 @@
 }
 
 .wizard-sucursal-card.selected {
-  border-color: #2563EB;
-  background: #EFF6FF;
+  border-color: var(--text-main);
+  background: var(--overlay-selected);
 }
 
 .wizard-sucursal-icon {
@@ -2150,7 +2155,7 @@
 }
 
 .wizard-sucursal-check {
-  color: #2563EB;
+  color: var(--text-main);
   flex-shrink: 0;
 }
 
@@ -2193,9 +2198,9 @@
 }
 
 .wizard-chip:hover {
-  background: #EFF6FF;
-  border-color: #2563EB;
-  color: #1E40AF;
+  background: var(--overlay-hover);
+  border-color: var(--text-main);
+  color: var(--text-main);
 }
 
 .wizard-warning {
@@ -2239,13 +2244,13 @@
 }
 
 .wizard-evidencia-card.selected {
-  border-color: #2563EB;
-  background: #EFF6FF;
+  border-color: var(--text-main);
+  background: var(--overlay-selected);
 }
 
 .wizard-evidencia-foto.selected {
-  border-color: #2563EB;
-  background: #EFF6FF;
+  border-color: var(--text-main);
+  background: var(--overlay-selected);
 }
 
 .wizard-evidencia-antes.selected {
@@ -2315,8 +2320,8 @@
 
 .wizard-resumen-editar {
   font-size: 12px;
-  color: #2563EB;
-  background: #EFF6FF;
+  color: var(--action);
+  background: var(--surface-ground);
   padding: 4px 10px;
   border-radius: 999px;
   font-weight: 700;
@@ -2349,7 +2354,7 @@
   width: 22px;
   height: 22px;
   cursor: pointer;
-  accent-color: #2563EB;
+  accent-color: var(--action);
 }
 
 .wizard-counter-final {
@@ -2409,7 +2414,7 @@
 }
 
 .wizard-btn-next {
-  background: linear-gradient(135deg, #1E40AF, #2563EB);
+  background: linear-gradient(135deg, var(--action), var(--action));
   color: #FFFFFF;
   margin-left: auto;
   min-width: 140px; /* 🔥 Bajado de 180 para caber en pantallas estrechas (Oppo, Huawei) */
@@ -2544,25 +2549,73 @@
   gap: 8px;
   padding: 10px 18px;
   border: 1.5px solid var(--neutral-200);
-  background: #FFFFFF;
-  border-radius: 999px;
+  background: transparent;
+  border-radius: var(--r-pill);
   cursor: pointer;
-  font-weight: 600;
+  font-weight: var(--fw-medium);
   font-size: 14px;
   color: var(--neutral-600);
   transition: all 0.18s ease;
 }
 .vista-tab:hover {
-  border-color: #1E3A8A;
-  color: #1E3A8A;
+  border-color: var(--text-main);
+  color: var(--text-main);
   transform: translateY(-1px);
 }
+/* 2.2 — Seleccionado = el MISMO negro que el renglon activo del sidebar, para
+   no agregar un color nuevo al vocabulario. Se va el gradiente (era de un solo
+   color: no gradaba nada) y se va la sombra, que ademas iba teñida de azul
+   -rgba(30,58,138)- y la §4 prohibe sombra difusa dentro de la pagina. */
 .vista-tab-active {
-  background: linear-gradient(135deg, #1E3A8A, #3B82F6);
-  border-color: #1E3A8A;
-  color: #FFFFFF;
-  box-shadow: 0 4px 12px rgba(30, 58, 138, 0.25);
+  background: var(--text-main);
+  border-color: var(--text-main);
+  color: var(--card-bg);
 }
+/* ══════════════════════════════════════════════════════════════════════
+   2.1 — UN LENGUAJE POR EJE
+   Tres preguntas distintas se veian identicas -la misma pastilla, una junto a
+   otra- y eso obliga a leer el texto de cada una para saber que se esta
+   decidiendo. Ahora cada eje tiene su forma:
+
+     VISTA    pestañas con subrayado   (que forma tiene la lista)
+     ALCANCE  control segmentado       (de quien es el trabajo)
+     ESTADO   pastillas                (en que punto esta)
+
+   Mismo componente, misma clase base: solo cambia el modificador del <section>,
+   asi que no hay tres juegos de estilos que puedan desalinearse.
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* VISTA — subrayado. La linea activa va en --action porque marca DONDE ESTAS,
+   y es la unica pista de navegacion de la barra. */
+.vista-tabs.eje-vista { gap: 2px; margin-bottom: 0; }
+.vista-tabs.eje-vista .vista-tab {
+  border: none; background: transparent; border-radius: 0;
+  padding: 9px 12px;
+  border-bottom: 2px solid transparent;
+}
+.vista-tabs.eje-vista .vista-tab:hover { transform: none; background: var(--overlay-hover); }
+.vista-tabs.eje-vista .vista-tab-active {
+  background: transparent;
+  color: var(--text-main);
+  border-bottom-color: var(--action);
+  font-weight: var(--fw-bold);
+}
+
+/* ALCANCE — segmentado: las dos opciones viven DENTRO de un mismo riel, que es
+   lo que comunica "esto es un interruptor de dos", no dos botones sueltos. */
+.vista-tabs.eje-alcance {
+  gap: 0; margin-bottom: 0;
+  background: var(--surface-ground);
+  border: 1px solid var(--border-color);
+  border-radius: var(--r-pill);
+  padding: 2px;
+}
+.vista-tabs.eje-alcance .vista-tab {
+  border: none; background: transparent; padding: 7px 14px;
+}
+.vista-tabs.eje-alcance .vista-tab:hover { transform: none; background: var(--overlay-hover); }
+.vista-tabs.eje-alcance .vista-tab-active { background: var(--text-main); color: var(--card-bg); }
+
 .vista-tab-icon { font-size: 16px; line-height: 1; }
 .vista-tab-badge {
   display: inline-flex;
@@ -2579,7 +2632,7 @@
 }
 .vista-tab-active .vista-tab-badge {
   background: rgba(255, 255, 255, 0.25);
-  color: #FFFFFF;
+  color: var(--card-bg);
 }
 @media (max-width: 600px) {
   .vista-tab { padding: 8px 12px; font-size: 13px; gap: 6px; }
@@ -2620,7 +2673,7 @@
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #1E3A8A 0%, #3B82F6 100%);
+  background: linear-gradient(135deg, var(--neutral-400) 0%, var(--neutral-400) 100%);
   color: #FFFFFF;
   display: flex;
   align-items: center;
@@ -2718,7 +2771,7 @@
   white-space: nowrap;
 }
 .cl-badge-pendiente   { background: var(--neutral-100); color: var(--neutral-600); border: 1px solid var(--neutral-300); }
-.cl-badge-en-progreso { background: #DBEAFE; color: #1E40AF; border: 1px solid #93C5FD; }
+.cl-badge-en-progreso { background: var(--warn-soft-bg); color: var(--warn-fg); border: 1px solid var(--warn-soft-bg); }
 .cl-badge-completo    { background: #D1FAE5; color: #065F46; border: 1px solid #6EE7B7; }
 
 .cl-pill-enviado {
@@ -2768,11 +2821,11 @@
   transition: background 0.12s ease, border-color 0.12s ease;
 }
 .cl-icon-edit {
-  color: #3B82F6;
+  color: var(--action);
 }
 .cl-icon-edit:hover {
-  background: #EFF6FF;
-  border-color: #BFDBFE;
+  background: var(--action-ring);
+  border-color: var(--action-ring);
 }
 .cl-icon-delete {
   color: #EF4444;
@@ -2844,7 +2897,7 @@
   color: var(--neutral-400);
 }
 .cl-progress-ring[data-progreso="cero"]     { color: var(--neutral-300); }
-.cl-progress-ring[data-progreso="progreso"] { color: #3B82F6; }
+.cl-progress-ring[data-progreso="progreso"] { color: var(--warn-fg); }
 .cl-progress-ring[data-progreso="completo"] { color: #10B981; }
 .cl-progress-ring svg {
   display: block;
@@ -2945,7 +2998,7 @@
   font-weight: 700;
 }
 .eq-wizard-step.active {
-  background: #1E3A8A; color: #FFFFFF; border-color: #1E3A8A;
+  background: var(--text-main); color: #FFFFFF; border-color: var(--text-main);
 }
 .eq-wizard-sep { width: 12px; height: 2px; background: var(--border); border-radius: 1px; }
 .eq-modal-body { padding: 22px; overflow-y: auto; flex: 1; }
@@ -2980,23 +3033,23 @@
   text-align: left;
   transition: all 0.12s ease;
 }
-.eq-integrante-chip:hover { border-color: #93C5FD; background: var(--neutral-50); }
+.eq-integrante-chip:hover { border-color: var(--overlay-hover); background: var(--neutral-50); }
 .eq-integrante-chip.selected {
-  border-color: #1E3A8A;
-  background: #EFF6FF;
+  border-color: var(--text-main);
+  background: var(--overlay-selected);
   box-shadow: 0 2px 8px rgba(30, 58, 138, 0.15);
 }
 .eq-integrante-avatar {
   width: 30px; height: 30px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #1E3A8A, #3B82F6);
+  background: linear-gradient(135deg, var(--neutral-400), var(--neutral-400));
   color: #FFFFFF;
   display: flex; align-items: center; justify-content: center;
   font-weight: 800; font-size: 13px;
   flex-shrink: 0;
 }
 .eq-integrante-nombre { flex: 1; }
-.eq-integrante-check { color: #1E3A8A; font-weight: 800; }
+.eq-integrante-check { color: var(--text-main); font-weight: 800; }
 .eq-integrante-jefe-opt.selected .eq-integrante-avatar {
   background: linear-gradient(135deg, #F59E0B, #FBBF24);
 }
@@ -3020,7 +3073,7 @@
 }
 .eq-fase-num {
   width: 28px; height: 28px; border-radius: 50%;
-  background: #1E3A8A; color: #FFFFFF;
+  background: var(--border-color); color: #FFFFFF;
   display: flex; align-items: center; justify-content: center;
   font-weight: 800; font-size: 13px;
   flex-shrink: 0;
@@ -3054,15 +3107,15 @@
 }
 .eq-fase-add-item {
   background: transparent;
-  border: 1px dashed #93C5FD;
-  color: #1E40AF;
+  border: 1px dashed var(--action-ring);
+  color: var(--action);
   padding: 8px;
   border-radius: 6px;
   font-weight: 600;
   font-size: 12px;
   cursor: pointer;
 }
-.eq-fase-add-item:hover { background: #EFF6FF; }
+.eq-fase-add-item:hover { background: var(--action-ring); }
 .eq-add-fase {
   display: block; width: 100%;
   padding: 12px;
@@ -3073,11 +3126,11 @@
   font-weight: 700;
   cursor: pointer;
 }
-.eq-add-fase:hover { border-color: #93C5FD; color: #1E40AF; background: var(--neutral-50); }
+.eq-add-fase:hover { border-color: var(--action-ring); color: var(--action); background: var(--neutral-50); }
 
 /* Listado de proyectos */
 .eq-list-section {
-  background: linear-gradient(135deg, var(--neutral-50) 0%, #EFF6FF 100%);
+  background: linear-gradient(135deg, var(--neutral-50) 0%, var(--surface-ground) 100%);
   border: 1px solid var(--border);
   border-radius: 14px;
   padding: 18px;
@@ -3110,7 +3163,7 @@
   flex-shrink: 0;
 }
 .eq-card-progreso-pill.pill-cero     { background: var(--neutral-100); color: var(--neutral-500); }
-.eq-card-progreso-pill.pill-progreso { background: #DBEAFE; color: #1E40AF; }
+.eq-card-progreso-pill.pill-progreso { background: var(--warn-soft-bg); color: var(--warn-fg); }
 .eq-card-progreso-pill.pill-completo { background: #D1FAE5; color: #065F46; }
 .eq-card-meta {
   font-size: 12px; color: var(--text-muted);
@@ -3128,7 +3181,7 @@
   border: 1px solid;
 }
 .eq-fase-chip.fase-completa  { background: #D1FAE5; color: #065F46; border-color: #6EE7B7; }
-.eq-fase-chip.fase-activa    { background: #DBEAFE; color: #1E40AF; border-color: #93C5FD; }
+.eq-fase-chip.fase-activa    { background: var(--overlay-selected); color: var(--text-main); border-color: var(--overlay-selected); }
 .eq-fase-chip.fase-pendiente { background: var(--neutral-100); color: var(--neutral-400); border-color: var(--neutral-300); }
 .eq-fase-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
 .eq-card-foot {
@@ -3140,7 +3193,7 @@
 .eq-integrante-mini {
   width: 26px; height: 26px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #3B82F6, #60A5FA);
+  background: linear-gradient(135deg, var(--border-color), var(--surface-ground));
   color: #FFFFFF;
   display: inline-flex; align-items: center; justify-content: center;
   font-weight: 800; font-size: 11px;
@@ -3148,7 +3201,7 @@
   margin-left: -6px;
 }
 .eq-integrante-mini:first-child { margin-left: 0; }
-.eq-card-cta { font-size: 12px; color: #1E40AF; font-weight: 700; }
+.eq-card-cta { font-size: 12px; color: var(--action); font-weight: 700; }
 
 /* Vista detalle */
 .eq-detalle { padding: 0; }
@@ -3176,7 +3229,7 @@
 }
 .eq-detalle-progreso {
   text-align: center;
-  background: linear-gradient(135deg, #1E3A8A, #3B82F6);
+  background: linear-gradient(135deg, var(--border-color), var(--border-color));
   color: white;
   padding: 14px 22px;
   border-radius: 12px;
@@ -3210,14 +3263,14 @@
   border-radius: 12px;
   padding: 16px;
 }
-.eq-fase-card.fase-activa    { border-left-color: #3B82F6; }
+.eq-fase-card.fase-activa    { border-left-color: var(--text-main); }
 .eq-fase-card.fase-completa  { border-left-color: #10B981; opacity: 0.85; }
 .eq-fase-card.fase-pendiente { border-left-color: var(--neutral-300); background: #FAFBFC; }
 .eq-fase-card-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 14px; }
 .eq-fase-card-left { display: flex; align-items: center; gap: 12px; }
 .eq-fase-card-orden {
   width: 32px; height: 32px; border-radius: 50%;
-  background: #1E3A8A; color: white;
+  background: var(--border-color); color: white;
   display: flex; align-items: center; justify-content: center;
   font-weight: 800;
 }
@@ -3238,7 +3291,7 @@
   gap: 8px;
   align-items: center;
   background: #F0F9FF;
-  border: 1px dashed #93C5FD;
+  border: 1px dashed var(--action-ring);
   border-radius: 8px;
   padding: 10px;
   margin-bottom: 10px;
@@ -3291,9 +3344,9 @@
   display: flex; flex-wrap: wrap; gap: 2px 6px;
 }
 .eq-item-asignado strong { color: var(--text-main); }
-.eq-item-evi { color: #1E40AF; font-weight: 600; }
+.eq-item-evi { color: var(--info-fg); font-weight: 600; }
 .eq-item-add-sub {
-  background: #EFF6FF; border: 1px solid #BFDBFE; color: #1E40AF;
+  background: var(--action-ring); border: 1px solid var(--action-ring); color: var(--action);
   padding: 4px 8px; border-radius: 6px;
   font-size: 11px; font-weight: 700;
   cursor: pointer;
@@ -3575,8 +3628,8 @@
   font-weight: 700;
   padding: 2px 8px;
   border-radius: 999px;
-  background: #dbeafe;
-  color: #1e40af;
+  background: var(--info-soft-bg);
+  color: var(--info-soft-fg);
   text-align: center;
 }
 .wizard-turno-badge.bloqueado {
@@ -3614,7 +3667,7 @@
   display: flex; align-items: center; justify-content: center;
   font-weight: 700; font-size: 16px; color: #fff; background: var(--neutral-500);
 }
-.persona-avatar[data-nivel="mando"] { background: #1e3a8a; }
+.persona-avatar[data-nivel="mando"] { background: var(--neutral-400); }
 .persona-avatar[data-nivel="operativo"] { background: #0f766e; }
 .persona-info { display: flex; flex-direction: column; flex: 1; min-width: 0; }
 .persona-nombre { font-weight: 700; color: var(--neutral-900); font-size: 15px; }
@@ -3660,7 +3713,7 @@
 .eq-item-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .eq-item-thumb-x { position: absolute; top: 1px; right: 1px; width: 16px; height: 16px; border: none; border-radius: 50%; background: rgba(15,23,42,.7); color: #fff; font-size: 9px; line-height: 1; cursor: pointer; display: grid; place-items: center; padding: 0; }
 .eq-item-thumb-x:hover { background: #dc2626; }
-.eq-item-foto-btn { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; font-size: 12.5px; font-weight: 600; color: #1E40AF; background: #EEF2FF; border: 1px solid #C7D2FE; border-radius: 8px; padding: 6px 12px; }
+.eq-item-foto-btn { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; font-size: 12.5px; font-weight: 600; color: var(--action); background: #EEF2FF; border: 1px solid #C7D2FE; border-radius: 8px; padding: 6px 12px; }
 .eq-item-foto-btn:hover { background: #E0E7FF; }
 .eq-item-foto-btn.requerida { color: #B91C1C; background: #FEF2F2; border-color: #FECACA; }
 

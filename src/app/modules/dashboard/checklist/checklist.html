@@ -392,7 +392,7 @@
                   *ngIf="puedeFiltrarVista && vistaHistorial() === 'pendientes'"></span>
 
             <!-- De quién: mis tareas o toda la operación (admin o supervisor) -->
-            <section class="vista-tabs" *ngIf="puedeFiltrarVista && vistaHistorial() === 'pendientes'">
+            <section class="vista-tabs eje-alcance" *ngIf="puedeFiltrarVista && vistaHistorial() === 'pendientes'">
               <button class="vista-tab"
                       [class.vista-tab-active]="vistaTareas === 'mis'"
                       (click)="cambiarVistaTareas('mis')">
@@ -413,7 +413,7 @@
                  puesto. Y solo para quien ve más que lo suyo. -->
             <span class="cl-toolbar-sep"
                   *ngIf="modoManual && puedeFiltrarVista && vistaHistorial() === 'pendientes'"></span>
-            <section class="vista-tabs"
+            <section class="vista-tabs eje-vista"
                      *ngIf="modoManual && puedeFiltrarVista && vistaHistorial() === 'pendientes'">
               <button class="vista-tab"
                       [class.vista-tab-active]="agrupacion() === 'persona'"

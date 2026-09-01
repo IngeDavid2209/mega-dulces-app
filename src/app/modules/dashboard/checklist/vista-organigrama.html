@@ -38,6 +38,20 @@
         Toca un puesto para ver lo que su manual le manda y quién lo cumple hoy.
       </p>
 
+      <!-- Encabezado permanente. Sin el habia que pasar el mouse por cada
+           pastilla para saber que numero se estaba leyendo. aria-hidden porque
+           es orientacion visual: el dato ya va con su `title` en cada celda. -->
+      <div class="org-cab" aria-hidden="true">
+        <span class="org-cab-hueco"></span>
+        <span class="org-puesto-datos">
+          <span class="org-slot">Rama</span>
+          <span class="org-slot">Manual</span>
+          <span class="org-slot">Avance</span>
+          <span class="org-slot">Propio</span>
+          <span class="org-slot">Venc.</span>
+        </span>
+      </div>
+
       <div class="org-lista">
       <div class="org-fila-wrap" *ngFor="let f of filas(); trackBy: trackPuesto">
         <button class="org-puesto org-nivel-{{ f.profundidad }}"
@@ -59,35 +73,52 @@
 
           <span class="org-puesto-nombre">{{ f.puesto.nombre }}</span>
 
+          <!-- CINCO RANURAS QUE EXISTEN SIEMPRE, en este orden.
+               El *ngIf se queda ADENTRO de cada `.org-slot`: vacia el contenido,
+               nunca la columna. Antes el *ngIf estaba en la pastilla misma, la
+               ranura desaparecia y las de la derecha se recorrian — por eso el
+               mismo lugar decia "88 puestos debajo" en una fila y "3 tareas del
+               manual" en la siguiente. -->
           <span class="org-puesto-datos">
-            <span class="org-rama" *ngIf="f.cuantosDebajo > 0"
-                  [title]="f.cuantosDebajo + ' puesto(s) debajo'">
-              {{ f.cuantosDebajo }}
+            <span class="org-slot">
+              <span class="org-rama" *ngIf="f.cuantosDebajo > 0"
+                    [title]="f.cuantosDebajo + ' puesto(s) debajo'">
+                {{ f.cuantosDebajo }}
+              </span>
             </span>
 
-            <span class="org-pill org-pill-manual" *ngIf="f.tieneManual"
-                  [title]="f.tareasManual + ' tarea(s) que manda su manual'">
-              {{ f.tareasManual }}
+            <span class="org-slot">
+              <span class="org-pill org-pill-manual" *ngIf="f.tieneManual"
+                    [title]="f.tareasManual + ' tarea(s) que manda su manual'">
+                {{ f.tareasManual }}
+              </span>
+              <span class="org-pill org-pill-nada" *ngIf="!f.tieneManual" title="Sin manual levantado">—</span>
             </span>
-            <span class="org-pill org-pill-nada" *ngIf="!f.tieneManual" title="Sin manual levantado">—</span>
 
             <!-- El avance de la RAMA. Con subordinados se enseña también el
                  propio, porque un jefe al 40% no dice lo mismo si ese 40 es
                  suyo o de las trece plazas que tiene debajo. -->
-            <span class="org-avance" *ngIf="f.porcentajeArbol !== null"
-                  [ngClass]="claseAvance(f.porcentajeArbol)"
-                  [title]="f.hechosArbol + ' de ' + f.puntosArbol + ' puntos de control de toda la rama'">
-              {{ f.porcentajeArbol }}%
-            </span>
-            <span class="org-propio"
-                  *ngIf="f.cuantosDebajo > 0 && f.porcentaje !== null"
-                  [title]="'Del puesto solo, sin contar a quienes le reportan'">
-              ({{ f.porcentaje }}%)
+            <span class="org-slot">
+              <span class="org-avance" *ngIf="f.porcentajeArbol !== null"
+                    [ngClass]="claseAvance(f.porcentajeArbol)"
+                    [title]="f.hechosArbol + ' de ' + f.puntosArbol + ' puntos de control de toda la rama'">
+                {{ f.porcentajeArbol }}%
+              </span>
             </span>
 
-            <span class="org-vencidas" *ngIf="f.vencidasArbol > 0"
-                  [title]="f.vencidasArbol + ' vencida(s) en la rama'">
-              {{ f.vencidasArbol }}
+            <span class="org-slot">
+              <span class="org-propio"
+                    *ngIf="f.cuantosDebajo > 0 && f.porcentaje !== null"
+                    [title]="'Del puesto solo, sin contar a quienes le reportan'">
+                ({{ f.porcentaje }}%)
+              </span>
+            </span>
+
+            <span class="org-slot">
+              <span class="org-vencidas" *ngIf="f.vencidasArbol > 0"
+                    [title]="f.vencidasArbol + ' vencida(s) en la rama'">
+                {{ f.vencidasArbol }}
+              </span>
             </span>
           </span>
         </button>

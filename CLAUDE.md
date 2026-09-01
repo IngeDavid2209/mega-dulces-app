@@ -545,6 +545,55 @@ localiza el archivo en un segundo. Aquí se probaron hashes, endpoints, Firebase
 mantenimiento y service workers —todo sano— cuando la palabra «verificar» ya apuntaba a
 `login.html:53`.
 
+### 1/sep/2026 — LA CAÍDA: el sidebar se reconstruía en cada ciclo
+
+**Causa única.** `sidebar.ts:47` era `menu() { return menuDe(this.currentUser); }`, y `menuDe()`
+construye un arreglo **nuevo** en cada llamada. `sidebar.html:21` hace `*ngFor` sobre `menu()`,
+con otro `*ngFor` anidado y un `[ngSwitch]` de 21 SVG dentro. Angular llama `menu()` en **cada
+ciclo de detección de cambios** y compara por identidad: veía un arreglo nuevo siempre, así que
+destruía y recreaba las 21 entradas —con sus `routerLinkActive`, que se re-suscriben— en cada
+click, cada respuesta HTTP y cada tick de los cuatro polls. Reconstrucción continua.
+
+Arreglo: memoización por identidad de `currentUser`. Vale porque `currentUser` llega por
+`@Input()` desde un **campo plano** del padre (`home.ts:39`), no de un getter que fabrique
+objetos — se verificó antes de aplicarlo, porque con un getter el parche no habría servido de
+nada.
+
+**`login.html` NO monta `<app-sidebar>` (0 ocurrencias).** Por eso «se congela al iniciar sesión»
+no era el formulario: el congelamiento llega al navegar a `/home`, que es el instante en que se
+entra. Confirmarlo evitó buscar en el archivo equivocado.
+
+**La medición, y su denominador.** Mismo Chrome, mismos flags, misma máquina; sesión sembrada en
+`localStorage` (basta: `auth.guard.ts` solo mira esa llave y `home.ts:759` saca de ahí el
+`currentUser`), y 20 ciclos de detección forzados con clicks en la hamburguesa, contando
+mutaciones del nav con un `MutationObserver`:
+
+| build | sidebar montado | DOM devuelto |
+|---|---|---|
+| sin parche | **sí** | **0 bytes — nunca terminó** (2 de 2) |
+| sin parche | **no** (sin sesión) | 2823 bytes ✓ |
+| con parche | sí | 36511 bytes · **mutaciones = 0** (3 de 3) |
+| **producción 15:26** | sí | **36511 bytes · mutaciones = 0** |
+
+Ese `0 bytes` **es** el congelamiento: la página nunca alcanza reposo, el tiempo virtual de Chrome
+no drena y `--dump-dom` no emite. La fila del control —mismo build, sidebar fuera— es la que
+prueba que era el sidebar y no el build. Y la última se midió **bajando los 62 archivos que
+producción sirve**, no la copia local.
+
+**Lo que costó caro fue el diagnóstico, no el arreglo.** Se probaron hashes, endpoints, Firebase,
+CSP, mantenimiento y service workers —todo sano— antes de mirar el sidebar. Dos reglas que deja:
+
+- **Pregunta el texto literal de la pantalla antes de investigar.** «VERIFICANDO...» estaba en
+  `login.html:53` y localizaba el archivo en un `grep`.
+- **Abre la app tú mismo con Chrome headless antes de pedir síntomas.** Perfil limpio contra
+  producción contesta en segundos «¿abre o no abre?», y compararlo con el perfil de la persona
+  aísla si el problema es el servidor o su navegador.
+
+**Y una trampa del andamio:** un `timeout` de la medición dejó el `sidebar.ts` viejo en el árbol
+de trabajo unos minutos. Producción nunca lo vio —el despliegue salió antes—, pero `dist/` quedó
+construido del código viejo. Si algo se hubiera medido contra ese `dist/` sin darse cuenta, la
+conclusión habría sido la contraria. **Después de restaurar un archivo, reconstruir.**
+
 ### 4.1b DESPLEGADO — 1/sep/2026 14:37:59 GMT
 
 Verificado en producción, con marcador validado en las dos direcciones:

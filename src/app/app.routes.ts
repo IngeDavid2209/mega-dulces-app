@@ -101,6 +101,11 @@ export const routes: Routes = [
         canActivate: [tabControlGuard],
         loadComponent: () => import('./modules/dashboard/ranking-sucursales/ranking-sucursales').then(m => m.RankingSucursalesComponent)
       },
+      {
+        path: 'productividad',
+        canActivate: [tabControlGuard],
+        loadComponent: () => import('./modules/dashboard/productividad/productividad').then(m => m.ProductividadComponent)
+      },
     ]
   },
 
@@ -109,14 +114,10 @@ export const routes: Routes = [
   // esa URL mostraria una pantalla sin sidebar.
   { path: 'estadisticas', redirectTo: 'control/estadisticas', pathMatch: 'full' },
   { path: 'ranking-sucursales', redirectTo: 'control/ranking', pathMatch: 'full' },
-
-  // 📈 PRODUCTIVIDAD CONTRA EL TURNO: lo hecho cruzado con el horario que RH
-  // captura en Mega Talento.
-  {
-    path: 'productividad',
-    canActivate: [authGuard],
-    loadComponent: () => import('./modules/dashboard/productividad/productividad').then(m => m.ProductividadComponent)
-  },
+  // 📈 PRODUCTIVIDAD CONTRA EL TURNO (lo hecho cruzado con el horario de RH):
+  // es la entrada de menu numero 20, la deuda que la §7 registro el 31/ago. La
+  // absorbe esta fusion: deja de ser entrada y pasa a ser pestaña de Control.
+  { path: 'productividad', redirectTo: 'control/productividad', pathMatch: 'full' },
 
   // 📕 MANUAL POR PUESTO — reemplaza al sistema de Rutinas (Catálogo,
   // Asignación, Programación y Migración). Ya no se captura qué se hace ni a

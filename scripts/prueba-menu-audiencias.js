@@ -215,8 +215,7 @@ const FUNDIDAS = {
   // Preguntando por la pestaña, la perdida sale a la luz.
   '/estadisticas':       '/control/estadisticas',   // paso 2a
   '/ranking-sucursales': '/control/ranking',        // paso 2b
-  // '/ranking-sucursales': '/control',
-  // '/productividad':      '/control',
+  '/productividad':      '/control/productividad',  // paso 2c
   // '/checkstore':         '/control',
   // '/reportes':           '/control',
 };

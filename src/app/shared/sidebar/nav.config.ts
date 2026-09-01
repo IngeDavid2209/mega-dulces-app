@@ -141,8 +141,6 @@ export const NAV: EntradaNav[] = [
   // permiso. Entrar al cascaron nunca da acceso a una pestaña.
   { seccion: 'control', etiqueta: 'Control operativo', ruta: '/control',
     icono: 'grafica', ve: veControl },
-  { seccion: 'control', etiqueta: 'Productividad y turno', ruta: '/productividad',
-    icono: 'reloj', ve: (u) => esAdmin(u) || u?.puedeVerEstadisticas || u?.puedeVerCheckstore },
   { seccion: 'control', etiqueta: 'Auditoría', ruta: '/reportes',
     icono: 'lupa', ve: (u) => esAdmin(u) || u?.puedeVerHistorial },
   { seccion: 'control', etiqueta: 'Cierre Mensual', ruta: '/cierre-mensual',

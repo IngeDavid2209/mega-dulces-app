@@ -69,7 +69,11 @@ export const TABS_CONTROL: TabControl[] = [
   // pregunte por la pestaña y no por /control.
   { ruta: 'ranking', etiqueta: 'Ranking Semanal',
     ve: (u) => esAdmin(u) || u?.puedeVerEstadisticas || u?.puedeVerCheckstore },
-  // 2c · Productividad y turno  ve: esAdmin || puedeVerEstadisticas || puedeVerCheckstore
+  // Productividad comparte EXACTAMENTE el permiso de Ranking, y por eso no
+  // aporta ningun caso nuevo a la prueba: ningun perfil puede ver una y no la
+  // otra. Se anota aqui para que nadie lo lea como un descuido.
+  { ruta: 'productividad', etiqueta: 'Productividad y turno',
+    ve: (u) => esAdmin(u) || u?.puedeVerEstadisticas || u?.puedeVerCheckstore },
   // 2d · Sucursales             ve: esAdmin || puedeVerCheckstore
 ];
 

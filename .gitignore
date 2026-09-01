@@ -55,3 +55,11 @@ service-account.json
 
 # Ajustes locales de Claude Code (permisos de esta maquina, no del repo)
 .claude/
+
+# Generado en cada build por scripts/generar-version.js (lo llaman `npm run
+# build` y `npm start` antes de ng, y el Dockerfile usa `npm run build`, asi
+# que un clon limpio lo crea solo). Estuvo rastreado hasta el 31/ago/2026 y
+# eso dejaba el arbol permanentemente sucio: `git status` siempre mostraba una
+# modificacion que nadie hizo, y habia que filtrarla mentalmente. Asi fue como
+# un `git add -u` lo colo en el commit del scroll sin que se notara.
+src/app/shared/version.ts

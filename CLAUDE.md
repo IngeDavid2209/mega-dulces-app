@@ -423,6 +423,36 @@ hace salir con código 2, nombrando la pestaña y el perfil correctos; restaurad
 no-op dio un verde que casi leo como «el control no detecta». **Un control negativo que no
 cambia nada prueba tanto como un cero sin denominador.**)
 
+### Y comprueba que las rutas VIEJAS aterricen donde dice la fusión
+
+Los checks de pantalla prueban las rutas nuevas. Las viejas son las que están en el historial
+de WhatsApp, y son las únicas que la gente real toca el primer día. **Su modo de fallo no es
+visual**: un `redirectTo` cuyo destino no coincide exacto con el segmento del hijo no da error
+de compilación — cae al wildcard y manda a login. Verde en el build, rojo en la cara de una
+Encargada. Cuatro comprobaciones, sin parsear (se aplastan los espacios y se comparan cadenas):
+
+1. cada pestaña tiene ruta hija **y** va con `tabControlGuard`;
+2. no sobra ninguna hija guardada (sería una huérfana de un renombre);
+3. cada fusión de `FUNDIDAS` tiene su `redirectTo` realmente escrito;
+4. **ninguna ruta vieja sobrevivió sirviendo el componente.**
+
+**El (4) es el que casi no existe, y es el espejo del (2).** El (3) verifica que el
+`redirectTo` *exista*, no que la ruta vieja *se haya ido*. Con las dos presentes, Angular toma
+la primera que casa, sirve el componente, y el redirect queda muerto: esa URL entrega la
+pantalla **sin marco** —justo lo que 2a vino a evitar— con el (3) en verde. Y contar
+`path: 'estadisticas'` no discrimina: aparece dos veces con razón. Lo que discrimina es **de
+dónde se carga** el componente: uno solo por `loadComponent`. El especificador se lee de la
+propia ruta hija, no se escribe en la prueba — y un «sin duplicados» global tampoco servía,
+porque `checklist.ts` sirve dos rutas a propósito (hallazgo 4).
+
+**La lección del no-op se cobró el mismo día.** El primer intento de este bloque tenía `\s`
+dentro de un *string* de JS, donde `\s` es solo `s`: la regex no habría casado nunca, el
+renombre habría sido un no-op y el chequeo habría dado verde **sin mirar nada**. Lo cazó la
+guardia «el control negativo no cambió nada», escrita dos horas antes por el mismo motivo.
+Reescrito sin regex. Corolario para §8.11(c): **un control negativo que no cambia nada prueba
+tanto como un cero sin denominador** — y es peor que un control roto, porque el roto te manda
+a investigar y el no-op te manda a confiar.
+
 ### `version.ts` dejó de rastrearse, y por qué eso era un riesgo
 
 `scripts/generar-version.js` lo reescribe en cada `npm run build`, así que llevaba **todo el

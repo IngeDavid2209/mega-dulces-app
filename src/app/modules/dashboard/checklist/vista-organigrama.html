@@ -24,7 +24,7 @@
     </label>
   </header>
 
-  <div class="org-cuerpo">
+  <div class="org-cuerpo" [class.con-detalle]="!!puestoActivo()">
 
     <!-- ══════════════ LA PIRÁMIDE ══════════════
          Un puesto por fila, sangrada según su profundidad en el organigrama.
@@ -33,6 +33,12 @@
          El número grande de cada fila es el de SU RAMA COMPLETA -ponderado por
          puntos de control-; el chico entre paréntesis es lo suyo propio. -->
     <nav class="org-menu" aria-label="Organigrama">
+
+      <p class="org-pista" *ngIf="!puestoActivo()">
+        Toca un puesto para ver lo que su manual le manda y quién lo cumple hoy.
+      </p>
+
+      <div class="org-lista">
       <div class="org-fila-wrap" *ngFor="let f of filas(); trackBy: trackPuesto">
         <button class="org-puesto org-nivel-{{ f.profundidad }}"
                 [style.paddingLeft.px]="10 + f.profundidad * 18"
@@ -86,6 +92,7 @@
           </span>
         </button>
       </div>
+      </div>
 
       <!-- ─── AL PIE: LO QUE NO CUELGA DE NINGÚN PUESTO ───
            No se reparte por parecido. Un puesto adivinado le entrega a una
@@ -112,10 +119,13 @@
     </nav>
 
     <!-- ══════════════ DETALLE DEL PUESTO ══════════════ -->
-    <div class="org-detalle">
+    <!-- El detalle NO se monta si no hay puesto abierto: antes ocupaba dos
+         tercios de la pantalla con un cartel de "elige un puesto" mientras el
+         arbol se estrujaba en 292px y cortaba los nombres. -->
+    <div class="org-detalle" *ngIf="puestoActivo()">
 
       <!-- Sin puesto elegido -->
-      <div class="org-invita" *ngIf="!puestoActivo()">
+      <div class="org-invita" *ngIf="false">
         <div class="org-invita-icono" aria-hidden="true">🏛️</div>
         <h4>Elige un puesto del organigrama</h4>
         <p>

@@ -31,95 +31,166 @@
   cursor: pointer; user-select: none;
 }
 
-.org-cuerpo { display: grid; grid-template-columns: 292px 1fr; min-height: 340px; }
+/* ═══════════════════════════════════════════════════════════════════════════
+   LA PIRAMIDE, EN LISTA AGRUPADA ESTILO iOS
+   Fondo gris, tarjeta blanca redondeada, filas de 44px, separadores de un pelo
+   y chevron gris. Sin bordes duros ni bloques de color: el unico color fuerte
+   es el del dato -avance y vencidas-, que es lo que hay que ver de lejos.
 
-/* ── Menú ────────────────────────────────────────────────────────────────── */
+   Y EL ARBOL OCUPA TODO EL ANCHO mientras no haya un puesto abierto. Antes la
+   columna era de 292px fijos: con el sangrado de hasta cinco niveles quedaban
+   ~100px para el nombre y se leia "Anaquelista d...". El panel de la derecha,
+   vacio, se llevaba dos tercios de la pantalla para decir "elige un puesto".
+   ═══════════════════════════════════════════════════════════════════════════ */
+.org-cuerpo { display: grid; grid-template-columns: 1fr; min-height: 340px; }
+.org-cuerpo.con-detalle { grid-template-columns: minmax(300px, 400px) 1fr; }
+
+/* ── Menu ────────────────────────────────────────────────────────────────── */
 .org-menu {
-  border-right: 1px solid #F1F5F9;
-  padding: 10px;
-  max-height: 620px;
+  padding: 14px;
+  max-height: 640px;
   overflow-y: auto;
-  background: #FCFCFD;
+  background: #F2F2F7;                      /* systemGroupedBackground */
+  -webkit-overflow-scrolling: touch;
 }
-.org-unidad { margin-bottom: 3px; }
+.org-cuerpo.con-detalle .org-menu { border-right: 1px solid #E5E5EA; }
 
-.org-unidad-cab {
-  width: 100%;
-  display: flex; align-items: center; gap: 8px;
-  padding: 8px 9px;
-  background: transparent; border: none; cursor: pointer;
-  text-align: left; font-family: inherit;
-  border-radius: 7px;
+.org-pista {
+  margin: 0 0 10px 4px;
+  font-size: 12.5px; color: #8E8E93;
 }
-.org-unidad-cab:hover { background: #F1F5F9; }
-.org-unidad-nombre {
-  flex: 1; min-width: 0;
-  font-size: 10.5px; font-weight: 800; letter-spacing: .5px;
-  color: #475569; text-transform: uppercase;
-}
-.org-unidad-badge {
-  flex: 0 0 auto;
-  background: #1E3A8A; color: #fff;
-  font-size: 10px; font-weight: 800;
-  border-radius: 999px; padding: 1px 7px; min-width: 18px; text-align: center;
-}
-.org-chevron {
-  flex: 0 0 auto; font-size: 16px; color: #94A3B8; line-height: 1;
-  transition: transform .15s ease;
-}
-.org-chevron.girado { transform: rotate(90deg); }
 
-.org-puestos { padding: 2px 0 6px 14px; display: grid; gap: 2px; }
+/* La tarjeta. Una sola para todo el arbol: partirla por unidad rompería la
+   continuidad de la piramide, que es justo lo que se vino a enseñar. */
+.org-lista {
+  background: #fff;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+/* Sin puesto abierto el arbol ocupa todo el ancho disponible, pero la TARJETA
+   se topa: una fila de 44px estirada a 1400px deja el nombre en un extremo y
+   las pildoras en el otro, y hay que barrer la pantalla con la vista para leer
+   una sola fila. Es lo mismo que hace iOS en pantalla ancha. */
+.org-cuerpo:not(.con-detalle) .org-lista,
+.org-cuerpo:not(.con-detalle) .org-huerfanos,
+.org-cuerpo:not(.con-detalle) .org-pista { max-width: 820px; }
+
+.org-fila-wrap { position: relative; }
 
 .org-puesto {
   width: 100%;
+  min-height: 44px;                          /* el minimo tactil de iOS */
   display: flex; align-items: center; gap: 8px;
-  padding: 7px 9px;
+  padding: 8px 14px 8px 10px;
   background: transparent; border: none; cursor: pointer;
   text-align: left; font-family: inherit;
-  border-radius: 7px;
-  border-left: 2px solid #E2E8F0;
+  border-radius: 0;
 }
-.org-puesto:hover { background: #F1F5F9; }
-.org-puesto.activo {
-  background: #0F172A; border-left-color: #FCD34D;
+/* Separador de un pelo, sangrado como en iOS: empieza donde empieza el texto,
+   no en el borde de la tarjeta. */
+.org-fila-wrap + .org-fila-wrap .org-puesto {
+  box-shadow: inset 0 .5px 0 0 #E5E5EA;
 }
-.org-puesto.activo .org-puesto-nombre { color: #fff; }
+.org-puesto:active { background: #D1D1D6; }
+.org-puesto:hover  { background: #F7F7FA; }
+
+/* Seleccionado: relleno gris de iOS, NO un bloque azul marino. */
+.org-puesto.activo { background: #E5E5EA; }
+.org-puesto.activo .org-puesto-nombre { color: #000; font-weight: 600; }
+
 /* Un puesto sin manual se ve apagado, no roto: es un documento pendiente. */
-.org-puesto.sin-manual .org-puesto-nombre { color: #94A3B8; font-weight: 500; }
+.org-puesto.sin-manual .org-puesto-nombre { color: #8E8E93; font-weight: 400; }
+
+/* Los que tienen gente debajo se leen como mando. */
+.org-puesto.con-rama .org-puesto-nombre { font-weight: 600; color: #000; }
+.org-nivel-0 .org-puesto-nombre { font-size: 16px; }
 
 .org-puesto-nombre {
   flex: 1; min-width: 0;
-  font-size: 12.5px; font-weight: 600; color: #1E293B;
+  font-size: 15px; font-weight: 400; color: #000;
+  letter-spacing: -.2px;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.org-puesto-datos { flex: 0 0 auto; display: flex; align-items: center; gap: 5px; }
+.org-puesto-datos { flex: 0 0 auto; display: flex; align-items: center; gap: 6px; }
+
+/* Chevron de despliegue, a la izquierda como en una lista de carpetas. */
+.org-chevron {
+  flex: 0 0 auto;
+  width: 16px; text-align: center;
+  font-size: 15px; color: #C7C7CC; line-height: 1;
+  cursor: pointer; border-radius: 4px;
+  transition: transform .2s ease, color .15s ease;
+}
+.org-chevron:hover { color: #636366; }
+.org-chevron.girado { transform: rotate(90deg); }
+.org-chevron-hueco { width: 16px; display: inline-block; }
+
+/* Cuantos puestos cuelgan de este. */
+.org-rama {
+  flex: 0 0 auto;
+  background: #E5E5EA; color: #636366;
+  font-size: 11px; font-weight: 600;
+  border-radius: 999px; padding: 1px 7px; min-width: 20px; text-align: center;
+}
 
 .org-pill {
-  font-size: 10px; font-weight: 800;
-  border-radius: 4px; padding: 1px 6px; min-width: 18px; text-align: center;
+  font-size: 11px; font-weight: 600;
+  border-radius: 999px; padding: 1px 7px; min-width: 20px; text-align: center;
 }
-.org-pill-manual { background: #FEF3C7; color: #92400E; }
-.org-pill-nada   { background: #F1F5F9; color: #CBD5E1; }
+.org-pill-manual { background: #FFF4D6; color: #8A6100; }
+.org-pill-nada   { background: transparent; color: #C7C7CC; }
 
 .org-avance {
-  font-size: 11px; font-weight: 800;
-  border-radius: 4px; padding: 1px 6px;
+  font-size: 12px; font-weight: 600;
+  border-radius: 999px; padding: 2px 8px;
+  font-variant-numeric: tabular-nums;
 }
-.org-avance.grande { font-size: 14px; padding: 2px 9px; }
-/* Verde cumplido, ámbar en curso, rojo en cero: el color es el dato. */
-.av-bien  { background: #DCFCE7; color: #166534; }
-.av-medio { background: #FEF3C7; color: #92400E; }
-.av-cero  { background: #FEE2E2; color: #991B1B; }
-.av-nada  { background: #F1F5F9; color: #94A3B8; }
+.org-avance.grande { font-size: 14px; padding: 3px 10px; }
+/* Verde cumplido, ambar en curso, rojo en cero: el color es el dato. */
+.av-bien  { background: #D8F3DF; color: #1B7F3B; }
+.av-medio { background: #FFF0CC; color: #8A6100; }
+.av-cero  { background: #FFE0E0; color: #C0392B; }
+.av-nada  { background: #F2F2F7; color: #AEAEB2; }
+
+/* El avance del puesto SOLO, junto al de su rama. Discreto a proposito. */
+.org-propio { flex: 0 0 auto; font-size: 11px; color: #AEAEB2; font-variant-numeric: tabular-nums; }
 
 .org-vencidas {
-  font-size: 10px; font-weight: 800;
-  background: #DC2626; color: #fff;
-  border-radius: 999px; padding: 1px 6px; min-width: 17px; text-align: center;
+  font-size: 11px; font-weight: 700;
+  background: #FF3B30; color: #fff;
+  border-radius: 999px; padding: 1px 7px; min-width: 20px; text-align: center;
 }
 
-.org-menu-vacio { padding: 18px 10px; font-size: 12.5px; color: #94A3B8; text-align: center; }
+/* ── Al pie: quienes no cuelgan de ningun puesto. Su propia tarjeta. ─────── */
+.org-huerfanos {
+  margin-top: 18px;
+  background: #fff;
+  border-radius: 12px;
+  overflow: hidden;
+}
+.org-huerfanos-cab {
+  font-size: 12px; font-weight: 600; letter-spacing: -.1px;
+  color: #C0392B; padding: 10px 14px 8px;
+}
+.org-huerfano {
+  display: flex; align-items: center; gap: 10px;
+  min-height: 40px; padding: 6px 14px;
+  box-shadow: inset 0 .5px 0 0 #E5E5EA;
+}
+.org-huerfano-nombre { flex: 1; min-width: 0; font-size: 14px; color: #000;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.org-huerfano-suc { flex: 0 0 auto; font-size: 12px; color: #8E8E93; }
+.org-huerfanos-pie {
+  margin: 0; padding: 10px 14px 12px;
+  font-size: 12px; color: #8E8E93; line-height: 1.45;
+  box-shadow: inset 0 .5px 0 0 #E5E5EA;
+}
+
+/* El aviso de un organigrama roto. Tiene que verse mal a proposito. */
+.org-alerta { margin-top: 6px; font-size: 12px; font-weight: 600; color: #FF3B30; }
+
+.org-menu-vacio { padding: 22px 10px; font-size: 13px; color: #AEAEB2; text-align: center; }
 
 /* ── Detalle ─────────────────────────────────────────────────────────────── */
 .org-detalle { padding: 16px 18px; max-height: 620px; overflow-y: auto; }
@@ -256,69 +327,21 @@
 
 /* ── Responsive ──────────────────────────────────────────────────────────── */
 @media (max-width: 860px) {
-  .org-cuerpo { grid-template-columns: 1fr; }
-  .org-menu {
-    border-right: none; border-bottom: 1px solid #F1F5F9;
-    max-height: 280px;
+  /* En celular NUNCA hay dos columnas: se apilan. `.con-detalle` tambien, o el
+     arbol quedaria en una tira de 300px al abrir un puesto. */
+  .org-cuerpo, .org-cuerpo.con-detalle { grid-template-columns: 1fr; }
+  .org-cuerpo.con-detalle .org-menu {
+    border-right: none; border-bottom: 1px solid #E5E5EA;
+    max-height: 320px;
   }
+  /* Sin puesto abierto el arbol es la pantalla: no se le pone tope de alto,
+     porque antes ese `max-height: 280px` lo dejaba en un recuadro con scroll
+     propio dentro de una pagina vacia. */
+  .org-cuerpo:not(.con-detalle) .org-menu { max-height: none; }
+  .org-menu { padding: 10px; }
   .org-detalle { max-height: none; }
   .org-entrega { margin-left: 0; width: 100%; }
+  /* Con poco ancho, el sangrado se achica para que el nombre no se corte. */
+  .org-puesto { padding-right: 10px; }
 }
 
-/* ══════════════════════════════════════════════════════════════════════════
-   LA PIRAMIDE
-   La sangria la pone el componente con paddingLeft segun la profundidad, no
-   una clase por nivel: los niveles son cinco hoy y podrian ser seis mañana.
-   Aqui solo va la guia vertical que hace que la rama se lea como rama.
-   ══════════════════════════════════════════════════════════════════════════ */
-.org-fila-wrap { position: relative; }
-
-/* Los puestos con gente debajo se leen como mando: un pelo mas oscuros y con
-   la barra de la izquierda marcada. Sin esto, cinco niveles sangrados se ven
-   como una lista con margenes raros. */
-.org-puesto.con-rama { border-left-color: #94A3B8; }
-.org-puesto.con-rama .org-puesto-nombre { font-weight: 700; color: #0F172A; }
-.org-nivel-0 .org-puesto-nombre { font-size: 13px; letter-spacing: .2px; }
-
-/* Hueco del mismo ancho que el chevron, para que los nombres de las hojas
-   queden alineados con los de sus hermanos que si tienen rama. */
-.org-chevron-hueco { width: 9px; display: inline-block; }
-.org-chevron { cursor: pointer; padding: 0 2px; }
-.org-chevron:hover { color: #0F172A; }
-
-/* Cuantos puestos cuelgan de este. */
-.org-rama {
-  flex: 0 0 auto;
-  background: #E2E8F0; color: #475569;
-  font-size: 9.5px; font-weight: 800;
-  border-radius: 999px; padding: 1px 6px;
-}
-.org-puesto.activo .org-rama { background: #334155; color: #E2E8F0; }
-
-/* El avance del puesto SOLO, junto al de su rama. Deliberadamente discreto:
-   el numero que manda es el de la rama. */
-.org-propio { flex: 0 0 auto; font-size: 10px; color: #94A3B8; font-weight: 600; }
-.org-puesto.activo .org-propio { color: #CBD5E1; }
-
-/* ── Al pie: quienes no cuelgan de ningun puesto ────────────────────────── */
-.org-huerfanos {
-  margin-top: 14px; padding: 10px 9px;
-  border-top: 1px dashed #CBD5E1;
-}
-.org-huerfanos-cab {
-  font-size: 10.5px; font-weight: 800; letter-spacing: .5px;
-  color: #B45309; text-transform: uppercase; margin-bottom: 6px;
-}
-.org-huerfano {
-  display: flex; align-items: center; gap: 8px;
-  padding: 5px 4px; border-radius: 6px;
-}
-.org-huerfano:hover { background: #FEF3C7; }
-.org-huerfano-nombre { flex: 1; min-width: 0; font-size: 12px; color: #1E293B; }
-.org-huerfano-suc { flex: 0 0 auto; font-size: 10.5px; color: #94A3B8; }
-.org-huerfanos-pie { margin: 8px 4px 0; font-size: 10.5px; color: #94A3B8; line-height: 1.45; }
-
-/* El aviso de un organigrama roto. Tiene que verse mal a proposito. */
-.org-alerta {
-  margin-top: 6px; font-size: 11px; font-weight: 700; color: #B91C1C;
-}

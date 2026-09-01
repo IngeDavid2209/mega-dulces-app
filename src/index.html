@@ -19,5 +19,103 @@
 <body>
   <app-root></app-root>
   <noscript>Please enable JavaScript to continue using this application.</noscript>
+
+  <!-- ========================================================================
+       RESCATE DE ARRANQUE — el unico codigo que corre cuando NADA arranca
+
+       app.ts ya sabe recuperarse de un chunk viejo: purga el service worker,
+       reintenta, cuenta intentos y detecta si esta offline. Pero TODO eso vive
+       DENTRO de app.ts, asi que solo sirve si la app ya arranco. Si el service
+       worker entrega un index.html guardado cuyos chunks ya no existen en el
+       servidor, el arranque falla y el reparador NUNCA CORRE: el rescate estaba
+       adentro del edificio que no abre. Pantalla en blanco, sin salida.
+
+       Paso el 31/ago/2026 con once despliegues en un dia. Se comprobo que el
+       servidor estaba sano -58/58 hashes de ngsw.json, 16/16 archivos 200,
+       Chrome headless con perfil limpio pintaba el login completo- y que lo
+       roto era el estado guardado en un navegador concreto.
+
+       Este bloque va INLINE en el HTML a proposito: es lo unico que se ejecuta
+       aunque main.js devuelva 404.
+
+       LIMITE HONESTO: no rescata a quien YA tiene el worker atascado, porque
+       ese navegador tiene el index viejo y este script no esta ahi. Protege
+       desde el despliegue siguiente en adelante.
+       ===================================================================== -->
+  <script>
+  (function () {
+    var CLAVE = 'md_rescate_arranque';
+    // Se mide DESPUES de 'load', cuando todos los recursos ya se resolvieron
+    // (bien o mal). Asi "app-root vacio" significa fallo real y no red lenta:
+    // una sucursal con mala señal no se merece una purga.
+    var ESPERA = 6000;
+
+    function raiz() { return document.querySelector('app-root'); }
+    function arranco() {
+      var r = raiz();
+      return !!r && (r.children.length > 0 || r.textContent.trim().length > 0);
+    }
+
+    function purgarYRecargar(motivo) {
+      // Una sola vez por pestaña: si tras purgar sigue sin arrancar, el problema
+      // no era la cache y un bucle de recargas es peor que una pantalla blanca.
+      if (sessionStorage.getItem(CLAVE)) {
+        console.error('[rescate] ya se intento una vez en esta pestaña; no recargo de nuevo. Motivo:', motivo);
+        return;
+      }
+      // Offline: recargar no baja el chunk que falta, deja la app igual de
+      // muerta y encima borra la cache que si servia.
+      if (navigator.onLine === false) {
+        console.warn('[rescate] sin red: recargar no traeria nada. Motivo:', motivo);
+        return;
+      }
+      sessionStorage.setItem(CLAVE, String(Date.now()));
+      console.warn('[rescate] la app no arranco (' + motivo + '). Purgando service worker y caches.');
+      var pasos = [];
+      if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
+        pasos.push(navigator.serviceWorker.getRegistrations()
+          .then(function (rs) { return Promise.all(rs.map(function (r) { return r.unregister(); })); })
+          .catch(function () {}));
+      }
+      if (window.caches && window.caches.keys) {
+        pasos.push(window.caches.keys()
+          .then(function (ks) { return Promise.all(ks.map(function (k) { return window.caches.delete(k); })); })
+          .catch(function () {}));
+      }
+      Promise.all(pasos).catch(function () {}).then(function () { location.reload(); });
+    }
+
+    // ── Camino rapido: un archivo del arranque no cargo ──────────────────
+    // Solo MISMO ORIGEN y solo .js/.css. Las fuentes de Google fallan seguido
+    // en redes malas y no deben provocar una purga; su URL es /css2?family=...,
+    // sin punto antes de css, y ademas es otro origen.
+    window.addEventListener('error', function (e) {
+      var t = e.target;
+      if (!t || !t.tagName) return;                 // error de JS, no de recurso
+      var tag = t.tagName.toLowerCase();
+      if (tag !== 'script' && tag !== 'link') return;
+      var url = t.src || t.href || '';
+      if (url.indexOf(location.origin) !== 0 && url.charAt(0) !== '/') return;
+      if (!/\.(js|mjs|css)(\?|$)/i.test(url)) return;
+      // Si la app YA arranco, esto es un chunk lazy de navegacion: es el terreno
+      // de app.ts, que sabe contar intentos. Aqui no nos metemos.
+      if (arranco()) return;
+      purgarYRecargar('no cargo ' + url.split('/').pop());
+    }, true);
+
+    // ── Red de seguridad: arranco sin errores visibles y aun asi no pinto ──
+    window.addEventListener('load', function () {
+      setTimeout(function () {
+        if (arranco()) {
+          // Arranco bien: se limpia la bandera para que un fallo futuro en esta
+          // misma pestaña tambien tenga su rescate.
+          try { sessionStorage.removeItem(CLAVE); } catch (_) {}
+          return;
+        }
+        purgarYRecargar('app-root vacio ' + (ESPERA / 1000) + 's despues de load');
+      }, ESPERA);
+    });
+  })();
+  </script>
 </body>
 </html>

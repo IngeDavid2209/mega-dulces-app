@@ -131,13 +131,9 @@ export const NAV: EntradaNav[] = [
   // quien ve que, y no va en este paso.
   { seccion: 'control', etiqueta: 'Dashboard', ruta: '/home',
     icono: 'inicio', ve: siempre },
-  // Los cuatro de análisis son cortes de la misma pregunta. Se funden en una
-  // pantalla con pestañas en el paso 4.1b; hoy siguen separados pero YA
-  // agrupados, que es lo que se puede hacer sin tocar cuatro componentes.
-  { seccion: 'control', etiqueta: 'Sucursales', ruta: '/checkstore',
-    icono: 'tienda', ve: (u) => esAdmin(u) || u?.puedeVerCheckstore },
-  // Control operativo: una entrada por las cuatro pantallas de analisis. Se ve
-  // si se ve AL MENOS UNA pestaña; cada pestaña se gatea aparte por su propio
+  // UNA entrada por las cuatro pantallas de analisis —Estadisticas, Ranking,
+  // Productividad y Sucursales—, que son cortes de la misma pregunta. Se ve si
+  // se ve AL MENOS UNA pestaña; cada pestaña se gatea aparte por su propio
   // permiso. Entrar al cascaron nunca da acceso a una pestaña.
   { seccion: 'control', etiqueta: 'Control operativo', ruta: '/control',
     icono: 'grafica', ve: veControl },

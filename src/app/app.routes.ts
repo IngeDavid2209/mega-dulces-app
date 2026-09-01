@@ -45,9 +45,9 @@ export const routes: Routes = [
     loadComponent: () => import('./modules/dashboard/checklist/checklist').then(m => m.ChecklistComponent)
   },
   { 
-    path: 'checkstore', 
-    canActivate: [authGuard],
-    loadComponent: () => import('./modules/dashboard/checkstore/checkstore').then(m => m.CheckstoreComponent) 
+    path: 'checkstore',
+    redirectTo: 'control/sucursales',
+    pathMatch: 'full'
   },
   // 🏆 RANKING SEMANAL DE SUCURSALES
   // 📄 CIERRE MENSUAL DE OPERACIONES (PDF con fotos por sucursal)
@@ -105,6 +105,11 @@ export const routes: Routes = [
         path: 'productividad',
         canActivate: [tabControlGuard],
         loadComponent: () => import('./modules/dashboard/productividad/productividad').then(m => m.ProductividadComponent)
+      },
+      {
+        path: 'sucursales',
+        canActivate: [tabControlGuard],
+        loadComponent: () => import('./modules/dashboard/checkstore/checkstore').then(m => m.CheckstoreComponent)
       },
     ]
   },

@@ -216,6 +216,7 @@ const FUNDIDAS = {
   '/estadisticas':       '/control/estadisticas',   // paso 2a
   '/ranking-sucursales': '/control/ranking',        // paso 2b
   '/productividad':      '/control/productividad',  // paso 2c
+  '/checkstore':         '/control/sucursales',     // paso 2d
   // '/checkstore':         '/control',
   // '/reportes':           '/control',
 };
@@ -276,6 +277,21 @@ const USUARIOS = [
       puedeVerHistorial: true, puedeAdministrarPersonal: true } },
   { nombre: 'operadora sin banderas', u: { rol: 'trabajador' } },
 
+  // ── LOS DOS SUBCONJUNTOS: SIN ELLOS EL CHEQUEO DE PESTAÑAS NO COMPARA NADA ─
+  //
+  // Los cuatro de arriba ven las CUATRO pestañas (admin, o las dos banderas) o
+  // NINGUNA. Con solo esos, el control por pestaña recorreria conjuntos
+  // completos o vacios y nunca enfrentaria el `ve` de una pestaña contra el de
+  // la de al lado: pasaria en verde sin ejercer la discriminacion, que es el
+  // control que pasa por el camino equivocado.
+  //
+  // Estos dos ven TRES de cuatro, y NO LA MISMA TRES:
+  //   solo checkstore    -> ranking, productividad, sucursales   (sin Estadisticas)
+  //   solo estadisticas  -> estadisticas, ranking, productividad (sin Sucursales)
+  // Entre los dos, cada pestaña queda excluida de al menos un perfil.
+  { nombre: 'solo puedeVerCheckstore',   u: { rol: 'trabajador', puedeVerCheckstore: true } },
+  { nombre: 'solo puedeVerEstadisticas', u: { rol: 'trabajador', puedeVerEstadisticas: true } },
+
   // ── UNA BANDERA DE PROMOS A LA VEZ ────────────────────────────────────
   //
   // Los cuatro de arriba cubren lo estructural pero NO TIENEN NINGUNA bandera de
@@ -296,6 +312,12 @@ const USUARIOS = [
   { nombre: 'venta · solo vendedor',    u: { rol: 'trabajador', ventaPromosVendedor: true } },
   { nombre: 'venta · solo monitor',     u: { rol: 'trabajador', ventaPromosMonitor: true } },
 ];
+
+// Cuantas pestañas revisó el control de escalada, y si ALGUN perfil ejerció un
+// subconjunto estricto. Se afirman al final: un contador en cero significa que
+// el chequeo no comparó nada, no que todo esté bien.
+let tabsRevisadas = 0;
+const perfilesConSubconjunto = [];
 
 // ── La comparación ────────────────────────────────────────────────────────
 const rutasDelNav = new Set(NAVMOD.NAV.filter(e => !e.oculta).map(e => e.ruta));
@@ -343,6 +365,41 @@ for (const { nombre, u } of USUARIOS) {
   }
   for (const g of ganoLimpio) console.log('   ✓ destino legítimo: %s', g);
   for (const e of escalada) { difs++; console.log('   ✗ %s · %s', e.ruta, e.motivo); }
+
+  // ── ¿UNA PESTAÑA VISIBLE ES ESCALADA? ──────────────────────────────────
+  //
+  // El control de arriba mira RUTAS DEL MENU, y desde 2b las cuatro fusiones
+  // aterrizan en la MISMA: /control. Ahi las pestañas son indistinguibles — el
+  // perfil "gana /control" una sola vez, y basta haber tenido UNA de las cuatro
+  // pantallas para que pase. Las otras tres viajan de polizon.
+  //
+  // Ese es exactamente el agujero que describe control.tabs.ts: quien solo tenia
+  // Sucursales entra al cascaron con derecho propio, y si el `ve` de Estadisticas
+  // se escribiera de mas se llevaria una pantalla que nunca tuvo. La ruta del
+  // menu no cambia, asi que arriba no se ve nada.
+  //
+  // Aqui se pregunta por PESTAÑA: cada una tiene que ser RECLAMABLE por una
+  // pantalla que este perfil ya veia antes del cambio.
+  const misTabs = TABSDE(u);
+  tabsRevisadas += misTabs.length;
+  if (misTabs.length > 0 && misTabs.length < TABSDE({ rol: 'admin' }).length) {
+    perfilesConSubconjunto.push(nombre + ' (' + misTabs.map(t => t.ruta).join(', ') + ')');
+  }
+  for (const t of misTabs) {
+    const destino = '/control/' + t.ruta;
+    const origenes = Object.keys(mapa).filter(o => mapa[o] === destino);
+    if (origenes.length === 0) {
+      difs++;
+      console.log('   ✗ pestaña %s · no es destino de ninguna fusión declarada', t.ruta);
+      continue;
+    }
+    const tenia = origenes.filter(o => antes.includes(o));
+    if (tenia.length === 0) {
+      difs++;
+      console.log('   ✗ pestaña %s · ESCALADA: viene de [%s] y este perfil no veía ninguna',
+                  t.ruta, origenes.join(', '));
+    }
+  }
   if (!problemas.length && !escalada.length && !verificadas.length && !ganoLimpio.length) {
     console.log('   ✓ misma audiencia');
   } else if (!problemas.length && !escalada.length) {
@@ -411,6 +468,26 @@ for (const r of ['/promociones', '/venta-promos']) {
 }
 console.log('');
 console.log('✓ rutas de promos ejercidas por al menos un perfil: /promociones, /venta-promos');
+
+// ── ¿SE EJERCIO EL CHEQUEO POR PESTAÑA, Y COMPARO ALGO? ──────────────────
+// Dos afirmaciones distintas, y hacen falta las dos:
+//   · que el recorrido no haya sido vacio (si no, un cero no dice nada);
+//   · que algun perfil vea un SUBCONJUNTO ESTRICTO, que es la unica forma de
+//     que el `ve` de una pestaña se enfrente al de la de al lado. Con perfiles
+//     que ven las cuatro o ninguna, el chequeo recorre y no compara.
+if (tabsRevisadas === 0) {
+  abortar('el control por pestaña no reviso ni una sola pestaña. O ningun perfil ve el ' +
+    'cascaron, o tabsVisibles no se compilo. Un cero aqui no es "sin escaladas": es "sin medir".');
+}
+if (perfilesConSubconjunto.length === 0) {
+  abortar('ningun perfil de prueba ve un SUBCONJUNTO ESTRICTO de las pestañas: todos ven ' +
+    'todas o ninguna. El chequeo por pestaña paso sin comparar un solo `ve` contra el de al ' +
+    'lado — es el control que pasa por el camino equivocado. Agrega un perfil con una sola ' +
+    'bandera de las que distinguen (hoy: puedeVerCheckstore vs puedeVerEstadisticas).');
+}
+console.log('✓ escalada por pestaña: %d pestañas revisadas · %d perfil(es) con subconjunto estricto',
+  tabsRevisadas, perfilesConSubconjunto.length);
+for (const x of perfilesConSubconjunto) console.log('    %s', x);
 
 console.log('');
 if (difs > 0) {

@@ -29,9 +29,15 @@
  * acceso. Que nadie GANE acceso es la dirección opuesta y no está cubierta: una
  * escalada pasaría su verde sin una sola advertencia.
  *
- * Queda pendiente para el paso 2d: un caso que compare, por perfil, el conjunto
- * de pestañas visibles contra el conjunto de rutas que ese perfil veía antes. Si
- * ve una pestaña cuya pantalla original no le tocaba, es escalada.
+ * HECHO en el paso 2d. La prueba ahora recorre, por perfil, las pestañas que ve
+ * y exige que cada una sea RECLAMABLE por una pantalla que ese perfil ya veía.
+ * Una pestaña que no lo sea es escalada, y falla.
+ *
+ * No bastaba con escribir el caso: los diez perfiles de entonces veían las
+ * CUATRO pestañas o NINGUNA, así que el chequeo habría pasado sin comparar un
+ * solo `ve` contra el de al lado. Se agregaron dos perfiles de subconjunto
+ * —solo `puedeVerCheckstore` y solo `puedeVerEstadisticas`— y la prueba ABORTA
+ * si ninguno ejerce un subconjunto estricto.
  *
  * ═══════════════════════════════════════════════════════════════════════════
  *  LOS PERMISOS SON LOS DE HOY, COPIADOS TAL CUAL
@@ -74,7 +80,12 @@ export const TABS_CONTROL: TabControl[] = [
   // otra. Se anota aqui para que nadie lo lea como un descuido.
   { ruta: 'productividad', etiqueta: 'Productividad y turno',
     ve: (u) => esAdmin(u) || u?.puedeVerEstadisticas || u?.puedeVerCheckstore },
-  // 2d · Sucursales             ve: esAdmin || puedeVerCheckstore
+  // Sucursales es la pestaña MAS ESTRECHA de las cuatro: no incluye
+  // `puedeVerEstadisticas`. Es la que hace que la regla de dos niveles deje de
+  // ser teoria — quien solo tiene `puedeVerEstadisticas` ve tres pestañas y NO
+  // esta. Si el cascaron se viera con la union, se la llevaria de regalo.
+  { ruta: 'sucursales', etiqueta: 'Sucursales',
+    ve: (u) => esAdmin(u) || u?.puedeVerCheckstore },
 ];
 
 /** Las pestañas que este usuario puede abrir. */

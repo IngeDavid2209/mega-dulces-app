@@ -101,7 +101,7 @@ export class PerfilComponent implements OnInit {
   async quitarFoto() {
     const uid = this.miUid();
     if (!uid) return;
-    const r = await Swal.fire({ title: 'Quitar foto', text: '¿Quitar tu foto de perfil?', icon: 'warning', showCancelButton: true, confirmButtonText: 'Sí, quitar', cancelButtonText: 'Cancelar', confirmButtonColor: '#DC2626' });
+    const r = await Swal.fire({ title: 'Quitar foto', text: '¿Quitar tu foto de perfil?', icon: 'warning', showCancelButton: true, confirmButtonText: 'Sí, quitar', cancelButtonText: 'Cancelar', confirmButtonColor: 'var(--bad-fg)' });
     if (!r.isConfirmed) return;
     try {
       await updateDoc(doc(this.firestore, 'usuarios', uid), { fotoPerfil: '' });
@@ -159,7 +159,7 @@ export class PerfilComponent implements OnInit {
         title: 'Confirmación de Seguridad',
         text: 'Ingresa tu contraseña ACTUAL para autorizar estos cambios:',
         input: 'password',
-        confirmButtonColor: '#0F172A',
+        confirmButtonColor: 'var(--action)',
         showCancelButton: true,
         cancelButtonText: 'Cancelar'
       });

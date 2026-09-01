@@ -643,7 +643,7 @@ async guardarArea() {
         showCancelButton: true,
         confirmButtonText: 'Sí, asignar igual',
         cancelButtonText: 'Cancelar',
-        confirmButtonColor: '#0F172A'
+        confirmButtonColor: 'var(--action)'
       });
       if (!res.isConfirmed) return;
     }

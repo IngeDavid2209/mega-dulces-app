@@ -76,7 +76,7 @@ export class LoginComponent {
         icon: 'warning',
         title: 'Campos Vacíos',
         text: 'Por favor, ingresa tu usuario y contraseña.',
-        confirmButtonColor: '#0F172A'
+        confirmButtonColor: 'var(--action)'
       });
       return;
     }
@@ -114,7 +114,7 @@ export class LoginComponent {
           icon: 'error',
           title: 'Usuario no encontrado',
           text: 'Revisa tu usuario, o intenta con tu correo completo.',
-          confirmButtonColor: '#0F172A'
+          confirmButtonColor: 'var(--action)'
         });
         this.ingresando = false;
         return;
@@ -153,7 +153,7 @@ export class LoginComponent {
           icon: 'error',
           title: 'Perfil incompleto',
           text: 'Tu cuenta existe pero falta su perfil. Contacta a un administrador.',
-          confirmButtonColor: '#0F172A'
+          confirmButtonColor: 'var(--action)'
         });
         this.ingresando = false;
         return;
@@ -199,7 +199,7 @@ export class LoginComponent {
           text: 'Se agotó el tiempo al ' + paso + '. No es tu contraseña: algo no está ' +
                 'respondiendo. Revisa tu conexión e intenta de nuevo; si sigue igual, avisa ' +
                 'a Sistemas que falló al ' + paso + '.',
-          confirmButtonColor: '#0F172A'
+          confirmButtonColor: 'var(--action)'
         });
       } else {
         console.error('Error de login:', error?.code || error);
@@ -207,7 +207,7 @@ export class LoginComponent {
           icon: 'error',
           title: 'Acceso Denegado',
           text: 'Usuario o contraseña incorrectos. Intenta de nuevo.',
-          confirmButtonColor: '#0F172A'
+          confirmButtonColor: 'var(--action)'
         });
       }
     } finally {

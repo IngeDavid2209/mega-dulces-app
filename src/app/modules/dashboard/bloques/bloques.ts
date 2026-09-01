@@ -244,7 +244,7 @@ export class BloquesComponent implements OnInit, OnDestroy {
       html: 'Se van con él sus tareas y sus asignaciones, y dejará de repartirse.<br><br>'
         + 'Las tareas <b>ya repartidas</b> de días anteriores se conservan.',
       showCancelButton: true, confirmButtonText: 'Borrar', cancelButtonText: 'Cancelar',
-      confirmButtonColor: '#DC2626',
+      confirmButtonColor: 'var(--bad-fg)',
     });
     if (!r.isConfirmed) return;
     try {
@@ -447,7 +447,7 @@ export class BloquesComponent implements OnInit, OnDestroy {
     const r = await Swal.fire({
       icon: 'warning', title: '¿Borrar esta tarea?', text: t.texto,
       showCancelButton: true, confirmButtonText: 'Borrar', cancelButtonText: 'Cancelar',
-      confirmButtonColor: '#DC2626',
+      confirmButtonColor: 'var(--bad-fg)',
     });
     if (!r.isConfirmed) return;
     try {
@@ -589,7 +589,7 @@ export class BloquesComponent implements OnInit, OnDestroy {
       icon: 'warning', title: '¿Quitar esta asignación?',
       text: 'El bloque dejará de repartirse a esas personas.',
       showCancelButton: true, confirmButtonText: 'Quitar', cancelButtonText: 'Cancelar',
-      confirmButtonColor: '#DC2626',
+      confirmButtonColor: 'var(--bad-fg)',
     });
     if (!r.isConfirmed) return;
     try {

@@ -183,7 +183,7 @@ export class CierreMensualComponent implements OnInit, OnDestroy {
       this.checklistsDelMes.set(arr);
     } catch (e) {
       console.error('[cierre-mensual]', e);
-      Swal.fire({ icon: 'error', title: 'Error al cargar', text: 'No se pudo leer los checklists del mes.', confirmButtonColor: '#0F172A' });
+      Swal.fire({ icon: 'error', title: 'Error al cargar', text: 'No se pudo leer los checklists del mes.', confirmButtonColor: 'var(--action)' });
     } finally {
       this.cargando.set(false);
     }
@@ -328,7 +328,7 @@ export class CierreMensualComponent implements OnInit, OnDestroy {
       : todasSucursales.filter(s => s.sucursal === filtroSuc);
 
     if (sucursalesFiltradas.length === 0) {
-      Swal.fire({ icon: 'info', title: 'Sin datos', text: 'No hay checklists para la selección actual.', confirmButtonColor: '#0F172A' });
+      Swal.fire({ icon: 'info', title: 'Sin datos', text: 'No hay checklists para la selección actual.', confirmButtonColor: 'var(--action)' });
       return;
     }
 
@@ -341,7 +341,7 @@ export class CierreMensualComponent implements OnInit, OnDestroy {
     const totales = { totalChecklists, totalTareas, totalHechas, totalFotos, porcentaje: porcentajeTot };
 
     if (totales.totalChecklists === 0) {
-      Swal.fire({ icon: 'info', title: 'Sin datos', text: 'No hay checklists en el mes seleccionado.', confirmButtonColor: '#0F172A' });
+      Swal.fire({ icon: 'info', title: 'Sin datos', text: 'No hay checklists en el mes seleccionado.', confirmButtonColor: 'var(--action)' });
       return;
     }
     if (totales.totalFotos > 200) {
@@ -350,7 +350,7 @@ export class CierreMensualComponent implements OnInit, OnDestroy {
         html: `Vas a generar un PDF con <strong>${totales.totalFotos}</strong> fotos. Puede tardar 1-3 minutos. ¿Continuar?`,
         icon: 'warning', showCancelButton: true,
         confirmButtonText: 'Sí, generar', cancelButtonText: 'Cancelar',
-        confirmButtonColor: '#0F172A'
+        confirmButtonColor: 'var(--action)'
       });
       if (!r.isConfirmed) return;
     }
@@ -893,7 +893,7 @@ export class CierreMensualComponent implements OnInit, OnDestroy {
       Swal.fire({
         icon: 'success', title: 'Reporte generado',
         html: `Se descargó <strong>${nombreArchivo}</strong> con <strong>${totalFotosProcesadas}</strong> fotos.`,
-        confirmButtonColor: '#0F172A'
+        confirmButtonColor: 'var(--action)'
       });
     } catch (e: any) {
       console.error('[generarPDF]', e);
@@ -901,7 +901,7 @@ export class CierreMensualComponent implements OnInit, OnDestroy {
         icon: 'error', title: 'No se pudo generar el PDF',
         html: `<p>Intenta recargar la página y vuelve a intentar.</p>
                <p style="font-size:11px;color:#64748B"><strong>Detalle:</strong> <code>${(e?.message || e || '').toString().slice(0, 240)}</code></p>`,
-        confirmButtonColor: '#0F172A'
+        confirmButtonColor: 'var(--action)'
       });
     } finally {
       this.generandoPDF.set(false);
@@ -1106,7 +1106,7 @@ export class CierreMensualComponent implements OnInit, OnDestroy {
         icon: 'info',
         title: 'Nada por archivar',
         text: 'Todos los checklists de este mes ya están archivados.',
-        confirmButtonColor: '#831843'
+        confirmButtonColor: 'var(--action)'
       });
       return;
     }
@@ -1133,8 +1133,8 @@ export class CierreMensualComponent implements OnInit, OnDestroy {
       showCancelButton: true,
       confirmButtonText: 'Continuar',
       cancelButtonText: 'Cancelar',
-      confirmButtonColor: '#831843',
-      cancelButtonColor: '#64748b'
+      confirmButtonColor: 'var(--action)',
+      cancelButtonColor: 'var(--neutral-500)'
     });
     if (!paso1.isConfirmed) return;
 
@@ -1147,8 +1147,8 @@ export class CierreMensualComponent implements OnInit, OnDestroy {
       showCancelButton: true,
       confirmButtonText: 'Archivar mes',
       cancelButtonText: 'Cancelar',
-      confirmButtonColor: '#831843',
-      cancelButtonColor: '#64748b',
+      confirmButtonColor: 'var(--action)',
+      cancelButtonColor: 'var(--neutral-500)',
       inputValidator: (val) => {
         if (val !== 'ARCHIVAR') return 'Debes escribir exactamente ARCHIVAR.';
         return null;
@@ -1198,7 +1198,7 @@ export class CierreMensualComponent implements OnInit, OnDestroy {
         icon: 'success',
         title: 'Mes archivado',
         html: `Se archivaron <strong>${hechos}</strong> checklists de <strong>${mes}</strong>.<br><br>Ya no aparecerán en Auditoría ni Dashboard, pero podrás regenerar el PDF aquí cuando quieras.`,
-        confirmButtonColor: '#831843'
+        confirmButtonColor: 'var(--action)'
       });
     } catch (e: any) {
       console.error('[archivarMes]', e);
@@ -1206,7 +1206,7 @@ export class CierreMensualComponent implements OnInit, OnDestroy {
         icon: 'error',
         title: 'Error al archivar',
         text: e?.message || 'No se pudo completar el archivado. Revisa la conexión e intenta de nuevo.',
-        confirmButtonColor: '#831843'
+        confirmButtonColor: 'var(--action)'
       });
     } finally {
       this.archivandoMes.set(false);
@@ -1285,7 +1285,7 @@ export class CierreMensualComponent implements OnInit, OnDestroy {
         icon: 'info',
         title: 'Nada por borrar',
         text: 'No hay checklists archivados con fotos pendientes de limpiar en este mes.',
-        confirmButtonColor: '#831843'
+        confirmButtonColor: 'var(--action)'
       });
       return;
     }
@@ -1314,7 +1314,7 @@ export class CierreMensualComponent implements OnInit, OnDestroy {
         icon: 'info',
         title: 'Sin fotos válidas',
         text: 'No se encontraron URLs de Cloudinary válidas en los checklists archivados.',
-        confirmButtonColor: '#831843'
+        confirmButtonColor: 'var(--action)'
       });
       return;
     }
@@ -1341,8 +1341,8 @@ export class CierreMensualComponent implements OnInit, OnDestroy {
       showCancelButton: true,
       confirmButtonText: 'Sí, tengo el PDF respaldado',
       cancelButtonText: 'Cancelar',
-      confirmButtonColor: '#B91C1C',
-      cancelButtonColor: '#64748b'
+      confirmButtonColor: 'var(--bad-fg)',
+      cancelButtonColor: 'var(--neutral-500)'
     });
     if (!paso1.isConfirmed) return;
 
@@ -1355,8 +1355,8 @@ export class CierreMensualComponent implements OnInit, OnDestroy {
       showCancelButton: true,
       confirmButtonText: 'Borrar definitivamente',
       cancelButtonText: 'Cancelar',
-      confirmButtonColor: '#B91C1C',
-      cancelButtonColor: '#64748b',
+      confirmButtonColor: 'var(--bad-fg)',
+      cancelButtonColor: 'var(--neutral-500)',
       inputValidator: (val) => {
         if (val !== 'BORRAR FOTOS') return 'Debes escribir exactamente BORRAR FOTOS.';
         return null;
@@ -1437,14 +1437,14 @@ export class CierreMensualComponent implements OnInit, OnDestroy {
           icon: 'success',
           title: 'Fotos borradas',
           html: `Se borraron <strong>${borradosOk.size}</strong> fotos de Cloudinary y se marcaron <strong>${checklistsMarcados}</strong> checklists como limpios.`,
-          confirmButtonColor: '#831843'
+          confirmButtonColor: 'var(--action)'
         });
       } else {
         await Swal.fire({
           icon: 'warning',
           title: 'Borrado parcial',
           html: `Se borraron <strong>${borradosOk.size}</strong> fotos correctamente y <strong>${fallidos.length}</strong> fallaron. Los checklists cuyas fotos no se borraron completamente quedan marcados para reintentar después.`,
-          confirmButtonColor: '#831843'
+          confirmButtonColor: 'var(--action)'
         });
       }
     } catch (e: any) {
@@ -1453,7 +1453,7 @@ export class CierreMensualComponent implements OnInit, OnDestroy {
         icon: 'error',
         title: 'Error al borrar fotos',
         html: `<p>${(e?.message || 'Error desconocido').toString().replace(/</g, '&lt;')}</p><p style="font-size:11px;color:#64748B">Revisa que las variables de entorno CLOUDINARY_API_KEY y CLOUDINARY_API_SECRET estén configuradas en Vercel.</p>`,
-        confirmButtonColor: '#831843'
+        confirmButtonColor: 'var(--action)'
       });
     } finally {
       this.borrandoFotos.set(false);

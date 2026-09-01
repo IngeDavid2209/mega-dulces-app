@@ -456,7 +456,7 @@ export class PersonalComponent implements OnInit, OnDestroy {
       icon: 'warning',
       title: 'Acción restringida',
       text: 'Tu alcance está limitado a sucursales: no puedes editar a otros administradores.',
-      confirmButtonColor: '#0F172A'
+      confirmButtonColor: 'var(--action)'
     });
     return;
   }
@@ -554,11 +554,11 @@ export class PersonalComponent implements OnInit, OnDestroy {
     const r = await Swal.fire({
       title: 'Quitar acceso al Espacio TEC',
       html: `¿Quitarle el acceso a <strong>${user?.nombre || user?.usuario || 'este usuario'}</strong>? Dejará de ver el apartado. Conserva su acceso normal.`,
-      icon: 'warning', showCancelButton: true, confirmButtonText: 'Sí, quitar', cancelButtonText: 'Cancelar', confirmButtonColor: '#DC2626'
+      icon: 'warning', showCancelButton: true, confirmButtonText: 'Sí, quitar', cancelButtonText: 'Cancelar', confirmButtonColor: 'var(--bad-fg)'
     });
     if (!r.isConfirmed) return;
     const docId = user?.idFirestore || user?.uid || user?.id || user?.usuario;
-    if (!docId) { Swal.fire({ icon: 'error', title: 'No se pudo identificar al usuario', confirmButtonColor: '#0F172A' }); return; }
+    if (!docId) { Swal.fire({ icon: 'error', title: 'No se pudo identificar al usuario', confirmButtonColor: 'var(--action)' }); return; }
     try {
       await setDoc(doc(this.firestore, 'usuarios', docId), { grupoTec: false }, { merge: true });
       await this.api.patch('/api/usuarios', { id: docId, grupoTec: false }).catch(e => console.error('[personal] sync PG', e));
@@ -566,7 +566,7 @@ export class PersonalComponent implements OnInit, OnDestroy {
       Swal.fire({ icon: 'success', title: 'Acceso quitado', timer: 1400, showConfirmButton: false });
     } catch (e) {
       console.error('[personal] quitarAccesoTec', e);
-      Swal.fire({ icon: 'error', title: 'No se pudo quitar el acceso', confirmButtonColor: '#0F172A' });
+      Swal.fire({ icon: 'error', title: 'No se pudo quitar el acceso', confirmButtonColor: 'var(--action)' });
     }
   }
 
@@ -589,11 +589,11 @@ export class PersonalComponent implements OnInit, OnDestroy {
     // La contraseña solo es obligatoria al CREAR. Al editar, el campo vacío
     // significa "déjale la que ya tiene".
     if (!this.formNombre || !this.formUsuario || (!this.usuarioEnEdicion && !this.formPassword)) {
-      Swal.fire({ icon: 'warning', title: 'Datos Incompletos', text: 'Por favor completa el Nombre, Usuario y Contraseña.', confirmButtonColor: '#0F172A' });
+      Swal.fire({ icon: 'warning', title: 'Datos Incompletos', text: 'Por favor completa el Nombre, Usuario y Contraseña.', confirmButtonColor: 'var(--action)' });
       return;
     }
     if (!this.usuarioEnEdicion && !this.formCorreo) {
-      Swal.fire({ icon: 'warning', title: 'Falta el Correo', text: 'Para crear un usuario nuevo el Correo Electrónico es obligatorio.', confirmButtonColor: '#0F172A' });
+      Swal.fire({ icon: 'warning', title: 'Falta el Correo', text: 'Para crear un usuario nuevo el Correo Electrónico es obligatorio.', confirmButtonColor: 'var(--action)' });
       return;
     }
 
@@ -606,7 +606,7 @@ export class PersonalComponent implements OnInit, OnDestroy {
         icon: 'error',
         title: 'Acción restringida',
         text: 'No puedes cambiar tu propio alcance de "Por sucursales" a "Global". Pídelo al administrador principal.',
-        confirmButtonColor: '#0F172A'
+        confirmButtonColor: 'var(--action)'
       });
       return;
     }
@@ -624,7 +624,7 @@ export class PersonalComponent implements OnInit, OnDestroy {
         icon: 'warning',
         title: 'Asigna al menos una sucursal',
         text: 'Un administrador con alcance limitado necesita tener al menos una sucursal asignada.',
-        confirmButtonColor: '#0F172A'
+        confirmButtonColor: 'var(--action)'
       });
       return;
     }
@@ -725,7 +725,7 @@ export class PersonalComponent implements OnInit, OnDestroy {
             inputPlaceholder: '••••••••',
             icon: 'info',
             showCancelButton: true,
-            confirmButtonColor: '#0F172A',
+            confirmButtonColor: 'var(--action)',
             confirmButtonText: 'Confirmar'
           });
           if (!passActual) return;
@@ -743,11 +743,11 @@ export class PersonalComponent implements OnInit, OnDestroy {
               icon: 'info',
               title: 'Verifica tu nuevo correo',
               text: `Se envió un correo de verificación a "${this.formCorreo}". El cambio se aplicará cuando hagas clic en el enlace. Por ahora se guarda el correo nuevo en tu perfil.`,
-              confirmButtonColor: '#0F172A'
+              confirmButtonColor: 'var(--action)'
             });
           } catch (error: any) {
             if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
-              Swal.fire({ icon: 'error', title: 'Contraseña Incorrecta', text: 'La contraseña que ingresaste no es correcta.', confirmButtonColor: '#0F172A' });
+              Swal.fire({ icon: 'error', title: 'Contraseña Incorrecta', text: 'La contraseña que ingresaste no es correcta.', confirmButtonColor: 'var(--action)' });
               return;
             }
             throw error;
@@ -757,7 +757,7 @@ export class PersonalComponent implements OnInit, OnDestroy {
             icon: 'error',
             title: 'Acción Restringida',
             text: 'No puedes cambiarle el correo de acceso a otro trabajador. Si perdió su correo, elimina su cuenta y créale una nueva.',
-            confirmButtonColor: '#0F172A'
+            confirmButtonColor: 'var(--action)'
           });
           return;
         }
@@ -781,7 +781,7 @@ export class PersonalComponent implements OnInit, OnDestroy {
               icon: 'error',
               title: 'Contraseña muy corta',
               text: 'Debe tener al menos 6 caracteres.',
-              confirmButtonColor: '#0F172A'
+              confirmButtonColor: 'var(--action)'
             });
             return;
           }
@@ -794,7 +794,7 @@ export class PersonalComponent implements OnInit, OnDestroy {
               icon: 'error',
               title: 'No se pudo cambiar la contraseña',
               text: error?.message || 'Inténtalo de nuevo. No se guardaron los cambios.',
-              confirmButtonColor: '#0F172A'
+              confirmButtonColor: 'var(--action)'
             });
             return;
           }
@@ -803,7 +803,7 @@ export class PersonalComponent implements OnInit, OnDestroy {
               icon: 'info',
               title: 'Cambiaste tu propia contraseña',
               text: 'Con la siguiente vez que entres, usa la nueva.',
-              confirmButtonColor: '#0F172A'
+              confirmButtonColor: 'var(--action)'
             });
           }
         }
@@ -850,17 +850,17 @@ export class PersonalComponent implements OnInit, OnDestroy {
       this.usuariosSvc.refrescar(); // refresca la lista compartida (ya no es en vivo)
       Swal.fire(respaldoFallo
         ? {
-          icon: 'success', title: '¡Guardado!', confirmButtonColor: '#0F172A',
+          icon: 'success', title: '¡Guardado!', confirmButtonColor: 'var(--action)',
           text: 'El usuario se guardó y los permisos ya aplican. La copia de respaldo no se pudo hacer, pero eso no afecta la operación.'
         }
         : {
           icon: 'success', title: '¡Guardado!',
-          text: 'El usuario se ha guardado correctamente.', confirmButtonColor: '#0F172A'
+          text: 'El usuario se ha guardado correctamente.', confirmButtonColor: 'var(--action)'
         });
 
     }
     catch (error: any) {
-      Swal.fire({ icon: 'error', title: 'Error', text: error.message || 'Error desconocido', confirmButtonColor: '#0F172A' });
+      Swal.fire({ icon: 'error', title: 'Error', text: error.message || 'Error desconocido', confirmButtonColor: 'var(--action)' });
     }
   }
 
@@ -906,14 +906,14 @@ export class PersonalComponent implements OnInit, OnDestroy {
    */
   async sincronizarIndiceLogin() {
     if (this.currentUser?.rol !== 'admin') {
-      Swal.fire({ icon: 'error', title: 'Solo administradores', text: 'No tienes permiso para esta acción.', confirmButtonColor: '#0F172A' });
+      Swal.fire({ icon: 'error', title: 'Solo administradores', text: 'No tienes permiso para esta acción.', confirmButtonColor: 'var(--action)' });
       return;
     }
     const confirma = await Swal.fire({
       title: 'Sincronizar índice de login',
       text: 'Generará el índice usuario→correo para que todos puedan iniciar sesión con las nuevas reglas de seguridad. Ejecútalo una vez.',
       icon: 'question', showCancelButton: true,
-      confirmButtonText: 'Sincronizar', cancelButtonText: 'Cancelar', confirmButtonColor: '#0F172A'
+      confirmButtonText: 'Sincronizar', cancelButtonText: 'Cancelar', confirmButtonColor: 'var(--action)'
     });
     if (!confirma.isConfirmed) return;
 
@@ -931,7 +931,7 @@ export class PersonalComponent implements OnInit, OnDestroy {
     Swal.fire({
       icon: 'success', title: 'Índice sincronizado',
       html: `Listos: <strong>${ok}</strong><br>Omitidos (sin usuario/correo): <strong>${sin}</strong>`,
-      confirmButtonColor: '#0F172A'
+      confirmButtonColor: 'var(--action)'
     });
   }
 
@@ -1003,7 +1003,7 @@ export class PersonalComponent implements OnInit, OnDestroy {
                 `${fallidos.length > 12 ? '…' : ''}</small>` +
                 `<br><br>Vuelve a correr la importación: los que ya quedaron no se repiten.`
               : `<br><br>Revisa <em>Cobertura de puestos</em> para ver qué falta.`),
-      confirmButtonColor: '#0F172A',
+      confirmButtonColor: 'var(--action)',
     });
   }
 
@@ -1092,7 +1092,7 @@ export class PersonalComponent implements OnInit, OnDestroy {
             ${filas(porAlias.map(x => x.usuario), u => nombrePuesto(resolverPuesto(u).puestoId))}
           </table>
         </div>`,
-      confirmButtonColor: '#0F172A',
+      confirmButtonColor: 'var(--action)',
       confirmButtonText: 'Cerrar',
     });
   }
@@ -1104,7 +1104,7 @@ export class PersonalComponent implements OnInit, OnDestroy {
    */
   async migrarCargosPrevencion() {
     if (this.currentUser?.rol !== 'admin') {
-      Swal.fire({ icon: 'error', title: 'Solo administradores', text: 'No tienes permiso para esta acción.', confirmButtonColor: '#0F172A' });
+      Swal.fire({ icon: 'error', title: 'Solo administradores', text: 'No tienes permiso para esta acción.', confirmButtonColor: 'var(--action)' });
       return;
     }
     const mapa: Record<string, string> = {
@@ -1113,7 +1113,7 @@ export class PersonalComponent implements OnInit, OnDestroy {
     };
     const pendientes = this.usuarios().filter(u => mapa[u.cargo]);
     if (pendientes.length === 0) {
-      Swal.fire({ icon: 'success', title: 'Nada que migrar', text: 'Todos los cargos de Prevención ya están actualizados.', confirmButtonColor: '#0F172A' });
+      Swal.fire({ icon: 'success', title: 'Nada que migrar', text: 'Todos los cargos de Prevención ya están actualizados.', confirmButtonColor: 'var(--action)' });
       return;
     }
     const listaHtml = pendientes.map(u =>
@@ -1123,7 +1123,7 @@ export class PersonalComponent implements OnInit, OnDestroy {
       title: `Migrar ${pendientes.length} cargo(s)`,
       html: `<table style="margin:0 auto;font-size:13px">${listaHtml}</table>`,
       icon: 'question', showCancelButton: true,
-      confirmButtonText: 'Migrar', cancelButtonText: 'Cancelar', confirmButtonColor: '#0F172A',
+      confirmButtonText: 'Migrar', cancelButtonText: 'Cancelar', confirmButtonColor: 'var(--action)',
       width: 600
     });
     if (!confirma.isConfirmed) return;
@@ -1141,7 +1141,7 @@ export class PersonalComponent implements OnInit, OnDestroy {
     Swal.fire({
       icon: 'success', title: 'Migración completada',
       html: `Actualizados: <strong>${ok}</strong>${fail > 0 ? `<br>Errores: <strong style="color:#EF4444">${fail}</strong>` : ''}`,
-      confirmButtonColor: '#0F172A'
+      confirmButtonColor: 'var(--action)'
     });
   }
 
@@ -1155,7 +1155,7 @@ export class PersonalComponent implements OnInit, OnDestroy {
    */
   async verificarCoherenciaNombres() {
     if (this.currentUser?.rol !== 'admin' && !this.currentUser?.puedeAdministrarPersonal) {
-      Swal.fire({ icon: 'error', title: 'Sin permiso', confirmButtonColor: '#0F172A' });
+      Swal.fire({ icon: 'error', title: 'Sin permiso', confirmButtonColor: 'var(--action)' });
       return;
     }
     Swal.fire({ title: 'Verificando…', allowOutsideClick: false, didOpen: () => Swal.showLoading(null) });
@@ -1220,7 +1220,7 @@ export class PersonalComponent implements OnInit, OnDestroy {
         Swal.fire({
           icon: 'success', title: '✅ Todo coherente',
           text: `Los nombres de ${usuariosVisibles.length} trabajadores coinciden con sus tareas.`,
-          confirmButtonColor: '#0F172A'
+          confirmButtonColor: 'var(--action)'
         });
         return;
       }
@@ -1259,10 +1259,10 @@ export class PersonalComponent implements OnInit, OnDestroy {
         title: 'Coherencia nombres ↔ tareas',
         html,
         width: 720,
-        confirmButtonColor: '#0F172A'
+        confirmButtonColor: 'var(--action)'
       });
     } catch (e: any) {
-      Swal.fire({ icon: 'error', title: 'Error', text: e?.message || 'No se pudo verificar.', confirmButtonColor: '#0F172A' });
+      Swal.fire({ icon: 'error', title: 'Error', text: e?.message || 'No se pudo verificar.', confirmButtonColor: 'var(--action)' });
     }
   }
 
@@ -1281,7 +1281,7 @@ export class PersonalComponent implements OnInit, OnDestroy {
    */
   async autoCorregirCoherenciaNombres() {
     if (this.currentUser?.rol !== 'admin' && !this.currentUser?.puedeAdministrarPersonal) {
-      Swal.fire({ icon: 'error', title: 'Sin permiso', confirmButtonColor: '#0F172A' });
+      Swal.fire({ icon: 'error', title: 'Sin permiso', confirmButtonColor: 'var(--action)' });
       return;
     }
     Swal.fire({ title: 'Analizando…', allowOutsideClick: false, didOpen: () => Swal.showLoading(null) });
@@ -1359,7 +1359,7 @@ export class PersonalComponent implements OnInit, OnDestroy {
           html: `No se encontraron prefijos exactos.<br>` +
                 `<strong>${sinMatch.length}</strong> nombre(s) sin coincidencia, ` +
                 `<strong>${ambiguos.length}</strong> ambiguo(s). Revisa manualmente con 🔍 Verificar nombres.`,
-          confirmButtonColor: '#0F172A'
+          confirmButtonColor: 'var(--action)'
         });
         return;
       }
@@ -1383,7 +1383,7 @@ export class PersonalComponent implements OnInit, OnDestroy {
         icon: 'question', title: '¿Aplicar correcciones?', html,
         width: 720, showCancelButton: true,
         confirmButtonText: `✅ Aplicar ${sugerencias.length} correcciones`,
-        cancelButtonText: 'Cancelar', confirmButtonColor: '#0F172A'
+        cancelButtonText: 'Cancelar', confirmButtonColor: 'var(--action)'
       });
       if (!ok.isConfirmed) return;
 
@@ -1408,10 +1408,10 @@ export class PersonalComponent implements OnInit, OnDestroy {
         html: `Corregidos: <strong>${exitosos}</strong>` +
               (fallidos ? `<br>Fallidos: ${fallidos}` : '') +
               (sinMatch.length + ambiguos.length > 0 ? `<br>Para revisar manualmente: ${sinMatch.length + ambiguos.length}` : ''),
-        confirmButtonColor: '#0F172A'
+        confirmButtonColor: 'var(--action)'
       });
     } catch (e: any) {
-      Swal.fire({ icon: 'error', title: 'Error', text: e?.message || 'No se pudo procesar.', confirmButtonColor: '#0F172A' });
+      Swal.fire({ icon: 'error', title: 'Error', text: e?.message || 'No se pudo procesar.', confirmButtonColor: 'var(--action)' });
     }
   }
 
@@ -1422,14 +1422,14 @@ export class PersonalComponent implements OnInit, OnDestroy {
    */
   async notificarActualizacion() {
     if (this.currentUser?.rol !== 'admin') {
-      Swal.fire({ icon: 'error', title: 'Solo administradores', text: 'No tienes permiso para enviar el push.', confirmButtonColor: '#0F172A' });
+      Swal.fire({ icon: 'error', title: 'Solo administradores', text: 'No tienes permiso para enviar el push.', confirmButtonColor: 'var(--action)' });
       return;
     }
     const confirma = await Swal.fire({
       title: 'Notificar actualización a todos',
       text: 'Se mandará un push silencioso a todos los dispositivos para que apliquen la versión nueva. Hazlo después de publicar.',
       icon: 'question', showCancelButton: true,
-      confirmButtonText: '📡 Notificar', cancelButtonText: 'Cancelar', confirmButtonColor: '#0F172A'
+      confirmButtonText: '📡 Notificar', cancelButtonText: 'Cancelar', confirmButtonColor: 'var(--action)'
     });
     if (!confirma.isConfirmed) return;
 
@@ -1453,10 +1453,10 @@ export class PersonalComponent implements OnInit, OnDestroy {
         html: `Push enviado a <strong>${data.enviados ?? 0}</strong> dispositivos.` +
               (data.fallidos ? `<br>Fallidos: ${data.fallidos}` : '') +
               (data.tokensLimpiados ? `<br>Tokens obsoletos limpiados: ${data.tokensLimpiados}` : ''),
-        confirmButtonColor: '#0F172A'
+        confirmButtonColor: 'var(--action)'
       });
     } catch (e: any) {
-      Swal.fire({ icon: 'error', title: 'No se pudo enviar', text: e?.message || 'Error desconocido', confirmButtonColor: '#0F172A' });
+      Swal.fire({ icon: 'error', title: 'No se pudo enviar', text: e?.message || 'Error desconocido', confirmButtonColor: 'var(--action)' });
     }
   }
 
@@ -1464,7 +1464,7 @@ export class PersonalComponent implements OnInit, OnDestroy {
   async eliminarUsuario(usuarioParaBorrar: any) {
     // 1. Verificamos que tengas los permisos
     if (this.currentUser?.rol !== 'admin' && !this.currentUser?.puedeAdministrarPersonal) {
-      Swal.fire({ icon: 'error', title: 'Acceso Denegado', text: 'No tienes permiso para eliminar personal.', confirmButtonColor: '#0F172A' });
+      Swal.fire({ icon: 'error', title: 'Acceso Denegado', text: 'No tienes permiso para eliminar personal.', confirmButtonColor: 'var(--action)' });
       return;
     }
 
@@ -1474,8 +1474,8 @@ export class PersonalComponent implements OnInit, OnDestroy {
       text: `Se eliminará permanentemente al usuario ${usuarioParaBorrar.nombre}. Esta acción no se puede deshacer.`,
       icon: 'warning',
       showCancelButton: true,
-      confirmButtonColor: '#EF4444', // Rojo
-      cancelButtonColor: '#0F172A',  // Azul oscuro
+      confirmButtonColor: 'var(--bad-fg)', // Rojo
+      cancelButtonColor: 'var(--neutral-500)',  // Azul oscuro
       confirmButtonText: 'Sí, eliminar',
       cancelButtonText: 'Cancelar'
     });
@@ -1497,9 +1497,9 @@ export class PersonalComponent implements OnInit, OnDestroy {
         const extra = quitadas > 0
           ? ` Se le quitó de ${quitadas} ${quitadas === 1 ? 'asignación de rutina' : 'asignaciones de rutina'}. Revisa si alguna quedó sin responsable y reasígnala.`
           : '';
-        Swal.fire({ icon: 'success', title: '¡Eliminado!', text: 'El usuario ha sido eliminado de la base de datos.' + extra, confirmButtonColor: '#0F172A' });
+        Swal.fire({ icon: 'success', title: '¡Eliminado!', text: 'El usuario ha sido eliminado de la base de datos.' + extra, confirmButtonColor: 'var(--action)' });
       } catch (error: any) {
-        Swal.fire({ icon: 'error', title: 'Error', text: 'Hubo un problema al eliminar al usuario: ' + error.message, confirmButtonColor: '#0F172A' });
+        Swal.fire({ icon: 'error', title: 'Error', text: 'Hubo un problema al eliminar al usuario: ' + error.message, confirmButtonColor: 'var(--action)' });
       }
     }
   }
@@ -1537,7 +1537,7 @@ export class PersonalComponent implements OnInit, OnDestroy {
   async descargarExcel() {
     const list = this.usuarios();
     if (list.length === 0) {
-      Swal.fire({ icon: 'info', title: 'Lista Vacía', text: 'No hay personal para exportar.', confirmButtonColor: '#0F172A' });
+      Swal.fire({ icon: 'info', title: 'Lista Vacía', text: 'No hay personal para exportar.', confirmButtonColor: 'var(--action)' });
       return;
     }
 
@@ -1662,7 +1662,7 @@ export class PersonalComponent implements OnInit, OnDestroy {
           icon: 'success',
           title: 'Exportado en CSV',
           text: 'El módulo de Excel no se pudo cargar, así que descargamos un CSV con los mismos datos (se abre en Excel).',
-          confirmButtonColor: '#0F172A'
+          confirmButtonColor: 'var(--action)'
         });
       } catch (e2: any) {
         console.error('[descargarExcel] tambien fallo el CSV:', e2);
@@ -1670,7 +1670,7 @@ export class PersonalComponent implements OnInit, OnDestroy {
           icon: 'error',
           title: 'No se pudo exportar',
           text: 'Intenta recargar la página (Ctrl+Shift+R) y vuelve a darle a Exportar.',
-          confirmButtonColor: '#0F172A'
+          confirmButtonColor: 'var(--action)'
         });
       }
     }

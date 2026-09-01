@@ -320,7 +320,7 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
       await this.cargarTareas();
     } catch (e) {
       console.error('[tec] agregarCard', e);
-      Swal.fire({ icon: 'error', title: 'No se pudo agregar', confirmButtonColor: '#0F172A' });
+      Swal.fire({ icon: 'error', title: 'No se pudo agregar', confirmButtonColor: 'var(--action)' });
     }
   }
 
@@ -369,7 +369,7 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
   async guardarTarjeta() {
     if (!this.tarjeta) return;
     const titulo = (this.tarjeta.titulo || '').trim();
-    if (!titulo) { Swal.fire({ icon: 'info', title: 'Ponle un título a la tarjeta', confirmButtonColor: '#0F172A' }); return; }
+    if (!titulo) { Swal.fire({ icon: 'info', title: 'Ponle un título a la tarjeta', confirmButtonColor: 'var(--action)' }); return; }
     try {
       // Se envía la tarjeta completa (conserva columna/orden/creadoEn) con los cambios.
       await this.api.post('/api/tec-tareas', {
@@ -388,7 +388,7 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
       await this.cargarTareas();
     } catch (e) {
       console.error('[tec] guardarTarjeta', e);
-      Swal.fire({ icon: 'error', title: 'No se pudo guardar', confirmButtonColor: '#0F172A' });
+      Swal.fire({ icon: 'error', title: 'No se pudo guardar', confirmButtonColor: 'var(--action)' });
     }
   }
 
@@ -396,7 +396,7 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
     if (!this.tarjeta) return;
     const r = await Swal.fire({
       title: 'Eliminar tarjeta', text: '¿Seguro que quieres eliminarla?', icon: 'warning',
-      showCancelButton: true, confirmButtonText: 'Sí, eliminar', cancelButtonText: 'Cancelar', confirmButtonColor: '#DC2626'
+      showCancelButton: true, confirmButtonText: 'Sí, eliminar', cancelButtonText: 'Cancelar', confirmButtonColor: 'var(--bad-fg)'
     });
     if (!r.isConfirmed) return;
     try {
@@ -438,7 +438,7 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
       await this.cargarPosts();
     } catch (e) {
       console.error('[tec] publicarPost', e);
-      Swal.fire({ icon: 'error', title: 'No se pudo publicar', confirmButtonColor: '#0F172A' });
+      Swal.fire({ icon: 'error', title: 'No se pudo publicar', confirmButtonColor: 'var(--action)' });
     }
   }
 
@@ -446,7 +446,7 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
     if (!this.puedeBorrar(p.autorUid)) return;
     const r = await Swal.fire({
       title: 'Eliminar mensaje', text: '¿Seguro? También se borran sus respuestas.', icon: 'warning',
-      showCancelButton: true, confirmButtonText: 'Sí, eliminar', cancelButtonText: 'Cancelar', confirmButtonColor: '#DC2626'
+      showCancelButton: true, confirmButtonText: 'Sí, eliminar', cancelButtonText: 'Cancelar', confirmButtonColor: 'var(--bad-fg)'
     });
     if (!r.isConfirmed) return;
     try {
@@ -479,7 +479,7 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
       await this.cargarPosts();
     } catch (e) {
       console.error('[tec] responder', e);
-      Swal.fire({ icon: 'error', title: 'No se pudo responder', confirmButtonColor: '#0F172A' });
+      Swal.fire({ icon: 'error', title: 'No se pudo responder', confirmButtonColor: 'var(--action)' });
     }
   }
 
@@ -578,7 +578,7 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
   guardarTareaProyEditor() {
     if (!this.tareaProyEditor || !this.grupoModal) return;
     const nombre = (this.tareaProyEditor.texto || '').trim();
-    if (!nombre) { Swal.fire({ icon: 'info', title: 'Ponle nombre a la tarea', confirmButtonColor: '#0F172A' }); return; }
+    if (!nombre) { Swal.fire({ icon: 'info', title: 'Ponle nombre a la tarea', confirmButtonColor: 'var(--action)' }); return; }
     this.tareaProyEditor.texto = nombre;
     if (!this.tareaProyEditor.tieneFases) this.tareaProyEditor.fases = [];
     const lista = [...(this.grupoModal.tareas || [])];
@@ -650,7 +650,7 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
   async guardarGrupo() {
     if (!this.grupoModal) return;
     const nombre = (this.grupoModal.nombre || '').trim();
-    if (!nombre) { Swal.fire({ icon: 'info', title: 'Ponle un nombre', confirmButtonColor: '#0F172A' }); return; }
+    if (!nombre) { Swal.fire({ icon: 'info', title: 'Ponle un nombre', confirmButtonColor: 'var(--action)' }); return; }
     try {
       const payload: any = {
         tipo: this.grupoModal.tipo, nombre,
@@ -675,7 +675,7 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
       await this.cargarGrupos();
     } catch (e) {
       console.error('[tec] guardarGrupo', e);
-      Swal.fire({ icon: 'error', title: 'No se pudo guardar', confirmButtonColor: '#0F172A' });
+      Swal.fire({ icon: 'error', title: 'No se pudo guardar', confirmButtonColor: 'var(--action)' });
     }
   }
 
@@ -683,7 +683,7 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
     if (!this.grupoModal || this.grupoEsNuevo) return;
     const r = await Swal.fire({
       title: 'Eliminar', text: `¿Eliminar "${this.grupoModal.nombre}"?`, icon: 'warning',
-      showCancelButton: true, confirmButtonText: 'Sí, eliminar', cancelButtonText: 'Cancelar', confirmButtonColor: '#DC2626'
+      showCancelButton: true, confirmButtonText: 'Sí, eliminar', cancelButtonText: 'Cancelar', confirmButtonColor: 'var(--bad-fg)'
     });
     if (!r.isConfirmed) return;
     try {
@@ -737,16 +737,16 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
   /** Crea una tarea (checklist) para cada empleado seleccionado; aparece en su Checklist normal. */
   async asignarTareaSucursal() {
     const texto = this.tareaAsignarTexto.trim();
-    if (!this.sucursalSel) { Swal.fire({ icon: 'info', title: 'Elige una sucursal', confirmButtonColor: '#0F172A' }); return; }
-    if (!texto) { Swal.fire({ icon: 'info', title: 'Escribe la tarea', confirmButtonColor: '#0F172A' }); return; }
-    if (this.empleadosSel.length === 0) { Swal.fire({ icon: 'info', title: 'Selecciona al menos un empleado', confirmButtonColor: '#0F172A' }); return; }
+    if (!this.sucursalSel) { Swal.fire({ icon: 'info', title: 'Elige una sucursal', confirmButtonColor: 'var(--action)' }); return; }
+    if (!texto) { Swal.fire({ icon: 'info', title: 'Escribe la tarea', confirmButtonColor: 'var(--action)' }); return; }
+    if (this.empleadosSel.length === 0) { Swal.fire({ icon: 'info', title: 'Selecciona al menos un empleado', confirmButtonColor: 'var(--action)' }); return; }
 
     const frecuencia = this.tareaAsignarFrecuencia;
     const recurrente = frecuencia !== 'unica';
     let fechaAnual: string | null = null;
     if (frecuencia === 'Anual') {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(this.tareaAsignarFechaAnual)) {
-        Swal.fire({ icon: 'info', title: 'Elige la fecha de la tarea anual', confirmButtonColor: '#0F172A' });
+        Swal.fire({ icon: 'info', title: 'Elige la fecha de la tarea anual', confirmButtonColor: 'var(--action)' });
         return;
       }
       fechaAnual = this.tareaAsignarFechaAnual.slice(5); // MM-DD
@@ -756,7 +756,7 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
     const usarRango = frecuencia === 'unica' && this.tareaAsignarUsarFechas;
     if (usarRango && this.tareaAsignarFechaInicio && this.tareaAsignarFechaFin
         && this.tareaAsignarFechaFin < this.tareaAsignarFechaInicio) {
-      Swal.fire({ icon: 'info', title: 'La fecha de fin no puede ser anterior a la de inicio', confirmButtonColor: '#0F172A' });
+      Swal.fire({ icon: 'info', title: 'La fecha de fin no puede ser anterior a la de inicio', confirmButtonColor: 'var(--action)' });
       return;
     }
 
@@ -869,14 +869,14 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
           icon: 'info', title: 'Tarea asignada (con reasignación)',
           html: `${detalle}<ul style="text-align:left;margin:12px 0;padding-left:22px;font-size:13px">` +
             avisosReasig.map(a => `<li>${a}</li>`).join('') + `</ul>`,
-          confirmButtonColor: '#0F172A'
+          confirmButtonColor: 'var(--action)'
         });
       } else {
-        Swal.fire({ icon: 'success', title: 'Tarea asignada', text: detalle, confirmButtonColor: '#0F172A' });
+        Swal.fire({ icon: 'success', title: 'Tarea asignada', text: detalle, confirmButtonColor: 'var(--action)' });
       }
     } catch (e) {
       console.error('[tec] asignarTareaSucursal', e);
-      Swal.fire({ icon: 'error', title: 'No se pudo asignar', confirmButtonColor: '#0F172A' });
+      Swal.fire({ icon: 'error', title: 'No se pudo asignar', confirmButtonColor: 'var(--action)' });
     } finally {
       this.asignando = false;
     }
@@ -906,7 +906,7 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
   async guardarAsignada() {
     if (!this.asignadaEdit) return;
     const nombre = (this.asignadaEdit.name || '').trim();
-    if (!nombre) { Swal.fire({ icon: 'info', title: 'Escribe el nombre de la tarea', confirmButtonColor: '#0F172A' }); return; }
+    if (!nombre) { Swal.fire({ icon: 'info', title: 'Escribe el nombre de la tarea', confirmButtonColor: 'var(--action)' }); return; }
     const orig = this.tecAsignadas.find(x => x.id === this.asignadaEdit.id);
     const items = (orig?.items || []).map((it: any, i: number) => i === 0
       ? { ...it, text: nombre, horaInicio: this.asignadaEdit.horaInicio || null, horaLimite: this.asignadaEdit.horaFin || null }
@@ -923,14 +923,14 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
       this.asignadaEdit = null;
     } catch (e) {
       console.error('[tec] guardarAsignada', e);
-      Swal.fire({ icon: 'error', title: 'No se pudo guardar', confirmButtonColor: '#0F172A' });
+      Swal.fire({ icon: 'error', title: 'No se pudo guardar', confirmButtonColor: 'var(--action)' });
     }
   }
 
   async eliminarAsignada(t: any) {
     const r = await Swal.fire({
       title: 'Quitar tarea asignada', text: `¿Quitar "${t.name}" de ${t.assigned}?`, icon: 'warning',
-      showCancelButton: true, confirmButtonText: 'Sí, quitar', cancelButtonText: 'Cancelar', confirmButtonColor: '#DC2626'
+      showCancelButton: true, confirmButtonText: 'Sí, quitar', cancelButtonText: 'Cancelar', confirmButtonColor: 'var(--bad-fg)'
     });
     if (!r.isConfirmed) return;
     try {
@@ -977,7 +977,7 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
       await this.cargarNotas();
     } catch (e) {
       console.error('[tec] agregarNota', e);
-      Swal.fire({ icon: 'error', title: 'No se pudo guardar', confirmButtonColor: '#0F172A' });
+      Swal.fire({ icon: 'error', title: 'No se pudo guardar', confirmButtonColor: 'var(--action)' });
     }
   }
   empezarEdicionNota(n: any) { this.notaEnEdicionId = n.id; this.edicionTitulo = n.titulo || ''; this.edicionTexto = n.texto || ''; }
@@ -991,13 +991,13 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
       await this.cargarNotas();
     } catch (e) {
       console.error('[tec] guardarEdicionNota', e);
-      Swal.fire({ icon: 'error', title: 'No se pudo guardar', confirmButtonColor: '#0F172A' });
+      Swal.fire({ icon: 'error', title: 'No se pudo guardar', confirmButtonColor: 'var(--action)' });
     }
   }
   async eliminarNota(n: any) {
     const r = await Swal.fire({
       title: 'Eliminar nota', text: '¿Seguro?', icon: 'warning', showCancelButton: true,
-      confirmButtonText: 'Sí, eliminar', cancelButtonText: 'Cancelar', confirmButtonColor: '#DC2626'
+      confirmButtonText: 'Sí, eliminar', cancelButtonText: 'Cancelar', confirmButtonColor: 'var(--bad-fg)'
     });
     if (!r.isConfirmed) return;
     try {
@@ -1005,7 +1005,7 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
       await this.cargarNotas();
     } catch (e) {
       console.error('[tec] eliminarNota', e);
-      Swal.fire({ icon: 'error', title: 'No se pudo eliminar', confirmButtonColor: '#0F172A' });
+      Swal.fire({ icon: 'error', title: 'No se pudo eliminar', confirmButtonColor: 'var(--action)' });
     }
   }
 

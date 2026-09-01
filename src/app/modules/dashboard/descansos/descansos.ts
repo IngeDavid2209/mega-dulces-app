@@ -279,7 +279,7 @@ export class DescansosComponent implements OnInit, OnDestroy {
       showCancelButton: true,
       confirmButtonText: 'Sí, aplicar',
       cancelButtonText: 'Cancelar',
-      confirmButtonColor: '#0F172A'
+      confirmButtonColor: 'var(--action)'
     });
     if (!res.isConfirmed) return;
 

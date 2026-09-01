@@ -2221,7 +2221,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       title: 'Eliminar tu tarea',
       html: `¿Quitar "<strong>${checklist.name}</strong>" de tu día?`,
       icon: 'warning', showCancelButton: true,
-      confirmButtonText: 'Si, eliminar', cancelButtonText: 'Cancelar', confirmButtonColor: '#dc2626'
+      confirmButtonText: 'Si, eliminar', cancelButtonText: 'Cancelar', confirmButtonColor: 'var(--bad-fg)'
     });
     if (!res.isConfirmed) return;
     try {
@@ -2240,7 +2240,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       title: 'Dejar de repetir',
       html: `"<strong>${r.texto}</strong>" ya no se repetira (${this.etiquetaRutinaPersonal(r)}).<br>Lo que ya esta en tu dia se queda.`,
       icon: 'warning', showCancelButton: true,
-      confirmButtonText: 'Si, quitar', cancelButtonText: 'Cancelar', confirmButtonColor: '#dc2626'
+      confirmButtonText: 'Si, quitar', cancelButtonText: 'Cancelar', confirmButtonColor: 'var(--bad-fg)'
     });
     if (!res.isConfirmed) return;
     try {
@@ -2355,7 +2355,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
             `Los checklists del manual son documentos controlados: cambian con una nueva versión autorizada, no desde la app. ` +
             `Lo que sí puedes hacer es cumplirla y dejar tus observaciones.<br><br>` +
             `Si necesitas una tarea distinta, créala en el apartado de <b>Tareas</b>, que es libre.`,
-      confirmButtonColor: '#0F172A',
+      confirmButtonColor: 'var(--action)',
       confirmButtonText: 'Entendido',
     });
   }
@@ -2454,7 +2454,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       Swal.fire({
         icon: 'info', title: 'Sin diagnóstico todavía',
         text: 'Aún no se ha cargado ningún snapshot. Espera unos segundos.',
-        confirmButtonColor: '#0F172A'
+        confirmButtonColor: 'var(--action)'
       });
       return;
     }
@@ -2514,7 +2514,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     `;
     Swal.fire({
       title: '🩺 Diagnóstico del filtro',
-      html, width: 560, confirmButtonText: 'Cerrar', confirmButtonColor: '#0F172A',
+      html, width: 560, confirmButtonText: 'Cerrar', confirmButtonColor: 'var(--action)',
       didOpen: () => {
         const btn = document.getElementById('btn-reabrir-misenviados');
         if (btn) {
@@ -2543,7 +2543,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       html: `<div>Se desmarcarán como enviadas y volverán a aparecer en el Checklist del día:</div><ul style="padding-left:18px;margin:8px 0">${itemsHtml}</ul>`,
       icon: 'question', showCancelButton: true,
       confirmButtonText: 'Sí, reabrir', cancelButtonText: 'Cancelar',
-      confirmButtonColor: '#F59E0B'
+      confirmButtonColor: 'var(--warn-fg)'
     });
     if (!confirma.isConfirmed) return;
     let ok = 0, fail = 0;
@@ -2557,7 +2557,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     Swal.fire({
       icon: 'success', title: 'Tareas reabiertas',
       html: `Reabiertas: <strong>${ok}</strong>${fail > 0 ? `<br>Errores: <strong style="color:#EF4444">${fail}</strong>` : ''}<br><br>Recarga la pantalla para verlas.`,
-      confirmButtonColor: '#0F172A'
+      confirmButtonColor: 'var(--action)'
     });
   }
 
@@ -2732,7 +2732,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
                    Si es un PDF escaneado, vuelve a guardarlo en menor calidad.
                    Si son varias hojas, adjunta solo la que hace falta.</p>
                </div>`,
-        confirmButtonColor: '#0F172A'
+        confirmButtonColor: 'var(--action)'
       });
       return;
     }
@@ -2784,7 +2784,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
                    <code style="word-break:break-word">${(resultado.error || 'sin detalle').toString().slice(0, 240)}</code>
                  </p>
                </div>`,
-        confirmButtonColor: '#0F172A'
+        confirmButtonColor: 'var(--action)'
       });
     }
     event.target.value = '';
@@ -2979,7 +2979,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
    */
   async limpiarHuerfanas() {
     if (this.currentUser?.rol !== 'admin' && !esAdminGlobal(this.currentUser)) {
-      Swal.fire({ icon: 'error', title: 'Solo administradores', confirmButtonColor: '#0F172A' });
+      Swal.fire({ icon: 'error', title: 'Solo administradores', confirmButtonColor: 'var(--action)' });
       return;
     }
     const usuarios = this.plantillaUsuarios || [];
@@ -2987,7 +2987,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     // 🔒 Guarda crítica: si la lista de usuarios aún no cargó, TODO nombre se
     // vería como "inexistente" y borraríamos TODAS las pendientes. Abortamos.
     if (usuarios.length === 0) {
-      Swal.fire({ icon: 'warning', title: 'Espera un momento', text: 'La lista de personal todavía no termina de cargar. Vuelve a intentarlo en unos segundos.', confirmButtonColor: '#0F172A' });
+      Swal.fire({ icon: 'warning', title: 'Espera un momento', text: 'La lista de personal todavía no termina de cargar. Vuelve a intentarlo en unos segundos.', confirmButtonColor: 'var(--action)' });
       return;
     }
 
@@ -3015,14 +3015,14 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     }
 
     if (huerfanas.length === 0 && asigACambiar.length === 0) {
-      Swal.fire({ icon: 'info', title: 'Nada que limpiar', text: 'No hay tareas ni asignaciones de personas dadas de baja.', confirmButtonColor: '#0F172A' });
+      Swal.fire({ icon: 'info', title: 'Nada que limpiar', text: 'No hay tareas ni asignaciones de personas dadas de baja.', confirmButtonColor: 'var(--action)' });
       return;
     }
 
     const r = await Swal.fire({
       title: '¿Limpiar pendientes de personas dadas de baja?',
       html: `Se eliminarán <strong>${huerfanas.length}</strong> tarea(s) pendiente(s) y se corregirán <strong>${asigACambiar.length}</strong> asignación(es) de rutina.`,
-      icon: 'warning', showCancelButton: true, confirmButtonText: 'Sí, limpiar', cancelButtonText: 'Cancelar', confirmButtonColor: '#DC2626'
+      icon: 'warning', showCancelButton: true, confirmButtonText: 'Sí, limpiar', cancelButtonText: 'Cancelar', confirmButtonColor: 'var(--bad-fg)'
     });
     if (!r.isConfirmed) return;
 
@@ -3043,7 +3043,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       }
       catch (e) { console.error('[limpiarHuerfanas] asignacion', a.id, e); }
     }
-    Swal.fire({ icon: 'success', title: 'Limpieza lista', html: `Se eliminaron <strong>${okT}</strong> tarea(s) y se corrigieron <strong>${okA}</strong> asignación(es).`, confirmButtonColor: '#0F172A' });
+    Swal.fire({ icon: 'success', title: 'Limpieza lista', html: `Se eliminaron <strong>${okT}</strong> tarea(s) y se corrigieron <strong>${okA}</strong> asignación(es).`, confirmButtonColor: 'var(--action)' });
   }
 
   enviarChecklist() {
@@ -3445,7 +3445,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       if (res.ok && res.url) urls.push(res.url);
     }
     if (!urls.length) {
-      Swal.fire({ icon: 'warning', title: 'No se pudieron subir las fotos', text: 'Revisa tu conexión e intenta de nuevo.', confirmButtonColor: '#0F172A' });
+      Swal.fire({ icon: 'warning', title: 'No se pudieron subir las fotos', text: 'Revisa tu conexión e intenta de nuevo.', confirmButtonColor: 'var(--action)' });
       event.target.value = '';
       return;
     }
@@ -3479,7 +3479,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   /** Quita una foto de un item de equipo. */
   async quitarFotoItemEquipo(t: TareaEquipo, faseId: string, itemId: string, url: string) {
     if (t.cerrado) return;
-    const res = await Swal.fire({ title: 'Quitar foto', text: '¿Eliminar esta foto?', icon: 'warning', showCancelButton: true, confirmButtonText: 'Sí, quitar', cancelButtonText: 'Cancelar', confirmButtonColor: '#dc2626' });
+    const res = await Swal.fire({ title: 'Quitar foto', text: '¿Eliminar esta foto?', icon: 'warning', showCancelButton: true, confirmButtonText: 'Sí, quitar', cancelButtonText: 'Cancelar', confirmButtonColor: 'var(--bad-fg)' });
     if (!res.isConfirmed) return;
     const fresca = await this.obtenerTareaEquipoFresca(t.id);
     if (!fresca) return;
@@ -3627,7 +3627,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
         text: '¿Cerrar la fase de todas formas? Las tareas incompletas quedarán como vencidas.',
         icon: 'warning', showCancelButton: true,
         confirmButtonText: 'Sí, cerrar fase', cancelButtonText: 'Cancelar',
-        confirmButtonColor: '#F59E0B'
+        confirmButtonColor: 'var(--warn-fg)'
       });
       if (!r.isConfirmed) return;
     }
@@ -3660,7 +3660,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       text: 'Quedará archivado y no aparecerá más en el listado.',
       icon: 'question', showCancelButton: true,
       confirmButtonText: 'Cerrar proyecto', cancelButtonText: 'Cancelar',
-      confirmButtonColor: '#0F172A'
+      confirmButtonColor: 'var(--action)'
     });
     if (!r.isConfirmed) return;
     const cierreEquipo = { cerrado: true, cerradoEn: Date.now() };
@@ -3700,7 +3700,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       html: `Se va a quitar <b>${t.name || 'este proyecto'}</b> de la lista, con todas sus fases y su avance.`,
       icon: 'warning', showCancelButton: true,
       confirmButtonText: 'Sí, eliminar', cancelButtonText: 'Cancelar',
-      confirmButtonColor: '#DC2626'
+      confirmButtonColor: 'var(--bad-fg)'
     });
     if (!r.isConfirmed) return;
 
@@ -3714,7 +3714,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     } catch (e: any) {
       Swal.fire({
         icon: 'error', title: 'No se pudo eliminar',
-        text: e?.message || 'Inténtalo de nuevo.', confirmButtonColor: '#0F172A'
+        text: e?.message || 'Inténtalo de nuevo.', confirmButtonColor: 'var(--action)'
       });
       return;
     }
@@ -3778,7 +3778,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     const esAdmin = this.currentUser?.rol === 'admin';
     const esCreador = checklist.createdBy === this.currentUser?.nombre;
     if (!esAdmin && !esCreador) {
-      Swal.fire({ icon: 'error', title: 'Sin permiso', text: 'Solo el creador o un administrador pueden editar.', confirmButtonColor: '#0F172A' });
+      Swal.fire({ icon: 'error', title: 'Sin permiso', text: 'Solo el creador o un administrador pueden editar.', confirmButtonColor: 'var(--action)' });
       return;
     }
     this.cargarChecklistEnFormParaEditar(checklist);
@@ -4071,7 +4071,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
         html: `Se crearon las tareas. Algunas se reasignaron:` +
           `<ul style="text-align:left;margin:12px 0;padding-left:22px;font-size:13px">` +
           avisosReasig.map(a => `<li>${a}</li>`).join('') + `</ul>`,
-        icon: 'info', confirmButtonColor: '#0F172A'
+        icon: 'info', confirmButtonColor: 'var(--action)'
       });
     } else {
       this.mostrarToast(' ✅ ¡Tareas creadas y avisos generados!');

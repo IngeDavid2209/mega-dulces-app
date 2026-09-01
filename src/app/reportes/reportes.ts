@@ -338,7 +338,7 @@ export class ReportesComponent implements OnInit, OnDestroy {
 
   /** Exporta una tabla genérica a Excel (carga ExcelJS solo al exportar). */
   private async exportarTablaExcel(nombreHoja: string, columnas: { header: string; key: string; width?: number }[], filas: any[]) {
-    if (!filas.length) { Swal.fire({ icon: 'info', title: 'Sin datos', text: 'No hay datos para exportar.', confirmButtonColor: '#0F172A' }); return; }
+    if (!filas.length) { Swal.fire({ icon: 'info', title: 'Sin datos', text: 'No hay datos para exportar.', confirmButtonColor: 'var(--action)' }); return; }
     const ExcelJS = await import('exceljs');
     const wb = new ExcelJS.Workbook();
     const ws = wb.addWorksheet(nombreHoja.slice(0, 28));
@@ -537,7 +537,7 @@ export class ReportesComponent implements OnInit, OnDestroy {
       this.resultados.set(filtrados);
     } catch (error) {
       console.error("Error buscando el historial:", error);
-      Swal.fire({ icon: 'error', title: 'Error de Red', text: 'Hubo un error de conexión al buscar el historial.', confirmButtonColor: '#0F172A' });
+      Swal.fire({ icon: 'error', title: 'Error de Red', text: 'Hubo un error de conexión al buscar el historial.', confirmButtonColor: 'var(--action)' });
     } finally {
       this.buscando.set(false);
     }
@@ -561,7 +561,7 @@ export class ReportesComponent implements OnInit, OnDestroy {
    */
   async borrarChecklistActual() {
     if (this.currentUser?.rol !== 'admin') {
-      Swal.fire({ icon: 'error', title: 'Sin permiso', text: 'Solo un administrador puede borrar checklists.', confirmButtonColor: '#0F172A' });
+      Swal.fire({ icon: 'error', title: 'Sin permiso', text: 'Solo un administrador puede borrar checklists.', confirmButtonColor: 'var(--action)' });
       return;
     }
     const c = this.checklistSeleccionado();
@@ -580,7 +580,7 @@ export class ReportesComponent implements OnInit, OnDestroy {
              </p>`,
       icon: 'warning', showCancelButton: true,
       confirmButtonText: 'Sí, borrar', cancelButtonText: 'Cancelar',
-      confirmButtonColor: '#DC2626'
+      confirmButtonColor: 'var(--bad-fg)'
     });
     if (!r.isConfirmed) return;
 
@@ -648,17 +648,17 @@ export class ReportesComponent implements OnInit, OnDestroy {
         html: `Soft-delete: <strong>${softDeleted}</strong> doc(s).<br>
                Moldes V1 borrados: <strong>${moldesBorrados}</strong>.<br>
                Asignación V2: <strong>${asignacionTocada ? 'desactivada' : 'no aplica'}</strong>.`,
-        confirmButtonColor: '#0F172A'
+        confirmButtonColor: 'var(--action)'
       });
     } catch (e) {
       console.error('[borrarChecklistActual]', e);
-      Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo borrar el checklist.', confirmButtonColor: '#0F172A' });
+      Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo borrar el checklist.', confirmButtonColor: 'var(--action)' });
     }
   }
 
   abrirModalEliminarTodo() {
     if (this.resultados().length === 0) {
-      Swal.fire({ icon: 'info', title: 'Nada que borrar', text: 'No hay registros en pantalla.', confirmButtonColor: '#0F172A' });
+      Swal.fire({ icon: 'info', title: 'Nada que borrar', text: 'No hay registros en pantalla.', confirmButtonColor: 'var(--action)' });
       return;
     }
     this.passwordInput = ''; this.isPasswordModalOpen = true;
@@ -671,7 +671,7 @@ export class ReportesComponent implements OnInit, OnDestroy {
     // en el bundle. Ahora se exige rol de administrador. (La protección real vive
     // en las Firestore Security Rules — Fase 2.)
     if (this.currentUser?.rol !== 'admin') {
-      Swal.fire({ icon: 'error', title: 'Sin permiso', text: 'Solo un administrador puede borrar el historial.', confirmButtonColor: '#0F172A' });
+      Swal.fire({ icon: 'error', title: 'Sin permiso', text: 'Solo un administrador puede borrar el historial.', confirmButtonColor: 'var(--action)' });
       return;
     }
 
@@ -682,8 +682,8 @@ export class ReportesComponent implements OnInit, OnDestroy {
       text: `¿Borrar permanentemente los ${this.resultados().length} registros filtrados en pantalla?`,
       icon: 'warning',
       showCancelButton: true,
-      confirmButtonColor: '#EF4444',
-      cancelButtonColor: '#0F172A',
+      confirmButtonColor: 'var(--bad-fg)',
+      cancelButtonColor: 'var(--neutral-500)',
       confirmButtonText: 'Sí, borrar todo',
       cancelButtonText: 'Cancelar'
     });
@@ -696,9 +696,9 @@ export class ReportesComponent implements OnInit, OnDestroy {
           await deleteDoc(doc(this.firestore, 'checklists', docId));
           await this.api.borrarChecklist(docId); // FERROCARRIL Etapa 3: borra también en Postgres
         }
-        Swal.fire({ icon: 'success', title: 'Limpieza Total', text: 'Historial eliminado con éxito.', confirmButtonColor: '#0F172A' });
+        Swal.fire({ icon: 'success', title: 'Limpieza Total', text: 'Historial eliminado con éxito.', confirmButtonColor: 'var(--action)' });
       } catch (error) {
-        Swal.fire({ icon: 'error', title: 'Fallo al borrar', text: 'Ocurrió un error en la base de datos.', confirmButtonColor: '#0F172A' });
+        Swal.fire({ icon: 'error', title: 'Fallo al borrar', text: 'Ocurrió un error en la base de datos.', confirmButtonColor: 'var(--action)' });
       } finally {
         this.buscando.set(false);
       }
@@ -833,7 +833,7 @@ export class ReportesComponent implements OnInit, OnDestroy {
 
   async descargarExcel() {
     if (this.resultados().length === 0) {
-      Swal.fire({ icon: 'info', title: 'Sin Datos', text: 'No hay datos para exportar.', confirmButtonColor: '#0F172A' });
+      Swal.fire({ icon: 'info', title: 'Sin Datos', text: 'No hay datos para exportar.', confirmButtonColor: 'var(--action)' });
       return;
     }
 
@@ -892,13 +892,13 @@ export class ReportesComponent implements OnInit, OnDestroy {
       a.download = `Reporte_MegaDulces${sufijoSucursal}_${this.fechaInicio}_al_${this.fechaFin}.xlsx`;
       document.body.appendChild(a); a.click(); document.body.removeChild(a); window.URL.revokeObjectURL(url);
     } catch (error) {
-      Swal.fire({ icon: 'error', title: 'Error de Exportación', text: 'Hubo un error al generar el archivo Excel.', confirmButtonColor: '#0F172A' });
+      Swal.fire({ icon: 'error', title: 'Error de Exportación', text: 'Hubo un error al generar el archivo Excel.', confirmButtonColor: 'var(--action)' });
     }
   }
 
   async descargarReportePDF() {
     if (this.resultados().length === 0) {
-      Swal.fire({ icon: 'info', title: 'Sin Datos', text: 'No hay datos para generar el PDF.', confirmButtonColor: '#0F172A' });
+      Swal.fire({ icon: 'info', title: 'Sin Datos', text: 'No hay datos para generar el PDF.', confirmButtonColor: 'var(--action)' });
       return;
     }
 
@@ -1006,7 +1006,7 @@ export class ReportesComponent implements OnInit, OnDestroy {
         });
     };
     if (this.resultados().length === 0) {
-      Swal.fire({ icon: 'info', title: 'Sin Datos', text: 'No hay datos para generar el reporte visual.', confirmButtonColor: '#0F172A' });
+      Swal.fire({ icon: 'info', title: 'Sin Datos', text: 'No hay datos para generar el reporte visual.', confirmButtonColor: 'var(--action)' });
       return;
     }
 
@@ -1015,7 +1015,7 @@ export class ReportesComponent implements OnInit, OnDestroy {
         title: 'Reporte Pesado',
         text: 'Estás generando un reporte visual muy grande. Esto descargará muchas fotos y tomará algo de tiempo. ¿Deseas continuar?',
         icon: 'warning',
-        showCancelButton: true, confirmButtonColor: '#0F172A', cancelButtonColor: '#64748B', confirmButtonText: 'Sí, generar PDF', cancelButtonText: 'Cancelar'
+        showCancelButton: true, confirmButtonColor: 'var(--action)', cancelButtonColor: 'var(--neutral-500)', confirmButtonText: 'Sí, generar PDF', cancelButtonText: 'Cancelar'
       });
       if (!result.isConfirmed) return;
     }
@@ -1481,7 +1481,7 @@ export class ReportesComponent implements OnInit, OnDestroy {
       doc.save(`Auditoria_Visual${sufijoSucursal}_${this.fechaInicio}_al_${this.fechaFin}.pdf`);
     } catch (error) {
       console.error(error);
-      Swal.fire({ icon: 'error', title: 'Error de Procesamiento', text: 'Ocurrió un error al generar el PDF.', confirmButtonColor: '#0F172A' });
+      Swal.fire({ icon: 'error', title: 'Error de Procesamiento', text: 'Ocurrió un error al generar el PDF.', confirmButtonColor: 'var(--action)' });
     } finally {
       this.generandoReporte.set(false);
     }

@@ -357,7 +357,7 @@ export class PromocionesComponent implements OnInit {
     } catch (e: any) {
       Swal.fire({
         icon: 'error', title: 'No se pudo cargar el ranking',
-        text: e?.message || 'Revisa tu conexión.', confirmButtonColor: '#0F172A'
+        text: e?.message || 'Revisa tu conexión.', confirmButtonColor: 'var(--action)'
       });
     } finally {
       this.cargandoRanking.set(false);
@@ -466,16 +466,16 @@ export class PromocionesComponent implements OnInit {
           + 'sin ninguno marcado, nadie va a poder subir la evidencia de esta promoción.',
         showCancelButton: true,
         confirmButtonText: 'Ir a marcarlas', cancelButtonText: 'Guardar así',
-        confirmButtonColor: '#0F172A',
+        confirmButtonColor: 'var(--action)',
       });
       if (r.isConfirmed) return;   // se queda en el paso 3 para marcarlas
     }
     if (!this.proveedor.trim()) {
-      Swal.fire({ icon: 'warning', title: 'Falta el proveedor', confirmButtonColor: '#0F172A' });
+      Swal.fire({ icon: 'warning', title: 'Falta el proveedor', confirmButtonColor: 'var(--action)' });
       return;
     }
     if (this.subiendo() > 0) {
-      Swal.fire({ icon: 'info', title: 'Espera a que terminen de subir los archivos', confirmButtonColor: '#0F172A' });
+      Swal.fire({ icon: 'info', title: 'Espera a que terminen de subir los archivos', confirmButtonColor: 'var(--action)' });
       return;
     }
 
@@ -527,7 +527,7 @@ export class PromocionesComponent implements OnInit {
       Swal.fire({
         icon: 'error', title: 'No se pudo guardar',
         text: e?.message || 'Revisa tu conexión e inténtalo de nuevo.',
-        confirmButtonColor: '#0F172A'
+        confirmButtonColor: 'var(--action)'
       });
     } finally {
       this.guardando.set(false);
@@ -540,14 +540,14 @@ export class PromocionesComponent implements OnInit {
       icon: 'warning', title: '¿Quitar esta promoción?',
       text: `Folio ${p.folio ?? '(sin folio)'} · ${p.proveedor || ''}. Se puede recuperar después.`,
       showCancelButton: true, confirmButtonText: 'Quitar', cancelButtonText: 'Cancelar',
-      confirmButtonColor: '#C7382E'
+      confirmButtonColor: 'var(--bad-fg)'
     });
     if (!r.isConfirmed) return;
     try {
       await this.api.del('/api/promociones?id=' + encodeURIComponent(p.id));
       this.cargarTodo();
     } catch (e: any) {
-      Swal.fire({ icon: 'error', title: 'No se pudo quitar', text: e?.message || '', confirmButtonColor: '#0F172A' });
+      Swal.fire({ icon: 'error', title: 'No se pudo quitar', text: e?.message || '', confirmButtonColor: 'var(--action)' });
     }
   }
 
@@ -564,7 +564,7 @@ export class PromocionesComponent implements OnInit {
     if (pesado) {
       Swal.fire({
         icon: 'warning', title: 'Archivo demasiado pesado',
-        text: pesado, confirmButtonColor: '#0F172A'
+        text: pesado, confirmButtonColor: 'var(--action)'
       });
       return;
     }
@@ -578,7 +578,7 @@ export class PromocionesComponent implements OnInit {
       Swal.fire({
         icon: 'error', title: 'No se pudo subir el archivo',
         text: `"${archivo.name}": ${e?.message || 'revisa tu conexión'}`,
-        confirmButtonColor: '#0F172A'
+        confirmButtonColor: 'var(--action)'
       });
     } finally {
       this.subiendo.set(this.subiendo() - 1);
@@ -1065,7 +1065,7 @@ export class PromocionesComponent implements OnInit {
     } catch (e: any) {
       Swal.fire({
         icon: 'error', title: 'No se pudo generar el PDF',
-        text: e?.message || 'Inténtalo de nuevo.', confirmButtonColor: '#0F172A'
+        text: e?.message || 'Inténtalo de nuevo.', confirmButtonColor: 'var(--action)'
       });
     }
   }

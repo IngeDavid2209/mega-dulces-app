@@ -345,7 +345,7 @@ export class VentaPromosComponent implements OnInit, OnDestroy {
       Swal.fire({
         icon: 'warning', title: 'Esta promo no aplica en tus sucursales',
         text: 'Pídele a quien la dio de alta que la habilite donde la vas a vender.',
-        confirmButtonColor: '#0F172A',
+        confirmButtonColor: 'var(--action)',
       });
       return;
     }
@@ -369,7 +369,7 @@ export class VentaPromosComponent implements OnInit, OnDestroy {
       showCancelButton: true,
       confirmButtonText: 'Mandar a caja',
       cancelButtonText: 'Cancelar',
-      confirmButtonColor: '#1F4E79',
+      confirmButtonColor: 'var(--action)',
       focusConfirm: false,
       preConfirm: () => {
         const piezas = Math.max(1, Math.round(
@@ -433,7 +433,7 @@ export class VentaPromosComponent implements OnInit, OnDestroy {
       showCancelButton: true,
       confirmButtonText: 'No se las llevó',
       cancelButtonText: 'Volver',
-      confirmButtonColor: '#C7382E',
+      confirmButtonColor: 'var(--bad-fg)',
     });
     if (!r.isConfirmed) return;
     try {
@@ -499,7 +499,7 @@ export class VentaPromosComponent implements OnInit, OnDestroy {
       Swal.fire({
         icon: 'warning', title: 'La foto pesa mucho',
         text: `El máximo son ${this.MAX_ARCHIVO_MB} MB.`,
-        confirmButtonColor: '#0F172A',
+        confirmButtonColor: 'var(--action)',
       });
       return;
     }
@@ -528,7 +528,7 @@ export class VentaPromosComponent implements OnInit, OnDestroy {
       Swal.fire({
         icon: 'warning', title: 'Falta el nombre',
         text: 'La promo necesita un nombre para que la caja la reconozca.',
-        confirmButtonColor: '#0F172A',
+        confirmButtonColor: 'var(--action)',
       });
       return;
     }
@@ -540,7 +540,7 @@ export class VentaPromosComponent implements OnInit, OnDestroy {
       Swal.fire({
         icon: 'warning', title: 'Falta la sucursal',
         text: 'Marca al menos una sucursal donde aplique la promo.',
-        confirmButtonColor: '#0F172A',
+        confirmButtonColor: 'var(--action)',
       });
       return;
     }
@@ -584,7 +584,7 @@ export class VentaPromosComponent implements OnInit, OnDestroy {
       icon: 'warning', title: '¿Eliminar esta promo?',
       text: 'Deja de aparecerle a las cajas. Lo ya reportado se conserva.',
       showCancelButton: true, confirmButtonText: 'Eliminar', cancelButtonText: 'Cancelar',
-      confirmButtonColor: '#C7382E',
+      confirmButtonColor: 'var(--bad-fg)',
     });
     if (!r.isConfirmed) return;
     try {
@@ -601,7 +601,7 @@ export class VentaPromosComponent implements OnInit, OnDestroy {
       icon: 'warning', title: '¿Quitar este reporte?',
       html: `<div style="font-size:13px">${l.promoNombre} · ${l.sucursal}</div>`,
       showCancelButton: true, confirmButtonText: 'Quitar', cancelButtonText: 'Cancelar',
-      confirmButtonColor: '#C7382E',
+      confirmButtonColor: 'var(--bad-fg)',
     });
     if (!r.isConfirmed) return;
     try {
@@ -694,7 +694,7 @@ export class VentaPromosComponent implements OnInit, OnDestroy {
     Swal.fire({
       icon: 'error', title: titulo,
       text: e?.message || 'Revisa tu conexión.',
-      confirmButtonColor: '#0F172A',
+      confirmButtonColor: 'var(--action)',
     });
   }
 }

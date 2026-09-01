@@ -380,7 +380,7 @@ export class PagosServiciosComponent implements OnInit, OnDestroy {
       html: `Se dejará de recordar <b>${this.nombreServicio(s)}</b>.<br><br>`
         + 'Los pagos ya registrados y sus comprobantes se conservan; solo se cancelan los que seguían pendientes.',
       showCancelButton: true, confirmButtonText: 'Dar de baja', cancelButtonText: 'Cancelar',
-      confirmButtonColor: '#DC2626',
+      confirmButtonColor: 'var(--bad-fg)',
     });
     if (!r.isConfirmed) return;
     try {
@@ -514,7 +514,7 @@ export class PagosServiciosComponent implements OnInit, OnDestroy {
           + '<p style="font-size:13px;color:#64748B;margin:0">Si en un minuto no le llegó, mándalo tú.</p>',
         showCancelButton: true,
         confirmButtonText: 'Mandarlo yo', cancelButtonText: 'Esperar',
-        confirmButtonColor: '#128C7E', cancelButtonColor: '#64748B',
+        confirmButtonColor: '#128C7E', cancelButtonColor: 'var(--neutral-500)',
       });
       if (res.isConfirmed && r.telefono && r.texto) this.abrirWhatsApp(r.telefono, r.texto);
       return;
@@ -550,7 +550,7 @@ export class PagosServiciosComponent implements OnInit, OnDestroy {
       cancelButtonText: 'Cerrar',
       // Verde de WhatsApp, para que el botón se lea como lo que hace.
       confirmButtonColor: puedeManual ? '#128C7E' : '#0F172A',
-      cancelButtonColor: '#64748B',
+      cancelButtonColor: 'var(--neutral-500)',
     });
 
     if (res.isConfirmed && puedeManual) this.abrirWhatsApp(r.telefono, r.texto);

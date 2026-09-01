@@ -336,7 +336,7 @@ export class TicketsComponent implements OnInit, OnDestroy {
       icon: 'warning', title: '¿Cancelar este ticket?',
       input: 'text', inputPlaceholder: '¿Por qué se cancela?',
       showCancelButton: true, confirmButtonText: 'Cancelar el ticket', cancelButtonText: 'Volver',
-      confirmButtonColor: '#DC2626',
+      confirmButtonColor: 'var(--bad-fg)',
       inputValidator: (v) => (!v || !v.trim()) ? 'Escribe el motivo' : null,
     });
     if (!motivo) return;
@@ -369,7 +369,7 @@ export class TicketsComponent implements OnInit, OnDestroy {
       icon: 'warning', title: `¿Borrar el ticket ${this.folioTexto(t.folio)}?`,
       text: 'Se quita de la lista. El registro se conserva por si hay que recuperarlo.',
       showCancelButton: true, confirmButtonText: 'Borrar', cancelButtonText: 'Cancelar',
-      confirmButtonColor: '#DC2626',
+      confirmButtonColor: 'var(--bad-fg)',
     });
     if (!r.isConfirmed) return;
     try {
@@ -533,7 +533,7 @@ export class TicketsComponent implements OnInit, OnDestroy {
     const r0 = await Swal.fire({
       icon: 'question', title: '¿Quitar esta firma?',
       showCancelButton: true, confirmButtonText: 'Quitar', cancelButtonText: 'No',
-      confirmButtonColor: '#DC2626',
+      confirmButtonColor: 'var(--bad-fg)',
     });
     if (!r0.isConfirmed) return;
     try {

@@ -138,7 +138,7 @@ export class PromoExpedientesComponent implements OnInit {
     } catch (e: any) {
       Swal.fire({
         icon: 'error', title: 'No se pudo cargar el seguimiento',
-        text: e?.message || 'Revisa tu conexión.', confirmButtonColor: '#0F172A',
+        text: e?.message || 'Revisa tu conexión.', confirmButtonColor: 'var(--action)',
       });
     } finally {
       this.cargando.set(false);
@@ -194,7 +194,7 @@ export class PromoExpedientesComponent implements OnInit {
     } catch (e: any) {
       Swal.fire({
         icon: 'error', title: 'No se pudo guardar la evidencia',
-        text: e?.message || 'Revisa tu conexión.', confirmButtonColor: '#0F172A',
+        text: e?.message || 'Revisa tu conexión.', confirmButtonColor: 'var(--action)',
       });
     } finally {
       this.subiendo.set(this.subiendo() - 1);
@@ -207,7 +207,7 @@ export class PromoExpedientesComponent implements OnInit {
     const r = await Swal.fire({
       icon: 'warning', title: '¿Quitar esta evidencia?',
       showCancelButton: true, confirmButtonText: 'Quitar', cancelButtonText: 'Cancelar',
-      confirmButtonColor: '#C7382E',
+      confirmButtonColor: 'var(--bad-fg)',
     });
     if (!r.isConfirmed) return;
     try {
@@ -216,7 +216,7 @@ export class PromoExpedientesComponent implements OnInit {
       });
       this.reemplazar(resp?.expediente);
     } catch (e: any) {
-      Swal.fire({ icon: 'error', title: 'No se pudo quitar', text: e?.message || '', confirmButtonColor: '#0F172A' });
+      Swal.fire({ icon: 'error', title: 'No se pudo quitar', text: e?.message || '', confirmButtonColor: 'var(--action)' });
     }
   }
 
@@ -264,7 +264,7 @@ export class PromoExpedientesComponent implements OnInit {
     } catch (e: any) {
       Swal.fire({
         icon: 'error', title: 'No se pudo subir el ticket',
-        text: e?.message || 'Revisa tu conexión.', confirmButtonColor: '#0F172A',
+        text: e?.message || 'Revisa tu conexión.', confirmButtonColor: 'var(--action)',
       });
     } finally {
       this.subiendo.set(this.subiendo() - 1);
@@ -280,7 +280,7 @@ export class PromoExpedientesComponent implements OnInit {
       Swal.fire({
         icon: 'warning', title: 'Faltan los números',
         text: 'Escribe cuántas piezas se vendieron y de cuánto fue el ticket.',
-        confirmButtonColor: '#0F172A',
+        confirmButtonColor: 'var(--action)',
       });
       return;
     }
@@ -298,7 +298,7 @@ export class PromoExpedientesComponent implements OnInit {
       this.reemplazar(r?.expediente);
       delete this.ventaNueva[canal];
     } catch (e: any) {
-      Swal.fire({ icon: 'error', title: 'No se pudo guardar la venta', text: e?.message || '', confirmButtonColor: '#0F172A' });
+      Swal.fire({ icon: 'error', title: 'No se pudo guardar la venta', text: e?.message || '', confirmButtonColor: 'var(--action)' });
     }
   }
 
@@ -310,7 +310,7 @@ export class PromoExpedientesComponent implements OnInit {
       icon: 'warning', title: '¿Quitar esta venta?',
       text: 'Se descuenta de las piezas y del importe de la promoción.',
       showCancelButton: true, confirmButtonText: 'Quitar', cancelButtonText: 'Cancelar',
-      confirmButtonColor: '#C7382E',
+      confirmButtonColor: 'var(--bad-fg)',
     });
     if (!r.isConfirmed) return;
     try {
@@ -319,7 +319,7 @@ export class PromoExpedientesComponent implements OnInit {
       });
       this.reemplazar(resp?.expediente);
     } catch (e: any) {
-      Swal.fire({ icon: 'error', title: 'No se pudo quitar', text: e?.message || '', confirmButtonColor: '#0F172A' });
+      Swal.fire({ icon: 'error', title: 'No se pudo quitar', text: e?.message || '', confirmButtonColor: 'var(--action)' });
     }
   }
 

@@ -210,7 +210,7 @@ export class FlotillaComponent implements OnInit, OnDestroy {
         icon: 'success',
         title: 'Solicitud enviada',
         text: 'Un administrador debe aprobarla. Te avisaremos cuando responda.',
-        confirmButtonColor: '#0F172A',
+        confirmButtonColor: 'var(--action)',
       });
     } catch (e: any) {
       this.manejarChoque(e, 'No se pudo apartar el vehiculo.');
@@ -251,7 +251,7 @@ export class FlotillaComponent implements OnInit, OnDestroy {
       inputPlaceholder: 'Ej. el coche esta en servicio',
       showCancelButton: true,
       confirmButtonText: 'Rechazar',
-      confirmButtonColor: '#DC2626',
+      confirmButtonColor: 'var(--bad-fg)',
       cancelButtonText: 'Cancelar',
     });
     if (!isConfirmed) return;
@@ -283,7 +283,7 @@ export class FlotillaComponent implements OnInit, OnDestroy {
       icon: 'warning',
       showCancelButton: true,
       confirmButtonText: 'Si, cancelar',
-      confirmButtonColor: '#DC2626',
+      confirmButtonColor: 'var(--bad-fg)',
       cancelButtonText: 'No',
     });
     if (!res.isConfirmed) return;
@@ -337,7 +337,7 @@ export class FlotillaComponent implements OnInit, OnDestroy {
       icon: 'warning',
       showCancelButton: true,
       confirmButtonText: 'Si, eliminar',
-      confirmButtonColor: '#DC2626',
+      confirmButtonColor: 'var(--bad-fg)',
       cancelButtonText: 'No',
     });
     if (!res.isConfirmed) return;
@@ -374,11 +374,11 @@ export class FlotillaComponent implements OnInit, OnDestroy {
   /** Muestra el detalle del conflicto (409) o un error generico. */
   private manejarChoque(e: any, fallback: string) {
     const msg = (e && e.message) || fallback;
-    Swal.fire({ icon: 'error', title: 'Horario ocupado', text: msg, confirmButtonColor: '#0F172A' });
+    Swal.fire({ icon: 'error', title: 'Horario ocupado', text: msg, confirmButtonColor: 'var(--action)' });
   }
 
   private aviso(text: string) {
-    Swal.fire({ icon: 'info', title: 'Aviso', text, confirmButtonColor: '#0F172A' });
+    Swal.fire({ icon: 'info', title: 'Aviso', text, confirmButtonColor: 'var(--action)' });
   }
 
   // Formato de fecha/hora para la UI.

@@ -465,6 +465,67 @@ No rompe el clon limpio: `build` y `start` son `node scripts/generar-version.js 
 el Dockerfile corre `npm run build`, así que existe antes de que `login.ts` y
 `mantenimiento.ts` lo importen.
 
+### 1/sep/2026 — «no funciona»: el servidor estaba sano y el rescate estaba adentro
+
+David no podía entrar. Se descartó **todo** el lado del servidor con cifras antes de tocar nada:
+58/58 hashes de `ngsw.json`, 16/16 archivos del `index.html` en `200`, `/api/login-usuario` en
+356 ms, `/api/usuarios` en 222 ms, Firebase Auth con llave **válida**
+(`INVALID_LOGIN_CREDENTIALS` ante un usuario falso), `migraciones al día`, sin CSP, mantenimiento
+apagado desde el 29/ago.
+
+**Lo que lo cerró fue abrir la app yo mismo.** Chrome headless con perfil limpio pintó el login
+completo —`app-root` con 2822 bytes, incluido el marcador de versión—. Misma URL, dos perfiles,
+uno abre y el otro no: la diferencia es lo único que no comparten, el estado guardado en el
+navegador. **Eso es una herramienta nueva y hay que usarla antes de preguntar:** dos turnos se
+fueron en pedir síntomas que un navegador headless contesta solo.
+
+**Y el hallazgo de fondo:** `app.ts` ya sabía recuperarse de un chunk viejo, pero **el reparador
+vivía dentro de lo que no arranca**. Si el worker sirve un `index.html` guardado cuyos chunks ya
+no existen, el arranque falla y nada de esa maquinaria corre. Se agregó un `<script>` **inline en
+`src/index.html`** —lo único que se ejecuta aunque `main.js` devuelva 404—. Límite honesto: no
+rescata a quien YA está atascado (ese navegador tiene el index viejo, sin el guardián); protege
+desde el despliegue siguiente.
+
+**Dos fallas del andamio, las dos de la misma familia del día:**
+- La prueba servía el index roto a la primera petición de `/`, y **la sonda de «¿ya levantó el
+  servidor?» se lo comía**: el navegador recibía el sano, la app arrancaba, y el verde no probaba
+  nada. Se destapó al imprimir `Sec-Fetch-Mode` de cada petición. Ahora solo se rompen las
+  navegaciones, y la prueba **aborta si el 404 del chunk fantasma no aparece** en el log.
+- `execFileSync` **bloquea el event loop**, y el servidor HTTP vivía en el mismo proceso: la
+  prueba se ahogaba sola y moría por timeout — que se lee como «el rescate no funciona» cuando lo
+  que no funciona es la prueba. Reescrita asíncrona.
+
+`scripts/prueba-rescate-arranque.js` deja las dos preguntas corriendo solas, y **el negativo pesa
+más que el positivo**: un rescate que recarga cuando no debe es un bucle para 186 personas.
+
+    NEGATIVO  index sano  -> 1 navegación, app-root 2823 bytes (no recarga)
+    POSITIVO  index roto  -> 404 del chunk fantasma, 2 navegaciones, 2823 bytes
+
+**Y un falso positivo más, en la propia espera del despliegue:** `grep -c ... || echo 0` imprime
+`0` **y además** ejecuta el `echo`, así que la variable quedaba `"0
+0"` y el `if` daba verde en
+el primer intento con la app vieja todavía servida. El `last-modified` lo delató.
+
+### 4.1b DESPLEGADO — 1/sep/2026 14:37:59 GMT
+
+Verificado en producción, con marcador validado en las dos direcciones:
+
+| marcador | servido | qué prueba |
+|---|---|---|
+| `md_rescate_arranque` | 1 (en el index) | el rescate está vivo |
+| `ctl-tab` | 1 | la barra de pestañas |
+| `Control operativo` | 2 | la entrada nueva del menú |
+| `alCambiarPestana` | 1 | el scroll vuelve arriba |
+| `Productividad y turno` | **1** (antes 2) | dejó de ser entrada: hoy es pestaña |
+
+Más: **62/62** hashes de `ngsw.json` coinciden, 0 faltantes, y Chrome headless con perfil limpio
+pinta el login (`app-root` 2822 bytes).
+
+**Lo que este despliegue NO verificó: las cuatro pestañas por dentro.** Nadie con sesión las ha
+visto. Faltan los seis checks visuales —dentro del cascarón · línea de borde a borde · cambio de
+pestaña · scroll · que las cuatro quepan en móvil · las cuatro URLs viejas—, y ahora se hacen en
+producción porque el paso local ya no existe.
+
 ### Listo y SIN DESPLEGAR — el orden importa
 
 

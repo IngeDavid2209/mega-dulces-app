@@ -519,6 +519,37 @@ function revisarRutas(plano) {
     fallas.push('hay ' + guardas + ' rutas hijas con tabControlGuard y ' +
                 TABS_TODAS.length + ' pestañas');
   }
+  // (4) NINGUNA ruta vieja sobrevivio sirviendo el componente. Es el espejo
+  //     del (2): alli no debe sobrar una hija, aqui no debe sobrar una raiz.
+  //
+  //     El (3) comprueba que el redirectTo EXISTA, no que la ruta vieja se
+  //     haya ido. Si quedaran las dos —`{path:'estadisticas', loadComponent}`
+  //     y debajo el redirectTo— Angular toma la PRIMERA que casa, sirve el
+  //     componente, y el redirect queda muerto: esa URL entregaria la pantalla
+  //     sin marco, que es exactamente lo que el paso 2a vino a evitar. Y el
+  //     (3) seguiria en verde.
+  //
+  //     Contar `path: 'estadisticas'` no sirve: aparece DOS veces con razon
+  //     -la hija y la redireccion-. Lo que discrimina es de donde se carga el
+  //     componente: cada uno de los cuatro debe salir de UN solo loadComponent.
+  //
+  //     El especificador NO se escribe aqui: se lee de la propia ruta hija. Una
+  //     lista local de los cuatro componentes seria justo lo que nadie
+  //     actualiza al agregar la quinta pestaña.
+  for (const t of TABS_TODAS) {
+    const marca = "path: '" + t.ruta + "', canActivate: [tabControlGuard], loadComponent: () => import('";
+    const i = plano.indexOf(marca);
+    if (i === -1) continue;  // ya lo reporto el (1)
+    const j = plano.indexOf("'", i + marca.length);
+    const spec = plano.slice(i + marca.length, j);
+    const veces = plano.split("import('" + spec + "')").length - 1;
+    if (veces !== 1) {
+      fallas.push("'" + spec + "' se carga desde " + veces + " rutas: sobrevivio una ruta vieja " +
+                  'sirviendo el componente, y su redirectTo esta muerto (Angular toma la primera ' +
+                  'que casa). Esa URL entrega la pantalla SIN MARCO.');
+    }
+  }
+
   // (3) cada fusion declarada tiene su redirectTo realmente escrito
   for (const origen of Object.keys(FUNDIDAS)) {
     const destino = FUNDIDAS[origen];
@@ -552,10 +583,29 @@ const planoRutas = textoRutas.replace(/\s+/g, ' ');
   }
 }
 
+// Control NEGATIVO del (4): con el componente de una pestaña servido tambien
+// desde una raiz, tiene que quejarse. El (1) no lo cubre —la hija sigue ahi— y
+// sin esto un contador que siempre diera 1 pasaria inadvertido.
+{
+  const t = TABS_TODAS[0];
+  const marca = "path: '" + t.ruta + "', canActivate: [tabControlGuard], loadComponent: () => import('";
+  const i = planoRutas.indexOf(marca);
+  if (i === -1) abortar('no encontre la ruta hija de ' + t.ruta + ' para armar el control negativo.');
+  const spec = planoRutas.slice(i + marca.length, planoRutas.indexOf("'", i + marca.length));
+  const roto = planoRutas + " { path: 'vieja-que-sobrevivio', loadComponent: () => import('" +
+               spec + "').then(m => m.X) },";
+  if (roto === planoRutas) abortar('el control negativo del check (4) no cambio nada.');
+  const quejas = revisarRutas(roto).filter(function (f) { return f.indexOf(spec) === 0 || f.indexOf("'" + spec + "'") === 0; });
+  if (quejas.length === 0) {
+    abortar('duplique el loadComponent de ' + spec + ' y el chequeo NO se quejo. El check (4) ' +
+      'no esta contando lo que dice contar.');
+  }
+}
+
 const fallasRutas = revisarRutas(planoRutas);
 for (const f of fallasRutas) { difs++; console.log('   ✗ ruta · %s', f); }
 console.log('');
-console.log('✓ rutas: las %d pestañas tienen hija gateada · las %d rutas viejas redirigen a SU pestaña',
+console.log('✓ rutas: las %d pestañas tienen hija gateada · ningun componente se sirve dos veces · las %d rutas viejas redirigen a SU pestaña',
   TABS_TODAS.length, Object.keys(FUNDIDAS).filter(function (o) { return FUNDIDAS[o]; }).length);
 for (const o of Object.keys(FUNDIDAS)) if (FUNDIDAS[o]) console.log('    %s → %s', o, FUNDIDAS[o]);
 

@@ -188,7 +188,7 @@ Orden por **dependencia y riesgo**, no por importancia. Un paso ≤ 3 días. Mar
 
 | Fase | Objetivo | Semanas | Depende de | Estado |
 |---|---|---|---|---|
-| 0 | Medir antes de tocar (divergencia, KPIs congelados, detener `corte.js`, **el silencio**) | 0.5 | — | 🔄 **0.1 ✅ · 0.3 ✅ · 0.4 silencio: medido, interpretación pendiente · falta 0.2** |
+| 0 | Medir antes de tocar (detener `corte.js`, divergencia, KPIs congelados, réplicas) | 0.5 | — | 🔄 **0.1 ✅ · 0.3 ✅ · 0.4 ✅ (1 réplica, 1/sep) · falta 0.2** |
 | 2 | Que los números digan la verdad (hecho ≠ justificado + primeras pruebas) | 1 | 0 | ⬜ **adelantada: va antes de la 1** |
 | 1 | Cerrar el ferrocarril: una sola base | 3 | 0 | ⬜ |
 | 3 | La estructura como dato (unidad, sucursal, ámbito, puesto, plaza, cobertura) | 4 | 1 | ⬜ |
@@ -692,6 +692,15 @@ solo porque el typo cayó en la palabra que la llave no usaba.
 
 > Actualiza esto al cerrar cada paso: fecha, paso, qué se movió, qué se aprendió.
 
+- **1/sep/2026 — paso 0.4 ✅ hecho.** `numReplicas = 1` en los 15 service instances de
+  `production`, y un único `escuchando en el puerto 8080` en el log. **Nadie recibe WhatsApp
+  duplicados y la Fase 9.1 NO hay que adelantarla.** Documentado en `RAILWAY.md`, con el motivo
+  por el que no se puede subir de una réplica mientras los cuatro polls vivan dentro de
+  `app.listen` sin idempotencia. **Ojo con el proxy equivocado:** contar líneas de «poll
+  iniciado» en el log NO sirve — la ventana del log viene truncada y da 2 de 4. La cifra que
+  vale es `numReplicas`.
+- **Corrección de numeración:** antes esta bitácora llamaba «0.4» al silencio. El silencio no es
+  un paso del documento 5: es un **hallazgo** que salió midiendo. El 0.4 son las réplicas.
 - **31/ago/2026 — paso 0.3 (adelantado, sin saberlo).** La migración 045 midió la distorsión de
   la regla de cumplimiento: `por_justificacion = 1` punto en toda la empresa. Consecuencia: la
   Fase 2 se adelanta antes de la Fase 1, y el paso 0.3 (congelar KPIs) se reduce a conservar la

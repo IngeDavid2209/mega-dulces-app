@@ -545,6 +545,48 @@ localiza el archivo en un segundo. Aquí se probaron hashes, endpoints, Firebase
 mantenimiento y service workers —todo sano— cuando la palabra «verificar» ya apuntaba a
 `login.html:53`.
 
+### 1/sep/2026 — Mercado en las pantallas de tareas, y dos defectos que solo se ven midiendo
+
+Puro estilo y plantilla: `checklist.ts` no se abrió (`git diff` vacío), sin migraciones.
+
+**El bug de verdad no era cosmético.** `.org-puesto-datos` era un `flex` y cada pastilla traía su
+`*ngIf`: cuando el dato faltaba **se borraba la RANURA**, no solo el contenido, y las de la
+derecha se recorrían. El mismo lugar decía «88 puestos debajo» en Dirección General y «3 tareas
+del manual» en Almacenista. Ahora es una rejilla de cinco columnas fijas con un `.org-slot` que
+existe siempre, y un encabezado que **reusa `.org-puesto-datos`** en vez de repetir las anchuras:
+no pueden desalinearse porque solo hay una definición.
+
+**La causa raíz de todo el azul era una línea.** `:host { --primary-blue: #1E40AF }` en
+`checklist.css:3`: el componente **redefinía el token en vez de usarlo**, así que el remapeo
+global a sunset nunca le llegaba. 82 azules → 0, con el rol leído del **selector**, no del
+parecido de color.
+
+**Los dos hallazgos que la medición dio y el ojo no habría dado:**
+
+1. **El encabezado se salía 94 px.** Los 25 ejes derechos de las filas daban un solo valor
+   —1079— y el del encabezado, 1173: yo había topado el ancho de la tarjeta y no el suyo. En
+   pantalla se ve como «casi alineado».
+2. **El volteo automático de los overlays NO funciona**, y es un defecto del bloque de tokens,
+   no de esta pantalla. `--overlay-*` se declara en `:root` como `rgba(var(--ink-rgb), a)`, y una
+   custom property con `var()` adentro **se sustituye donde se declara**. El bloque oscuro cambia
+   `--ink-rgb` en `body`, que es hijo: los overlays ya venían sustituidos con la tinta clara.
+   Medido en oscuro: `--overlay-hover` daba `rgba(16,13,9,.043)` — un velo casi negro sobre fondo
+   negro, o sea **hover invisible**. A ojo parece «no tiene hover». Corregido redeclarando los
+   tres overlays en el bloque oscuro; **afecta a toda la app**.
+
+**Aceptación medida, no mirada:** 82→0 · 22→0 · los archivos **crecieron** (3716→3769, 347→386),
+así que el cero no vino de borrar líneas · 25 ejes en un solo valor · checkbox en 1198 dentro de
+1216 · en oscuro `--overlay-hover` = `rgba(251,249,246,.043)`.
+
+**Una corrección al conteo de entrada:** la línea base decía 66 azules y me dieron **82**. No es
+que el árbol cambiara — en `9f76b5f`, anterior a todo el design system, ya eran 82. El número
+esperado estaba mal, y comprobarlo contra un commit viejo es lo que distingue «el árbol cambió»
+de «el conteo estaba mal».
+
+**Pendiente declarado:** fundir «Pendientes/Enviadas» en la fila de ESTADO, y la barra de
+«Avance del día» que parece llena con cero cumplido, viven en `panel-responsables.html/.css`,
+fuera de la lista de archivos de ese paso. No se tocaron.
+
 ### 1/sep/2026 — LA CAÍDA: el sidebar se reconstruía en cada ciclo
 
 **Causa única.** `sidebar.ts:47` era `menu() { return menuDe(this.currentUser); }`, y `menuDe()`

@@ -20,7 +20,11 @@ import {
   guardarListaCache, leerListaCacheConEdad, textoAntiguedad
 } from '../../../shared/lista-cache.util';
 import { avisoDeFalla, AvisoDatos } from '../../../shared/aviso-datos.util';
-import { MapaSucursalesComponent, PuntoMapa } from './mapa-sucursales';
+// Se importa solo el TIPO: el componente del mapa dejo de montarse cuando se
+// retiro el tablero anterior (2/sep). `puntosMapa()` sigue calculandose y no se
+// borro a proposito — eso es Fase 9.2 — pero dejar el componente en `imports`
+// hacia que el build avisara NG8113 en cada compilacion.
+import { PuntoMapa } from './mapa-sucursales';
 import {
   UBICACIONES_SUCURSALES, SUCURSALES_COMERCIALES, tieneCoordenadas,
   sucursalesSinUbicar, esSucursalComercial
@@ -30,7 +34,7 @@ import { fueraDeOperacion } from '../../../shared/medicion.util';
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, SidebarComponent, MapaSucursalesComponent, TableroDireccionComponent],
+  imports: [CommonModule, FormsModule, RouterModule, SidebarComponent, TableroDireccionComponent],
   templateUrl: './home.html',
   styleUrls: ['./home.css']
 })

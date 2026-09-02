@@ -111,272 +111,38 @@
         [sieteDias]="serieSieteDias()">
       </app-tablero-direccion>
 
-      <!-- ---------- Cuatro indicadores de cabecera ---------- -->
-      <section class="gauge-grid">
-        <article class="gauge-card" *ngFor="let t of tarjetasMando()">
-          <div class="gauge-grupo">{{ t.grupo }}</div>
-          <div class="gauge-titulo">{{ t.titulo }}</div>
+      <!-- ══════════════ AQUI VIVIA EL TABLERO ANTERIOR ══════════════
+           Se retiro el 2/sep/2026, completo: los cuatro medidores, la cinta de
+           contadores, Alertas criticas, Rendimiento por area, Mapa de operacion,
+           Tendencia de la semana, Reconocimientos del dia, Actividad reciente y
+           Herramientas de gestion.
 
-          <div class="gauge-cuerpo">
-            <svg class="gauge-svg" viewBox="0 0 100 60" aria-hidden="true">
-              <path d="M8 50 A42 42 0 0 1 92 50" class="gauge-pista"></path>
-              <path d="M8 50 A42 42 0 0 1 92 50" class="gauge-valor"
-                    [style.stroke]="colorDeNivel(t.valor)"
-                    [style.stroke-dasharray]="arcoDe(t.valor) + ' ' + largoArco"></path>
-            </svg>
-            <div class="gauge-lectura">
-              <span class="gauge-numero" *ngIf="t.valor !== null" [style.color]="colorDeNivel(t.valor)">
-                {{ t.valor }}%
-              </span>
-              <span class="gauge-numero gauge-numero-nulo" *ngIf="t.valor === null">Sin datos</span>
-              <span class="gauge-detalle">{{ t.detalle }}</span>
-            </div>
-          </div>
+           NO fue por gusto de limpiar. Desde que el Tablero de Direccion se monto
+           arriba, /home eran DOS tableros apilados que se contradecian:
 
-          <div class="gauge-nota">{{ t.nota }}</div>
-        </article>
-      </section>
+             · los medidores y la cinta publicaban 0%, y el tablero nuevo existe
+               justo para decir "—" en vez de 0% — un cero afirma que se midio;
+             · "Rendimiento por area" ponia Critico a todas las areas, que es el
+               SILENCIO (60 de 97 fichas sin abrir la app) mostrandose como
+               incumplimiento. El contexto del proyecto lo prohibe por escrito:
+               ningun porcentaje de esos tableros sube a Direccion mientras no
+               exista la particion por unidad;
+             · "Alertas criticas" eran los rojos decorativos que el propio tablero
+               nuevo critica: un rojo sin hallazgo abierto no tiene dueno ni reloj;
+             · "Tendencia de la semana" dibujaba ceros donde no hubo muestra, que es
+               exactamente lo que "Siete dias" vino a dejar de hacer;
+             · "Reconocimientos del dia" rankeaba personas al 0%.
 
-      <!-- ---------- Cinta de conteos operativos ---------- -->
-      <section class="cinta">
-        <div class="cinta-item">
-          <span class="cinta-valor">{{ totalChecklistsHoy() }}</span>
-          <span class="cinta-label">Checklists hoy</span>
-        </div>
-        <div class="cinta-item">
-          <span class="cinta-valor">{{ tareasCompletadasHoy() }}</span>
-          <span class="cinta-label">Tareas completadas</span>
-        </div>
-        <div class="cinta-item">
-          <span class="cinta-valor">{{ tareasPendientesHoy() }}</span>
-          <span class="cinta-label">Tareas pendientes</span>
-        </div>
-        <div class="cinta-item">
-          <span class="cinta-valor">{{ totalSucursales() }}</span>
-          <span class="cinta-label">Áreas activas</span>
-        </div>
-        <div class="cinta-item">
-          <span class="cinta-valor">{{ totalEmpleados() }}</span>
-          <span class="cinta-label">Colaboradores</span>
-          <span class="cinta-extra" *ngIf="totalMandos() || totalOperativos()">
-            {{ totalMandos() }} mandos · {{ totalOperativos() }} operativos
-          </span>
-        </div>
-        <div class="cinta-item cinta-item-alerta">
-          <span class="cinta-valor">{{ alertasCriticas().length }}</span>
-          <span class="cinta-label">Alertas críticas</span>
-        </div>
-      </section>
+           "Herramientas de gestion" se fue tambien y no se pierde acceso: sus seis
+           botones son rutas que ya estan en el menu.
 
-      <!-- ---------- Mapa real + rendimiento por área ---------- -->
-      <!-- ══ LO QUE NECESITA ATENCIÓN ══
-           Va primero a propósito: un tablero que abre con lo que va bien
-           esconde justo aquello por lo que se abre el tablero. Las alertas
-           y el rendimiento peor-primero mandan; los reconocimientos cierran. -->
-      <section class="mando-grid mando-grid-atencion">
-        <div class="panel">
-          <div class="panel-header panel-header-danger">
-            <h3>Alertas críticas</h3>
-            <span class="badge-counter">{{ alertasCriticas().length }}</span>
-          </div>
-          <div class="panel-body panel-body-scroll">
-            <div *ngIf="alertasCriticas().length === 0" class="empty-msg">Sin alertas. Todo en orden.</div>
-            <div class="alert-item" *ngFor="let a of alertasCriticas()">
-              <div class="alert-dot"></div>
-              <div class="alert-content">
-                <div class="alert-title">{{ a.tarea }}</div>
-                <div class="alert-meta">
-                  <span>{{ a.empleado }} · {{ a.sucursal }}</span>
-                </div>
-                <div class="alert-time">Vencida desde las {{ a.limite }}</div>
-              </div>
-            </div>
-          </div>
-        </div>
+           El TypeScript NO se toco a proposito: `tarjetasMando()`, la serie de la
+           grafica y el resto siguen ahi, sin pintar. Partir el componente dios de
+           4,420 lineas es Fase 9.2 y hacerlo hoy, en el mismo paso que un cambio
+           visible, seria meter dos riesgos en un commit. Queda como deuda anotada.
 
-        <div class="panel">
-          <div class="panel-header">
-            <h3>Rendimiento por área</h3>
-            <div class="seg">
-              <button class="seg-btn" [class.seg-btn-on]="filtroRendimiento() === 'todas'"
-                      (click)="cambiarFiltroRendimiento('todas')">Todas</button>
-              <button class="seg-btn" [class.seg-btn-on]="filtroRendimiento() === 'comerciales'"
-                      (click)="cambiarFiltroRendimiento('comerciales')">Sucursales</button>
-            </div>
-          </div>
-          <div class="panel-body panel-body-scroll">
-            <div *ngIf="rendimientoPorSucursal().length === 0" class="empty-msg">
-              Sin actividad registrada hoy.
-            </div>
-
-            <!-- En celular la tabla no cabe: se desplaza dentro de su propio
-                 marco en vez de recortar la columna de Estado. -->
-            <div class="tabla-scroll" *ngIf="rendimientoPorSucursal().length > 0">
-            <table class="tabla-rend">
-              <thead>
-                <tr>
-                  <th>Área</th>
-                  <th class="th-num">Cumplimiento</th>
-                  <th class="th-num">Puntualidad</th>
-                  <th class="th-num">Evidencia</th>
-                  <th>Estado</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr *ngFor="let f of rendimientoPorSucursal()" [class.fila-sin-reportar]="f.sinReportar">
-                  <td>
-                    <div class="rend-nombre">{{ f.nombre }}</div>
-                    <div class="rend-sub" *ngIf="!f.sinReportar">
-                      {{ f.checklists }} {{ f.checklists === 1 ? 'checklist' : 'checklists' }} ·
-                      {{ f.hechos }}/{{ f.total }}
-                    </div>
-                    <div class="rend-sub rend-sub-alerta" *ngIf="f.sinReportar">
-                      Ningún checklist hoy
-                    </div>
-                  </td>
-                  <td class="th-num">
-                    <span class="pill" [style.background]="colorDeNivel(f.cumplimiento)"
-                          [title]="f.baseCumplimiento">
-                      {{ f.cumplimiento === null ? '—' : f.cumplimiento + '%' }}
-                    </span>
-                  </td>
-                  <td class="th-num">
-                    <span class="pill pill-suave" [style.color]="colorDeNivel(f.puntualidad)"
-                          [title]="f.basePuntualidad">
-                      {{ f.puntualidad === null ? '—' : f.puntualidad + '%' }}
-                    </span>
-                  </td>
-                  <td class="th-num">
-                    <span class="pill pill-suave" [style.color]="colorDeNivel(f.evidencia)"
-                          [title]="f.baseEvidencia">
-                      {{ f.evidencia === null ? '—' : f.evidencia + '%' }}
-                    </span>
-                  </td>
-                  <td>
-                    <span class="chip chip-sin-reportar" *ngIf="f.sinReportar">Sin reportar</span>
-                    <span class="chip chip-{{ nivelDe(f.cumplimiento) }}" *ngIf="!f.sinReportar">
-                      {{ etiquetaDe(f.cumplimiento) }}
-                    </span>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-            </div>
-            <p class="tabla-pie">
-              Un guion significa que no hay base para calcular esa columna
-              (por ejemplo, tareas sin hora límite o que no piden foto).
-            </p>
-          </div>
-        </div>
-      </section>
-
-      <!-- ══ CONTEXTO ══  dónde y cómo viene la semana -->
-      <section class="mando-grid mando-grid-contexto">
-        <div class="panel">
-          <div class="panel-header">
-            <h3>Mapa de operación</h3>
-            <span class="panel-hint">Ubicación real de cada sucursal</span>
-          </div>
-          <div class="panel-body">
-            <app-mapa-sucursales
-              [puntos]="puntosMapa()"
-              [pendientes]="sucursalesPendientesMapa()">
-            </app-mapa-sucursales>
-          </div>
-        </div>
-
-        <div class="panel">
-          <div class="panel-header">
-            <h3>Tendencia de la semana</h3>
-            <span class="panel-hint">Últimos 7 días</span>
-          </div>
-          <div class="panel-body">
-            <div class="chart-wrapper">
-              <canvas #trendChartCanvas></canvas>
-            </div>
-          </div>
-        </div>
-
-      </section>
-
-      <!-- ══ LO QUE VA BIEN ══  al final, que es donde toca -->
-      <section class="mando-grid mando-grid-tres">
-        <div class="panel">
-          <div class="panel-header">
-            <h3>Reconocimientos del día</h3>
-          </div>
-          <div class="panel-body panel-body-scroll">
-            <div *ngIf="reconocimientos().length === 0 && sucursalesPerfectas().length === 0" class="empty-msg">
-              Todavía nadie cierra el día al 100%.
-            </div>
-
-            <div class="reco-item" *ngFor="let r of reconocimientos()">
-              <div class="reco-avatar">{{ iniciales(r.nombre) }}</div>
-              <div>
-                <div class="reco-nombre">{{ r.nombre }}</div>
-                <div class="reco-detalle">
-                  <ng-container *ngIf="r.puesto">{{ r.puesto }} · </ng-container>{{ r.detalle }}
-                </div>
-              </div>
-            </div>
-
-            <div class="reco-sucursales" *ngIf="sucursalesPerfectas().length > 0">
-              <span class="reco-sucursales-titulo">Áreas al 100%</span>
-              <div class="mando-chips">
-                <span class="mando-chip" *ngFor="let s of sucursalesPerfectas()">{{ s }}</span>
-              </div>
-            </div>
-
-            <div class="reco-top" *ngIf="topEmpleados().length > 0">
-              <span class="reco-sucursales-titulo">Top colaboradores de hoy</span>
-              <div class="rank-row" *ngFor="let e of topEmpleados(); let i = index">
-                <div class="rank-pos rank-pos-{{ i + 1 }}">{{ i + 1 }}</div>
-                <div class="rank-info">
-                  <div class="rank-name">{{ e.nombre }}</div>
-                  <div class="rank-detail">
-                    <ng-container *ngIf="e.puesto">{{ e.puesto }} · </ng-container>{{ e.completadas }} / {{ e.total }} tareas
-                  </div>
-                </div>
-                <div class="rank-pct"
-                     [ngClass]="e.porcentaje >= 80 ? 'pct-ok' : e.porcentaje >= 50 ? 'pct-warn' : 'pct-bad'">
-                  {{ e.porcentaje }}%
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="panel">
-          <div class="panel-header">
-            <h3>Actividad reciente</h3>
-          </div>
-          <div class="panel-body panel-body-scroll">
-            <div *ngIf="actividadReciente().length === 0" class="empty-msg">
-              Aún no hay actividad registrada hoy.
-            </div>
-            <div class="activity-item" *ngFor="let act of actividadReciente()">
-              <div class="activity-dot"></div>
-              <div class="activity-content">
-                <div><strong>{{ act.empleado }}</strong> completó <em>{{ act.tarea }}</em></div>
-                <div class="activity-meta">{{ act.sucursal }} · {{ act.hora }}</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="panel">
-          <div class="panel-header">
-            <h3>Herramientas de gestión</h3>
-          </div>
-          <div class="panel-body">
-            <button class="quick-btn quick-btn-primary" (click)="irA('/checklist')">Asignar checklist</button>
-            <button class="quick-btn quick-btn-blue" (click)="irA('/estadisticas')">Ver estadísticas</button>
-            <button class="quick-btn quick-btn-violet" (click)="irA('/ranking-sucursales')">Ranking de sucursales</button>
-            <button class="quick-btn quick-btn-amber" (click)="irA('/reportes')">Auditoría de evidencias</button>
-            <button class="quick-btn quick-btn-green" (click)="irA('/personal')">Gestión de personal</button>
-            <button class="quick-btn quick-btn-blue" (click)="irA('/cierre-mensual')">Cierre mensual</button>
-          </div>
-        </div>
-      </section>
+           Reversa: git revert de este commit. No hay dato que deshacer.
+           ══════════════════════════════════════════════════════════════ -->
 
     </div>
   </div>

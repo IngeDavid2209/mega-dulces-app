@@ -482,7 +482,7 @@ select.form-input, select.select-input {
     left: auto !important;
     /* Crece un poco con la pantalla, pero con tope: en un monitor de
        2560 no tiene sentido un menú de 400 px. */
-    width: clamp(228px, 17vw, 288px) !important;
+    width: clamp(248px, 18vw, 300px) !important;
     flex: 0 0 auto !important;
     /* UN SOLO scroll para todo el menú. Antes el <nav> tenía el suyo propio y
        abajo quedaba un bloque fijo (Mi Perfil, Cerrar Sesión, la tarjeta del
@@ -501,15 +501,23 @@ select.form-input, select.select-input {
   .sidebar-nav {
     overflow: visible !important;
     flex: 0 0 auto !important;
-    /* Más apretado que en celular, para que en una laptop de 900 px de alto
-       quepan las 16 opciones sin necesidad de scroll. Aquí hay ratón, no dedo,
-       así que no hace falta el área de toque grande del móvil. */
-    gap: 1px !important;
-    padding: 10px 10px !important;
+    /* SE AFLOJÓ (2/sep). Estaba en gap 1px / padding 10px / filas de 7px para
+       que "quepan las 16 opciones sin scroll" en una laptop de 900 px. Pero el
+       paso 4.1b agrupó el menú en cuatro secciones y bajó a 12 entradas
+       visibles para un admin global: se seguía pagando una compresión por un
+       problema ya resuelto, y el resultado eran filas de ~30 px que se leían
+       apelmazadas. Con 12 entradas + 4 títulos hay aire de sobra.
+       Si algún día el menú vuelve a crecer, esto es lo primero que se aprieta
+       — pero se aprieta con la cuenta hecha, no por costumbre. */
+    gap: 2px !important;
+    padding: 12px 12px !important;
   }
 
   .sidebar .nav-item {
-    padding: 7px 12px !important;
+    padding: 9px 12px !important;
+    /* Piso de altura: sin esto una entrada de una línea corta queda más baja
+       que sus vecinas y la columna se ve dispareja. */
+    min-height: 36px !important;
   }
 
   /* Barra de scroll discreta, para que no parezca que algo está roto. */

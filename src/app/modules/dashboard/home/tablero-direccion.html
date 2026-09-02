@@ -41,19 +41,24 @@
       </article>
     </div>
 
-    <!-- La explicación va EN la pantalla y no en un manual: quien abra esto por
-         primera vez tiene que entender el guion sin que nadie se lo cuente. -->
-    <aside class="td-nota">
-      <span class="td-nota-marca" aria-hidden="true">§</span>
+    <!-- La explicación sigue EN la pantalla y no en un manual —quien abra esto
+         por primera vez tiene que entender el guion sin que nadie se lo cuente—
+         pero PLEGADA: abierta empujaba las cifras fuera de la primera pantalla y
+         lo primero que veía Dirección era un párrafo. El texto no se perdió, se
+         quitó de en medio. -->
+    <details class="td-nota">
+      <summary>
+        <span class="td-nota-marca" aria-hidden="true">§</span>
+        Por qué no dice «0 %»
+      </summary>
       <p>
-        <strong>Por qué no dice «0 %».</strong> Un cero afirma que se midió y salió
-        cero, y eso se lee como «nadie trabajó». La verdad de hoy es distinta: no hay
-        con qué medir. El número que sube a Dirección es el cumplimiento
-        <strong>topado por la fidelidad</strong>, y un cumplimiento sin fidelidad no se
-        reporta. La propiedad que este tablero tiene y el anterior no:
-        <strong>sabe callarse</strong>.
+        Un cero afirma que se midió y salió cero, y eso se lee como «nadie trabajó».
+        La verdad de hoy es distinta: no hay con qué medir. El número que sube a
+        Dirección es el cumplimiento <strong>topado por la fidelidad</strong>, y un
+        cumplimiento sin fidelidad no se reporta. La propiedad que este tablero tiene
+        y el anterior no: <strong>sabe callarse</strong>.
       </p>
-    </aside>
+    </details>
   </section>
 
   <!-- ══════════════ 2 · LO QUE SÍ SE SABE ══════════════ -->
@@ -109,13 +114,16 @@
       </tbody>
     </table>
 
-    <p class="td-pie">
-      <strong>«No verificado» no suma con las demás.</strong> Es una capa aparte, no una
-      alternativa: aplica a todo lo emitido, incluido lo que sí se ejecutó bien. Si esta
-      tabla sumara las cinco y cuadrara con el total, estaría mal hecha. Y las dos
-      primeras llevan <span class="td-aprox">~</span> porque el reparto exacto sale de un
-      script que todavía no se ha corrido.
-    </p>
+    <details class="td-pie">
+      <summary>Por qué las cinco no suman el total</summary>
+      <p>
+        <strong>«No verificado» no suma con las demás.</strong> Es una capa aparte, no una
+        alternativa: aplica a todo lo emitido, incluido lo que sí se ejecutó bien. Si esta
+        tabla sumara las cinco y cuadrara con el total, estaría mal hecha. Y las dos
+        primeras llevan <span class="td-aprox">~</span> porque el reparto exacto sale de un
+        script que todavía no se ha corrido.
+      </p>
+    </details>
   </section>
 
   <!-- ══════════════ 4 · LAS UNIDADES ══════════════ -->
@@ -139,7 +147,9 @@
       </article>
     </div>
 
-    <p class="td-pie">
+    <details class="td-pie">
+      <summary>Por qué el eje son unidades y no sucursales · dos límites del dato</summary>
+      <p>
       <strong>Unidad responsable ≠ unidad servida.</strong> Un ticket vencido en Morelia
       Madero es rojo de Mantenimiento y espera visible de la sucursal — no falla de la
       Encargada. Ésa es la razón de este eje: solo <strong>14 de 89</strong> puestos son
@@ -154,7 +164,8 @@
       <strong>Mantenimiento es un puesto</strong> (<code>jefe-mantenimiento</code>, unidad
       administrativa), no una unidad de primer nivel: aparece porque «unidad servida» es
       un concepto del modelo, pero no se asciende un puesto para que el tablero cuadre.
-    </p>
+      </p>
+    </details>
   </section>
 
   <!-- ══════════════ 5 · HALLAZGOS ══════════════ -->
@@ -166,19 +177,25 @@
     </div>
 
     <div class="td-vacio">
-      <p>
-        <strong>El ciclo no existe todavía.</strong> Un hallazgo necesita tabla propia,
-        acción correctiva y reverificación obligatoria, y eso es Fase 5. Hasta entonces
-        este panel dice que no está — que es honesto — en vez de pintar filas que no se
-        pueden cerrar, escalar ni reverificar.
+      <p class="td-vacio-linea">
+        <strong>El ciclo no existe todavía.</strong> Hasta la Fase 5, este panel dice que
+        no está en vez de pintar filas que no se pueden cerrar ni reverificar.
       </p>
-      <p>
-        <strong>Y lo que eso implica hoy:</strong> los rojos del tablero son rojos
-        decorativos. Un rojo sin hallazgo abierto no tiene dueño ni reloj. Ocho tarjetas
-        idénticas con el mismo nombre y la misma hora no son ocho fallas: son una
-        apertura que no ocurrió, multiplicada por sus puntos — y eso le enseña a la gente
-        a ignorar las alarmas.
-      </p>
+
+      <details class="td-pie">
+        <summary>Qué falta, y por qué los rojos de hoy no sirven</summary>
+        <p>
+          Un hallazgo necesita tabla propia, acción correctiva y reverificación
+          obligatoria, y eso es Fase 5.
+        </p>
+        <p>
+          <strong>Y lo que eso implica hoy:</strong> los rojos del tablero son rojos
+          decorativos. Un rojo sin hallazgo abierto no tiene dueño ni reloj. Ocho tarjetas
+          idénticas con el mismo nombre y la misma hora no son ocho fallas: son una
+          apertura que no ocurrió, multiplicada por sus puntos — y eso le enseña a la gente
+          a ignorar las alarmas.
+        </p>
+      </details>
 
       <!-- Las cinco anclas se muestran aunque el hallazgo no exista, porque
            dicen qué tan defendible sería la prueba el día que exista. -->
@@ -188,11 +205,14 @@
           {{ a.nombre }}: {{ a.valor }}
         </span>
       </div>
-      <p class="td-pie">
-        De las cinco, una evidencia típica tiene <strong>tres</strong>. Le falta la
-        etiqueta física del ámbito —sin ella una foto está amarrada a la buena voluntad de
-        quien la subió— y la inmutabilidad: hoy se sobrescribe.
-      </p>
+      <details class="td-pie">
+        <summary>Cuáles de las cinco anclas faltan</summary>
+        <p>
+          De las cinco, una evidencia típica tiene <strong>tres</strong>. Le falta la
+          etiqueta física del ámbito —sin ella una foto está amarrada a la buena voluntad de
+          quien la subió— y la inmutabilidad: hoy se sobrescribe.
+        </p>
+      </details>
     </div>
   </section>
 
@@ -225,14 +245,17 @@
           <div class="td-dia-etq">{{ d.etiqueta }}</div>
         </div>
       </div>
-      <p class="td-pie">
-        Los días rayados no tienen número porque no llegaron a
-        <strong>{{ minimoPuntos }} puntos</strong> emitidos. Un tablero normal dibujaría
-        cero y la línea bajaría bonito hasta el piso; aquí el hueco se ve como hueco,
-        porque «no hay muestra» y «salió cero» no son lo mismo y no se pueden pintar
-        igual. Y la escala se ajusta al máximo real: con escala 0–100 una barra de 5 %
-        mide cinco píxeles y equivale a no dibujarla.
-      </p>
+      <details class="td-pie">
+        <summary>Por qué los días rayados no llevan número</summary>
+        <p>
+          Los días rayados no tienen número porque no llegaron a
+          <strong>{{ minimoPuntos }} puntos</strong> emitidos. Un tablero normal dibujaría
+          cero y la línea bajaría bonito hasta el piso; aquí el hueco se ve como hueco,
+          porque «no hay muestra» y «salió cero» no son lo mismo y no se pueden pintar
+          igual. Y la escala se ajusta al máximo real: con escala 0–100 una barra de 5 %
+          mide cinco píxeles y equivale a no dibujarla.
+        </p>
+      </details>
     </div>
     <p class="td-vacio" *ngIf="dias().length === 0">
       Todavía no hay serie de siete días cargada en esta vista.

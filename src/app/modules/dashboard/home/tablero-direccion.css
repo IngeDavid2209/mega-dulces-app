@@ -42,7 +42,7 @@
   margin: 0; font-size: var(--fs-h2); font-weight: var(--fw-bold);
   color: var(--text-main); letter-spacing: -.01em;
 }
-.td-bloque-sub { font-size: var(--fs-xs); color: var(--text-muted); }
+.td-bloque-sub { font-size: var(--fs-sm); color: var(--text-muted); }
 .td-sello-ok, .td-sello-num, .td-sello-falta {
   margin-left: auto;
   font-size: var(--fs-micro); font-weight: var(--fw-medium);
@@ -72,18 +72,64 @@
   color: var(--text-muted); line-height: 1.5;
 }
 
-/* La nota del § : es contenido, no adorno. */
-.td-nota {
-  display: flex; gap: var(--sp-3);
-  background: var(--surface-ground); border: 1px solid var(--border-color);
-  border-radius: var(--r-md); padding: var(--sp-4);
+/* ── La prosa, PLEGADA ──────────────────────────────────────────────────────
+   Es contenido, no adorno, y por eso no se borró. Pero abierta empujaba las
+   cifras fuera de la primera pantalla: siete bloques, cada uno con su parrafo,
+   hacian que Direccion entrara y leyera un memo en vez de ver un tablero.
+   Ahora vive detras de un <summary> que dice de que trata, y se abre a
+   voluntad. Mismo texto, otro orden de lectura.
+   ───────────────────────────────────────────────────────────────────────── */
+.td-nota, .td-pie {
+  background: var(--surface-ground);
+  border: 1px solid var(--border-color);
+  border-radius: var(--r-md);
+  padding: 0;
+  margin: 0;
 }
+
+.td-nota > summary, .td-pie > summary {
+  display: flex; align-items: center; gap: var(--sp-2);
+  padding: var(--sp-3) var(--sp-4);
+  /* Texto de LECTURA, no de metadato: el resumen es lo unico que se ve
+     plegado, asi que tiene que poder leerse sin acercarse a la pantalla. */
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  color: var(--text-muted);
+  cursor: pointer;
+  list-style: none;
+  border-radius: var(--r-md);
+}
+.td-nota > summary::-webkit-details-marker,
+.td-pie  > summary::-webkit-details-marker { display: none; }
+
+/* Triangulo propio: el nativo no se puede pintar ni alinear en todos los
+   navegadores, y aqui tiene que quedar a la altura de la primera linea. */
+.td-nota > summary::before, .td-pie > summary::before {
+  content: '›';
+  flex: 0 0 auto;
+  font-size: var(--fs-lg); line-height: 1; color: var(--text-faint);
+  transition: transform .15s ease;
+}
+.td-nota[open] > summary::before, .td-pie[open] > summary::before { transform: rotate(90deg); }
+
+.td-nota > summary:hover, .td-pie > summary:hover { color: var(--text-main); }
+.td-nota[open] > summary, .td-pie[open] > summary {
+  color: var(--text-main);
+  border-bottom: 1px solid var(--border-color);
+  border-radius: var(--r-md) var(--r-md) 0 0;
+}
+
+.td-nota p, .td-pie p {
+  margin: 0; padding: var(--sp-4);
+  font-size: var(--fs-sm); color: var(--text-muted); line-height: 1.65;
+}
+.td-nota p + p, .td-pie p + p { padding-top: 0; }
+.td-nota strong, .td-pie strong { color: var(--text-main); }
+
 .td-nota-marca {
   flex: 0 0 auto; font-size: var(--fs-lg); font-weight: var(--fw-bold);
   color: var(--text-faint); line-height: 1.2;
 }
-.td-nota p { margin: 0; font-size: var(--fs-xs); color: var(--text-muted); line-height: 1.6; }
-.td-nota strong { color: var(--text-main); }
 
 /* ── 2 · Lo que si se sabe ──────────────────────────────────────────────── */
 .td-cifras { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--sp-3); }
@@ -96,7 +142,7 @@
   line-height: 1.15;
 }
 .td-cifra-ausente { color: var(--text-faint); font-weight: var(--fw-regular); }
-.td-cifra-lab { font-size: var(--fs-xs); color: var(--text-muted); line-height: 1.4; margin-top: 2px; }
+.td-cifra-lab { font-size: var(--fs-sm); color: var(--text-muted); line-height: 1.4; margin-top: 2px; }
 .td-cifra-proc {
   margin-top: var(--sp-2); font-size: var(--fs-micro);
   color: var(--text-faint); line-height: 1.4;
@@ -139,13 +185,11 @@
 .td-tabla th.num { text-align: right; }
 /* La capa aparte se separa visualmente: no es una fila mas de la suma. */
 .td-capa td { background: var(--surface-ground); }
-.td-porque { font-size: var(--fs-micro); color: var(--text-faint); line-height: 1.4; margin-top: 3px; }
+.td-porque { font-size: var(--fs-xs); color: var(--text-faint); line-height: 1.4; margin-top: 3px; }
 .td-aprox { color: var(--warn-soft-fg); font-weight: var(--fw-bold); }
-.td-tabla-proc td { font-size: var(--fs-xs); }
+.td-tabla-proc td { font-size: var(--fs-sm); }
 .td-proc-origen { color: var(--text-muted); }
 
-.td-pie { margin: 0; font-size: var(--fs-xs); color: var(--text-muted); line-height: 1.6; }
-.td-pie strong { color: var(--text-main); }
 .td-pie code {
   font-family: var(--font-mono); font-size: var(--fs-micro);
   background: var(--neutral-100); border-radius: var(--r-sm); padding: 1px 4px;
@@ -165,7 +209,7 @@
   background: var(--neutral-100); color: var(--text-muted);
   border-radius: var(--r-pill); padding: 1px 8px;
 }
-.td-unidad-nota { font-size: var(--fs-micro); color: var(--text-muted); line-height: 1.45; margin-top: var(--sp-2); }
+.td-unidad-nota { font-size: var(--fs-xs); color: var(--text-muted); line-height: 1.45; margin-top: var(--sp-2); }
 .td-unidad-fuente {
   margin-top: var(--sp-2); font-size: var(--fs-nano);
   color: var(--text-faint); font-family: var(--font-mono);
@@ -177,7 +221,21 @@
   border-radius: var(--r-md); padding: var(--sp-5);
   display: flex; flex-direction: column; gap: var(--sp-3);
 }
-.td-vacio p { margin: 0; font-size: var(--fs-xs); color: var(--text-muted); line-height: 1.6; }
+
+/* Dentro de una tarjeta, el desplegable NO lleva caja propia: una tarjeta
+   dentro de otra se lee como un error de maquetacion, no como jerarquia.
+   Se queda solo la linea de arriba, que es lo que de verdad separa. */
+.td-vacio > .td-pie {
+  background: none; border: none; border-radius: 0;
+  border-top: 1px solid var(--border-color);
+}
+.td-vacio > .td-pie > summary,
+.td-vacio > .td-pie p { padding-left: 0; padding-right: 0; }
+.td-vacio > .td-pie[open] > summary { border-bottom: none; }
+
+/* La linea que SI se queda a la vista en un bloque no implementado. */
+.td-vacio-linea { color: var(--text-main) !important; }
+.td-vacio p { margin: 0; font-size: var(--fs-sm); color: var(--text-muted); line-height: 1.6; }
 .td-vacio strong { color: var(--text-main); }
 
 .td-anclas { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }

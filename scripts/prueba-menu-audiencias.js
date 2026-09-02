@@ -200,6 +200,29 @@ function rutasNuevas(u) {
 // vuelve una verificacion mas fuerte: nadie perdio acceso, solo cambio de puerta.
 //
 // Hoy esta vacio, asi que la prueba mide exactamente lo mismo que antes.
+/**
+ * ══════════════════════════════════════════════════════════════════════════
+ *  CAMBIOS DE AUDIENCIA INTENCIONALES
+ * ══════════════════════════════════════════════════════════════════════════
+ * Hasta ahora esta prueba exigia audiencia IDENTICA: el paso 4.1 no debia
+ * cambiar quien ve que, y cualquier diferencia era un fallo. Pero un cambio de
+ * audiencia deliberado tambien existe, y la regla del propio mensaje de aborto
+ * ya lo decia: «si una es intencional, se documenta y se ajusta esta prueba».
+ *
+ * Esto es ese ajuste. Cada entrada dice QUE ruta y POR QUE, y solo se perdona
+ * la perdida de esa ruta. Todo lo demas sigue fallando.
+ *
+ * Lo que NO se perdona nunca es una GANANCIA: que alguien empiece a ver algo
+ * que no veia sigue siendo escalada y sigue rompiendo la prueba, aunque la
+ * ruta este declarada aqui.
+ */
+const CAMBIOS_INTENCIONALES = {
+  '/home': 'El Dashboard pasa a ser de JEFATURAS (quien tiene gente debajo en '
+         + 'el organigrama). Lo pidio David el 2/sep y el documento 4 ya lo '
+         + 'planteaba: es un tablero de control y «el operador no deberia '
+         + 'verlo». La RUTA sigue abierta; se quita la entrada del menu.',
+};
+
 const FUNDIDAS = {
   // ⚠ EL DESTINO ES LA PESTAÑA, NO EL CASCARON, y la diferencia solo se nota
   // cuando hay mas de una pestaña — o sea, cuando ya seria tarde.
@@ -230,6 +253,10 @@ function revisarFusiones(perfil, faltantes, rutasVisibles, mapa, rutasDelNav, ta
   const verificadas = [];
   const problemas = [];
   for (const origen of faltantes) {
+    if (origen in CAMBIOS_INTENCIONALES) {
+      verificadas.push(origen + ' → retirada del menu A PROPOSITO');
+      continue;
+    }
     if (!(origen in mapa)) {
       problemas.push({ origen, motivo: 'no esta declarada como fusion: es una perdida real' });
       continue;
@@ -289,6 +316,29 @@ const USUARIOS = [
   //   solo checkstore    -> ranking, productividad, sucursales   (sin Estadisticas)
   //   solo estadisticas  -> estadisticas, ranking, productividad (sin Sucursales)
   // Entre los dos, cada pestaña queda excluida de al menos un perfil.
+  // ── LOS DOS QUE EJERCEN `esJefatura`, y sin ellos la regla nueva no se
+  //    prueba: los demas perfiles NO traen puestoId, asi que todos caen del
+  //    mismo lado -sin puesto, sin mando- y el chequeo no compararia nada.
+  //
+  //    `encargado-sucursal` TIENE gente debajo en el organigrama (13 puestos),
+  //    asi que es jefatura y conserva el Dashboard.
+  //    `anaquelista` NO tiene a nadie debajo, asi que no lo ve.
+  { nombre: 'Encargada CON puesto (jefatura)',
+    u: { rol: 'trabajador', puestoId: 'encargado-sucursal', puedeVerEstadisticas: true } },
+  { nombre: 'Anaquelista CON puesto (sin mando)',
+    u: { rol: 'trabajador', puestoId: 'anaquelista' } },
+
+  // ── EL CASO QUE LA RED EXISTE PARA CUBRIR, y sin este perfil no se prueba.
+  //    Una Encargada REAL sin `puestoId` capturado: no resuelve puesto, asi que
+  //    `tieneSubordinados` da false. Pero trae banderas de supervision Y su
+  //    sucursal, que es lo que `esSupervisor` pide. En la base hay DECENAS de
+  //    fichas asi -hallazgo 1-, y quitarles el tablero seria castigar a la
+  //    persona por un campo que le falta a su ficha.
+  //    Ojo: `supervisora con banderas` NO trae sucursales, asi que NO cubre
+  //    este caso — por eso hace falta este perfil aparte.
+  { nombre: 'Encargada SIN puesto pero CON sucursal',
+    u: { rol: 'trabajador', puedeVerEstadisticas: true, sucursales: ['8 Esquinas'] } },
+
   { nombre: 'solo puedeVerCheckstore',   u: { rol: 'trabajador', puedeVerCheckstore: true } },
   { nombre: 'solo puedeVerEstadisticas', u: { rol: 'trabajador', puedeVerEstadisticas: true } },
 
@@ -468,6 +518,47 @@ for (const r of ['/promociones', '/venta-promos']) {
 }
 console.log('');
 console.log('✓ rutas de promos ejercidas por al menos un perfil: /promociones, /venta-promos');
+
+// ── ¿LA REGLA NUEVA DISCRIMINA? ──────────────────────────────────────────
+// Declarar `/home` en CAMBIOS_INTENCIONALES perdona su perdida, y eso abre una
+// puerta peligrosa: si `esJefatura` devolviera SIEMPRE false, todos perderian
+// el Dashboard, la prueba lo perdonaria en los doce y saldria en verde. El
+// tablero se habria apagado para la empresa entera sin una sola advertencia.
+//
+// Asi que aqui se afirma el MECANISMO: tiene que haber al menos un perfil que
+// CONSERVE /home y al menos uno que lo PIERDA.
+{
+  const conservan = [], pierden = [];
+  for (const { nombre, u } of USUARIOS) {
+    (rutasNuevas(u).includes('/home') ? conservan : pierden).push(nombre);
+  }
+  console.log('');
+  console.log('✓ el Dashboard, con la regla de jefaturas:');
+  console.log('    lo CONSERVAN (%d): %s', conservan.length, conservan.join(', ') || '(ninguno)');
+  console.log('    lo PIERDEN   (%d): %s', pierden.length, pierden.join(', ') || '(ninguno)');
+  if (conservan.length === 0) {
+    abortar('NINGUN perfil conserva /home. `esJefatura` esta devolviendo false para todos: ' +
+      'el Dashboard quedaria apagado para la empresa entera, y la declaracion de cambio ' +
+      'intencional lo perdonaria en silencio.');
+  }
+  if (pierden.length === 0) {
+    abortar('NINGUN perfil pierde /home, asi que el cambio de audiencia no se ejercio. ' +
+      'El verde no prueba que la regla funcione: prueba que no se aplico.');
+  }
+  // Y el par que importa: la Encargada CON puesto tiene 13 puestos debajo, el
+  // Anaquelista CON puesto no tiene a nadie. Si los dos cayeran del mismo lado,
+  // `esJefatura` no estaria leyendo el organigrama.
+  const enc = USUARIOS.find(x => /Encargada CON puesto/.test(x.nombre));
+  const ana = USUARIOS.find(x => /Anaquelista CON puesto/.test(x.nombre));
+  if (!enc || !ana) abortar('faltan los perfiles con puesto que ejercen esJefatura.');
+  const vEnc = rutasNuevas(enc.u).includes('/home');
+  const vAna = rutasNuevas(ana.u).includes('/home');
+  if (vEnc === vAna) {
+    abortar('la Encargada (13 puestos debajo) y el Anaquelista (ninguno) dan lo MISMO para ' +
+      '/home (' + vEnc + '). `esJefatura` no esta leyendo el organigrama.');
+  }
+  console.log('    y discrimina por ORGANIGRAMA: Encargada=%s · Anaquelista=%s', vEnc, vAna);
+}
 
 // ── ¿SE EJERCIO EL CHEQUEO POR PESTAÑA, Y COMPARO ALGO? ──────────────────
 // Dos afirmaciones distintas, y hacen falta las dos:

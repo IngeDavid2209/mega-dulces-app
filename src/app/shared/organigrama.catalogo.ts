@@ -466,3 +466,17 @@ export function compararPorOrganigrama<T>(
     return (nombreDe(a) || '').localeCompare(nombreDe(b) || '');
   };
 }
+
+/**
+ * ¿A este puesto le reporta alguien? Es la definicion operativa de "jefatura":
+ * no un nivel de una lista escrita a mano, sino tener gente debajo.
+ *
+ * Se deriva del arbol, asi que el dia que el organigrama cambie esto cambia
+ * solo. Un puesto que no existe devuelve false — no se le inventa mando.
+ */
+export function tieneSubordinados(puestoId: string | undefined | null): boolean {
+  if (!puestoId) return false;
+  return PUESTOS_ORGANIGRAMA.some(
+    (p) => p.vigente !== false && p.reportaA === puestoId,
+  );
+}

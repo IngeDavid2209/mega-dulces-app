@@ -32,6 +32,7 @@
 // El permiso del cascaron NO se repite aqui: se importa de su propia
 // definicion, para que menu y guard cambien juntos o no cambien.
 import { veControl } from '../../modules/dashboard/control/control.tabs';
+import { esJefatura } from '../alcance.util';
 
 export type SeccionNav = 'mi-trabajo' | 'verifico' | 'control' | 'definiciones';
 
@@ -125,12 +126,24 @@ export const NAV: EntradaNav[] = [
   // pinta si no tiene entradas visibles.
 
   // ── 3 · CONTROL ───────────────────────────────────────────────────────
-  // El Dashboard sigue visible para TODOS, como hoy. El documento 4 lo parte en
-  // «Tablero de unidades» (dirección) y «Mi zona / Mi sucursal» (gerencia,
-  // encargado), y dice que el operador no deberia verlo — pero eso es cambiar
-  // quien ve que, y no va en este paso.
+  // ⚠️ EL DASHBOARD PASA A SER DE JEFATURAS. Es un CAMBIO INTENCIONAL de
+  // audiencia — el primero del proyecto — y por eso la prueba de audiencias
+  // lo lleva declarado en `CAMBIOS_INTENCIONALES`.
+  //
+  // El documento 4 ya lo pedia: el Dashboard es un tablero de control y «el
+  // operador no deberia verlo». Se dejo para despues en el paso 4.1 porque ese
+  // paso NO cambiaba quien ve que; ahora se hace a proposito.
+  //
+  // «Jefatura» = TIENE GENTE DEBAJO en el organigrama, no un nivel de una
+  // lista: tomar el nivel `jefatura` literal dejaria fuera a Direccion y a las
+  // Gerencias, que estan arriba. Sale del mismo `reportaA` que la piramide, asi
+  // que se mueve solo cuando el organigrama cambie.
+  //
+  // OJO: la RUTA sigue abierta. Esto quita la entrada del menu, no el acceso —
+  // quien caiga en /home por el aterrizaje por defecto la sigue viendo. Poner
+  // el aterrizaje por nivel es el paso 4.4.
   { seccion: 'control', etiqueta: 'Dashboard', ruta: '/home',
-    icono: 'inicio', ve: siempre },
+    icono: 'inicio', ve: esJefatura },
   // UNA entrada por las cuatro pantallas de analisis —Estadisticas, Ranking,
   // Productividad y Sucursales—, que son cortes de la misma pregunta. Se ve si
   // se ve AL MENOS UNA pestaña; cada pestaña se gatea aparte por su propio

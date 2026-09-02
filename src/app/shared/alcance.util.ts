@@ -24,7 +24,7 @@
  * archivo está enganchado a un guard, a un menú ni a una consulta.
  */
 
-import { NivelPuesto, puestoPorId } from './organigrama.catalogo';
+import { NivelPuesto, puestoPorId, tieneSubordinados } from './organigrama.catalogo';
 import { resolverPuesto } from './puesto.util';
 import { esAdmin, esAdminGlobal, esSupervisor, sucursalesPermitidas } from './permisos.util';
 
@@ -158,4 +158,44 @@ export function compararAlcance(usuario: any): Diferencia {
   if (veMasQue(propuesto, actual)) efecto = 'gana';
   else if (veMasQue(actual, propuesto)) efecto = 'pierde';
   return { actual, propuesto, efecto, nivel: nivelDePersona(usuario) };
+}
+
+
+/**
+ * ¿Es JEFATURA? Es decir: ¿tiene gente debajo en el organigrama?
+ *
+ * ─── POR QUE ASI Y NO CON UNA LISTA DE NIVELES ────────────────────────────
+ * "Jefatura" tiene un nivel con ese nombre en el catalogo, pero tomarlo
+ * literal dejaria fuera a Direccion y a las Gerencias, que estan ARRIBA de
+ * jefatura. Y una lista escrita a mano -direccion, gerencia, jefatura,
+ * coordinacion...- hay que acordarse de actualizarla cada vez que el
+ * organigrama cambie, que es justo lo que nadie hace.
+ *
+ * La definicion que no envejece es la operativa: manda quien tiene a alguien
+ * reportandole. Sale del mismo `reportaA` del que sale la piramide, asi que el
+ * dia que Capital Humano publique un organigrama nuevo, esto se mueve solo.
+ *
+ * Los admins pasan siempre: el rol de sistema no depende del organigrama, y
+ * dejar a un admin sin su tablero por una ficha sin puesto seria peor.
+ */
+export function esJefatura(usuario: any): boolean {
+  if (esAdmin(usuario)) return true;
+  const r = resolverPuesto(usuario);
+  if (tieneSubordinados(r.puestoId)) return true;
+
+  // ── LA RED, y no es un parche: es lo que evita castigar un hueco de datos ──
+  //
+  // Medido con la prueba de audiencias: una Encargada SIN `puestoId` capturado
+  // no resuelve puesto, asi que `tieneSubordinados` da false y perderia el
+  // Dashboard. Y en la base hay DECENAS de fichas asi -es el hallazgo 1: la
+  // identidad se cruza por texto y muchas nunca se completaron-.
+  //
+  // Quitarle el tablero a una Encargada real porque a su ficha le falta un
+  // campo es castigar a la persona por un problema del sistema. `esSupervisor`
+  // es la definicion que la app ya usa para «manda en su sucursal» (banderas
+  // de supervision + sucursal asignada), asi que no se inventa un criterio
+  // nuevo: se acepta el que ya existia mientras los puestos se completan.
+  //
+  // Esta red SE RETIRA cuando el marcador de fichas sin puesto llegue a cero.
+  return esSupervisor(usuario);
 }

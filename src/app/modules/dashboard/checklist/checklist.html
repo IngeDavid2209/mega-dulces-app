@@ -652,12 +652,6 @@
                 Crea el primer checklist para tu equipo.</p>
               <p *ngIf="!modoManual && currentUser?.rol === 'trabajador' && !currentUser?.puedeCrearChecklists">
                 Actualmente no tienes checklists pendientes.</p>
-
-              <button type="button" class="btn-secondary"
-                      (click)="mostrarDiagnostico()"
-                      style="margin-top: 14px; font-size: 13px;">
-                🩺 ¿Por qué no veo tareas?
-              </button>
             </ng-container>
 
             <!-- Caso 2: sí hay en este apartado, pero la búsqueda no encontró -->

@@ -62,7 +62,7 @@
   </section>
 
   <!-- ══════════════ 2 · LO QUE SÍ SE SABE ══════════════ -->
-  <section class="td-bloque">
+  <section class="td-bloque" *ngIf="verEmpresa">
     <div class="td-bloque-cab">
       <h3>Lo que sí se sabe</h3>
       <span class="td-bloque-sub">Seis cifras, cada una con la cifra de la que sale</span>
@@ -70,7 +70,12 @@
     </div>
 
     <div class="td-cifras">
-      <article class="td-cifra" *ngFor="let c of loQueSeSabe()">
+      <!-- El silencio (60 de 97 fichas) es cifra de COMPAÑIA: se esconde para
+           quien no ve el nivel empresa. Las demas son suyas — el agregado ya
+           viene filtrado por sucursal desde la carga de datos. -->
+      <article class="td-cifra"
+               *ngFor="let c of loQueSeSabe()"
+               [hidden]="c.confianza === 'medido' && !verEmpresa">
         <div class="td-cifra-val dato" [class.td-cifra-ausente]="c.confianza === 'ausente'">
           {{ c.valor }}
         </div>
@@ -87,7 +92,7 @@
   </section>
 
   <!-- ══════════════ 3 · LAS CINCO CAUSAS ══════════════ -->
-  <section class="td-bloque">
+  <section class="td-bloque" *ngIf="verEmpresa">
     <div class="td-bloque-cab">
       <h3>Por qué no se cumplió</h3>
       <span class="td-bloque-sub">Las cinco causas, cada una con dueño distinto</span>
@@ -217,7 +222,7 @@
   </section>
 
   <!-- ══════════════ 6 · SIETE DÍAS ══════════════ -->
-  <section class="td-bloque">
+  <section class="td-bloque" *ngIf="verEmpresa">
     <div class="td-bloque-cab">
       <h3>Siete días</h3>
       <span class="td-bloque-sub">Sin línea donde no hay muestra</span>

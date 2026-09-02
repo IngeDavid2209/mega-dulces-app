@@ -32,7 +32,7 @@
 // El permiso del cascaron NO se repite aqui: se importa de su propia
 // definicion, para que menu y guard cambien juntos o no cambien.
 import { veControl } from '../../modules/dashboard/control/control.tabs';
-import { esJefatura } from '../alcance.util';
+import { hayTableroPara } from '../alcance.util';
 
 export type SeccionNav = 'mi-trabajo' | 'verifico' | 'control' | 'definiciones';
 
@@ -143,7 +143,11 @@ export const NAV: EntradaNav[] = [
   // quien caiga en /home por el aterrizaje por defecto la sigue viendo. Poner
   // el aterrizaje por nivel es el paso 4.4.
   { seccion: 'control', etiqueta: 'Dashboard', ruta: '/home',
-    icono: 'inicio', ve: esJefatura },
+    // EL MISMO predicado que el guard y que la pantalla. Con `esJefatura` la
+    // entrada apuntaba a una pagina VACIA para gerencias y Encargadas: el
+    // tablero solo se pinta con alcance global. Un menu que lleva a una
+    // pantalla en blanco es peor que no tener la entrada.
+    icono: 'inicio', ve: hayTableroPara },
   // UNA entrada por las cuatro pantallas de analisis —Estadisticas, Ranking,
   // Productividad y Sucursales—, que son cortes de la misma pregunta. Se ve si
   // se ve AL MENOS UNA pestaña; cada pestaña se gatea aparte por su propio

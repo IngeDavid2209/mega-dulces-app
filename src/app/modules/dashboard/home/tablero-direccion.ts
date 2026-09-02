@@ -55,6 +55,13 @@ export class TableroDireccionComponent {
   /** Momento del corte que se está viendo. */
   @Input() selloCierre = '';
 
+  /**
+   * ¿Se pinta el nivel EMPRESA? Las diez unidades, el silencio, el reparto de
+   * causas y la procedencia son cifras de compañia: una jefatura de sucursal ve
+   * SUS numeros, no el agregado de la empresa.
+   */
+  @Input() verEmpresa = false;
+
   /** Serie de siete días: [{ etiqueta, cumplidos, emitidos }]. La da el padre. */
   private serie = signal<{ etiqueta: string; cumplidos: number; emitidos: number }[]>([]);
   @Input() set sieteDias(v: any[]) { this.serie.set(Array.isArray(v) ? v : []); }

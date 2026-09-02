@@ -199,3 +199,54 @@ export function esJefatura(usuario: any): boolean {
   // Esta red SE RETIRA cuando el marcador de fichas sin puesto llegue a cero.
   return esSupervisor(usuario);
 }
+
+
+/**
+ * ¿Hay algo que ver en `/home` para esta persona?
+ *
+ * ─── POR QUE VIVE AQUI Y NO EN EL GUARD ────────────────────────────────────
+ * Lo puse primero en `services/home.guard.ts`, y `nav.config.ts` lo importaba
+ * de ahi. Eso le metio al MENU una dependencia de `@angular/router`, y la
+ * prueba de audiencias -que compila `nav.config.ts` sola con tsc- dejo de
+ * poder cargarlo: MODULE_NOT_FOUND. La prueba cazo una dependencia mala antes
+ * de que se desplegara.
+ *
+ * Ademas de romper la prueba, la direccion estaba mal: el menu es DATO y no
+ * debe depender de un guard del router. Aqui el archivo es puro, y tanto el
+ * guard como el menu lo importan.
+ *
+ * Es deliberadamente el MISMO predicado que decide pintar el tablero
+ * (`esAdminGlobal`). Si el guard, el menu y la pantalla usaran criterios
+ * distintos, volveriamos a tener a alguien parado frente a una pagina en
+ * blanco — que es el bug que esto vino a cerrar: `/home` solo conserva el
+ * encabezado sin gate, las pestañas de supervisor y el tablero de alcance
+ * global, asi que para una colaboradora era el titulo y NADA MAS.
+ *
+ * El dia que exista el tablero por nivel («Mi zona», «Mi sucursal» del
+ * documento 4, Fase 6), este predicado se amplia UNA vez y los tres siguen de
+ * acuerdo por construccion.
+ */
+export function hayTableroPara(usuario: any): boolean {
+  // JEFATURA, no solo alcance global. Al principio puse `esAdminGlobal` y la
+  // prueba de audiencias mostro la consecuencia: de 15 perfiles solo UNO
+  // conservaba el Dashboard. Gerencias y Encargadas perdian su tablero, y eso
+  // es quitar funcion, no ordenarla.
+  //
+  // Lo que NO puede ver una jefatura de sucursal es la ESTRUCTURA de la
+  // empresa -las diez unidades, el silencio, el reparto de causas-. Eso se
+  // gatea aparte con `verNivelEmpresa`. Sus CIFRAS si son suyas: el agregado
+  // ya viene filtrado por sucursal desde la carga de datos.
+  return esJefatura(usuario);
+}
+
+/**
+ * ¿Puede ver el nivel EMPRESA del tablero?
+ *
+ * Las diez unidades de control, el 62 % del silencio, el reparto de causas y la
+ * tabla de procedencia son cifras de compañia. Una Encargada tiene que ver SUS
+ * numeros, no el agregado de la empresa — un dato agregado no deja de ser
+ * informacion de la empresa porque no traiga nombres.
+ */
+export function verNivelEmpresa(usuario: any): boolean {
+  return esAdminGlobal(usuario);
+}

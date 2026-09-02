@@ -915,8 +915,27 @@ export class ChecklistComponent implements OnInit, OnDestroy {
    * plana de personas, que era la misma pregunta peor contestada.
    */
   agrupacion = signal<'persona' | 'organigrama'>('organigrama');
+  /**
+   * ⚠️ EL ARBOL ES UNA HERRAMIENTA DE SUPERVISION, NO LA VISTA DE UN COLABORADOR.
+   *
+   * Falta `puedeFiltrarVista` y ESO FUE UN ERROR MIO. Antes el arbol vivia
+   * detras de una pestaña que solo se pintaba para quien puede ver mas que lo
+   * suyo; al quitar el interruptor y dejar 'organigrama' por defecto, se lo
+   * abri a TODOS.
+   *
+   * Resultado en produccion: una Anaquelista -sin nadie debajo en el
+   * organigrama- entraba a sus tareas y veia el arbol completo de la empresa
+   * desde Direccion General, con sus 88 puestos y el avance agregado de cada
+   * rama. Ella tiene que ver SUS tareas, y nada mas.
+   *
+   * `puedeFiltrarVista` es la definicion que la app ya usa para "puede ver mas
+   * que lo suyo" (admin o supervisor con sucursal). No se inventa criterio
+   * nuevo: se recupera el que el interruptor aplicaba sin decirlo.
+   */
   get verPorOrganigrama(): boolean {
-    return this.modoManual && this.agrupacion() === 'organigrama';
+    return this.modoManual
+        && this.puedeFiltrarVista
+        && this.agrupacion() === 'organigrama';
   }
 
   /**

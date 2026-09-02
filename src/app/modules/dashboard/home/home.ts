@@ -9,6 +9,7 @@ import { RouterModule, Router } from '@angular/router';
 
 import { SidebarComponent } from '../../../shared/sidebar/sidebar';
 import { esAdminGlobal, sucursalesPermitidas, esSupervisor, mismoEmpleadoNombre } from '../../../shared/permisos.util';
+import { hayTableroPara, verNivelEmpresa as puedeVerEmpresa } from '../../../shared/alcance.util';
 import { nivelDeUsuario } from '../../../shared/nivel-jerarquico.util';
 import { esItemHecho, tieneEvidencia } from '../../../shared/item-completado.util';
 import { TableroDireccionComponent } from './tablero-direccion';
@@ -765,7 +766,10 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
    * Un dato agregado de la empresa no deja de ser información de la empresa
    * porque no traiga nombres.
    */
-  verTableroDireccion = computed(() => esAdminGlobal(this.currentUser));
+  verTableroDireccion = computed(() => hayTableroPara(this.currentUser));
+
+  /** El nivel EMPRESA del tablero: solo alcance global. */
+  verNivelEmpresa = computed(() => puedeVerEmpresa(this.currentUser));
 
   /**
    * El alcance REAL de quien mira, para que la cabecera no afirme de más.

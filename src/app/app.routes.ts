@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 
+import { homeGuard } from './services/home.guard';
 import { authGuard } from './services/auth.guard';
 import { tabControlGuard, primeraTabControlGuard } from './services/control.guards';
 import { soloTecGuard } from './services/tec.guard';
@@ -20,9 +21,12 @@ export const routes: Routes = [
   
   // 🔥 A PARTIR DE AQUÍ, TODAS LAS RUTAS TIENEN EL CANDADO "canActivate" 🔥
   { 
-    path: 'home', 
-    canActivate: [authGuard],
-    loadComponent: () => import('./modules/dashboard/home/home').then(m => m.HomeComponent) 
+    path: 'home',
+    // `homeGuard` manda a su trabajo a quien no tenga tablero que ver. Sin el,
+    // una colaboradora aterrizaba aqui y veia el titulo y NADA MAS: los tres
+    // bloques que quedan en la plantilla estan gateados a admin o supervisor.
+    canActivate: [authGuard, homeGuard],
+    loadComponent: () => import('./modules/dashboard/home/home').then(m => m.HomeComponent)
   },
   { 
     // ✏️ TAREAS FUERA DEL MANUAL — lo que se asigna a mano: tareas únicas, de

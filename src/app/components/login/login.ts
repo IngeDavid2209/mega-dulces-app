@@ -6,6 +6,7 @@ import { Auth, signInWithEmailAndPassword } from '@angular/fire/auth';
 import Swal from 'sweetalert2';
 import { APP_BUILD_SELLO } from '../../shared/version';
 import { NotificacionesService } from '../../services/notificaciones';
+import { hayTableroPara } from '../../services/home.guard';
 import { MANTENIMIENTO_ACTIVO, MANTENIMIENTO_TITULO } from '../../shared/mantenimiento.util';
 
 /**
@@ -185,7 +186,14 @@ export class LoginComponent {
       // el usuario rechaza permisos o el navegador no soporta push).
       this.notificaciones.solicitarPermisos(perfil.nombre, creds.user.uid).catch(() => {});
 
-      this.router.navigate(['/home']);
+      // ATERRIZAJE SEGUN LO QUE PUEDE VER, no fijo en /home.
+      //
+      // Mandar a todos a /home era correcto cuando /home tenia un tablero para
+      // todo el mundo. Ya no: sus bloques estan gateados, asi que una
+      // colaboradora aterrizaba en una pantalla con el titulo y nada mas.
+      // El guard de la ruta la rebotaria igual, pero rebotar en el primer
+      // segundo de sesion se ve como un error de la app. Mejor no mandarla.
+      this.router.navigate([hayTableroPara(perfil) ? '/home' : '/tareas-manual']);
 
     } catch (error: any) {
       const paso = pasoAgotado(error);

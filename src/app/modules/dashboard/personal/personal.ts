@@ -18,6 +18,7 @@ import { esAdmin, esAdminGlobal, esAdminLimitado, normalizarNombre, mismoEmplead
 import { nivelDeUsuario, NivelJerarquico } from '../../../shared/nivel-jerarquico.util';
 import { puestosPorUnidad, puestoPorId, nombrePuesto } from '../../../shared/organigrama.catalogo';
 import { resolverPuesto, usuariosSinPuesto, usuariosConPuestoPorAlias } from '../../../shared/puesto.util';
+import { compararPorOrganigrama } from '../../../shared/organigrama.catalogo';
 import { manualDePuesto, tareasAutomaticasDePuesto } from '../../../shared/tareas-manual.catalogo';
 // 🔥 Para crear usuarios sin desloguear al admin (segunda app Firebase temporal)
 import { initializeApp, deleteApp } from 'firebase/app';
@@ -390,8 +391,10 @@ export class PersonalComponent implements OnInit, OnDestroy {
     });
 
     const orden = (a: any, b: any) =>
-      (a.cargo || '').localeCompare(b.cargo || '') ||
-      (a.nombre || '').localeCompare(b.nombre || '');
+      // ORDEN POR ORGANIGRAMA. Antes era por cargo alfabetico, que ponia
+      // "Almacenista" antes que "Gerencia" y dejaba la jerarquia invisible.
+      compararPorOrganigrama<any>(
+        (x: any) => resolverPuesto(x).puestoId, (x: any) => x.nombre || '')(a, b);
     this._cacheAgrupados = Array.from(gruposMap.keys()).map(key => {
       const todos = gruposMap.get(key)!;
       const mandos = todos.filter(u => nivelDeUsuario(u) === 'mando');
@@ -545,7 +548,8 @@ export class PersonalComponent implements OnInit, OnDestroy {
   get miembrosTec(): any[] {
     return this.usuarios()
       .filter(u => u?.grupoTec === true)
-      .sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''));
+      .sort(compararPorOrganigrama<any>(
+        (x: any) => resolverPuesto(x).puestoId, (x: any) => x.nombre || ''));
   }
 
   /** Quita el acceso al Espacio TEC (grupoTec: false) sin abrir el modal completo. */

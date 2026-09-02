@@ -680,7 +680,7 @@
               <p>No hay tareas enviadas en los últimos 30 días.</p>
             </div>
           </div>
-          <div class="checklist-grid" *ngIf="!cargandoEnviadas && enviadas().length > 0">
+          <div class="checklist-grid" *ngIf="!verPorOrganigrama && !cargandoEnviadas && enviadas().length > 0">
             <div style="grid-column: 1 / -1; font-size: 12px; font-weight: 700; color: var(--neutral-600); letter-spacing: .5px; text-transform: uppercase; margin: 0 0 4px 4px;">
               Enviadas · últimos 30 días ({{ enviadas().length }})
             </div>

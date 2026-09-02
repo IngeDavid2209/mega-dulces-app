@@ -395,3 +395,74 @@ function compararHermanos(a: PuestoOrganigrama, b: PuestoOrganigrama): number {
   if (ua !== ub) return ua - ub;
   return a.nombre.localeCompare(b.nombre);
 }
+
+// ============================================================================
+//  ORDEN POR ORGANIGRAMA — para las listas que NO pueden ser un arbol
+// ============================================================================
+/**
+ * El lugar de cada puesto en el recorrido del arbol, 0 = Direccion General.
+ *
+ * ─── POR QUE UN INDICE Y NO UN COMPARADOR AD HOC ───────────────────────────
+ * Varias pantallas listan EMPLEADOS y no pueden ser un arbol: Usuarios,
+ * Auditoria, Productividad, Descansos. Ordenarlas alfabeticamente pone al
+ * Director entre dos anaquelistas y deja la estructura de la empresa invisible;
+ * ordenarlas "por nivel" a mano en cada pantalla crea cuatro versiones de la
+ * misma regla que se desincronizan a la primera.
+ *
+ * Con un indice, el orden es EL MISMO que el del arbol de la piramide por
+ * construccion, porque sale del mismo recorrido. Si el organigrama cambia,
+ * cambian las cuatro pantallas a la vez.
+ *
+ * Se calcula una sola vez y se memoriza: son 89 puestos y esto se llama desde
+ * comparadores que corren miles de veces.
+ */
+let _indicePuesto: Map<string, number> | null = null;
+
+function indicePuesto(): Map<string, number> {
+  if (_indicePuesto) return _indicePuesto;
+  const m = new Map<string, number>();
+  let n = 0;
+  const rec = (nodos: NodoOrganigrama[]) => {
+    for (const nd of nodos) {
+      m.set(nd.puesto.id, n++);
+      rec(nd.hijos);
+    }
+  };
+  rec(arbolOrganigrama());
+  _indicePuesto = m;
+  return m;
+}
+
+/**
+ * Posicion de un puesto en el organigrama. Los que NO estan en el catalogo
+ * devuelven un numero MUY grande: caen al final, juntos y visibles.
+ *
+ * No se les inventa un lugar por parecido de nombre — un puesto adivinado le
+ * entrega a una persona real obligaciones que no le tocan. Que salgan al final
+ * en bloque es justamente la señal de que a esas fichas les falta el puesto.
+ */
+export function posicionEnOrganigrama(puestoId: string | undefined | null): number {
+  if (!puestoId) return Number.MAX_SAFE_INTEGER;
+  const p = indicePuesto().get(puestoId);
+  return p === undefined ? Number.MAX_SAFE_INTEGER : p;
+}
+
+/**
+ * Comparador de personas por su lugar en el organigrama, con el nombre como
+ * desempate. Uso: `lista.sort(compararPorOrganigrama(u => u.puestoId, u => u.nombre))`
+ *
+ * Recibe funciones y no campos fijos porque cada pantalla llama distinto a lo
+ * mismo: unas traen `puestoId`, otras lo resuelven de la ficha. Asi la regla se
+ * escribe una vez y cada pantalla dice de donde sacarla.
+ */
+export function compararPorOrganigrama<T>(
+  puestoDe: (x: T) => string | undefined | null,
+  nombreDe: (x: T) => string,
+): (a: T, b: T) => number {
+  return (a, b) => {
+    const pa = posicionEnOrganigrama(puestoDe(a));
+    const pb = posicionEnOrganigrama(puestoDe(b));
+    if (pa !== pb) return pa - pb;
+    return (nombreDe(a) || '').localeCompare(nombreDe(b) || '');
+  };
+}

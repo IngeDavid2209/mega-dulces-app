@@ -1,4 +1,6 @@
 import { Component, signal, OnInit, OnDestroy, inject, effect } from '@angular/core';
+import { compararPorOrganigrama } from '../../../shared/organigrama.catalogo';
+import { resolverPuesto } from '../../../shared/puesto.util';
 import { UsuariosService } from '../../../shared/usuarios.service';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -127,7 +129,10 @@ export class DescansosComponent implements OnInit, OnDestroy {
       lista = lista.filter(u => (u.nombre || '').toLowerCase().includes(t));
     }
 
-    return lista.sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''));
+    // Por organigrama: quien cubre a quien se entiende viendo la jerarquia,
+    // no un listado alfabetico donde el Encargado cae entre sus anaquelistas.
+    return lista.sort(compararPorOrganigrama<any>(
+      (x: any) => resolverPuesto(x).puestoId, (x: any) => x.nombre || ''));
   }
 
   recalcularSucursalesDisponibles() {

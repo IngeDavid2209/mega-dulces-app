@@ -6,6 +6,8 @@ import { Firestore, doc, deleteDoc, setDoc } from '@angular/fire/firestore';
 import { sucursalesPermitidas, puedeSerAsignado } from '../shared/permisos.util';
 import { nivelDeCargo } from '../shared/nivel-jerarquico.util';
 import { esItemHecho } from '../shared/item-completado.util';
+import { compararPorOrganigrama } from '../shared/organigrama.catalogo';
+import { resolverPuesto } from '../shared/puesto.util';
 import { ApiService } from '../shared/api.service';
 
 // jsPDF, jspdf-autotable, exceljs y html2canvas se cargan SOLO cuando el usuario
@@ -217,7 +219,9 @@ export class ReportesComponent implements OnInit, OnDestroy {
       .filter((u: any) => (u.rol === 'trabajador' || u.rol === 'admin')
                           && u.activo !== false
                           && !!(u.nombre || '').trim())
-      .sort((a: any, b: any) => (a.nombre || '').localeCompare(b.nombre || ''));
+      // Por organigrama, no alfabetico: una auditoria se lee de arriba abajo.
+      .sort(compararPorOrganigrama<any>(
+        (x: any) => resolverPuesto(x).puestoId, (x: any) => x.nombre || ''));
     this.empleados.set(lista);
   }
 

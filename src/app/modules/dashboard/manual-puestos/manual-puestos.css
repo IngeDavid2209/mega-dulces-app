@@ -363,7 +363,7 @@
   padding: 3px 10px;
   border-radius: 999px;
   background: var(--info-soft-bg);
-  color: #3730A3;
+  color: var(--brand-700);
   border: 1px solid var(--info-soft-bg);
   font-size: 11.5px;
   font-weight: 600;

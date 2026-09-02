@@ -6,7 +6,7 @@
    ============================================================================ */
 :host {
   --pr-tinta: #0E1A2B;
-  --pr-tinta-suave: #1B2C42;
+  --pr-tinta-suave: var(--neutral-900);
   --pr-papel: #F4F5F3;
   --pr-carta: #FFFFFF;
   --pr-linea: #E2E5E1;
@@ -126,8 +126,8 @@
 .pr-btn-r { color: var(--pr-ambar); }
 .pr-btn-r:hover { border-color: var(--pr-ambar); background: var(--pr-ambar-bg); }
 
-.pr-btn-e { color: #4A3D9E; }
-.pr-btn-e:hover { border-color: #B9A9F0; background: #E8E4F8; }
+.pr-btn-e { color: var(--brand-700); }
+.pr-btn-e:hover { border-color: var(--brand-500); background: #E8E4F8; }
 
 .pr-btn-chico { height: 30px; font-size: 12px; padding: 0 10px; }
 

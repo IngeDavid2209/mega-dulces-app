@@ -265,7 +265,7 @@
 .kpi-icon svg { width: 22px; height: 22px; }
  
 .kpi-icon-blue   { background: var(--info-soft-bg); color: var(--info-fg); }
-.kpi-icon-violet { background: #F5F3FF; color: #7C3AED; }
+.kpi-icon-violet { background: #F5F3FF; color: var(--brand-700); }
 .kpi-icon-amber  { background: var(--warn-soft-bg); color: var(--warn-fg); }
 .kpi-icon-red    { background: var(--bad-soft-bg); color: var(--bad-fg); }
  
@@ -458,7 +458,7 @@
   width: 36px; height: 36px;
   border-radius: 50%;
   background: #F5F3FF;
-  color: #7C3AED;
+  color: var(--brand-700);
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
 }
@@ -550,7 +550,7 @@
  
 .quick-btn-primary { background: linear-gradient(135deg, var(--action), var(--action)); color: #FFF; }
 .quick-btn-blue    { background: var(--info-soft-bg); color: var(--info-fg); border: 1px solid var(--info-soft-bg); }
-.quick-btn-violet  { background: #F5F3FF; color: #6D28D9; border: 1px solid #DDD6FE; }
+.quick-btn-violet  { background: #F5F3FF; color: var(--brand-700); border: 1px solid var(--brand-50); }
 .quick-btn-green   { background: var(--ok-soft-bg); color: var(--ok-soft-fg); border: 1px solid var(--ok-border); }
 .quick-btn-amber   { background: var(--warn-soft-bg); color: var(--warn-soft-fg); border: 1px solid var(--warn-border); }
  
@@ -716,7 +716,7 @@
 
 /* ---------- Barra superior oscura ---------- */
 .header.mando-header {
-  background: linear-gradient(90deg, #0B1220 0%, #16233D 55%, #0B1220 100%) !important;
+  background: linear-gradient(90deg, #0B1220 0%, var(--neutral-900) 55%, #0B1220 100%) !important;
   border-bottom: 1px solid var(--neutral-800) !important;
   height: 62px;
   position: relative;

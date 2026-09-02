@@ -3,7 +3,7 @@
    global, así que esta pantalla solo trae lo suyo. */
 
 :host {
-  --vp-verde: #1F7A4D;
+  --vp-verde: var(--ok-fg);
   --vp-verde-claro: #E7F5EE;
   --vp-ambar: var(--warn-soft-fg);
   --vp-ambar-claro: var(--warn-soft-bg);
@@ -128,7 +128,7 @@
   transition: background .15s, transform .06s;
 }
 
-.vp-btn-luz:hover:not(:disabled) { background: #1A6741; }
+.vp-btn-luz:hover:not(:disabled) { filter: brightness(.92); }
 .vp-btn-luz:active:not(:disabled) { transform: scale(.98); }
 .vp-btn-luz:disabled { opacity: .5; cursor: not-allowed; }
 
@@ -136,9 +136,9 @@
    Esto va arriba de todo en la caja y tiene que gritar. La cajera no está
    mirando la pantalla: la voltea a ver cuando el cliente ya está enfrente. */
 .vp-encargos {
-  border: 2px solid var(--vp-azul, #1F4E79);
+  border: 2px solid var(--brand-700);
   border-radius: 12px;
-  background: #F5F9FD;
+  background: var(--brand-50);
   padding: 14px;
   margin-bottom: 20px;
 }
@@ -146,7 +146,7 @@
 .vp-encargos-tit {
   font-size: 15px;
   font-weight: 800;
-  color: #1F4E79;
+  color: var(--brand-700);
   margin-bottom: 12px;
   display: flex;
   align-items: center;
@@ -160,7 +160,7 @@
   height: 22px;
   padding: 0 7px;
   border-radius: 999px;
-  background: #1F4E79;
+  background: var(--brand-700);
   color: #FFF;
   display: inline-flex;
   align-items: center;
@@ -172,7 +172,7 @@
   align-items: center;
   gap: 12px;
   padding: 12px;
-  border: 1px solid #D6E4F0;
+  border: 1px solid var(--brand-50);
   border-radius: 10px;
   background: #FFF;
   margin-bottom: 8px;
@@ -230,8 +230,11 @@
 .vp-punto.cancelado { background: var(--vp-rojo); }
 .vp-punto.espera { background: var(--vp-ambar); }
 
-/* El botón de vender del vendedor: azul, para no confundirlo con el verde de
-   la caja. Verde = venta consumada; azul = venta anunciada. */
+/* El botón de vender del vendedor va en el NARANJA de marca, para no
+   confundirlo con el verde de la caja. Verde = venta consumada;
+   naranja = venta anunciada, todavia sin cobrar.
+   (Era azul #1F4E79 a mano; se cambio el 2/sep al unificar la paleta —
+   el azul desafinaba con el sistema calido del proyecto.) */
 .vp-btn-vender {
   font: inherit;
   font-size: 13px;
@@ -240,12 +243,12 @@
   padding: 0 16px;
   border: none;
   border-radius: 6px;
-  background: #1F4E79;
+  background: var(--brand-700);
   color: #FFF;
   cursor: pointer;
 }
 
-.vp-btn-vender:hover:not(:disabled) { background: #163A5B; }
+.vp-btn-vender:hover:not(:disabled) { background: var(--brand-800); }
 .vp-btn-vender:disabled { opacity: .5; cursor: not-allowed; }
 
 /* ================= VENDEDOR: alta y lista ================= */

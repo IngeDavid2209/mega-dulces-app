@@ -3,8 +3,8 @@
    global, así que esta pantalla solo trae lo suyo. */
 
 :host {
-  --pz-azul: #1F4E79;
-  --pz-azul-claro: #DEEBF7;
+  --pz-azul: var(--brand-700);
+  --pz-azul-claro: var(--brand-50);
   --pz-linea: var(--neutral-200);
   --pz-txt: var(--neutral-800);
   --pz-txt-2: var(--neutral-500);
@@ -75,7 +75,7 @@
 .pr-btn:disabled { opacity: .5; cursor: not-allowed; }
 
 .pr-btn-alta { background: var(--pz-azul); border-color: var(--pz-azul); color: #FFF; }
-.pr-btn-alta:hover:not(:disabled) { background: #17405f; border-color: #17405f; }
+.pr-btn-alta:hover:not(:disabled) { background: var(--brand-800); border-color: var(--brand-800); }
 
 .pr-btn-pdf { background: var(--pz-verde); border-color: var(--pz-verde); color: #FFF; }
 .pr-btn-pdf:hover { background: #17603c; border-color: #17603c; }
@@ -550,7 +550,7 @@
 .promo-form:disabled { cursor: default; }
 
 .promo-aviso-lectura {
-  background: var(--pz-azul-claro); border: 1px solid #BFD9F0;
+  background: var(--pz-azul-claro); border: 1px solid var(--brand-50);
   border-radius: 10px; padding: 10px 12px; margin-bottom: 14px;
   font-size: 13px; color: var(--neutral-900); line-height: 1.45;
 }

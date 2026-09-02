@@ -8,8 +8,8 @@
    todo el apartado se vea de una pieza. */
 
 :host {
-  --ex-azul: #1F4E79;
-  --ex-azul-claro: #DEEBF7;
+  --ex-azul: var(--brand-700);
+  --ex-azul-claro: var(--brand-50);
   --ex-linea: var(--neutral-200);
   --ex-txt-2: var(--neutral-500);
   --ex-verde: #1F7A4D;
@@ -207,7 +207,7 @@
 .pr-btn:disabled { opacity: .5; cursor: not-allowed; }
 
 .pr-btn-alta { background: var(--ex-azul); border-color: var(--ex-azul); color: #FFF; }
-.pr-btn-alta:hover:not(:disabled) { background: #17405f; border-color: #17405f; }
+.pr-btn-alta:hover:not(:disabled) { background: var(--brand-800); border-color: var(--brand-800); }
 
 .pr-btn-chico { height: 28px; font-size: 12px; padding: 0 10px; }
 .pr-btn-quitar { color: var(--ex-rojo); }

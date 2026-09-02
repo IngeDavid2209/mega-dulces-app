@@ -1012,7 +1012,7 @@ input:checked+.slider:before {
 }
 
 .area-horario-card--custom.selected {
-  border-color: #7C3AED;
+  border-color: var(--brand-700);
   background: #F5F3FF;
   box-shadow: 0 4px 12px -4px rgba(124, 58, 237, 0.3);
 }
@@ -1037,7 +1037,7 @@ input:checked+.slider:before {
 /* Inputs de horario personalizado */
 .area-horario-custom {
   background: #F5F3FF;
-  border: 2px solid #DDD6FE;
+  border: 2px solid var(--brand-50);
   border-radius: 12px;
   padding: 18px;
   margin-bottom: 16px;
@@ -1058,7 +1058,7 @@ input:checked+.slider:before {
 .area-horario-custom-label {
   font-size: 14px;
   font-weight: 700;
-  color: #5B21B6;
+  color: var(--brand-800);
 }
 
 /* Toggle "Se repite todos los días" tipo switch grande */

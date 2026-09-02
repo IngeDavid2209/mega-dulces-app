@@ -12,12 +12,12 @@
   --red: var(--bad-fg);
 
   /* Acentos por ROL (avatar / badges / riel de la tarjeta) */
-  --admin: var(--info-fg);  --admin-bg: #EEF0FF;  --admin-bd: #C7CBF7;
+  --admin: var(--info-fg);  --admin-bg: #EEF0FF;  --admin-bd: var(--brand-50);
   --mando: var(--warn-soft-fg);  --mando-bg: var(--warn-soft-bg);  --mando-bd: #FCD98A;
   --oper:  #0F766E;  --oper-bg:  #D6F3EF;  --oper-bd:  #99E2D9;
   /* Colores SEMÁNTICOS de conexión (independientes del rol) */
   --ok: var(--ok-soft-fg);    --ok-bg: var(--ok-soft-bg);    --ok-bd: #A7F3C4;
-  --idle: var(--neutral-500);  --idle-bg: #EEF2F6;  --idle-bd: #DDE3EA;
+  --idle: var(--neutral-500);  --idle-bg: #EEF2F6;  --idle-bd: var(--neutral-200);
   --warn: var(--warn-soft-fg);  --warn-bg: var(--warn-soft-bg);  --warn-bd: #FCD98A;
   --danger: var(--bad-fg); --danger-bg: var(--bad-soft-bg); --danger-bd: #FBD2D2;
 }

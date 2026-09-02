@@ -91,7 +91,7 @@
 
 .perfil-cover {
   height: 120px;
-  background: linear-gradient(135deg, var(--neutral-800) 0%, #3b82f6 100%);
+  background: linear-gradient(135deg, var(--neutral-800) 0%, var(--info-fg) 100%);
 }
 
 .perfil-avatar-wrapper { display: flex; justify-content: center; margin-top: -50px; position: relative; }
@@ -100,25 +100,25 @@
   width: 100px; height: 100px; background-color: #ffffff;
   border: 4px solid #ffffff; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
-  font-size: 40px; font-weight: bold; color: #3b82f6;
+  font-size: 40px; font-weight: bold; color: var(--neutral-400);
   box-shadow: 0 4px 6px rgba(0,0,0,0.1); box-sizing: border-box;
   overflow: hidden;
 }
 .perfil-foto-btn {
   position: absolute; bottom: 0; left: 50%; transform: translateX(18px);
   width: 34px; height: 34px; border-radius: 50%;
-  background: #2563EB; color: #fff; border: 3px solid #fff;
+  background: var(--info-fg); color: #fff; border: 3px solid #fff;
   display: flex; align-items: center; justify-content: center; cursor: pointer;
   box-shadow: 0 2px 6px rgba(0,0,0,0.25);
 }
-.perfil-foto-btn:hover { background: #1D4ED8; }
+.perfil-foto-btn:hover { background: var(--text-main); }
 .perfil-foto-btn.cargando { opacity: .7; cursor: default; }
 .perfil-foto-spin { font-size: 20px; line-height: 1; }
 
 .perfil-body { padding: 20px 40px 40px; }
 .perfil-header-info { text-align: center; margin-bottom: 25px; }
 .perfil-header-info h3 { margin: 10px 0 5px; font-size: 22px; color: var(--neutral-800); }
-.badge-rol { background-color: #e0f2fe; color: #0369a1; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; text-transform: uppercase; }
+.badge-rol { background-color: var(--info-soft-bg); color: #0369a1; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; text-transform: uppercase; }
 .sucursal-text { color: var(--neutral-500); font-size: 14px; margin-top: 10px; }
 .divider { border: 0; height: 1px; background: var(--neutral-200); margin: 25px 0; }
 
@@ -129,7 +129,7 @@
   width: 100%; padding: 12px 15px; border: 1px solid var(--neutral-300); border-radius: 8px;
   font-size: 15px; color: var(--neutral-800); transition: all 0.3s ease; box-sizing: border-box; background-color: var(--neutral-50);
 }
-.input-moderno:focus { outline: none; border-color: #3b82f6; background-color: #ffffff; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
+.input-moderno:focus { outline: none; border-color: var(--action); background-color: #ffffff; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
 .hint-text { display: block; color: var(--neutral-400); font-size: 12px; margin-top: 6px; }
 
 .perfil-actions { margin-top: 35px; display: flex; justify-content: flex-end; }

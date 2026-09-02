@@ -149,28 +149,28 @@
         <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px;">
           <div>
             <strong style="font-size:15px;">Acceso al Espacio TEC</strong>
-            <div style="font-size:13px; color:var(--muted, #64748B);">
+            <div style="font-size:13px; color:var(--muted, var(--neutral-500));">
               Estas personas ven el apartado "Espacio TEC". Solo aparece a quien tenga el privilegio activado.
             </div>
           </div>
           <button type="button" class="btn-secondary" (click)="togglePanelTec()" title="Cerrar">Cerrar</button>
         </div>
 
-        <div *ngIf="miembrosTec.length === 0" style="font-size:13px; color:var(--muted, #64748B); padding:8px 0;">
+        <div *ngIf="miembrosTec.length === 0" style="font-size:13px; color:var(--muted, var(--neutral-500)); padding:8px 0;">
           Nadie tiene el acceso activado. (Para darlo, edita un usuario y prende "Acceso al Espacio TEC".)
         </div>
 
         <ul *ngIf="miembrosTec.length" style="list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:8px;">
           <li *ngFor="let u of miembrosTec"
-            style="display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 12px; background:var(--bg-soft, #F8FAFC); border:1px solid var(--border); border-radius:10px;">
+            style="display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 12px; background:var(--bg-soft, var(--neutral-50)); border:1px solid var(--border); border-radius:10px;">
             <div>
               <strong>{{ u.nombre || u.usuario }}</strong>
-              <span style="font-size:12px; color:var(--muted, #64748B); margin-left:8px;">
+              <span style="font-size:12px; color:var(--muted, var(--neutral-500)); margin-left:8px;">
                 {{ u.cargo || (u.rol === 'admin' ? 'Administrador' : 'Colaborador') }}
               </span>
             </div>
             <button type="button" class="btn-secondary" (click)="quitarAccesoTec(u)"
-              style="border-color:#DC2626; color:#DC2626;">
+              style="border-color:var(--bad-fg); color:var(--bad-fg);">
               Quitar acceso
             </button>
           </li>
@@ -271,7 +271,7 @@
             <div class="category-count">
               {{ grupo.usuarios.length }} empleados
               <span *ngIf="grupo.mandos.length > 0 && grupo.operativos.length > 0"
-                    style="color:#94A3B8; font-weight:500; margin-left:6px;">
+                    style="color:var(--neutral-400); font-weight:500; margin-left:6px;">
                 · {{ grupo.mandos.length }} mando<span *ngIf="grupo.mandos.length !== 1">s</span>
                 · {{ grupo.operativos.length }} operativo<span *ngIf="grupo.operativos.length !== 1">s</span>
               </span>
@@ -362,7 +362,7 @@
       </div>
       <div class="empty-state-text" *ngIf="getTrabajadores().length === 0 && getAdmins().length === 0">
         No se encontraron usuarios que coincidan con la búsqueda.
-        <div style="margin-top:18px; padding:14px; background:#F1F5F9; border:1px solid #CBD5E1; border-radius:8px; font-size:12px; color:#334155; text-align:left; max-width:520px; margin-left:auto; margin-right:auto;">
+        <div style="margin-top:18px; padding:14px; background:var(--neutral-100); border:1px solid var(--neutral-300); border-radius:8px; font-size:12px; color:var(--neutral-700); text-align:left; max-width:520px; margin-left:auto; margin-right:auto;">
           <strong>Diagnóstico:</strong><br>
           Usuarios totales cargados desde Firestore: <strong>{{ usuarios().length }}</strong><br>
           Mi rol: <strong>{{ currentUser?.rol || '(sin sesión)' }}</strong><br>
@@ -566,7 +566,7 @@
                 </label>
               </div>
               <div *ngIf="!puedeEditarAlcanceActual()"
-                   style="margin-top: 10px; padding: 10px 14px; background: #FEF3C7; border: 1px solid #FDE68A; border-radius: 8px; font-size: 13px; color: #92400E;">
+                   style="margin-top: 10px; padding: 10px 14px; background: var(--warn-soft-bg); border: 1px solid var(--warn-border); border-radius: 8px; font-size: 13px; color: var(--warn-soft-fg);">
                 ℹ️ Solo el Administrador principal (con acceso Global) puede modificar este campo.
               </div>
             </div>
@@ -643,7 +643,7 @@
               <label class="form-label">
                 {{ formRol === 'admin' ? 'Sucursales que este Administrador puede gestionar' : 'Zonas Asignadas (Multi-selección)' }}
                 <span *ngIf="formRol === 'admin' && formAlcance === 'sucursales' && formSucursales.length === 0"
-                      style="color: #DC2626; font-weight: 700; font-size: 12px; margin-left: 8px;">
+                      style="color: var(--bad-fg); font-weight: 700; font-size: 12px; margin-left: 8px;">
                   * Requerido
                 </span>
               </label>
@@ -689,7 +689,7 @@
                 </label>
                 <input class="form-input" type="tel" [(ngModel)]="formTelefono" placeholder="Ej: 523521234567"
                   style="border-left: 4px solid #25D366;">
-                <small style="color: #64748B; font-size: 11px;">* Incluye código de país (52 para México) sin espacios
+                <small style="color: var(--neutral-500); font-size: 11px;">* Incluye código de país (52 para México) sin espacios
                   ni signos +.</small>
               </div>
               <div class="form-group">
@@ -698,7 +698,7 @@
                     {{ usuarioEnEdicion ? 'Cambiar contraseña' : 'Contraseña' }}
                   </label>
                   <span style="font-size: 11px; font-weight: 600;"
-                    [style.color]="(formPassword?.length || 0) === 6 ? '#10B981' : 'var(--text-muted)'">
+                    [style.color]="(formPassword?.length || 0) === 6 ? 'var(--ok-fg)' : 'var(--text-muted)'">
                     {{ formPassword?.length || 0 }} / 6
                   </span>
                 </div>
@@ -707,13 +707,13 @@
                      pero el campo de captura va aparte y arranca vacío: si se
                      precargara, no se podría escribir encima por el maxlength. -->
                 <div *ngIf="usuarioEnEdicion && passwordActual"
-                     style="display:flex; align-items:center; gap:8px; margin-bottom:8px; font-size:12px; color:#64748B;">
+                     style="display:flex; align-items:center; gap:8px; margin-bottom:8px; font-size:12px; color:var(--neutral-500);">
                   <span>Actual:</span>
-                  <strong style="font-family:monospace; letter-spacing:1px; color:#334155;">
+                  <strong style="font-family:monospace; letter-spacing:1px; color:var(--neutral-700);">
                     {{ verPasswordActual ? passwordActual : '••••••' }}
                   </strong>
                   <button type="button" (click)="verPasswordActual = !verPasswordActual"
-                    style="background:none; border:none; color:#0F172A; font-weight:700; font-size:11px; text-decoration:underline; cursor:pointer; padding:0;">
+                    style="background:none; border:none; color:var(--neutral-900); font-weight:700; font-size:11px; text-decoration:underline; cursor:pointer; padding:0;">
                     {{ verPasswordActual ? 'ocultar' : 'ver' }}
                   </button>
                 </div>
@@ -723,7 +723,7 @@
                     [placeholder]="usuarioEnEdicion ? 'Déjalo vacío para no cambiarla' : '••••••'"
                     maxlength="6" style="padding-right: 40px; width: 100%;">
                   <button type="button" (click)="togglePassword()"
-                    style="position: absolute; right: 10px; background: transparent; border: none; cursor: pointer; color: #64748B; display: flex; align-items: center; justify-content: center; padding: 5px;">
+                    style="position: absolute; right: 10px; background: transparent; border: none; cursor: pointer; color: var(--neutral-500); display: flex; align-items: center; justify-content: center; padding: 5px;">
                     <svg *ngIf="!mostrarPassword" width="20" height="20" viewBox="0 0 24 24" fill="none"
                       stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                       <path

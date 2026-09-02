@@ -358,7 +358,7 @@ export class CierreMensualComponent implements OnInit, OnDestroy {
     this.generandoPDF.set(true);
     Swal.fire({
       title: 'Generando reporte...',
-      html: '<p style="font-size:13px;color:#475569">Preparando el documento, no cierres la pestaña.</p><div id="cm-progreso" style="font-size:12px;color:#64748B;margin-top:8px"></div>',
+      html: '<p style="font-size:13px;color:var(--neutral-600)">Preparando el documento, no cierres la pestaña.</p><div id="cm-progreso" style="font-size:12px;color:var(--neutral-500);margin-top:8px"></div>',
       allowOutsideClick: false,
       didOpen: () => Swal.showLoading()
     });
@@ -900,7 +900,7 @@ export class CierreMensualComponent implements OnInit, OnDestroy {
       Swal.fire({
         icon: 'error', title: 'No se pudo generar el PDF',
         html: `<p>Intenta recargar la página y vuelve a intentar.</p>
-               <p style="font-size:11px;color:#64748B"><strong>Detalle:</strong> <code>${(e?.message || e || '').toString().slice(0, 240)}</code></p>`,
+               <p style="font-size:11px;color:var(--neutral-500)"><strong>Detalle:</strong> <code>${(e?.message || e || '').toString().slice(0, 240)}</code></p>`,
         confirmButtonColor: 'var(--action)'
       });
     } finally {
@@ -1328,7 +1328,7 @@ export class CierreMensualComponent implements OnInit, OnDestroy {
       html: `
         <div style="text-align:left; font-size:14px; line-height:1.55;">
           <p style="margin:0 0 10px 0;">Vas a borrar <strong>${totalFotos} fotos</strong> de <strong>${tareas.length} checklists</strong> archivados de <strong>${mes}</strong>.</p>
-          <p style="margin:0 0 10px 0; color:#B91C1C;"><strong>Esta acción es DEFINITIVA. Cloudinary no tiene papelera.</strong></p>
+          <p style="margin:0 0 10px 0; color:var(--bad-soft-fg);"><strong>Esta acción es DEFINITIVA. Cloudinary no tiene papelera.</strong></p>
           <p style="margin:0 0 10px 0;">Después de borrar:</p>
           <ul style="margin:0 0 12px 18px; padding:0;">
             <li>Las fotos del PDF que ya descargaste <strong>siguen ahí</strong> (van embebidas dentro del PDF).</li>
@@ -1452,7 +1452,7 @@ export class CierreMensualComponent implements OnInit, OnDestroy {
       await Swal.fire({
         icon: 'error',
         title: 'Error al borrar fotos',
-        html: `<p>${(e?.message || 'Error desconocido').toString().replace(/</g, '&lt;')}</p><p style="font-size:11px;color:#64748B">Revisa que las variables de entorno CLOUDINARY_API_KEY y CLOUDINARY_API_SECRET estén configuradas en Vercel.</p>`,
+        html: `<p>${(e?.message || 'Error desconocido').toString().replace(/</g, '&lt;')}</p><p style="font-size:11px;color:var(--neutral-500)">Revisa que las variables de entorno CLOUDINARY_API_KEY y CLOUDINARY_API_SECRET estén configuradas en Vercel.</p>`,
         confirmButtonColor: 'var(--action)'
       });
     } finally {

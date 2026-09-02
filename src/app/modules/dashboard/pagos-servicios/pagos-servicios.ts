@@ -402,17 +402,17 @@ export class PagosServiciosComponent implements OnInit, OnDestroy {
     // El modal se monta fuera del componente, así que el CSS de esta pantalla no
     // le llega: los campos se estilan aquí para que se vean iguales entre sí y
     // para que el signo de pesos quede pegado al monto.
-    const campo = 'width:100%;box-sizing:border-box;border:1px solid #E2E8F0;border-radius:9px;'
-      + 'padding:10px 12px;font-size:15px;background:#fff;color:#0F172A';
-    const etiqueta = 'display:block;text-align:left;font-size:12.5px;font-weight:600;color:#334155;margin:14px 0 5px';
+    const campo = 'width:100%;box-sizing:border-box;border:1px solid var(--neutral-200);border-radius:9px;'
+      + 'padding:10px 12px;font-size:15px;background:#fff;color:var(--neutral-900)';
+    const etiqueta = 'display:block;text-align:left;font-size:12.5px;font-weight:600;color:var(--neutral-700);margin:14px 0 5px';
 
     const { value: datos } = await Swal.fire({
       title: 'Registrar pago',
       html:
-        `<p style="font-size:13px;color:#64748B;margin:0 0 4px">${this.nombreServicio(p)} — ${p.periodoTexto || ''}</p>`
+        `<p style="font-size:13px;color:var(--neutral-500);margin:0 0 4px">${this.nombreServicio(p)} — ${p.periodoTexto || ''}</p>`
         + `<label style="${etiqueta}">Monto pagado</label>`
         + '<div style="display:flex;align-items:center;gap:8px">'
-        + '<span style="font-size:17px;font-weight:700;color:#475569">$</span>'
+        + '<span style="font-size:17px;font-weight:700;color:var(--neutral-600)">$</span>'
         + `<input id="sw-monto" type="number" step="0.01" min="0" placeholder="0.00" style="${campo}">`
         + '</div>'
         + `<label style="${etiqueta}">¿Cómo se pagó?</label>`
@@ -424,7 +424,7 @@ export class PagosServiciosComponent implements OnInit, OnDestroy {
         + '</select>'
         + `<label style="${etiqueta}">Liga del comprobante</label>`
         + `<input id="sw-url" placeholder="https://..." style="${campo}">`
-        + '<p style="font-size:12px;color:#94A3B8;margin:10px 2px 0;text-align:left">'
+        + '<p style="font-size:12px;color:var(--neutral-400);margin:10px 2px 0;text-align:left">'
         + 'Si el comprobante llega por WhatsApp se guarda solo. Aquí se pega la liga cuando ya está subido en otro lado.</p>',
       showCancelButton: true, confirmButtonText: 'Registrar', cancelButtonText: 'Cancelar',
       focusConfirm: false,
@@ -509,9 +509,9 @@ export class PagosServiciosComponent implements OnInit, OnDestroy {
     if (r?.ok && r?.prueba) {
       const res = await Swal.fire({
         icon: 'info', title: 'Se mandó, pero no lo doy por entregado',
-        html: '<p style="font-size:13.5px;color:#334155;margin:0 0 10px">La cuenta de WhatsApp venía rechazando los mensajes en frío. '
+        html: '<p style="font-size:13.5px;color:var(--neutral-700);margin:0 0 10px">La cuenta de WhatsApp venía rechazando los mensajes en frío. '
           + 'Este salió para ver si ya se destrabó, y Meta avisa el resultado unos segundos después.</p>'
-          + '<p style="font-size:13px;color:#64748B;margin:0">Si en un minuto no le llegó, mándalo tú.</p>',
+          + '<p style="font-size:13px;color:var(--neutral-500);margin:0">Si en un minuto no le llegó, mándalo tú.</p>',
         showCancelButton: true,
         confirmButtonText: 'Mandarlo yo', cancelButtonText: 'Esperar',
         confirmButtonColor: '#128C7E', cancelButtonColor: 'var(--neutral-500)',
@@ -537,11 +537,11 @@ export class PagosServiciosComponent implements OnInit, OnDestroy {
     const res = await Swal.fire({
       icon: 'warning',
       title: 'El bot no pudo mandarlo',
-      html: `<p style="font-size:13.5px;color:#334155;margin:0 0 12px">${porQue}</p>`
+      html: `<p style="font-size:13.5px;color:var(--neutral-700);margin:0 0 12px">${porQue}</p>`
         + (puedeManual
-          ? '<p style="font-size:13px;color:#64748B;margin:0 0 10px">Mándalo tú desde tu WhatsApp: el mensaje ya va escrito.</p>'
+          ? '<p style="font-size:13px;color:var(--neutral-500);margin:0 0 10px">Mándalo tú desde tu WhatsApp: el mensaje ya va escrito.</p>'
             + `<pre style="text-align:left;white-space:pre-wrap;font-family:inherit;font-size:12.5px;`
-            + `background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;padding:10px;color:#334155;margin:0">`
+            + `background:var(--neutral-50);border:1px solid var(--neutral-200);border-radius:8px;padding:10px;color:var(--neutral-700);margin:0">`
             + String(r.texto).replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' } as any)[c])
             + '</pre>'
           : ''),
@@ -549,7 +549,7 @@ export class PagosServiciosComponent implements OnInit, OnDestroy {
       confirmButtonText: puedeManual ? 'Abrir WhatsApp' : 'Entendido',
       cancelButtonText: 'Cerrar',
       // Verde de WhatsApp, para que el botón se lea como lo que hace.
-      confirmButtonColor: puedeManual ? '#128C7E' : '#0F172A',
+      confirmButtonColor: puedeManual ? '#128C7E' : 'var(--neutral-900)',
       cancelButtonColor: 'var(--neutral-500)',
     });
 

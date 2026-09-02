@@ -45,15 +45,15 @@
 }
 .imn-kpi-n { font-size: 22px; font-weight: 800; color: var(--neutral-900); line-height: 1.1; }
 .imn-kpi-l { font-size: 11.5px; font-weight: 700; color: var(--neutral-600); }
-.imn-kpi.ok   { border-color: #A7F3D0; background: #F0FDF4; }
-.imn-kpi.ok   .imn-kpi-n { color: #047857; }
-.imn-kpi.duda { border-color: #FCD34D; background: #FFFBEB; }
-.imn-kpi.duda .imn-kpi-n { color: #B45309; }
+.imn-kpi.ok   { border-color: var(--ok-border); background: var(--ok-soft-bg); }
+.imn-kpi.ok   .imn-kpi-n { color: var(--ok-soft-fg); }
+.imn-kpi.duda { border-color: var(--warn-border); background: var(--warn-soft-bg); }
+.imn-kpi.duda .imn-kpi-n { color: var(--warn-soft-fg); }
 
 .imn-aviso {
   padding: 11px 14px; margin-bottom: 16px;
-  border-radius: 9px; background: #FFFBEB; border: 1px solid #FDE68A;
-  color: #78350F; font-size: 12.5px; line-height: 1.55;
+  border-radius: 9px; background: var(--warn-soft-bg); border: 1px solid var(--warn-border);
+  color: var(--warn-soft-fg); font-size: 12.5px; line-height: 1.55;
 }
 
 /* ── Bloques ─────────────────────────────────────────────────────────────── */
@@ -105,18 +105,18 @@
   display: block; font-size: 11px; color: var(--neutral-400); margin-top: 1px;
 }
 .imn-puesto { color: var(--neutral-800); font-weight: 600; min-width: 0; }
-.imn-antes { color: #B45309 !important; }
-.imn-suc { color: #1D4ED8 !important; }
+.imn-antes { color: var(--warn-soft-fg) !important; }
+.imn-suc { color: var(--info-fg) !important; }
 
 .imn-tag-cambia {
   display: inline-block; padding: 0 5px; border-radius: 3px;
-  background: #FEF3C7; color: #92400E;
+  background: var(--warn-soft-bg); color: var(--warn-soft-fg);
   font-size: 9.5px; font-weight: 800; text-transform: uppercase;
 }
 
 .imn-tareas {
-  text-align: center; font-weight: 800; color: #166534;
-  background: #DCFCE7; border-radius: 5px; padding: 2px 0; font-size: 12px;
+  text-align: center; font-weight: 800; color: var(--ok-soft-fg);
+  background: var(--ok-soft-bg); border-radius: 5px; padding: 2px 0; font-size: 12px;
 }
 .imn-tareas.cero { color: var(--neutral-400); background: var(--neutral-100); }
 
@@ -173,9 +173,9 @@
 
 /* Marca de "esto lo corrigió una persona, no lo dijo el PDF". Azul y no ámbar:
    ámbar ya significa "cambia un puesto existente" y son cosas distintas. */
-.imn-corregido { color: #1D4ED8 !important; cursor: help; }
+.imn-corregido { color: var(--info-fg) !important; cursor: help; }
 .imn-tag-corr {
   display: inline-block; padding: 0 5px; border-radius: 3px;
-  background: #DBEAFE; color: #1E40AF;
+  background: var(--info-soft-bg); color: var(--info-fg);
   font-size: 9.5px; font-weight: 800; text-transform: uppercase;
 }

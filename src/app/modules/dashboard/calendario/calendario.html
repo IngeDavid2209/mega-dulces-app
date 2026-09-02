@@ -290,25 +290,25 @@
   </div>
 
   <div *ngIf="isModalOpen"
-    style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #F8FAFC; z-index: 9999; overflow-y: auto;">
+    style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: var(--neutral-50); z-index: 9999; overflow-y: auto;">
     <div
-      style="background: white; border-bottom: 1px solid #E2E8F0; padding: 15px 30px; position: sticky; top: 0; z-index: 10000; display: flex; align-items: center; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+      style="background: white; border-bottom: 1px solid var(--neutral-200); padding: 15px 30px; position: sticky; top: 0; z-index: 10000; display: flex; align-items: center; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
       <button (click)="cerrarDetalle()"
-        style="background: white; border: 1px solid #CBD5E1; border-radius: 8px; padding: 8px 16px; font-weight: 700; color: #475569; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: 0.2s; margin-right: 20px;"
-        onmouseover="this.style.background='#F1F5F9'" onmouseout="this.style.background='white'">
+        style="background: white; border: 1px solid var(--neutral-300); border-radius: 8px; padding: 8px 16px; font-weight: 700; color: var(--neutral-600); cursor: pointer; display: flex; align-items: center; gap: 8px; transition: 0.2s; margin-right: 20px;"
+        onmouseover="this.style.background='var(--neutral-100)'" onmouseout="this.style.background='white'">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <line x1="19" y1="12" x2="5" y2="12"></line>
           <polyline points="12 19 5 12 12 5"></polyline>
         </svg> Regresar al Calendario
       </button>
-      <div style="font-size: 22px; font-weight: 800; color: #0F172A; display: flex; align-items: center; gap: 10px;">
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2">
+      <div style="font-size: 22px; font-weight: 800; color: var(--neutral-900); display: flex; align-items: center; gap: 10px;">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--info-fg)" stroke-width="2">
           <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
           <line x1="16" y1="2" x2="16" y2="6"></line>
           <line x1="8" y1="2" x2="8" y2="6"></line>
           <line x1="3" y1="10" x2="21" y2="10"></line>
         </svg>
-        Reporte de Auditoría: <span style="color: #2563EB;">{{ diaSeleccionado()?.fechaStr }}</span>
+        Reporte de Auditoría: <span style="color: var(--info-fg);">{{ diaSeleccionado()?.fechaStr }}</span>
       </div>
     </div>
 
@@ -316,12 +316,12 @@
 
       <div class="tabs-container" style="display: flex; gap: 10px; margin-bottom: 20px;">
         <button (click)="vistaActual = 'asignadas'"
-          [ngStyle]="{'background': vistaActual === 'asignadas' ? '#0F172A' : '#F1F5F9', 'color': vistaActual === 'asignadas' ? 'white' : '#64748B'}"
+          [ngStyle]="{'background': vistaActual === 'asignadas' ? 'var(--neutral-900)' : 'var(--neutral-100)', 'color': vistaActual === 'asignadas' ? 'white' : 'var(--neutral-500)'}"
           style="padding: 10px 20px; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.2s;">
           📋 Tareas Asignadas
         </button>
         <button (click)="vistaActual = 'personales'"
-          [ngStyle]="{'background': vistaActual === 'personales' ? '#0F172A' : '#F1F5F9', 'color': vistaActual === 'personales' ? 'white' : '#64748B'}"
+          [ngStyle]="{'background': vistaActual === 'personales' ? 'var(--neutral-900)' : 'var(--neutral-100)', 'color': vistaActual === 'personales' ? 'white' : 'var(--neutral-500)'}"
           style="padding: 10px 20px; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.2s;">
           📓 Mi Agenda Personal
         </button>
@@ -329,8 +329,8 @@
 
       <div *ngIf="vistaActual === 'asignadas'">
         <div *ngIf="diaSeleccionado()?.tareas.length === 0"
-          style="background: white; border: 2px dashed #CBD5E1; border-radius: 16px; padding: 60px 20px; text-align: center;">
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="1.5"
+          style="background: white; border: 2px dashed var(--neutral-300); border-radius: 16px; padding: 60px 20px; text-align: center;">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--neutral-400)" stroke-width="1.5"
             style="margin-bottom: 15px;">
             <path
               d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z">
@@ -338,66 +338,66 @@
             <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
             <line x1="12" y1="22.08" x2="12" y2="12"></line>
           </svg>
-          <div style="font-weight: 700; color: #475569; font-size: 18px;">Sin tareas asignadas registradas</div>
-          <div style="font-size: 15px; color: #94A3B8; margin-top: 6px;">No hay actividades de checklist para mostrar en
+          <div style="font-weight: 700; color: var(--neutral-600); font-size: 18px;">Sin tareas asignadas registradas</div>
+          <div style="font-size: 15px; color: var(--neutral-400); margin-top: 6px;">No hay actividades de checklist para mostrar en
             este día.</div>
         </div>
 
         <div *ngFor="let tarea of diaSeleccionado()?.tareas"
-          style="background: white; border: 1px solid #E2E8F0; padding: 20px; border-radius: 12px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); transition: all 0.3s ease;">
+          style="background: white; border: 1px solid var(--neutral-200); padding: 20px; border-radius: 12px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); transition: all 0.3s ease;">
           <div style="cursor: pointer; user-select: none;" (click)="toggleTareaExpandida(tarea)">
             <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 8px;">
               <div style="display: flex; align-items: flex-start; gap: 10px; flex: 1; min-width: 0;">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                   [style.transform]="tarea.expandido ? 'rotate(180deg)' : 'rotate(0deg)'"
-                  style="transition: transform 0.3s ease; color: #64748B; flex-shrink: 0; margin-top: 2px;">
+                  style="transition: transform 0.3s ease; color: var(--neutral-500); flex-shrink: 0; margin-top: 2px;">
                   <polyline points="6 9 12 15 18 9"></polyline>
                 </svg>
-                <div style="font-weight: 800; color: #0F172A; font-size: 18px; text-transform: uppercase; line-height: 1.3; word-break: break-word;">{{ tarea.name
+                <div style="font-weight: 800; color: var(--neutral-900); font-size: 18px; text-transform: uppercase; line-height: 1.3; word-break: break-word;">{{ tarea.name
                   }}</div>
               </div>
               <div [ngSwitch]="tarea.status"
                 style="font-size: 12px; font-weight: 800; flex-shrink: 0;">
                 <span *ngSwitchCase="'completo'"
-                  style="background: #D1FAE5; color: #047857; padding: 6px 12px; border-radius: 8px; border: 1px solid #A7F3D0; white-space: nowrap; display: inline-block;">
+                  style="background: var(--ok-soft-bg); color: var(--ok-soft-fg); padding: 6px 12px; border-radius: 8px; border: 1px solid var(--ok-border); white-space: nowrap; display: inline-block;">
                   ✅ COMPLETADO</span>
                 <span *ngSwitchCase="'en-progreso'"
-                  style="background: #FEF3C7; color: #D97706; padding: 6px 12px; border-radius: 8px; border: 1px solid #FDE68A; white-space: nowrap; display: inline-block;">
+                  style="background: var(--warn-soft-bg); color: var(--warn-fg); padding: 6px 12px; border-radius: 8px; border: 1px solid var(--warn-border); white-space: nowrap; display: inline-block;">
                   ⏳ EN PROGRESO</span>
                 <span *ngSwitchCase="'pendiente'"
-                  [style.color]="diaSeleccionado().fechaStr < fechaActual.toISOString().split('T')[0] ? '#B91C1C' : '#475569'"
-                  [style.background]="diaSeleccionado().fechaStr < fechaActual.toISOString().split('T')[0] ? '#FEE2E2' : '#F1F5F9'"
-                  [style.border]="diaSeleccionado().fechaStr < fechaActual.toISOString().split('T')[0] ? '1px solid #FECACA' : '1px solid #E2E8F0'"
+                  [style.color]="diaSeleccionado().fechaStr < fechaActual.toISOString().split('T')[0] ? 'var(--bad-soft-fg)' : 'var(--neutral-600)'"
+                  [style.background]="diaSeleccionado().fechaStr < fechaActual.toISOString().split('T')[0] ? 'var(--bad-soft-bg)' : 'var(--neutral-100)'"
+                  [style.border]="diaSeleccionado().fechaStr < fechaActual.toISOString().split('T')[0] ? '1px solid var(--bad-border)' : '1px solid var(--neutral-200)'"
                   style="padding: 6px 12px; border-radius: 8px; white-space: nowrap; display: inline-block;">
                   {{ diaSeleccionado().fechaStr < fechaActual.toISOString().split('T')[0] ? '  ❌  VENCIDO'
                     : '  🕒  PENDIENTE' }} </span>
               </div>
             </div>
-            <div style="font-size: 14px; color: #64748B; margin-bottom: 5px; padding-left: 34px;">
+            <div style="font-size: 14px; color: var(--neutral-500); margin-bottom: 5px; padding-left: 34px;">
               <strong>Responsable:</strong> {{ tarea.assigned }} <span style="margin: 0 8px;">|</span>
               <strong>Sucursal:</strong> {{ tarea.store }}
             </div>
           </div>
 
           <div *ngIf="tarea.expandido"
-            style="margin-top: 15px; border-top: 1px dashed #CBD5E1; padding-top: 15px; padding-left: 34px; animation: fadeIn 0.3s ease;">
+            style="margin-top: 15px; border-top: 1px dashed var(--neutral-300); padding-top: 15px; padding-left: 34px; animation: fadeIn 0.3s ease;">
             <div *ngFor="let item of tarea.items"
-              style="margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #F1F5F9;">
+              style="margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid var(--neutral-100);">
               <div style="display: flex; align-items: center; gap: 10px; font-size: 14px; margin-bottom: 8px;">
-                <svg *ngIf="item.checked" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10B981"
+                <svg *ngIf="item.checked" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ok-fg)"
                   stroke-width="3">
                   <polyline points="20 6 9 17 4 12"></polyline>
                 </svg>
-                <svg *ngIf="!item.checked" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#EF4444"
+                <svg *ngIf="!item.checked" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--bad-fg)"
                   stroke-width="3">
                   <line x1="18" y1="6" x2="6" y2="18"></line>
                   <line x1="6" y1="6" x2="18" y2="18"></line>
                 </svg>
                 <span [style.text-decoration]="item.checked ? 'line-through' : 'none'"
-                  [style.color]="item.checked ? '#94A3B8' : '#0F172A'">{{ item.text }}</span>
+                  [style.color]="item.checked ? 'var(--neutral-400)' : 'var(--neutral-900)'">{{ item.text }}</span>
               </div>
               <div *ngIf="item.photo" style="margin-left: 28px; margin-top: 10px;">
-                <div style="font-size: 12px; font-weight: 700; color: #64748B; margin-bottom: 6px;">📸 EVIDENCIA <span
+                <div style="font-size: 12px; font-weight: 700; color: var(--neutral-500); margin-bottom: 6px;">📸 EVIDENCIA <span
                     *ngIf="item.photoTime" style="font-weight: normal;">(Subida a las {{ item.photoTime }})</span></div>
                 <div (click)="abrirFoto(item.photo, $event)" title="Ver foto ampliada"
                   style="cursor: zoom-in; display: inline-block;">
@@ -411,7 +411,7 @@
                 <div *ngIf="item.photoAntes" style="display: flex; flex-direction: column; gap: 6px;">
                   <span style="font-size: 12px; font-weight: 800; color: var(--primary-navy);">ANTES <span
                       *ngIf="item.photoAntesTime"
-                      style="font-weight:normal; color:#64748B;">({{item.photoAntesTime}})</span></span>
+                      style="font-weight:normal; color:var(--neutral-500);">({{item.photoAntesTime}})</span></span>
                   <div (click)="abrirFoto(item.photoAntes, $event)" title="Ver foto ampliada"
                     style="cursor: zoom-in; display: inline-block;">
                     <img [src]="item.photoAntes"
@@ -420,9 +420,9 @@
                   </div>
                 </div>
                 <div *ngIf="item.photoDespues" style="display: flex; flex-direction: column; gap: 6px;">
-                  <span style="font-size: 12px; font-weight: 800; color: #10B981;">DESPUÉS <span
+                  <span style="font-size: 12px; font-weight: 800; color: var(--ok-fg);">DESPUÉS <span
                       *ngIf="item.photoDespuesTime"
-                      style="font-weight:normal; color:#64748B;">({{item.photoDespuesTime}})</span></span>
+                      style="font-weight:normal; color:var(--neutral-500);">({{item.photoDespuesTime}})</span></span>
                   <div (click)="abrirFoto(item.photoDespues, $event)" title="Ver foto ampliada"
                     style="cursor: zoom-in; display: inline-block;">
                     <img [src]="item.photoDespues"
@@ -432,7 +432,7 @@
                 </div>
               </div>
               <div *ngIf="item.checked && (!item.photoAntes || !item.photoDespues)"
-                style="align-self: center; font-size: 12px; font-weight: 700; color: #EF4444; background: #FEF2F2; padding: 6px 12px; border-radius: 6px; border: 1px solid #FECACA;">
+                style="align-self: center; font-size: 12px; font-weight: 700; color: var(--bad-fg); background: var(--bad-soft-bg); padding: 6px 12px; border-radius: 6px; border: 1px solid var(--bad-border);">
                 ⚠️ Falta evidencia visual requerida
               </div>
             </div>
@@ -443,31 +443,31 @@
       <div *ngIf="vistaActual === 'personales'">
 
         <div *ngIf="tareasPersonalesDelDia.length === 0"
-          style="background: white; border: 2px dashed #CBD5E1; border-radius: 16px; padding: 60px 20px; text-align: center;">
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="1.5"
+          style="background: white; border: 2px dashed var(--neutral-300); border-radius: 16px; padding: 60px 20px; text-align: center;">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--neutral-400)" stroke-width="1.5"
             style="margin-bottom: 15px;">
             <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
             <line x1="16" y1="2" x2="16" y2="6"></line>
             <line x1="8" y1="2" x2="8" y2="6"></line>
             <line x1="3" y1="10" x2="21" y2="10"></line>
           </svg>
-          <div style="font-weight: 700; color: #475569; font-size: 18px;">Agenda Libre</div>
-          <div style="font-size: 15px; color: #94A3B8; margin-top: 6px;">No hay tareas personales registradas para este
+          <div style="font-weight: 700; color: var(--neutral-600); font-size: 18px;">Agenda Libre</div>
+          <div style="font-size: 15px; color: var(--neutral-400); margin-top: 6px;">No hay tareas personales registradas para este
             día.</div>
         </div>
 
         <div *ngFor="let tarea of tareasPersonalesDelDia"
-          style="background: white; border: 1px solid #E2E8F0; padding: 16px 20px; border-radius: 12px; margin-bottom: 12px; display: flex; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+          style="background: white; border: 1px solid var(--neutral-200); padding: 16px 20px; border-radius: 12px; margin-bottom: 12px; display: flex; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
           <div
             style="width: 26px; height: 26px; border-radius: 6px; margin-right: 16px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;"
-            [ngStyle]="{'background': tarea.completada ? '#10B981' : 'transparent', 'border': tarea.completada ? '2px solid #10B981' : '2px solid #CBD5E1'}">
+            [ngStyle]="{'background': tarea.completada ? 'var(--ok-fg)' : 'transparent', 'border': tarea.completada ? '2px solid var(--ok-fg)' : '2px solid var(--neutral-300)'}">
             <svg *ngIf="tarea.completada" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white"
               stroke-width="3">
               <polyline points="20 6 9 17 4 12"></polyline>
             </svg>
           </div>
           <div style="flex: 1; font-weight: 600; font-size: 15.5px;"
-            [ngStyle]="{'text-decoration': tarea.completada ? 'line-through' : 'none', 'color': tarea.completada ? '#94A3B8' : '#1E293B'}">
+            [ngStyle]="{'text-decoration': tarea.completada ? 'line-through' : 'none', 'color': tarea.completada ? 'var(--neutral-400)' : 'var(--neutral-800)'}">
             {{ tarea.texto }}
           </div>
         </div>

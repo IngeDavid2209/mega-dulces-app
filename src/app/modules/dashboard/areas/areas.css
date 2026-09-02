@@ -200,9 +200,9 @@
 }
 
 .btn-delete:hover {
-  background: #FEF2F2;
-  color: #EF4444;
-  border-color: #FECACA;
+  background: var(--bad-soft-bg);
+  color: var(--bad-fg);
+  border-color: var(--bad-border);
 }
 
 .search-wrapper {
@@ -283,7 +283,7 @@
 }
 
 .modal-close:hover {
-  color: #EF4444;
+  color: var(--bad-fg);
 }
 
 .modal-body {
@@ -316,7 +316,7 @@
 
 .form-input:focus {
   outline: none;
-  border-color: #3B82F6;
+  border-color: var(--action);
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
@@ -361,7 +361,7 @@
 }
 
 input:checked+.slider {
-  background-color: #10B981;
+  background-color: var(--ok-fg);
 }
 
 input:checked+.slider:before {
@@ -399,7 +399,7 @@ input:checked+.slider:before {
   gap: 16px;
   padding: 22px 26px;
   margin-bottom: 22px;
-  background: linear-gradient(135deg, #FFFFFF 0%, #F8FAFF 100%);
+  background: linear-gradient(135deg, #FFFFFF 0%, var(--info-soft-bg) 100%);
   border: 1px solid var(--neutral-200);
   border-left: 4px solid var(--neutral-900);
   border-radius: 14px;
@@ -436,7 +436,7 @@ input:checked+.slider:before {
   align-items: center;
   gap: 8px;
   padding: 14px 22px;
-  background: linear-gradient(135deg, var(--neutral-900) 0%, #1E3A8A 100%);
+  background: linear-gradient(135deg, var(--neutral-900) 0%, var(--info-fg) 100%);
   color: #FFFFFF;
   border: none;
   border-radius: 12px;
@@ -485,7 +485,7 @@ input:checked+.slider:before {
 
 .area-card--vacia {
   border-style: dashed;
-  background: linear-gradient(180deg, #FAFBFF 0%, #FFFFFF 100%);
+  background: linear-gradient(180deg, var(--info-soft-bg) 0%, #FFFFFF 100%);
 }
 
 .area-card--bloqueada {
@@ -515,8 +515,8 @@ input:checked+.slider:before {
   height: 36px;
   border-radius: 10px;
   background: #FFFFFF;
-  color: #EF4444;
-  border: 1.5px solid #FECACA;
+  color: var(--bad-fg);
+  border: 1.5px solid var(--bad-border);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -525,8 +525,8 @@ input:checked+.slider:before {
 }
 
 .area-card-delete:hover {
-  background: #FEF2F2;
-  border-color: #FCA5A5;
+  background: var(--bad-soft-bg);
+  border-color: var(--bad-border);
 }
 
 /* Pills de estado */
@@ -556,35 +556,35 @@ input:checked+.slider:before {
 }
 
 .area-status-pill--activa {
-  background: #ECFDF5;
-  color: #047857;
-  border-color: #A7F3D0;
+  background: var(--ok-soft-bg);
+  color: var(--ok-soft-fg);
+  border-color: var(--ok-border);
 }
 
 .area-status-pill--activa .area-status-dot {
-  background: #10B981;
+  background: var(--ok-fg);
   box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
   animation: areaPulse 2s ease-in-out infinite;
 }
 
 .area-status-pill--vacia {
-  background: #FEF3C7;
-  color: #92400E;
-  border-color: #FDE68A;
+  background: var(--warn-soft-bg);
+  color: var(--warn-soft-fg);
+  border-color: var(--warn-border);
 }
 
 .area-status-pill--vacia .area-status-dot {
-  background: #F59E0B;
+  background: var(--warn-fg);
 }
 
 .area-status-pill--bloqueada {
-  background: #FEE2E2;
-  color: #B91C1C;
-  border-color: #FCA5A5;
+  background: var(--bad-soft-bg);
+  color: var(--bad-soft-fg);
+  border-color: var(--bad-border);
 }
 
 .area-status-pill--bloqueada .area-status-dot {
-  background: #EF4444;
+  background: var(--bad-fg);
 }
 
 @keyframes areaPulse {
@@ -609,7 +609,7 @@ input:checked+.slider:before {
   gap: 8px;
   font-size: 13px;
   font-weight: 600;
-  color: #1E40AF;
+  color: var(--info-fg);
 }
 
 .area-info-row svg {
@@ -623,7 +623,7 @@ input:checked+.slider:before {
 }
 
 .area-info-row--turno {
-  color: #047857;
+  color: var(--ok-soft-fg);
 }
 
 /* Footer: avatares + botón */
@@ -653,7 +653,7 @@ input:checked+.slider:before {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #4338CA 0%, #6366F1 100%);
+  background: linear-gradient(135deg, var(--neutral-400) 0%, var(--neutral-400) 100%);
   color: #FFFFFF;
   font-size: 13px;
   font-weight: 800;
@@ -704,9 +704,9 @@ input:checked+.slider:before {
 }
 
 .area-card-asignar:hover:not(:disabled) {
-  background: #EFF6FF;
-  border-color: #93C5FD;
-  color: #1E40AF;
+  background: var(--overlay-hover);
+  border-color: var(--overlay-hover);
+  color: var(--text-main);
 }
 
 .area-card-asignar:disabled {
@@ -788,7 +788,7 @@ input:checked+.slider:before {
   align-items: center;
   justify-content: space-between;
   padding: 20px 28px;
-  background: linear-gradient(135deg, var(--neutral-900), #1E3A8A);
+  background: linear-gradient(135deg, var(--neutral-900), var(--info-fg));
   color: #FFFFFF;
 }
 
@@ -825,7 +825,7 @@ input:checked+.slider:before {
 
 .wizard-progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #10B981, #34D399);
+  background: linear-gradient(90deg, var(--ok-fg), #34D399);
   transition: width 0.4s ease;
 }
 
@@ -881,7 +881,7 @@ input:checked+.slider:before {
 }
 
 .wizard-input:focus {
-  border-color: #2563EB;
+  border-color: var(--action);
   box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15);
 }
 
@@ -938,7 +938,7 @@ input:checked+.slider:before {
 }
 
 .wizard-btn-next {
-  background: linear-gradient(135deg, #1E40AF, #2563EB);
+  background: linear-gradient(135deg, var(--action), var(--action));
   color: #FFFFFF;
   margin-left: auto;
   min-width: 180px;
@@ -956,7 +956,7 @@ input:checked+.slider:before {
 }
 
 .wizard-btn-finish {
-  background: linear-gradient(135deg, #047857, #10B981);
+  background: linear-gradient(135deg, var(--ok-soft-fg), var(--ok-fg));
   color: #FFFFFF;
   margin-left: auto;
   min-width: 220px;
@@ -1006,8 +1006,8 @@ input:checked+.slider:before {
 }
 
 .area-horario-card.selected {
-  border-color: #2563EB;
-  background: #EFF6FF;
+  border-color: var(--text-main);
+  background: var(--overlay-selected);
   box-shadow: 0 4px 12px -4px rgba(37, 99, 235, 0.3);
 }
 
@@ -1106,7 +1106,7 @@ input:checked+.slider:before {
 }
 
 .area-recurrente-label input:checked + .area-recurrente-switch {
-  background: #10B981;
+  background: var(--ok-fg);
 }
 
 .area-recurrente-label input:checked + .area-recurrente-switch::before {
@@ -1175,7 +1175,7 @@ input:checked+.slider:before {
   padding: 4px;
   border: 1px solid var(--neutral-200);
   border-radius: 12px;
-  background: #FAFBFF;
+  background: var(--info-soft-bg);
   margin-bottom: 14px;
 }
 
@@ -1199,8 +1199,8 @@ input:checked+.slider:before {
 }
 
 .area-empleado-row.selected {
-  border-color: #2563EB;
-  background: #EFF6FF;
+  border-color: var(--text-main);
+  background: var(--overlay-selected);
 }
 
 .area-empleado-avatar {
@@ -1208,7 +1208,7 @@ input:checked+.slider:before {
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #3B82F6, #1E3A8A);
+  background: linear-gradient(135deg, var(--neutral-400), var(--neutral-400));
   color: #FFFFFF;
   font-size: 17px;
   font-weight: 800;
@@ -1218,7 +1218,7 @@ input:checked+.slider:before {
 }
 
 .area-empleado-row.selected .area-empleado-avatar {
-  background: linear-gradient(135deg, #10B981, #047857);
+  background: linear-gradient(135deg, var(--ok-fg), var(--ok-soft-fg));
 }
 
 .area-empleado-info {
@@ -1245,7 +1245,7 @@ input:checked+.slider:before {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: #2563EB;
+  background: var(--info-fg);
   color: #FFFFFF;
   display: flex;
   align-items: center;
@@ -1256,7 +1256,7 @@ input:checked+.slider:before {
 
 .area-empleado-row.selected .area-empleado-check {
   opacity: 1;
-  background: #10B981;
+  background: var(--ok-fg);
 }
 
 .area-empleados-empty {
@@ -1268,9 +1268,9 @@ input:checked+.slider:before {
 }
 
 .area-contador-final {
-  background: linear-gradient(135deg, #ECFDF5, #FFFFFF);
-  border: 2px solid #A7F3D0;
-  color: #047857;
+  background: linear-gradient(135deg, var(--ok-soft-bg), #FFFFFF);
+  border: 2px solid var(--ok-border);
+  color: var(--ok-soft-fg);
   padding: 14px 18px;
   border-radius: 12px;
   font-size: 15px;
@@ -1280,13 +1280,13 @@ input:checked+.slider:before {
 
 .area-contador-final strong {
   font-size: 18px;
-  color: #065F46;
+  color: var(--ok-soft-fg);
 }
 
 .area-contador-final--vacio {
-  background: linear-gradient(135deg, #EFF6FF, #FFFFFF);
-  border-color: #BFDBFE;
-  color: #1E40AF;
+  background: linear-gradient(135deg, var(--info-soft-bg), #FFFFFF);
+  border-color: var(--info-soft-bg);
+  color: var(--info-fg);
 }
 
 

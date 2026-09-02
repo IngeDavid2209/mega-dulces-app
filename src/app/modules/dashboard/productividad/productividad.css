@@ -13,8 +13,8 @@
 
 .pr-aviso-red {
   display: flex; flex-direction: column; gap: 2px;
-  background: #FEF3C7; border: 1px solid #FDE68A; border-radius: 8px;
-  padding: 10px 14px; margin-bottom: 16px; font-size: 13px; color: #92400E;
+  background: var(--warn-soft-bg); border: 1px solid var(--warn-border); border-radius: 8px;
+  padding: 10px 14px; margin-bottom: 16px; font-size: 13px; color: var(--warn-soft-fg);
 }
 .pr-aviso-red-pie { font-size: 11px; color: #A16207; }
 
@@ -32,8 +32,8 @@
 .pr-cob-num { font-size: 20px; font-weight: 800; color: var(--neutral-900); }
 .pr-cob-lbl { font-size: 11px; color: var(--neutral-500); line-height: 1.4; }
 .pr-cob-nota {
-  margin-top: 12px; font-size: 12px; color: #92400E; line-height: 1.5;
-  background: #FFFBEB; border-left: 3px solid #FBBF24; padding: 8px 12px;
+  margin-top: 12px; font-size: 12px; color: var(--warn-soft-fg); line-height: 1.5;
+  background: var(--warn-soft-bg); border-left: 3px solid var(--warn-border); padding: 8px 12px;
 }
 
 /* ── Controles ───────────────────────────────────────────────────────────── */
@@ -75,21 +75,21 @@
 
 /* Verde/ambar/rojo por nivel. El "sin dato" es GRIS, nunca rojo: no saber algo
    no es lo mismo que hacerlo mal, y pintarlo igual mentiria. */
-.pr-bien  { color: #15803D; }
-.pr-medio { color: #B45309; }
-.pr-mal   { color: #B91C1C; }
+.pr-bien  { color: var(--ok-soft-fg); }
+.pr-medio { color: var(--warn-soft-fg); }
+.pr-mal   { color: var(--bad-soft-fg); }
 .pr-nd    { color: var(--neutral-400); }
 .pr-nd-txt { color: var(--neutral-300); font-size: 12px; }
 
-.pr-fuera { color: #B45309 !important; font-weight: 600; }
+.pr-fuera { color: var(--warn-soft-fg) !important; font-weight: 600; }
 .pr-sinsello {
   display: inline-block; font-size: 12px; font-weight: 700; color: var(--neutral-500);
   background: var(--neutral-100); padding: 2px 8px; border-radius: 999px;
 }
 .pr-ritmo { font-size: 12px; color: var(--neutral-600); font-variant-numeric: tabular-nums; }
 .pr-sentada {
-  display: inline-block; font-size: 11px; font-weight: 700; color: #92400E;
-  background: #FEF3C7; border: 1px solid #FDE68A; padding: 2px 8px; border-radius: 999px;
+  display: inline-block; font-size: 11px; font-weight: 700; color: var(--warn-soft-fg);
+  background: var(--warn-soft-bg); border: 1px solid var(--warn-border); padding: 2px 8px; border-radius: 999px;
 }
 .pr-vacio { padding: 18px; color: var(--neutral-400); font-size: 13px; }
 
@@ -116,8 +116,8 @@
    el guion es simplemente que aun no hay nada hecho. Se ven distinto porque se
    arreglan distinto. */
 .pr-sinhorario {
-  display: inline-block; font-size: 11px; font-weight: 700; color: #92400E;
-  background: #FEF3C7; border: 1px solid #FDE68A; padding: 2px 8px; border-radius: 999px;
+  display: inline-block; font-size: 11px; font-weight: 700; color: var(--warn-soft-fg);
+  background: var(--warn-soft-bg); border: 1px solid var(--warn-border); padding: 2px 8px; border-radius: 999px;
 }
 
 /* ── Colaboradores agrupados por sucursal ────────────────────────────────── */
@@ -135,9 +135,9 @@
 .pr-grupo-kpi { display: flex; flex-direction: column; align-items: flex-end; }
 .pr-grupo-kpi strong { font-size: 16px; font-weight: 800; font-variant-numeric: tabular-nums; }
 /* En cabecera oscura los colores del semaforo se aclaran, o no se leen. */
-.pr-grupo-kpi strong.pr-bien  { color: #4ADE80; }
-.pr-grupo-kpi strong.pr-medio { color: #FBBF24; }
-.pr-grupo-kpi strong.pr-mal   { color: #F87171; }
+.pr-grupo-kpi strong.pr-bien  { color: var(--ok-border); }
+.pr-grupo-kpi strong.pr-medio { color: var(--warn-border); }
+.pr-grupo-kpi strong.pr-mal   { color: var(--bad-border); }
 .pr-grupo-kpi strong.pr-nd    { color: var(--neutral-400); }
 .pr-grupo-kpi small { font-size: 10px; color: var(--neutral-400); }
 .pr-tabla-grupo { border-radius: 0 0 10px 10px; margin-bottom: 0; border-top: 0; }
@@ -146,5 +146,5 @@
 .pr-zonas { flex-wrap: wrap; }
 /* El boton de "sin zona" es un PENDIENTE, no una zona mas: se distingue para
    que nadie lo lea como una region de la empresa. */
-.pr-btn-pendiente { color: #92400E !important; }
-.pr-btn-pendiente.activo { background: #FEF3C7 !important; color: #92400E !important; }
+.pr-btn-pendiente { color: var(--warn-soft-fg) !important; }
+.pr-btn-pendiente.activo { background: var(--warn-soft-bg) !important; color: var(--warn-soft-fg) !important; }

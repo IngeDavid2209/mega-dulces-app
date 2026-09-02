@@ -88,13 +88,13 @@
         <!-- Accesos rápidos -->
         <div class="rs-quick">
           <button class="rs-qbtn" (click)="irA('tablero')">
-            <span class="rs-qic" style="background:#EEF2FF;color:#4F46E5;">
+            <span class="rs-qic" style="background:var(--info-soft-bg);color:var(--info-fg);">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
             </span>
             <span class="rs-qtxt"><strong>Nueva tarjeta</strong><small>en el tablero</small></span>
           </button>
           <button class="rs-qbtn" (click)="irA('conversaciones')">
-            <span class="rs-qic" style="background:#ECFEFF;color:#0891B2;">
+            <span class="rs-qic" style="background:var(--info-soft-bg);color:var(--info-fg);">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
             </span>
             <span class="rs-qtxt"><strong>Escribir mensaje</strong><small>al equipo</small></span>
@@ -106,7 +106,7 @@
             <span class="rs-qtxt"><strong>Subir idea/nota</strong><small>compartida</small></span>
           </button>
           <button class="rs-qbtn" (click)="irA('asignar')">
-            <span class="rs-qic" style="background:#DCFCE7;color:#16A34A;">
+            <span class="rs-qic" style="background:var(--ok-soft-bg);color:var(--ok-fg);">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
             </span>
             <span class="rs-qtxt"><strong>Asignar tarea</strong><small>a una sucursal</small></span>
@@ -117,7 +117,7 @@
           <!-- Tablero -->
           <div class="rs-card" (click)="cambiarVista('tablero')">
             <div class="rs-card-head">
-              <span class="rs-ic" style="background:#EEF2FF; color:#4F46E5;">
+              <span class="rs-ic" style="background:var(--info-soft-bg); color:var(--info-fg);">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="18" rx="1.5"></rect><rect x="14" y="3" width="7" height="11" rx="1.5"></rect></svg>
               </span>
               <span class="rs-card-title">Tablero</span>
@@ -136,7 +136,7 @@
           <!-- Conversaciones -->
           <div class="rs-card" (click)="cambiarVista('conversaciones')">
             <div class="rs-card-head">
-              <span class="rs-ic" style="background:#ECFEFF; color:#0891B2;">
+              <span class="rs-ic" style="background:var(--info-soft-bg); color:var(--info-fg);">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
               </span>
               <span class="rs-card-title">Conversaciones</span>
@@ -155,7 +155,7 @@
           <!-- Equipos y Proyectos -->
           <div class="rs-card" (click)="cambiarVista('equipos')">
             <div class="rs-card-head">
-              <span class="rs-ic" style="background:#FEF3C7; color:#D97706;">
+              <span class="rs-ic" style="background:var(--warn-soft-bg); color:var(--warn-fg);">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle></svg>
               </span>
               <span class="rs-card-title">Equipos y Proyectos</span>
@@ -453,7 +453,7 @@
               <ng-container *ngIf="!tareaAsignarUsarFechas">
                 <label class="tec-modal-label">Fecha (opcional)</label>
                 <input class="tec-input" type="date" [(ngModel)]="tareaAsignarFecha">
-                <small style="display:block; color:#94A3B8; font-size:11px; margin-top:4px;">Si la dejas vacía, se asigna para hoy.</small>
+                <small style="display:block; color:var(--neutral-400); font-size:11px; margin-top:4px;">Si la dejas vacía, se asigna para hoy.</small>
               </ng-container>
 
               <label class="pt-toggle" style="margin-top:10px;">
@@ -470,7 +470,7 @@
                   <input class="tec-input" type="date" [(ngModel)]="tareaAsignarFechaFin">
                 </div>
               </div>
-              <small *ngIf="tareaAsignarUsarFechas" style="display:block; color:#94A3B8; font-size:11px; margin-top:4px;">La tarea aparece en el día de inicio; el periodo es solo informativo.</small>
+              <small *ngIf="tareaAsignarUsarFechas" style="display:block; color:var(--neutral-400); font-size:11px; margin-top:4px;">La tarea aparece en el día de inicio; el periodo es solo informativo.</small>
             </ng-container>
 
             <label class="tec-modal-label">¿Se repite?</label>
@@ -520,7 +520,7 @@
             <div class="as-lista" *ngIf="sucursalSel && empleadosDeSucursal.length > 0">
               <label class="as-emp" *ngFor="let e of empleadosDeSucursal" [class.sel]="estaSeleccionado(e.nombre)">
                 <input type="checkbox" [checked]="estaSeleccionado(e.nombre)" (change)="toggleEmpleadoSel(e.nombre)">
-                <span class="gr-avatar gr-avatar-sm" style="background:#0F172A;">{{ inicial(e.nombre) }}</span>
+                <span class="gr-avatar gr-avatar-sm" style="background:var(--neutral-900);">{{ inicial(e.nombre) }}</span>
                 <span class="as-emp-info">
                   <span class="as-emp-nombre">{{ e.nombre }}</span>
                   <span class="as-emp-cargo">{{ e.cargo || 'Colaborador' }}</span>
@@ -743,7 +743,7 @@
           <input type="checkbox" class="pt-check" [checked]="t.hecha" (change)="toggleTareaProyecto(t)" title="Marcar hecha">
           <div class="pt-row-body" (click)="editarTareaProyecto(t)">
             <div class="pt-row-nom">{{ t.texto }}</div>
-            <div class="pt-row-obs" *ngIf="t.observaciones" style="font-size:12px; color:#64748B; margin-top:2px; white-space:pre-wrap;">{{ t.observaciones }}</div>
+            <div class="pt-row-obs" *ngIf="t.observaciones" style="font-size:12px; color:var(--neutral-500); margin-top:2px; white-space:pre-wrap;">{{ t.observaciones }}</div>
             <div class="pt-row-meta" *ngIf="t.fechaInicio || t.fechaFin || t.horaInicio || t.requiereFoto || t.requiereVariasFotos || t.permiteDocs || (t.tieneFases && t.fases.length)">
               <span class="pt-chip" *ngIf="t.fechaInicio || t.fechaFin">📅 {{ formatearDia(t.fechaInicio) }}<span *ngIf="t.fechaFin"> → {{ formatearDia(t.fechaFin) }}</span></span>
               <span class="pt-chip" *ngIf="t.horaInicio || t.horaFin">🕒 {{ t.horaInicio }}<span *ngIf="t.horaFin">–{{ t.horaFin }}</span></span>
@@ -775,7 +775,7 @@
 <!-- ====================== MODAL: EDITOR DE TAREA DE PROYECTO ====================== -->
 <div class="tec-modal-overlay" *ngIf="tareaProyEditor" style="z-index: 3500;" (click)="cerrarTareaProyEditor()">
   <div class="tec-modal tec-modal-lg" (click)="$event.stopPropagation()">
-    <div class="tec-modal-top" [style.background]="grupoModal?.color || '#60A5FA'"></div>
+    <div class="tec-modal-top" [style.background]="grupoModal?.color || 'var(--info-soft-bg)'"></div>
     <div class="tec-modal-body">
       <label class="tec-modal-label">Nombre de la tarea</label>
       <input class="tec-input" type="text" [(ngModel)]="tareaProyEditor.texto" placeholder="¿Qué hay que hacer?">
@@ -841,7 +841,7 @@
 <!-- ====================== MODAL: EDITAR TAREA ASIGNADA ====================== -->
 <div class="tec-modal-overlay" *ngIf="asignadaEdit" style="z-index: 3500;" (click)="cerrarEditarAsignada()">
   <div class="tec-modal" (click)="$event.stopPropagation()">
-    <div class="tec-modal-top" style="background:#0EA5E9;"></div>
+    <div class="tec-modal-top" style="background:var(--info-fg);"></div>
     <div class="tec-modal-body">
       <label class="tec-modal-label">Tarea</label>
       <input class="tec-input" type="text" [(ngModel)]="asignadaEdit.name" placeholder="Nombre de la tarea">
@@ -857,7 +857,7 @@
           <input class="tec-input" type="time" [(ngModel)]="asignadaEdit.horaFin">
         </div>
       </div>
-      <p style="font-size:12px; color:#64748B; margin-top:10px;">El cambio se refleja en el Checklist del empleado. Si cambias la fecha, la tarea se mueve a ese día.</p>
+      <p style="font-size:12px; color:var(--neutral-500); margin-top:10px;">El cambio se refleja en el Checklist del empleado. Si cambias la fecha, la tarea se mueve a ese día.</p>
     </div>
     <div class="tec-modal-foot">
       <span></span>

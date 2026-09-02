@@ -5,7 +5,7 @@
 
   <div class="mobile-header">
     <div class="mobile-logo" style="display: flex; align-items: center;">
-      <span style="font-weight: bold; font-size: 1.2rem; color: #0F172A;">Mega Dulces</span>
+      <span style="font-weight: bold; font-size: 1.2rem; color: var(--neutral-900);">Mega Dulces</span>
     </div>
     <button class="menu-btn" (click)="isMenuOpen = !isMenuOpen" style="background: none; border: none; cursor: pointer;">
       <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none">
@@ -53,7 +53,7 @@
         </div>
         <div *ngIf="currentUser?.fotoPerfil" style="text-align:center; margin-top:6px;">
           <button (click)="quitarFoto()"
-                  style="background:none; border:none; color:#DC2626; font-size:12px; font-weight:700; cursor:pointer;">
+                  style="background:none; border:none; color:var(--bad-fg); font-size:12px; font-weight:700; cursor:pointer;">
             Quitar foto
           </button>
         </div>

@@ -3,13 +3,13 @@
 /* ======================================================= */
 :host {
   --primary-navy: var(--neutral-900);
-  --primary-blue: #1E40AF;
+  --primary-blue: var(--info-fg);
   --text-main: var(--neutral-800);
   --text-muted: var(--neutral-500);
   --bg-app: var(--neutral-50);
   --bg-sidebar: #FFFFFF;
   --border: var(--neutral-200);
-  --red: #EF4444;
+  --red: var(--bad-fg);
 }
 
 .app-layout {
@@ -106,11 +106,11 @@
   transition: all 0.3s ease;
 }
 
-.input-tarea:focus { background: white; box-shadow: inset 0 0 0 2px #3B82F6; }
+.input-tarea:focus { background: white; box-shadow: inset 0 0 0 2px var(--action); }
 .input-tarea::placeholder { color: var(--neutral-400); }
 
 .btn-agregar {
-  background: #2563EB;
+  background: var(--info-fg);
   color: white;
   border: none;
   border-radius: 10px;
@@ -122,7 +122,7 @@
   justify-content: center;
   transition: all 0.2s ease;
 }
-.btn-agregar:hover { background: #1D4ED8; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3); }
+.btn-agregar:hover { background: var(--text-main); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3); }
 
 .tarea-item {
   display: flex;
@@ -143,18 +143,18 @@
   justify-content: center; transition: all 0.2s ease; flex-shrink: 0;
 }
 
-.tarea-item.completada .tarea-check { background: #10B981; border-color: #10B981; }
+.tarea-item.completada .tarea-check { background: var(--ok-fg); border-color: var(--ok-fg); }
 .tarea-item.completada .tarea-texto { text-decoration: line-through; color: var(--neutral-400); }
 
 .tarea-texto { flex: 1; font-weight: 600; color: var(--neutral-800); font-size: 15.5px; }
 
 .btn-eliminar {
-  background: #FEF2F2; border: 1px solid #FECACA; color: #EF4444; cursor: pointer;
+  background: var(--bad-soft-bg); border: 1px solid var(--bad-border); color: var(--bad-fg); cursor: pointer;
   padding: 8px; border-radius: 8px; display: flex; align-items: center; justify-content: center;
   transition: all 0.2s ease; opacity: 0.5;
 }
 .tarea-item:hover .btn-eliminar { opacity: 1; }
-.btn-eliminar:hover { background: #EF4444; color: white; }
+.btn-eliminar:hover { background: var(--bad-fg); color: white; }
 
 @keyframes fadeIn { 
   from { opacity: 0; transform: translateY(10px); } 
@@ -163,8 +163,8 @@
 /* ====== Agenda mejorada ====== */
 .ag-resumen { display: flex; gap: 10px; margin-bottom: 18px; }
 .ag-chip { font-size: 12.5px; font-weight: 700; padding: 6px 13px; border-radius: 999px; }
-.ag-chip-pend { background: #EFF6FF; color: #1D4ED8; }
-.ag-chip-comp { background: #ECFDF5; color: #166534; }
+.ag-chip-pend { background: var(--info-soft-bg); color: var(--info-fg); }
+.ag-chip-comp { background: var(--ok-soft-bg); color: var(--ok-soft-fg); }
 
 .ag-empty { text-align: center; padding: 48px 20px; color: var(--neutral-400); background: #fff; border: 1px dashed var(--neutral-300); border-radius: 14px; }
 .ag-empty-ic { font-size: 40px; }
@@ -173,8 +173,8 @@
 
 .ag-sec-head { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; color: var(--neutral-600); margin: 0 0 10px 2px; }
 .ag-sec-head span { background: var(--neutral-200); color: var(--neutral-600); border-radius: 999px; padding: 1px 8px; font-size: 11px; }
-.ag-sec-head-comp { color: #16A34A; }
-.ag-sec-head-comp span { background: #DCFCE7; color: #166534; }
+.ag-sec-head-comp { color: var(--ok-fg); }
+.ag-sec-head-comp span { background: var(--ok-soft-bg); color: var(--ok-soft-fg); }
 
 .ag-task { background: #fff; border: 1px solid var(--neutral-200); border-radius: 12px; padding: 14px 16px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; gap: 12px; box-shadow: 0 2px 4px rgba(0,0,0,.02); transition: box-shadow .15s; }
 .ag-task:hover { box-shadow: 0 4px 14px -6px rgba(15,23,42,.2); }
@@ -186,13 +186,13 @@
 
 .ag-prio { font-size: 11px; font-weight: 800; padding: 3px 9px; border-radius: 999px; display: inline-flex; align-items: center; gap: 4px; }
 .ag-prio::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
-.ag-prio.pr-alta { background: #FEF2F2; color: #DC2626; }
-.ag-prio.pr-media { background: #FFFBEB; color: #B45309; }
+.ag-prio.pr-alta { background: var(--bad-soft-bg); color: var(--bad-fg); }
+.ag-prio.pr-media { background: var(--warn-soft-bg); color: var(--warn-soft-fg); }
 .ag-prio.pr-baja { background: var(--neutral-100); color: var(--neutral-500); }
 .ag-frec { font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px; background: #F5F3FF; color: #6D28D9; }
 
-.ag-del { background: #FEF2F2; color: #EF4444; border: 1px solid #FECACA; border-radius: 8px; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; transition: background .15s; }
-.ag-del:hover { background: #FEE2E2; }
+.ag-del { background: var(--bad-soft-bg); color: var(--bad-fg); border: 1px solid var(--bad-border); border-radius: 8px; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; transition: background .15s; }
+.ag-del:hover { background: var(--bad-soft-bg); }
 
 .ag-modal-row { display: flex; gap: 14px; margin-bottom: 20px; }
 .ag-modal-label { font-size: 12px; font-weight: 700; color: var(--neutral-500); text-transform: uppercase; display: block; }
@@ -207,19 +207,19 @@
 .ag-stat { background: rgba(255,255,255,.1); border-radius: 12px; padding: 10px 18px; text-align: center; min-width: 92px; }
 .ag-stat-num { display: block; font-size: 26px; font-weight: 800; line-height: 1; }
 .ag-stat-lbl { font-size: 11px; color: var(--neutral-300); text-transform: uppercase; letter-spacing: .04em; }
-.ag-stat-ok .ag-stat-num { color: #6EE7B7; }
-.ag-stat-pend .ag-stat-num { color: #93C5FD; }
+.ag-stat-ok .ag-stat-num { color: var(--ok-border); }
+.ag-stat-pend .ag-stat-num { color: var(--info-soft-bg); }
 
 /* ====== Barra de alta con selectores ====== */
 .ag-addbar { background: #fff; border: 1px solid var(--neutral-200); border-radius: 12px; padding: 10px 12px; margin-bottom: 22px;
   display: flex; gap: 10px; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,.02); flex-wrap: wrap; }
 .ag-add-input { flex: 1; min-width: 180px; border: none; font-size: 16px; outline: none; background: transparent; }
 .ag-add-sel { border: 1px solid var(--neutral-300); border-radius: 8px; padding: 8px 10px; font-size: 13px; font-weight: 600; background: #fff; cursor: pointer; }
-.ag-add-prio.pr-alta { color: #DC2626; border-color: #FECACA; }
-.ag-add-prio.pr-media { color: #B45309; border-color: #FDE68A; }
+.ag-add-prio.pr-alta { color: var(--bad-fg); border-color: var(--bad-border); }
+.ag-add-prio.pr-media { color: var(--warn-soft-fg); border-color: var(--warn-border); }
 .ag-add-prio.pr-baja { color: var(--neutral-500); }
-.ag-add-btn { background: #2563EB; color: #fff; border: none; border-radius: 8px; width: 42px; height: 40px; font-size: 22px; font-weight: bold; cursor: pointer; transition: background .15s; }
-.ag-add-btn:hover { background: #1D4ED8; }
+.ag-add-btn { background: var(--action); color: #fff; border: none; border-radius: 8px; width: 42px; height: 40px; font-size: 22px; font-weight: bold; cursor: pointer; transition: background .15s; }
+.ag-add-btn:hover { background: var(--action); }
 
 /* ====== Panel recomendaciones ====== */
 .ag-reco { background: #fff; border: 1px solid #DDD6FE; border-radius: 14px; margin-bottom: 22px; overflow: hidden; box-shadow: 0 1px 2px rgba(15,23,42,.04); }
@@ -232,8 +232,8 @@
 .ag-reco-list { display: flex; flex-direction: column; }
 .ag-reco-item { display: flex; align-items: center; gap: 12px; padding: 12px 18px; border-top: 1px solid var(--neutral-100); flex-wrap: wrap; }
 .ag-reco-conf { font-size: 11px; font-weight: 800; padding: 3px 9px; border-radius: 999px; flex-shrink: 0; }
-.ag-reco-conf.nv-Alta { background: #DCFCE7; color: #166534; }
-.ag-reco-conf.nv-Media { background: #FEF3C7; color: #92400E; }
+.ag-reco-conf.nv-Alta { background: var(--ok-soft-bg); color: var(--ok-soft-fg); }
+.ag-reco-conf.nv-Media { background: var(--warn-soft-bg); color: var(--warn-soft-fg); }
 .ag-reco-conf.nv-Baja { background: var(--neutral-100); color: var(--neutral-500); }
 .ag-reco-info { flex: 1; min-width: 160px; }
 .ag-reco-nombre { font-weight: 700; color: var(--neutral-900); font-size: 14px; }
@@ -244,7 +244,7 @@
 .ag-reco-rut { border: 1px solid var(--neutral-300); background: #fff; color: var(--neutral-600); border-radius: 8px; padding: 7px 12px; font-size: 12.5px; font-weight: 600; cursor: pointer; }
 .ag-reco-rut:hover { background: var(--neutral-50); }
 .ag-reco-x { border: 1px solid var(--neutral-200); background: #fff; color: var(--neutral-400); width: 30px; height: 30px; border-radius: 8px; cursor: pointer; }
-.ag-reco-x:hover { background: #FEE2E2; color: #B91C1C; }
+.ag-reco-x:hover { background: var(--bad-soft-bg); color: var(--bad-soft-fg); }
 
 /* ============================================================================
    AGENDA — estilo PLANNER / SCRAPBOOK (cuaderno de dos paginas)

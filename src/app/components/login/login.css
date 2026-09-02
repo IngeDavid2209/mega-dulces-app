@@ -207,14 +207,14 @@
   box-sizing: border-box;
   border-radius: 10px;
   background: rgba(254, 243, 199, 0.96);
-  border: 1px solid #FCD34D;
+  border: 1px solid var(--warn-border);
   text-align: left;
 }
 
 .lm-titulo {
   font-size: 13px;
   font-weight: 800;
-  color: #78350F;
+  color: var(--warn-soft-fg);
   letter-spacing: 0.2px;
   margin-bottom: 5px;
 }
@@ -222,5 +222,5 @@
 .lm-texto {
   font-size: 12.5px;
   line-height: 1.55;
-  color: #92400E;
+  color: var(--warn-soft-fg);
 }

@@ -14,7 +14,7 @@
   --pr-txt: #141A20;
   --pr-txt-2: #5B6B7F;
   --pr-txt-3: #8A97A5;
-  --pr-rojo: #C7382E;
+  --pr-rojo: var(--bad-fg);
   --pr-rojo-bg: #FBEBE9;
   --pr-ambar: #B26B00;
   --pr-ambar-bg: #FDF1DE;

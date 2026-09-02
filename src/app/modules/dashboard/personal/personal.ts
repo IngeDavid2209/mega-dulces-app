@@ -999,7 +999,7 @@ export class PersonalComponent implements OnInit, OnDestroy {
       html: `Se guardaron <strong>${ok}</strong> de <strong>${cambios.length}</strong>.` +
             (fallidos.length
               ? `<br><br>No se pudieron guardar ${fallidos.length}:<br>` +
-                `<small style="color:#94a3b8">${fallidos.slice(0, 12).join(', ')}` +
+                `<small style="color:var(--neutral-400)">${fallidos.slice(0, 12).join(', ')}` +
                 `${fallidos.length > 12 ? '…' : ''}</small>` +
                 `<br><br>Vuelve a correr la importación: los que ya quedaron no se repiten.`
               : `<br><br>Revisa <em>Cobertura de puestos</em> para ver qué falta.`),
@@ -1061,10 +1061,10 @@ export class PersonalComponent implements OnInit, OnDestroy {
     });
 
     const filas = (arr: any[], extra?: (u: any) => string) => arr.length === 0
-      ? '<tr><td colspan="3" style="padding:8px;color:#94a3b8">Ninguno 🎉</td></tr>'
+      ? '<tr><td colspan="3" style="padding:8px;color:var(--neutral-400)">Ninguno 🎉</td></tr>'
       : arr.map(u => `<tr>
           <td style="padding:4px 8px;text-align:left">${u.nombre || '(sin nombre)'}</td>
-          <td style="padding:4px 8px;color:#94a3b8;text-align:left">${u.cargo || '—'}</td>
+          <td style="padding:4px 8px;color:var(--neutral-400);text-align:left">${u.cargo || '—'}</td>
           <td style="padding:4px 8px;text-align:left">${extra ? extra(u) : ''}</td>
         </tr>`).join('');
 
@@ -1078,17 +1078,17 @@ export class PersonalComponent implements OnInit, OnDestroy {
             tareas de su Manual Corporativo.
           </p>
 
-          <h4 style="margin:14px 0 6px;color:#B91C1C">Sin puesto (${sinPuesto.length}) — no reciben nada</h4>
-          <p style="margin:0 0 6px;color:#64748b">Abre su ficha y elige su puesto del organigrama.</p>
+          <h4 style="margin:14px 0 6px;color:var(--bad-soft-fg)">Sin puesto (${sinPuesto.length}) — no reciben nada</h4>
+          <p style="margin:0 0 6px;color:var(--neutral-500)">Abre su ficha y elige su puesto del organigrama.</p>
           <table style="width:100%;border-collapse:collapse;font-size:12px">
-            <tr style="color:#64748b"><th style="text-align:left;padding:4px 8px">Nombre</th><th style="text-align:left;padding:4px 8px">Cargo capturado</th><th></th></tr>
+            <tr style="color:var(--neutral-500)"><th style="text-align:left;padding:4px 8px">Nombre</th><th style="text-align:left;padding:4px 8px">Cargo capturado</th><th></th></tr>
             ${filas(sinPuesto)}
           </table>
 
-          <h4 style="margin:18px 0 6px;color:#B45309">Puesto deducido del cargo viejo (${porAlias.length})</h4>
-          <p style="margin:0 0 6px;color:#64748b">Funcionan, pero conviene confirmarlos con el selector: si alguien reescribe el cargo, dejan de resolver.</p>
+          <h4 style="margin:18px 0 6px;color:var(--warn-soft-fg)">Puesto deducido del cargo viejo (${porAlias.length})</h4>
+          <p style="margin:0 0 6px;color:var(--neutral-500)">Funcionan, pero conviene confirmarlos con el selector: si alguien reescribe el cargo, dejan de resolver.</p>
           <table style="width:100%;border-collapse:collapse;font-size:12px">
-            <tr style="color:#64748b"><th style="text-align:left;padding:4px 8px">Nombre</th><th style="text-align:left;padding:4px 8px">Cargo capturado</th><th style="text-align:left;padding:4px 8px">Se lee como</th></tr>
+            <tr style="color:var(--neutral-500)"><th style="text-align:left;padding:4px 8px">Nombre</th><th style="text-align:left;padding:4px 8px">Cargo capturado</th><th style="text-align:left;padding:4px 8px">Se lee como</th></tr>
             ${filas(porAlias.map(x => x.usuario), u => nombrePuesto(resolverPuesto(u).puestoId))}
           </table>
         </div>`,
@@ -1117,7 +1117,7 @@ export class PersonalComponent implements OnInit, OnDestroy {
       return;
     }
     const listaHtml = pendientes.map(u =>
-      `<tr><td style="padding:4px 8px;text-align:left">${u.nombre}</td><td style="padding:4px 8px;color:#94a3b8">${u.cargo}</td><td style="padding:4px 8px;color:#10B981">→ ${mapa[u.cargo]}</td></tr>`
+      `<tr><td style="padding:4px 8px;text-align:left">${u.nombre}</td><td style="padding:4px 8px;color:var(--neutral-400)">${u.cargo}</td><td style="padding:4px 8px;color:var(--ok-fg)">→ ${mapa[u.cargo]}</td></tr>`
     ).join('');
     const confirma = await Swal.fire({
       title: `Migrar ${pendientes.length} cargo(s)`,
@@ -1140,7 +1140,7 @@ export class PersonalComponent implements OnInit, OnDestroy {
     }
     Swal.fire({
       icon: 'success', title: 'Migración completada',
-      html: `Actualizados: <strong>${ok}</strong>${fail > 0 ? `<br>Errores: <strong style="color:#EF4444">${fail}</strong>` : ''}`,
+      html: `Actualizados: <strong>${ok}</strong>${fail > 0 ? `<br>Errores: <strong style="color:var(--bad-fg)">${fail}</strong>` : ''}`,
       confirmButtonColor: 'var(--action)'
     });
   }
@@ -1230,27 +1230,27 @@ export class PersonalComponent implements OnInit, OnDestroy {
       let html = '<div style="text-align:left; font-size: 13px; max-height: 400px; overflow-y: auto;">';
 
       if (huerfanos.length > 0) {
-        html += `<h4 style="color:#B91C1C; margin: 8px 0;">⚠️ ${huerfanos.length} nombre(s) en tareas SIN perfil que coincida:</h4>`;
+        html += `<h4 style="color:var(--bad-soft-fg); margin: 8px 0;">⚠️ ${huerfanos.length} nombre(s) en tareas SIN perfil que coincida:</h4>`;
         html += '<table style="width:100%; border-collapse:collapse;">';
-        html += '<tr style="background:#FEE2E2;"><th style="padding:6px; border:1px solid #FCA5A5;">Assigned</th><th style="padding:6px; border:1px solid #FCA5A5;">Tareas</th><th style="padding:6px; border:1px solid #FCA5A5;">Sucursal</th></tr>';
+        html += '<tr style="background:var(--bad-soft-bg);"><th style="padding:6px; border:1px solid var(--bad-border);">Assigned</th><th style="padding:6px; border:1px solid var(--bad-border);">Tareas</th><th style="padding:6px; border:1px solid var(--bad-border);">Sucursal</th></tr>';
         for (const h of huerfanos) {
-          html += `<tr><td style="padding:6px; border:1px solid #FCA5A5;"><strong>${escHtml(h.assigned)}</strong></td>`;
-          html += `<td style="padding:6px; border:1px solid #FCA5A5; text-align:center;">${h.total}</td>`;
-          html += `<td style="padding:6px; border:1px solid #FCA5A5;">${escHtml(h.sucursales.join(', '))}</td></tr>`;
+          html += `<tr><td style="padding:6px; border:1px solid var(--bad-border);"><strong>${escHtml(h.assigned)}</strong></td>`;
+          html += `<td style="padding:6px; border:1px solid var(--bad-border); text-align:center;">${h.total}</td>`;
+          html += `<td style="padding:6px; border:1px solid var(--bad-border);">${escHtml(h.sucursales.join(', '))}</td></tr>`;
         }
         html += '</table>';
       }
 
       if (sinTareas.length > 0) {
-        html += `<h4 style="color:#92400E; margin: 12px 0 8px;">⏸ ${sinTareas.length} usuario(s) SIN tareas asignadas:</h4>`;
+        html += `<h4 style="color:var(--warn-soft-fg); margin: 12px 0 8px;">⏸ ${sinTareas.length} usuario(s) SIN tareas asignadas:</h4>`;
         html += '<ul style="margin: 0; padding-left: 20px;">';
         for (const u of sinTareas) {
-          html += `<li><strong>${escHtml(u.nombre)}</strong> <small style="color:#64748B;">(${escHtml(u.usuario || '')})</small></li>`;
+          html += `<li><strong>${escHtml(u.nombre)}</strong> <small style="color:var(--neutral-500);">(${escHtml(u.usuario || '')})</small></li>`;
         }
         html += '</ul>';
       }
 
-      html += '<p style="margin-top: 12px; padding: 8px; background:#F0F9FF; border-left:3px solid #0EA5E9; font-size:12px;">';
+      html += '<p style="margin-top: 12px; padding: 8px; background:#F0F9FF; border-left:3px solid var(--info-fg); font-size:12px;">';
       html += '💡 <strong>Cómo arreglar:</strong> edita cada usuario en este panel y pon su <em>nombre</em> exactamente igual al <em>assigned</em> de sus tareas. O al revés: vuelve a generar las tareas con el nombre correcto.';
       html += '</p></div>';
 
@@ -1368,14 +1368,14 @@ export class PersonalComponent implements OnInit, OnDestroy {
       let html = '<div style="text-align:left; font-size: 13px; max-height: 380px; overflow-y: auto;">';
       html += `<p>Se actualizarán <strong>${sugerencias.length}</strong> perfiles para que sus nombres coincidan con sus tareas:</p>`;
       html += '<table style="width:100%; border-collapse:collapse;">';
-      html += '<tr style="background:#F0FDF4;"><th style="padding:6px; border:1px solid #86EFAC;">Antes</th><th style="padding:6px; border:1px solid #86EFAC;">Después</th></tr>';
+      html += '<tr style="background:var(--ok-soft-bg);"><th style="padding:6px; border:1px solid var(--ok-border);">Antes</th><th style="padding:6px; border:1px solid var(--ok-border);">Después</th></tr>';
       for (const s of sugerencias) {
-        html += `<tr><td style="padding:6px; border:1px solid #86EFAC;">${escHtml(s.nombreActual)}</td>`;
-        html += `<td style="padding:6px; border:1px solid #86EFAC;"><strong>${escHtml(s.nombreNuevo)}</strong></td></tr>`;
+        html += `<tr><td style="padding:6px; border:1px solid var(--ok-border);">${escHtml(s.nombreActual)}</td>`;
+        html += `<td style="padding:6px; border:1px solid var(--ok-border);"><strong>${escHtml(s.nombreNuevo)}</strong></td></tr>`;
       }
       html += '</table>';
       if (sinMatch.length > 0 || ambiguos.length > 0) {
-        html += `<p style="margin-top:10px; font-size:12px; color:#92400E;">⚠ Quedarán <strong>${sinMatch.length + ambiguos.length}</strong> casos para revisión manual (typos, ambiguos, sin perfil).</p>`;
+        html += `<p style="margin-top:10px; font-size:12px; color:var(--warn-soft-fg);">⚠ Quedarán <strong>${sinMatch.length + ambiguos.length}</strong> casos para revisión manual (typos, ambiguos, sin perfil).</p>`;
       }
       html += '</div>';
 

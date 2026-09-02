@@ -14,7 +14,7 @@
   height: 54px;
   border-radius: 50%;
   border: none;
-  background: linear-gradient(135deg, #2563EB, #1D4ED8);
+  background: linear-gradient(135deg, var(--info-fg), var(--info-fg));
   color: #fff;
   cursor: pointer;
   display: flex;
@@ -70,9 +70,9 @@
   flex-shrink: 0;
 }
 .ac-title { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 15px; color: var(--neutral-900); }
-.ac-dot { width: 9px; height: 9px; border-radius: 50%; background: #22C55E; transition: background .2s; }
-.ac-dot-habla { background: #2563EB; animation: ac-blink 1s infinite; }
-.ac-dot-escucha { background: #DC2626; animation: ac-blink 1s infinite; }
+.ac-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--ok-fg); transition: background .2s; }
+.ac-dot-habla { background: var(--info-fg); animation: ac-blink 1s infinite; }
+.ac-dot-escucha { background: var(--bad-fg); animation: ac-blink 1s infinite; }
 @keyframes ac-blink { 50% { opacity: .35; } }
 .ac-estado { font-size: 12px; font-weight: 600; color: var(--neutral-500); }
 .ac-close { background: none; border: none; font-size: 26px; line-height: 1; color: var(--neutral-500); cursor: pointer; }
@@ -102,7 +102,7 @@
   word-break: break-word;
 }
 .ac-msg-user .ac-burbuja {
-  background: #2563EB;
+  background: var(--info-fg);
   color: #fff;
   border-bottom-right-radius: 4px;
 }
@@ -163,7 +163,7 @@
   font-size: 15px;
   outline: none;
 }
-.ac-input:focus { border-color: #2563EB; }
+.ac-input:focus { border-color: var(--action); }
 
 .ac-mic, .ac-send {
   flex-shrink: 0;
@@ -178,9 +178,9 @@
 }
 .ac-mic { background: var(--neutral-100); color: var(--neutral-600); }
 .ac-mic:hover { background: var(--neutral-200); }
-.ac-mic-on { background: #FEE2E2; color: #DC2626; animation: ac-pulse 1.2s infinite; }
+.ac-mic-on { background: var(--bad-soft-bg); color: var(--bad-fg); animation: ac-pulse 1.2s infinite; }
 @keyframes ac-pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(220,38,38,.4); } 50% { box-shadow: 0 0 0 6px rgba(220,38,38,0); } }
 
-.ac-send { background: #2563EB; color: #fff; }
-.ac-send:hover { background: #1D4ED8; }
+.ac-send { background: var(--info-fg); color: #fff; }
+.ac-send:hover { background: var(--text-main); }
 .ac-send:disabled { background: var(--neutral-300); cursor: default; }

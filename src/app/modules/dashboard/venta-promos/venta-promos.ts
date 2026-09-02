@@ -357,13 +357,13 @@ export class VentaPromosComponent implements OnInit, OnDestroy {
     const r = await Swal.fire({
       title: 'Mandar a caja',
       html:
-        `<div style="font-size:13px;color:#64748B;margin-bottom:14px">${promo.nombre}</div>` +
-        `<label style="display:block;text-align:left;font-size:12px;font-weight:700;color:#64748B;margin-bottom:4px">¿CUÁNTAS?</label>` +
+        `<div style="font-size:13px;color:var(--neutral-500);margin-bottom:14px">${promo.nombre}</div>` +
+        `<label style="display:block;text-align:left;font-size:12px;font-weight:700;color:var(--neutral-500);margin-bottom:4px">¿CUÁNTAS?</label>` +
         `<input id="vp-piezas" type="number" min="1" step="1" value="1" class="swal2-input" style="margin:0 0 14px;width:100%">` +
-        `<label style="display:block;text-align:left;font-size:12px;font-weight:700;color:#64748B;margin-bottom:4px">NOMBRE DEL CLIENTE</label>` +
+        `<label style="display:block;text-align:left;font-size:12px;font-weight:700;color:var(--neutral-500);margin-bottom:4px">NOMBRE DEL CLIENTE</label>` +
         `<input id="vp-cliente" type="text" maxlength="80" placeholder="Para que la caja lo reconozca" class="swal2-input" style="margin:0 0 14px;width:100%">` +
         (validas.length > 1
-          ? `<label style="display:block;text-align:left;font-size:12px;font-weight:700;color:#64748B;margin-bottom:4px">SUCURSAL</label>` +
+          ? `<label style="display:block;text-align:left;font-size:12px;font-weight:700;color:var(--neutral-500);margin-bottom:4px">SUCURSAL</label>` +
             `<select id="vp-suc" class="swal2-input" style="margin:0;width:100%">${opciones}</select>`
           : `<input id="vp-suc" type="hidden" value="${suc}">`),
       showCancelButton: true,
@@ -427,7 +427,7 @@ export class VentaPromosComponent implements OnInit, OnDestroy {
   async cancelarEncargo(e: Encargo) {
     const r = await Swal.fire({
       title: '¿El cliente no se las llevó?',
-      html: `<div style="font-size:13px;color:#64748B">${e.cliente || 'Cliente'} · ${e.piezas} × ${e.promoNombre}</div>`,
+      html: `<div style="font-size:13px;color:var(--neutral-500)">${e.cliente || 'Cliente'} · ${e.piezas} × ${e.promoNombre}</div>`,
       input: 'text',
       inputPlaceholder: '¿Por qué? (opcional)',
       showCancelButton: true,

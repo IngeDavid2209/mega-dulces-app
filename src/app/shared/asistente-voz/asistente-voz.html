@@ -97,7 +97,7 @@
           <option value="">— Elige a la persona —</option>
           <option *ngFor="let u of asignables" [value]="u.id">{{ u.nombre || u.correo }}</option>
         </select>
-        <p *ngIf="nombreDictado && !asignadoSeleccionadoId" class="av-hint" style="font-size: 12px; color: #DC2626;">
+        <p *ngIf="nombreDictado && !asignadoSeleccionadoId" class="av-hint" style="font-size: 12px; color: var(--bad-fg);">
           No reconocí "{{ nombreDictado }}" en tu personal. Elígelo de la lista.
         </p>
 
@@ -182,7 +182,7 @@
         <p class="av-hint av-center">Escribe o dicta con el micrófono de tu teclado:</p>
         <textarea class="av-input" rows="3" [(ngModel)]="entradaManual"
           placeholder='Ej: "Agéndame el reporte de ventas para mañana"'></textarea>
-        <p class="av-hint" style="font-size: 12px; color: #64748B;">
+        <p class="av-hint" style="font-size: 12px; color: var(--neutral-500);">
           Tip: en iPhone, toca el micrófono del teclado para dictar sin escribir.
         </p>
         <div class="av-actions">

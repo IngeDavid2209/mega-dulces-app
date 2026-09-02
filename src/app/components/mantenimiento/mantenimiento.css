@@ -45,8 +45,8 @@
   height: 62px;
   margin: 0 auto 18px;
   border-radius: 50%;
-  background: #FEF3C7;
-  color: #B45309;
+  background: var(--warn-soft-bg);
+  color: var(--warn-soft-fg);
   display: grid;
   place-items: center;
 }
@@ -75,16 +75,16 @@
   padding: 12px 14px;
   margin-bottom: 22px;
   border-radius: 10px;
-  background: #F0FDF4;
-  border: 1px solid #A7F3D0;
-  color: #065F46;
+  background: var(--ok-soft-bg);
+  border: 1px solid var(--ok-border);
+  color: var(--ok-soft-fg);
   font-size: 13px;
   line-height: 1.55;
 }
 .mnt-tranquiliza > span {
   flex: 0 0 auto;
   font-weight: 900;
-  color: #047857;
+  color: var(--ok-soft-fg);
   line-height: 1.4;
 }
 

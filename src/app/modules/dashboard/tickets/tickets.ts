@@ -429,7 +429,7 @@ export class TicketsComponent implements OnInit, OnDestroy {
     ctx.lineWidth = 2.2;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
-    ctx.strokeStyle = '#0F172A';
+    ctx.strokeStyle = 'var(--neutral-900)';
     ctx.clearRect(0, 0, caja.width, caja.height);
   }
 

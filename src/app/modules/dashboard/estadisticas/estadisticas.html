@@ -56,9 +56,9 @@
                [attr.data-rango]="s.progress >= 80 ? 'alto' : (s.progress >= 50 ? 'medio' : 'bajo')">
             <div class="suc-card-donut">
               <svg viewBox="0 0 42 42" width="72" height="72">
-                <circle cx="21" cy="21" r="15.9" fill="none" stroke="#F1F5F9" stroke-width="4"></circle>
+                <circle cx="21" cy="21" r="15.9" fill="none" stroke="var(--neutral-100)" stroke-width="4"></circle>
                 <circle cx="21" cy="21" r="15.9" fill="none" stroke-width="4" stroke-linecap="round"
-                        [attr.stroke]="s.progress >= 80 ? '#10B981' : (s.progress >= 50 ? '#F59E0B' : (s.progress > 0 ? '#EF4444' : '#CBD5E1'))"
+                        [attr.stroke]="s.progress >= 80 ? 'var(--ok-fg)' : (s.progress >= 50 ? 'var(--warn-fg)' : (s.progress > 0 ? 'var(--bad-fg)' : 'var(--neutral-300)'))"
                         [attr.stroke-dasharray]="100" [attr.stroke-dashoffset]="100 - s.progress"
                         transform="rotate(-90 21 21)"></circle>
               </svg>
@@ -106,8 +106,8 @@
               <div class="podio-nombre">{{ emp.nombre }}</div>
               <div class="podio-pct">{{ emp.progress }}%</div>
               <div class="podio-meta" *ngIf="emp.total > 0">{{ emp.completados }} / {{ emp.total }} tareas</div>
-              <div class="podio-meta" *ngIf="emp.total === 0" style="color: #94A3B8; font-style: italic;">Sin asignaciones</div>
-              <div class="podio-pedestal" [style.background]="i === 0 ? 'linear-gradient(180deg,#FBBF24,#F59E0B)' : (i === 1 ? 'linear-gradient(180deg,#CBD5E1,#94A3B8)' : 'linear-gradient(180deg,#D97706,#B45309)')">
+              <div class="podio-meta" *ngIf="emp.total === 0" style="color: var(--neutral-400); font-style: italic;">Sin asignaciones</div>
+              <div class="podio-pedestal" [style.background]="i === 0 ? 'linear-gradient(180deg,var(--warn-border),var(--warn-fg))' : (i === 1 ? 'linear-gradient(180deg,var(--neutral-300),var(--neutral-400))' : 'linear-gradient(180deg,var(--warn-fg),var(--warn-soft-fg))')">
                 <span *ngIf="i === 0">PRIMER LUGAR</span>
                 <span *ngIf="i === 1">SEGUNDO LUGAR</span>
                 <span *ngIf="i === 2">TERCER LUGAR</span>
@@ -128,14 +128,14 @@
                 </div>
                 <div class="emp-row-meta">
                   <span *ngIf="emp.total > 0">{{ emp.completados }} / {{ emp.total }} tareas</span>
-                  <span *ngIf="emp.total === 0" style="color: #94A3B8; font-style: italic;">Sin asignaciones</span>
+                  <span *ngIf="emp.total === 0" style="color: var(--neutral-400); font-style: italic;">Sin asignaciones</span>
                 </div>
               </div>
               <div class="emp-row-bar">
                 <div class="emp-row-bar-fill" [style.width.%]="emp.progress"
                      [style.background]="emp.total === 0 ? 'transparent' : emp.color"></div>
               </div>
-              <div class="emp-row-pct" [style.color]="emp.total === 0 ? '#94A3B8' : 'inherit'">{{ emp.progress }}%</div>
+              <div class="emp-row-pct" [style.color]="emp.total === 0 ? 'var(--neutral-400)' : 'inherit'">{{ emp.progress }}%</div>
             </div>
           </ng-container>
         </div>
@@ -182,7 +182,7 @@
             <div class="r-row" *ngFor="let f of rankingCategorias()">
               <div class="r-row-lbl">{{ f.nombre }}</div>
               <div class="r-row-bar"><div class="r-row-bar-fill" [style.width.%]="f.porcentaje"
-                                          style="background: linear-gradient(90deg,#F59E0B,#FBBF24);"></div></div>
+                                          style="background: linear-gradient(90deg,var(--warn-fg),var(--warn-border));"></div></div>
               <div class="r-row-num">{{ f.total }}<span class="r-row-pct"> · {{ f.porcentaje }}%</span></div>
             </div>
           </div>
@@ -193,7 +193,7 @@
             <div class="r-row" *ngFor="let f of rankingSucursales()">
               <div class="r-row-lbl">{{ f.nombre }}</div>
               <div class="r-row-bar"><div class="r-row-bar-fill" [style.width.%]="f.porcentaje"
-                                          style="background: linear-gradient(90deg,#EA580C,#FB923C);"></div></div>
+                                          style="background: linear-gradient(90deg,var(--warn-fg),#FB923C);"></div></div>
               <div class="r-row-num">{{ f.total }}<span class="r-row-pct"> · {{ f.porcentaje }}%</span></div>
             </div>
           </div>
@@ -208,7 +208,7 @@
                 <div class="r-row-sub">{{ f.total }} {{ f.total === 1 ? 'retraso' : 'retrasos' }}</div>
               </div>
               <div class="r-row-bar"><div class="r-row-bar-fill" [style.width.%]="f.porcentaje"
-                                          style="background: linear-gradient(90deg,#DC2626,#EF4444);"></div></div>
+                                          style="background: linear-gradient(90deg,var(--bad-fg),var(--bad-fg));"></div></div>
               <div class="r-row-num">{{ f.porcentaje }}%</div>
             </div>
           </div>

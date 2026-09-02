@@ -8,7 +8,7 @@
   --pz-linea: var(--neutral-200);
   --pz-txt: var(--neutral-800);
   --pz-txt-2: var(--neutral-500);
-  --pz-rojo: #C7382E;
+  --pz-rojo: var(--bad-fg);
   --pz-rojo-claro: #FBE9E7;
   --pz-verde: #1F7A4D;
 }
@@ -458,7 +458,7 @@
 .promo-req {
   font-size: 11px; font-weight: 800;
   padding: 2px 9px; border-radius: 999px;
-  background: #FFFBEB; color: #B45309;
+  background: var(--warn-soft-bg); color: var(--warn-soft-fg);
 }
 .promo-req.listo { background: #E8F5EE; color: var(--pz-verde); }
 

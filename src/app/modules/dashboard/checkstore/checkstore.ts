@@ -225,7 +225,7 @@ export class CheckstoreComponent implements OnInit, OnDestroy {
       name: a.nombre || a.name || 'Área Desconocida',
       location: 'Área Interna',
       icon: '📍',
-      color: '#D97706',
+      color: 'var(--warn-fg)',
       progress: 0, totalChecklists: 0, completedItems: 0, totalItems: 0, alertas: 0
     }));
     this.areasDesdeFirebase = areasTemp;
@@ -381,10 +381,10 @@ export class CheckstoreComponent implements OnInit, OnDestroy {
         // Color semáforo
         let finalColor = colorDefault;
         if (colorDefault === 'semaforo') {
-          if (progress >= 80)      finalColor = '#10B981';
-          else if (progress >= 50) finalColor = '#F59E0B';
-          else if (totalItems > 0) finalColor = '#EF4444';
-          else                     finalColor = '#94A3B8'; // gris para sin actividad
+          if (progress >= 80)      finalColor = 'var(--ok-fg)';
+          else if (progress >= 50) finalColor = 'var(--warn-fg)';
+          else if (totalItems > 0) finalColor = 'var(--bad-fg)';
+          else                     finalColor = 'var(--neutral-400)'; // gris para sin actividad
         }
 
         return {
@@ -406,7 +406,7 @@ export class CheckstoreComponent implements OnInit, OnDestroy {
  
     this.rawComerciales.set(calcularDatos(this.sucursalesComerciales, 'semaforo'));
     this.rawAdministrativas.set(calcularDatos(this.sucursalesAdministrativas, 'semaforo'));
-    this.rawAreasTrabajo.set(calcularDatos(this.areasDesdeFirebase, '#D97706'));
+    this.rawAreasTrabajo.set(calcularDatos(this.areasDesdeFirebase, 'var(--warn-fg)'));
   }
  
   // ============================================================================

@@ -1,6 +1,6 @@
 :host {
   --primary-navy: var(--neutral-900);
-  --primary-blue: #1E40AF;
+  --primary-blue: var(--info-fg);
   --text-main: var(--neutral-800);
   --text-muted: var(--neutral-500);
   --bg-app: var(--neutral-50);
@@ -9,17 +9,17 @@
   --card: #FFFFFF;
   --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
   --shadow-lg: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
-  --red: #EF4444;
+  --red: var(--bad-fg);
 
   /* Acentos por ROL (avatar / badges / riel de la tarjeta) */
-  --admin: #4338CA;  --admin-bg: #EEF0FF;  --admin-bd: #C7CBF7;
-  --mando: #B45309;  --mando-bg: #FEF3C7;  --mando-bd: #FCD98A;
+  --admin: var(--info-fg);  --admin-bg: #EEF0FF;  --admin-bd: #C7CBF7;
+  --mando: var(--warn-soft-fg);  --mando-bg: var(--warn-soft-bg);  --mando-bd: #FCD98A;
   --oper:  #0F766E;  --oper-bg:  #D6F3EF;  --oper-bd:  #99E2D9;
   /* Colores SEMÁNTICOS de conexión (independientes del rol) */
-  --ok: #15803D;    --ok-bg: #DCFCE7;    --ok-bd: #A7F3C4;
+  --ok: var(--ok-soft-fg);    --ok-bg: var(--ok-soft-bg);    --ok-bd: #A7F3C4;
   --idle: var(--neutral-500);  --idle-bg: #EEF2F6;  --idle-bd: #DDE3EA;
-  --warn: #B45309;  --warn-bg: #FEF3C7;  --warn-bd: #FCD98A;
-  --danger: #DC2626; --danger-bg: #FEF2F2; --danger-bd: #FBD2D2;
+  --warn: var(--warn-soft-fg);  --warn-bg: var(--warn-soft-bg);  --warn-bd: #FCD98A;
+  --danger: var(--bad-fg); --danger-bg: var(--bad-soft-bg); --danger-bd: #FBD2D2;
 }
 
 .app-layout {
@@ -288,9 +288,9 @@
 }
 
 .admin-avatar {
-  background: #EFF6FF;
+  background: var(--neutral-200);
   color: var(--primary-blue);
-  border-color: #BFDBFE;
+  border-color: var(--neutral-200);
 }
 
 .user-info {
@@ -320,9 +320,9 @@
 }
 
 .badge-admin {
-  background: #EFF6FF;
+  background: var(--info-soft-bg);
   color: var(--primary-blue);
-  border-color: #BFDBFE;
+  border-color: var(--info-soft-bg);
 }
 
 .action-buttons {
@@ -350,9 +350,9 @@
 }
 
 .btn-delete:hover {
-  background: #FEF2F2;
+  background: var(--bad-soft-bg);
   color: var(--red);
-  border-color: #FECACA;
+  border-color: var(--bad-border);
 }
 
 /* CREDENCIALES */
@@ -963,8 +963,8 @@
 }
 
 .alcance-option.selected {
-  border-color: #4338CA;
-  background: linear-gradient(180deg, #EEF2FF 0%, #FFFFFF 100%);
+  border-color: var(--text-main);
+  background: linear-gradient(180deg, var(--overlay-selected) 0%, #FFFFFF 100%);
   box-shadow: 0 4px 12px -4px rgba(67, 56, 202, 0.25);
 }
 
@@ -998,7 +998,7 @@
 }
 
 .alcance-option.selected .alcance-icon {
-  background: linear-gradient(135deg, #4338CA 0%, #6366F1 100%);
+  background: linear-gradient(135deg, var(--text-main) 0%, var(--text-main) 100%);
 }
 
 .alcance-text {
@@ -1034,10 +1034,10 @@
   border-radius: 999px; cursor: pointer; font-weight: 600; font-size: 14px;
   color: var(--neutral-600); transition: all 0.18s ease;
 }
-.vista-tab:hover { border-color: #1E3A8A; color: #1E3A8A; transform: translateY(-1px); }
+.vista-tab:hover { border-color: var(--text-main); color: var(--text-main); transform: translateY(-1px); }
 .vista-tab-active {
-  background: linear-gradient(135deg, #1E3A8A, #3B82F6);
-  border-color: #1E3A8A; color: #FFFFFF;
+  background: linear-gradient(135deg, var(--text-main), var(--text-main));
+  border-color: var(--text-main); color: #FFFFFF;
   box-shadow: 0 4px 12px rgba(30, 58, 138, 0.25);
 }
 .vista-tab-icon { font-size: 16px; line-height: 1; }
@@ -1056,8 +1056,8 @@
 
 /* ===================== Tarjeta de MANDO (legado, ya no se usa) ===================== */
 .user-card.mando-card {
-  border-left: 4px solid #F59E0B;
-  background: linear-gradient(180deg, #FFFBEB 0%, #FFFFFF 60%);
+  border-left: 4px solid var(--warn-fg);
+  background: linear-gradient(180deg, var(--warn-soft-bg) 0%, #FFFFFF 60%);
 }
 
 /* =====================================================================
@@ -1183,11 +1183,11 @@
   margin-top: 10px;
   padding: 10px 12px;
   border-radius: 8px;
-  background: #FFFBEB;
-  border: 1px solid #FDE68A;
+  background: var(--warn-soft-bg);
+  border: 1px solid var(--warn-border);
   font-size: 12.5px;
   line-height: 1.45;
-  color: #78350F;
+  color: var(--warn-soft-fg);
 }
 
 .puesto-manual-info.pmi-vacio {
@@ -1197,17 +1197,17 @@
 }
 
 .puesto-manual-info.pmi-alerta {
-  background: #FEF2F2;
-  border-color: #FECACA;
-  color: #7F1D1D;
+  background: var(--bad-soft-bg);
+  border-color: var(--bad-border);
+  color: var(--bad-soft-fg);
 }
 
 .pmi-badge {
   flex: 0 0 auto;
   padding: 2px 8px;
   border-radius: 4px;
-  background: #FDE68A;
-  color: #78350F;
+  background: var(--warn-border);
+  color: var(--warn-soft-fg);
   font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.3px;
@@ -1215,6 +1215,6 @@
 }
 
 .pmi-badge-gris { background: var(--neutral-200); color: var(--neutral-600); }
-.pmi-badge-rojo { background: #FECACA; color: #7F1D1D; }
+.pmi-badge-rojo { background: var(--bad-border); color: var(--bad-soft-fg); }
 
 .pmi-texto { flex: 1 1 auto; min-width: 0; }

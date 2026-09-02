@@ -5,9 +5,9 @@
 :host {
   --vp-verde: #1F7A4D;
   --vp-verde-claro: #E7F5EE;
-  --vp-ambar: #B45309;
-  --vp-ambar-claro: #FEF3C7;
-  --vp-rojo: #C7382E;
+  --vp-ambar: var(--warn-soft-fg);
+  --vp-ambar-claro: var(--warn-soft-bg);
+  --vp-rojo: var(--bad-fg);
   --vp-rojo-claro: #FBE9E7;
   --vp-linea: var(--neutral-200);
   --vp-txt: var(--neutral-800);
@@ -397,7 +397,7 @@
   background: var(--vp-rojo-claro);
   margin-bottom: 18px;
   font-size: 13px;
-  color: #7F1D1D;
+  color: var(--bad-soft-fg);
 }
 .vp-alerta strong { font-weight: 700; }
 

@@ -1,6 +1,6 @@
 :host {
   --primary-navy: var(--neutral-900);
-  --primary-blue: #1E40AF;
+  --primary-blue: var(--info-fg);
   --text-main: var(--neutral-800);
   --text-muted: var(--neutral-500);
   --bg-app: var(--neutral-50);
@@ -110,10 +110,10 @@
   margin-top: 4px;
 }
 .rank-kpi-mejor {
-  background: linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 100%);
-  border-color: #FBBF24;
+  background: linear-gradient(135deg, var(--warn-soft-bg) 0%, var(--warn-soft-bg) 100%);
+  border-color: var(--warn-border);
 }
-.rank-kpi-mejor .rank-kpi-num { color: #92400E; }
+.rank-kpi-mejor .rank-kpi-num { color: var(--warn-soft-fg); }
 .rank-kpi-mejor .rank-kpi-lbl strong { color: var(--text-main); font-weight: 700; }
 
 /* ============================================================
@@ -146,7 +146,7 @@
   top: 0;
   z-index: 2;
 }
-.rank-row-top { background: linear-gradient(90deg, #FFFBEB 0%, transparent 35%); }
+.rank-row-top { background: linear-gradient(90deg, var(--warn-soft-bg) 0%, transparent 35%); }
 
 /* Columnas */
 .rank-col-puesto {
@@ -164,9 +164,9 @@
   font-weight: 800;
   font-size: 14px;
 }
-.rank-puesto-badge.top-oro    { background: linear-gradient(135deg, #FBBF24, #F59E0B); color: white; box-shadow: 0 4px 12px rgba(245,158,11,0.35); }
+.rank-puesto-badge.top-oro    { background: linear-gradient(135deg, var(--warn-border), var(--warn-fg)); color: white; box-shadow: 0 4px 12px rgba(245,158,11,0.35); }
 .rank-puesto-badge.top-plata  { background: linear-gradient(135deg, var(--neutral-300), var(--neutral-400)); color: white; box-shadow: 0 3px 8px rgba(148,163,184,0.35); }
-.rank-puesto-badge.top-bronce { background: linear-gradient(135deg, #D97706, #B45309); color: white; box-shadow: 0 3px 8px rgba(180,83,9,0.30); }
+.rank-puesto-badge.top-bronce { background: linear-gradient(135deg, var(--warn-fg), var(--warn-soft-fg)); color: white; box-shadow: 0 3px 8px rgba(180,83,9,0.30); }
 
 .rank-col-sucursal { min-width: 0; }
 .rank-suc-nombre {
@@ -297,10 +297,10 @@
 
 /* Nota explicativa + chip de muestra baja (Ranking) */
 .rank-nota { margin: 4px 0 0; font-size: 12px; color: var(--neutral-400); max-width: 680px; line-height: 1.4; }
-.rank-muestra-baja { display: inline-block; margin-left: 8px; font-size: 10.5px; font-weight: 700; color: #92400E; background: #FEF3C7; border-radius: 999px; padding: 2px 8px; vertical-align: middle; }
+.rank-muestra-baja { display: inline-block; margin-left: 8px; font-size: 10.5px; font-weight: 700; color: var(--warn-soft-fg); background: var(--warn-soft-bg); border-radius: 999px; padding: 2px 8px; vertical-align: middle; }
 
 /* Divisor del grupo "pocas tareas" */
-.rank-divisor { padding: 10px 18px; font-size: 12px; font-weight: 700; color: #92400E; background: #FEF9C3; border-top: 1px solid #FDE68A; border-bottom: 1px solid #FDE68A; letter-spacing: .02em; }
+.rank-divisor { padding: 10px 18px; font-size: 12px; font-weight: 700; color: var(--warn-soft-fg); background: #FEF9C3; border-top: 1px solid var(--warn-border); border-bottom: 1px solid var(--warn-border); letter-spacing: .02em; }
 .rank-row-baja { opacity: .82; }
 .rank-row-baja .rank-prom-circle { filter: saturate(.7); }
 

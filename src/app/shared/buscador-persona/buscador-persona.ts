@@ -56,28 +56,28 @@ import { FormsModule } from '@angular/forms';
   styles: [`
     .bp-caja { position: relative; }
     .bp-input {
-      width: 100%; border: 1px solid #E2E8F0; border-radius: 9px; padding: 10px 12px;
+      width: 100%; border: 1px solid var(--neutral-200); border-radius: 9px; padding: 10px 12px;
       font-size: 14px; box-sizing: border-box; background: #fff; font-family: inherit;
     }
-    .bp-input:focus { outline: none; border-color: #1F3864; box-shadow: 0 0 0 3px rgba(31,56,100,.08); }
+    .bp-input:focus { outline: none; border-color: var(--info-fg); box-shadow: 0 0 0 3px rgba(31,56,100,.08); }
     .bp-opciones {
       position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 60;
       max-height: 260px; overflow-y: auto; background: #fff;
-      border: 1px solid #E2E8F0; border-radius: 10px;
+      border: 1px solid var(--neutral-200); border-radius: 10px;
       box-shadow: 0 12px 28px -8px rgba(15,23,42,.25);
     }
     .bp-opcion {
       display: flex; justify-content: space-between; align-items: baseline; gap: 10px;
       width: 100%; text-align: left; background: none; border: none;
-      border-bottom: 1px solid #F1F5F9; padding: 9px 12px; cursor: pointer; font-size: 13.5px;
+      border-bottom: 1px solid var(--neutral-100); padding: 9px 12px; cursor: pointer; font-size: 13.5px;
     }
     .bp-opcion:last-child { border-bottom: none; }
-    .bp-opcion:hover { background: #F8FAFC; }
-    .bp-opcion.elegida { background: #EFF6FF; }
-    .bp-opcion.vacia { color: #64748B; font-style: italic; }
-    .bp-nombre { color: #0F172A; font-weight: 600; }
-    .bp-tel { color: #94A3B8; font-size: 12px; white-space: nowrap; }
-    .bp-sin { padding: 14px 12px; color: #94A3B8; font-size: 13px; text-align: center; }
+    .bp-opcion:hover { background: var(--neutral-50); }
+    .bp-opcion.elegida { background: var(--info-soft-bg); }
+    .bp-opcion.vacia { color: var(--neutral-500); font-style: italic; }
+    .bp-nombre { color: var(--neutral-900); font-weight: 600; }
+    .bp-tel { color: var(--neutral-400); font-size: 12px; white-space: nowrap; }
+    .bp-sin { padding: 14px 12px; color: var(--neutral-400); font-size: 13px; text-align: center; }
   `],
 })
 export class BuscadorPersonaComponent {

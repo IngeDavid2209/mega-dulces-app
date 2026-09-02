@@ -329,13 +329,13 @@ export class PanelResponsablesComponent implements OnDestroy {
 
   colorBarra(t: TareaVista): string {
     if (t.estado === 'completada') return '#1F7A4D';
-    if (t.estado === 'vencida') return '#C7382E';
+    if (t.estado === 'vencida') return 'var(--bad-fg)';
     if (t.estado === 'programada') return '#CBD0CB';
     return '#E08A00';
   }
 
   colorMedidor(p: PersonaVista): string {
-    if (p.vencidas) return '#C7382E';
+    if (p.vencidas) return 'var(--bad-fg)';
     if (p.porcentaje === 100) return '#1F7A4D';
     return '#E08A00';
   }

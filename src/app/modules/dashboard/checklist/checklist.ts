@@ -2461,24 +2461,24 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     const sucursales = (d.sucursales && d.sucursales.length)
       ? d.sucursales.join(', ') : '(ninguna)';
     const crudo = (d.crudoAssignedMuestra && d.crudoAssignedMuestra.length)
-      ? d.crudoAssignedMuestra.map((s: string) => `<li style="font-size:11px;color:#475569">${s}</li>`).join('')
-      : '<li style="color:#94a3b8">(0 checklists pasaron el filtro de fecha/estado)</li>';
+      ? d.crudoAssignedMuestra.map((s: string) => `<li style="font-size:11px;color:var(--neutral-600)">${s}</li>`).join('')
+      : '<li style="color:var(--neutral-400)">(0 checklists pasaron el filtro de fecha/estado)</li>';
     const empleadosUnicos = (d.empleadosConTareasHoy && d.empleadosConTareasHoy.length)
-      ? d.empleadosConTareasHoy.map((s: string) => `<li style="font-size:11px;color:#475569">${s}</li>`).join('')
-      : '<li style="color:#94a3b8">(no se encontraron empleados con tareas hoy)</li>';
+      ? d.empleadosConTareasHoy.map((s: string) => `<li style="font-size:11px;color:var(--neutral-600)">${s}</li>`).join('')
+      : '<li style="color:var(--neutral-400)">(no se encontraron empleados con tareas hoy)</li>';
     const misEnviados = (d.misEnviadosHoy && d.misEnviadosHoy.length)
-      ? `<ul style="padding-left:18px;margin:4px 0">${d.misEnviadosHoy.map((x: any) => `<li style="font-size:11px;color:#F59E0B">${x.assigned}: ${x.name}</li>`).join('')}</ul>`
-      : '<div style="color:#94a3b8;font-size:12px;padding-left:8px">— ninguno —</div>';
+      ? `<ul style="padding-left:18px;margin:4px 0">${d.misEnviadosHoy.map((x: any) => `<li style="font-size:11px;color:var(--warn-fg)">${x.assigned}: ${x.name}</li>`).join('')}</ul>`
+      : '<div style="color:var(--neutral-400);font-size:12px;padding-left:8px">— ninguno —</div>';
     const misEliminados = (d.misEliminadosHoy && d.misEliminadosHoy.length)
-      ? `<ul style="padding-left:18px;margin:4px 0">${d.misEliminadosHoy.map((x: any) => `<li style="font-size:11px;color:#EF4444">${x.assigned}: ${x.name}</li>`).join('')}</ul>`
-      : '<div style="color:#94a3b8;font-size:12px;padding-left:8px">— ninguno —</div>';
+      ? `<ul style="padding-left:18px;margin:4px 0">${d.misEliminadosHoy.map((x: any) => `<li style="font-size:11px;color:var(--bad-fg)">${x.assigned}: ${x.name}</li>`).join('')}</ul>`
+      : '<div style="color:var(--neutral-400);font-size:12px;padding-left:8px">— ninguno —</div>';
     // Botón "Reabrir" solo si hay mis tareas marcadas como enviadas y el usuario
     // es admin o es el propio dueño de las tareas.
     const puedeReabrir = (d.misEnviadosHoy && d.misEnviadosHoy.length > 0) &&
       (this.currentUser?.rol === 'admin' ||
        mismoEmpleadoNombre(this.currentUser?.nombre, d.misEnviadosHoy[0].assigned));
     const botonReabrir = puedeReabrir
-      ? `<button id="btn-reabrir-misenviados" style="margin-top:10px;background:#F59E0B;color:white;border:none;padding:10px 18px;border-radius:8px;font-weight:600;cursor:pointer">🔓 Reabrir mis ${d.misEnviadosHoy.length} tarea(s) marcadas como enviadas</button>`
+      ? `<button id="btn-reabrir-misenviados" style="margin-top:10px;background:var(--warn-fg);color:white;border:none;padding:10px 18px;border-radius:8px;font-weight:600;cursor:pointer">🔓 Reabrir mis ${d.misEnviadosHoy.length} tarea(s) marcadas como enviadas</button>`
       : '';
     const html = `
       <div style="text-align:left;font-size:13px;line-height:1.55">
@@ -2491,7 +2491,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
         <div><strong>Fecha hoy local:</strong> <code>${d.fechaHoyLocal}</code></div>
         <hr style="margin:10px 0">
         <div><strong>Descartados:</strong></div>
-        <div style="padding-left:12px;color:#64748b">
+        <div style="padding-left:12px;color:var(--neutral-500)">
           • Por eliminado: ${d.descartadosEliminados}<br>
           • Por enviado: ${d.descartadosEnviados}<br>
           • Por fecha distinta a hoy: ${d.descartadosFecha}
@@ -2499,10 +2499,10 @@ export class ChecklistComponent implements OnInit, OnDestroy {
         <div style="margin-top:8px"><strong>Tras filtros de estado/fecha:</strong> ${d.crudoTrasFiltro}</div>
         <div><strong>Tras filtro de permisos:</strong> ${d.resultadoFinal}</div>
         <hr style="margin:10px 0">
-        <div style="color:#F59E0B"><strong>🚨 Mis tareas marcadas como ENVIADAS hoy:</strong></div>
+        <div style="color:var(--warn-fg)"><strong>🚨 Mis tareas marcadas como ENVIADAS hoy:</strong></div>
         ${misEnviados}
         ${botonReabrir}
-        <div style="color:#EF4444;margin-top:6px"><strong>🚨 Mis tareas marcadas como ELIMINADAS hoy:</strong></div>
+        <div style="color:var(--bad-fg);margin-top:6px"><strong>🚨 Mis tareas marcadas como ELIMINADAS hoy:</strong></div>
         ${misEliminados}
         <hr style="margin:10px 0">
         <div><strong>Empleados con tareas creadas hoy (cualquier estado):</strong></div>
@@ -2556,7 +2556,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     }
     Swal.fire({
       icon: 'success', title: 'Tareas reabiertas',
-      html: `Reabiertas: <strong>${ok}</strong>${fail > 0 ? `<br>Errores: <strong style="color:#EF4444">${fail}</strong>` : ''}<br><br>Recarga la pantalla para verlas.`,
+      html: `Reabiertas: <strong>${ok}</strong>${fail > 0 ? `<br>Errores: <strong style="color:var(--bad-fg)">${fail}</strong>` : ''}<br><br>Recarga la pantalla para verlas.`,
       confirmButtonColor: 'var(--action)'
     });
   }
@@ -2728,7 +2728,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
         title: 'El archivo pesa demasiado',
         html: `<div style="text-align:left">
                  <p><strong>${fileOriginal.name}</strong> pesa ${mb} MB y el limite son ${TOPE_MB} MB.</p>
-                 <p style="font-size:13px;color:#64748B;margin-top:8px">
+                 <p style="font-size:13px;color:var(--neutral-500);margin-top:8px">
                    Si es un PDF escaneado, vuelve a guardarlo en menor calidad.
                    Si son varias hojas, adjunta solo la que hace falta.</p>
                </div>`,
@@ -2779,7 +2779,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
         title: 'No se pudo subir la foto',
         html: `<div style="text-align:left">
                  <p>Se guardó en tu dispositivo y se subirá cuando regrese la señal.</p>
-                 <p style="font-size:11px;color:#64748B;margin-top:8px">
+                 <p style="font-size:11px;color:var(--neutral-500);margin-top:8px">
                    <strong>Detalle técnico:</strong>
                    <code style="word-break:break-word">${(resultado.error || 'sin detalle').toString().slice(0, 240)}</code>
                  </p>

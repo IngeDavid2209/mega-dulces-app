@@ -164,7 +164,7 @@
 
       <div *ngIf="vistaActual() === 'detalle' && areaDetalle()">
         <button class="btn-back" (click)="volverALista()"
-          style="background:transparent; border:none; color:#64748B; cursor:pointer; display:flex; align-items:center; gap:5px; font-weight:600; margin-bottom:20px; font-size: 14px;">
+          style="background:transparent; border:none; color:var(--neutral-500); cursor:pointer; display:flex; align-items:center; gap:5px; font-weight:600; margin-bottom:20px; font-size: 14px;">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="19" y1="12" x2="5" y2="12"></line>
             <polyline points="12 19 5 12 12 5"></polyline>
@@ -175,16 +175,16 @@
           <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
             <div>
               <h2
-                style="margin: 0 0 5px 0; font-size: 24px; color: #0F172A; display: flex; align-items: center; gap: 10px;">
+                style="margin: 0 0 5px 0; font-size: 24px; color: var(--neutral-900); display: flex; align-items: center; gap: 10px;">
                 {{ areaDetalle().nombre }}
                 <span *ngIf="estaAreaBloqueada(areaDetalle())"
-                  style="background: #FEE2E2; color: #DC2626; padding: 4px 8px; border-radius: 6px; font-size: 12px; font-weight: 800; border: 1px solid #FCA5A5; letter-spacing: 0.5px;">
+                  style="background: var(--bad-soft-bg); color: var(--bad-fg); padding: 4px 8px; border-radius: 6px; font-size: 12px; font-weight: 800; border: 1px solid var(--bad-border); letter-spacing: 0.5px;">
                   🔒 FUERA DE HORARIO</span>
               </h2>
-              <p style="margin: 0; color: #64748B;">{{ areaDetalle().descripcion || 'Sin descripción asignadaaestedepartamento.' }}</p>
+              <p style="margin: 0; color: var(--neutral-500);">{{ areaDetalle().descripcion || 'Sin descripción asignadaaestedepartamento.' }}</p>
 
               <div
-                style="margin-top: 10px; font-size: 14px; color: #2563EB; font-weight: 600; display: flex; align-items: center; gap: 6px;"
+                style="margin-top: 10px; font-size: 14px; color: var(--info-fg); font-weight: 600; display: flex; align-items: center; gap: 6px;"
                 *ngIf="areaDetalle().fechaAsignada || areaDetalle().esRecurrente || areaDetalle().horaEntrada">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <circle cx="12" cy="12" r="10"></circle>
@@ -199,7 +199,7 @@
                   areaDetalle().horaEntrada }} hrs</span>
               </div>
               <div
-                style="margin-top: 6px; font-size: 14px; color: #059669; font-weight: 600; display: flex; align-items: center; gap: 6px;"
+                style="margin-top: 6px; font-size: 14px; color: var(--ok-fg); font-weight: 600; display: flex; align-items: center; gap: 6px;"
                 *ngIf="areaDetalle().turnoAsignado">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <circle cx="12" cy="12" r="5" />
@@ -218,7 +218,7 @@
             </div>
             <div style="display: flex; gap: 10px; flex-wrap: wrap;">
               <button class="btn-secondary" (click)="abrirModalEditarArea(areaDetalle())"
-                style="font-size: 13px; padding: 8px 16px; background: white; border: 1px solid #E2E8F0;">
+                style="font-size: 13px; padding: 8px 16px; background: white; border: 1px solid var(--neutral-200);">
                 ✏️ Editar Jornada
               </button>
               <button class="btn-primary" (click)="abrirModalTareaParaArea()"
@@ -232,7 +232,7 @@
                 </svg> Tarea a toda el Área
               </button>
               <button class="btn-secondary" (click)="abrirModalRutinaParaArea()"
-                style="font-size: 13px; padding: 8px 16px; background: #F8FAFC; border: 1px solid #CBD5E1; color: #0F172A;"
+                style="font-size: 13px; padding: 8px 16px; background: var(--neutral-50); border: 1px solid var(--neutral-300); color: var(--neutral-900);"
                 [disabled]="estaAreaBloqueada(areaDetalle())"
                 [style.opacity]="estaAreaBloqueada(areaDetalle()) ? '0.5' : '1'"
                 [style.cursor]="estaAreaBloqueada(areaDetalle()) ? 'not-allowed' : 'pointer'">
@@ -246,7 +246,7 @@
           </div>
         </div>
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 15px;">
-          <h3 style="font-size: 18px; color: #0F172A; margin: 0;">Personal Asignado ({{ getEmpleadosDelArea().length }})
+          <h3 style="font-size: 18px; color: var(--neutral-900); margin: 0;">Personal Asignado ({{ getEmpleadosDelArea().length }})
           </h3>
           <button class="btn-secondary" (click)="abrirAsignacion(areaDetalle(), $event)"
             style="font-size:13px; padding:6px 12px;" [disabled]="estaAreaBloqueada(areaDetalle())"
@@ -257,12 +257,12 @@
           <div class="user-card" *ngFor="let emp of getEmpleadosDelArea()"
             style="display:flex; flex-direction:column; justify-content:space-between;">
             <div
-              style="display:flex; align-items:center; gap:12px; border-bottom:1px solid #E2E8F0; padding-bottom:15px; margin-bottom:15px;">
-              <div class="user-avatar" style="background:#0F172A; color:white;">{{ emp.nombre.charAt(0) | uppercase }}
+              style="display:flex; align-items:center; gap:12px; border-bottom:1px solid var(--neutral-200); padding-bottom:15px; margin-bottom:15px;">
+              <div class="user-avatar" style="background:var(--neutral-900); color:white;">{{ emp.nombre.charAt(0) | uppercase }}
               </div>
               <div>
-                <div style="font-weight:700; color:#0F172A;">{{ emp.nombre }}</div>
-                <div style="font-size:12px; color:#64748B;">{{ emp.cargo || 'Colaborador' }}</div>
+                <div style="font-weight:700; color:var(--neutral-900);">{{ emp.nombre }}</div>
+                <div style="font-size:12px; color:var(--neutral-500);">{{ emp.cargo || 'Colaborador' }}</div>
               </div>
             </div>
             <div style="display:flex; gap:10px;">
@@ -277,7 +277,7 @@
             </div>
           </div>
           <div *ngIf="getEmpleadosDelArea().length === 0"
-            style="grid-column: 1/-1; text-align:center; padding:30px; background:white; border-radius:12px; border:1px dashed #CBD5E1; color:#64748B;">
+            style="grid-column: 1/-1; text-align:center; padding:30px; background:white; border-radius:12px; border:1px dashed var(--neutral-300); color:var(--neutral-500);">
             Esta área aún no tiene personal asignado.
           </div>
         </div>
@@ -307,7 +307,7 @@
 
             <div class="form-group form-full" style="margin-top: 15px;">
               <label class="photo-toggle"
-                style="display: flex; align-items: center; cursor: pointer; background: #EFF6FF; padding: 12px; border-radius: 8px; border: 1px solid #BFDBFE; font-size: 13px; font-weight: 600; color: #1E3A8A;">
+                style="display: flex; align-items: center; cursor: pointer; background: var(--info-soft-bg); padding: 12px; border-radius: 8px; border: 1px solid var(--info-soft-bg); font-size: 13px; font-weight: 600; color: var(--info-fg);">
                 <input type="checkbox" [(ngModel)]="formEsRecurrente"
                   style="margin-right: 10px; width: 16px; height: 16px; cursor: pointer;">
                 🔄 Jornada Recurrente (Activar y desactivar todos los días a la misma hora)
@@ -553,7 +553,7 @@
               placeholder="Buscar empleado...">
             <div style="max-height:300px; overflow-y:auto; margin-top:15px;">
               <div *ngFor="let u of empleadosFiltradosAsignacion()"
-                style="display:flex; justify-content:space-between; padding:10px; border-bottom:1px solid #F1F5F9;">
+                style="display:flex; justify-content:space-between; padding:10px; border-bottom:1px solid var(--neutral-100);">
                 <span>{{ u.nombre }}</span>
                 <input type="checkbox" [checked]="tieneElArea(u)" (change)="toggleAreaUsuario(u)">
               </div>
@@ -593,12 +593,12 @@
               <label class="form-label">Actividades</label>
               <div class="checklist-items">
                 <div class="checklist-item-wrap" *ngFor="let item of formItems; let i = index; trackBy: trackByIndex"
-                  style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 15px; margin-bottom: 10px;">
+                  style="background: var(--neutral-50); border: 1px solid var(--neutral-200); border-radius: 8px; padding: 15px; margin-bottom: 10px;">
                   <div class="item-wrap-top">
                     <input class="form-input item-input" type="text" [(ngModel)]="item.text"
                       placeholder="Descripción de la tarea">
                     <label class="photo-toggle"
-                      style="display: flex; align-items: center; cursor: pointer; background: white; padding: 6px 10px; border-radius: 6px; border: 1px solid #E2E8F0; font-size: 13px; font-weight: 600;">
+                      style="display: flex; align-items: center; cursor: pointer; background: white; padding: 6px 10px; border-radius: 6px; border: 1px solid var(--neutral-200); font-size: 13px; font-weight: 600;">
                       <input type="checkbox" [(ngModel)]="item.requiresPhoto" [disabled]="item.requiresAntesDespues"
                         (change)="item.requiresPhoto ? item.requiresAntesDespues = false : null"
                         style="margin-right: 6px;">
@@ -610,7 +610,7 @@
                       </svg> 1 Foto
                     </label>
                     <label class="photo-toggle"
-                      style="display: flex; align-items: center; cursor: pointer; background: #FFFBEB; color: #D97706; padding: 6px 10px; border-radius: 6px; border: 1px solid #FDE68A; font-size: 13px; font-weight: 600; margin-left: 8px;">
+                      style="display: flex; align-items: center; cursor: pointer; background: var(--warn-soft-bg); color: var(--warn-fg); padding: 6px 10px; border-radius: 6px; border: 1px solid var(--warn-border); font-size: 13px; font-weight: 600; margin-left: 8px;">
                       <input type="checkbox" [(ngModel)]="item.requiresAntesDespues"
                         (change)="item.requiresAntesDespues ? item.requiresPhoto = false : null"
                         style="margin-right: 6px;">
@@ -621,19 +621,19 @@
                       </svg> Antes y Desp.
                     </label>
                     <div *ngIf="item.requiresAntesDespues"
-                      style="display: flex; align-items: center; gap: 5px; margin-left: 10px; background: white; padding: 2px 8px; border-radius: 6px; border: 1px solid #E2E8F0;">
+                      style="display: flex; align-items: center; gap: 5px; margin-left: 10px; background: white; padding: 2px 8px; border-radius: 6px; border: 1px solid var(--neutral-200);">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                        style="color: #64748B;">
+                        style="color: var(--neutral-500);">
                         <circle cx="12" cy="12" r="10"></circle>
                         <polyline points="12 6 12 12 16 14"></polyline>
                       </svg>
                       <input type="number" class="form-input" [(ngModel)]="item.tiempoEstimado"
                         title="Tiempo en minutos"
                         style="width: 50px; padding: 2px 4px; font-size: 12px; height: 24px; border: none; outline: none; background: transparent; text-align: center; font-weight: 600;">
-                      <span style="font-size: 11px; color: #64748B; font-weight: 700;">min</span>
+                      <span style="font-size: 11px; color: var(--neutral-500); font-weight: 700;">min</span>
                     </div>
                     <button class="btn-remove" (click)="eliminarItem(i)" title="Eliminar"
-                      style="margin-left: 8px; background: transparent; border: none; color: #EF4444; cursor: pointer;"><svg
+                      style="margin-left: 8px; background: transparent; border: none; color: var(--bad-fg); cursor: pointer;"><svg
                         width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <polyline points="3 6 5 6 21 6"></polyline>
                         <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
@@ -641,7 +641,7 @@
                   </div>
                   <div class="item-wrap-bottom" style="display: flex; gap: 15px; margin-top: 10px;">
                     <div class="time-input-group"
-                      style="display: flex; align-items: center; font-size: 13px; color: #64748B;"><svg width="14"
+                      style="display: flex; align-items: center; font-size: 13px; color: var(--neutral-500);"><svg width="14"
                         height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                         style="margin-right:4px;">
                         <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
@@ -651,7 +651,7 @@
                       </svg> Fecha: <input class="form-input time-input" type="date" [(ngModel)]="item.date"
                         style="padding: 4px 8px; margin-left: 6px;"></div>
                     <div class="time-input-group"
-                      style="display: flex; align-items: center; font-size: 13px; color: #64748B;"><svg width="14"
+                      style="display: flex; align-items: center; font-size: 13px; color: var(--neutral-500);"><svg width="14"
                         height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                         style="margin-right:4px;">
                         <circle cx="12" cy="12" r="10"></circle>
@@ -662,7 +662,7 @@
                 </div>
               </div>
               <button class="btn-secondary" (click)="agregarItem()"
-                style="margin-top:12px; width: 100%; border: 1px dashed #CBD5E1; color: #475569;"><svg width="14"
+                style="margin-top:12px; width: 100%; border: 1px dashed var(--neutral-300); color: var(--neutral-600);"><svg width="14"
                   height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                   style="margin-right:4px; vertical-align:middle;">
                   <line x1="12" y1="5" x2="12" y2="19"></line>
@@ -670,7 +670,7 @@
                 </svg> Añadir actividad</button>
             </div>
             <div class="btn-group"
-              style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; padding-top: 20px; border-top: 1px solid #E2E8F0;">
+              style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--neutral-200);">
               <button class="btn-secondary" (click)="cerrarModalTarea()">Cancelar</button>
               <button class="btn-primary" (click)="guardarChecklistUnico()">Generar Tareas</button>
             </div>
@@ -708,7 +708,7 @@
                 <option *ngFor="let suc of sucursalesDisponibles" [value]="suc">{{ suc }}</option>
               </select>
               <small *ngIf="esSucursalAdministrativa(formStoreRutina)"
-                style="color: #64748B; display: block; margin-top: 6px;">   ℹ️   Las rutinas diarias para esta zona se
+                style="color: var(--neutral-500); display: block; margin-top: 6px;">   ℹ️   Las rutinas diarias para esta zona se
                 omiten automáticamente los domingos.</small>
             </div>
             <div class="form-group form-full"
@@ -717,7 +717,7 @@
               <div class="checklist-items">
                 <div class="checklist-item-wrap"
                   *ngFor="let rutina of formRutinas; let i = index; trackBy: trackByIndex"
-                  style="display:flex; flex-direction:column; gap:10px; background: #F8FAFC; border: 1px solid #E2E8F0; padding: 15px; border-radius: 8px; margin-bottom: 10px;">
+                  style="display:flex; flex-direction:column; gap:10px; background: var(--neutral-50); border: 1px solid var(--neutral-200); padding: 15px; border-radius: 8px; margin-bottom: 10px;">
                   <input class="form-input item-input" type="text" [(ngModel)]="rutina.text"
                     placeholder="Ej: Limpieza profunda" style="flex: 1;">
                   <div style="display:flex; flex-wrap:wrap; gap:10px;">
@@ -741,9 +741,9 @@
                         <option *ngFor="let d of diasDelMes" [value]="d">Día {{ d }}</option>
                       </select>
                       <div class="time-picker-wrap"
-                        style="display: flex; align-items: center; background: white; border: 1px solid #E2E8F0; border-radius: 6px; padding: 0 10px;">
+                        style="display: flex; align-items: center; background: white; border: 1px solid var(--neutral-200); border-radius: 6px; padding: 0 10px;">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                          stroke-width="2" style="color: #64748B;">
+                          stroke-width="2" style="color: var(--neutral-500);">
                           <circle cx="12" cy="12" r="10"></circle>
                           <polyline points="12 6 12 12 16 14"></polyline>
                         </svg>
@@ -754,33 +754,33 @@
                   </div>
                   <div style="display: flex; gap: 8px; align-items: center; width: 100%; margin-top: 8px;">
                     <span class="routine-period-text"
-                      style="flex: 1; font-size:12px; color: #64748B; font-weight: 600;">{{ getTextoPeriodo(rutina)
+                      style="flex: 1; font-size:12px; color: var(--neutral-500); font-weight: 600;">{{ getTextoPeriodo(rutina)
                       }}</span>
                     <label class="photo-toggle"
-                      style="display:flex; align-items:center; cursor:pointer; background:white; padding:4px 8px; border-radius:6px; border:1px solid #E2E8F0; font-size:12px; font-weight:600;">
+                      style="display:flex; align-items:center; cursor:pointer; background:white; padding:4px 8px; border-radius:6px; border:1px solid var(--neutral-200); font-size:12px; font-weight:600;">
                       <input type="checkbox" [(ngModel)]="rutina.requiresPhoto" [disabled]="rutina.requiresAntesDespues"
                         (change)="rutina.requiresPhoto ? rutina.requiresAntesDespues = false : null"> 1 Foto
                     </label>
                     <label class="photo-toggle"
-                      style="display:flex; align-items:center; cursor:pointer; background:#FFFBEB; color:#D97706; padding:4px 8px; border-radius:6px; border:1px solid #FDE68A; font-size:12px; font-weight:600;">
+                      style="display:flex; align-items:center; cursor:pointer; background:var(--warn-soft-bg); color:var(--warn-fg); padding:4px 8px; border-radius:6px; border:1px solid var(--warn-border); font-size:12px; font-weight:600;">
                       <input type="checkbox" [(ngModel)]="rutina.requiresAntesDespues"
                         (change)="rutina.requiresAntesDespues ? rutina.requiresPhoto = false : null"> Antes/Desp.
                     </label>
 
                     <div *ngIf="rutina.requiresAntesDespues"
-                      style="display: flex; align-items: center; gap: 5px; margin-left: 10px; background: white; padding: 2px 8px; border-radius: 6px; border: 1px solid #E2E8F0;">
+                      style="display: flex; align-items: center; gap: 5px; margin-left: 10px; background: white; padding: 2px 8px; border-radius: 6px; border: 1px solid var(--neutral-200);">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                        style="color: #64748B;">
+                        style="color: var(--neutral-500);">
                         <circle cx="12" cy="12" r="10"></circle>
                         <polyline points="12 6 12 12 16 14"></polyline>
                       </svg>
                       <input type="number" class="form-input" [(ngModel)]="rutina.tiempoEstimado"
                         title="Tiempo en minutos"
                         style="width: 50px; padding: 2px 4px; font-size: 12px; height: 24px; border: none; outline: none; background: transparent; text-align: center; font-weight: 600;">
-                      <span style="font-size: 11px; color: #64748B; font-weight: 700;">min</span>
+                      <span style="font-size: 11px; color: var(--neutral-500); font-weight: 700;">min</span>
                     </div>
                     <button class="btn-remove" (click)="eliminarRutina(i)" title="Eliminar rutina"
-                      style="background:transparent; border:none; color:#EF4444; cursor:pointer;"><svg width="18"
+                      style="background:transparent; border:none; color:var(--bad-fg); cursor:pointer;"><svg width="18"
                         height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <polyline points="3 6 5 6 21 6"></polyline>
                         <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
@@ -789,7 +789,7 @@
                 </div>
               </div>
               <button class="btn-outline-primary" (click)="agregarRutina()"
-                style="margin-top:12px; width: 100%; border: 1px dashed #CBD5E1; color: #475569; padding:10px; border-radius:8px; background:white; cursor:pointer; font-weight: 600;"><svg
+                style="margin-top:12px; width: 100%; border: 1px dashed var(--neutral-300); color: var(--neutral-600); padding:10px; border-radius:8px; background:white; cursor:pointer; font-weight: 600;"><svg
                   width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                   style="margin-right:4px; vertical-align:middle;">
                   <line x1="12" y1="5" x2="12" y2="19"></line>
@@ -797,7 +797,7 @@
                 </svg> Añadir regla recurrente</button>
             </div>
             <div class="btn-group"
-              style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; padding-top: 20px; border-top: 1px solid #E2E8F0;">
+              style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--neutral-200);">
               <button class="btn-secondary" (click)="cerrarModalRutina()">Cancelar</button>
               <button class="btn-primary" (click)="guardarBloqueRutinas()">Guardar en Bóveda</button>
             </div>

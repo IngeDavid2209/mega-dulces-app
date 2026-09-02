@@ -249,7 +249,7 @@
 .org-volver:hover { background: var(--neutral-50); }
 .org-det-titulo { margin: 0 0 3px; font-size: 16px; font-weight: 800; color: var(--neutral-900); }
 .org-det-manual { font-size: 12px; color: var(--neutral-500); line-height: 1.5; }
-.org-det-sinmanual { color: #B45309; }
+.org-det-sinmanual { color: var(--warn-soft-fg); }
 
 .org-bloque { margin-bottom: 22px; }
 .org-bloque-titulo {
@@ -262,13 +262,13 @@
 /* Tarea del manual */
 .org-tarea {
   padding: 12px 14px; margin-bottom: 9px;
-  border-radius: 9px; background: #FFFDF7; border: 1px solid #FDE68A;
+  border-radius: 9px; background: #FFFDF7; border: 1px solid var(--warn-border);
 }
 .org-tarea-cab { display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap; margin-bottom: 7px; }
 .org-tarea-nombre { font-size: 13.5px; font-weight: 800; color: var(--neutral-900); }
 .org-tarea-codigo {
-  font-size: 10px; font-weight: 800; color: #92400E;
-  background: #FEF3C7; border: 1px solid #FCD34D;
+  font-size: 10px; font-weight: 800; color: var(--warn-soft-fg);
+  background: var(--warn-soft-bg); border: 1px solid var(--warn-border);
   border-radius: 4px; padding: 1px 6px; white-space: nowrap;
 }
 .org-tarea-meta { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
@@ -282,8 +282,8 @@
 .org-meta-evento { background: var(--info-soft-bg); border-color: var(--info-border); color: var(--info-soft-fg); }
 .org-meta-solo   { background: var(--neutral-100); border-color: var(--neutral-300); color: var(--neutral-500); }
 .org-tarea-nota {
-  margin: 0 0 8px; font-size: 11.5px; line-height: 1.5; color: #78350F;
-  background: #FEF3C7; border-left: 3px solid #FCD34D;
+  margin: 0 0 8px; font-size: 11.5px; line-height: 1.5; color: var(--warn-soft-fg);
+  background: var(--warn-soft-bg); border-left: 3px solid var(--warn-border);
   border-radius: 0 5px 5px 0; padding: 7px 10px;
 }
 .org-items { margin: 0; padding-left: 20px; display: grid; gap: 3px; }
@@ -307,9 +307,9 @@
   overflow: hidden; margin-bottom: 10px;
 }
 .org-suc-barra > span { display: block; height: 100%; border-radius: 999px; }
-.org-suc-barra > span.av-bien  { background: #16A34A; }
-.org-suc-barra > span.av-medio { background: #F59E0B; }
-.org-suc-barra > span.av-cero  { background: #DC2626; }
+.org-suc-barra > span.av-bien  { background: var(--ok-fg); }
+.org-suc-barra > span.av-medio { background: var(--warn-fg); }
+.org-suc-barra > span.av-cero  { background: var(--bad-fg); }
 .org-suc-barra > span.av-nada  { background: var(--neutral-300); }
 
 /* Persona */
@@ -337,8 +337,8 @@
   cursor: pointer; text-align: left; font-family: inherit;
 }
 .org-entrega:hover { background: var(--neutral-50); border-color: var(--neutral-300); }
-.org-entrega.vencida { border-color: #FECACA; background: #FEF2F2; }
-.org-entrega.completa { border-color: #A7F3D0; background: #F0FDF4; }
+.org-entrega.vencida { border-color: var(--bad-border); background: var(--bad-soft-bg); }
+.org-entrega.completa { border-color: var(--ok-border); background: var(--ok-soft-bg); }
 .org-entrega-nombre {
   flex: 1; min-width: 0; font-size: 12.5px; color: var(--neutral-800); font-weight: 600;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
@@ -348,10 +348,10 @@
 .org-entrega-frac { font-size: 11.5px; font-weight: 800; color: var(--neutral-600); }
 .org-entrega-estado {
   font-size: 9.5px; font-weight: 800; text-transform: uppercase;
-  background: #FEE2E2; color: #991B1B;
+  background: var(--bad-soft-bg); color: var(--bad-soft-fg);
   border-radius: 3px; padding: 1px 5px;
 }
-.org-entrega-estado.ok { background: #DCFCE7; color: #166534; }
+.org-entrega-estado.ok { background: var(--ok-soft-bg); color: var(--ok-soft-fg); }
 
 /* Los que no recibieron nada */
 .org-sinentrega {

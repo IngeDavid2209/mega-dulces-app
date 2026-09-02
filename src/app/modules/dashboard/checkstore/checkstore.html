@@ -10,7 +10,7 @@
       <!-- ============== HEADER DE RESUMEN GENERAL ============== -->
       <div class="summary-grid">
         <div class="summary-box">
-          <div class="summary-icon" style="background:#EFF6FF; color:#2563EB;">
+          <div class="summary-icon" style="background:var(--info-soft-bg); color:var(--info-fg);">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"></path>
               <polyline points="9 22 9 12 15 12 15 22"></polyline>
@@ -23,7 +23,7 @@
         </div>
  
         <div class="summary-box">
-          <div class="summary-icon" style="background:#ECFDF5; color:#10B981;">
+          <div class="summary-icon" style="background:var(--ok-soft-bg); color:var(--ok-fg);">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <circle cx="12" cy="12" r="10"></circle>
               <polyline points="12 6 12 12 16 14"></polyline>
@@ -50,7 +50,7 @@
         </div>
  
         <div class="summary-box">
-          <div class="summary-icon" style="background:#FEF2F2; color:#DC2626;">
+          <div class="summary-icon" style="background:var(--bad-soft-bg); color:var(--bad-fg);">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
               <line x1="12" y1="9" x2="12" y2="13"></line>
@@ -58,7 +58,7 @@
             </svg>
           </div>
           <div>
-            <div class="summary-value" style="color:#DC2626;">{{ totalAlertas() }}</div>
+            <div class="summary-value" style="color:var(--bad-fg);">{{ totalAlertas() }}</div>
             <div class="summary-label">Alertas críticas</div>
           </div>
         </div>
@@ -108,7 +108,7 @@
  
       <!-- ============== ZONA COMERCIAL ============== -->
       <div class="zone-header" *ngIf="comerciales().length > 0">
-        <div class="zone-icon" style="background:#F1F5F9; color:var(--primary-navy);">
+        <div class="zone-icon" style="background:var(--neutral-100); color:var(--primary-navy);">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
             <polyline points="9 22 9 12 15 12 15 22"></polyline>
@@ -149,13 +149,13 @@
           </div>
           <div class="store-nivel-breakdown"
                *ngIf="store.checklistsMandos > 0 || store.checklistsOperativos > 0"
-               style="display:flex; gap:10px; margin-top:8px; padding-top:8px; border-top:1px dashed #E2E8F0; font-size:11px; color:#475569; font-weight:600;">
+               style="display:flex; gap:10px; margin-top:8px; padding-top:8px; border-top:1px dashed var(--neutral-200); font-size:11px; color:var(--neutral-600); font-weight:600;">
             <span title="Mandos de sucursal" style="display:inline-flex; align-items:center; gap:4px;">
-              <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#F59E0B;"></span>
+              <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--warn-fg);"></span>
               Mandos: {{ store.checklistsMandos }}<span *ngIf="store.personasMandos > 0"> ({{ store.personasMandos }} pers.)</span>
             </span>
             <span title="Operativos" style="display:inline-flex; align-items:center; gap:4px;">
-              <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#64748B;"></span>
+              <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--neutral-500);"></span>
               Operativos: {{ store.checklistsOperativos }}<span *ngIf="store.personasOperativos > 0"> ({{ store.personasOperativos }} pers.)</span>
             </span>
           </div>
@@ -209,13 +209,13 @@
           </div>
           <div class="store-nivel-breakdown"
                *ngIf="store.checklistsMandos > 0 || store.checklistsOperativos > 0"
-               style="display:flex; gap:10px; margin-top:8px; padding-top:8px; border-top:1px dashed #E2E8F0; font-size:11px; color:#475569; font-weight:600;">
+               style="display:flex; gap:10px; margin-top:8px; padding-top:8px; border-top:1px dashed var(--neutral-200); font-size:11px; color:var(--neutral-600); font-weight:600;">
             <span title="Mandos" style="display:inline-flex; align-items:center; gap:4px;">
-              <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#F59E0B;"></span>
+              <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--warn-fg);"></span>
               Mandos: {{ store.checklistsMandos }}<span *ngIf="store.personasMandos > 0"> ({{ store.personasMandos }} pers.)</span>
             </span>
             <span title="Operativos" style="display:inline-flex; align-items:center; gap:4px;">
-              <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#64748B;"></span>
+              <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--neutral-500);"></span>
               Operativos: {{ store.checklistsOperativos }}<span *ngIf="store.personasOperativos > 0"> ({{ store.personasOperativos }} pers.)</span>
             </span>
           </div>
@@ -224,7 +224,7 @@
 
       <!-- ============== ÁREAS DE OPERACIÓN ============== -->
       <div class="zone-header zone-spacer" *ngIf="areasTrabajo().length > 0">
-        <div class="zone-icon" style="background:#FFFBEB; color:#D97706;">
+        <div class="zone-icon" style="background:var(--warn-soft-bg); color:var(--warn-fg);">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect>
             <rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect>
@@ -241,7 +241,7 @@
              [class.card-empty]="area.totalItems === 0">
  
           <div class="store-card-top">
-            <div class="store-icon-mini" style="color:#D97706; background:#FFFBEB;">
+            <div class="store-icon-mini" style="color:var(--warn-fg); background:var(--warn-soft-bg);">
               {{ area.icon }}
             </div>
             <div class="store-info-mini">
@@ -252,7 +252,7 @@
           </div>
  
           <div class="progress-bar-wrap">
-            <div class="progress-bar-fill" [style.width.%]="area.progress" style="background:#F59E0B;"></div>
+            <div class="progress-bar-fill" [style.width.%]="area.progress" style="background:var(--warn-fg);"></div>
           </div>
  
           <div class="store-footer">
@@ -262,13 +262,13 @@
           </div>
           <div class="store-nivel-breakdown"
                *ngIf="area.checklistsMandos > 0 || area.checklistsOperativos > 0"
-               style="display:flex; gap:10px; margin-top:8px; padding-top:8px; border-top:1px dashed #E2E8F0; font-size:11px; color:#475569; font-weight:600;">
+               style="display:flex; gap:10px; margin-top:8px; padding-top:8px; border-top:1px dashed var(--neutral-200); font-size:11px; color:var(--neutral-600); font-weight:600;">
             <span title="Mandos" style="display:inline-flex; align-items:center; gap:4px;">
-              <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#F59E0B;"></span>
+              <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--warn-fg);"></span>
               Mandos: {{ area.checklistsMandos }}<span *ngIf="area.personasMandos > 0"> ({{ area.personasMandos }} pers.)</span>
             </span>
             <span title="Operativos" style="display:inline-flex; align-items:center; gap:4px;">
-              <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#64748B;"></span>
+              <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--neutral-500);"></span>
               Operativos: {{ area.checklistsOperativos }}<span *ngIf="area.personasOperativos > 0"> ({{ area.personasOperativos }} pers.)</span>
             </span>
           </div>

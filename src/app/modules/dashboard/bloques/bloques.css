@@ -28,7 +28,7 @@
 .bq-header {
   display: flex; align-items: center; justify-content: space-between; gap: 16px;
   padding: 22px 26px; margin-bottom: 20px;
-  background: linear-gradient(135deg, #FFFFFF 0%, #F8FAFF 100%);
+  background: linear-gradient(135deg, #FFFFFF 0%, var(--info-soft-bg) 100%);
   border: 1px solid var(--neutral-200); border-left: 4px solid #7C3AED; border-radius: 14px;
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 24px -12px rgba(15, 23, 42, 0.15);
   flex-wrap: wrap;
@@ -42,15 +42,15 @@
   background: #fff; border: 1px solid var(--neutral-200); border-radius: 14px; padding: 18px;
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04); border-top: 3px solid #7C3AED;
 }
-.bq-kpi.rojo { border-top-color: #DC2626; }
+.bq-kpi.rojo { border-top-color: var(--bad-fg); }
 .bq-kpi-num { font-size: 30px; font-weight: 800; color: var(--neutral-900); line-height: 1; }
 .bq-kpi-lbl { font-size: 12.5px; color: var(--neutral-500); margin-top: 6px; font-weight: 600; }
 .bq-alerta {
-  background: #FFFBEB; border: 1px solid #FDE68A; color: #92400E;
+  background: var(--warn-soft-bg); border: 1px solid var(--warn-border); color: var(--warn-soft-fg);
   border-radius: 12px; padding: 12px 16px; margin-bottom: 18px; font-size: 13.5px; line-height: 1.55;
 }
 .bq-aviso {
-  background: #EFF6FF; border: 1px solid #BFDBFE; color: #1E40AF;
+  background: var(--info-soft-bg); border: 1px solid var(--info-soft-bg); color: var(--info-fg);
   border-radius: 12px; padding: 12px 16px; margin-bottom: 18px; font-size: 13.5px;
 }
 .bq-chips { display: inline-flex; gap: 6px; flex-wrap: wrap; margin-left: 6px; }
@@ -68,7 +68,7 @@
 .bq-bloque.apagado { opacity: .62; border-left-color: var(--neutral-300); }
 .bq-bloque-top {
   display: flex; align-items: center; gap: 14px; padding: 14px 18px;
-  background: linear-gradient(135deg, #FAF5FF 0%, #F8FAFF 100%);
+  background: linear-gradient(135deg, #FAF5FF 0%, var(--info-soft-bg) 100%);
   border-bottom: 1px solid var(--neutral-200); flex-wrap: wrap;
 }
 .bq-horario {
@@ -105,8 +105,8 @@
   display: inline-block; border-radius: 999px; padding: 1px 8px; margin-left: 6px;
   font-size: 10.5px; font-weight: 700; vertical-align: middle;
 }
-.bq-etq.foto { background: #EFF6FF; color: #1D4ED8; }
-.bq-etq.unica { background: #FFFBEB; color: #B45309; }
+.bq-etq.foto { background: var(--info-soft-bg); color: var(--info-fg); }
+.bq-etq.unica { background: var(--warn-soft-bg); color: var(--warn-soft-fg); }
 .bq-etq.off { background: var(--neutral-100); color: var(--neutral-500); }
 
 /* ---------- ASIGNACIONES ---------- */
@@ -144,8 +144,8 @@
   padding: 5px 11px; font-weight: 600; font-size: 12.5px; cursor: pointer;
 }
 .bq-btn-mini:hover { background: var(--neutral-50); }
-.bq-btn-mini.danger { background: #fff; color: #B91C1C; border-color: #FCA5A5; }
-.bq-btn-mini.danger:hover { background: #FEF2F2; }
+.bq-btn-mini.danger { background: #fff; color: var(--bad-soft-fg); border-color: var(--bad-border); }
+.bq-btn-mini.danger:hover { background: var(--bad-soft-bg); }
 .bq-link {
   background: none; border: none; color: #7C3AED; font-weight: 700;
   text-decoration: underline; cursor: pointer; font-size: 12.5px; padding: 0;
@@ -212,14 +212,14 @@
    .active (verde/azul) que marca los días que sí. */
 .bq-dia.excluido {
   background: #FDECEA;
-  border-color: #C7382E;
-  color: #C7382E;
+  border-color: var(--bad-fg);
+  color: var(--bad-fg);
   text-decoration: line-through;
 }
 
 .bq-etq.dias {
   background: #EEF2F9;
-  color: #1F3864;
+  color: var(--info-fg);
   white-space: nowrap;
 }
 
@@ -245,7 +245,7 @@
   background: #fff; color: var(--neutral-500);
   font-size: 17px; line-height: 1; cursor: pointer;
 }
-.bq-linea-x:hover { background: #FDECEA; border-color: #C7382E; color: #C7382E; }
+.bq-linea-x:hover { background: #FDECEA; border-color: var(--bad-fg); color: var(--bad-fg); }
 
 /* ---------- Elegir sucursales/áreas por grupos ---------- */
 .bq-label-fila {
@@ -294,7 +294,7 @@
   width: 18px; height: 18px; border-radius: 50%;
   font-size: 13px; line-height: 1; cursor: pointer;
 }
-.bq-ficha-x:hover { background: #C7382E; color: #fff; }
+.bq-ficha-x:hover { background: var(--bad-fg); color: #fff; }
 
 @media (max-width: 640px) {
   .bq-lugares { grid-template-columns: 1fr; }

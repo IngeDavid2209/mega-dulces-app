@@ -1,6 +1,6 @@
 :host {
   --primary-navy: var(--neutral-900);
-  --primary-blue: #1E40AF;
+  --primary-blue: var(--info-fg);
   --text-main: var(--neutral-800);
   --text-muted: var(--neutral-500);
   --bg-app: var(--neutral-50);
@@ -98,7 +98,7 @@
 }
 
 .form-input:focus {
-  border-color: #3B82F6;
+  border-color: var(--action);
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
@@ -226,15 +226,15 @@
 }
 
 .summary-dot.complete {
-  background: #10B981;
+  background: var(--ok-fg);
 }
 
 .summary-dot.pending {
-  background: #F59E0B;
+  background: var(--warn-fg);
 }
 
 .summary-dot.missed {
-  background: #EF4444;
+  background: var(--bad-fg);
 }
 
 /* Modal General */
@@ -284,7 +284,7 @@
 }
 
 .modal-close:hover {
-  color: #EF4444;
+  color: var(--bad-fg);
 }
 
 .modal-body {
@@ -457,9 +457,9 @@
   gap: 18px;
   padding: 22px 26px;
   margin-bottom: 18px;
-  background: linear-gradient(135deg, #FFFFFF 0%, #F8FAFF 100%);
+  background: linear-gradient(135deg, #FFFFFF 0%, var(--info-soft-bg) 100%);
   border: 1px solid var(--border);
-  border-left: 4px solid #2563EB;
+  border-left: 4px solid var(--info-fg);
   border-radius: 14px;
   box-shadow:
     0 1px 2px rgba(15, 23, 42, 0.04),
@@ -485,7 +485,7 @@
   width: 52px;
   height: 52px;
   border-radius: 14px;
-  background: linear-gradient(135deg, #1E40AF 0%, #3B82F6 100%);
+  background: linear-gradient(135deg, var(--info-fg) 0%, var(--info-fg) 100%);
   color: #FFFFFF;
   display: flex;
   align-items: center;
@@ -525,9 +525,9 @@
   align-items: center;
   gap: 6px;
   padding: 6px 12px 6px 10px;
-  background: #EEF2FF;
-  color: #4338CA;
-  border: 1px solid #C7D2FE;
+  background: var(--info-soft-bg);
+  color: var(--info-fg);
+  border: 1px solid var(--info-soft-bg);
   border-radius: 999px;
   font-size: 11px;
   font-weight: 800;
@@ -541,7 +541,7 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #4338CA;
+  background: var(--info-fg);
   box-shadow: 0 0 0 3px rgba(67, 56, 202, 0.2);
   animation: calHeaderPulse 2s ease-in-out infinite;
 }
@@ -561,7 +561,7 @@
   flex-wrap: wrap;
   padding: 16px 22px;
   margin-bottom: 18px;
-  background: linear-gradient(135deg, var(--primary-navy) 0%, #1E3A8A 100%);
+  background: linear-gradient(135deg, var(--primary-navy) 0%, var(--info-fg) 100%);
   color: #FFFFFF;
   border-radius: 14px;
   box-shadow:
@@ -735,7 +735,7 @@
 }
 
 .cal-filter-title svg {
-  color: #3B82F6;
+  color: var(--info-fg);
 }
 
 .cal-filter-grid {
@@ -790,7 +790,7 @@
 }
 
 .cal-input:focus {
-  border-color: #3B82F6;
+  border-color: var(--action);
   box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.12);
 }
 
@@ -885,38 +885,38 @@
   margin-top: 6px;
 }
 
-.cal-kpi--completo { border-color: #A7F3D0; }
+.cal-kpi--completo { border-color: var(--ok-border); }
 .cal-kpi--completo .cal-kpi-icon {
-  background: linear-gradient(135deg, #047857 0%, #10B981 100%);
+  background: linear-gradient(135deg, var(--ok-soft-fg) 0%, var(--ok-fg) 100%);
 }
-.cal-kpi--completo .cal-kpi-num { color: #047857; }
+.cal-kpi--completo .cal-kpi-num { color: var(--ok-soft-fg); }
 .cal-kpi--completo::after {
   background: radial-gradient(circle, rgba(16, 185, 129, 0.13) 0%, transparent 70%);
 }
 
-.cal-kpi--pendiente { border-color: #FDE68A; }
+.cal-kpi--pendiente { border-color: var(--warn-border); }
 .cal-kpi--pendiente .cal-kpi-icon {
-  background: linear-gradient(135deg, #B45309 0%, #F59E0B 100%);
+  background: linear-gradient(135deg, var(--warn-soft-fg) 0%, var(--warn-fg) 100%);
 }
-.cal-kpi--pendiente .cal-kpi-num { color: #B45309; }
+.cal-kpi--pendiente .cal-kpi-num { color: var(--warn-soft-fg); }
 .cal-kpi--pendiente::after {
   background: radial-gradient(circle, rgba(245, 158, 11, 0.14) 0%, transparent 70%);
 }
 
-.cal-kpi--vencido { border-color: #FECACA; }
+.cal-kpi--vencido { border-color: var(--bad-border); }
 .cal-kpi--vencido .cal-kpi-icon {
-  background: linear-gradient(135deg, #B91C1C 0%, #EF4444 100%);
+  background: linear-gradient(135deg, var(--bad-soft-fg) 0%, var(--bad-fg) 100%);
 }
-.cal-kpi--vencido .cal-kpi-num { color: #B91C1C; }
+.cal-kpi--vencido .cal-kpi-num { color: var(--bad-soft-fg); }
 .cal-kpi--vencido::after {
   background: radial-gradient(circle, rgba(239, 68, 68, 0.13) 0%, transparent 70%);
 }
 
-.cal-kpi--agenda { border-color: #BFDBFE; }
+.cal-kpi--agenda { border-color: var(--info-soft-bg); }
 .cal-kpi--agenda .cal-kpi-icon {
-  background: linear-gradient(135deg, #1E40AF 0%, #3B82F6 100%);
+  background: linear-gradient(135deg, var(--info-fg) 0%, var(--info-fg) 100%);
 }
-.cal-kpi--agenda .cal-kpi-num { color: #1E40AF; }
+.cal-kpi--agenda .cal-kpi-num { color: var(--info-fg); }
 .cal-kpi--agenda::after {
   background: radial-gradient(circle, rgba(59, 130, 246, 0.13) 0%, transparent 70%);
 }
@@ -931,7 +931,7 @@
 }
 
 .cal-calendar .calendar-header {
-  background: linear-gradient(180deg, #FAFBFF 0%, var(--neutral-100) 100%);
+  background: linear-gradient(180deg, var(--info-soft-bg) 0%, var(--neutral-100) 100%);
   border-bottom: 1px solid var(--border);
 }
 
@@ -953,12 +953,12 @@
 }
 
 .cal-cell--weekend:not(.empty) {
-  background: #FAFBFF;
+  background: var(--info-soft-bg);
 }
 
 .cal-calendar .calendar-cell:hover:not(.empty) {
-  background: #EFF6FF;
-  box-shadow: inset 0 0 0 1px #BFDBFE;
+  background: var(--overlay-hover);
+  box-shadow: inset 0 0 0 1px var(--overlay-hover);
 }
 
 .cal-calendar .calendar-cell.empty {
@@ -983,19 +983,19 @@
 }
 
 .calendar-cell[data-estado="completo"] .cal-cell-bar {
-  background: linear-gradient(90deg, #10B981 0%, #34D399 100%);
+  background: linear-gradient(90deg, var(--ok-fg) 0%, #34D399 100%);
 }
 
 .calendar-cell[data-estado="pendiente"] .cal-cell-bar {
-  background: linear-gradient(90deg, #F59E0B 0%, #FBBF24 100%);
+  background: linear-gradient(90deg, var(--warn-fg) 0%, var(--warn-border) 100%);
 }
 
 .calendar-cell[data-estado="vencido"] .cal-cell-bar {
-  background: linear-gradient(90deg, #EF4444 0%, #F87171 100%);
+  background: linear-gradient(90deg, var(--bad-fg) 0%, var(--bad-border) 100%);
 }
 
 .calendar-cell[data-estado="mixto"] .cal-cell-bar {
-  background: linear-gradient(90deg, #10B981 0%, #F59E0B 100%);
+  background: linear-gradient(90deg, var(--ok-fg) 0%, var(--warn-fg) 100%);
 }
 
 /* Fecha y pill "HOY" */
@@ -1016,12 +1016,12 @@
 }
 
 .cal-calendar .calendar-cell.is-today {
-  background: linear-gradient(180deg, #EFF6FF 0%, #FFFFFF 100%);
-  box-shadow: inset 0 0 0 2px #2563EB;
+  background: linear-gradient(180deg, var(--info-soft-bg) 0%, #FFFFFF 100%);
+  box-shadow: inset 0 0 0 2px var(--info-fg);
 }
 
 .cal-calendar .calendar-cell.is-today .date-number {
-  background: linear-gradient(135deg, #1E40AF 0%, #3B82F6 100%);
+  background: linear-gradient(135deg, var(--info-fg) 0%, var(--info-fg) 100%);
   color: #FFFFFF;
   box-shadow: 0 4px 10px -2px rgba(59, 130, 246, 0.45);
 }
@@ -1030,7 +1030,7 @@
   display: inline-flex;
   align-items: center;
   padding: 2px 8px;
-  background: #1E40AF;
+  background: var(--info-fg);
   color: #FFFFFF;
   border-radius: 999px;
   font-size: 9px;
@@ -1050,27 +1050,27 @@
 }
 
 .cal-calendar .summary-dot.complete {
-  background: #D1FAE5;
-  color: #047857;
-  border-color: #6EE7B7;
+  background: var(--ok-soft-bg);
+  color: var(--ok-soft-fg);
+  border-color: var(--ok-border);
 }
 
 .cal-calendar .summary-dot.pending {
-  background: #FEF3C7;
-  color: #B45309;
-  border-color: #FCD34D;
+  background: var(--warn-soft-bg);
+  color: var(--warn-soft-fg);
+  border-color: var(--warn-border);
 }
 
 .cal-calendar .summary-dot.missed {
-  background: #FEE2E2;
-  color: #B91C1C;
-  border-color: #FCA5A5;
+  background: var(--bad-soft-bg);
+  color: var(--bad-soft-fg);
+  border-color: var(--bad-border);
 }
 
 .cal-calendar .summary-dot.personal {
-  background: #DBEAFE;
-  color: #1E40AF;
-  border-color: #93C5FD;
+  background: var(--info-soft-bg);
+  color: var(--info-fg);
+  border-color: var(--info-soft-bg);
 }
 
 .cal-cell-footer {
@@ -1131,23 +1131,23 @@
 }
 
 .cal-legend-swatch--completo {
-  background: #D1FAE5;
-  border-color: #6EE7B7;
+  background: var(--ok-soft-bg);
+  border-color: var(--ok-border);
 }
 
 .cal-legend-swatch--pendiente {
-  background: #FEF3C7;
-  border-color: #FCD34D;
+  background: var(--warn-soft-bg);
+  border-color: var(--warn-border);
 }
 
 .cal-legend-swatch--vencido {
-  background: #FEE2E2;
-  border-color: #FCA5A5;
+  background: var(--bad-soft-bg);
+  border-color: var(--bad-border);
 }
 
 .cal-legend-swatch--personal {
-  background: #DBEAFE;
-  border-color: #93C5FD;
+  background: var(--info-soft-bg);
+  border-color: var(--info-soft-bg);
 }
 
 

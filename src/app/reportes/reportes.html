@@ -619,17 +619,17 @@
           </div>
 
           <div *ngIf="checklistSeleccionado().notaEmpleado"
-            style="margin-top: 20px; background: #FFFBEB; border-left: 4px solid #F59E0B; padding: 15px; border-radius: 8px;">
-            <strong style="color: #D97706; font-size: 13px; display: block; margin-bottom: 4px;">Comentarios del Colaborador:</strong>
-            <p style="margin: 0; font-size: 14px; color: #1E293B; white-space: pre-wrap;">{{
+            style="margin-top: 20px; background: var(--warn-soft-bg); border-left: 4px solid var(--warn-fg); padding: 15px; border-radius: 8px;">
+            <strong style="color: var(--warn-fg); font-size: 13px; display: block; margin-bottom: 4px;">Comentarios del Colaborador:</strong>
+            <p style="margin: 0; font-size: 14px; color: var(--neutral-800); white-space: pre-wrap;">{{
               checklistSeleccionado().notaEmpleado }}</p>
           </div>
 
           <div *ngIf="checklistSeleccionado().entregaConRetraso"
-            style="margin-top: 14px; background: linear-gradient(135deg, #FFEDD5, #FED7AA); border-left: 4px solid #EA580C; padding: 16px; border-radius: 8px;">
+            style="margin-top: 14px; background: linear-gradient(135deg, var(--warn-soft-bg), var(--warn-border)); border-left: 4px solid var(--warn-fg); padding: 16px; border-radius: 8px;">
             <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
               <span style="font-size: 22px;">⏰</span>
-              <strong style="color: #9A3412; font-size: 14px; letter-spacing: 0.3px;">
+              <strong style="color: var(--warn-soft-fg); font-size: 14px; letter-spacing: 0.3px;">
                 ENTREGADO CON RETRASO JUSTIFICADO
               </strong>
             </div>
@@ -642,7 +642,7 @@
                 <span style="white-space: pre-wrap;">{{ checklistSeleccionado().motivoRetraso.comentario }}</span>
               </div>
               <div *ngIf="checklistSeleccionado().motivoRetraso?.reportadoPor"
-                style="font-size: 11px; color: #9A3412; opacity: 0.85;">
+                style="font-size: 11px; color: var(--warn-soft-fg); opacity: 0.85;">
                 Reportado por {{ checklistSeleccionado().motivoRetraso.reportadoPor }}
               </div>
             </div>

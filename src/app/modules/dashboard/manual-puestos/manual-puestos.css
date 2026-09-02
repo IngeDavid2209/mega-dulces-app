@@ -54,7 +54,7 @@
   width: 46px; height: 46px;
   border-radius: 12px;
   background: var(--neutral-900);
-  color: #FCD34D;
+  color: var(--warn-border);
   display: grid; place-items: center;
 }
 .page-head h1 { margin: 0 0 4px; font-size: 22px; font-weight: 800; color: var(--neutral-900); }
@@ -68,15 +68,15 @@
   padding: 13px 16px;
   margin-bottom: 20px;
   border-radius: 10px;
-  background: #FFFBEB;
-  border: 1px solid #FDE68A;
-  color: #78350F;
+  background: var(--warn-soft-bg);
+  border: 1px solid var(--warn-border);
+  color: var(--warn-soft-fg);
   font-size: 13px;
   line-height: 1.55;
 }
 .mp-aviso-icono { font-size: 17px; line-height: 1.3; flex: 0 0 auto; }
 .mp-aviso strong { color: #713F12; }
-.mp-aviso a { color: #92400E; font-weight: 700; }
+.mp-aviso a { color: var(--warn-soft-fg); font-weight: 700; }
 
 /* ── Tablero de cobertura ────────────────────────────────────────────────── */
 .mp-tablero {
@@ -100,11 +100,11 @@
 
 /* Verde para lo que va bien, rojo solo cuando de verdad hay gente sin tareas:
    un tablero que grita siempre deja de decir nada. */
-.mp-kpi-ok { border-color: #A7F3D0; background: #F0FDF4; }
-.mp-kpi-ok .mp-kpi-num { color: #047857; }
-.mp-kpi-alerta { border-color: #FECACA; background: #FEF2F2; }
-.mp-kpi-alerta .mp-kpi-num { color: #B91C1C; }
-.mp-kpi-alerta .mp-kpi-pie { color: #DC2626; font-weight: 600; }
+.mp-kpi-ok { border-color: var(--ok-border); background: var(--ok-soft-bg); }
+.mp-kpi-ok .mp-kpi-num { color: var(--ok-soft-fg); }
+.mp-kpi-alerta { border-color: var(--bad-border); background: var(--bad-soft-bg); }
+.mp-kpi-alerta .mp-kpi-num { color: var(--bad-soft-fg); }
+.mp-kpi-alerta .mp-kpi-pie { color: var(--bad-fg); font-weight: 600; }
 
 /* Un <button> trae su propia tipografia y alineado del navegador; sin esto la
    tarjeta se ve distinta de sus vecinas y delata que es "la rara". */
@@ -115,20 +115,20 @@
   width: 100%;
   transition: border-color .15s, box-shadow .15s;
 }
-.mp-kpi-boton:hover { border-color: #F87171; box-shadow: 0 2px 8px rgba(220,38,38,.12); }
-.mp-kpi-boton:focus-visible { outline: 2px solid #DC2626; outline-offset: 2px; }
-.mp-kpi-abierto { border-color: #DC2626; }
+.mp-kpi-boton:hover { border-color: var(--bad-border); box-shadow: 0 2px 8px rgba(220,38,38,.12); }
+.mp-kpi-boton:focus-visible { outline: 2px solid var(--bad-fg); outline-offset: 2px; }
+.mp-kpi-abierto { border-color: var(--bad-fg); }
 
 /* ── Quienes no tienen puesto ────────────────────────────────────────────── */
 .mp-sinpuesto {
   background: #fff;
-  border: 1px solid #FECACA;
+  border: 1px solid var(--bad-border);
   border-radius: 10px;
   padding: 16px 18px;
   margin-bottom: 16px;
 }
 .mp-sinpuesto-cab { display: flex; flex-direction: column; gap: 3px; margin-bottom: 10px; }
-.mp-sinpuesto-cab strong { font-size: 14px; color: #B91C1C; }
+.mp-sinpuesto-cab strong { font-size: 14px; color: var(--bad-soft-fg); }
 .mp-sinpuesto-cab span { font-size: 12px; color: var(--neutral-500); }
 .mp-sinpuesto-cab a { color: var(--neutral-900); font-weight: 700; }
 .mp-sinpuesto-nota {
@@ -288,9 +288,9 @@
 .mp-badge-manual {
   padding: 3px 9px;
   border-radius: 5px;
-  background: #FEF3C7;
-  color: #92400E;
-  border: 1px solid #FCD34D;
+  background: var(--warn-soft-bg);
+  color: var(--warn-soft-fg);
+  border: 1px solid var(--warn-border);
   font-size: 10.5px;
   font-weight: 800;
   white-space: nowrap;
@@ -362,9 +362,9 @@
 .mp-chip {
   padding: 3px 10px;
   border-radius: 999px;
-  background: #EEF2FF;
+  background: var(--info-soft-bg);
   color: #3730A3;
-  border: 1px solid #C7D2FE;
+  border: 1px solid var(--info-soft-bg);
   font-size: 11.5px;
   font-weight: 600;
 }
@@ -375,7 +375,7 @@
   padding: 14px 16px;
   border-radius: 9px;
   background: #FFFDF7;
-  border: 1px solid #FDE68A;
+  border: 1px solid var(--warn-border);
 }
 .mp-tarea-cab {
   display: flex;
@@ -388,9 +388,9 @@
 .mp-tarea-codigo {
   font-size: 10.5px;
   font-weight: 800;
-  color: #92400E;
-  background: #FEF3C7;
-  border: 1px solid #FCD34D;
+  color: var(--warn-soft-fg);
+  background: var(--warn-soft-bg);
+  border: 1px solid var(--warn-border);
   border-radius: 4px;
   padding: 2px 7px;
   white-space: nowrap;
@@ -407,7 +407,7 @@
   padding: 2px 9px;
   white-space: nowrap;
 }
-.mp-meta-evento { background: #EFF6FF; border-color: #BFDBFE; color: #1D4ED8; }
+.mp-meta-evento { background: var(--info-soft-bg); border-color: var(--info-soft-bg); color: var(--info-fg); }
 /* Las de solo-evento no las entrega el robot: hay que poder distinguirlas de
    un vistazo o alguien va a esperar que aparezcan solas. */
 .mp-meta-manualsolo { background: var(--neutral-100); border-color: var(--neutral-300); color: var(--neutral-500); }
@@ -416,9 +416,9 @@
   margin: 0 0 10px;
   font-size: 12px;
   line-height: 1.55;
-  color: #78350F;
-  background: #FEF3C7;
-  border-left: 3px solid #FCD34D;
+  color: var(--warn-soft-fg);
+  background: var(--warn-soft-bg);
+  border-left: 3px solid var(--warn-border);
   border-radius: 0 6px 6px 0;
   padding: 8px 11px;
 }

@@ -29,8 +29,8 @@
 .tk-header {
   display: flex; align-items: center; justify-content: space-between; gap: 16px;
   padding: 22px 26px; margin-bottom: 20px;
-  background: linear-gradient(135deg, #FFFFFF 0%, #F8FAFF 100%);
-  border: 1px solid var(--neutral-200); border-left: 4px solid #1F3864; border-radius: 14px;
+  background: linear-gradient(135deg, #FFFFFF 0%, var(--info-soft-bg) 100%);
+  border: 1px solid var(--neutral-200); border-left: 4px solid var(--info-fg); border-radius: 14px;
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 24px -12px rgba(15, 23, 42, 0.15);
   flex-wrap: wrap;
 }
@@ -43,9 +43,9 @@
   background: #fff; border: 1px solid var(--neutral-200); border-radius: 14px; padding: 18px;
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04); border-top: 3px solid var(--neutral-300);
 }
-.tk-kpi.ambar { border-top-color: #F59E0B; }
-.tk-kpi.azul { border-top-color: #1F3864; }
-.tk-kpi.verde { border-top-color: #059669; }
+.tk-kpi.ambar { border-top-color: var(--warn-fg); }
+.tk-kpi.azul { border-top-color: var(--info-fg); }
+.tk-kpi.verde { border-top-color: var(--ok-fg); }
 .tk-kpi-num { font-size: 30px; font-weight: 800; color: var(--neutral-900); line-height: 1; }
 .tk-kpi-lbl { font-size: 12.5px; color: var(--neutral-500); margin-top: 6px; font-weight: 600; }
 
@@ -66,18 +66,18 @@
 }
 .tk-row:hover { box-shadow: 0 6px 18px -8px rgba(15, 23, 42, .25); }
 .tk-row:active { transform: translateY(1px); }
-.tk-row.abierto { border-left-color: #F59E0B; }
-.tk-row.proceso { border-left-color: #1F3864; }
-.tk-row.cerrado { border-left-color: #059669; opacity: .82; }
+.tk-row.abierto { border-left-color: var(--warn-fg); }
+.tk-row.proceso { border-left-color: var(--info-fg); }
+.tk-row.cerrado { border-left-color: var(--ok-fg); opacity: .82; }
 .tk-row-folio {
-  font-family: monospace; font-size: 12.5px; font-weight: 700; color: #1F3864;
+  font-family: monospace; font-size: 12.5px; font-weight: 700; color: var(--info-fg);
   background: #EEF2F9; border-radius: 6px; padding: 4px 8px; white-space: nowrap;
 }
 .tk-row-main { flex: 1; min-width: 200px; }
 .tk-row-act { font-weight: 700; color: var(--neutral-900); font-size: 14.5px; }
 .tk-row-meta { color: var(--neutral-500); font-size: 12.5px; margin-top: 2px; }
 .tk-dias {
-  font-size: 11.5px; font-weight: 700; color: #B45309; background: #FFFBEB;
+  font-size: 11.5px; font-weight: 700; color: var(--warn-soft-fg); background: var(--warn-soft-bg);
   border-radius: 999px; padding: 2px 8px; white-space: nowrap;
 }
 
@@ -86,10 +86,10 @@
   display: inline-block; padding: 3px 10px; border-radius: 999px;
   font-size: 11.5px; font-weight: 700; white-space: nowrap; background: var(--neutral-100); color: var(--neutral-500);
 }
-.pill-abierto { background: #FFFBEB; color: #B45309; }
-.pill-proceso { background: #EEF2F9; color: #1F3864; }
-.pill-ok { background: #ECFDF5; color: #047857; }
-.pill-cancelado { background: #FEF2F2; color: #B91C1C; }
+.pill-abierto { background: var(--warn-soft-bg); color: var(--warn-soft-fg); }
+.pill-proceso { background: #EEF2F9; color: var(--info-fg); }
+.pill-ok { background: var(--ok-soft-bg); color: var(--ok-soft-fg); }
+.pill-cancelado { background: var(--bad-soft-bg); color: var(--bad-soft-fg); }
 
 /* ---------- BARRA DEL VALE ---------- */
 .tk-vale-barra {
@@ -98,7 +98,7 @@
 }
 .tk-vale-acciones { display: flex; gap: 8px; flex-wrap: wrap; }
 .tk-cancelado {
-  background: #FEF2F2; border: 1px solid #FECACA; color: #991B1B;
+  background: var(--bad-soft-bg); border: 1px solid var(--bad-border); color: var(--bad-soft-fg);
   border-radius: 10px; padding: 10px 14px; margin-bottom: 12px; font-size: 13.5px; font-weight: 600;
 }
 
@@ -106,25 +106,25 @@
    EL VALE (imita el formato en papel)
    ============================================================================ */
 .vale {
-  background: #fff; border: 2px solid #1F3864; border-radius: 6px; overflow: hidden;
+  background: #fff; border: 2px solid var(--info-fg); border-radius: 6px; overflow: hidden;
   max-width: 900px; box-shadow: 0 10px 30px -12px rgba(15, 23, 42, .25);
 }
 .vale-top {
-  background: #1F3864; color: #fff; display: flex; align-items: center;
+  background: var(--info-fg); color: #fff; display: flex; align-items: center;
   justify-content: space-between; gap: 12px; padding: 12px 16px;
 }
 .vale-titulo { font-size: 19px; font-weight: 800; letter-spacing: .3px; }
 .vale-folio { font-family: monospace; font-size: 17px; font-weight: 800; color: #00E676; white-space: nowrap; }
 
-.vale-fila { display: flex; border-top: 1px solid #1F3864; align-items: stretch; flex-wrap: wrap; }
+.vale-fila { display: flex; border-top: 1px solid var(--info-fg); align-items: stretch; flex-wrap: wrap; }
 .vale-fila.alto { align-items: stretch; }
 .vale-lbl {
-  background: #E1E8F3; color: #1F3864; font-size: 10.5px; font-weight: 800;
+  background: #E1E8F3; color: var(--info-fg); font-size: 10.5px; font-weight: 800;
   padding: 8px 10px; width: 210px; box-sizing: border-box;
-  border-right: 1px solid #1F3864; display: flex; align-items: center; line-height: 1.25;
+  border-right: 1px solid var(--info-fg); display: flex; align-items: center; line-height: 1.25;
 }
 .vale-lbl.chico { width: 92px; }
-.vale-lbl.estatus { width: 92px; border-left: 1px solid #1F3864; }
+.vale-lbl.estatus { width: 92px; border-left: 1px solid var(--info-fg); }
 .vale-val {
   flex: 1; min-width: 160px; padding: 5px 8px; display: flex; align-items: center; gap: 12px;
   box-sizing: border-box;
@@ -135,7 +135,7 @@
   width: 100%; border: none; border-bottom: 1px dotted var(--neutral-400); background: transparent;
   font-size: 14px; padding: 4px 2px; color: var(--neutral-900); font-family: inherit;
 }
-.vale-input:focus { outline: none; border-bottom: 2px solid #1F3864; }
+.vale-input:focus { outline: none; border-bottom: 2px solid var(--action); }
 .vale-input:disabled { color: var(--neutral-700); border-bottom-style: solid; border-bottom-color: var(--neutral-200); }
 .vale-area {
   width: 100%; border: none; background: transparent; resize: vertical;
@@ -148,22 +148,22 @@
 .vale-area:disabled { color: var(--neutral-700); }
 
 .vale-banda {
-  background: #1F3864; color: #fff; text-align: center; font-size: 11.5px;
-  font-weight: 800; letter-spacing: .4px; padding: 6px 10px; border-top: 1px solid #1F3864;
+  background: var(--info-fg); color: #fff; text-align: center; font-size: 11.5px;
+  font-weight: 800; letter-spacing: .4px; padding: 6px 10px; border-top: 1px solid var(--info-fg);
 }
 .casilla {
   font-size: 11px; font-weight: 700; color: var(--neutral-500); border: 1.5px solid var(--neutral-300);
   border-radius: 4px; padding: 3px 8px; white-space: nowrap;
 }
-.casilla.marcada { background: #1F3864; color: #fff; border-color: #1F3864; }
+.casilla.marcada { background: var(--info-fg); color: #fff; border-color: var(--info-fg); }
 .radio { font-size: 12.5px; font-weight: 700; color: var(--neutral-700); display: inline-flex; align-items: center; gap: 5px; }
 
 /* ---------- FIRMAS ---------- */
-.vale-firmas { display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid #1F3864; }
-.firma-caja { border-right: 1px solid #1F3864; }
+.vale-firmas { display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid var(--info-fg); }
+.firma-caja { border-right: 1px solid var(--info-fg); }
 .firma-caja:last-child { border-right: none; }
 .firma-titulo {
-  background: #1F3864; color: #fff; font-size: 10px; font-weight: 800;
+  background: var(--info-fg); color: #fff; font-size: 10px; font-weight: 800;
   text-align: center; padding: 5px 6px; line-height: 1.2;
 }
 .firma-cuerpo {
@@ -180,7 +180,7 @@
 
 /* ---------- BOTONES ---------- */
 .tk-btn-primary {
-  background: #1F3864; color: #fff; border: none; border-radius: 10px;
+  background: var(--action); color: #fff; border: none; border-radius: 10px;
   padding: 10px 18px; font-weight: 700; font-size: 14px; cursor: pointer;
   display: inline-flex; align-items: center; gap: 8px;
 }
@@ -198,18 +198,18 @@
 }
 .tk-btn-mini:hover { background: var(--neutral-50); }
 .tk-btn-mini:disabled { opacity: .55; cursor: default; }
-.tk-btn-mini.ok { background: #059669; color: #fff; border-color: #059669; }
-.tk-btn-mini.ok:hover { background: #047857; }
-.tk-btn-mini.azul { background: #1F3864; color: #fff; border-color: #1F3864; }
-.tk-btn-mini.danger { background: #fff; color: #B91C1C; border-color: #FCA5A5; }
-.tk-btn-mini.danger:hover { background: #FEF2F2; }
-.tk-btn-mini.pdf { background: #fff; color: #1F3864; border-color: #1F3864; font-weight: 700; }
-.tk-btn-mini.firmar { background: #1F3864; color: #fff; border-color: #1F3864; }
+.tk-btn-mini.ok { background: var(--ok-fg); color: #fff; border-color: var(--ok-fg); }
+.tk-btn-mini.ok:hover { background: var(--ok-soft-fg); }
+.tk-btn-mini.azul { background: var(--info-fg); color: #fff; border-color: var(--info-fg); }
+.tk-btn-mini.danger { background: #fff; color: var(--bad-soft-fg); border-color: var(--bad-border); }
+.tk-btn-mini.danger:hover { background: var(--bad-soft-bg); }
+.tk-btn-mini.pdf { background: #fff; color: var(--info-fg); border-color: var(--info-fg); font-weight: 700; }
+.tk-btn-mini.firmar { background: var(--info-fg); color: #fff; border-color: var(--info-fg); }
 .tk-link {
-  background: none; border: none; color: #1F3864; font-weight: 700;
+  background: none; border: none; color: var(--action); font-weight: 700;
   text-decoration: underline; cursor: pointer; font-size: 12.5px; padding: 0;
 }
-.tk-link.rojo { color: #B91C1C; }
+.tk-link.rojo { color: var(--bad-soft-fg); }
 
 /* ---------- VACIOS / NOTAS ---------- */
 .tk-empty {
@@ -232,13 +232,13 @@
   font-size: 20px; font-weight: 800; color: var(--neutral-900); margin: 0 0 6px;
   display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap;
 }
-.tk-modal-folio { font-family: monospace; font-size: 15px; color: #1F3864; font-weight: 800; }
+.tk-modal-folio { font-family: monospace; font-size: 15px; color: var(--info-fg); font-weight: 800; }
 .tk-label { display: block; font-size: 13px; font-weight: 600; color: var(--neutral-700); margin: 14px 0 5px; }
 .tk-input {
   width: 100%; border: 1px solid var(--neutral-200); border-radius: 9px; padding: 10px 12px;
   font-size: 14px; box-sizing: border-box; background: #fff; font-family: inherit;
 }
-.tk-input:focus { outline: none; border-color: #1F3864; box-shadow: 0 0 0 3px rgba(31, 56, 100, 0.08); }
+.tk-input:focus { outline: none; border-color: var(--action); box-shadow: 0 0 0 3px rgba(31, 56, 100, 0.08); }
 .tk-form-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .tk-modal-acciones { display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; flex-wrap: wrap; }
 
@@ -265,10 +265,10 @@
   .mobile-overlay { display: block; }
   .tk-form-2 { grid-template-columns: 1fr; }
   .vale-lbl, .vale-lbl.chico, .vale-lbl.estatus {
-    width: 100%; border-right: none; border-left: none; border-bottom: 1px solid #1F3864;
+    width: 100%; border-right: none; border-left: none; border-bottom: 1px solid var(--info-fg);
   }
   .vale-fila { flex-direction: column; }
   .vale-firmas { grid-template-columns: 1fr; }
-  .firma-caja { border-right: none; border-bottom: 1px solid #1F3864; }
+  .firma-caja { border-right: none; border-bottom: 1px solid var(--info-fg); }
   .vale-titulo { font-size: 15px; }
 }

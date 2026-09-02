@@ -13,7 +13,7 @@
                           ', vencidas ' + resumen().vencida + ', programadas ' + resumen().programada">
     <span [style.flex]="resumen().completada" style="background:#1F7A4D"></span>
     <span [style.flex]="resumen().hoy" style="background:#E08A00"></span>
-    <span [style.flex]="resumen().vencida" style="background:#C7382E"></span>
+    <span [style.flex]="resumen().vencida" style="background:var(--bad-fg)"></span>
     <span [style.flex]="resumen().programada" style="background:#CBD0CB"></span>
   </div>
 
@@ -27,7 +27,7 @@
       <span class="v">{{ resumen().hoy }}</span>
     </div>
     <div class="pr-legend-item">
-      <span class="k"><i class="pr-dot" style="background:#C7382E"></i>Vencidas</span>
+      <span class="k"><i class="pr-dot" style="background:var(--bad-fg)"></i>Vencidas</span>
       <span class="v">{{ resumen().vencida }}</span>
     </div>
     <div class="pr-legend-item">

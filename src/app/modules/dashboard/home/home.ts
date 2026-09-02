@@ -387,10 +387,10 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
 
   colorDeNivel(pct: number | null): string {
     switch (this.nivelDe(pct)) {
-      case 'ok':   return '#10B981';
-      case 'warn': return '#F59E0B';
-      case 'bad':  return '#EF4444';
-      default:     return '#94A3B8';
+      case 'ok':   return 'var(--ok-fg)';
+      case 'warn': return 'var(--warn-fg)';
+      case 'bad':  return 'var(--bad-fg)';
+      default:     return 'var(--neutral-400)';
     }
   }
 
@@ -931,8 +931,8 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
       data: {
         labels: datos.map(d => d.fecha),
         datasets: [
-          serie('Cumplimiento', datos.map(d => d.porcentaje), '#1E3A8A', true, []),
-          serie('Puntualidad', datos.map(d => d.puntualidad), '#0EA5E9', false, [6, 4]),
+          serie('Cumplimiento', datos.map(d => d.porcentaje), 'var(--info-fg)', true, []),
+          serie('Puntualidad', datos.map(d => d.puntualidad), 'var(--info-fg)', false, [6, 4]),
           serie('Evidencia', datos.map(d => d.evidencia), '#8B5CF6', false, [2, 3])
         ]
       },

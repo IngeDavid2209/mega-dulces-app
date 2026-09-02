@@ -98,33 +98,33 @@
           </div>
         </div>
 
-        <div style="background: white; border: 1px solid #E2E8F0; border-radius: 12px; padding: 12px 16px; margin-bottom: 24px; display: flex; gap: 12px; align-items: center; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+        <div style="background: white; border: 1px solid var(--neutral-200); border-radius: 12px; padding: 12px 16px; margin-bottom: 24px; display: flex; gap: 12px; align-items: center; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
           <input type="text" [(ngModel)]="nuevaTareaTexto" (keyup.enter)="prepararTarea()" placeholder="Ej: Compra de scooter, Mantenimiento del auto..." style="flex: 1; border: none; font-size: 16px; outline: none;">
-          <button (click)="prepararTarea()" style="background: #4338CA; color: white; border: none; border-radius: 8px; width: 42px; height: 42px; font-size: 24px; cursor: pointer;">+</button>
+          <button (click)="prepararTarea()" style="background: var(--info-fg); color: white; border: none; border-radius: 8px; width: 42px; height: 42px; font-size: 24px; cursor: pointer;">+</button>
         </div>
 
-        <div *ngFor="let tarea of proyectosUnicos" (click)="abrirDetalle(tarea)" style="background: white; border: 1px solid #E2E8F0; border-radius: 14px; padding: 18px; margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; transition: 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+        <div *ngFor="let tarea of proyectosUnicos" (click)="abrirDetalle(tarea)" style="background: white; border: 1px solid var(--neutral-200); border-radius: 14px; padding: 18px; margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; transition: 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
           <div style="display: flex; align-items: flex-start; gap: 16px;">
             <div (click)="toggleTareaPrincipal(tarea); $event.stopPropagation();" 
-                 style="width: 26px; height: 26px; border-radius: 8px; border: 2px solid #CBD5E1; display: flex; align-items: center; justify-content: center; flex-shrink: 0;" 
-                 [style.background]="tarea.completada ? '#10B981' : 'white'" 
-                 [style.borderColor]="tarea.completada ? '#10B981' : '#CBD5E1'">
+                 style="width: 26px; height: 26px; border-radius: 8px; border: 2px solid var(--neutral-300); display: flex; align-items: center; justify-content: center; flex-shrink: 0;" 
+                 [style.background]="tarea.completada ? 'var(--ok-fg)' : 'white'" 
+                 [style.borderColor]="tarea.completada ? 'var(--ok-fg)' : 'var(--neutral-300)'">
               <svg *ngIf="tarea.completada" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
             </div>
             
             <div style="display: flex; flex-direction: column;">
               <span [style.text-decoration]="tarea.completada ? 'line-through' : 'none'" 
-                    [style.color]="tarea.completada ? '#94A3B8' : '#0F172A'" 
+                    [style.color]="tarea.completada ? 'var(--neutral-400)' : 'var(--neutral-900)'" 
                     style="font-weight: 700; font-size: 16px;">{{ tarea.texto }}</span>
               
               <div *ngIf="tarea.subtareas && tarea.subtareas.length > 0" style="margin-top: 6px;">
-                <span style="font-size: 11px; background: #EEF2FF; color: #4338CA; padding: 4px 10px; border-radius: 20px; font-weight: 800; border: 1px solid #C7D2FE;">
+                <span style="font-size: 11px; background: var(--info-soft-bg); color: var(--info-fg); padding: 4px 10px; border-radius: 20px; font-weight: 800; border: 1px solid var(--info-soft-bg);">
                   🎯 {{ tarea.subtareas.length }} Fases registradas
                 </span>
               </div>
             </div>
           </div>
-          <button (click)="eliminarTarea(tarea.id, $event)" style="background: #FEF2F2; color: #EF4444; border: 1px solid #FECACA; border-radius: 10px; width: 38px; height: 38px; cursor: pointer;">🗑️</button>
+          <button (click)="eliminarTarea(tarea.id, $event)" style="background: var(--bad-soft-bg); color: var(--bad-fg); border: 1px solid var(--bad-border); border-radius: 10px; width: 38px; height: 38px; cursor: pointer;">🗑️</button>
         </div>
 
       </div>
@@ -134,43 +134,43 @@
   <div class="modal-overlay" *ngIf="tareaActiva" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15,23,42,0.8); backdrop-filter: blur(5px); z-index: 10000; display: flex; justify-content: center; align-items: center; padding: 20px;">
     <div style="background: white; width: 100%; max-width: 650px; max-height: 85vh; border-radius: 20px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);">
       
-      <div style="padding: 24px; border-bottom: 1px solid #E2E8F0; background: #F8FAFC; display: flex; justify-content: space-between; align-items: center;">
+      <div style="padding: 24px; border-bottom: 1px solid var(--neutral-200); background: var(--neutral-50); display: flex; justify-content: space-between; align-items: center;">
         <div>
-          <h3 style="margin: 0; font-size: 20px; color: #1E293B; font-weight: 800;">{{ tareaActiva.esNueva ? 'Nuevo Proyecto' : 'Gestionar Fases' }}</h3>
-          <p style="margin: 4px 0 0; font-size: 13px; color: #64748B;">{{ tareaActiva.texto }}</p>
+          <h3 style="margin: 0; font-size: 20px; color: var(--neutral-800); font-weight: 800;">{{ tareaActiva.esNueva ? 'Nuevo Proyecto' : 'Gestionar Fases' }}</h3>
+          <p style="margin: 4px 0 0; font-size: 13px; color: var(--neutral-500);">{{ tareaActiva.texto }}</p>
         </div>
-        <button (click)="cerrarDetalle()" style="background: none; border: none; font-size: 32px; color: #94A3B8; cursor: pointer;">&times;</button>
+        <button (click)="cerrarDetalle()" style="background: none; border: none; font-size: 32px; color: var(--neutral-400); cursor: pointer;">&times;</button>
       </div>
 
       <div style="padding: 28px; overflow-y: auto; display: flex; flex-direction: column; gap: 24px;">
         
-        <div style="background: #F1F5F9; padding: 20px; border-radius: 16px; border: 1px solid #E2E8F0;">
-          <label style="font-size: 12px; font-weight: 800; color: #4338CA; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; display: block;">🚩 Fases del Proyecto</label>
+        <div style="background: var(--neutral-100); padding: 20px; border-radius: 16px; border: 1px solid var(--neutral-200);">
+          <label style="font-size: 12px; font-weight: 800; color: var(--info-fg); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; display: block;">🚩 Fases del Proyecto</label>
           
           <div style="display: flex; gap: 10px; margin-bottom: 16px;">
-            <input type="text" [(ngModel)]="nuevaFaseTexto" (keyup.enter)="agregarFase()" placeholder="Nueva fase..." style="flex: 1; padding: 12px; border: 1px solid #CBD5E1; border-radius: 10px; font-size: 14px; outline: none;">
-            <button (click)="agregarFase()" style="background: #4338CA; color: white; border: none; border-radius: 10px; padding: 0 20px; font-weight: 700; cursor: pointer;">Añadir</button>
+            <input type="text" [(ngModel)]="nuevaFaseTexto" (keyup.enter)="agregarFase()" placeholder="Nueva fase..." style="flex: 1; padding: 12px; border: 1px solid var(--neutral-300); border-radius: 10px; font-size: 14px; outline: none;">
+            <button (click)="agregarFase()" style="background: var(--info-fg); color: white; border: none; border-radius: 10px; padding: 0 20px; font-weight: 700; cursor: pointer;">Añadir</button>
           </div>
 
-          <div *ngFor="let fase of tareaActiva.subtareas; let i = index" style="background: white; padding: 12px 16px; border-radius: 10px; border: 1px solid #E2E8F0; display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
-            <div (click)="toggleFase(i)" style="width: 22px; height: 22px; border-radius: 6px; border: 2px solid #CBD5E1; cursor: pointer; display: flex; align-items: center; justify-content: center;" [style.background]="fase.completada ? '#4338CA' : 'white'" [style.borderColor]="fase.completada ? '#4338CA' : '#CBD5E1'">
+          <div *ngFor="let fase of tareaActiva.subtareas; let i = index" style="background: white; padding: 12px 16px; border-radius: 10px; border: 1px solid var(--neutral-200); display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+            <div (click)="toggleFase(i)" style="width: 22px; height: 22px; border-radius: 6px; border: 2px solid var(--neutral-300); cursor: pointer; display: flex; align-items: center; justify-content: center;" [style.background]="fase.completada ? 'var(--info-fg)' : 'white'" [style.borderColor]="fase.completada ? 'var(--info-fg)' : 'var(--neutral-300)'">
               <svg *ngIf="fase.completada" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="4"><polyline points="20 6 9 17 4 12"></polyline></svg>
             </div>
-            <span [style.text-decoration]="fase.completada ? 'line-through' : 'none'" [style.color]="fase.completada ? '#94A3B8' : '#1E293B'" style="flex: 1; font-weight: 600; font-size: 14px;">{{ fase.texto }}</span>
-            <button (click)="eliminarFase(i)" style="background: none; border: none; color: #F87171; cursor: pointer; font-size: 20px;">&times;</button>
+            <span [style.text-decoration]="fase.completada ? 'line-through' : 'none'" [style.color]="fase.completada ? 'var(--neutral-400)' : 'var(--neutral-800)'" style="flex: 1; font-weight: 600; font-size: 14px;">{{ fase.texto }}</span>
+            <button (click)="eliminarFase(i)" style="background: none; border: none; color: var(--bad-border); cursor: pointer; font-size: 20px;">&times;</button>
           </div>
         </div>
 
         <div>
-          <label style="font-size: 12px; font-weight: 700; color: #64748B; text-transform: uppercase;">📝 Notas e Instrucciones</label>
-          <textarea [(ngModel)]="tareaActiva.instrucciones" rows="3" placeholder="Detalles importantes..." style="width: 100%; padding: 12px; border: 1px solid #CBD5E1; border-radius: 10px; margin-top: 8px; font-family: inherit; font-size: 14px; box-sizing: border-box;"></textarea>
+          <label style="font-size: 12px; font-weight: 700; color: var(--neutral-500); text-transform: uppercase;">📝 Notas e Instrucciones</label>
+          <textarea [(ngModel)]="tareaActiva.instrucciones" rows="3" placeholder="Detalles importantes..." style="width: 100%; padding: 12px; border: 1px solid var(--neutral-300); border-radius: 10px; margin-top: 8px; font-family: inherit; font-size: 14px; box-sizing: border-box;"></textarea>
         </div>
 
       </div>
 
-      <div style="padding: 20px 28px; background: #F8FAFC; border-top: 1px solid #E2E8F0; display: flex; justify-content: flex-end; gap: 12px;">
-        <button (click)="cerrarDetalle()" style="padding: 12px 24px; border-radius: 12px; border: 1px solid #CBD5E1; background: white; font-weight: 700; color: #475569; cursor: pointer;">Descartar</button>
-        <button (click)="guardarTodo()" style="padding: 12px 30px; border-radius: 12px; background: #4338CA; color: white; border: none; font-weight: 800; cursor: pointer;">🚀 Guardar Proyecto</button>
+      <div style="padding: 20px 28px; background: var(--neutral-50); border-top: 1px solid var(--neutral-200); display: flex; justify-content: flex-end; gap: 12px;">
+        <button (click)="cerrarDetalle()" style="padding: 12px 24px; border-radius: 12px; border: 1px solid var(--neutral-300); background: white; font-weight: 700; color: var(--neutral-600); cursor: pointer;">Descartar</button>
+        <button (click)="guardarTodo()" style="padding: 12px 30px; border-radius: 12px; background: var(--info-fg); color: white; border: none; font-weight: 800; cursor: pointer;">🚀 Guardar Proyecto</button>
       </div>
 
     </div>

@@ -78,7 +78,7 @@ export interface PuntoMapa {
       height: 300px;
       width: 100%;
       border-radius: 10px;
-      border: 1px solid #E2E8F0;
+      border: 1px solid var(--neutral-200);
       background: #EEF2F7;
       z-index: 0;
     }
@@ -93,7 +93,7 @@ export interface PuntoMapa {
       padding: 16px;
       background: rgba(248, 250, 252, 0.94);
       border-radius: 10px;
-      color: #92400E;
+      color: var(--warn-soft-fg);
       font-size: 13px;
       font-weight: 600;
     }
@@ -105,7 +105,7 @@ export interface PuntoMapa {
       margin-top: 10px;
       font-size: 11.5px;
       font-weight: 600;
-      color: #64748B;
+      color: var(--neutral-500);
     }
 
     .leyenda-item { display: inline-flex; align-items: center; gap: 5px; }
@@ -117,23 +117,23 @@ export interface PuntoMapa {
       display: inline-block;
     }
 
-    .punto-ok   { background: #10B981; }
-    .punto-warn { background: #F59E0B; }
-    .punto-bad  { background: #EF4444; }
-    .punto-nulo { background: #94A3B8; }
+    .punto-ok   { background: var(--ok-fg); }
+    .punto-warn { background: var(--warn-fg); }
+    .punto-bad  { background: var(--bad-fg); }
+    .punto-nulo { background: var(--neutral-400); }
 
     .mapa-nota {
       margin-top: 8px;
       font-size: 11.5px;
-      color: #94A3B8;
+      color: var(--neutral-400);
       line-height: 1.4;
     }
 
     .mapa-vacio {
-      border: 1px dashed #CBD5E1;
+      border: 1px dashed var(--neutral-300);
       border-radius: 10px;
       padding: 20px;
-      background: #F8FAFC;
+      background: var(--neutral-50);
       min-height: 300px;
       display: flex;
       flex-direction: column;
@@ -143,13 +143,13 @@ export interface PuntoMapa {
     .mapa-vacio-titulo {
       font-size: 14px;
       font-weight: 800;
-      color: #334155;
+      color: var(--neutral-700);
       margin-bottom: 6px;
     }
 
     .mapa-vacio-texto {
       font-size: 12.5px;
-      color: #64748B;
+      color: var(--neutral-500);
       line-height: 1.5;
       margin-bottom: 14px;
       max-width: 460px;
@@ -160,7 +160,7 @@ export interface PuntoMapa {
       font-weight: 800;
       letter-spacing: 0.4px;
       text-transform: uppercase;
-      color: #94A3B8;
+      color: var(--neutral-400);
     }
 
     .mapa-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
@@ -168,9 +168,9 @@ export interface PuntoMapa {
     .mapa-chip {
       font-size: 11.5px;
       font-weight: 600;
-      color: #475569;
+      color: var(--neutral-600);
       background: #FFF;
-      border: 1px solid #E2E8F0;
+      border: 1px solid var(--neutral-200);
       border-radius: 999px;
       padding: 3px 10px;
     }
@@ -285,9 +285,9 @@ export class MapaSucursalesComponent implements AfterViewInit, OnChanges, OnDest
 
       marcador.bindPopup(
         `<strong>${this.limpiar(p.nombre)}</strong><br>` +
-        (p.direccion ? `<span style="color:#64748B">${this.limpiar(p.direccion)}</span><br>` : '') +
+        (p.direccion ? `<span style="color:var(--neutral-500)">${this.limpiar(p.direccion)}</span><br>` : '') +
         `<span style="color:${color}; font-weight:700">${detalle}</span>` +
-        (aviso ? `<br><span style="color:#B45309; font-size:11px">${aviso}</span>` : '')
+        (aviso ? `<br><span style="color:var(--warn-soft-fg); font-size:11px">${aviso}</span>` : '')
       );
       marcador.bindTooltip(this.limpiar(p.nombre), { direction: 'top' });
 
@@ -303,10 +303,10 @@ export class MapaSucursalesComponent implements AfterViewInit, OnChanges, OnDest
   }
 
   private colorDe(p: PuntoMapa): string {
-    if (p.sinActividad) return '#94A3B8';
-    if (p.cumplimiento >= 80) return '#10B981';
-    if (p.cumplimiento >= 50) return '#F59E0B';
-    return '#EF4444';
+    if (p.sinActividad) return 'var(--neutral-400)';
+    if (p.cumplimiento >= 80) return 'var(--ok-fg)';
+    if (p.cumplimiento >= 50) return 'var(--warn-fg)';
+    return 'var(--bad-fg)';
   }
 
   /** Los nombres van dentro de HTML del popup: no confiamos en que vengan limpios. */

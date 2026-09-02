@@ -574,7 +574,7 @@ export class ReportesComponent implements OnInit, OnDestroy {
                Sucursal: ${c.store || '(sin sucursal)'}<br>
                Fecha: ${c.date}
              </div>
-             <p style="margin-top:12px;color:#475569;font-size:12px">
+             <p style="margin-top:12px;color:var(--neutral-600);font-size:12px">
                Borrará este registro Y evitará que se vuelva a generar en próximos días
                (desactiva la asignación / molde de la rutina si aplica).
              </p>`,

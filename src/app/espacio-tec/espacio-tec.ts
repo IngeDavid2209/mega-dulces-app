@@ -41,11 +41,11 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
   // ---------------- Tablero Kanban ----------------
   readonly columnas = [
     { id: 'porhacer', nombre: 'Por hacer',   color: '#8B5CF6' },
-    { id: 'hoy',      nombre: 'Para hoy',    color: '#3B82F6' },
-    { id: 'progreso', nombre: 'En progreso', color: '#F59E0B' },
-    { id: 'hecho',    nombre: 'Hecho',       color: '#10B981' },
+    { id: 'hoy',      nombre: 'Para hoy',    color: 'var(--info-fg)' },
+    { id: 'progreso', nombre: 'En progreso', color: 'var(--warn-fg)' },
+    { id: 'hecho',    nombre: 'Hecho',       color: 'var(--ok-fg)' },
   ];
-  readonly colores = ['#A78BFA', '#34D399', '#FCD34D', '#F472B6', '#60A5FA', '#FB923C', '#E2E8F0'];
+  readonly colores = ['#A78BFA', '#34D399', 'var(--warn-border)', '#F472B6', 'var(--info-soft-bg)', '#FB923C', 'var(--neutral-200)'];
   readonly idsColumnas = this.columnas.map(c => c.id);
 
   /** Tarjetas agrupadas por columna (lo que consume el tablero / CDK). */
@@ -261,7 +261,7 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
       titulo: c.titulo || c.texto || '(sin título)',
       columna: c.columna || (c.completada ? 'hecho' : 'porhacer'),
       orden: typeof c.orden === 'number' ? c.orden : 0,
-      color: c.color || '#E2E8F0',
+      color: c.color || 'var(--neutral-200)',
       fechaInicio: c.fechaInicio || '',
       fechaFin: c.fechaFin || '',
       usarFechas: !!c.usarFechas,
@@ -309,7 +309,7 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
     try {
       await this.api.post('/api/tec-tareas', {
         titulo, columna: colId, orden,
-        color: '#E2E8F0', asignado: '', fechaLimite: '',
+        color: 'var(--neutral-200)', asignado: '', fechaLimite: '',
         fechaInicio: '', fechaFin: '', usarFechas: false,
         subtareas: [],
         creadoPor: this.miNombre(), creadoPorUid: this.miUid(),
@@ -375,7 +375,7 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
       await this.api.post('/api/tec-tareas', {
         ...this.tarjeta,
         titulo,
-        color: this.tarjeta.color || '#E2E8F0',
+        color: this.tarjeta.color || 'var(--neutral-200)',
         asignado: this.tarjeta.asignado || '',
         fechaLimite: this.tarjeta.fechaLimite || '',
         usarFechas: !!this.tarjeta.usarFechas,
@@ -524,7 +524,7 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
 
   abrirNuevoGrupo(tipo: 'equipo' | 'proyecto') {
     this.grupoEsNuevo = true;
-    this.grupoModal = { tipo, nombre: '', descripcion: '', color: '#60A5FA', miembros: [], tareas: [] };
+    this.grupoModal = { tipo, nombre: '', descripcion: '', color: 'var(--info-soft-bg)', miembros: [], tareas: [] };
     this.nuevoMiembroTexto = '';
     this.nuevaTareaProyectoTexto = '';
     this.isGrupoModalOpen = true;
@@ -655,7 +655,7 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
       const payload: any = {
         tipo: this.grupoModal.tipo, nombre,
         descripcion: (this.grupoModal.descripcion || '').trim(),
-        color: this.grupoModal.color || '#60A5FA',
+        color: this.grupoModal.color || 'var(--info-soft-bg)',
         miembros: this.grupoModal.miembros || [],
         tareas: this.grupoModal.tareas || [],
         actualizadoEn: Date.now()

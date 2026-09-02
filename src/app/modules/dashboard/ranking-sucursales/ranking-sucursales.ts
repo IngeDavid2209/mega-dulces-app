@@ -397,10 +397,10 @@ export class RankingSucursalesComponent implements OnInit, OnDestroy {
   // ============================================================================
   /** Color del badge/barra según porcentaje. */
   colorPct(p: number, total: number): string {
-    if (total === 0) return '#E2E8F0';
-    if (p >= 80) return '#10B981';
-    if (p >= 50) return '#F59E0B';
-    return '#EF4444';
+    if (total === 0) return 'var(--neutral-200)';
+    if (p >= 80) return 'var(--ok-fg)';
+    if (p >= 50) return 'var(--warn-fg)';
+    return 'var(--bad-fg)';
   }
   /** Texto del puesto (1°, 2°, 3°). */
   puesto(i: number): string { return `${i + 1}°`; }

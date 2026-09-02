@@ -11,9 +11,7 @@ import { SidebarComponent } from '../../../shared/sidebar/sidebar';
 import { esAdminGlobal, sucursalesPermitidas, esSupervisor, mismoEmpleadoNombre } from '../../../shared/permisos.util';
 import { nivelDeUsuario } from '../../../shared/nivel-jerarquico.util';
 import { esItemHecho, tieneEvidencia } from '../../../shared/item-completado.util';
-import {
-  OPERACION_COMPROBADA, FIDELIDAD_DEL_REGISTRO, leyendaDe,
-} from '../../../shared/indicador.util';
+import { TableroDireccionComponent } from './tablero-direccion';
 import { UsuariosService } from '../../../shared/usuarios.service';
 import { resolverPuesto } from '../../../shared/puesto.util';
 import { nombrePuesto } from '../../../shared/organigrama.catalogo';
@@ -32,7 +30,7 @@ import { fueraDeOperacion } from '../../../shared/medicion.util';
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, SidebarComponent, MapaSucursalesComponent],
+  imports: [CommonModule, FormsModule, RouterModule, SidebarComponent, MapaSucursalesComponent, TableroDireccionComponent],
   templateUrl: './home.html',
   styleUrls: ['./home.css']
 })
@@ -264,7 +262,9 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
    * (por ejemplo, ninguna tarea con hora límite) puede decir "sin datos" en
    * vez de mentir con un 0% o un 100%.
    */
-  private agregadoHoy = computed(() => {
+  /** Publico: lo consume la plantilla para pasarlo al tablero de Direccion,
+     que NO recalcula nada — asi no hay dos versiones de la misma cifra. */
+  agregadoHoy = computed(() => {
     let items = 0, hechos = 0;
     let pidenEvidencia = 0, conEvidencia = 0;
     let medibles = 0, aTiempo = 0;
@@ -347,36 +347,6 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
     const a = this.agregadoHoy();
     return this.porcentaje(a.hechos, a.items);
   });
-
-  /**
-   * ═════════════════════════════════════════════════════════════════════
-   *  LOS DOS NÚMEROS DE PRIMERA LÍNEA — y por qué salen en guion
-   * ═════════════════════════════════════════════════════════════════════
-   * Los cuatro medidores de abajo son de EJECUCIÓN: dicen cuánto se marcó.
-   * Ninguno contesta la pregunta de Dirección, que es «¿de qué me puedo fiar,
-   * y de quién es lo que falta?».
-   *
-   * Los dos que sí la contestan salen 'sin_dato', y eso no es un tablero a
-   * medias: es el único valor honesto. El invariante del modelo dice que un
-   * cumplimiento sin fidelidad no se reporta, y hoy no hay verificación con
-   * muestra en ninguna emisión ni auditoría física. Publicar un porcentaje
-   * aquí sería afirmar algo que el sistema no puede sostener.
-   *
-   * Cada uno trae su motivo Y la fase que lo llena, a la vista y no en un
-   * tooltip: es lo que separa un tablero que calla de uno que se explica.
-   */
-  indicadoresDireccion = computed(() => [
-    {
-      titulo: 'Operación comprobada',
-      ind: OPERACION_COMPROBADA,
-      leyenda: leyendaDe(OPERACION_COMPROBADA),
-    },
-    {
-      titulo: 'Fidelidad del registro',
-      ind: FIDELIDAD_DEL_REGISTRO,
-      leyenda: leyendaDe(FIDELIDAD_DEL_REGISTRO),
-    },
-  ]);
 
   /** Las cuatro tarjetas de arriba. Cada una dice qué mide y de dónde sale. */
   tarjetasMando = computed(() => [
@@ -744,6 +714,48 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
       .slice(0, 8);
   });
  
+  /**
+   * Siete días CON DENOMINADOR, para el tablero de Dirección.
+   *
+   * `tendencia7Dias` de abajo hace `total > 0 ? pct : 0` y devuelve solo el
+   * porcentaje: pierde de cuántos puntos salió. Por eso su gráfica sube a
+   * 100 % y se cae a cero varias veces por semana — no es volatilidad de la
+   * operación, son días de dos o tres tareas emitidas.
+   *
+   * Aquí se conservan las DOS cifras y quien pinta decide: por debajo del
+   * mínimo se dibuja un hueco, no un cero.
+   */
+  serieSieteDias = computed(() => {
+    const out: { etiqueta: string; cumplidos: number; emitidos: number }[] = [];
+    const hoy = this.horaActual();
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(hoy);
+      d.setDate(d.getDate() - i);
+      const offset = d.getTimezoneOffset() * 60000;
+      const fechaISO = new Date(d.getTime() - offset).toISOString().split('T')[0];
+      let emitidos = 0, cumplidos = 0;
+      for (const c of this.checklists()) {
+        if (c.date !== fechaISO) continue;
+        for (const it of (c.items || [])) {
+          emitidos++;
+          if (this.itemHecho(it, c)) cumplidos++;
+        }
+      }
+      out.push({
+        etiqueta: d.toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric' }).replace('.', ''),
+        cumplidos, emitidos,
+      });
+    }
+    return out;
+  });
+
+  /** El momento del corte que se está mirando. No es un cierre materializado. */
+  selloCorte = computed(() => {
+    const d = this.horaActual();
+    return d.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' })
+      + ' · ' + d.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+  });
+
   // ------- Tendencia 7 días (tres series reales) -------
   tendencia7Dias = computed(() => {
     const dias: { fecha: string, porcentaje: number, puntualidad: number, evidencia: number }[] = [];

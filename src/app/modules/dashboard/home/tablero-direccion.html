@@ -1,0 +1,259 @@
+<section class="td">
+
+  <!-- ══════════════ CABECERA ══════════════ -->
+  <header class="td-head">
+    <div class="td-quien">
+      <span class="td-avatar" aria-hidden="true">{{ iniciales(nombre) }}</span>
+      <div>
+        <div class="td-nombre">{{ nombre }}</div>
+        <div class="td-alcance">Dirección · {{ alcance }}</div>
+      </div>
+    </div>
+
+    <!-- El sello dice QUÉ CORTE se está mirando. No afirma que exista una tabla
+         de cierre inmutable: eso es Fase 6 y hoy esto se reduce en el
+         navegador. Se nombra "cierre" porque es el corte del día, y se aclara. -->
+    <div class="td-cierre">
+      <div class="td-cierre-lab">Corte del día · se reduce en el navegador</div>
+      <div class="td-cierre-val dato">{{ selloCierre }}</div>
+      <div class="td-cierre-sub dato">
+        {{ miles(emitidos()) }} puntos emitidos · {{ checklistsCorte() }} checklists · {{ unidades.length }} unidades de control
+      </div>
+    </div>
+  </header>
+
+  <!-- ══════════════ 1 · LOS DOS NÚMEROS ══════════════ -->
+  <section class="td-bloque">
+    <div class="td-bloque-cab">
+      <h3>Los dos números</h3>
+      <span class="td-bloque-sub">Lo único que sube a Dirección</span>
+    </div>
+
+    <div class="td-dos">
+      <article class="td-dos-card" *ngFor="let d of dosNumeros">
+        <div class="td-dos-titulo">{{ d.titulo }}</div>
+        <div class="td-dos-valor">
+          <span class="td-guion" *ngIf="!esMedido(d.ind)">—</span>
+          <span class="td-numero dato" *ngIf="esMedido(d.ind)">{{ valorDe(d.ind) }}%</span>
+        </div>
+        <div class="td-dos-sello">◆ {{ d.sello }}</div>
+        <p class="td-dos-porque">{{ leyendaDe(d.ind) }}</p>
+      </article>
+    </div>
+
+    <!-- La explicación va EN la pantalla y no en un manual: quien abra esto por
+         primera vez tiene que entender el guion sin que nadie se lo cuente. -->
+    <aside class="td-nota">
+      <span class="td-nota-marca" aria-hidden="true">§</span>
+      <p>
+        <strong>Por qué no dice «0 %».</strong> Un cero afirma que se midió y salió
+        cero, y eso se lee como «nadie trabajó». La verdad de hoy es distinta: no hay
+        con qué medir. El número que sube a Dirección es el cumplimiento
+        <strong>topado por la fidelidad</strong>, y un cumplimiento sin fidelidad no se
+        reporta. La propiedad que este tablero tiene y el anterior no:
+        <strong>sabe callarse</strong>.
+      </p>
+    </aside>
+  </section>
+
+  <!-- ══════════════ 2 · LO QUE SÍ SE SABE ══════════════ -->
+  <section class="td-bloque">
+    <div class="td-bloque-cab">
+      <h3>Lo que sí se sabe</h3>
+      <span class="td-bloque-sub">Seis cifras, cada una con la cifra de la que sale</span>
+      <span class="td-sello-ok">Ninguna sin denominador</span>
+    </div>
+
+    <div class="td-cifras">
+      <article class="td-cifra" *ngFor="let c of loQueSeSabe()">
+        <div class="td-cifra-val dato" [class.td-cifra-ausente]="c.confianza === 'ausente'">
+          {{ c.valor }}
+        </div>
+        <div class="td-cifra-lab">{{ c.etiqueta }}</div>
+        <!-- La procedencia va pegada a la cifra, no al pie de la página: una
+             cifra "medida el 31/ago" no es una cifra de hoy y hay que verlo
+             sin bajar la vista. -->
+        <div class="td-cifra-proc" *ngIf="c.nota">
+          <span class="td-chip td-chip-{{ c.confianza }}">{{ etiquetaConfianza[c.confianza] }}</span>
+          {{ c.nota }}
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <!-- ══════════════ 3 · LAS CINCO CAUSAS ══════════════ -->
+  <section class="td-bloque">
+    <div class="td-bloque-cab">
+      <h3>Por qué no se cumplió</h3>
+      <span class="td-bloque-sub">Las cinco causas, cada una con dueño distinto</span>
+      <span class="td-sello-num dato">{{ miles(puntosSinCumplir()) }} puntos sin cumplir</span>
+    </div>
+
+    <table class="td-tabla">
+      <thead>
+        <tr><th>Causa</th><th class="num">Puntos</th><th>De quién es</th><th>Lectura</th></tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let c of causas; trackBy: trackCausa" [class.td-capa]="c.esCapa">
+          <td>
+            {{ c.nombre }}
+            <span class="td-chip td-chip-{{ c.confianza }}">{{ etiquetaConfianza[c.confianza] }}</span>
+            <div class="td-porque" *ngIf="c.porque">{{ c.porque }}</div>
+          </td>
+          <td class="num dato">
+            <span *ngIf="c.confianza === 'estimado'" class="td-aprox">~</span>{{ puntosDeCausa(c.clave) }}
+          </td>
+          <td>{{ c.deQuien }}</td>
+          <td>{{ c.lectura }}</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p class="td-pie">
+      <strong>«No verificado» no suma con las demás.</strong> Es una capa aparte, no una
+      alternativa: aplica a todo lo emitido, incluido lo que sí se ejecutó bien. Si esta
+      tabla sumara las cinco y cuadrara con el total, estaría mal hecha. Y las dos
+      primeras llevan <span class="td-aprox">~</span> porque el reparto exacto sale de un
+      script que todavía no se ha corrido.
+    </p>
+  </section>
+
+  <!-- ══════════════ 4 · LAS UNIDADES ══════════════ -->
+  <section class="td-bloque">
+    <div class="td-bloque-cab">
+      <h3>Las unidades de la empresa</h3>
+      <span class="td-bloque-sub">{{ unidades.length }} unidades de control · cinco zonas, no tres</span>
+    </div>
+
+    <div class="td-unidades">
+      <article class="td-unidad" *ngFor="let u of unidades; trackBy: trackUnidad">
+        <div class="td-unidad-nombre">{{ u.nombre }}</div>
+        <div class="td-unidad-valor"><span class="td-guion">—</span></div>
+        <div class="td-unidad-etq">{{ u.etiqueta }}</div>
+        <div class="td-unidad-nota">{{ u.nota }}</div>
+        <!-- De qué fuente sale la tarjeta. Es el límite 1 del modelo: el eje es
+             híbrido hasta que exista la tabla de unidades (Fase 3.1). -->
+        <div class="td-unidad-fuente">
+          <span class="td-chip td-chip-fuente">{{ u.fuente }}</span>{{ u.clave }}
+        </div>
+      </article>
+    </div>
+
+    <p class="td-pie">
+      <strong>Unidad responsable ≠ unidad servida.</strong> Un ticket vencido en Morelia
+      Madero es rojo de Mantenimiento y espera visible de la sucursal — no falla de la
+      Encargada. Ésa es la razón de este eje: solo <strong>14 de 89</strong> puestos son
+      de sucursal, así que un tablero organizado por sucursal deja el 84 % de la empresa
+      fuera de la pantalla. Dirección ve el detalle de las unidades y el agregado de lo
+      que cuelga de cada una — nunca puestos individuales.
+      <br><br>
+      <strong>Dos límites, dichos y no escondidos:</strong> las cinco Gerencias son
+      instancias de la unidad <code>zona</code> y salen de <code>zonas.util.ts</code>,
+      mientras CEDIS, Administración, Capital Humano y Sistemas son unidades del
+      organigrama — dos fuentes distintas, y cada tarjeta dice la suya. Y
+      <strong>Mantenimiento es un puesto</strong> (<code>jefe-mantenimiento</code>, unidad
+      administrativa), no una unidad de primer nivel: aparece porque «unidad servida» es
+      un concepto del modelo, pero no se asciende un puesto para que el tablero cuadre.
+    </p>
+  </section>
+
+  <!-- ══════════════ 5 · HALLAZGOS ══════════════ -->
+  <section class="td-bloque">
+    <div class="td-bloque-cab">
+      <h3>Hallazgos abiertos</h3>
+      <span class="td-bloque-sub">Hallazgo → acción → reverificación</span>
+      <span class="td-sello-falta">no implementado · Fase 5</span>
+    </div>
+
+    <div class="td-vacio">
+      <p>
+        <strong>El ciclo no existe todavía.</strong> Un hallazgo necesita tabla propia,
+        acción correctiva y reverificación obligatoria, y eso es Fase 5. Hasta entonces
+        este panel dice que no está — que es honesto — en vez de pintar filas que no se
+        pueden cerrar, escalar ni reverificar.
+      </p>
+      <p>
+        <strong>Y lo que eso implica hoy:</strong> los rojos del tablero son rojos
+        decorativos. Un rojo sin hallazgo abierto no tiene dueño ni reloj. Ocho tarjetas
+        idénticas con el mismo nombre y la misma hora no son ocho fallas: son una
+        apertura que no ocurrió, multiplicada por sus puntos — y eso le enseña a la gente
+        a ignorar las alarmas.
+      </p>
+
+      <!-- Las cinco anclas se muestran aunque el hallazgo no exista, porque
+           dicen qué tan defendible sería la prueba el día que exista. -->
+      <div class="td-anclas">
+        <span class="td-anclas-lab">Las cinco anclas de la evidencia, hoy:</span>
+        <span class="td-ancla" *ngFor="let a of anclas" [class.td-ancla-falta]="!a.tiene">
+          {{ a.nombre }}: {{ a.valor }}
+        </span>
+      </div>
+      <p class="td-pie">
+        De las cinco, una evidencia típica tiene <strong>tres</strong>. Le falta la
+        etiqueta física del ámbito —sin ella una foto está amarrada a la buena voluntad de
+        quien la subió— y la inmutabilidad: hoy se sobrescribe.
+      </p>
+    </div>
+  </section>
+
+  <!-- ══════════════ 6 · SIETE DÍAS ══════════════ -->
+  <section class="td-bloque">
+    <div class="td-bloque-cab">
+      <h3>Siete días</h3>
+      <span class="td-bloque-sub">Sin línea donde no hay muestra</span>
+      <span class="td-sello-num dato">{{ diasConMuestra() }} de {{ dias().length }} días con muestra</span>
+    </div>
+
+    <div class="td-serie" *ngIf="dias().length > 0">
+      <div class="td-serie-escala dato">
+        escala 0 – {{ escalaMax() }} % · la raya de en medio es {{ escalaMax() / 2 }} %
+      </div>
+      <div class="td-serie-cuerpo">
+        <div class="td-serie-guia" aria-hidden="true"></div>
+        <div class="td-dia" *ngFor="let d of dias(); trackBy: trackDia">
+          <div class="td-dia-pista">
+            <!-- Con muestra: barra con su valor. Sin muestra: RAYADO y sin
+                 número. Un cero dibujado afirma que se midió. -->
+            <div class="td-dia-barra" *ngIf="esMedido(d.ind)" [style.height.%]="alturaDe(d)"></div>
+            <div class="td-dia-hueco" *ngIf="!esMedido(d.ind)"
+                 [attr.title]="leyendaDe(d.ind)"></div>
+          </div>
+          <div class="td-dia-val dato">
+            <span *ngIf="esMedido(d.ind)">{{ valorDe(d.ind) }} %</span>
+            <span class="td-guion-chico" *ngIf="!esMedido(d.ind)">—</span>
+          </div>
+          <div class="td-dia-etq">{{ d.etiqueta }}</div>
+        </div>
+      </div>
+      <p class="td-pie">
+        Los días rayados no tienen número porque no llegaron a
+        <strong>{{ minimoPuntos }} puntos</strong> emitidos. Un tablero normal dibujaría
+        cero y la línea bajaría bonito hasta el piso; aquí el hueco se ve como hueco,
+        porque «no hay muestra» y «salió cero» no son lo mismo y no se pueden pintar
+        igual. Y la escala se ajusta al máximo real: con escala 0–100 una barra de 5 %
+        mide cinco píxeles y equivale a no dibujarla.
+      </p>
+    </div>
+    <p class="td-vacio" *ngIf="dias().length === 0">
+      Todavía no hay serie de siete días cargada en esta vista.
+    </p>
+  </section>
+
+  <!-- ══════════════ 7 · PROCEDENCIA ══════════════ -->
+  <section class="td-bloque">
+    <div class="td-bloque-cab">
+      <h3>De dónde sale cada cifra</h3>
+      <span class="td-bloque-sub">Un tablero que no lo dice obliga a creerle</span>
+    </div>
+    <table class="td-tabla td-tabla-proc">
+      <tbody>
+        <tr *ngFor="let p of procedencia()">
+          <td class="dato">{{ p.cifra }}</td>
+          <td class="td-proc-origen">{{ p.origen }}</td>
+          <td><span class="td-chip td-chip-{{ p.confianza }}">{{ etiquetaConfianza[p.confianza] }}</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+</section>

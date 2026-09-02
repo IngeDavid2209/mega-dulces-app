@@ -96,23 +96,20 @@
         </button>
       </section>
 
-      <!-- ══════════ LOS DOS NÚMEROS DE DIRECCIÓN ══════════
-           Van ARRIBA de los cuatro medidores porque son los que contestan la
-           pregunta del nivel de arriba, y los cuatro de abajo pasan a ser sus
-           componentes. Los dos salen en guion: no hay verificación con muestra
-           ni auditoría física, así que la operación no está comprobada. El
-           motivo va A LA VISTA, no en un tooltip — un guion sin explicación es
-           igual de mudo que un cero mentiroso. -->
-      <section class="dir-grid">
-        <article class="dir-card" *ngFor="let d of indicadoresDireccion()">
-          <div class="dir-titulo">{{ d.titulo }}</div>
-          <div class="dir-valor">
-            <span class="dir-guion" *ngIf="d.ind.estado !== 'medido'">—</span>
-            <span class="dir-numero dato" *ngIf="d.ind.estado === 'medido'">{{ d.ind.valor }}%</span>
-          </div>
-          <div class="dir-porque">{{ d.leyenda }}</div>
-        </article>
-      </section>
+      <!-- ══════════════ TABLERO DE DIRECCIÓN ══════════════
+           Va PRIMERO porque contesta la pregunta de este nivel: "¿de qué me
+           puedo fiar, y de quién es lo que falta?". Los cuatro medidores de
+           abajo son de EJECUCIÓN y quedan como sus componentes.
+
+           Recibe el agregado que home.ts ya calcula: no se recalcula nada, y
+           así no hay dos versiones de la misma cifra que puedan discrepar. -->
+      <app-tablero-direccion
+        [nombre]="currentUser?.nombre || ''"
+        [alcance]="'todas las unidades'"
+        [selloCierre]="selloCorte()"
+        [agregadoHoy]="agregadoHoy()"
+        [sieteDias]="serieSieteDias()">
+      </app-tablero-direccion>
 
       <!-- ---------- Cuatro indicadores de cabecera ---------- -->
       <section class="gauge-grid">

@@ -1,0 +1,235 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   TABLERO DE DIRECCION · design system Mercado
+   Cero hex a mano: todo sale de los tokens de src/styles.css. Superficies con
+   borde de un pelo y SIN sombra (§4), numeros en mono tabular, y el guion con
+   el mismo peso visual que un numero — porque "no hay con que medir" es una
+   respuesta, no una ausencia de respuesta.
+   ═══════════════════════════════════════════════════════════════════════════ */
+:host { display: block; }
+
+.td { display: flex; flex-direction: column; gap: var(--sp-5); }
+
+/* ── Cabecera ───────────────────────────────────────────────────────────── */
+.td-head {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: var(--sp-5); flex-wrap: wrap;
+  padding-bottom: var(--sp-4);
+  border-bottom: 1px solid var(--border-color);
+}
+.td-quien { display: flex; align-items: center; gap: var(--sp-3); min-width: 0; }
+.td-avatar {
+  flex: 0 0 auto;
+  width: 40px; height: 40px; border-radius: var(--r-pill);
+  display: grid; place-items: center;
+  background: var(--neutral-200); color: var(--text-muted);
+  font-size: var(--fs-xs); font-weight: var(--fw-bold); letter-spacing: .04em;
+}
+.td-nombre { font-size: var(--fs-h3); font-weight: var(--fw-bold); color: var(--text-main); }
+.td-alcance { font-size: var(--fs-xs); color: var(--text-muted); }
+
+.td-cierre { text-align: right; min-width: 0; }
+.td-cierre-lab {
+  font-size: var(--fs-micro); font-weight: var(--fw-medium);
+  letter-spacing: .06em; text-transform: uppercase; color: var(--text-faint);
+}
+.td-cierre-val { font-size: var(--fs-body); font-weight: var(--fw-bold); color: var(--text-main); }
+.td-cierre-sub { font-size: var(--fs-xs); color: var(--text-muted); }
+
+/* ── Bloques ────────────────────────────────────────────────────────────── */
+.td-bloque { display: flex; flex-direction: column; gap: var(--sp-3); }
+.td-bloque-cab { display: flex; align-items: baseline; gap: var(--sp-3); flex-wrap: wrap; }
+.td-bloque-cab h3 {
+  margin: 0; font-size: var(--fs-h2); font-weight: var(--fw-bold);
+  color: var(--text-main); letter-spacing: -.01em;
+}
+.td-bloque-sub { font-size: var(--fs-xs); color: var(--text-muted); }
+.td-sello-ok, .td-sello-num, .td-sello-falta {
+  margin-left: auto;
+  font-size: var(--fs-micro); font-weight: var(--fw-medium);
+  border-radius: var(--r-pill); padding: 2px 9px;
+}
+.td-sello-ok    { background: var(--ok-soft-bg);  color: var(--ok-soft-fg); }
+.td-sello-num   { background: var(--neutral-100); color: var(--text-muted); }
+.td-sello-falta { background: var(--warn-soft-bg); color: var(--warn-soft-fg); }
+
+/* ── 1 · Los dos numeros ────────────────────────────────────────────────── */
+.td-dos { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: var(--sp-4); }
+.td-dos-card {
+  background: var(--card-bg); border: 1px solid var(--border-color);
+  border-radius: var(--r-md); padding: var(--sp-5);
+}
+.td-dos-titulo {
+  font-size: var(--fs-micro); font-weight: var(--fw-medium);
+  letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted);
+}
+.td-dos-valor { min-height: 56px; display: flex; align-items: center; }
+/* El guion grande a proposito: tiene que pesar lo mismo que pesaria el numero. */
+.td-guion  { font-size: var(--fs-display); color: var(--text-faint); line-height: 1; }
+.td-numero { font-size: var(--fs-display); font-weight: var(--fw-black); color: var(--text-main); line-height: 1; }
+.td-dos-sello { font-size: var(--fs-xs); font-weight: var(--fw-bold); color: var(--warn-soft-fg); }
+.td-dos-porque {
+  margin: var(--sp-2) 0 0; font-size: var(--fs-xs);
+  color: var(--text-muted); line-height: 1.5;
+}
+
+/* La nota del § : es contenido, no adorno. */
+.td-nota {
+  display: flex; gap: var(--sp-3);
+  background: var(--surface-ground); border: 1px solid var(--border-color);
+  border-radius: var(--r-md); padding: var(--sp-4);
+}
+.td-nota-marca {
+  flex: 0 0 auto; font-size: var(--fs-lg); font-weight: var(--fw-bold);
+  color: var(--text-faint); line-height: 1.2;
+}
+.td-nota p { margin: 0; font-size: var(--fs-xs); color: var(--text-muted); line-height: 1.6; }
+.td-nota strong { color: var(--text-main); }
+
+/* ── 2 · Lo que si se sabe ──────────────────────────────────────────────── */
+.td-cifras { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--sp-3); }
+.td-cifra {
+  background: var(--card-bg); border: 1px solid var(--border-color);
+  border-radius: var(--r-md); padding: var(--sp-4);
+}
+.td-cifra-val {
+  font-size: var(--fs-h2); font-weight: var(--fw-bold); color: var(--text-main);
+  line-height: 1.15;
+}
+.td-cifra-ausente { color: var(--text-faint); font-weight: var(--fw-regular); }
+.td-cifra-lab { font-size: var(--fs-xs); color: var(--text-muted); line-height: 1.4; margin-top: 2px; }
+.td-cifra-proc {
+  margin-top: var(--sp-2); font-size: var(--fs-micro);
+  color: var(--text-faint); line-height: 1.4;
+}
+
+/* ── Chips de procedencia ───────────────────────────────────────────────── */
+.td-chip {
+  display: inline-block; margin-right: 5px;
+  font-size: var(--fs-nano); font-weight: var(--fw-bold);
+  letter-spacing: .04em; text-transform: uppercase;
+  border-radius: var(--r-pill); padding: 1px 6px;
+}
+.td-chip-leido    { background: var(--ok-soft-bg);      color: var(--ok-soft-fg); }
+.td-chip-medido   { background: var(--info-soft-bg);    color: var(--info-soft-fg); }
+.td-chip-estimado { background: var(--warn-soft-bg);    color: var(--warn-soft-fg); }
+.td-chip-ausente  { background: var(--neutral-100);     color: var(--text-faint); }
+.td-chip-contado  { background: var(--neutral-100);     color: var(--text-muted); }
+.td-chip-fuente   { background: var(--neutral-100);     color: var(--text-muted); }
+
+/* ── Tablas ─────────────────────────────────────────────────────────────── */
+.td-tabla {
+  width: 100%; border-collapse: collapse;
+  background: var(--card-bg); border: 1px solid var(--border-color);
+  border-radius: var(--r-md); overflow: hidden;
+}
+.td-tabla th {
+  text-align: left; padding: var(--sp-2) var(--sp-3);
+  font-size: var(--fs-micro); font-weight: var(--fw-medium);
+  letter-spacing: .05em; text-transform: uppercase; color: var(--text-muted);
+  border-bottom: 1px solid var(--border-color);
+}
+.td-tabla td {
+  padding: var(--sp-3);
+  font-size: var(--fs-sm); color: var(--text-main);
+  border-bottom: 1px solid var(--border-color);
+  vertical-align: top;
+}
+.td-tabla tr:last-child td { border-bottom: none; }
+.td-tabla .num { text-align: right; font-variant-numeric: tabular-nums; }
+.td-tabla th.num { text-align: right; }
+/* La capa aparte se separa visualmente: no es una fila mas de la suma. */
+.td-capa td { background: var(--surface-ground); }
+.td-porque { font-size: var(--fs-micro); color: var(--text-faint); line-height: 1.4; margin-top: 3px; }
+.td-aprox { color: var(--warn-soft-fg); font-weight: var(--fw-bold); }
+.td-tabla-proc td { font-size: var(--fs-xs); }
+.td-proc-origen { color: var(--text-muted); }
+
+.td-pie { margin: 0; font-size: var(--fs-xs); color: var(--text-muted); line-height: 1.6; }
+.td-pie strong { color: var(--text-main); }
+.td-pie code {
+  font-family: var(--font-mono); font-size: var(--fs-micro);
+  background: var(--neutral-100); border-radius: var(--r-sm); padding: 1px 4px;
+}
+
+/* ── 4 · Unidades ───────────────────────────────────────────────────────── */
+.td-unidades { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--sp-3); }
+.td-unidad {
+  background: var(--card-bg); border: 1px solid var(--border-color);
+  border-radius: var(--r-md); padding: var(--sp-4);
+}
+.td-unidad-nombre { font-size: var(--fs-body); font-weight: var(--fw-bold); color: var(--text-main); }
+.td-unidad-valor { min-height: 40px; display: flex; align-items: center; }
+.td-unidad-etq {
+  display: inline-block;
+  font-size: var(--fs-micro); font-weight: var(--fw-medium);
+  background: var(--neutral-100); color: var(--text-muted);
+  border-radius: var(--r-pill); padding: 1px 8px;
+}
+.td-unidad-nota { font-size: var(--fs-micro); color: var(--text-muted); line-height: 1.45; margin-top: var(--sp-2); }
+.td-unidad-fuente {
+  margin-top: var(--sp-2); font-size: var(--fs-nano);
+  color: var(--text-faint); font-family: var(--font-mono);
+}
+
+/* ── 5 · Vacios honestos ────────────────────────────────────────────────── */
+.td-vacio {
+  background: var(--card-bg); border: 1px solid var(--border-color);
+  border-radius: var(--r-md); padding: var(--sp-5);
+  display: flex; flex-direction: column; gap: var(--sp-3);
+}
+.td-vacio p { margin: 0; font-size: var(--fs-xs); color: var(--text-muted); line-height: 1.6; }
+.td-vacio strong { color: var(--text-main); }
+
+.td-anclas { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }
+.td-anclas-lab { font-size: var(--fs-micro); color: var(--text-faint); text-transform: uppercase; letter-spacing: .05em; }
+.td-ancla {
+  font-size: var(--fs-micro); font-family: var(--font-mono);
+  background: var(--ok-soft-bg); color: var(--ok-soft-fg);
+  border-radius: var(--r-pill); padding: 2px 8px;
+}
+/* El ancla que falta se ve como falta, no en gris discreto. */
+.td-ancla-falta { background: var(--bad-soft-bg); color: var(--bad-soft-fg); }
+
+/* ── 6 · Siete dias ─────────────────────────────────────────────────────── */
+.td-serie {
+  background: var(--card-bg); border: 1px solid var(--border-color);
+  border-radius: var(--r-md); padding: var(--sp-4);
+  display: flex; flex-direction: column; gap: var(--sp-3);
+}
+.td-serie-escala { font-size: var(--fs-micro); color: var(--text-faint); }
+.td-serie-cuerpo {
+  position: relative;
+  display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;
+  gap: var(--sp-2); align-items: end;
+}
+.td-serie-guia {
+  position: absolute; left: 0; right: 0; top: 50%;
+  border-top: 1px dashed var(--border-color);
+  pointer-events: none;
+}
+.td-dia { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.td-dia-pista {
+  width: 100%; height: 120px;
+  background: var(--neutral-100); border-radius: var(--r-sm);
+  display: flex; align-items: flex-end; overflow: hidden;
+}
+.td-dia-barra { width: 100%; background: var(--ok-fg); border-radius: var(--r-sm) var(--r-sm) 0 0; }
+/* EL HUECO. Rayado y sin numero: se ve que no hay dato, no que haya cero.
+   El rayado se hace con un gradiente repetido, sin imagen ni librería. */
+.td-dia-hueco {
+  width: 100%; height: 100%;
+  background: repeating-linear-gradient(
+    45deg,
+    var(--neutral-200) 0, var(--neutral-200) 4px,
+    transparent 4px, transparent 8px
+  );
+}
+.td-dia-val { font-size: var(--fs-micro); font-weight: var(--fw-bold); color: var(--text-main); }
+.td-guion-chico { color: var(--text-faint); font-weight: var(--fw-regular); }
+.td-dia-etq { font-size: var(--fs-nano); color: var(--text-muted); text-align: center; }
+
+@media (max-width: 720px) {
+  .td-head { flex-direction: column; }
+  .td-cierre { text-align: left; }
+  .td-dia-pista { height: 90px; }
+}

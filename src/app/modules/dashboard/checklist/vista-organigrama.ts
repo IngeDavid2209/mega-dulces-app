@@ -102,6 +102,23 @@ interface FilaArbol {
   hijos: FilaArbol[];
 }
 
+/**
+ * Una fila del arbol unico. Cuatro tipos, un solo `*ngFor`.
+ * `prof` es la sangria: 0 es Direccion General y crece con el organigrama y
+ * luego con sucursal, persona y entrega.
+ */
+interface FilaVista {
+  tipo: 'puesto' | 'sucursal' | 'persona' | 'entrega';
+  /** Id unico y estable: sirve de llave de plegado y de trackBy. */
+  clave: string;
+  prof: number;
+  tieneHijos: boolean;
+  puesto?: FilaArbol;
+  sucursal?: SucursalVista;
+  persona?: PersonaVista;
+  entrega?: EntregaVista;
+}
+
 /** Una persona con tareas cuyo puesto no se pudo resolver. */
 interface HuerfanoVista {
   nombre: string;
@@ -132,8 +149,6 @@ export class VistaOrganigramaComponent {
   /** Se emite al tocar una tarea: el padre abre la vista de detalle de siempre. */
   @Output() abrir = new EventEmitter<any>();
 
-  /** Puesto abierto. null = solo el menú. */
-  puestoActivo = signal<string | null>(null);
 
   /** Esconde los puestos que todavía no tienen manual (son 70 de 89). */
   soloConManual = signal(true);
@@ -249,29 +264,154 @@ export class VistaOrganigramaComponent {
     return filas;
   });
 
-  /** Nodos plegados, por id de puesto. */
-  plegados = signal<Set<string>>(new Set());
+  /**
+   * ═════════════════════════════════════════════════════════════════════
+   *  UN SOLO ÁRBOL: organigrama → puesto → sucursal → colaborador
+   * ═════════════════════════════════════════════════════════════════════
+   * Antes había DOS vistas —«Por persona» y «Por organigrama»— y eran la misma
+   * pregunta contestada dos veces: quién tiene qué. Tenerlas separadas obligaba
+   * a elegir antes de ver, y la de personas era una lista plana de 100 tarjetas
+   * donde la estructura de la empresa no aparecía.
+   *
+   * Ahora es un árbol. Se abre por niveles y cada nivel contesta una cosa:
+   *   puesto      → qué manda el manual y cómo va toda su rama
+   *   sucursal    → cómo va el MISMO puesto entre tiendas (ahí está el dato)
+   *   colaborador → quién lo está cumpliendo hoy
+   *   entrega     → la tarea, que se abre en la vista de detalle de siempre
+   *
+   * TODO ARRANCA CERRADO. Con 89 puestos, abrirlo entero de entrada son
+   * cientos de filas y nadie encuentra nada: la estructura se vuelve ruido.
+   * Se guarda el conjunto de ABIERTOS y no de cerrados, justamente porque el
+   * estado por defecto es cerrado y así el conjunto vacío es el estado inicial
+   * correcto sin tener que enumerar los 89.
+   */
+  abiertos = signal<Set<string>>(new Set());
+
+  /** Abre o cierra un nodo, sea puesto, sucursal o persona. */
+  alternar(clave: string) {
+    const s = new Set(this.abiertos());
+    s.has(clave) ? s.delete(clave) : s.add(clave);
+    this.abiertos.set(s);
+  }
+  abierto(clave: string): boolean { return this.abiertos().has(clave); }
+
+  /** Cierra todo de golpe. Con el árbol muy abierto es la única salida rápida. */
+  cerrarTodo() { this.abiertos.set(new Set()); }
 
   /**
-   * La pirámide aplanada en el orden en que se pinta, respetando lo plegado.
+   * Las sucursales de UN puesto, con su gente y sus entregas.
    *
-   * Se aplana en vez de usar una plantilla recursiva: Angular sabe hacer
-   * recursión con `ng-template`, pero cada nivel monta un componente más y aquí
-   * hay hasta cinco. Con la lista plana y un `paddingLeft` por profundidad es un
-   * solo `*ngFor` — y es también lo que permite plegar sin recalcular el árbol.
+   * Se calcula solo para los puestos ABIERTOS: hacerlo para los 89 en cada
+   * recálculo recorrería la lista completa 89 veces por ciclo. El corte por
+   * sucursal va dentro del puesto y no como nivel del árbol de arriba porque un
+   * Anaquelista existe en ocho sucursales, y el dato que sirve es comparar el
+   * mismo puesto entre ellas.
    */
-  filas = computed<FilaArbol[]>(() => {
-    const cerrados = this.plegados();
-    const out: FilaArbol[] = [];
-    const recorrer = (fs: FilaArbol[]) => {
+  private sucursalesDe(puestoId: string): SucursalVista[] {
+    const entregas = this.porPuesto().mapa.get(puestoId) || [];
+    const porSuc = new Map<string, Map<string, EntregaVista[]>>();
+    for (const c of entregas) {
+      const suc = (c.store || 'Sin sucursal').trim();
+      const per = (c.assigned || 'Sin asignar').trim();
+      const total = c.items?.length || 0;
+      const hechos = c.calcCompletados || 0;
+      const vista: EntregaVista = {
+        ref: c,
+        titulo: c.name || '(sin nombre)',
+        completados: hechos,
+        totalItems: total,
+        porcentaje: total ? Math.round((hechos / total) * 100) : 0,
+        vencida: this.esVencida(c),
+        completa: total > 0 && hechos >= total,
+        hora: c.time || '',
+      };
+      if (!porSuc.has(suc)) porSuc.set(suc, new Map());
+      const mp = porSuc.get(suc)!;
+      mp.set(per, [...(mp.get(per) || []), vista]);
+    }
+
+    const out: SucursalVista[] = [];
+    for (const [sucursal, mp] of porSuc) {
+      const personas: PersonaVista[] = [];
+      for (const [nombre, evs] of mp) {
+        const tot = evs.reduce((n, e) => n + e.totalItems, 0);
+        const hec = evs.reduce((n, e) => n + e.completados, 0);
+        personas.push({
+          nombre, iniciales: this.iniciales(nombre), entregas: evs,
+          completados: hec, totalItems: tot,
+          porcentaje: tot ? Math.round((hec / tot) * 100) : 0,
+        });
+      }
+      // Peor primero: lo que necesita atención va arriba.
+      personas.sort((a, b) => a.porcentaje - b.porcentaje || a.nombre.localeCompare(b.nombre));
+      const tot = personas.reduce((n, p) => n + p.totalItems, 0);
+      const hec = personas.reduce((n, p) => n + p.completados, 0);
+      out.push({
+        sucursal, personas, completados: hec, totalItems: tot,
+        porcentaje: tot ? Math.round((hec / tot) * 100) : 0,
+      });
+    }
+    out.sort((a, b) => a.porcentaje - b.porcentaje || a.sucursal.localeCompare(b.sucursal));
+    return out;
+  }
+
+  /**
+   * El árbol aplanado en el orden en que se pinta, con CUATRO tipos de fila.
+   *
+   * Se aplana en vez de usar plantillas recursivas: con hasta ocho niveles
+   * -cinco de organigrama más sucursal, persona y entrega- la recursión monta
+   * un componente por nivel para no ganar nada, y plegar obligaría a recalcular
+   * el árbol entero.
+   *
+   * Al abrir un puesto salen PRIMERO sus sucursales -su trabajo propio- y
+   * luego los puestos que le reportan. Ese orden importa: un Encargado abre su
+   * fila para ver su turno, no para ver el organigrama.
+   */
+  filas = computed<FilaVista[]>(() => {
+    const out: FilaVista[] = [];
+    const rec = (fs: FilaArbol[]) => {
       for (const f of fs) {
-        out.push(f);
-        if (!cerrados.has(f.puesto.id)) recorrer(f.hijos);
+        const clave = 'p:' + f.puesto.id;
+        const sucs = this.abierto(clave) ? this.sucursalesDe(f.puesto.id) : [];
+        out.push({
+          tipo: 'puesto', clave, prof: f.profundidad, puesto: f,
+          tieneHijos: f.hijos.length > 0 || f.entregasHoy > 0,
+        });
+        if (!this.abierto(clave)) continue;
+
+        for (const su of sucs) {
+          const cs = clave + '|s:' + su.sucursal;
+          out.push({
+            tipo: 'sucursal', clave: cs, prof: f.profundidad + 1, sucursal: su,
+            tieneHijos: su.personas.length > 0,
+          });
+          if (!this.abierto(cs)) continue;
+
+          for (const pe of su.personas) {
+            const cp = cs + '|c:' + pe.nombre;
+            out.push({
+              tipo: 'persona', clave: cp, prof: f.profundidad + 2, persona: pe,
+              tieneHijos: pe.entregas.length > 0,
+            });
+            if (!this.abierto(cp)) continue;
+
+            for (const e of pe.entregas) {
+              out.push({
+                tipo: 'entrega', clave: cp + '|e:' + e.titulo + e.hora,
+                prof: f.profundidad + 3, entrega: e, tieneHijos: false,
+              });
+            }
+          }
+        }
+        rec(f.hijos);
       }
     };
-    recorrer(this.arbol());
+    rec(this.arbol());
     return out;
   });
+
+  /** Cuántos nodos hay abiertos. Sirve para ofrecer "cerrar todo". */
+  cuantosAbiertos = computed(() => this.abiertos().size);
 
   /**
    * Las tareas de gente cuyo puesto no se pudo resolver, agrupadas por persona.
@@ -317,84 +457,6 @@ export class VistaOrganigramaComponent {
     };
   });
 
-  // ==========================================================================
-  //  EL PUESTO ABIERTO
-  // ==========================================================================
-
-  /** El manual del puesto abierto (null si no hay puesto abierto o no tiene). */
-  manualActivo = computed<ManualPuesto | null>(() => manualDePuesto(this.puestoActivo()));
-
-  /** Las tareas que manda el manual del puesto abierto. */
-  tareasDelManual = computed<TareaManual[]>(() => {
-    const m = this.manualActivo();
-    return m ? m.tareas : [];
-  });
-
-  puestoActivoNombre = computed(() => {
-    const id = this.puestoActivo();
-    const p = PUESTOS_ORGANIGRAMA.find(x => x.id === id);
-    return p ? p.nombre : '';
-  });
-
-  /** Quién cumple hoy el puesto abierto, agrupado por sucursal. */
-  cumplimiento = computed<SucursalVista[]>(() => {
-    const id = this.puestoActivo();
-    if (!id) return [];
-    const entregas = this.porPuesto().mapa.get(id) || [];
-
-    // sucursal -> persona -> entregas
-    const porSuc = new Map<string, Map<string, EntregaVista[]>>();
-    for (const c of entregas) {
-      const suc = (c.store || 'Sin sucursal').trim();
-      const per = (c.assigned || 'Sin asignar').trim();
-      const total = c.items?.length || 0;
-      const hechos = c.calcCompletados || 0;
-      const vista: EntregaVista = {
-        ref: c,
-        titulo: c.name || '(sin nombre)',
-        completados: hechos,
-        totalItems: total,
-        porcentaje: total ? Math.round((hechos / total) * 100) : 0,
-        vencida: this.esVencida(c),
-        completa: total > 0 && hechos >= total,
-        hora: c.time || '',
-      };
-      if (!porSuc.has(suc)) porSuc.set(suc, new Map());
-      const mp = porSuc.get(suc)!;
-      mp.set(per, [...(mp.get(per) || []), vista]);
-    }
-
-    const out: SucursalVista[] = [];
-    for (const [sucursal, mp] of porSuc) {
-      const personas: PersonaVista[] = [];
-      for (const [nombre, evs] of mp) {
-        const tot = evs.reduce((n, e) => n + e.totalItems, 0);
-        const hec = evs.reduce((n, e) => n + e.completados, 0);
-        personas.push({
-          nombre,
-          iniciales: this.iniciales(nombre),
-          entregas: evs,
-          completados: hec,
-          totalItems: tot,
-          porcentaje: tot ? Math.round((hec / tot) * 100) : 0,
-        });
-      }
-      personas.sort((a, b) => a.porcentaje - b.porcentaje || a.nombre.localeCompare(b.nombre));
-      const tot = personas.reduce((n, p) => n + p.totalItems, 0);
-      const hec = personas.reduce((n, p) => n + p.completados, 0);
-      out.push({
-        sucursal,
-        personas,
-        completados: hec,
-        totalItems: tot,
-        porcentaje: tot ? Math.round((hec / tot) * 100) : 0,
-      });
-    }
-    // Peor primero: lo que necesita atención va arriba.
-    out.sort((a, b) => a.porcentaje - b.porcentaje || a.sucursal.localeCompare(b.sucursal));
-    return out;
-  });
-
   /**
    * Gente que TIENE este puesto pero hoy no recibió nada.
    *
@@ -403,8 +465,8 @@ export class VistaOrganigramaComponent {
    * dice, porque casi siempre significa descanso, fuera de turno, o que su
    * sucursal no está capturada.
    */
-  sinEntrega = computed<{ nombre: string; sucursales: string }[]>(() => {
-    const id = this.puestoActivo();
+  sinEntregaDe(puestoId: string): { nombre: string; sucursales: string }[] {
+    const id = puestoId;
     if (!id) return [];
     const conEntrega = new Set(
       (this.porPuesto().mapa.get(id) || []).map(c => normalizarNombre(c.assigned))
@@ -419,25 +481,14 @@ export class VistaOrganigramaComponent {
           .join(', ') || 'sin sucursal',
       }))
       .sort((a, b) => a.nombre.localeCompare(b.nombre));
-  });
+  }
 
   // ==========================================================================
   //  ACCIONES
   // ==========================================================================
 
-  /** Plegar un nodo esconde su rama, no la borra: los totales no cambian. */
-  alternarNodo(id: string) {
-    const s = new Set(this.plegados());
-    s.has(id) ? s.delete(id) : s.add(id);
-    this.plegados.set(s);
-  }
-  nodoPlegado(id: string): boolean { return this.plegados().has(id); }
 
-  elegirPuesto(id: string) {
-    this.puestoActivo.set(this.puestoActivo() === id ? null : id);
-  }
 
-  volverAlMenu() { this.puestoActivo.set(null); }
 
   abrirEntrega(e: EntregaVista) { this.abrir.emit(e.ref); }
 
@@ -498,9 +549,7 @@ export class VistaOrganigramaComponent {
     return 'av-cero';
   }
 
-  trackPuesto(_: number, f: FilaArbol) { return f.puesto.id; }
+  trackFila(_: number, f: FilaVista) { return f.clave; }
   trackHuerfano(_: number, h: HuerfanoVista) { return h.nombre; }
-  trackSucursal(_: number, s: SucursalVista) { return s.sucursal; }
-  trackPersona(_: number, p: PersonaVista) { return p.nombre; }
   trackTarea(_: number, t: TareaManual) { return t.id; }
 }

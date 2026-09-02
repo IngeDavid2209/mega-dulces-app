@@ -407,27 +407,15 @@
               </button>
             </section>
 
-            <!-- 🏛️ Cómo agrupar: por persona (lo de siempre) o recorriendo el
-                 organigrama. Solo en el apartado del Manual: agrupar por puesto
-                 las tareas libres no significaría nada, esas no salen de un
-                 puesto. Y solo para quien ve más que lo suyo. -->
-            <span class="cl-toolbar-sep"
-                  *ngIf="modoManual && puedeFiltrarVista && vistaHistorial() === 'pendientes'"></span>
-            <section class="vista-tabs eje-vista"
-                     *ngIf="modoManual && puedeFiltrarVista && vistaHistorial() === 'pendientes'">
-              <button class="vista-tab"
-                      [class.vista-tab-active]="agrupacion() === 'persona'"
-                      (click)="agrupacion.set('persona')"
-                      title="Agrupar por colaborador">
-                Por persona
-              </button>
-              <button class="vista-tab"
-                      [class.vista-tab-active]="agrupacion() === 'organigrama'"
-                      (click)="agrupacion.set('organigrama')"
-                      title="Recorrer el organigrama: unidad, puesto y sucursal">
-                Por organigrama
-              </button>
-            </section>
+            <!-- ══════════ LA VISTA ES UNA SOLA ══════════
+                 Aqui habia dos pestañas, "Por persona" y "Por organigrama", y
+                 eran la MISMA pregunta contestada dos veces: quien tiene que.
+                 Tenerlas separadas obligaba a elegir antes de ver, y la de
+                 personas era una lista plana de cien tarjetas donde la
+                 estructura de la empresa no aparecia.
+                 Ahora es un arbol que se abre por niveles -organigrama →
+                 puesto → sucursal → colaborador → tarea- y el interruptor deja
+                 de existir. Un eje menos que decidir antes de trabajar. -->
           </div>
 
           <!-- 📕 "Agregar mi tarea" no aplica en el apartado del Manual: ahí solo

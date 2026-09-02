@@ -16,31 +16,42 @@
         salen arriba, fuera de su lugar.
       </div>
     </div>
-    <label class="org-check" [title]="'Hay ' + resumen().puestosSinManual + ' puestos del organigrama sin manual levantado'">
-      <input type="checkbox"
-             [ngModel]="soloConManual()"
-             (ngModelChange)="soloConManual.set($event)">
-      Solo puestos con manual
-    </label>
+
+    <div class="org-acciones">
+      <button class="org-btn" *ngIf="cuantosAbiertos() > 0" (click)="cerrarTodo()">
+        Cerrar todo ({{ cuantosAbiertos() }})
+      </button>
+      <label class="org-check" [title]="'Hay ' + resumen().puestosSinManual + ' puestos del organigrama sin manual levantado'">
+        <input type="checkbox"
+               [ngModel]="soloConManual()"
+               (ngModelChange)="soloConManual.set($event)">
+        Solo puestos con manual
+      </label>
+    </div>
   </header>
 
-  <div class="org-cuerpo" [class.con-detalle]="!!puestoActivo()">
+  <div class="org-cuerpo">
 
-    <!-- ══════════════ LA PIRÁMIDE ══════════════
-         Un puesto por fila, sangrada según su profundidad en el organigrama.
-         La lista viene ya aplanada del componente: con hasta cinco niveles, una
-         plantilla recursiva montaría un componente por nivel para no ganar nada.
-         El número grande de cada fila es el de SU RAMA COMPLETA -ponderado por
-         puntos de control-; el chico entre paréntesis es lo suyo propio. -->
+    <!-- ══════════════ UN SOLO ÁRBOL ══════════════
+         organigrama → puesto → sucursal → colaborador → tarea.
+
+         Antes eran DOS vistas —«Por persona» y «Por organigrama»— y eran la
+         misma pregunta contestada dos veces. La de personas era una lista plana
+         de cien tarjetas donde la estructura de la empresa no aparecía; la del
+         organigrama obligaba a elegir un puesto en un panel aparte para ver
+         quién lo cumple. Ahora se abre en el mismo sitio.
+
+         TODO ARRANCA CERRADO: con 89 puestos, abrirlo entero de entrada son
+         cientos de filas y la estructura se vuelve ruido. -->
     <nav class="org-menu" aria-label="Organigrama">
 
-      <p class="org-pista" *ngIf="!puestoActivo()">
-        Toca un puesto para ver lo que su manual le manda y quién lo cumple hoy.
+      <p class="org-pista">
+        Toca un puesto para abrir sus sucursales, y una sucursal para ver quién
+        la cumple hoy.
       </p>
 
-      <!-- Encabezado permanente. Sin el habia que pasar el mouse por cada
-           pastilla para saber que numero se estaba leyendo. aria-hidden porque
-           es orientacion visual: el dato ya va con su `title` en cada celda. -->
+      <!-- Encabezado de columnas. Reusa `.org-puesto-datos` en vez de repetir
+           las anchuras: no pueden desalinearse porque hay una sola definición. -->
       <div class="org-cab" aria-hidden="true">
         <span class="org-cab-hueco"></span>
         <span class="org-puesto-datos">
@@ -53,76 +64,121 @@
       </div>
 
       <div class="org-lista">
-      <div class="org-fila-wrap" *ngFor="let f of filas(); trackBy: trackPuesto">
-        <button class="org-puesto org-nivel-{{ f.profundidad }}"
-                [style.paddingLeft.px]="10 + f.profundidad * 18"
-                [class.activo]="puestoActivo() === f.puesto.id"
-                [class.sin-manual]="!f.tieneManual"
-                [class.con-rama]="f.hijos.length > 0"
-                (click)="elegirPuesto(f.puesto.id)">
+        <div class="org-fila-wrap" *ngFor="let f of filas(); trackBy: trackFila">
 
-          <!-- El chevron pliega la rama y NO abre el puesto: son dos acciones
-               distintas y compartir el click hacía imposible plegar sin abrir. -->
-          <span class="org-chevron"
-                *ngIf="f.hijos.length > 0"
-                [class.girado]="!nodoPlegado(f.puesto.id)"
-                (click)="alternarNodo(f.puesto.id); $event.stopPropagation()"
-                [attr.aria-expanded]="!nodoPlegado(f.puesto.id)"
-                [attr.title]="(nodoPlegado(f.puesto.id) ? 'Mostrar' : 'Esconder') + ' los ' + f.cuantosDebajo + ' puesto(s) de esta rama'">›</span>
-          <span class="org-chevron org-chevron-hueco" *ngIf="f.hijos.length === 0"></span>
+          <!-- ─── PUESTO ─── -->
+          <button *ngIf="f.tipo === 'puesto'"
+                  class="org-puesto org-nivel-{{ f.prof }}"
+                  [style.paddingLeft.px]="10 + f.prof * 18"
+                  [class.sin-manual]="!f.puesto!.tieneManual"
+                  [class.con-rama]="f.tieneHijos"
+                  [class.abierto]="abierto(f.clave)"
+                  (click)="alternar(f.clave)">
+            <span class="org-chevron" *ngIf="f.tieneHijos" [class.girado]="abierto(f.clave)">›</span>
+            <span class="org-chevron org-chevron-hueco" *ngIf="!f.tieneHijos"></span>
+            <span class="org-puesto-nombre">{{ f.puesto!.puesto.nombre }}</span>
 
-          <span class="org-puesto-nombre">{{ f.puesto.nombre }}</span>
-
-          <!-- CINCO RANURAS QUE EXISTEN SIEMPRE, en este orden.
-               El *ngIf se queda ADENTRO de cada `.org-slot`: vacia el contenido,
-               nunca la columna. Antes el *ngIf estaba en la pastilla misma, la
-               ranura desaparecia y las de la derecha se recorrian — por eso el
-               mismo lugar decia "88 puestos debajo" en una fila y "3 tareas del
-               manual" en la siguiente. -->
-          <span class="org-puesto-datos">
-            <span class="org-slot">
-              <span class="org-rama" *ngIf="f.cuantosDebajo > 0"
-                    [title]="f.cuantosDebajo + ' puesto(s) debajo'">
-                {{ f.cuantosDebajo }}
+            <span class="org-puesto-datos">
+              <span class="org-slot">
+                <span class="org-rama" *ngIf="f.puesto!.cuantosDebajo > 0"
+                      [title]="f.puesto!.cuantosDebajo + ' puesto(s) debajo'">
+                  {{ f.puesto!.cuantosDebajo }}
+                </span>
+              </span>
+              <span class="org-slot">
+                <span class="org-pill org-pill-manual" *ngIf="f.puesto!.tieneManual"
+                      [title]="f.puesto!.tareasManual + ' tarea(s) que manda su manual'">
+                  {{ f.puesto!.tareasManual }}
+                </span>
+                <span class="org-pill org-pill-nada" *ngIf="!f.puesto!.tieneManual" title="Sin manual levantado">—</span>
+              </span>
+              <span class="org-slot">
+                <span class="org-avance" *ngIf="f.puesto!.porcentajeArbol !== null"
+                      [ngClass]="claseAvance(f.puesto!.porcentajeArbol)"
+                      [title]="f.puesto!.hechosArbol + ' de ' + f.puesto!.puntosArbol + ' puntos de control de toda la rama'">
+                  {{ f.puesto!.porcentajeArbol }}%
+                </span>
+              </span>
+              <span class="org-slot">
+                <span class="org-propio"
+                      *ngIf="f.puesto!.cuantosDebajo > 0 && f.puesto!.porcentaje !== null"
+                      title="Del puesto solo, sin contar a quienes le reportan">
+                  ({{ f.puesto!.porcentaje }}%)
+                </span>
+              </span>
+              <span class="org-slot">
+                <span class="org-vencidas" *ngIf="f.puesto!.vencidasArbol > 0"
+                      [title]="f.puesto!.vencidasArbol + ' vencida(s) en la rama'">
+                  {{ f.puesto!.vencidasArbol }}
+                </span>
               </span>
             </span>
+          </button>
 
-            <span class="org-slot">
-              <span class="org-pill org-pill-manual" *ngIf="f.tieneManual"
-                    [title]="f.tareasManual + ' tarea(s) que manda su manual'">
-                {{ f.tareasManual }}
+          <!-- ─── SUCURSAL ───
+               El corte por sucursal va DENTRO del puesto y no como nivel de
+               arriba: un Anaquelista existe en ocho sucursales, y el dato que
+               sirve es comparar el mismo puesto entre ellas. -->
+          <button *ngIf="f.tipo === 'sucursal'"
+                  class="org-fila org-fila-suc"
+                  [style.paddingLeft.px]="10 + f.prof * 18"
+                  [class.abierto]="abierto(f.clave)"
+                  (click)="alternar(f.clave)">
+            <span class="org-chevron" *ngIf="f.tieneHijos" [class.girado]="abierto(f.clave)">›</span>
+            <span class="org-chevron org-chevron-hueco" *ngIf="!f.tieneHijos"></span>
+            <span class="org-fila-nombre">{{ f.sucursal!.sucursal }}</span>
+            <span class="org-fila-datos">
+              <span class="org-cuantos" [title]="f.sucursal!.personas.length + ' colaborador(es)'">
+                {{ f.sucursal!.personas.length }}
               </span>
-              <span class="org-pill org-pill-nada" *ngIf="!f.tieneManual" title="Sin manual levantado">—</span>
-            </span>
-
-            <!-- El avance de la RAMA. Con subordinados se enseña también el
-                 propio, porque un jefe al 40% no dice lo mismo si ese 40 es
-                 suyo o de las trece plazas que tiene debajo. -->
-            <span class="org-slot">
-              <span class="org-avance" *ngIf="f.porcentajeArbol !== null"
-                    [ngClass]="claseAvance(f.porcentajeArbol)"
-                    [title]="f.hechosArbol + ' de ' + f.puntosArbol + ' puntos de control de toda la rama'">
-                {{ f.porcentajeArbol }}%
-              </span>
-            </span>
-
-            <span class="org-slot">
-              <span class="org-propio"
-                    *ngIf="f.cuantosDebajo > 0 && f.porcentaje !== null"
-                    [title]="'Del puesto solo, sin contar a quienes le reportan'">
-                ({{ f.porcentaje }}%)
+              <span class="org-avance" [ngClass]="claseAvance(f.sucursal!.porcentaje)"
+                    [title]="f.sucursal!.completados + ' de ' + f.sucursal!.totalItems + ' puntos'">
+                {{ f.sucursal!.porcentaje }}%
               </span>
             </span>
+          </button>
 
-            <span class="org-slot">
-              <span class="org-vencidas" *ngIf="f.vencidasArbol > 0"
-                    [title]="f.vencidasArbol + ' vencida(s) en la rama'">
-                {{ f.vencidasArbol }}
+          <!-- ─── COLABORADOR ─── -->
+          <button *ngIf="f.tipo === 'persona'"
+                  class="org-fila org-fila-per"
+                  [style.paddingLeft.px]="10 + f.prof * 18"
+                  [class.abierto]="abierto(f.clave)"
+                  (click)="alternar(f.clave)">
+            <span class="org-chevron" *ngIf="f.tieneHijos" [class.girado]="abierto(f.clave)">›</span>
+            <span class="org-chevron org-chevron-hueco" *ngIf="!f.tieneHijos"></span>
+            <span class="org-ini" aria-hidden="true">{{ f.persona!.iniciales }}</span>
+            <span class="org-fila-nombre">{{ f.persona!.nombre }}</span>
+            <span class="org-fila-datos">
+              <span class="org-cuantos" [title]="f.persona!.entregas.length + ' tarea(s)'">
+                {{ f.persona!.entregas.length }}
+              </span>
+              <span class="org-avance" [ngClass]="claseAvance(f.persona!.porcentaje)"
+                    [title]="f.persona!.completados + ' de ' + f.persona!.totalItems + ' puntos'">
+                {{ f.persona!.porcentaje }}%
               </span>
             </span>
-          </span>
-        </button>
-      </div>
+          </button>
+
+          <!-- ─── TAREA ───
+               Abrirla emite `abrir` y lleva a la vista de detalle de siempre:
+               esto es navegación y lectura, no un segundo flujo de entrega. -->
+          <button *ngIf="f.tipo === 'entrega'"
+                  class="org-fila org-fila-ent"
+                  [style.paddingLeft.px]="10 + f.prof * 18"
+                  [class.vencida]="f.entrega!.vencida"
+                  (click)="abrirEntrega(f.entrega!)">
+            <span class="org-chevron org-chevron-hueco"></span>
+            <span class="org-fila-nombre">{{ f.entrega!.titulo }}</span>
+            <span class="org-fila-datos">
+              <span class="org-hora" *ngIf="f.entrega!.hora">{{ f.entrega!.hora }}</span>
+              <span class="org-vencidas" *ngIf="f.entrega!.vencida" title="Vencida">!</span>
+              <span class="org-avance" [ngClass]="claseAvance(f.entrega!.porcentaje)"
+                    [title]="f.entrega!.completados + ' de ' + f.entrega!.totalItems + ' puntos'">
+                {{ f.entrega!.porcentaje }}%
+              </span>
+            </span>
+          </button>
+        </div>
       </div>
 
       <!-- ─── AL PIE: LO QUE NO CUELGA DE NINGÚN PUESTO ───
@@ -148,129 +204,5 @@
         Nada que mostrar con este filtro.
       </p>
     </nav>
-
-    <!-- ══════════════ DETALLE DEL PUESTO ══════════════ -->
-    <!-- El detalle NO se monta si no hay puesto abierto: antes ocupaba dos
-         tercios de la pantalla con un cartel de "elige un puesto" mientras el
-         arbol se estrujaba en 292px y cortaba los nombres. -->
-    <div class="org-detalle" *ngIf="puestoActivo()">
-
-      <!-- Sin puesto elegido -->
-      <div class="org-invita" *ngIf="false">
-        <div class="org-invita-icono" aria-hidden="true">🏛️</div>
-        <h4>Elige un puesto del organigrama</h4>
-        <p>
-          Vas a ver lo que su Manual Corporativo le manda y, debajo, quién lo está
-          cumpliendo hoy, separado por sucursal.
-        </p>
-      </div>
-
-      <ng-container *ngIf="puestoActivo()">
-        <header class="org-det-head">
-          <button class="org-volver" (click)="volverAlMenu()" title="Cerrar el puesto">←</button>
-          <div>
-            <h4 class="org-det-titulo">{{ puestoActivoNombre() }}</h4>
-            <div class="org-det-manual" *ngIf="manualActivo()">
-              {{ manualActivo()?.documento }}
-              <span *ngIf="manualActivo()?.codigo"> · {{ manualActivo()?.codigo }}</span>
-              · {{ manualActivo()?.version }}
-            </div>
-            <div class="org-det-manual org-det-sinmanual" *ngIf="!manualActivo()">
-              Este puesto todavía no tiene Manual Corporativo levantado, así que no
-              recibe tareas automáticas.
-            </div>
-          </div>
-        </header>
-
-        <!-- ── LO QUE MANDA EL MANUAL ── -->
-        <div class="org-bloque" *ngIf="tareasDelManual().length > 0">
-          <div class="org-bloque-titulo">Lo que manda el manual</div>
-
-          <article class="org-tarea" *ngFor="let t of tareasDelManual(); trackBy: trackTarea">
-            <header class="org-tarea-cab">
-              <span class="org-tarea-nombre">{{ t.nombre }}</span>
-              <span class="org-tarea-codigo" *ngIf="t.codigoFormato">{{ t.codigoFormato }}</span>
-            </header>
-            <div class="org-tarea-meta">
-              <span class="org-meta">{{ textoMomento(t) }}</span>
-              <span class="org-meta">{{ textoFrecuencia(t) }}</span>
-              <span class="org-meta">Hasta las {{ t.horaLimite }}</span>
-              <span class="org-meta org-meta-evento" *ngIf="t.porEvento">Por evento</span>
-              <span class="org-meta org-meta-solo" *ngIf="t.soloPorEvento">No se entrega sola</span>
-              <span class="org-meta">{{ t.items.length }} punto(s) de control</span>
-            </div>
-            <p class="org-tarea-nota" *ngIf="t.nota">{{ t.nota }}</p>
-            <ol class="org-items">
-              <li *ngFor="let it of t.items">
-                <span class="org-item-bloque" *ngIf="it.bloque">{{ it.bloque }}</span>{{ it.texto }}
-              </li>
-            </ol>
-          </article>
-        </div>
-
-        <!-- ── QUIÉN LO CUMPLE HOY ── -->
-        <div class="org-bloque">
-          <div class="org-bloque-titulo">
-            Quién lo cumple hoy
-            <span class="org-bloque-nota" *ngIf="cumplimiento().length > 1">
-              (peor avance primero)
-            </span>
-          </div>
-
-          <p class="org-nada" *ngIf="cumplimiento().length === 0">
-            Hoy no hay ninguna tarea del manual entregada para este puesto.
-          </p>
-
-          <div class="org-suc" *ngFor="let s of cumplimiento(); trackBy: trackSucursal">
-            <div class="org-suc-cab">
-              <span class="org-suc-nombre">{{ s.sucursal }}</span>
-              <span class="org-suc-personas">{{ s.personas.length }} persona(s)</span>
-              <span class="org-avance grande" [ngClass]="claseAvance(s.porcentaje)">{{ s.porcentaje }}%</span>
-            </div>
-            <div class="org-suc-barra">
-              <span [style.width.%]="s.porcentaje" [ngClass]="claseAvance(s.porcentaje)"></span>
-            </div>
-
-            <div class="org-persona" *ngFor="let p of s.personas; trackBy: trackPersona">
-              <div class="org-persona-cab">
-                <span class="org-avatar">{{ p.iniciales }}</span>
-                <span class="org-persona-nombre">{{ p.nombre }}</span>
-                <span class="org-persona-frac">{{ p.completados }}/{{ p.totalItems }}</span>
-              </div>
-              <button class="org-entrega"
-                      *ngFor="let e of p.entregas"
-                      [class.vencida]="e.vencida"
-                      [class.completa]="e.completa"
-                      (click)="abrirEntrega(e)"
-                      [title]="'Abrir ' + e.titulo">
-                <span class="org-entrega-nombre">{{ e.titulo }}</span>
-                <span class="org-entrega-datos">
-                  <span class="org-entrega-hora">{{ e.hora }}</span>
-                  <span class="org-entrega-frac">{{ e.completados }}/{{ e.totalItems }}</span>
-                  <span class="org-entrega-estado" *ngIf="e.vencida">vencida</span>
-                  <span class="org-entrega-estado ok" *ngIf="e.completa">lista</span>
-                </span>
-              </button>
-            </div>
-          </div>
-
-          <!-- La mitad que un tablero normalmente esconde -->
-          <div class="org-sinentrega" *ngIf="sinEntrega().length > 0">
-            <div class="org-sinentrega-titulo">
-              Tienen este puesto pero hoy no recibieron nada ({{ sinEntrega().length }})
-            </div>
-            <p class="org-sinentrega-por-que">
-              Suele ser día de descanso, hora fuera de su turno, o que les falta
-              sucursal capturada. Si no es ninguna de esas, revisa su puesto en Usuarios.
-            </p>
-            <div class="org-sinentrega-lista">
-              <span class="org-chip" *ngFor="let u of sinEntrega()">
-                {{ u.nombre }} <small>{{ u.sucursales }}</small>
-              </span>
-            </div>
-          </div>
-        </div>
-      </ng-container>
-    </div>
   </div>
 </section>

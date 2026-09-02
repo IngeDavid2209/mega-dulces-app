@@ -388,3 +388,77 @@
   .org-puesto { padding-right: 10px; }
 }
 
+
+/* ══════════════════════════════════════════════════════════════════════════
+   LOS TRES NIVELES DE ABAJO: sucursal, colaborador y tarea
+   Comparten fila con los puestos, pero se leen distinto a proposito: el puesto
+   es estructura y estos son ocupacion. Se distinguen por peso y por una barra
+   a la izquierda, no por color de fondo — un bloque de color por nivel
+   convertiria la lista en un semaforo donde el unico color que importa es el
+   del dato.
+   ══════════════════════════════════════════════════════════════════════════ */
+.org-fila {
+  width: 100%;
+  min-height: 40px;
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 14px 6px 10px;
+  background: transparent; border: none; cursor: pointer;
+  text-align: left; font-family: inherit;
+  box-shadow: inset 0 .5px 0 0 var(--neutral-200);
+}
+.org-fila:hover { background: var(--overlay-hover); }
+.org-fila.abierto { background: var(--overlay-selected); }
+
+.org-fila-nombre {
+  flex: 1; min-width: 0;
+  font-size: 14px; color: var(--text-main);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.org-fila-datos {
+  flex: 0 0 auto; display: flex; align-items: center; gap: 6px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* La sucursal: es la comparacion util -el mismo puesto entre tiendas- asi que
+   se lee con algo mas de peso que la persona. */
+.org-fila-suc .org-fila-nombre { font-weight: 600; }
+
+/* La persona lleva sus iniciales, no un avatar de color: §11 prohibe circulos
+   de color como decoracion, y aqui la inicial ya identifica. */
+.org-ini {
+  flex: 0 0 auto;
+  width: 22px; height: 22px; border-radius: 999px;
+  display: grid; place-items: center;
+  background: var(--neutral-200); color: var(--text-muted);
+  font-size: 9.5px; font-weight: 700; letter-spacing: .03em;
+}
+
+/* La tarea es la hoja: no se pliega, se ABRE en la vista de detalle. Por eso
+   se marca con el cursor y con la hora, no con un chevron. */
+.org-fila-ent .org-fila-nombre { font-size: 13px; color: var(--text-muted); }
+.org-fila-ent:hover .org-fila-nombre { color: var(--text-main); }
+.org-fila-ent.vencida .org-fila-nombre { color: var(--bad-soft-fg); }
+.org-hora {
+  font-size: 11px; color: var(--text-faint);
+  font-family: var(--font-mono);
+}
+
+/* Cuantos hijos tiene la fila. Neutral: es un conteo, no un estado. */
+.org-cuantos {
+  background: var(--neutral-100); color: var(--text-muted);
+  font-size: 11px; font-weight: 600;
+  border-radius: 999px; padding: 1px 7px; min-width: 20px; text-align: center;
+}
+
+/* Un puesto abierto se marca, para no perderse al bajar por la rama. */
+.org-puesto.abierto { background: var(--overlay-selected); }
+
+/* ── Acciones de la cabecera ─────────────────────────────────────────────── */
+.org-acciones { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.org-btn {
+  border: 1px solid var(--border-color);
+  background: var(--card-bg); color: var(--text-muted);
+  border-radius: 999px; padding: 4px 12px;
+  font-size: 12px; font-weight: 600; font-family: inherit; cursor: pointer;
+}
+.org-btn:hover { background: var(--overlay-hover); color: var(--text-main); }

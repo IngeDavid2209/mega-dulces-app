@@ -907,7 +907,14 @@ export class ChecklistComponent implements OnInit, OnDestroy {
    * Solo aplica en /tareas-manual: agrupar por organigrama las tareas libres no
    * significaría nada, porque esas no salen de un puesto.
    */
-  agrupacion = signal<'persona' | 'organigrama'>('persona');
+  /**
+   * Ya no hay dos vistas: el arbol unico es la unica. Se conserva el signal
+   * -en 'organigrama' fijo- porque `verPorOrganigrama` y la plantilla lo
+   * consultan, y cambiarlos seria tocar el componente dios para nada. El
+   * interruptor de la barra si desaparecio: no hay forma de volver a la lista
+   * plana de personas, que era la misma pregunta peor contestada.
+   */
+  agrupacion = signal<'persona' | 'organigrama'>('organigrama');
   get verPorOrganigrama(): boolean {
     return this.modoManual && this.agrupacion() === 'organigrama';
   }

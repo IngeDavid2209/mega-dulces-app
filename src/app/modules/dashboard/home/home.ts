@@ -11,6 +11,9 @@ import { SidebarComponent } from '../../../shared/sidebar/sidebar';
 import { esAdminGlobal, sucursalesPermitidas, esSupervisor, mismoEmpleadoNombre } from '../../../shared/permisos.util';
 import { nivelDeUsuario } from '../../../shared/nivel-jerarquico.util';
 import { esItemHecho, tieneEvidencia } from '../../../shared/item-completado.util';
+import {
+  OPERACION_COMPROBADA, FIDELIDAD_DEL_REGISTRO, leyendaDe,
+} from '../../../shared/indicador.util';
 import { UsuariosService } from '../../../shared/usuarios.service';
 import { resolverPuesto } from '../../../shared/puesto.util';
 import { nombrePuesto } from '../../../shared/organigrama.catalogo';
@@ -344,6 +347,36 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
     const a = this.agregadoHoy();
     return this.porcentaje(a.hechos, a.items);
   });
+
+  /**
+   * ═════════════════════════════════════════════════════════════════════
+   *  LOS DOS NÚMEROS DE PRIMERA LÍNEA — y por qué salen en guion
+   * ═════════════════════════════════════════════════════════════════════
+   * Los cuatro medidores de abajo son de EJECUCIÓN: dicen cuánto se marcó.
+   * Ninguno contesta la pregunta de Dirección, que es «¿de qué me puedo fiar,
+   * y de quién es lo que falta?».
+   *
+   * Los dos que sí la contestan salen 'sin_dato', y eso no es un tablero a
+   * medias: es el único valor honesto. El invariante del modelo dice que un
+   * cumplimiento sin fidelidad no se reporta, y hoy no hay verificación con
+   * muestra en ninguna emisión ni auditoría física. Publicar un porcentaje
+   * aquí sería afirmar algo que el sistema no puede sostener.
+   *
+   * Cada uno trae su motivo Y la fase que lo llena, a la vista y no en un
+   * tooltip: es lo que separa un tablero que calla de uno que se explica.
+   */
+  indicadoresDireccion = computed(() => [
+    {
+      titulo: 'Operación comprobada',
+      ind: OPERACION_COMPROBADA,
+      leyenda: leyendaDe(OPERACION_COMPROBADA),
+    },
+    {
+      titulo: 'Fidelidad del registro',
+      ind: FIDELIDAD_DEL_REGISTRO,
+      leyenda: leyendaDe(FIDELIDAD_DEL_REGISTRO),
+    },
+  ]);
 
   /** Las cuatro tarjetas de arriba. Cada una dice qué mide y de dónde sale. */
   tarjetasMando = computed(() => [

@@ -439,3 +439,7 @@
   color: var(--pr-txt-3);
   margin-right: 2px;
 }
+
+/* El guion cuando no hubo emision: mismo peso visual que el numero, porque
+   "no hay con que medir" es una respuesta, no una ausencia de respuesta. */
+.pr-big-nulo { color: var(--text-faint); }

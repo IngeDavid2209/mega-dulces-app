@@ -273,7 +273,10 @@ export class PanelResponsablesComponent implements OnDestroy {
     const total = completada + hoy + vencida + programada;
     return {
       total, completada, hoy, vencida, programada,
-      porcentaje: total ? Math.round((completada / total) * 100) : 0
+      // NULL y no 0 cuando no hay nada emitido: un 0% afirma "se midio y
+      // salio cero", que se lee como "nadie trabajo". Sin emision no hubo
+      // medicion, y son dos frases distintas.
+      porcentaje: total ? Math.round((completada / total) * 100) : null
     };
   });
 

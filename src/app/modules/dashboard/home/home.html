@@ -96,6 +96,24 @@
         </button>
       </section>
 
+      <!-- ══════════ LOS DOS NÚMEROS DE DIRECCIÓN ══════════
+           Van ARRIBA de los cuatro medidores porque son los que contestan la
+           pregunta del nivel de arriba, y los cuatro de abajo pasan a ser sus
+           componentes. Los dos salen en guion: no hay verificación con muestra
+           ni auditoría física, así que la operación no está comprobada. El
+           motivo va A LA VISTA, no en un tooltip — un guion sin explicación es
+           igual de mudo que un cero mentiroso. -->
+      <section class="dir-grid">
+        <article class="dir-card" *ngFor="let d of indicadoresDireccion()">
+          <div class="dir-titulo">{{ d.titulo }}</div>
+          <div class="dir-valor">
+            <span class="dir-guion" *ngIf="d.ind.estado !== 'medido'">—</span>
+            <span class="dir-numero dato" *ngIf="d.ind.estado === 'medido'">{{ d.ind.valor }}%</span>
+          </div>
+          <div class="dir-porque">{{ d.leyenda }}</div>
+        </article>
+      </section>
+
       <!-- ---------- Cuatro indicadores de cabecera ---------- -->
       <section class="gauge-grid">
         <article class="gauge-card" *ngFor="let t of tarjetasMando()">

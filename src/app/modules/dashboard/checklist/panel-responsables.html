@@ -3,27 +3,43 @@
   <div class="pr-strip-head">
     <h2>Avance del día</h2>
     <div class="pr-total">
-      <span class="pr-big">{{ resumen().porcentaje }}<span class="pr-pc">%</span></span>
-      <span class="pr-lab">de {{ resumen().total }} {{ resumen().total === 1 ? 'tarea' : 'tareas' }}</span>
+      <!-- El numero grande es el % CUMPLIDO, y su denominador va debajo. Con
+           total 0 no se pinta 0%: se pinta guion, porque "no se emitio nada"
+           y "se emitio y nadie cumplio" no son lo mismo. -->
+      <span class="pr-big" *ngIf="resumen().porcentaje !== null">{{ resumen().porcentaje }}<span class="pr-pc">%</span></span>
+      <span class="pr-big pr-big-nulo" *ngIf="resumen().porcentaje === null">—</span>
+      <span class="pr-lab">{{ resumen().completada }} de {{ resumen().total }} {{ resumen().total === 1 ? 'punto cumplido' : 'puntos cumplidos' }}</span>
     </div>
   </div>
 
   <div class="pr-bar" role="img"
        [attr.aria-label]="'Completadas ' + resumen().completada + ', en curso ' + resumen().hoy +
                           ', vencidas ' + resumen().vencida + ', programadas ' + resumen().programada">
-    <span [style.flex]="resumen().completada" style="background:#1F7A4D"></span>
-    <span [style.flex]="resumen().hoy" style="background:#E08A00"></span>
+    <!-- ══════════ LA BARRA MIDE CUMPLIDO, NO ACTIVIDAD ══════════
+         ANTES: "en curso" pintaba un tramo AMBAR LLENO. Con 0 completadas y
+         190 en curso la barra salia ~87% de color y se leia "casi listo",
+         cuando lo cumplido era CERO. Encima el ambar en Mercado es color de
+         ACCION, no de estado: un boton y un avance no pueden pintarse igual.
+
+         AHORA: solo lo CUMPLIDO llena (verde) y lo VENCIDO al final (rojo).
+         Lo "en curso" y lo "programado" son PISTA VACIA, porque todavia no son
+         nada — y una pista vacia es exactamente lo que hay que ver.
+
+         Propiedad que ahora es cierta y antes no: la barra NO PUEDE parecer
+         llena si nadie cumplio nada. -->
+    <span [style.flex]="resumen().completada" style="background:var(--ok-fg)"></span>
+    <span [style.flex]="resumen().hoy" style="background:var(--neutral-200)"></span>
+    <span [style.flex]="resumen().programada" style="background:var(--neutral-200)"></span>
     <span [style.flex]="resumen().vencida" style="background:var(--bad-fg)"></span>
-    <span [style.flex]="resumen().programada" style="background:#CBD0CB"></span>
   </div>
 
   <div class="pr-legend">
     <div class="pr-legend-item">
-      <span class="k"><i class="pr-dot" style="background:#1F7A4D"></i>Completadas</span>
+      <span class="k"><i class="pr-dot" style="background:var(--ok-fg)"></i>Completadas</span>
       <span class="v">{{ resumen().completada }}</span>
     </div>
     <div class="pr-legend-item">
-      <span class="k"><i class="pr-dot" style="background:#E08A00"></i>En curso</span>
+      <span class="k"><i class="pr-dot" style="background:var(--neutral-200)"></i>En curso</span>
       <span class="v">{{ resumen().hoy }}</span>
     </div>
     <div class="pr-legend-item">
@@ -31,7 +47,7 @@
       <span class="v">{{ resumen().vencida }}</span>
     </div>
     <div class="pr-legend-item">
-      <span class="k"><i class="pr-dot" style="background:#CBD0CB"></i>Programadas</span>
+      <span class="k"><i class="pr-dot" style="background:var(--neutral-200)"></i>Programadas</span>
       <span class="v">{{ resumen().programada }}</span>
     </div>
   </div>

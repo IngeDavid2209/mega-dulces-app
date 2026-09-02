@@ -753,6 +753,33 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
     return out;
   });
 
+  /**
+   * ⚠️ EL TABLERO DE DIRECCIÓN SOLO PARA ALCANCE GLOBAL.
+   *
+   * Lo monté sin condición y eso fue un error mío: las cifras SÍ venían con
+   * alcance -la carga filtra por sucursal- pero el tablero enseña además
+   * ESTRUCTURA de toda la empresa: las diez unidades de control y el 62 % del
+   * silencio, que son cifras de compañía. Y lo rotulaba «Dirección · todas las
+   * unidades» para cualquiera, que es una mentira para quien ve una sucursal.
+   *
+   * Un dato agregado de la empresa no deja de ser información de la empresa
+   * porque no traiga nombres.
+   */
+  verTableroDireccion = computed(() => esAdminGlobal(this.currentUser));
+
+  /**
+   * El alcance REAL de quien mira, para que la cabecera no afirme de más.
+   * Si algún día se abre el tablero a alcance limitado, esto ya dice la verdad.
+   */
+  alcanceVisible = computed(() => {
+    const u = this.currentUser;
+    if (esAdminGlobal(u)) return 'todas las unidades';
+    const suc = sucursalesPermitidas(u);
+    if (!suc || suc.length === 0) return 'sin alcance asignado';
+    if (suc.length === 1) return suc[0];
+    return suc.length + ' sucursales';
+  });
+
   /** El momento del corte que se está mirando. No es un cierre materializado. */
   selloCorte = computed(() => {
     const d = this.horaActual();

@@ -103,9 +103,16 @@
 
            Recibe el agregado que home.ts ya calcula: no se recalcula nada, y
            así no hay dos versiones de la misma cifra que puedan discrepar. -->
+      <!-- ⚠️ GATEADO POR ALCANCE. Sin este *ngIf, una Encargada de sucursal veia
+           las diez unidades de control y el 62 % del silencio -cifras de toda
+           la empresa- y encima rotuladas «Direccion · todas las unidades». Las
+           cifras venian con su alcance, pero la ESTRUCTURA no: un agregado de
+           la empresa no deja de ser informacion de la empresa porque no traiga
+           nombres. -->
       <app-tablero-direccion
+        *ngIf="verTableroDireccion()"
         [nombre]="currentUser?.nombre || ''"
-        [alcance]="'todas las unidades'"
+        [alcance]="alcanceVisible()"
         [selloCierre]="selloCorte()"
         [agregadoHoy]="agregadoHoy()"
         [sieteDias]="serieSieteDias()">

@@ -189,7 +189,7 @@ Orden por **dependencia y riesgo**, no por importancia. Un paso ≤ 3 días. Mar
 | Fase | Objetivo | Semanas | Depende de | Estado |
 |---|---|---|---|---|
 | 0 | Medir antes de tocar (detener `corte.js`, divergencia, KPIs congelados, réplicas) | 0.5 | — | 🔄 **0.1 ✅ · 0.3 ✅ · 0.4 ✅ (1 réplica, 1/sep) · falta 0.2** |
-| 2 | Que los números digan la verdad (hecho ≠ justificado + primeras pruebas) | 1 | 0 | ⬜ **adelantada: va antes de la 1** |
+| 2 | Que los números digan la verdad (hecho ≠ justificado + primeras pruebas) | 1 | 0 | 🔺 **EL SIGUIENTE. Desde el 3/sep los 377 puntos piden foto por orden de Dirección, y `esItemHecho` sigue cerrando un punto sin foto con cualquier nota: la orden vale en pantalla y NO en los tableros** |
 | 1 | Cerrar el ferrocarril: una sola base | 3 | 0 | ⬜ |
 | 3 | La estructura como dato (unidad, sucursal, ámbito, puesto, plaza, cobertura) | 4 | 1 | ⬜ |
 | 4 | Navegación (4.1 se puede hacer YA, sin dependencias) | 1.5 | — / 3 | 🔄 **4.1 ✅ · 4.1b: 2a–2d ✅ (15→12 entradas) · falta el Paso 3 para llegar a 7 · 4.3 espera Fase 3 · el Dashboard ya se gatea por jefatura (3/sep)** |
@@ -220,6 +220,7 @@ extra por la fase que se indica):
 | Mapa nuevo por texto en `zonas.util.ts → POR_SUCURSAL` | Hallazgo 1 | 3.1 (semilla de unidades) |
 | `productividad.util.ts` hereda el defecto de `esItemHecho` | Invariante §5.3 | 2.1 |
 | `productividad.util.ts` sin pruebas (calcula cumplimiento, puntualidad, turno, ritmo) | §8.8 | 2.2 — **primera prueba a escribir** |
+| Foto obligatoria en los 377 puntos, incluidas 62+ declaraciones donde no hay qué fotografiar (orden de Dirección, 3/sep) | Regla 1 de `evidencia-manual.ts` | 5 — verificación por muestra; la declaración se comprueba firmando, no fotografiando |
 | Migraciones 038, 039, 041, 042, 043 con nombres de personas | Hallazgo 8 | 9.4 · **no se editan** (ya aplicadas) |
 
 **Fase 9.2 va al final a propósito:** partir `checklist.ts` antes de quitarle Firestore y antes
@@ -320,6 +321,123 @@ de que exista la plaza sería partir el problema en dos, no resolverlo.
     columna devuelve cero documentos, sin error.
 
 ## 9. Bitácora del plan
+
+### 3/sep/2026 — TODOS los puntos piden foto: una orden de Dirección, y lo que destapó
+
+**La orden, literal:** «el jefe quiere que todas las tareas tengan evidencia, entonces a todas
+actívale la evidencia fotográfica, que solo se pueda tomar la foto al instante» y «que sea más de
+una foto». Se ofreció dejar fuera las declaraciones —315 en vez de 377— y Dirección **eligió los
+377**. Queda anotado quién decidió, no para volver a discutirlo.
+
+**Lo medido antes de tocar**, de 48 tareas y 18 manuales:
+
+| | puntos |
+|---|---|
+| **total** | **377** |
+| pedían foto obligatoria | 50 |
+| pedían varias fotos | 1 |
+| piden documento (PDF que ya existe) | 45 |
+| no pedían nada | 281 |
+| — de esos, **declaraciones** en 1ª persona | **62 (piso, no total)** |
+| — estados físicos, fotografiables | 219 |
+
+**Contradice la regla 1 de `evidencia-manual.ts`, y eso se dijo antes, no después.** El archivo
+decía: *«Las declaraciones no piden nada… exigirles evidencia obliga a inventarla, y una
+evidencia inventada es peor que ninguna.»* La regla 2 —la evidencia se raciona— quedó
+**derogada** en la cabecera, con su texto anterior citado. Una regla vieja que sigue escrita como
+si rigiera es doctrina falsa en dos semanas.
+
+**El 62 es un piso.** El detector busca la vocal acentuada al final del verbo, así que «No hice
+préstamos de caja» no la caza. Y el **primer** detector mintió: `\b\w+í\b` casaba «día» de
+«Tareas del día», porque `\w` no incluye acentos en JS y el borde `\b` cae **dentro** de la
+palabra. Corregido con siete controles, positivos y negativos, incluido el falso positivo que
+tenía.
+
+#### Dos trampas que habrían roto la operación, encontradas antes de subir
+
+1. **Las dos banderas juntas bloquean TODO.** `tieneEvidencia` exige `photos[]` cuando hay
+   `requiresVariasFotos` **y además** `item.photo` cuando hay `requiresPhoto`; pero la plantilla
+   **esconde** el bloque de foto única si `variasFotos` está encendida. Con las dos, `item.photo`
+   no se puede llenar por ningún camino de la interfaz y **ningún punto se completaría jamás**.
+   Hoy se salva por el **orden de los `if`**, que es un accidente, no una decisión — y por eso
+   hay una prueba que lo deja escrito y la 055 comprueba que no quede ningún punto con las dos.
+2. **`onMultiplePhotoSelected` se comía los archivos.** Tomaba `files[0]` y descartaba el resto.
+   Sin `multiple` no se notaba; al ponerlo, la persona habría elegido tres archivos, habría visto
+   uno, **sin ningún error**, y el punto quedaría «con evidencia» con un tercio de lo entregado.
+
+**Y los 45 puntos de documento conservan su selector libre.** Antes caían en la rama de foto
+única; ahora todos caen en la galería, así que sin la excepción el input sería `image/*` con
+cámara forzada y esas personas **no podrían adjuntar el PDF que se les pide**.
+
+#### El `@defer` que iba a meter no hacía falta, y eso lo dijo la medición
+
+Predije el cuadruplicado de la 046 y **me equivoqué**: ese ×4 lo causaba el bloque de **foto
+única** (~200 líneas por punto), no la galería, cuyo estado vacío es compacto. Medido con un
+checklist de 23 puntos, **mismo build, cambiando solo el dato** —la plantilla pinta según las
+banderas del item, así que las cuatro condiciones no necesitan cuatro compilaciones—:
+
+    condición  nodos  bloques  cámara  sin-cámara  multiple  miniat.  lazy   HTML
+    hoy         294      3       3         0          3        0       0    32 KB
+    todos       374     23      23         0         23        0       0    43 KB
+    cargado     926     23      23         0         23       69      69   134 KB
+    docs        374     23       0        23         23        0       0    43 KB
+
+**×1.27 en vacío, no ×4.** Así que `checklist.html` no se tocó más de lo necesario —es el
+componente de 4 420 líneas del hallazgo 4—. Lo que sí crece son las miniaturas al final del turno
+(69), y por eso llevan `loading="lazy"`. La fila `docs` es la aserción de seguridad: **cero**
+puntos de documento con cámara forzada.
+
+`scripts/prueba-dom-evidencia.js` deja las cuatro corriendo solas. Es autocontenido: copia el
+`dist/`, parchea la autenticación **en la copia** —y aborta si el `dist/` real quedó tocado, o si
+el ancla del parche no aparece exactamente una vez—, sirve, pinta y cuenta.
+
+#### `enviado` es columna, y por poco me lleva la historia por delante
+
+El primer borrador de la 055 filtraba con `coalesce((c.datos->>'enviado')::boolean,false) is not
+true`. Pero **`enviado` es una columna tipada** (`009_checklists.sql:15`), no un campo de `datos`:
+eso da `NULL` en todas las filas, así que el filtro **pasaba todo, enviados incluidos**, sin un
+solo error de SQL. Un punto cerrado ayer con un palomeo legítimo —cuando no pedía foto— habría
+pasado a «sin evidencia» al encenderle la bandera, y el cumplimiento histórico de 186 personas se
+habría hundido sin que nadie hubiera dejado de trabajar.
+
+Es el §12 **un nivel peor**: ahí el nombre equivocado devuelve cero; aquí devuelve **todo**.
+`fecha` es `text 'YYYY-MM-DD'` y también estaba mal comparada. La 055 excluye enviados,
+eliminados, archivados y fechas pasadas: la norma nueva rige desde hoy (invariante 4).
+
+**Dato de alivio que conviene saber:** una migración que revienta **no tumba el servidor**
+(`server.js:184` la lanza sin `await` y solo registra el error), y va en transacción, así que no
+puede quedar a medias.
+
+#### Y LO MÁS IMPORTANTE: esto vale en la pantalla, NO todavía en los números
+
+    esItemHecho(item, checklist):
+      if (tieneEvidencia(item)) return true;
+      return tieneJustificacionChecklist(checklist);   // ← cualquier nota, o retraso
+
+`tieneEvidencia` sí es estricta: sin foto el punto no se cierra en pantalla. Pero `esItemHecho`
+—que es lo que leen Dashboard, Auditoría, Checkstore, Estadísticas, Ranking y Productividad—
+cuenta el punto como hecho **si el checklist trae una nota o se entregó con retraso**. O sea:
+alguien escribe un carácter y **los 377 puntos cuentan como cumplidos con cero fotos**, en
+silencio, y los números salen preciosos.
+
+**Eso convierte la Fase 2.1 en el paso siguiente, no en uno más de la lista.** Sin ella, la orden
+de Dirección es una molestia para quien trabaja y no cambia un solo indicador. Hay una prueba
+escrita a propósito con el defecto de hoy fijado, para que la 2.1 **tenga que venir a romperla**
+en vez de mover los números de 186 personas sin que nadie lo note.
+
+**Alcance, dicho para que no se lea de más:** esto cubre los **377 puntos del Manual
+Corporativo**, que es lo que emite el robot. Las tareas creadas a mano —áreas, rutinas, tarea del
+día, actividades de equipo, Espacio TEC— siguen con su propio interruptor de «requiere foto», que
+marca quien crea la tarea. Si Dirección también quiere ésas, es cambiar el valor por omisión de
+esos formularios y se dice.
+
+**Y el límite de «solo al instante», sin adornos:** `capture="environment"` abre la cámara trasera
+directo en el celular —donde pasa el 100% de la operación— pero es una **indicación al navegador,
+no un candado**: en un escritorio se ignora. Lo que sí queda duro es que cada foto se guarda con
+su **hora de captura**, visible sobre la miniatura. Un candado de verdad sería una cámara dentro
+de la app (`getUserMedia` con botón de disparo), y eso es un paso aparte que no se metió aquí de
+contrabando.
+
 
 ### 3/sep/2026 — QUIÉN VE QUÉ: el gate estaba de más en tres bloques y de menos en uno
 

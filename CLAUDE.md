@@ -192,9 +192,9 @@ Orden por **dependencia y riesgo**, no por importancia. Un paso ≤ 3 días. Mar
 | 2 | Que los números digan la verdad (hecho ≠ justificado + primeras pruebas) | 1 | 0 | ⬜ **adelantada: va antes de la 1** |
 | 1 | Cerrar el ferrocarril: una sola base | 3 | 0 | ⬜ |
 | 3 | La estructura como dato (unidad, sucursal, ámbito, puesto, plaza, cobertura) | 4 | 1 | ⬜ |
-| 4 | Navegación (4.1 se puede hacer YA, sin dependencias) | 1.5 | — / 3 | 🔄 **4.1 ✅ · 4.1b: 2a–2d ✅ (15→12 entradas) · falta el Paso 3 para llegar a 7 · 4.3 espera Fase 3** |
+| 4 | Navegación (4.1 se puede hacer YA, sin dependencias) | 1.5 | — / 3 | 🔄 **4.1 ✅ · 4.1b: 2a–2d ✅ (15→12 entradas) · falta el Paso 3 para llegar a 7 · 4.3 espera Fase 3 · el Dashboard ya se gatea por jefatura (3/sep)** |
 | 5 | Verificación con muestra + hallazgos + causas | 2 | 3 | ⬜ |
-| 6 | Tablero por nivel + cierre diario + roll-up | 2 | 5 | ⬜ |
+| 6 | Tablero por nivel + cierre diario + roll-up | 2 | 5 | ⬜ **el tablero de DIRECCIÓN ya existe y está gateado (2–3/sep); el de nivel —«Mi zona», «Mi sucursal»— no, y por eso una Encargada ve un bloque que le nombra el hueco** |
 | 7 | La norma como dato (manual y organigrama fuera del código) | 3 | 3 | ⬜ |
 | 8 | Anclas físicas + hoja de auditoría + fidelidad | 2.5 | 5, 7 | ⬜ |
 | 9 | Higiene: polls fuera del web, partir `checklist.ts`, CORS, enterrar `backend/` | 2 | 1 | ⬜ |
@@ -320,6 +320,164 @@ de que exista la plaza sería partir el problema en dos, no resolverlo.
     columna devuelve cero documentos, sin error.
 
 ## 9. Bitácora del plan
+
+### 3/sep/2026 — QUIÉN VE QUÉ: el gate estaba de más en tres bloques y de menos en uno
+
+Es la corrección más importante de los dos días, y **no se habría visto leyendo código ni
+corriendo `ng test`.** Solo existe en el DOM.
+
+**Lo medido.** Con una sesión sintética de Encargada, el Tablero de Dirección salía con
+`unidades: 10` —las diez unidades de control de la empresa entera— y la cabecera rotulada
+**«Dirección · Canindo»**. `ng test` en verde, el build en verde, la prueba de audiencias del
+menú en verde. `verEmpresa` estaba puesto en **tres de los cuatro** bloques de nivel empresa;
+al cuarto le faltaba, y era el que más enseña.
+
+**Y al revés en los otros tres, que es la mitad que no había visto.** Las cifras de los bloques
+2, 3 y 6 salen de `agregado()`, que `home.ts` carga con el filtro de alcance **ya aplicado**:
+son los números *de quien mira*. Gatearlos a Dirección le escondía a una Encargada su propio
+dato. La misma pantalla tenía el gate **de más en tres bloques y de menos en uno** — y las dos
+mitades se veían igual de bien en una captura.
+
+Lo de empresa se esconde ahora **por cifra** (`esEmpresa`), no por bloque: de las seis cifras
+del bloque 2, cinco son suyas y solo una —el 62 % del silencio— es de la empresa. Antes se
+escondía por `confianza === 'medido'`, que es un **proxy**: el día que se agregue otra cifra
+medida y propia, ese proxy la esconde sin ruido. Es §8.11(b) otra vez — la guardia va sobre la
+entrada que de verdad se usa.
+
+**Y para quien no ve el nivel empresa, el hueco se NOMBRA.** Un bloque menos y ninguna pista se
+lee como «el tablero está roto». Es la regla del guion aplicada al bloque completo.
+
+#### El spec llevaba un día midiendo otra cosa
+
+`alcance-tablero.spec.ts` probaba una función `verTablero` **copiada dentro del propio spec**,
+con la regla `esAdminGlobal`. La app pasó a `hayTableroPara = esJefatura` (instrucción de David:
+«este solo lo deben de ver las jefaturas») y la prueba **siguió en verde midiendo su copia**. Su
+propia cabecera advertía el riesgo con esas palabras: «si algún día divergen, este archivo dice
+cuál era la intención». Divergieron.
+
+Reescrito contra las funciones reales, y con la pregunta que faltaba: antes solo contestaba
+**«quién entra»**, nunca **«qué ve dentro»**. Por eso el hueco sobrevivió un día. 40/40 casos.
+
+La guardia nueva es la que importa: **existe alguien que entra y no ve empresa.** Si esas dos
+funciones volvieran a coincidir, todo lo demás seguiría verde y el gate por bloque dejaría de
+tener sentido sin que nadie lo note.
+
+#### `scripts/prueba-vista-por-nivel.js` — un `*ngIf` no es una función que se pueda llamar
+
+Es lo único capaz de cazar esta clase de fuga. Sirve el `dist/`, inyecta la sesión en
+`localStorage` antes de que arranque Angular, deja pintar y **cuenta nodos**. `/api/*` devuelve
+listas vacías a propósito: lo que se mide es el **gate**, no el dato.
+
+    ruta            sesión       tablero árbol unidades cifra-emp hueco  cae en
+    /home           global          1      0      10        1       0    /home
+    /home           limitado        1      0       0        0       1    /home
+    /home           encargada       1      0       0        0       1    /home
+    /home           anaquelista     0      0       0        0       0    /tareas-manual
+    /tareas-manual  global          0      1       —        —       —
+    /tareas-manual  encargada       0      1       —        —       —
+    /tareas-manual  anaquelista     0      0       —        —       —
+
+Aborta si **alguna sesión no se pudo medir** (un `unidades: 0` por «está gateado» y por «la app
+no arrancó» se ven idénticos) y aborta si **ningún eje discrimina**. Hoy discriminan 5 de 5.
+
+**Los dos controles negativos, corridos:**
+- quitar el `*ngIf` del bloque de unidades → la Encargada vuelve a `unidades: 10`, `bloques: 8`.
+  Restaurado → 0 y 7.
+- `verNivelEmpresa = esJefatura` → **7 de 16** casos revientan, y uno reproduce **la cadena
+  literal que estaba en pantalla**: `Expected 'Dirección · Canindo' to be 'Mi alcance · Canindo'`.
+
+#### El hueco que había dejado abierto, cerrado — y por qué no se podía medir
+
+El gate del árbol del organigrama estaba verificado **por código y no por comportamiento**.
+Medido: un anaquelista ve `arbol: 0` mientras global y encargada ven `arbol: 1`.
+
+No salía porque **Git Bash convierte `/tareas-manual` en `C:/Program Files/Git/tareas-manual`**
+al pasarlo por variable de entorno. La URL salía malformada, Chrome abría la pestaña nueva, y el
+DOM llegaba vacío — que se lee como «la app no pinta». Es **el mismo mordisco de MSYS** que dio
+los ceros falsos del 31/ago con `origin/main:.github/...`. La ruta se arma ahora dentro del
+script, con la barra puesta por código, y está comentado por qué.
+
+#### Tres verificadores mintieron el mismo día, y todos por el parser
+
+Vale más que las correcciones, porque es el patrón:
+
+1. **El de tokens CSS mintió dos veces en tres líneas.** `head -80` cortaba la lista de tokens, y
+   el ancla `^\s*--` solo veía el primero de cada renglón —`styles.css` declara varios por línea—.
+   Reportó **18 tokens faltantes que llevan meses en producción**, entre ellos `--sp-3` y
+   `--fw-bold`, usados diez veces en la pantalla que estaba mirando. Corregido: 40 usados,
+   0 faltantes, con control negativo que caza un token inventado.
+2. **El de marcadores en producción buscó en el archivo equivocado.** El tablero va en un chunk
+   *lazy*; buscarlo en `main-*.js` y en `styles-*.css` daba cero **por mirar donde no está**. Lo
+   delató el **control positivo**: `td-unidad = 0` cuando el tablero llevaba un día desplegado.
+   Reescrito para recorrer los **58 archivos de código** del `ngsw.json` (4.29 MB) y **abortar si
+   alguno no se pudo leer**.
+3. **Y antes de eso, la URL estaba mal.** `mdtask.up.railway.app` no existe; es
+   `mdtask-production-ed88.up.railway.app`. Devolvía 101 bytes y tres ceros perfectos. Lo cazó
+   imprimir **el tamaño de la entrada** antes de concluir — §8.11(a), literal.
+
+**Regla que dejan, y es una sola:** los tres ceros eran creíbles. Ninguno se cayó por sí mismo;
+los tres los tumbó una cifra al lado —el tamaño de la entrada, el conteo de la lista, el control
+positivo—. **El cero nunca se defiende solo.**
+
+**Marcador que no sirve, y por qué se validan en las dos direcciones:** `Mi alcance` ya valía
+**1** en producción antes del cambio (está en `personal.html:369`). Como marcador habría dado
+verde sin desplegar nada. Los tres que sí sirven: `td-bloque-hueco` 0→3, `esEmpresa` 0→2,
+`td-bloque` 8→13, con `td-unidad` 15→15 como control de que no se rompió el resto.
+
+---
+
+### 2–3/sep/2026 — el resto de los dos días, en orden
+
+**Sistema de diseño «Mercado», aplicado a toda la app.** 75 tokens en `styles.css` más un puente
+que remapea los 14 heredados (`--primary-blue → var(--action)`, `--shadow → none`). De 2 548
+literales hexadecimales a 896, con un guardián de diff que prueba que **solo cambiaron colores**.
+Un defecto del bloque tal como venía dado: `body.theme-monochrome` redefinía `--ink-rgb` pero los
+`--overlay-*` se declaran en `:root` **y una propiedad cuyo valor contiene `var()` se sustituye
+en el elemento donde se declara** — así que el modo oscuro nunca volteaba los overlays. Arreglado
+redeclarándolos dentro de `body.theme-monochrome`.
+
+**El Tablero de Dirección** reemplazó el `/home` anterior completo (cuatro medidores, alertas,
+mapa, tendencia). La pieza que importa no es visual: `indicador.util.ts` hace que **una cifra no
+pueda compilar sin su denominador** —`{ estado: 'medido'; valor: number; de: number }`— y que
+«sin dato» y «sin muestra» sean estados propios con su motivo. Un día sin muestra sale **rayado y
+sin valor**, no en cero: una gráfica que baja bonito hasta el piso afirma que hubo medición.
+
+**El organigrama como pirámide, y dos pestañas se volvieron una.** `arbolOrganigrama()` construye
+el árbol desde `reportaA` (1 raíz, 0 ciclos, profundidad 4) con una propiedad que se escribió a
+propósito: **cualquier puesto que el recorrido no visite se vuelve raíz**, así que nadie se pierde
+en silencio. Todo arranca colapsado; el signal guarda los **abiertos**, no los cerrados, para que
+el conjunto vacío sea el estado inicial correcto. Y `compararPorOrganigrama()` ordena personas
+por su posición en el árbol, con los desconocidos al final —**visibles**, nunca rellenados por
+parecido (§8.5).
+
+**Privilegios por rango:** `alcance.util.ts` (`Amplitud` ordenada, `veMasQue`, `esJefatura`,
+`hayTableroPara`, `verNivelEmpresa`). `esJefatura` = admin **o** tiene subordinados **o**
+`esSupervisor`, y ese último es la red para las fichas sin puesto, que hoy son decenas.
+
+**Y `home.guard.ts`, que arregla algo que yo introduje.** Al poner el tablero nuevo, `/home` se
+quedó con tres bloques y una colaboradora entraba a ver el título, el saludo y **nada más**.
+Esconder la entrada del menú no lo arregla: `/home` es el aterrizaje por defecto, se llega sin
+tocar el menú. Ahora quien no tiene tablero va a `/tareas-manual` por `UrlTree`.
+
+**Los tres los cazó David en pantalla, no yo midiendo.** «Este solo lo deben de ver las
+jefaturas», «si no puede ver nada de aquí, ¿crees que esté bien que se lo mostremos?», «cómo
+vamos a mostrarle esto si en la jerarquía es de lo más bajo porque es anaquelista». Los tres eran
+**fugas de privilegio que yo había desplegado**, y las tres se ven en tres segundos con una
+cuenta real y en ningún segundo leyendo el código. De ahí salió el arnés de arriba.
+
+#### Lo que NO está hecho, dicho para que no se lea como resuelto
+
+- **El tablero por nivel para gerencias y Encargadas no existe.** Es Fase 6 y necesita antes la
+  plaza y la verificación con muestra. Hoy una Encargada ve sus cifras y un bloque que le explica
+  qué le falta. Eso **no** es su tablero.
+- **Nadie ha entrado con una cuenta real** a comprobarlo. Las siete combinaciones se midieron con
+  sesiones sintéticas en Chrome headless, que es mucho más fuerte que leer código pero **no es lo
+  mismo** que una Encargada abriendo la app.
+- **17 commits existen solo en esta laptop y en producción.** `git push` devuelve «Repository not
+  found»: hacen falta las credenciales de David. Railway despliega del directorio de trabajo, así
+  que producción está al día y **GitHub está 17 commits atrás** — con la consecuencia de §1:
+  cualquier cambio a los workflows programados **no surte efecto** hasta que eso se resuelva.
+
 
 ### La primera prueba del proyecto sobre quién ve qué
 

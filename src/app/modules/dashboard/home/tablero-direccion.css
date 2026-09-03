@@ -291,3 +291,29 @@
   .td-cierre { text-align: left; }
   .td-dia-pista { height: 90px; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   EL BLOQUE QUE NOMBRA EL HUECO  ·  solo para quien no ve el nivel empresa
+   ───────────────────────────────────────────────────────────────────────────
+   No es decorativo: sin el, una jefatura veia una pantalla con un bloque
+   menos y ninguna pista de por que. Lo ausente se dice, no se esconde — la
+   misma regla del guion, aplicada al bloque completo en vez de a una cifra.
+
+   Los tokens son los MISMOS que ya usa el resto de este archivo. El primer
+   intento invento cinco nombres (`--tinta`, `--borde-fuerte`...) que no
+   existen en `styles.css`: `var()` con un fallback igual de inexistente NO da
+   error, hereda y se ve casi bien. Lo caza contar las definiciones, no mirar.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.td-bloque-hueco {
+  border-left: 3px solid var(--warn-fg);
+  background: var(--neutral-50);
+}
+.td-hueco-txt {
+  margin: 0 0 var(--sp-3);
+  font-size: var(--fs-sm);
+  line-height: 1.62;
+  color: var(--text-muted);
+  max-width: 68ch;
+}
+.td-hueco-txt:last-child { margin-bottom: 0; }
+.td-hueco-txt strong { color: var(--text-main); font-weight: var(--fw-bold); }

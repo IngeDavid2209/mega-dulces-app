@@ -96,9 +96,16 @@ export class TableroDireccionComponent {
     return [
       { valor: this.miles(emitidos), etiqueta: `puntos emitidos hoy · ${checklists} checklists`,
         confianza: 'leido' as const },
+      // LA UNICA cifra de empresa de las seis. Las otras cinco salen de
+      // `agregado()`, que `home.ts` carga YA FILTRADO por el alcance de quien
+      // mira: son sus numeros, no los de la empresa.
+      // `esEmpresa` es explicito a proposito. Antes la plantilla la escondia por
+      // `confianza === 'medido'`, que es un PROXY: el dia que se agregue otra
+      // cifra medida y propia, ese proxy la esconde sin que nadie lo note.
+      // La guardia va sobre la entrada que de verdad se usa (§8.11 b).
       { valor: `${this.silencio.porcentaje} %`,
         etiqueta: `de la emisión a plazas en silencio · ${this.silencio.fichasEnSilencio} de ${this.silencio.fichasConPuesto} fichas`,
-        confianza: 'medido' as const,
+        confianza: 'medido' as const, esEmpresa: true,
         nota: `${this.silencio.fuente} · ${this.silencio.medidoEl}` },
       { valor: this.miles(ejecutados), etiqueta: `puntos ejecutados · de ${this.miles(emitidos)}`,
         confianza: 'leido' as const },

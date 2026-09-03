@@ -6,7 +6,11 @@
       <span class="td-avatar" aria-hidden="true">{{ iniciales(nombre) }}</span>
       <div>
         <div class="td-nombre">{{ nombre }}</div>
-        <div class="td-alcance">Dirección · {{ alcance }}</div>
+        <!-- NO dice "Direccion" a quien no lo es. Decia "Direccion · Canindo" a una
+             Encargada: el mismo defecto que la prueba de alcance vino a cerrar, y
+             que volvio a entrar porque el gate se puso en los bloques y no aqui.
+             La etiqueta nunca afirma mas de lo que la persona ve. -->
+        <div class="td-alcance">{{ verEmpresa ? 'Dirección' : 'Mi alcance' }} · {{ alcance }}</div>
       </div>
     </div>
 
@@ -17,7 +21,8 @@
       <div class="td-cierre-lab">Corte del día · se reduce en el navegador</div>
       <div class="td-cierre-val dato">{{ selloCierre }}</div>
       <div class="td-cierre-sub dato">
-        {{ miles(emitidos()) }} puntos emitidos · {{ checklistsCorte() }} checklists · {{ unidades.length }} unidades de control
+        {{ miles(emitidos()) }} puntos emitidos · {{ checklistsCorte() }} checklists<span
+          *ngIf="verEmpresa"> · {{ unidades.length }} unidades de control</span>
       </div>
     </div>
   </header>
@@ -61,8 +66,14 @@
     </details>
   </section>
 
+    <!-- SIN gate de empresa, y estuvo gateado a global hasta el 3/sep por error mio.
+       Las cifras de este bloque salen de `agregado()`, que `home.ts` carga con el
+       filtro de alcance ya aplicado: son los numeros DE QUIEN MIRA. Gatearlas a
+       Direccion le escondia a una Encargada su propio dato — el defecto contrario
+       al del bloque de unidades, y en la misma pantalla.
+       Lo de empresa se esconde POR CIFRA (`esEmpresa`), no por bloque. -->
   <!-- ══════════════ 2 · LO QUE SÍ SE SABE ══════════════ -->
-  <section class="td-bloque" *ngIf="verEmpresa">
+  <section class="td-bloque">
     <div class="td-bloque-cab">
       <h3>Lo que sí se sabe</h3>
       <span class="td-bloque-sub">Seis cifras, cada una con la cifra de la que sale</span>
@@ -75,7 +86,7 @@
            viene filtrado por sucursal desde la carga de datos. -->
       <article class="td-cifra"
                *ngFor="let c of loQueSeSabe()"
-               [hidden]="c.confianza === 'medido' && !verEmpresa">
+               [hidden]="c.esEmpresa && !verEmpresa">
         <div class="td-cifra-val dato" [class.td-cifra-ausente]="c.confianza === 'ausente'">
           {{ c.valor }}
         </div>
@@ -91,8 +102,14 @@
     </div>
   </section>
 
+    <!-- SIN gate de empresa, y estuvo gateado a global hasta el 3/sep por error mio.
+       Las cifras de este bloque salen de `agregado()`, que `home.ts` carga con el
+       filtro de alcance ya aplicado: son los numeros DE QUIEN MIRA. Gatearlas a
+       Direccion le escondia a una Encargada su propio dato — el defecto contrario
+       al del bloque de unidades, y en la misma pantalla.
+       Lo de empresa se esconde POR CIFRA (`esEmpresa`), no por bloque. -->
   <!-- ══════════════ 3 · LAS CINCO CAUSAS ══════════════ -->
-  <section class="td-bloque" *ngIf="verEmpresa">
+  <section class="td-bloque">
     <div class="td-bloque-cab">
       <h3>Por qué no se cumplió</h3>
       <span class="td-bloque-sub">Las cinco causas, cada una con dueño distinto</span>
@@ -132,7 +149,15 @@
   </section>
 
   <!-- ══════════════ 4 · LAS UNIDADES ══════════════ -->
-  <section class="td-bloque">
+  <!-- GATEADO, y lo estaba SIN gate hasta el 3/sep. Medido en navegador con una
+       sesion de Encargada: `bloques: 4` (el gate SI quitaba tres bloques) y sin
+       embargo `unidades: 10` — las diez tarjetas de la empresa entera. El gate se
+       habia puesto en los bloques 2, 3 y 6 y este se quedo fuera.
+       Un dato agregado de la empresa no deja de ser informacion de la empresa
+       porque no traiga nombres: eso es lo que dice `alcance-tablero.spec.ts`, y
+       aqui se estaba incumpliendo con el spec en verde, porque el spec probaba
+       QUIEN VE EL TABLERO y no QUE VE DENTRO. -->
+  <section class="td-bloque" *ngIf="verEmpresa">
     <div class="td-bloque-cab">
       <h3>Las unidades de la empresa</h3>
       <span class="td-bloque-sub">{{ unidades.length }} unidades de control · cinco zonas, no tres</span>
@@ -171,6 +196,29 @@
       un concepto del modelo, pero no se asciende un puesto para que el tablero cuadre.
       </p>
     </details>
+  </section>
+
+  <!-- Para quien no ve el nivel empresa, el hueco se NOMBRA. La alternativa era
+       dejarle tres bloques y que pareciera que el tablero esta roto. Es la misma
+       regla del guion: lo ausente se dice, no se esconde. -->
+  <section class="td-bloque td-bloque-hueco" *ngIf="!verEmpresa">
+    <div class="td-bloque-cab">
+      <h3>Qué no estás viendo, y por qué</h3>
+      <span class="td-bloque-sub">Dicho, para que no parezca que el tablero está incompleto</span>
+    </div>
+    <p class="td-hueco-txt">
+      Las cifras de arriba son de <strong>{{ alcance }}</strong>: se cargan ya filtradas
+      por tu alcance. Lo que <strong>no</strong> aparece es el nivel empresa —las unidades
+      de control y el porcentaje de emisión a plazas en silencio—, porque un dato agregado
+      de la empresa sigue siendo información de la empresa aunque no traiga nombres.
+    </p>
+    <p class="td-hueco-txt">
+      Y lo que todavía <strong>no existe para nadie</strong> es el desglose de tu nivel: tu
+      cumplimiento por plaza, tus plazas sin titular, tus hallazgos abiertos. Eso es el
+      tablero por nivel, Fase 6 del plan, y necesita antes la plaza y la verificación con
+      muestra. Mientras no exista, esta pantalla no te va a mostrar un número por plaza,
+      porque inventarlo sería peor que no tenerlo.
+    </p>
   </section>
 
   <!-- ══════════════ 5 · HALLAZGOS ══════════════ -->
@@ -221,8 +269,14 @@
     </div>
   </section>
 
+    <!-- SIN gate de empresa, y estuvo gateado a global hasta el 3/sep por error mio.
+       Las cifras de este bloque salen de `agregado()`, que `home.ts` carga con el
+       filtro de alcance ya aplicado: son los numeros DE QUIEN MIRA. Gatearlas a
+       Direccion le escondia a una Encargada su propio dato — el defecto contrario
+       al del bloque de unidades, y en la misma pantalla.
+       Lo de empresa se esconde POR CIFRA (`esEmpresa`), no por bloque. -->
   <!-- ══════════════ 6 · SIETE DÍAS ══════════════ -->
-  <section class="td-bloque" *ngIf="verEmpresa">
+  <section class="td-bloque">
     <div class="td-bloque-cab">
       <h3>Siete días</h3>
       <span class="td-bloque-sub">Sin línea donde no hay muestra</span>

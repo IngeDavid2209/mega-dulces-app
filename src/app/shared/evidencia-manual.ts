@@ -16,11 +16,24 @@
  *    documento que adjuntar: son afirmaciones de conducta. Exigirles evidencia
  *    obliga a inventarla, y una evidencia inventada es peor que ninguna.
  *
- * 2. LA EVIDENCIA OBLIGATORIA SE RACIONA. De 377 puntos, 50 piden foto. Si
- *    pidiera foto en todos, en dos semanas la plantilla estaria disparando
- *    fotos al piso para poder avanzar, y el dato dejaria de valer. Lo que no es
- *    obligatorio queda PERMITIDO, que no es lo mismo: cualquiera puede adjuntar
- *    una foto en cualquier punto si quiere dejar constancia.
+ * 2. LA EVIDENCIA OBLIGATORIA SE RACIONA. --- REGLA DEROGADA EL 3/SEP/2026 ---
+ *
+ *    Decia: "De 377 puntos, 50 piden foto. Si pidiera foto en todos, en dos
+ *    semanas la plantilla estaria disparando fotos al piso para poder avanzar,
+ *    y el dato dejaria de valer."
+ *
+ *    Direccion decidio lo contrario: TODOS los puntos piden foto, y mas de una.
+ *    Se aplica en `robot-manual.service.ts` (`requiresVariasFotos: true`), no
+ *    aqui, para que este archivo siga diciendo QUE CLASE de evidencia le toca a
+ *    cada punto -y sobre todo cuales son los 45 que piden un DOCUMENTO que ya
+ *    existe, porque esos necesitan un selector de archivo y no la camara-.
+ *
+ *    LA REGLA 1 SIGUE EN PIE COMO ADVERTENCIA, NO COMO FILTRO. Se midieron 62
+ *    puntos en primera persona del pasado, y en esos la foto no prueba el
+ *    enunciado. Se le planteo a Direccion dejarlos fuera (315 en vez de 377) y
+ *    eligio los 377. Queda escrito para que el dia que aparezcan fotos del piso
+ *    en esos puntos se sepa que estaba previsto y donde se decidio, en vez de
+ *    tratarlo como un descubrimiento.
  *
  * --- COMO SE AMARRA, Y POR QUE ASI -----------------------------------------
  * Por `tareaId` + posicion, y ADEMAS se guarda el texto del punto. Al aplicarse

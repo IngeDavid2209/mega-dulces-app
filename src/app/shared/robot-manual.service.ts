@@ -354,32 +354,53 @@ export class RobotManualService {
       horaInicio: null,
       horaLimite,
       // ── EVIDENCIA ────────────────────────────────────────────────────────
-      // Los anexos del manual piden marcar, firmar y observar: la fotografia no
-      // sale del documento. Lo que se pide aqui es de la app, y esta racionado a
-      // proposito — 50 puntos de 377 piden foto. Si la pidieran todos, en dos
-      // semanas serian fotos al piso para poder avanzar.
-      // OJO con esta linea: la pantalla mete el selector de archivo DENTRO de la
-      // rama de requiresPhoto. Un punto con permiteDocumentos pero sin
-      // requiresPhoto cae en la galeria de fotos, que solo acepta imagenes y
-      // solo abre la camara: la persona no podria adjuntar el PDF que se le
-      // esta pidiendo. Por eso un documento tambien enciende requiresPhoto.
-      requiresPhoto: !!ev?.foto || !!ev?.documento,
-      requiresVariasFotos: !!ev?.variasFotos,
+      // TODOS LOS PUNTOS PIDEN FOTO, Y MAS DE UNA.
+      //
+      // Decision de Direccion, relevada por David el 3/sep/2026: "el jefe quiere
+      // que todas las tareas tengan evidencia, entonces a todas activale la
+      // evidencia fotografica, que solo se pueda tomar la foto al instante" y
+      // "que sea mas de una foto".
+      //
+      // QUEDA ESCRITO QUE CONTRADICE LA REGLA 1 de evidencia-manual.ts, que dice
+      // que las declaraciones no piden nada porque no hay objeto que fotografiar
+      // ("Cobre siempre con mi usuario propio", "No otorgue descuentos"). Se
+      // midio: de los 377 puntos, al menos 62 son declaraciones en primera
+      // persona del pasado. En esos, la foto no prueba el enunciado. Se planteo
+      // la alternativa de dejarlos fuera (315 en vez de 377) y Direccion eligio
+      // los 377. Se implementa como se pidio; el riesgo queda registrado aqui y
+      // en el CLAUDE.md para que dentro de tres meses se sepa de quien fue la
+      // decision, no para volver a discutirla.
+      //
+      // POR QUE `requiresVariasFotos` Y NO `requiresPhoto`:
+      // 1. Es lo que pidio: mas de una foto. La galeria acepta cuantas quiera,
+      //    cada una con su hora de captura.
+      // 2. LAS DOS JUNTAS BLOQUEARIAN LA OPERACION ENTERA. `tieneEvidencia`
+      //    exige `photos.length > 0` cuando hay variasFotos, y ADEMAS
+      //    `item.photo` cuando hay requiresPhoto; pero la plantilla ESCONDE el
+      //    bloque de foto unica si variasFotos esta encendida (su *ngIf lleva
+      //    `&& !item.requiresVariasFotos`). Con las dos, `item.photo` no se
+      //    podria llenar nunca y ningun punto se completaria jamas.
+      // 3. Y es lo BARATO en DOM. Medido en Chrome con un checklist de 23
+      //    puntos: 294 nodos hoy (3 de 23 con foto) -> 374 con los 23. +27%, no
+      //    x4. El x4 de la 046 lo causaba el bloque de FOTO UNICA, que son ~200
+      //    lineas por punto; la galeria vacia es compacta. Con tres fotos por
+      //    punto ya subidas -el final del turno- son 926 nodos y 69 miniaturas,
+      //    y por eso las miniaturas llevan `loading="lazy"`.
+      requiresPhoto: false,
+      requiresVariasFotos: true,
       // Antes/despues no lo pide ningun punto de estos manuales.
       requiresAntesDespues: false,
-      // NO se enciende permiteFotos en todo. Aqui decia
-      // `!ev?.foto && !ev?.variasFotos && !ev?.documento`, con la idea de que
-      // cualquiera pudiera adjuntar una foto donde quisiera. El efecto fue que
-      // el bloque de evidencia de la plantilla -DOSCIENTAS lineas por punto- se
-      // renderizaba en casi todos: de unos 95 puntos con UI de foto se paso a
-      // los 377. Un checklist de 23 puntos multiplico su DOM por cuatro y la
-      // app se puso a trabar en los celulares.
-      //
-      // Nadie pidio esa foto opcional en todos los puntos: fue idea mia. Se
-      // quita. Los puntos que SI piden foto o documento la siguen pidiendo.
+      // Sigue en false y ya no cambia nada: `permiteFotos` era la foto OPCIONAL,
+      // y hoy la galeria la enciende `requiresVariasFotos` para todos. Se deja
+      // apagada para que la tarea libre hecha a mano (`tareaDiaPermiteFotos`)
+      // siga siendo la unica que la usa, que es de quien era esa funcion.
       permiteFotos: false,
       // El punto se refiere a un documento que YA existe (factura, poliza,
       // tarjeta de circulacion): se adjunta el archivo, no se fotografia.
+      // SIGUE VIVO Y AHORA IMPORTA MAS: son 45 puntos, y ahora todos caen en la
+      // galeria. Sin esta bandera el input seria `accept="image/*"` con camara
+      // forzada y la persona NO PODRIA adjuntar el PDF que se le pide. La
+      // plantilla la honra en el input de la galeria.
       permiteDocumentos: !!ev?.documento,
       tiempoEstimadoMin: null,
       requiereMonto: !!ev?.monto,

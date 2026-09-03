@@ -1162,18 +1162,42 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   }
 
   /** Agrega una foto al array item.photos[] (para tareas con `requiresVariasFotos`). */
+  /**
+   * Agrega evidencia a la galeria del punto. Sube TODOS los archivos elegidos.
+   *
+   * ANTES SE COMIA LOS DEMAS EN SILENCIO. Tomaba `files[0]` y descartaba el
+   * resto. Con el input sin `multiple` eso no se notaba porque solo podia
+   * llegar uno; al poner `multiple` -para que los 45 puntos de documento
+   * puedan adjuntar varias hojas de un jalon- la persona habria seleccionado
+   * tres archivos, habria visto uno, y no habria habido ningun error. El punto
+   * quedaria "con evidencia" con un tercio de lo que entrego.
+   *
+   * En el celular con la camara forzada llega uno por toque de todos modos
+   * (la camara devuelve una foto por disparo): ahi el que suma varias es el
+   * boton "Agregar otra foto". Este arreglo es para el otro camino.
+   */
   async onMultiplePhotoSelected(event: any, item: any) {
-    const file = event.target.files[0];
-    if (!file) return;
+    const archivos: File[] = Array.from(event.target?.files || []);
+    if (!archivos.length) return;
     if (!item.photos) item.photos = [];
-    // Reutiliza el flujo existente: subimos al servidor y agregamos la URL al array.
-    // Aprovechamos onFileSelected con un objeto temporal y luego empujamos al array.
-    const tempItem: any = {};
-    await this.onFileSelected(event, tempItem, 'photo');
-    if (tempItem.photo && tempItem.photo !== 'subiendo...') {
-      item.photos.push({ url: tempItem.photo, time: tempItem.photoTime || '' });
-      this.actualizarEstado();
+    const inputReal = event.target;
+
+    for (const file of archivos) {
+      // Evento SINTETICO con un solo archivo. `onFileSelected` lee
+      // `target.files[0]` y escribe `target.value = ''`, y no usa nada mas del
+      // evento -verificado leyendo la funcion completa-, asi que esto le basta.
+      // Se le pasa un item temporal porque esa funcion escribe en `item.photo`
+      // y aqui el destino es el arreglo `photos`.
+      const tempItem: any = {};
+      await this.onFileSelected({ target: { files: [file], value: '' } }, tempItem, 'photo');
+      if (tempItem.photo && tempItem.photo !== 'subiendo...') {
+        item.photos.push({ url: tempItem.photo, time: tempItem.photoTime || '' });
+      }
     }
+    // Limpiar el input REAL: sin esto, volver a elegir el mismo archivo no
+    // dispara `change` y parece que la app lo ignoro.
+    try { if (inputReal) inputReal.value = ''; } catch { /* noop */ }
+    this.actualizarEstado();
   }
 
   /** Quita una foto del array item.photos[] por índice. */

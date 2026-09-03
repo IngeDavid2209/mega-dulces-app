@@ -414,6 +414,10 @@ Vale más que las correcciones, porque es el patrón:
 3. **Y antes de eso, la URL estaba mal.** `mdtask.up.railway.app` no existe; es
    `mdtask-production-ed88.up.railway.app`. Devolvía 101 bytes y tres ceros perfectos. Lo cazó
    imprimir **el tamaño de la entrada** antes de concluir — §8.11(a), literal.
+   **Y el 404 venía con cuerpo**, que es lo que lo volvía creíble: el edge de Railway responde
+   `404` con `x-railway-fallback: true` y 101 bytes de JSON cuando el host no tiene servicio
+   detrás. Un `grep` sobre eso **no falla** — solo no encuentra nada. Por eso el nombre del host
+   se lee del repo (4 apariciones) y nunca se escribe de memoria.
 
 **Regla que dejan, y es una sola:** los tres ceros eran creíbles. Ninguno se cayó por sí mismo;
 los tres los tumbó una cifra al lado —el tamaño de la entrada, el conteo de la lista, el control

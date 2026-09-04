@@ -370,6 +370,31 @@ leen los tableros.
    Se cambió por leer `max-height` del **estilo calculado**, que discrimina siempre; NEG-3 ahora
    rompe 2 de 2.
 
+**CORRECCIÓN, el mismo día (§8.11 f).** Lo de arriba dice que las filas quedaron en 32 px y que
+caben 16: **ya no es cierto, y dejarlo escrito lo volvería doctrina en dos semanas.** David
+repitió *«haz el diseño del organigrama más grande»*, y ahí se ve que había entendido a medias:
+**el acierto era quitar el recuadro y el tope de 820 px, no apretar el contenido.** Encoger la
+fila a 32 px y el título a 14 px es lo contrario de lo que pidió. Los dos bloques
+`@media (min-width: 861px)` que encogían se quitaron y la escala subió un peldaño completo:
+
+    fila de puesto   32 -> 52px      nombre de puesto  15 -> 17px
+    fila hija        28 -> 46px      raiz              16 -> 19px
+    guia de nivel    18 -> 24px      colaborador       14 -> 16px
+    buscador         32 -> 40px      tarea             13 -> 15px
+    titulo           14 -> 18px      avance            12 -> 14px
+
+Coste medido y aceptado: **caben 9 filas de 17**, no 16. Lo que **no** se devolvió es el
+encajonamiento — sigue sin `max-height`, sin tope de ancho y con una sola barra de scroll. Y el
+mínimo táctil de iOS deja de necesitar regla aparte: 52 px lo supera en todas las pantallas.
+
+**Y el arreglo destapó un defecto de 4 px que a ojo es «casi alineado».** Al quitar el bloque de
+densidad se fue con él el `padding` horizontal de `.org-menu`, que volvió a 14 px mientras
+`.org-barra` quedaba en 18. El encabezado de columnas vive en la barra y las filas en la lista,
+así que sus ejes derechos se separaron —**1340 contra 1344, con anchuras idénticas (262/262)**— y
+los rótulos dejaron de caer sobre su columna. Es el defecto de los 94 px con otra ropa. Hay
+aserción permanente que compara los dos ejes en el DOM, y **se vio en rojo antes de arreglarlo**:
+no es de las que nunca han fallado.
+
 **Lo que NO se prometió:** que quepan *todas* las filas siempre. En producción un árbol sembrado
 son decenas y ninguna altura las mete en una pantalla — asertar eso habría fijado el diseño a los
 5 checklists de la prueba. Por eso la aserción es **estable y de diseño**: al árbol le toca ≥55%

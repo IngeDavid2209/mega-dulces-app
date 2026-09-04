@@ -87,7 +87,7 @@
 
 .org-puesto {
   width: 100%;
-  min-height: 44px;                          /* el minimo tactil de iOS */
+  min-height: 52px;                          /* el minimo tactil de iOS */
   display: flex; align-items: center; gap: 8px;
   padding: 8px 14px 8px 10px;
   background: transparent; border: none; cursor: pointer;
@@ -111,11 +111,11 @@
 
 /* Los que tienen gente debajo se leen como mando. */
 .org-puesto.con-rama .org-puesto-nombre { font-weight: 600; color: var(--text-main); }
-.org-nivel-0 .org-puesto-nombre { font-size: 16px; }
+.org-nivel-0 .org-puesto-nombre { font-size: 19px; }
 
 .org-puesto-nombre {
   flex: 1; min-width: 0;
-  font-size: 15px; font-weight: 400; color: var(--text-main);
+  font-size: 17px; font-weight: 400; color: var(--text-main);
   letter-spacing: -.2px;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
@@ -128,7 +128,7 @@
 .org-puesto-datos {
   flex: 0 0 auto;
   display: grid;
-  grid-template-columns: 34px 38px 54px 42px 32px; /* rama·manual·avance·propio·venc */
+  grid-template-columns: 40px 46px 64px 50px 38px; /* rama·manual·avance·propio·venc */
   align-items: center;
   gap: 0 6px;
   font-variant-numeric: tabular-nums;
@@ -145,7 +145,7 @@
 }
 .org-cab-hueco { flex: 1; min-width: 0; }
 .org-cab .org-slot {
-  font-size: var(--fs-micro);
+  font-size: 11.5px;
   font-weight: var(--fw-medium);
   color: var(--text-muted);
   text-transform: uppercase;
@@ -156,33 +156,33 @@
 /* Chevron de despliegue, a la izquierda como en una lista de carpetas. */
 .org-chevron {
   flex: 0 0 auto;
-  width: 16px; text-align: center;
-  font-size: 15px; color: var(--text-faint); line-height: 1;
+  width: 20px; text-align: center;
+  font-size: 19px; color: var(--text-faint); line-height: 1;
   cursor: pointer; border-radius: 4px;
   transition: transform .2s ease, color .15s ease;
 }
 .org-chevron:hover { color: var(--text-muted); }
 .org-chevron.girado { transform: rotate(90deg); }
-.org-chevron-hueco { width: 16px; display: inline-block; }
+.org-chevron-hueco { width: 20px; display: inline-block; }
 
 /* Cuantos puestos cuelgan de este. */
 .org-rama {
   flex: 0 0 auto;
   background: var(--neutral-200); color: var(--text-muted);
-  font-size: 11px; font-weight: 600;
-  border-radius: 999px; padding: 1px 7px; min-width: 20px; text-align: center;
+  font-size: 12.5px; font-weight: 600;
+  border-radius: 999px; padding: 2px 9px; min-width: 24px; text-align: center;
 }
 
 .org-pill {
-  font-size: 11px; font-weight: 600;
-  border-radius: 999px; padding: 1px 7px; min-width: 20px; text-align: center;
+  font-size: 12.5px; font-weight: 600;
+  border-radius: 999px; padding: 2px 9px; min-width: 24px; text-align: center;
 }
 .org-pill-manual { background: #FFF4D6; color: #8A6100; }
 .org-pill-nada   { background: transparent; color: var(--text-faint); }
 
 .org-avance {
-  font-size: 12px; font-weight: 600;
-  border-radius: 999px; padding: 2px 8px;
+  font-size: 14px; font-weight: 600;
+  border-radius: 999px; padding: 3px 10px;
   font-variant-numeric: tabular-nums;
 }
 .org-avance.grande { font-size: 14px; padding: 3px 10px; }
@@ -193,10 +193,10 @@
 .av-nada  { background: var(--layout-bg); color: var(--text-faint); }
 
 /* El avance del puesto SOLO, junto al de su rama. Discreto a proposito. */
-.org-propio { flex: 0 0 auto; font-size: 11px; color: var(--text-faint); font-variant-numeric: tabular-nums; }
+.org-propio { flex: 0 0 auto; font-size: 12.5px; color: var(--text-faint); font-variant-numeric: tabular-nums; }
 
 .org-vencidas {
-  font-size: 11px; font-weight: 700;
+  font-size: 12.5px; font-weight: 700;
   background: var(--bad-fg); color: var(--card-bg);
   border-radius: 999px; padding: 1px 7px; min-width: 20px; text-align: center;
 }
@@ -399,7 +399,7 @@
    ══════════════════════════════════════════════════════════════════════════ */
 .org-fila {
   width: 100%;
-  min-height: 40px;
+  min-height: 46px;
   display: flex; align-items: center; gap: 8px;
   padding: 6px 14px 6px 10px;
   background: transparent; border: none; cursor: pointer;
@@ -411,7 +411,7 @@
 
 .org-fila-nombre {
   flex: 1; min-width: 0;
-  font-size: 14px; color: var(--text-main);
+  font-size: 16px; color: var(--text-main);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .org-fila-datos {
@@ -427,27 +427,27 @@
    de color como decoracion, y aqui la inicial ya identifica. */
 .org-ini {
   flex: 0 0 auto;
-  width: 22px; height: 22px; border-radius: 999px;
+  width: 26px; height: 26px; border-radius: 999px;
   display: grid; place-items: center;
   background: var(--neutral-200); color: var(--text-muted);
-  font-size: 9.5px; font-weight: 700; letter-spacing: .03em;
+  font-size: 11px; font-weight: 700; letter-spacing: .03em;
 }
 
 /* La tarea es la hoja: no se pliega, se ABRE en la vista de detalle. Por eso
    se marca con el cursor y con la hora, no con un chevron. */
-.org-fila-ent .org-fila-nombre { font-size: 13px; color: var(--text-muted); }
+.org-fila-ent .org-fila-nombre { font-size: 15px; color: var(--text-muted); }
 .org-fila-ent:hover .org-fila-nombre { color: var(--text-main); }
 .org-fila-ent.vencida .org-fila-nombre { color: var(--bad-soft-fg); }
 .org-hora {
-  font-size: 11px; color: var(--text-faint);
+  font-size: 12.5px; color: var(--text-faint);
   font-family: var(--font-mono);
 }
 
 /* Cuantos hijos tiene la fila. Neutral: es un conteo, no un estado. */
 .org-cuantos {
   background: var(--neutral-100); color: var(--text-muted);
-  font-size: 11px; font-weight: 600;
-  border-radius: 999px; padding: 1px 7px; min-width: 20px; text-align: center;
+  font-size: 12.5px; font-weight: 600;
+  border-radius: 999px; padding: 2px 9px; min-width: 24px; text-align: center;
 }
 
 /* Un puesto abierto se marca, para no perderse al bajar por la rama. */
@@ -458,8 +458,8 @@
 .org-btn {
   border: 1px solid var(--border-color);
   background: var(--card-bg); color: var(--text-muted);
-  border-radius: 999px; padding: 4px 12px;
-  font-size: 12px; font-weight: 600; font-family: inherit; cursor: pointer;
+  border-radius: 999px; padding: 6px 14px;
+  font-size: 13.5px; font-weight: 600; font-family: inherit; cursor: pointer;
 }
 .org-btn:hover { background: var(--overlay-hover); color: var(--text-main); }
 
@@ -495,11 +495,11 @@
   height: 34px;
 }
 .org-buscar:focus-within { border-color: var(--action); }
-.org-buscar-icono { flex: 0 0 auto; font-size: 15px; color: var(--text-faint); line-height: 1; }
+.org-buscar-icono { flex: 0 0 auto; font-size: 18px; color: var(--text-faint); line-height: 1; }
 .org-buscar-campo {
   flex: 1; min-width: 0;
   border: none; background: transparent; outline: none;
-  font-family: inherit; font-size: 14px; color: var(--text-main);
+  font-family: inherit; font-size: 15.5px; color: var(--text-main);
   /* `type=search` trae su propia X y su propio recuadro segun el navegador:
      se apagan para que el campo se vea igual en todos y para que la X que
      limpia sea la de al lado, que ademas apaga el chip de unidad. */
@@ -509,9 +509,9 @@
 .org-buscar-campo::placeholder { color: var(--text-faint); }
 .org-buscar-x {
   flex: 0 0 auto;
-  width: 24px; height: 24px; border-radius: 999px;
+  width: 28px; height: 28px; border-radius: 999px;
   border: none; background: var(--neutral-200); color: var(--text-muted);
-  font-size: 15px; line-height: 1; font-family: inherit; cursor: pointer;
+  font-size: 18px; line-height: 1; font-family: inherit; cursor: pointer;
 }
 .org-buscar-x:hover { background: var(--neutral-300); color: var(--text-main); }
 
@@ -523,8 +523,8 @@
   display: inline-flex; align-items: center; gap: 5px;
   border: 1px solid var(--border-color);
   background: var(--card-bg); color: var(--text-muted);
-  border-radius: 999px; padding: 4px 10px;
-  font-size: 12px; font-weight: var(--fw-medium); font-family: inherit;
+  border-radius: 999px; padding: 6px 13px;
+  font-size: 13.5px; font-weight: var(--fw-medium); font-family: inherit;
   cursor: pointer; white-space: nowrap;
 }
 .org-chip-uni:hover { background: var(--overlay-hover); color: var(--text-main); }
@@ -535,7 +535,7 @@
   background: var(--text-main); color: var(--card-bg); border-color: var(--text-main);
 }
 .org-chip-n {
-  font-size: 10.5px; font-weight: var(--fw-bold);
+  font-size: 12px; font-weight: var(--fw-bold);
   opacity: .6; font-variant-numeric: tabular-nums;
 }
 .org-chip-uni.activo .org-chip-n { opacity: .75; }
@@ -551,7 +551,7 @@
    los 10px de padding), para que el eje derecho de la rejilla de datos siga
    cayendo donde cae el encabezado. Ese eje ya se salio una vez por 94px. */
 .org-guia {
-  flex: 0 0 18px;
+  flex: 0 0 24px;
   align-self: stretch;
   border-left: 1px solid var(--neutral-200);
 }
@@ -578,8 +578,8 @@
   flex: 0 0 auto;
   border: 1px solid var(--border-color);
   background: var(--card-bg); color: var(--text-muted);
-  border-radius: 999px; padding: 1px 8px; margin-right: 6px;
-  font-size: 10.5px; font-weight: var(--fw-medium); font-family: inherit;
+  border-radius: 999px; padding: 3px 10px; margin-right: 8px;
+  font-size: 12px; font-weight: var(--fw-medium); font-family: inherit;
   letter-spacing: .02em; cursor: pointer;
 }
 .org-rama-btn:hover { background: var(--text-main); color: var(--card-bg); border-color: var(--text-main); }
@@ -602,7 +602,7 @@
   .org-chips::-webkit-scrollbar { display: none; }
   /* Con poco ancho la sangria se achica: cinco niveles a 18px se comen la
      mitad del renglon y el nombre queda en "Anaquelista d...". */
-  .org-guia { flex-basis: 12px; }
+  .org-guia { flex-basis: 16px; }
 }
 
 
@@ -670,13 +670,7 @@
    operacion pasa en celulares: ahi NO se tocan. En escritorio, que es donde se
    leen los tableros, 36px dejan entrar cuatro filas mas por pantalla sin que
    nada quede apretado. El corte es el mismo 860px del resto del archivo. */
-@media (min-width: 861px) {
-  .org-puesto { min-height: 36px; padding-top: 4px; padding-bottom: 4px; }
-  .org-fila   { min-height: 32px; padding-top: 3px; padding-bottom: 3px; }
-  /* Con la lista a todo lo ancho, el aire de la tarjeta puede crecer sin
-     robarle filas a la pantalla. */
-  .org-menu { padding: 14px 18px 18px; }
-}
+
 
 /* En movil la barra de filtros es de una linea (los chips se deslizan), asi
    que el encabezado se pega cuatro pixeles mas arriba. */
@@ -708,8 +702,8 @@
   border-bottom: 1px solid var(--neutral-200);
 }
 .org-barra-fila {
-  display: flex; align-items: center; gap: 12px;
-  min-height: 34px;
+  display: flex; align-items: center; gap: 14px;
+  min-height: 42px;
 }
 
 /* Titulo y cifras en la MISMA linea: apilados costaban un renglon entero para
@@ -718,15 +712,15 @@
   flex: 0 1 auto; min-width: 0;
   display: flex; align-items: baseline; gap: 8px;
 }
-.org-head-id .org-titulo { margin: 0; font-size: 14px; white-space: nowrap; }
+.org-head-id .org-titulo { margin: 0; font-size: 18px; white-space: nowrap; }
 .org-head-id .org-sub {
-  font-size: 11.5px; color: var(--text-muted);
+  font-size: 13px; color: var(--text-muted);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 
-.org-barra .org-buscar { flex: 1 1 180px; max-width: 400px; height: 32px; }
+.org-barra .org-buscar { flex: 1 1 220px; max-width: 460px; height: 40px; }
 .org-barra .org-acciones { flex: 0 0 auto; gap: 8px; flex-wrap: nowrap; }
-.org-barra .org-check { font-size: 12px; white-space: nowrap; }
+.org-barra .org-check { font-size: 13.5px; white-space: nowrap; }
 
 /* Los chips en UN renglon que se desliza, TAMBIEN en escritorio. Envueltos
    costaban 69px; deslizandose cuestan 26 y no se pierde ninguno. */
@@ -750,8 +744,14 @@
   top: auto;
 }
 
-/* La lista ya no necesita su propio aire arriba: la barra lo pone. */
-.org-menu { padding-top: 10px; }
+/* La lista ya no necesita su propio aire arriba: la barra lo pone.
+   Y el padding HORIZONTAL tiene que ser el MISMO de `.org-barra` (18px), no el
+   14 de la regla base: el encabezado de columnas vive en la barra y las filas
+   en la lista, asi que un desfase de 4px entre sus contenedores separa los ejes
+   derechos aunque las anchuras de la rejilla sean identicas. Medido: 1340 vs
+   1344 con anchos 262/262 — «casi alineado» a ojo, y los rotulos dejando de
+   caer sobre su columna. Es el defecto de los 94px con otra ropa. */
+.org-menu { padding: 10px 18px 18px; }
 
 @media (max-width: 860px) {
   /* En celular la barra se apila: meter identidad, buscador y tres acciones en
@@ -766,12 +766,36 @@
    cambio es lo que hace entrar el arbol sembrado completo en un portatil de
    1440x900 — de 10 filas a 16. En movil NO se toca: ahi siguen los 44px del
    minimo tactil de iOS, y el 100% de la operacion pasa en celulares. */
-@media (min-width: 861px) {
-  .org-puesto { min-height: 32px; padding-top: 2px; padding-bottom: 2px; }
-  .org-fila   { min-height: 28px; padding-top: 2px; padding-bottom: 2px; }
-  .org-barra { padding-top: 6px; }
-  .org-barra .org-chips { margin-top: 4px; }
-}
+
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   4/sep/2026 · LA ESCALA, UN PELDANO ARRIBA
+
+   Al perseguir "todo en una sola vista" encogi lo que no debia: las filas
+   pasaron a 32px en escritorio y el titulo a 14px. Eso es lo CONTRARIO de
+   "hazlo mas grande" — el acierto era quitar el recuadro y el tope de 820px,
+   no apretar el contenido. Los dos bloques `@media (min-width: 861px)` que
+   encogian filas se quitaron, y la escala subio un peldano completo:
+
+     fila de puesto   44 -> 52px      nombre de puesto  15 -> 17px
+     fila hija        40 -> 46px      raiz              16 -> 19px
+     guia de nivel    18 -> 24px      colaborador       14 -> 16px
+     buscador         32 -> 40px      tarea             13 -> 15px
+     titulo           14 -> 18px      avance            12 -> 14px
+     chips            12 -> 13.5px    pastillas         11 -> 12.5px
+
+   Y la rejilla de datos crecio con ellas (34/38/54/42/32 -> 40/46/64/50/38):
+   si las pastillas engordan y sus ranuras no, se encabalgan y el eje derecho
+   se sale — que es el defecto de los 94px, otra vez.
+
+   EL COSTO, dicho y no escondido: caben menos filas por pantalla. Es el
+   intercambio que se pidio. Lo que NO se devolvio es el encajonamiento: sigue
+   sin `max-height`, sin tope de ancho y con una sola barra de scroll.
+
+   El minimo tactil de iOS deja de ser un caso especial: 52px lo supera en
+   TODAS las pantallas, asi que ya no hace falta una regla aparte para movil.
+   ══════════════════════════════════════════════════════════════════════════ */
 
 /* ── EJE TRANSVERSAL: qué es cada lugar, y a quién se le cuenta ───────────────
    Los cuatro tipos de `store` se pintaban idénticos y por eso `COMPRAS` y

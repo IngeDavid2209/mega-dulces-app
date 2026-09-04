@@ -191,7 +191,7 @@ Orden por **dependencia y riesgo**, no por importancia. Un paso ≤ 3 días. Mar
 | 0 | Medir antes de tocar (detener `corte.js`, divergencia, KPIs congelados, réplicas) | 0.5 | — | 🔄 **0.1 ✅ · 0.3 ✅ · 0.4 ✅ (1 réplica, 1/sep) · falta 0.2** |
 | 2 | Que los números digan la verdad (hecho ≠ justificado + primeras pruebas) | 1 | 0 | 🔺 **EL SIGUIENTE. Desde el 3/sep los 377 puntos piden foto por orden de Dirección, y `esItemHecho` sigue cerrando un punto sin foto con cualquier nota: la orden vale en pantalla y NO en los tableros** |
 | 1 | Cerrar el ferrocarril: una sola base | 3 | 0 | ⬜ |
-| 3 | La estructura como dato (unidad, sucursal, ámbito, puesto, plaza, cobertura) | 4 | 1 | ⬜ |
+| 3 | La estructura como dato (unidad, sucursal, ámbito, puesto, plaza, cobertura) | 4 | 1 | ⬜ **sin empezar. El 4/sep el eje transversal se hizo VISIBLE en el organigrama, pero NO está en los números: los tableros siguen sumando por `store`, y los 15 vendedores de Padre Hidalgo le siguen contando a la Encargada** |
 | 4 | Navegación (4.1 se puede hacer YA, sin dependencias) | 1.5 | — / 3 | 🔄 **4.1 ✅ · 4.1b: 2a–2d ✅ (15→12 entradas) · falta el Paso 3 para llegar a 7 · 4.3 espera Fase 3 · el Dashboard ya se gatea por jefatura (3/sep)** |
 | 5 | Verificación con muestra + hallazgos + causas | 2 | 3 | ⬜ |
 | 6 | Tablero por nivel + cierre diario + roll-up | 2 | 5 | ⬜ **el tablero de DIRECCIÓN ya existe y está gateado (2–3/sep); el de nivel —«Mi zona», «Mi sucursal»— no, y por eso una Encargada ve un bloque que le nombra el hueco** |
@@ -321,6 +321,143 @@ de que exista la plaza sería partir el problema en dos, no resolverlo.
     columna devuelve cero documentos, sin error.
 
 ## 9. Bitácora del plan
+
+### 4/sep/2026 — EL EJE TRANSVERSAL, en la pantalla del organigrama (NO en los números)
+
+Salió de una captura de David: la misma colaboradora colgando de **COMPRAS**, **MANTENIMIENTO**
+y **SISTEMAS**, y su lectura fue «no los estás acomodando conforme a su puesto». El árbol estaba
+bien. Lo que estaba mal es que **los cuatro tipos de `store` se pintaban idénticos**, así que un
+área administrativa y un canal de órdenes se leían como plazas.
+
+**LO MEDIDO, que es lo que decidió el diseño.** Cruzando las 189 filas de `nomina-puestos.ts`
+(184 con puesto, **0 fuera del organigrama**) contra la `unidad` de cada puesto:
+
+    store (sucursal de la app)   gente  unidades de control de su gente
+    Padre Hidalgo                  38   ventas:15  sucursal:13  operaciones-zona:6
+                                        staff-zona:2  comercial-marketing:2
+    Morelia Abastos                35   sucursal:18 operaciones-zona:9  staff-zona:3 ...
+    CEDIS                          16   cedis:14  operaciones-zona:1  staff-zona:1
+    FINANZAS                        8   administrativa:7  staff-zona:1
+    COMPRAS                         3   comercial-marketing:3     ← NO administrativa
+    MANTENIMIENTO                   1   administrativa:1
+
+**8 de 16 stores mezclan unidades**, y al revés la unidad `sucursal` aparece en 8 stores,
+`staff-zona` en 7, `ventas` en 5. **Ninguno determina al otro: son dos ejes ortogonales, lugar ×
+departamento.** Por eso esto NO es un mapa `store → departamento` — ese mapa no existe.
+
+**Y escribirlo a mano habría fallado en 2 de 9 áreas.** Iba a poner `COMPRAS → administrativa` y
+su gente es de **Comercial y Marketing**; `MANTENIMIENTO` es `administrativa` aunque el esquema
+lo declare valor especial. Es la §8.5 en un caso concreto: **el departamento no se deduce del
+nombre del área.** La clasificación se **deriva** de `zonas.util.ts`, que ya es la única fuente
+(§4: nunca listas locales copiadas), y lo que no está en ese mapa sale visible como pendiente.
+
+**El número que hay que decirle a Dirección:** en Padre Hidalgo, **15 de 38 personas son de
+VENTAS**. Hoy sus puntos se suman al número de «Padre Hidalgo», o sea **al de la Encargada**.
+Rojo de Ventas, espera visible de la sucursal.
+
+**Qué cambia en pantalla** (`unidad-servida.util.ts` nuevo + `vista-organigrama.*`): cada lugar
+dice qué es (sucursal con su zona · corporativo · canal · sin zona); sale **«servicio a»** cuando
+la unidad responsable no es la del lugar; y sale **«+N lugares»** cuando la misma persona recibe
+su manual en varios, porque el robot lo entrega **una vez por cada entrada de `sucursales[]`**
+(`robot-manual.service.ts:175`, con la sucursal metida en el id de idempotencia) y **eso le
+multiplica el denominador**. Antes era un nombre repetido sin ninguna pista.
+
+**LO QUE NO SE AFIRMA, A PROPÓSITO:** si un puesto de sucursal aparece en un store corporativo,
+no se dice nada. Haría falta saber el «hogar natural» de cada unidad, y la medición dice que ese
+dato **no existe todavía**. Marcar de más ahí sería inventar la mitad del modelo.
+
+**Ningún paso del plan se movió.** Esto es el eje en **una pantalla**, no en los números: los
+tableros siguen sumando por `store`, así que los puntos de esos 15 vendedores le siguen contando
+a la Encargada. El arreglo de fondo es la Fase 3 (la unidad como dato), y su candado es que el
+cruce puesto→unidad **no se puede escribir en SQL** — la unidad vive en un `.ts`. Mismo muro que
+frenó el split del silencio.
+
+**Y la coordenada ya está a medias, que era lo que no se sabía.** El emisor sella
+`_manualDocumento`, `_manualCodigo`, `_manualVersion`, `_tareaManualId`, `_puestoId` y `_momento`
+en cada checklist: **la norma y su versión ya viajan en la emisión** (mitad del invariante 4).
+Faltan `unidad`, `ámbito`, `turno` y `causa`. Cuando se selle la unidad, hay que **sellarla y no
+calcularla al leer**: el día que una reorganización mueva un puesto de unidad, calcular al leer
+**reescribiría la historia**.
+
+**Doble conteo ya identificado para el roll-up:** el manual del **Checador** lo comparten
+`checador` (operaciones-zona) y `checador-cedis` (cedis) — **3 tareas y 28 puntos que caen en dos
+unidades**. Sumando por puesto dan 50 tareas y 394 puntos contra las 47 y 366 del catálogo. Es el
+caso de prueba de «una plaza, un solo padre».
+
+**Y lo que el eje va a destapar el primer día:** de las 11 unidades, **5 tienen CERO manual** —
+Dirección (1 puesto), Staff de Zona (5), **Ventas (11)**, Capital Humano (5), Sistemas (3)—, y
+**70 de 89 puestos (79%) no tienen manual**. Los 15 vendedores de Padre Hidalgo son de esa
+`ventas`: se les cuenta en la sucursal y **no tienen una sola tarea propia**. El eje no los
+arregla, los **nombra**. Eso es Fase 7 (autoría de norma), no código.
+
+#### Las pruebas, y sus dos controles negativos corridos
+
+`scripts/prueba-unidad-servida.js` (nueva, sin credenciales ni base): **15/15** lugares con gente
+real se clasifican, y **la muestra discrimina** (sucursal 3 / no-sucursal 6 · cruzada 3 / no
+cruzada 4). Aflojar la regla a `return true` rompe las **4 aserciones negativas** (código 2);
+apagarla a `false` dispara la **guardia de discriminación** (código 1). «No pude medir» y «falló»
+quedan separados, que es lo que este repo pide.
+
+En el DOM, 5.º escenario de `prueba-arbol-organigrama.js`:
+`sucursal 2 · corporativo 1 · canal 1 · sin-zona 1 · servicio-a 1 · +lugares 4`. Control negativo:
+marcar toda sucursal sube `servicio-a` a **2** y la aserción lo caza **nombrando al anaquelista**.
+
+#### Lo que enseñó, que vale más que la pantalla
+
+**El escenario nuevo nació dando SEIS CEROS perfectos**, que se leen como «las pastillas no se
+pintan». No era eso: `sembrar()` abre los **ancestros** del puesto con trabajo y deja el puesto
+con trabajo **visible pero CERRADO**, así que sin clic ni búsqueda **no existe ninguna fila de
+lugar que pintar**. El cero era del escenario, no de la función. Se arregló tecleando en el
+buscador, que además hace caer las dos ramas —la de sucursal y la administrativa— sin las cuales
+la regla de atribución no tendría un sí y un no que comparar.
+
+**Un token que no existe no revienta: iguala.** El primer CSS usó `--warning` y `--danger`, que
+**no existen** en el sistema de diseño (0 declaraciones en `styles.css`). Con el `var(x, y)` de
+respaldo no habría fallado nada visible: el **canal** y el **desconocido** —dos cosas distintas—
+se habrían pintado **igual**, sin un solo error en consola. Los buenos son `--warn-*` y `--bad-*`.
+Y el verificador de tokens **también tuvo que verificarse**: un «sin líneas faltantes» sale
+idéntico si la extracción devuelve cero tokens. Se citó la cifra (**17 extraídos**) y se le metió
+un token inventado que sí se reporta.
+
+**Y el `\n` dentro de `\Q...\E` de Perl es una `n` literal**, así que un reemplazo de dos líneas
+fue un **no-op** que no cambió nada y podría haberse leído como «el control no detecta». Lo cazó
+comparar el archivo antes y después. Es la misma regla del 31/ago: **un control negativo que no
+cambia nada prueba tanto como un cero sin denominador.**
+
+**El fallo de proceso, que es mío:** el commit `7a5bd2e` se llevó también cambios de la otra
+sesión en `scripts/prueba-arbol-organigrama.js`. Revisé el `.ts` y el `.html` buscando hunks
+ajenos y **no revisé los otros dos archivos**. El CSS sí se salvó —se commiteó solo mi bloque
+construyendo el blob desde HEAD con `git update-index`, dejando su trabajo intacto en el árbol—,
+pero la revisión tiene que ser de **todos** los archivos del commit, no de los que uno sospecha.
+
+**Trabajar dos sesiones en el mismo árbol tiene una regla dura que salió de aquí:** `railway up`
+sube el **directorio de trabajo**, no lo commiteado. Desplegar con otra sesión a medias publica su
+trabajo sin terminar a 186 personas. Se resolvió preguntándole por `SendMessage` y esperando a que
+commiteara; **no se despliega con el árbol sucio de otro.**
+
+#### DESPLEGADO — 4/sep/2026, verificado con control positivo
+
+58 archivos del `ngsw.json`, **4 520 497 bytes leídos, 0 fallos** (sin esa cifra un cero no vale):
+
+| marcador | antes | ahora |
+|---|---|---|
+| `org-chip-uni` (**control**) | 1 | **1** |
+| `org-destino` | 0 | **1** |
+| `org-destino-canal` | 0 | **1** |
+| `org-cruzada` | 0 | **1** |
+| `org-multi` | 0 | **1** |
+| `servicio a` | 0 | **1** |
+
+Y arranca: Chrome headless con perfil limpio devuelve **67 802 bytes** de DOM, 1 `app-root`, con
+`md_rescate_arranque` presente.
+
+**El `ngsw.json` pesó 7184 bytes ANTES y 7184 DESPUÉS.** Lo que detectó el despliegue fue el
+**md5 de su contenido**, a los 60 s. Es la tercera vez en dos días que ese proxy habría dicho «no
+llegó» con el código ya servido: **el tamaño y la fecha del `ngsw.json` no son un marcador.**
+
+**Lo que esto NO prueba:** que se vea bien, y que el ×N de una ficha esté mal. Lo primero necesita
+ojos —nadie ha entrado con una cuenta real—; lo segundo necesita las consultas a la base que solo
+David puede correr.
 
 ### 4/sep/2026 — «todo en una sola vista»: el árbol estaba en un recuadro
 

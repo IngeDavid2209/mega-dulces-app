@@ -322,6 +322,80 @@ de que exista la plaza sería partir el problema en dos, no resolverlo.
 
 ## 9. Bitácora del plan
 
+### 4/sep/2026 — el árbol del organigrama: de 1 fila y 6 clics, a 16 y 0
+
+Cambio de **diseño de navegación**, no de reglas: `vista-organigrama.ts/.html/.css` y nada
+más. Cero migraciones, cero escrituras, `checklist.ts` sin abrir (`git diff` vacío).
+
+**El defecto, medido antes de tocar.** El organigrama tiene UNA raíz y el árbol arrancaba con
+todo cerrado, así que la pantalla abría con **una sola fila**: «Dirección General». Y 53 de los
+89 puestos (el **60%**) viven en el nivel 3: tres clics para que el puesto apareciera y tres más
+—puesto, sucursal, colaborador— para ver su primera tarea. **Seis**, y siete en el nivel 4.
+
+Arrancar cerrado seguía siendo correcto (abrirlo entero son cientos de filas); lo que estaba mal
+era que **cavar a mano fuera el único camino**. Cinco arreglos: buscador que se poda y se abre
+solo hasta el resultado (casa contra puesto, unidad, **sucursal y nombre de persona**), siembra
+por trabajo del día con tope, apertura de **pasillos** (cadena de un solo hijo), botón «rama» más
+alt+clic, y **guías de nivel** en vez de solo 18px de sangría. Más chips por unidad de control,
+con las etiquetas leídas de `ETIQUETAS_UNIDAD` —nunca una lista local— y caída a la etiqueta
+oficial si el catálogo gana una unidad, para que ninguna se pierda en silencio.
+
+**Aceptación medida en el DOM** (`scripts/prueba-arbol-organigrama.js`, cuatro escenarios):
+
+    escenario                   puestos  sucurs  personas  entregas  guías  vacío
+    con dato, sin tocar nada      16        1        0         0       37     0
+    sin ningún dato                5        0        0         0        4     0
+    busco "Yesenia"                4        3        3         2       44     0
+    busco "zzzqqq" (no existe)     0        0        0         0        0     1
+
+#### Lo que de verdad enseñó: el testigo salvó la conclusión, dos veces
+
+**Las dos primeras corridas midieron NADA y se veían plausibles.** Daban «5 filas con dato» y
+«5 filas sin dato» — que se lee como **«la siembra está rota»**. Lo roto era el dato de prueba, y
+me habría ido a depurar código que funcionaba. Lo cazó el **testigo independiente**: el
+componente publica en su subtítulo cuántas entregas contó, y decía **0 con 5 servidos**. Ese
+número es lo único que separa «la siembra no abre nada» de «no hubo qué abrir».
+
+Y las causas fueron **dos, encadenadas**, ninguna visible leyendo el código:
+1. **Faltaba `_origenManual: true`.** `checklistsFiltrados` recorta con
+   `esTareaDeManual(c) === modoManual` (`checklist.ts:1016`), así que el apartado del manual
+   descartaba mis filas. Llegaban y se tiraban.
+2. **`ApiService.token()` exige un usuario de Firebase Auth** y lanza «Sin sesión activa»: en
+   headless el `fetch` a `/api` **nunca sale**. Por eso `prueba-vista-por-nivel.js` dice que solo
+   mide el gate y no el dato. Se resolvió reusando el parche de `prueba-dom-evidencia.js` —copia
+   del `dist/`, ancla exigida **una sola vez**, `dist/` real comprobado intacto— más una guardia
+   nueva: **si un escenario nunca pidió `/api/*`, aborta.**
+
+#### Los dos controles negativos, corridos — y el segundo es el que vale
+
+- **NEG-1, siembra apagada:** rompe 5 aserciones y la que importa nombra la causa: «la siembra no
+  destapa nada: 1 fila con dato contra 1 sin dato. El testigo confirma que el dato SÍ llegó».
+  De paso **deja medido el defecto original en el DOM**: con la siembra fuera, «con dato» da
+  **1 fila**. La premisa del rediseño dejó de ser un argumento y pasó a ser una cifra.
+- **NEG-2, la búsqueda deja de abrir sucursal y persona:** sale con código 2 y rompe exactamente
+  las 2 aserciones del mecanismo. **Y aquí está la lección:** la poda seguía funcionando —4
+  puestos, 3 sucursales—, así que un control de «aparecen menos filas» habría dado **verde**.
+  Solo lo cazó la aserción que afirma la cubeta: que la **fila de entrega**, tres niveles más
+  abajo, quede visible sola. Es §8.11(c) literal, por una puerta nueva: **el control tiene que
+  afirmar el mecanismo, no la apariencia del resultado.**
+
+**Y mi propio verificador de CSS muerto dio un falso positivo** al medir el punto de partida:
+reportó 45 clases sin usar y son 44 — `.org-nivel-0` se aplica por interpolación
+(`org-nivel-{{ f.prof }}`), así que el grep literal no la ve. §8.11(d) otra vez: si tu
+verificador parsea, verifica el parser.
+
+**Pendiente declarado, a propósito fuera de este paso:** las **44 clases `.org-` y 4 métodos
+muertos** (`sinEntregaDe`, `textoFrecuencia`, `textoMomento`, `trackTarea`) que quedaron del panel
+de dos columnas retirado. Van en un commit aparte: borrar la mitad del CSS de una pantalla viva
+merece su propia verificación, y mezclarlo haría imposible saber cuál de los dos cambios rompió
+qué.
+
+**Lo que esto NO prueba, dicho para que no se lea como resuelto:** que se **vea** bien. Prueba que
+el árbol se abre solo, que el filtro discrimina y que el vacío se nombra. La alineación de las
+guías, el comportamiento de los 11 chips en un celular real y el `alt+clic` con dedos siguen
+necesitando ojos — y **nadie ha entrado con una cuenta real**.
+
+
 ### 3/sep/2026 — TODOS los puntos piden foto: una orden de Dirección, y lo que destapó
 
 **La orden, literal:** «el jefe quiere que todas las tareas tengan evidencia, entonces a todas

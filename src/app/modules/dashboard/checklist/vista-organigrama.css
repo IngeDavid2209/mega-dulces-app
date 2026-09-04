@@ -462,3 +462,145 @@
   font-size: 12px; font-weight: 600; font-family: inherit; cursor: pointer;
 }
 .org-btn:hover { background: var(--overlay-hover); color: var(--text-main); }
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   4/sep/2026 · BUSCAR, SALTAR Y LEER LA PROFUNDIDAD DE UN GOLPE
+
+   El arbol arrancaba con TODO cerrado y el organigrama tiene UNA raiz, asi que
+   la pantalla abria con una sola fila: "Direccion General". Medido sobre el
+   catalogo: 53 de 89 puestos (el 60%) viven en el nivel 3, o sea 3 clics para
+   que el puesto aparezca y 3 mas para ver su primera tarea. SEIS.
+
+   Arrancar cerrado seguia siendo correcto -abrirlo entero son cientos de filas
+   y la estructura se vuelve ruido-; lo que estaba mal era que cavar a mano
+   fuera el UNICO camino. Esta seccion es el camino corto.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.org-filtros {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 10px 18px 12px;
+  border-bottom: 1px solid var(--neutral-100);
+  background: var(--surface-ground);
+}
+
+/* ── El buscador ─────────────────────────────────────────────────────────── */
+.org-buscar {
+  flex: 1 1 240px; min-width: 0;
+  display: flex; align-items: center; gap: 7px;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  padding: 0 6px 0 11px;
+  height: 34px;
+}
+.org-buscar:focus-within { border-color: var(--action); }
+.org-buscar-icono { flex: 0 0 auto; font-size: 15px; color: var(--text-faint); line-height: 1; }
+.org-buscar-campo {
+  flex: 1; min-width: 0;
+  border: none; background: transparent; outline: none;
+  font-family: inherit; font-size: 14px; color: var(--text-main);
+  /* `type=search` trae su propia X y su propio recuadro segun el navegador:
+     se apagan para que el campo se vea igual en todos y para que la X que
+     limpia sea la de al lado, que ademas apaga el chip de unidad. */
+  -webkit-appearance: none; appearance: none;
+}
+.org-buscar-campo::-webkit-search-cancel-button { -webkit-appearance: none; display: none; }
+.org-buscar-campo::placeholder { color: var(--text-faint); }
+.org-buscar-x {
+  flex: 0 0 auto;
+  width: 24px; height: 24px; border-radius: 999px;
+  border: none; background: var(--neutral-200); color: var(--text-muted);
+  font-size: 15px; line-height: 1; font-family: inherit; cursor: pointer;
+}
+.org-buscar-x:hover { background: var(--neutral-300); color: var(--text-main); }
+
+/* ── Los chips de unidad ─────────────────────────────────────────────────
+   El atajo a los 14 puestos de sucursal, que es lo que la operacion abre casi
+   siempre. Las etiquetas salen de ETIQUETAS_UNIDAD; aqui solo se abrevian. */
+.org-chips { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.org-chip-uni {
+  display: inline-flex; align-items: center; gap: 5px;
+  border: 1px solid var(--border-color);
+  background: var(--card-bg); color: var(--text-muted);
+  border-radius: 999px; padding: 4px 10px;
+  font-size: 12px; font-weight: var(--fw-medium); font-family: inherit;
+  cursor: pointer; white-space: nowrap;
+}
+.org-chip-uni:hover { background: var(--overlay-hover); color: var(--text-main); }
+/* Activo: relleno neutral fuerte, no un bloque de color. El unico color fuerte
+   de esta pantalla es el del DATO -avance y vencidas-, que es lo que hay que
+   ver de lejos; un chip de color le competiria. */
+.org-chip-uni.activo {
+  background: var(--text-main); color: var(--card-bg); border-color: var(--text-main);
+}
+.org-chip-n {
+  font-size: 10.5px; font-weight: var(--fw-bold);
+  opacity: .6; font-variant-numeric: tabular-nums;
+}
+.org-chip-uni.activo .org-chip-n { opacity: .75; }
+
+/* ── GUIAS DE NIVEL ──────────────────────────────────────────────────────
+   Antes la sangria era `padding-left: 10 + prof*18` y nada mas: con cinco
+   niveles de mando habia que contar pixeles para saber de quien cuelga que.
+   Ahora cada nivel pinta una linea vertical de 18px que se estira a todo el
+   alto de la fila, asi que las lineas de filas consecutivas se unen y la rama
+   se lee de corrido.
+
+   El ancho es EXACTAMENTE el de la sangria que sustituye (18px por nivel sobre
+   los 10px de padding), para que el eje derecho de la rejilla de datos siga
+   cayendo donde cae el encabezado. Ese eje ya se salio una vez por 94px. */
+.org-guia {
+  flex: 0 0 18px;
+  align-self: stretch;
+  border-left: 1px solid var(--neutral-200);
+}
+
+/* ── Las filas dejaron de ser <button> ───────────────────────────────────
+   El boton «rama» vive DENTRO de la fila, y un <button> anidado en otro
+   <button> es HTML invalido: el navegador reacomoda el arbol y el clic interior
+   deja de ser fiable. Son `div[role=treeitem]` con tabindex, enter y espacio,
+   asi que el teclado sigue funcionando y ademas ahora anuncian su nivel y si
+   estan expandidas, que un <button> no decia. */
+.org-puesto, .org-fila {
+  box-sizing: border-box;
+  padding-left: 10px;                  /* la sangria la ponen las guias */
+}
+.org-puesto:focus-visible, .org-fila:focus-visible {
+  outline: 2px solid var(--action);
+  outline-offset: -2px;
+}
+
+/* «rama»: baja el subarbol de un golpe. Solo sale en la fila abierta con rama
+   -en una cerrada el clic normal ya hace lo suyo, y en una hoja no hay nada que
+   bajar-. Alt+clic hace lo mismo sin abrir la fila primero. */
+.org-rama-btn {
+  flex: 0 0 auto;
+  border: 1px solid var(--border-color);
+  background: var(--card-bg); color: var(--text-muted);
+  border-radius: 999px; padding: 1px 8px; margin-right: 6px;
+  font-size: 10.5px; font-weight: var(--fw-medium); font-family: inherit;
+  letter-spacing: .02em; cursor: pointer;
+}
+.org-rama-btn:hover { background: var(--text-main); color: var(--card-bg); border-color: var(--text-main); }
+
+/* El vacio con filtro trae su boton de salida en la misma linea. */
+.org-menu-vacio .org-btn { margin-left: 8px; vertical-align: middle; }
+
+@media (max-width: 860px) {
+  .org-filtros { padding: 10px 12px; gap: 8px; }
+  /* Once chips envueltos son cuatro renglones y empujan el arbol fuera de la
+     pantalla: en movil se deslizan en una sola linea. */
+  .org-chips {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    width: 100%;
+    padding-bottom: 2px;
+  }
+  .org-chips::-webkit-scrollbar { display: none; }
+  /* Con poco ancho la sangria se achica: cinco niveles a 18px se comen la
+     mitad del renglon y el nombre queda en "Anaquelista d...". */
+  .org-guia { flex-basis: 12px; }
+}

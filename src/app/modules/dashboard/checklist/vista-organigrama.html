@@ -5,9 +5,16 @@
     <div>
       <h3 class="org-titulo">Organigrama 2026</h3>
       <div class="org-sub">
-        {{ resumen().puestos }} puesto(s) ·
-        {{ resumen().entregas }} tarea(s) del manual entregada(s) hoy<span
-          *ngIf="resumen().huerfanas > 0"> · {{ resumen().huerfanas }} sin puesto</span>
+        <!-- CON FILTRO ACTIVO VA EL DENOMINADOR. Una lista filtrada sin su
+             total es la forma más fácil de leer un vacío como un cero. -->
+        <ng-container *ngIf="hayCriterio(); else totales">
+          <strong>{{ resumen().casan }}</strong> de {{ resumen().puestos }} puesto(s) casan
+        </ng-container>
+        <ng-template #totales>
+          {{ resumen().puestos }} puesto(s) ·
+          {{ resumen().entregas }} tarea(s) del manual entregada(s) hoy<span
+            *ngIf="resumen().huerfanas > 0"> · {{ resumen().huerfanas }} sin puesto</span>
+        </ng-template>
       </div>
       <!-- Un reportaA roto haría que una rama entera dejara de dibujarse. Hoy
            son cero; si deja de serlo, se ve aquí y no cuando alguien lo note. -->
@@ -21,6 +28,10 @@
       <button class="org-btn" *ngIf="cuantosAbiertos() > 0" (click)="cerrarTodo()">
         Cerrar todo ({{ cuantosAbiertos() }})
       </button>
+      <button class="org-btn" (click)="abrirTodo()"
+              title="Abre todos los puestos del árbol (no las sucursales)">
+        Abrir puestos
+      </button>
       <label class="org-check" [title]="'Hay ' + resumen().puestosSinManual + ' puestos del organigrama sin manual levantado'">
         <input type="checkbox"
                [ngModel]="soloConManual()"
@@ -29,6 +40,42 @@
       </label>
     </div>
   </header>
+
+  <!-- ══════════════ BUSCAR Y SALTAR ══════════════
+       Lo que quitó los seis clics. El árbol tenía UNA raíz, así que arrancaba
+       con una sola fila y el 60% de los puestos vivían tres niveles abajo: la
+       única forma de llegar a un dato era cavar a mano.
+
+       El buscador casa contra puesto, unidad, SUCURSAL y NOMBRE DE PERSONA, y
+       el árbol se poda y se abre solo hasta el resultado dejando la cadena de
+       mando a la vista. Los chips saltan a una unidad de control: son el atajo
+       a los 14 puestos de sucursal, que es lo que la operación abre casi
+       siempre. Las etiquetas salen de `ETIQUETAS_UNIDAD`, no de una lista
+       local. -->
+  <div class="org-filtros">
+    <div class="org-buscar">
+      <span class="org-buscar-icono" aria-hidden="true">⌕</span>
+      <input class="org-buscar-campo"
+             type="search"
+             placeholder="Buscar puesto, sucursal o persona…"
+             aria-label="Buscar en el organigrama"
+             [ngModel]="busqueda()"
+             (ngModelChange)="busqueda.set($event)">
+      <button class="org-buscar-x" *ngIf="hayCriterio()" (click)="limpiarFiltros()"
+              title="Quitar el filtro" aria-label="Quitar el filtro">×</button>
+    </div>
+
+    <div class="org-chips" role="group" aria-label="Saltar a una unidad">
+      <button class="org-chip-uni"
+              *ngFor="let c of chips(); trackBy: trackChip"
+              [class.activo]="unidadFiltro() === c.unidad"
+              [attr.aria-pressed]="unidadFiltro() === c.unidad"
+              [title]="c.oficial + ' · ' + c.puestos + ' puesto(s)'"
+              (click)="alternarUnidad(c.unidad)">
+        {{ c.etiqueta }}<span class="org-chip-n">{{ c.puestos }}</span>
+      </button>
+    </div>
+  </div>
 
   <div class="org-cuerpo">
 
@@ -41,13 +88,14 @@
          organigrama obligaba a elegir un puesto en un panel aparte para ver
          quién lo cumple. Ahora se abre en el mismo sitio.
 
-         TODO ARRANCA CERRADO: con 89 puestos, abrirlo entero de entrada son
-         cientos de filas y la estructura se vuelve ruido. -->
+         Ya NO arranca todo cerrado: se siembran las ramas con entregas de hoy
+         (con tope), así que se entra viendo la operación. Los puestos con
+         trabajo quedan visibles pero cerrados, a un clic de su detalle. -->
     <nav class="org-menu" aria-label="Organigrama">
 
       <p class="org-pista">
-        Toca un puesto para abrir sus sucursales, y una sucursal para ver quién
-        la cumple hoy.
+        Un clic abre el puesto; <strong>alt+clic</strong> abre la rama completa.
+        Buscar un nombre lleva directo a sus tareas.
       </p>
 
       <!-- Encabezado de columnas. Reusa `.org-puesto-datos` en vez de repetir
@@ -63,20 +111,45 @@
         </span>
       </div>
 
-      <div class="org-lista">
+      <div class="org-lista" role="tree" aria-label="Pirámide de puestos">
         <div class="org-fila-wrap" *ngFor="let f of filas(); trackBy: trackFila">
 
-          <!-- ─── PUESTO ─── -->
-          <button *ngIf="f.tipo === 'puesto'"
-                  class="org-puesto org-nivel-{{ f.prof }}"
-                  [style.paddingLeft.px]="10 + f.prof * 18"
-                  [class.sin-manual]="!f.puesto!.tieneManual"
-                  [class.con-rama]="f.tieneHijos"
-                  [class.abierto]="abierto(f.clave)"
-                  (click)="alternar(f.clave)">
-            <span class="org-chevron" *ngIf="f.tieneHijos" [class.girado]="abierto(f.clave)">›</span>
+          <!-- ─── PUESTO ───
+               Es un `div[role=treeitem]` y no un `<button>`: el botón «rama»
+               vive dentro de la fila, y un botón anidado en otro botón es HTML
+               inválido. El teclado se atiende con tabindex + enter/espacio. -->
+          <div *ngIf="f.tipo === 'puesto'"
+               class="org-puesto org-nivel-{{ f.prof }}"
+               role="treeitem"
+               tabindex="0"
+               [attr.aria-expanded]="f.tieneHijos ? f.abierta : null"
+               [attr.aria-level]="f.prof + 1"
+               [class.sin-manual]="!f.puesto!.tieneManual"
+               [class.con-rama]="f.tieneHijos"
+               [class.abierto]="f.abierta"
+               (click)="clicFila(f, $event)"
+               (keydown.enter)="clicFila(f, $event)"
+               (keydown.space)="clicFila(f, $event)">
+
+            <!-- Guías de nivel: una línea vertical por nivel de mando. Antes
+                 la sangría eran 18px por nivel y nada más, así que con cinco
+                 niveles había que contar píxeles para saber de quién cuelga
+                 qué. Los arreglos vienen precalculados y compartidos. -->
+            <span class="org-guia" *ngFor="let g of f.guias" aria-hidden="true"></span>
+
+            <span class="org-chevron" *ngIf="f.tieneHijos" [class.girado]="f.abierta">›</span>
             <span class="org-chevron org-chevron-hueco" *ngIf="!f.tieneHijos"></span>
             <span class="org-puesto-nombre">{{ f.puesto!.puesto.nombre }}</span>
+
+            <!-- Baja el subárbol de un golpe. Solo aparece en la fila abierta
+                 con rama: en una fila cerrada el clic normal ya hace lo suyo,
+                 y en una hoja no habría nada que bajar. -->
+            <button class="org-rama-btn"
+                    *ngIf="f.abierta && f.puesto!.cuantosDebajo > 0"
+                    (click)="abrirRama(f, $event)"
+                    [title]="'Abrir los ' + f.puesto!.cuantosDebajo + ' puesto(s) de esta rama'">
+              rama
+            </button>
 
             <span class="org-puesto-datos">
               <span class="org-slot">
@@ -113,18 +186,24 @@
                 </span>
               </span>
             </span>
-          </button>
+          </div>
 
           <!-- ─── SUCURSAL ───
                El corte por sucursal va DENTRO del puesto y no como nivel de
                arriba: un Anaquelista existe en ocho sucursales, y el dato que
                sirve es comparar el mismo puesto entre ellas. -->
-          <button *ngIf="f.tipo === 'sucursal'"
-                  class="org-fila org-fila-suc"
-                  [style.paddingLeft.px]="10 + f.prof * 18"
-                  [class.abierto]="abierto(f.clave)"
-                  (click)="alternar(f.clave)">
-            <span class="org-chevron" *ngIf="f.tieneHijos" [class.girado]="abierto(f.clave)">›</span>
+          <div *ngIf="f.tipo === 'sucursal'"
+               class="org-fila org-fila-suc"
+               role="treeitem"
+               tabindex="0"
+               [attr.aria-expanded]="f.tieneHijos ? f.abierta : null"
+               [attr.aria-level]="f.prof + 1"
+               [class.abierto]="f.abierta"
+               (click)="clicFila(f, $event)"
+               (keydown.enter)="clicFila(f, $event)"
+               (keydown.space)="clicFila(f, $event)">
+            <span class="org-guia" *ngFor="let g of f.guias" aria-hidden="true"></span>
+            <span class="org-chevron" *ngIf="f.tieneHijos" [class.girado]="f.abierta">›</span>
             <span class="org-chevron org-chevron-hueco" *ngIf="!f.tieneHijos"></span>
             <span class="org-fila-nombre">{{ f.sucursal!.sucursal }}</span>
             <span class="org-fila-datos">
@@ -136,15 +215,21 @@
                 {{ f.sucursal!.porcentaje }}%
               </span>
             </span>
-          </button>
+          </div>
 
           <!-- ─── COLABORADOR ─── -->
-          <button *ngIf="f.tipo === 'persona'"
-                  class="org-fila org-fila-per"
-                  [style.paddingLeft.px]="10 + f.prof * 18"
-                  [class.abierto]="abierto(f.clave)"
-                  (click)="alternar(f.clave)">
-            <span class="org-chevron" *ngIf="f.tieneHijos" [class.girado]="abierto(f.clave)">›</span>
+          <div *ngIf="f.tipo === 'persona'"
+               class="org-fila org-fila-per"
+               role="treeitem"
+               tabindex="0"
+               [attr.aria-expanded]="f.tieneHijos ? f.abierta : null"
+               [attr.aria-level]="f.prof + 1"
+               [class.abierto]="f.abierta"
+               (click)="clicFila(f, $event)"
+               (keydown.enter)="clicFila(f, $event)"
+               (keydown.space)="clicFila(f, $event)">
+            <span class="org-guia" *ngFor="let g of f.guias" aria-hidden="true"></span>
+            <span class="org-chevron" *ngIf="f.tieneHijos" [class.girado]="f.abierta">›</span>
             <span class="org-chevron org-chevron-hueco" *ngIf="!f.tieneHijos"></span>
             <span class="org-ini" aria-hidden="true">{{ f.persona!.iniciales }}</span>
             <span class="org-fila-nombre">{{ f.persona!.nombre }}</span>
@@ -157,16 +242,21 @@
                 {{ f.persona!.porcentaje }}%
               </span>
             </span>
-          </button>
+          </div>
 
           <!-- ─── TAREA ───
                Abrirla emite `abrir` y lleva a la vista de detalle de siempre:
                esto es navegación y lectura, no un segundo flujo de entrega. -->
-          <button *ngIf="f.tipo === 'entrega'"
-                  class="org-fila org-fila-ent"
-                  [style.paddingLeft.px]="10 + f.prof * 18"
-                  [class.vencida]="f.entrega!.vencida"
-                  (click)="abrirEntrega(f.entrega!)">
+          <div *ngIf="f.tipo === 'entrega'"
+               class="org-fila org-fila-ent"
+               role="treeitem"
+               tabindex="0"
+               [attr.aria-level]="f.prof + 1"
+               [class.vencida]="f.entrega!.vencida"
+               (click)="clicFila(f, $event)"
+               (keydown.enter)="clicFila(f, $event)"
+               (keydown.space)="clicFila(f, $event)">
+            <span class="org-guia" *ngFor="let g of f.guias" aria-hidden="true"></span>
             <span class="org-chevron org-chevron-hueco"></span>
             <span class="org-fila-nombre">{{ f.entrega!.titulo }}</span>
             <span class="org-fila-datos">
@@ -177,7 +267,7 @@
                 {{ f.entrega!.porcentaje }}%
               </span>
             </span>
-          </button>
+          </div>
         </div>
       </div>
 
@@ -185,7 +275,7 @@
            No se reparte por parecido. Un puesto adivinado le entrega a una
            persona real obligaciones que no le tocan; y verlas aquí es además la
            lista de a quién le falta ficha. -->
-      <div class="org-huerfanos" *ngIf="huerfanos().length > 0">
+      <div class="org-huerfanos" *ngIf="huerfanos().length > 0 && !hayCriterio()">
         <div class="org-huerfanos-cab">
           Sin puesto en el organigrama ({{ resumen().personasSinPuesto }})
         </div>
@@ -200,8 +290,15 @@
         </p>
       </div>
 
-      <p class="org-menu-vacio" *ngIf="filas().length === 0 && huerfanos().length === 0">
-        Nada que mostrar con este filtro.
+      <!-- El vacío se NOMBRA, y dice qué filtro lo produjo. «Nada que mostrar»
+           a secas se lee como «la pantalla está rota», y con un buscador arriba
+           es lo primero que alguien va a pensar. -->
+      <p class="org-menu-vacio" *ngIf="filas().length === 0">
+        <ng-container *ngIf="hayCriterio(); else vacioSinFiltro">
+          Ningún puesto casa con este filtro, de {{ resumen().puestos }} en el árbol.
+          <button class="org-btn" (click)="limpiarFiltros()">Quitar el filtro</button>
+        </ng-container>
+        <ng-template #vacioSinFiltro>Nada que mostrar con este filtro.</ng-template>
       </p>
     </nav>
   </div>

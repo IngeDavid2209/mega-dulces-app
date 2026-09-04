@@ -7,8 +7,11 @@ import { FormsModule } from '@angular/forms';
 import {
   PUESTOS_ORGANIGRAMA, PuestoOrganigrama, NodoOrganigrama,
   UnidadOrganigrama, ETIQUETAS_UNIDAD, ORDEN_UNIDADES,
-  arbolOrganigrama, puestosFueraDelArbol
+  arbolOrganigrama, puestosFueraDelArbol, puestoPorId
 } from '../../../shared/organigrama.catalogo';
+import {
+  DestinoServido, clasificarDestino, esAtribucionCruzada, textoAtribucion
+} from '../../../shared/unidad-servida.util';
 import { resolverPuesto } from '../../../shared/puesto.util';
 import {
   ManualPuesto, TareaManual, manualDePuesto, tareasAutomaticasDePuesto
@@ -86,15 +89,36 @@ interface PersonaVista {
   completados: number;
   totalItems: number;
   porcentaje: number;
+  /**
+   * En cuántos lugares MÁS aparece esta misma persona dentro de este puesto.
+   *
+   * No es adorno: el robot entrega el manual completo UNA VEZ POR CADA entrada
+   * de `sucursales[]` de la ficha (`robot-manual.service.ts`, el `for` de la
+   * línea 175, con la sucursal metida en el id de idempotencia). Alguien con
+   * tres áreas capturadas recibe su manual TRES veces, y su denominador queda
+   * ×3. Antes eso se veía como el mismo nombre repetido en tres grupos, sin
+   * ninguna pista de por qué. Ahora se nombra.
+   */
+  enOtrosLugares: number;
 }
 
-/** Un grupo de sucursal dentro del puesto seleccionado. */
+/** Un grupo de LUGAR dentro del puesto seleccionado. */
 interface SucursalVista {
   sucursal: string;
   personas: PersonaVista[];
   completados: number;
   totalItems: number;
   porcentaje: number;
+  /**
+   * Qué clase de cosa es este lugar: sucursal con su zona, corporativo, el
+   * canal de mantenimiento, o desconocido. Los cuatro se pintaban idénticos, y
+   * por eso `COMPRAS` y `MANTENIMIENTO` se leían como si fueran plazas.
+   */
+  destino: DestinoServido;
+  /** ¿Lo de aquí se le cuenta a otra unidad que a la del lugar? */
+  cruzada: boolean;
+  /** La frase que lo explica, para el `title`. Vacía si no hay cruce. */
+  textoAtrib: string;
 }
 
 /**
@@ -668,6 +692,21 @@ export class VistaOrganigramaComponent {
       mp.set(per, [...(mp.get(per) || []), vista]);
     }
 
+    // EJE TRANSVERSAL. La unidad responsable sale del PUESTO, nunca del lugar:
+    // medido el 4/sep, 8 de 16 stores mezclan unidades (Padre Hidalgo tiene
+    // cinco), así que el lugar no dice de qué departamento es quien trabaja ahí.
+    const unidad: UnidadOrganigrama | null = puestoPorId(puestoId)?.unidad || null;
+
+    // En cuántos lugares distintos aparece cada persona DENTRO de este puesto.
+    // Se cuenta antes de armar las filas porque el dato es del conjunto, no del
+    // grupo: mirando un solo grupo es imposible saber que hay dos más.
+    const lugaresPorPersona = new Map<string, number>();
+    for (const [, mp] of porSuc) {
+      for (const nombre of mp.keys()) {
+        lugaresPorPersona.set(nombre, (lugaresPorPersona.get(nombre) || 0) + 1);
+      }
+    }
+
     const out: SucursalVista[] = [];
     for (const [sucursal, mp] of porSuc) {
       const personas: PersonaVista[] = [];
@@ -678,15 +717,20 @@ export class VistaOrganigramaComponent {
           nombre, iniciales: this.iniciales(nombre), entregas: evs,
           completados: hec, totalItems: tot,
           porcentaje: tot ? Math.round((hec / tot) * 100) : 0,
+          enOtrosLugares: (lugaresPorPersona.get(nombre) || 1) - 1,
         });
       }
       // Peor primero: lo que necesita atención va arriba.
       personas.sort((a, b) => a.porcentaje - b.porcentaje || a.nombre.localeCompare(b.nombre));
       const tot = personas.reduce((n, p) => n + p.totalItems, 0);
       const hec = personas.reduce((n, p) => n + p.completados, 0);
+      const destino = clasificarDestino(sucursal);
       out.push({
         sucursal, personas, completados: hec, totalItems: tot,
         porcentaje: tot ? Math.round((hec / tot) * 100) : 0,
+        destino,
+        cruzada: esAtribucionCruzada(unidad, destino),
+        textoAtrib: textoAtribucion(unidad, destino),
       });
     }
     out.sort((a, b) => a.porcentaje - b.porcentaje || a.sucursal.localeCompare(b.sucursal));

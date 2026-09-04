@@ -212,6 +212,26 @@
             <span class="org-chevron" *ngIf="f.tieneHijos" [class.girado]="f.abierta">›</span>
             <span class="org-chevron org-chevron-hueco" *ngIf="!f.tieneHijos"></span>
             <span class="org-fila-nombre">{{ f.sucursal!.sucursal }}</span>
+
+            <!-- ─── QUÉ ES ESTE LUGAR ───
+                 Los cuatro tipos se pintaban idénticos, y ahí nació la
+                 confusión: `COMPRAS` y `MANTENIMIENTO` se leían como plazas.
+                 MANTENIMIENTO no es un lugar —el esquema lo declara valor
+                 especial en 009_checklists.sql:11— sino el canal por el que se
+                 levanta una orden. El tipo sale de `zonas.util.ts`, que ya es
+                 la única fuente; lo que no está ahí sale como "sin zona" y se
+                 ve, nunca acomodado por parecido. -->
+            <span class="org-destino"
+                  [ngClass]="'org-destino-' + f.sucursal!.destino.tipo"
+                  [title]="f.sucursal!.destino.detalle">{{ f.sucursal!.destino.etiqueta }}</span>
+
+            <!-- ─── A QUIÉN SE LE CUENTA ───
+                 La unidad responsable sale del PUESTO, nunca del lugar. Los 15
+                 vendedores de Padre Hidalgo hoy suman al número de la Encargada
+                 y son de Ventas: rojo de Ventas, espera visible de la sucursal. -->
+            <span class="org-cruzada" *ngIf="f.sucursal!.cruzada"
+                  [title]="f.sucursal!.textoAtrib">servicio a</span>
+
             <span class="org-fila-datos">
               <span class="org-cuantos" [title]="f.sucursal!.personas.length + ' colaborador(es)'">
                 {{ f.sucursal!.personas.length }}
@@ -239,6 +259,20 @@
             <span class="org-chevron org-chevron-hueco" *ngIf="!f.tieneHijos"></span>
             <span class="org-ini" aria-hidden="true">{{ f.persona!.iniciales }}</span>
             <span class="org-fila-nombre">{{ f.persona!.nombre }}</span>
+
+            <!-- ─── LA MISMA PERSONA, EN VARIOS LUGARES ───
+                 El robot entrega el manual completo una vez por CADA entrada de
+                 `sucursales[]` de la ficha. Con tres áreas capturadas, recibe su
+                 manual tres veces y su denominador queda ×3: no puede llegar al
+                 100% sin hacer tres copias del mismo trabajo. Antes esto era el
+                 mismo nombre repetido en tres grupos, sin ninguna pista. -->
+            <span class="org-multi" *ngIf="f.persona!.enOtrosLugares > 0"
+                  [title]="'Esta persona recibe su manual en ' + (f.persona!.enOtrosLugares + 1) +
+                           ' lugares de este puesto, porque su ficha tiene ' + (f.persona!.enOtrosLugares + 1) +
+                           ' entradas en sucursales. Cada copia suma al denominador de su cumplimiento.'">
+              +{{ f.persona!.enOtrosLugares }} lugar{{ f.persona!.enOtrosLugares > 1 ? 'es' : '' }}
+            </span>
+
             <span class="org-fila-datos">
               <span class="org-cuantos" [title]="f.persona!.entregas.length + ' tarea(s)'">
                 {{ f.persona!.entregas.length }}

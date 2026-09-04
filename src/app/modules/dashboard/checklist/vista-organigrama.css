@@ -772,3 +772,71 @@
   .org-barra { padding-top: 6px; }
   .org-barra .org-chips { margin-top: 4px; }
 }
+
+/* ── EJE TRANSVERSAL: qué es cada lugar, y a quién se le cuenta ───────────────
+   Los cuatro tipos de `store` se pintaban idénticos y por eso `COMPRAS` y
+   `MANTENIMIENTO` se leían como plazas. El tipo lo deriva
+   `unidad-servida.util.ts` de `zonas.util.ts`, que ya es la única fuente: aquí
+   no hay lista copiada, y lo que no esté en ese mapa sale como "sin zona" y se
+   ve, nunca acomodado por parecido (§8.5).
+
+   TOKENS: el primer intento usó `--warning` y `--danger`, que NO EXISTEN en
+   este sistema de diseño (0 declaraciones en styles.css). Con el `var(x, y)` de
+   respaldo no habría reventado nada: los dos habrían caído al mismo neutro, y
+   el CANAL y el DESCONOCIDO —dos cosas distintas— se habrían pintado IGUAL, sin
+   un solo error en consola. Los buenos son `--warn-*` y `--bad-*`.
+
+   Van deliberadamente discretas: la fila ya lleva nombre, conteo y avance, y
+   compiten con eso. Peso visual mínimo y la explicación completa en el `title`. */
+.org-destino {
+  font-size: var(--fs-nano); font-weight: var(--fw-bold); letter-spacing: .02em;
+  border-radius: var(--r-pill); padding: 2px 8px; margin-left: var(--sp-2);
+  white-space: nowrap; cursor: help;
+  border: 1px solid var(--neutral-200);
+  background: var(--card-bg); color: var(--neutral-500);
+}
+/* Una sucursal de verdad es lo normal: la más callada de las cuatro. */
+.org-destino-sucursal { color: var(--neutral-500); }
+/* Corporativo y CEDIS: no cuelgan de una Gerencia de Zona sino de Dirección. */
+.org-destino-corporativo {
+  color: var(--action); border-color: var(--action); background: var(--overlay-hover);
+}
+/* El canal NO es un lugar: es la vía por la que se levanta la orden. Es el que
+   más tenía que dejar de parecer una sucursal. */
+.org-destino-canal {
+  color: var(--warn-fg); border-color: var(--warn-border);
+  background: var(--warn-soft-bg); border-style: dashed;
+}
+/* Sin zona asignada: pendiente visible. Acomodarlo por parecido le daría a una
+   Gerencia números que no son suyos. */
+.org-destino-desconocido {
+  color: var(--bad-fg); border-color: var(--bad-border);
+  background: var(--bad-soft-bg); border-style: dashed;
+}
+
+/* "servicio a": la unidad responsable sale del PUESTO, nunca del lugar. Los 15
+   vendedores de Padre Hidalgo suman hoy al número de la Encargada, y son de
+   Ventas. Rojo de Ventas, espera visible de la sucursal. */
+.org-cruzada {
+  font-size: var(--fs-nano); font-weight: var(--fw-bold);
+  border-radius: var(--r-pill); padding: 2px 8px; margin-left: var(--sp-1);
+  white-space: nowrap; cursor: help;
+  color: var(--action); background: var(--overlay-selected);
+  border: 1px dashed var(--action);
+}
+
+/* La misma persona en varios lugares del mismo puesto: recibe su manual una vez
+   por cada uno y cada copia le suma al denominador de su cumplimiento. */
+.org-multi {
+  font-size: var(--fs-nano); font-weight: var(--fw-bold);
+  border-radius: var(--r-pill); padding: 2px 8px; margin-left: var(--sp-2);
+  white-space: nowrap; cursor: help;
+  color: var(--bad-fg); border: 1px solid var(--bad-border);
+  background: var(--bad-soft-bg);
+}
+
+/* En celular el árbol ya va apretado. Las pastillas se conservan porque son
+   justo lo que evita leer mal la pantalla, pero sin margen de sobra. */
+@media (max-width: 860px) {
+  .org-destino, .org-cruzada, .org-multi { margin-left: var(--sp-1); padding: 2px 6px; }
+}

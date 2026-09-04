@@ -145,11 +145,60 @@ const USUARIOS = [
  * `datos: false` es el control de la siembra: sin trabajo del día no hay nada
  * que sembrar y el árbol debe caer al primer nivel.
  */
+/**
+ * FIXTURE DEL EJE TRANSVERSAL, aparte del de arriba a propósito.
+ *
+ * Cubre los cuatro tipos de lugar y los dos lados de la regla de atribución.
+ * Los puestos NO se eligen al azar: `anaquelista` es unidad `sucursal` y
+ * `practicante-caja-general` es `administrativa`, así que entre los dos la
+ * regla tiene que decir SÍ en uno y NO en el otro. Si los dos fueran de
+ * sucursal, la prueba recorrería sin comparar un `cruzada` contra el de al
+ * lado — que es el fallo del 31/ago con los diez perfiles que veían las cuatro
+ * pestañas o ninguna.
+ *
+ * "Sucursal Fantasma" no está en `zonas.util.ts` y tiene que salir DESCONOCIDA:
+ * es el control de que lo que no se sabe se ve, en vez de acomodarse por
+ * parecido.
+ */
+const ITEMS_EJE = [{ id: 'i1', text: 'Punto uno' }];
+const EJE = {
+  checklists: [
+    // Misma persona, MISMO puesto, CUATRO lugares: los cuatro tipos de destino
+    // y, de paso, el ×4 en su denominador.
+    { id: 'e1', date: HOY, time: '08:00', name: 'En la sucursal', store: 'Canindo',
+      assigned: 'Ana Eje Uno', _puestoId: 'anaquelista', items: ITEMS_EJE, ...MARCA_MANUAL },
+    { id: 'e2', date: HOY, time: '09:00', name: 'En un área', store: 'COMPRAS',
+      assigned: 'Ana Eje Uno', _puestoId: 'anaquelista', items: ITEMS_EJE, ...MARCA_MANUAL },
+    { id: 'e3', date: HOY, time: '10:00', name: 'En el canal', store: 'MANTENIMIENTO',
+      assigned: 'Ana Eje Uno', _puestoId: 'anaquelista', items: ITEMS_EJE, ...MARCA_MANUAL },
+    { id: 'e4', date: HOY, time: '11:00', name: 'En un lugar sin zona', store: 'Sucursal Fantasma',
+      assigned: 'Ana Eje Uno', _puestoId: 'anaquelista', items: ITEMS_EJE, ...MARCA_MANUAL },
+    // Unidad `administrativa` trabajando en una SUCURSAL: atribución cruzada.
+    { id: 'e5', date: HOY, time: '12:00', name: 'Servicio a la plaza', store: 'Padre Hidalgo',
+      assigned: 'Beto Eje Dos', _puestoId: 'practicante-caja-general', items: ITEMS_EJE, ...MARCA_MANUAL },
+  ],
+  usuarios: [
+    { id: 'e-u1', nombre: 'Ana Eje Uno', puestoId: 'anaquelista', activo: true,
+      sucursales: ['Canindo', 'COMPRAS', 'MANTENIMIENTO', 'Sucursal Fantasma'] },
+    { id: 'e-u2', nombre: 'Beto Eje Dos', puestoId: 'practicante-caja-general', activo: true,
+      sucursales: ['Padre Hidalgo'] },
+  ],
+};
+
 const ESCENARIOS = [
   { nombre: 'con dato, sin tocar nada', datos: true,  teclea: null },
   { nombre: 'sin ningún dato',          datos: false, teclea: null },
   { nombre: 'busco "Yesenia"',          datos: true,  teclea: 'Yesenia' },
   { nombre: 'busco "zzzqqq" (no existe)', datos: true, teclea: 'zzzqqq' },
+  // TECLEA 'Eje' A PROPÓSITO, y el primer intento fue con `teclea: null`.
+  // Dio SEIS CEROS perfectos, que se leen como «las pastillas no se pintan».
+  // No era eso: `sembrar()` abre los ANCESTROS del puesto con trabajo y deja el
+  // puesto con trabajo VISIBLE PERO CERRADO (ver su comentario), así que sin
+  // clic ni búsqueda no existe ninguna fila de lugar que pintar. El cero era
+  // del escenario, no de la función. Buscando "Eje" caen las DOS ramas del
+  // fixture —la de sucursal y la administrativa— que es lo que hace falta para
+  // que la regla de atribución tenga un sí y un no que comparar.
+  { nombre: 'eje transversal',          datos: true,  teclea: 'Eje', fixture: EJE },
 ];
 
 const TIPOS = {
@@ -240,6 +289,15 @@ function medir(esc, puerto) {
       ' vacio: document.querySelectorAll(".org-menu-vacio").length,' +
       ' campo: document.querySelectorAll(".org-buscar-campo").length,' +
       ' chips: document.querySelectorAll(".org-chip-uni").length,' +
+      // EJE TRANSVERSAL. Se cuenta por TIPO y no solo ".org-destino": un
+      // "3 pastillas" no distingue tres sucursales de un canal mal pintado como
+      // sucursal, que es justo el defecto que esto vino a arreglar.
+      ' dSuc: document.querySelectorAll(".org-destino-sucursal").length,' +
+      ' dCorp: document.querySelectorAll(".org-destino-corporativo").length,' +
+      ' dCanal: document.querySelectorAll(".org-destino-canal").length,' +
+      ' dDesc: document.querySelectorAll(".org-destino-desconocido").length,' +
+      ' cruzada: document.querySelectorAll(".org-cruzada").length,' +
+      ' multi: document.querySelectorAll(".org-multi").length,' +
       ' sinCampo: window.__sinCampo || 0,' +
       // CUANTAS FILAS CABEN SIN SCROLLEAR. Es la pregunta de "todo en una sola
       // vista", y no se contesta contando filas del DOM: una fila existe
@@ -274,6 +332,18 @@ function medir(esc, puerto) {
       '       if(cr.height>2) out.push(((c.className||c.tagName)+"").slice(0,28)+"="+Math.round(cr.height)); }' +
       '     e=p; }' +
       '   return {top: Math.round(l.getBoundingClientRect().top), ancho: Math.round(l.getBoundingClientRect().width), encima: out};})(),' +
+      // EL EJE DERECHO. El encabezado de columnas y las filas comparten UNA
+      // definicion de anchuras, pero viven en contenedores distintos desde que
+      // el `org-cab` se mudo a la barra pegajosa. Si sus ejes derechos se
+      // separan, los rotulos dejan de nombrar la columna que estan encima —
+      // que es el defecto de los 94px del 1/sep, con otra ropa.
+      ' ejes: (function(){var c=document.querySelector(".org-cab .org-puesto-datos");' +
+      '   var f=document.querySelector(".org-lista .org-puesto .org-puesto-datos");' +
+      '   if(!c||!f) return null;' +
+      '   return {cab: Math.round(c.getBoundingClientRect().right),' +
+      '           fila: Math.round(f.getBoundingClientRect().right),' +
+      '           anchoCab: Math.round(c.getBoundingClientRect().width),' +
+      '           anchoFila: Math.round(f.getBoundingClientRect().width)};})(),' +
       ' altoFila: (function(){var e=document.querySelector(".org-lista .org-puesto");' +
       '   return e ? Math.round(e.getBoundingClientRect().height) : 0;})(),' +
       // OJO CON ESE `+`: sin el, JS NO da error. La insercion automatica de
@@ -292,8 +362,12 @@ function medir(esc, puerto) {
     if (html === sano) return resolve({ error: 'no pude inyectar la sesión en el index' });
 
     const cuerpo = JSON.stringify({
-      checklists: esc.datos ? CHECKLISTS : [],
-      usuarios: esc.datos ? USUARIOS : [],
+      // `fixture` deja que un escenario traiga SU PROPIO dato. Se agregó para el
+      // eje transversal sin tocar el fixture de los cuatro primeros: sus
+      // conteos ("caben 9 de 17", "5 entregadas") están anclados a esos 5
+      // checklists, y meter dos más los habría movido todos.
+      checklists: esc.fixture ? esc.fixture.checklists : (esc.datos ? CHECKLISTS : []),
+      usuarios: esc.fixture ? esc.fixture.usuarios : (esc.datos ? USUARIOS : []),
       areas: [],
     });
 
@@ -386,6 +460,18 @@ function medir(esc, puerto) {
       String(f.d.guias).padEnd(6), String(f.d.vacio).padEnd(6), String(f.d.chips));
   }
   console.log('─'.repeat(92));
+
+  // EJE TRANSVERSAL, en su propia tabla: son cubetas y hay que verlas separadas.
+  console.log('');
+  console.log('escenario                  sucursal  corporativo  canal  sin-zona  servicio-a  +lugares');
+  console.log('─'.repeat(92));
+  for (const f of filas) {
+    console.log('%s %s %s %s %s %s %s',
+      f.nombre.padEnd(26), String(f.d.dSuc).padEnd(9), String(f.d.dCorp).padEnd(12),
+      String(f.d.dCanal).padEnd(6), String(f.d.dDesc).padEnd(9),
+      String(f.d.cruzada).padEnd(11), String(f.d.multi));
+  }
+  console.log('─'.repeat(92));
   // GUARDIA DEL DENOMINADOR: sin esto, "caben 11" puede ser contra 748px o
   // contra 900px y se lee igual.
   const vp = String(filas[0].d.ventana || '');
@@ -417,6 +503,7 @@ function medir(esc, puerto) {
   for (const f of filas) console.log('  subtítulo · %s → %s', f.nombre, JSON.stringify(f.d.sub));
 
   const conDato = filas[0], sinDato = filas[1], busca = filas[2], nada = filas[3];
+  const eje = filas[4];
 
   // ── El árbol tiene que estar montado en las cuatro, o no se midió nada ──
   for (const f of filas) {
@@ -490,6 +577,47 @@ function medir(esc, puerto) {
     'buscar "Yesenia" no podó el árbol: ' + busca.d.puestos + ' puestos contra ' +
     conDato.d.puestos + ' sin filtro.');
 
+  // 4b · EJE TRANSVERSAL · los cuatro tipos de lugar se distinguen EN PANTALLA.
+  //      Se afirma cada cubeta por separado y no el total: un ".org-destino"
+  //      contado en bloque daría 4 aunque los cuatro fueran de la misma clase,
+  //      que es exactamente el defecto de origen —todo pintado como sucursal—.
+  pide(eje.d.dSuc === 2,
+    'el eje: esperaba 2 lugares tipo SUCURSAL —Canindo bajo anaquelista y Padre Hidalgo ' +
+    'bajo el puesto administrativo— y hay ' + eje.d.dSuc + '.');
+  pide(eje.d.dCorp === 1,
+    'el eje: COMPRAS tiene que salir como CORPORATIVO y hay ' + eje.d.dCorp + '.');
+  pide(eje.d.dCanal === 1,
+    'el eje: MANTENIMIENTO tiene que salir como CANAL, no como sucursal. Hay ' +
+    eje.d.dCanal + '. Es el defecto que dio origen a todo esto.');
+  pide(eje.d.dDesc === 1,
+    'el eje: "Sucursal Fantasma" no está en el mapa de zonas y tiene que verse como ' +
+    'DESCONOCIDA. Hay ' + eje.d.dDesc + '. Un lugar sin zona que se pinta como si la ' +
+    'tuviera le daría a una Gerencia números que no son suyos.');
+
+  // 4c · Y LA REGLA DE ATRIBUCIÓN DISCRIMINA. El fixture tiene a propósito un
+  //      puesto de sucursal y uno administrativo en lugares de tipo sucursal:
+  //      si marcara todo darían 2, si no marcara nada darían 0. Solo el 1 puede
+  //      venir de la regla correcta.
+  pide(eje.d.cruzada === 1,
+    'el eje: esperaba EXACTAMENTE 1 "servicio a" —el puesto administrativo en una ' +
+    'sucursal— y hay ' + eje.d.cruzada + '. Con 2 estaría marcando también al ' +
+    'anaquelista, que sí es de la sucursal; con 0 no estaría marcando nada.');
+
+  // 4d · La misma persona en varios lugares se NOMBRA. Vive en la fila de
+  //      colaborador, por eso se mide en el escenario que la abre.
+  pide(eje.d.multi >= 1,
+    'la persona que recibe su manual en cuatro lugares no lleva el aviso "+N lugares" ' +
+    '(multi=' + eje.d.multi + '). Es lo que convierte un nombre repetido sin ' +
+    'explicación en un dato: cada copia le suma al denominador.');
+  pide(eje.d.personas >= 1,
+    'el escenario de la persona no abrió ninguna fila de colaborador (personas=' +
+    eje.d.personas + '): el "+N lugares" no se pudo ni buscar.');
+  // NEGATIVO del mismo eje: quien está en UN solo lugar no lleva el aviso. Sin
+  // esto, un `multi` que se pintara siempre pasaría la aserción de arriba.
+  pide(eje.d.multi < eje.d.personas || eje.d.personas === 0,
+    'el aviso "+N lugares" aparece en TODAS las filas de colaborador (' + eje.d.multi +
+    ' de ' + eje.d.personas + '): entonces no distingue a quien sí está repetido.');
+
   // 5 · CONTROL NEGATIVO: lo que no existe da CERO, no todo.
   pide(nada.d.puestos === 0,
     'buscar una cadena inexistente dejó ' + nada.d.puestos + ' puestos en pantalla. Un filtro ' +
@@ -532,7 +660,27 @@ function medir(esc, puerto) {
     '. Si el bloque que crecio es `org-barra`, es nuestro y se arregla; si es de la pagina, ' +
     'esta asercion esta midiendo algo que este componente no controla.');
 
-  // 7 · Lo nuevo existe de verdad en el DOM, no solo en el código fuente.
+  // 7 · EL EJE DERECHO, medido. Los rótulos de columna tienen que caer sobre
+  //     la columna que nombran, y desde que `org-cab` se mudó a la barra viven
+  //     en contenedores distintos: la única definición compartida de anchuras
+  //     ya no garantiza sola que coincidan.
+  const ej = conDato.d.ejes;
+  if (!ej) {
+    fallos.push('no pude medir el eje de columnas: falta `.org-cab .org-puesto-datos` o la ' +
+      'rejilla de una fila. Sin eso, la alineación queda sin comprobar.');
+  } else {
+    console.log('[arbol] eje derecho · encabezado %dpx · fila %dpx · anchos %d/%d',
+      ej.cab, ej.fila, ej.anchoCab, ej.anchoFila);
+    pide(Math.abs(ej.cab - ej.fila) <= 1,
+      'el encabezado de columnas y las filas NO comparten eje derecho: ' + ej.cab + 'px contra ' +
+      ej.fila + 'px (' + Math.abs(ej.cab - ej.fila) + 'px de diferencia). Los rótulos dejan de ' +
+      'nombrar la columna que tienen encima. Es el defecto de los 94px del 1/sep.');
+    pide(ej.anchoCab === ej.anchoFila,
+      'la rejilla del encabezado mide ' + ej.anchoCab + 'px y la de las filas ' + ej.anchoFila +
+      'px: alguien duplicó las anchuras en vez de reusar `.org-puesto-datos`.');
+  }
+
+  // 8 · Lo nuevo existe de verdad en el DOM, no solo en el código fuente.
   pide(conDato.d.guias > 0, 'no se pintó ninguna guía de nivel.');
   pide(conDato.d.chips === 11,
     'esperaba los 11 chips de unidad del catálogo, medí ' + conDato.d.chips +

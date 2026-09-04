@@ -47,12 +47,15 @@ const DIST = path.join(__dirname, '..', 'dist', 'mega-dulces-app', 'browser');
  * prueba que el recorrido llega al chunk del organigrama.
  */
 const MARCADORES = [
-  { txt: 'Buscar puesto, sucursal o persona', nuevo: true,  que: 'el buscador del árbol' },
-  { txt: 'org-chip-uni',                      nuevo: true,  que: 'los chips por unidad' },
-  { txt: 'org-guia',                          nuevo: true,  que: 'las guías de nivel' },
-  { txt: 'treeitem',                          nuevo: true,  que: 'las filas como treeitem' },
-  { txt: 'org-puesto-datos',                  control: true, que: 'la rejilla de datos (ya existía)' },
-  { txt: 'md_rescate_arranque',               control: true, que: 'el rescate del index (ya existía)' },
+  // Nuevos de la barra unica (4/sep, "todo en una sola vista").
+  { txt: 'org-barra-fila', nuevo: true,   que: 'la barra unica pegajosa' },
+  { txt: 'org-head-id',    nuevo: true,   que: 'titulo y cifras en un renglon' },
+  // Controles. Los dos primeros ya existian; `org-chip-uni` llego en el
+  // despliegue anterior y ahora sirve de control: prueba que aquello sigue en
+  // pie y que este despliegue no lo tumbo.
+  { txt: 'org-chip-uni',      control: true, que: 'los chips (despliegue anterior)' },
+  { txt: 'org-puesto-datos',  control: true, que: 'la rejilla de datos' },
+  { txt: 'md_rescate_arranque', control: true, que: 'el rescate del index' },
 ];
 
 function abortar(motivo) {

@@ -96,6 +96,18 @@ function hoyLocal() {
  * por nombre, y si fallaran los dos las entregas caerían en «sin puesto» —
  * que el testigo del subtítulo delata.
  */
+/**
+ * La pantalla contra la que se mide "todo en una sola vista".
+ *
+ * OJO CON `--window-size`: en `--headless=new` Chrome emula una ventana CON
+ * cromo, asi que pedir 900 de alto deja un viewport de 748 — se midio y la
+ * etiqueta decia "1440x900" mientras las filas se contaban contra 748. Un
+ * numero sin su denominador, otra vez. Se pide el alto MAS el cromo y se
+ * comprueba el resultado: si el viewport real no cae donde debe, ABORTA, para
+ * que nunca se concluya "caben N" contra una pantalla distinta a la declarada.
+ */
+const VENTANA = { w: 1440, h: 1052, objetivoAlto: 900, tolerancia: 40 };
+
 const HOY = hoyLocal();
 const ITEMS = [{ id: 'i1', text: 'Punto uno' }, { id: 'i2', text: 'Punto dos' }];
 /**
@@ -229,6 +241,47 @@ function medir(esc, puerto) {
       ' campo: document.querySelectorAll(".org-buscar-campo").length,' +
       ' chips: document.querySelectorAll(".org-chip-uni").length,' +
       ' sinCampo: window.__sinCampo || 0,' +
+      // CUANTAS FILAS CABEN SIN SCROLLEAR. Es la pregunta de "todo en una sola
+      // vista", y no se contesta contando filas del DOM: una fila existe
+      // aunque este 3000px abajo.
+      ' enPantalla: [].slice.call(document.querySelectorAll(".org-lista .org-fila-wrap"))' +
+      '   .filter(function(e){var r=e.getBoundingClientRect();' +
+      '     return r.top >= 0 && r.bottom <= window.innerHeight;}).length,' +
+      ' anchoLista: (function(){var e=document.querySelector(".org-lista");' +
+      '   return e ? Math.round(e.getBoundingClientRect().width) : 0;})(),' +
+      // Scroll DENTRO del scroll: el recuadro con barra propia metido en una
+      // pagina que tambien scrollea. 1 = sigue encajonado.
+      ' scrollInterno: (function(){var e=document.querySelector(".org-menu");' +
+      '   return e && e.scrollHeight > e.clientHeight + 4 ? 1 : 0;})(),' +
+      // EL TOPE, leido del estilo calculado y no de si HOY desborda. Con un
+      // fixture chico la lista no llega a los 640px del recuadro viejo, asi que
+      // `scrollInterno` valdria 0 con el recuadro PUESTO: una asercion que no
+      // puede fallar no prueba nada (§8.11 c). Esto discrimina siempre.
+      ' topeMenu: (function(){var e=document.querySelector(".org-menu");' +
+      '   return e ? getComputedStyle(e).maxHeight : "?";})(),' +
+      // DONDE SE VA EL ALTO. "No caben" tiene dos causas muy distintas -filas
+      // gordas, o cromo de la pagina comiendose la pantalla- y se ven igual.
+      // Esto lista lo que hay ENCIMA de la lista, con su altura.
+      // EL DENOMINADOR DE "caben N". Sin el alto REAL de la ventana, "caben 11"
+      // no dice nada: `--window-size` puede no aplicarse y el default de
+      // headless es 800x600. Se mide, no se supone.
+      ' ventana: window.innerWidth + "x" + window.innerHeight,' +
+      ' arriba: (function(){var l=document.querySelector(".org-lista");' +
+      '   if(!l) return null; var out=[]; var e=l;' +
+      '   while(e && e!==document.body){ var p=e.parentElement; if(!p) break;' +
+      '     for(var i=0;i<p.children.length;i++){ var c=p.children[i]; if(c===e) break;' +
+      '       var cr=c.getBoundingClientRect();' +
+      '       if(cr.height>2) out.push(((c.className||c.tagName)+"").slice(0,28)+"="+Math.round(cr.height)); }' +
+      '     e=p; }' +
+      '   return {top: Math.round(l.getBoundingClientRect().top), ancho: Math.round(l.getBoundingClientRect().width), encima: out};})(),' +
+      ' altoFila: (function(){var e=document.querySelector(".org-lista .org-puesto");' +
+      '   return e ? Math.round(e.getBoundingClientRect().height) : 0;})(),' +
+      // OJO CON ESE `+`: sin el, JS NO da error. La insercion automatica de
+      // punto y coma parte la expresion en dos sentencias validas, `iny` se
+      // queda sin su cierre ni su </script>, y el navegador recibe un script
+      // truncado que nunca fija el titulo. `node --check` pasa. Se lee como
+      // «la app no pinto». Un caracter que no rompe: acorta la cadena en
+      // silencio, que es la familia de fallas de §8.11(d).
       // EL TESTIGO: el propio componente publica cuántas entregas contó. Es lo
       // que separa «la siembra no sirve» de «el dato no llegó».
       ' sub: sub ? sub.textContent.replace(/\\s+/g," ").trim() : null' +
@@ -269,6 +322,9 @@ function medir(esc, puerto) {
       // 'C:/Program Files/Git/tareas-manual', la URL sale malformada y el DOM
       // llega vacío — que se lee como «la app no pinta». Costó una tarde.
       const h = spawn(CHROME, ['--headless=new', '--disable-gpu', '--no-sandbox', '--no-first-run',
+        // VENTANA FIJA. "Cuantas filas caben en pantalla" no significa nada sin
+        // decir en que pantalla: 1440x900 es un portatil comun de oficina.
+        '--window-size=' + VENTANA.w + ',' + VENTANA.h,
         '--user-data-dir=' + perfil, '--virtual-time-budget=25000', '--disable-background-networking',
         '--disable-sync', '--disable-component-update',
         '--disable-features=PushMessaging,OptimizationHints',
@@ -330,6 +386,34 @@ function medir(esc, puerto) {
       String(f.d.guias).padEnd(6), String(f.d.vacio).padEnd(6), String(f.d.chips));
   }
   console.log('─'.repeat(92));
+  // GUARDIA DEL DENOMINADOR: sin esto, "caben 11" puede ser contra 748px o
+  // contra 900px y se lee igual.
+  const vp = String(filas[0].d.ventana || '');
+  const altoReal = Number(vp.split('x')[1] || 0);
+  if (!altoReal || Math.abs(altoReal - VENTANA.objetivoAlto) > VENTANA.tolerancia) {
+    abortar('el viewport real es ' + (vp || 'ilegible') + ', y las filas se iban a contar ' +
+      'como si fuera de ' + VENTANA.objetivoAlto + 'px de alto. Ajusta VENTANA.h: en headless ' +
+      'el alto pedido incluye el cromo de la ventana.');
+  }
+  console.log('');
+  console.log('EN UNA SOLA VISTA (viewport REAL %s)', vp);
+  console.log('escenario                  filas que CABEN  ancho lista  alto fila  scroll interno');
+  console.log('─'.repeat(92));
+  for (const f of filas) {
+    console.log('%s %s %s %s %s',
+      f.nombre.padEnd(26), String(f.d.enPantalla).padEnd(16),
+      (f.d.anchoLista + 'px').padEnd(12), (f.d.altoFila + 'px').padEnd(10),
+      f.d.scrollInterno ? 'SÍ (encajonado)' : 'no');
+  }
+  console.log('─'.repeat(92));
+  const geo = filas[0].d.arriba;
+  if (geo) {
+    console.log('');
+    console.log('DONDE SE VA EL ALTO · ventana REAL %s · la lista empieza en y=%dpx y mide %dpx',
+      filas[0].d.ventana, geo.top, geo.ancho);
+    console.log('  encima de ella: %s', geo.encima.join(' · ') || '(nada)');
+  }
+  console.log('');
   for (const f of filas) console.log('  subtítulo · %s → %s', f.nombre, JSON.stringify(f.d.sub));
 
   const conDato = filas[0], sinDato = filas[1], busca = filas[2], nada = filas[3];
@@ -357,7 +441,14 @@ function medir(esc, puerto) {
   // ── EL TESTIGO, antes de cualquier verde ────────────────────────────────
   // Distingue «la siembra está rota» de «el dato nunca llegó». Sin esto, las
   // dos producen el mismo número y la conclusión sería la contraria.
-  const declara = /(\d+)\s+tarea\(s\) del manual/.exec(conDato.d.sub || '');
+  // Tolerante a las DOS redacciones del subtitulo. La primera version de esta
+  // regex se anclo al texto largo ("N tarea(s) del manual entregada(s) hoy") y
+  // se rompio en cuanto la barra se compacto a "N entregadas hoy": es el
+  // corolario (e), un control anclado a algo que se mueve. Abortar fue lo
+  // correcto -no concluyo con el testigo ciego-, pero el testigo no deberia
+  // depender de como se redacte una etiqueta.
+  const declara = /(\d+)\s+(?:tarea\(s\) del manual entregada\(s\)|entregadas)\s+hoy/
+    .exec(conDato.d.sub || '');
   const contadas = declara ? Number(declara[1]) : -1;
   if (contadas <= 0) {
     abortar('el componente declara ' + (contadas < 0 ? 'un subtítulo ilegible' : '0 entregas') +
@@ -407,7 +498,41 @@ function medir(esc, puerto) {
     'el vacío por filtro no se NOMBRA (vacio=' + nada.d.vacio + '). Una lista vacía sin ' +
     'explicación se lee como "la pantalla está rota".');
 
-  // 6 · Lo nuevo existe de verdad en el DOM, no solo en el código fuente.
+  // 6 · TODO EN UNA SOLA VISTA. Las tres propiedades del encajonamiento.
+  //     Las dos primeras son estables -no dependen del fixture-; la tercera sí,
+  //     y por eso su mensaje distingue las dos lecturas posibles.
+  pide(conDato.d.topeMenu === 'none',
+    'el menú del árbol sigue con `max-height: ' + conDato.d.topeMenu + '`: el recuadro con ' +
+    'barra propia dentro del scroll de la página no se quitó. (Se lee del estilo calculado y ' +
+    'no de si hoy desborda: con pocos datos la lista no llega al tope y "no desborda" se ' +
+    'vería igual que "no hay recuadro".)');
+  pide(conDato.d.scrollInterno === 0,
+    'el árbol desborda su propio contenedor: dos barras de scroll peleándose.');
+  pide(conDato.d.anchoLista > 900,
+    'la lista mide ' + conDato.d.anchoLista + 'px: el tope de 820px sigue puesto y sobra ' +
+    'ancho de pantalla sin usar.');
+  // "Que quepan TODAS las filas" NO se puede asertar: depende del fixture, y en
+  // produccion un arbol sembrado son decenas de filas — ninguna altura las mete
+  // en una pantalla. Asertar eso seria fijar el diseño a los 5 checklists de
+  // esta prueba, y caducaria el dia que alguien agregue el sexto.
+  //
+  // Lo que SI es una propiedad del diseño, y no del dato, es cuanta pantalla se
+  // queda el arbol. Antes: la lista empezaba en y=532 de 900 y encima de ella
+  // habia 236px de cromo del propio componente. El limite deja margen para el
+  // cromo de la PAGINA (header, toolbar, section-header = 200px) y aprieta lo
+  // que si es nuestro.
+  const totalFilas = conDato.d.puestos + conDato.d.sucursales + conDato.d.personas + conDato.d.entregas;
+  const altoVp = Number(String(conDato.d.ventana).split('x')[1]);
+  const paraElArbol = (altoVp - conDato.d.arriba.top) / altoVp;
+  console.log('[arbol] la lista se queda con el %d%% de la pantalla · caben %d de %d filas',
+    Math.round(paraElArbol * 100), conDato.d.enPantalla, totalFilas);
+  pide(paraElArbol >= 0.55,
+    'al árbol le queda el ' + Math.round(paraElArbol * 100) + '% de la pantalla (empieza en y=' +
+    conDato.d.arriba.top + ' de ' + altoVp + '). Encima de él: ' + conDato.d.arriba.encima.join(' · ') +
+    '. Si el bloque que crecio es `org-barra`, es nuestro y se arregla; si es de la pagina, ' +
+    'esta asercion esta midiendo algo que este componente no controla.');
+
+  // 7 · Lo nuevo existe de verdad en el DOM, no solo en el código fuente.
   pide(conDato.d.guias > 0, 'no se pintó ninguna guía de nivel.');
   pide(conDato.d.chips === 11,
     'esperaba los 11 chips de unidad del catálogo, medí ' + conDato.d.chips +

@@ -322,6 +322,60 @@ de que exista la plaza sería partir el problema en dos, no resolverlo.
 
 ## 9. Bitácora del plan
 
+### 4/sep/2026 — «todo en una sola vista»: el árbol estaba en un recuadro
+
+Instrucción de David: *«hazlo más grande, lo quiero todo en una sola vista»*. No era gusto: el
+árbol vivía **encajonado**, y los dos topes eran del componente, no de la app.
+
+**Medido antes de tocar, en un viewport de 1440×900:** de las 16 filas del árbol sembrado
+**cabían 5**. La lista medía **820 px** de los 1045 disponibles y `.org-menu` tenía
+`max-height: 640px` con barra propia — **scroll dentro del scroll**. La lista empezaba en
+**y=532**, y de esos 532, **236 eran cromo del propio componente**:
+
+    org-barra=97 (antes: org-head 71 + org-filtros 125 + org-pista 17 = 213)
+    org-cab=23 · section-header=94 · cl-toolbar=42 · header=64
+
+Los 125 px de los filtros eran los **11 chips envolviendo en dos líneas**: 69 px tirados, que son
+dos filas del árbol. Ahora es **una barra pegajosa** de dos renglones —identidad + buscador +
+acciones, y chips que se deslizan— con el encabezado de columnas **dentro** de ella, para que se
+pegue junto sin un `top` mágico que se despegue el día que alguien cambie el relleno. La pista de
+uso se fue al `title` y al placeholder: era un renglón permanente para un texto que se lee una vez.
+
+**Resultado, mismo viewport: 5 → 16 filas · 820 → 1045 px · una sola barra de scroll.**
+El árbol pasó de quedarse con el 41% de la pantalla al **58%**.
+
+**El tope global de `.content` (1720 px, `styles.css`) NO se tocó:** es una decisión de toda la app
+y tiene su razón escrita. Y los **44 px de fila se conservan en móvil** —el mínimo táctil de iOS,
+donde pasa el 100% de la operación—; los 32 px son solo de `min-width: 861px`, que es donde se
+leen los tableros.
+
+#### Cuatro falsos de mi propio instrumental, y ninguno se cayó solo
+
+1. **Un `+` que faltaba no dio error.** En la cadena inyectada al navegador, la línea terminaba en
+   `,'` sin operador: la **inserción automática de punto y coma** partió la expresión en dos
+   sentencias **válidas**, así que `iny` se quedó sin su cierre y sin `</script>`. `node --check`
+   pasa. El navegador recibió un script truncado y no fijó el título — que se lee como «la app no
+   pintó». Un carácter que no rompe: **acorta la cadena en silencio.**
+2. **La etiqueta decía «1440x900» y el viewport real era 1422×748.** En `--headless=new` Chrome
+   emula una ventana **con cromo**, así que el alto pedido no es el que se mide. Todas las cifras
+   de «caben N» venían contra una pantalla más corta que la declarada — **un número sin su
+   denominador**. Ahora se pide alto + cromo y hay una **guardia que aborta** si el viewport real
+   no cae donde dice la etiqueta.
+3. **El testigo se rompió al compactar la barra**, porque su regex estaba anclada al texto largo
+   del subtítulo. Abortar fue lo correcto —no concluyó con el testigo ciego— pero es el
+   corolario (e): un control anclado a algo que se mueve caduca. Ahora acepta las dos redacciones.
+4. **Y una aserción que no podía fallar.** `scrollInterno === 0` parecía comprobar que el recuadro
+   se fue; con un fixture chico la lista **nunca llega a los 640 px**, así que valía 0 **con el
+   recuadro puesto**. El control negativo lo destapó: al restaurar los topes solo falló 1 de 3.
+   Se cambió por leer `max-height` del **estilo calculado**, que discrimina siempre; NEG-3 ahora
+   rompe 2 de 2.
+
+**Lo que NO se prometió:** que quepan *todas* las filas siempre. En producción un árbol sembrado
+son decenas y ninguna altura las mete en una pantalla — asertar eso habría fijado el diseño a los
+5 checklists de la prueba. Por eso la aserción es **estable y de diseño**: al árbol le toca ≥55%
+de la pantalla. Lo que sí desapareció es la **segunda barra de scroll**.
+
+
 ### 4/sep/2026 — el árbol del organigrama: de 1 fila y 6 clics, a 16 y 0
 
 Cambio de **diseño de navegación**, no de reglas: `vista-organigrama.ts/.html/.css` y nada

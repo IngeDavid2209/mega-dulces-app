@@ -1,70 +1,67 @@
 <section class="org">
 
-  <!-- ══════════════ ENCABEZADO ══════════════ -->
-  <header class="org-head">
-    <div>
-      <h3 class="org-titulo">Organigrama 2026</h3>
-      <div class="org-sub">
-        <!-- CON FILTRO ACTIVO VA EL DENOMINADOR. Una lista filtrada sin su
-             total es la forma más fácil de leer un vacío como un cero. -->
-        <ng-container *ngIf="hayCriterio(); else totales">
-          <strong>{{ resumen().casan }}</strong> de {{ resumen().puestos }} puesto(s) casan
-        </ng-container>
-        <ng-template #totales>
-          {{ resumen().puestos }} puesto(s) ·
-          {{ resumen().entregas }} tarea(s) del manual entregada(s) hoy<span
-            *ngIf="resumen().huerfanas > 0"> · {{ resumen().huerfanas }} sin puesto</span>
-        </ng-template>
+  <!-- ══════════════ UNA SOLA BARRA ══════════════
+       Antes esto eran TRES bloques apilados —`org-head` 71px, `org-filtros`
+       125px (los 11 chips envolvian en dos lineas) y `org-pista` 17px— o sea
+       213px de cromo propio antes de la primera fila del arbol. Medido en una
+       ventana de 1440x900, la lista empezaba en y=532 y cabian 6 filas de 16.
+
+       Ahora es una barra de dos renglones: identidad + buscador + acciones
+       arriba, chips deslizables abajo. Va PEGAJOSA, asi que al bajar por una
+       rama larga el buscador y los botones siguen ahi.
+
+       La pista de uso se fue al `title` y al placeholder: era un renglon
+       permanente para un texto que se lee una vez. -->
+  <header class="org-barra">
+    <div class="org-barra-fila">
+      <div class="org-head-id">
+        <h3 class="org-titulo">Organigrama 2026</h3>
+        <div class="org-sub">
+          <!-- CON FILTRO ACTIVO VA EL DENOMINADOR. Una lista filtrada sin su
+               total es la forma más fácil de leer un vacío como un cero. -->
+          <ng-container *ngIf="hayCriterio(); else totales">
+            <strong>{{ resumen().casan }}</strong> de {{ resumen().puestos }} puestos
+          </ng-container>
+          <ng-template #totales>
+            {{ resumen().puestos }} puestos · {{ resumen().entregas }} entregadas hoy<span
+              *ngIf="resumen().huerfanas > 0"> · {{ resumen().huerfanas }} sin puesto</span>
+          </ng-template>
+        </div>
       </div>
-      <!-- Un reportaA roto haría que una rama entera dejara de dibujarse. Hoy
-           son cero; si deja de serlo, se ve aquí y no cuando alguien lo note. -->
-      <div class="org-alerta" *ngIf="resumen().fueraDelArbol > 0">
-        ⚠ {{ resumen().fueraDelArbol }} puesto(s) con jefe inexistente o en ciclo:
-        salen arriba, fuera de su lugar.
+
+      <div class="org-buscar"
+           title="Busca un puesto, una sucursal o el nombre de una persona. El árbol se abre solo hasta el resultado.">
+        <span class="org-buscar-icono" aria-hidden="true">⌕</span>
+        <input class="org-buscar-campo"
+               type="search"
+               placeholder="Buscar puesto, sucursal o persona…"
+               aria-label="Buscar en el organigrama"
+               [ngModel]="busqueda()"
+               (ngModelChange)="busqueda.set($event)">
+        <button class="org-buscar-x" *ngIf="hayCriterio()" (click)="limpiarFiltros()"
+                title="Quitar el filtro" aria-label="Quitar el filtro">×</button>
+      </div>
+
+      <div class="org-acciones">
+        <button class="org-btn" *ngIf="cuantosAbiertos() > 0" (click)="cerrarTodo()">
+          Cerrar todo ({{ cuantosAbiertos() }})
+        </button>
+        <button class="org-btn" (click)="abrirTodo()"
+                title="Abre todos los puestos del árbol (no las sucursales). Alt+clic en una fila abre solo esa rama.">
+          Abrir puestos
+        </button>
+        <label class="org-check" [title]="'Hay ' + resumen().puestosSinManual + ' puestos del organigrama sin manual levantado'">
+          <input type="checkbox"
+                 [ngModel]="soloConManual()"
+                 (ngModelChange)="soloConManual.set($event)">
+          Solo con manual
+        </label>
       </div>
     </div>
 
-    <div class="org-acciones">
-      <button class="org-btn" *ngIf="cuantosAbiertos() > 0" (click)="cerrarTodo()">
-        Cerrar todo ({{ cuantosAbiertos() }})
-      </button>
-      <button class="org-btn" (click)="abrirTodo()"
-              title="Abre todos los puestos del árbol (no las sucursales)">
-        Abrir puestos
-      </button>
-      <label class="org-check" [title]="'Hay ' + resumen().puestosSinManual + ' puestos del organigrama sin manual levantado'">
-        <input type="checkbox"
-               [ngModel]="soloConManual()"
-               (ngModelChange)="soloConManual.set($event)">
-        Solo puestos con manual
-      </label>
-    </div>
-  </header>
-
-  <!-- ══════════════ BUSCAR Y SALTAR ══════════════
-       Lo que quitó los seis clics. El árbol tenía UNA raíz, así que arrancaba
-       con una sola fila y el 60% de los puestos vivían tres niveles abajo: la
-       única forma de llegar a un dato era cavar a mano.
-
-       El buscador casa contra puesto, unidad, SUCURSAL y NOMBRE DE PERSONA, y
-       el árbol se poda y se abre solo hasta el resultado dejando la cadena de
-       mando a la vista. Los chips saltan a una unidad de control: son el atajo
-       a los 14 puestos de sucursal, que es lo que la operación abre casi
-       siempre. Las etiquetas salen de `ETIQUETAS_UNIDAD`, no de una lista
-       local. -->
-  <div class="org-filtros">
-    <div class="org-buscar">
-      <span class="org-buscar-icono" aria-hidden="true">⌕</span>
-      <input class="org-buscar-campo"
-             type="search"
-             placeholder="Buscar puesto, sucursal o persona…"
-             aria-label="Buscar en el organigrama"
-             [ngModel]="busqueda()"
-             (ngModelChange)="busqueda.set($event)">
-      <button class="org-buscar-x" *ngIf="hayCriterio()" (click)="limpiarFiltros()"
-              title="Quitar el filtro" aria-label="Quitar el filtro">×</button>
-    </div>
-
+    <!-- Los chips en UN renglón que se desliza, también en escritorio: envueltos
+         costaban 69px de pantalla, que son dos filas del árbol. Las etiquetas
+         salen de `ETIQUETAS_UNIDAD`, no de una lista local. -->
     <div class="org-chips" role="group" aria-label="Saltar a una unidad">
       <button class="org-chip-uni"
               *ngFor="let c of chips(); trackBy: trackChip"
@@ -75,7 +72,32 @@
         {{ c.etiqueta }}<span class="org-chip-n">{{ c.puestos }}</span>
       </button>
     </div>
-  </div>
+
+    <!-- Un reportaA roto haría que una rama entera dejara de dibujarse. Hoy
+         son cero; si deja de serlo, se ve aquí y no cuando alguien lo note. -->
+    <div class="org-alerta" *ngIf="resumen().fueraDelArbol > 0">
+      ⚠ {{ resumen().fueraDelArbol }} puesto(s) con jefe inexistente o en ciclo:
+      salen arriba, fuera de su lugar.
+    </div>
+
+    <!-- Encabezado de columnas, DENTRO de la barra pegajosa.
+         Vive aquí y no en `.org-menu` para que se pegue junto con el buscador
+         sin tener que adivinar un `top`: un número mágico se despega el día
+         que alguien cambia el relleno de la barra.
+         Sigue reusando `.org-puesto-datos` -una sola definición de anchuras- y
+         lleva el mismo padding derecho que las filas, que es lo que hace que
+         los ejes coincidan. Ese eje ya se salió una vez por 94px. -->
+    <div class="org-cab" aria-hidden="true">
+      <span class="org-cab-hueco"></span>
+      <span class="org-puesto-datos">
+        <span class="org-slot">Rama</span>
+        <span class="org-slot">Manual</span>
+        <span class="org-slot">Avance</span>
+        <span class="org-slot">Propio</span>
+        <span class="org-slot">Venc.</span>
+      </span>
+    </div>
+  </header>
 
   <div class="org-cuerpo">
 
@@ -93,23 +115,7 @@
          trabajo quedan visibles pero cerrados, a un clic de su detalle. -->
     <nav class="org-menu" aria-label="Organigrama">
 
-      <p class="org-pista">
-        Un clic abre el puesto; <strong>alt+clic</strong> abre la rama completa.
-        Buscar un nombre lleva directo a sus tareas.
-      </p>
 
-      <!-- Encabezado de columnas. Reusa `.org-puesto-datos` en vez de repetir
-           las anchuras: no pueden desalinearse porque hay una sola definición. -->
-      <div class="org-cab" aria-hidden="true">
-        <span class="org-cab-hueco"></span>
-        <span class="org-puesto-datos">
-          <span class="org-slot">Rama</span>
-          <span class="org-slot">Manual</span>
-          <span class="org-slot">Avance</span>
-          <span class="org-slot">Propio</span>
-          <span class="org-slot">Venc.</span>
-        </span>
-      </div>
 
       <div class="org-lista" role="tree" aria-label="Pirámide de puestos">
         <div class="org-fila-wrap" *ngFor="let f of filas(); trackBy: trackFila">

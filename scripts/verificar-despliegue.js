@@ -47,14 +47,18 @@ const DIST = path.join(__dirname, '..', 'dist', 'mega-dulces-app', 'browser');
  * prueba que el recorrido llega al chunk del organigrama.
  */
 const MARCADORES = [
-  // Nuevos de la barra unica (4/sep, "todo en una sola vista").
-  { txt: 'org-barra-fila', nuevo: true,   que: 'la barra unica pegajosa' },
-  { txt: 'org-head-id',    nuevo: true,   que: 'titulo y cifras en un renglon' },
-  // Controles. Los dos primeros ya existian; `org-chip-uni` llego en el
-  // despliegue anterior y ahora sirve de control: prueba que aquello sigue en
-  // pie y que este despliegue no lo tumbo.
-  { txt: 'org-chip-uni',      control: true, que: 'los chips (despliegue anterior)' },
-  { txt: 'org-puesto-datos',  control: true, que: 'la rejilla de datos' },
+  // Nuevos de la escala (db7579b). La rejilla de datos es el marcador mas
+  // limpio: cinco anchuras juntas no aparecen por casualidad en ningun otro
+  // sitio. OJO — vive en un CHUNK JS, no en un .css: los estilos de un
+  // componente Angular se compilan DENTRO del JS. Buscarlo en los *.css sueltos
+  // da CERO por mirar donde no esta, y ya lo dio hoy (cuatro ceros seguidos).
+  { txt: '40px 46px 64px 50px 38px', nuevo: true, que: 'la rejilla de datos, mas ancha' },
+  { txt: 'font-size:19px',           nuevo: true, que: 'el nombre de la raiz, mas grande' },
+  // De la otra sesion (7a5bd2e), para contrastar su reporte con medicion propia.
+  { txt: 'org-destino',              nuevo: true, que: 'el eje transversal (sesion e2)' },
+  // Controles: ya existian antes de este despliegue y deben seguir en pie.
+  { txt: 'org-chip-uni',        control: true, que: 'los chips (despliegue anterior)' },
+  { txt: 'org-barra-fila',      control: true, que: 'la barra unica (despliegue anterior)' },
   { txt: 'md_rescate_arranque', control: true, que: 'el rescate del index' },
 ];
 

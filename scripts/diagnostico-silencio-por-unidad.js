@@ -92,7 +92,7 @@ async function main() {
 
   console.log('[silencio] catálogo parseado → %d puestos en %d unidades', catalogo.size, porUnidad.size);
   for (const [u, n] of [...porUnidad.entries()].sort((a, b) => b[1] - a[1])) {
-    console.log('             %-22s %d', u, n);
+    console.log('             ' + u.padEnd(22) + ' ' + n);
   }
 
   // ── Las fichas activas con puesto ──────────────────────────────────────
@@ -149,8 +149,16 @@ async function main() {
   }
 
   console.log('');
+  // OJO CON EL FORMATO: `util.format` de Node NO soporta el padding de printf.
+  // Solo reconoce %s %d %i %f %j %o %O %c %%. Un '%-22s' no se sustituye: se
+  // imprime literal, y ademas DESPLAZA los argumentos — el '%d' siguiente se
+  // come la cadena y saca NaN. La tabla no salia fea, salia FALSA: la fila de
+  // datos imprimia 'NaN%' justo donde va el porcentaje de silencio, que es el
+  // numero del que depende que algo suba a Direccion. Por eso va padEnd/padStart
+  // y no plantillas de printf.
   console.log('══════════ EL SILENCIO, PARTIDO POR UNIDAD ══════════');
-  console.log('%-22s %6s %6s %6s %6s  %s', 'UNIDAD', 'FICHAS', 'NUNCA', '>30d', 'VIVAS', 'SILENCIO');
+  console.log('UNIDAD'.padEnd(22) + 'FICHAS'.padStart(7) + 'NUNCA'.padStart(7) +
+              '>30d'.padStart(7) + 'VIVAS'.padStart(7) + '  SILENCIO');
   console.log('─'.repeat(72));
 
   let tTotal = 0, tNunca = 0, tViejo = 0, tActivos = 0;
@@ -161,12 +169,14 @@ async function main() {
   });
   for (const [u, a] of filas) {
     const sil = a.nunca + a.viejo;
-    console.log('%-22s %6d %6d %6d %6d  %d%%',
-      u, a.total, a.nunca, a.viejo, a.activos, Math.round((sil / a.total) * 100));
+    console.log(u.padEnd(22) + String(a.total).padStart(7) + String(a.nunca).padStart(7) +
+                String(a.viejo).padStart(7) + String(a.activos).padStart(7) +
+                '  ' + Math.round((sil / a.total) * 100) + '%');
     tTotal += a.total; tNunca += a.nunca; tViejo += a.viejo; tActivos += a.activos;
   }
   console.log('─'.repeat(72));
-  console.log('%-22s %6d %6d %6d %6d', 'TOTAL', tTotal, tNunca, tViejo, tActivos);
+  console.log('TOTAL'.padEnd(22) + String(tTotal).padStart(7) + String(tNunca).padStart(7) +
+              String(tViejo).padStart(7) + String(tActivos).padStart(7));
 
   // Cuadratura: la suma tiene que ser la misma que la entrada.
   if (tTotal !== fichas.length) {

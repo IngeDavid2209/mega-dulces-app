@@ -322,6 +322,105 @@ de que exista la plaza sería partir el problema en dos, no resolverlo.
 
 ## 9. Bitácora del plan
 
+### 7/sep/2026 — el título de la tarjeta se leía EN VERTICAL en el celular
+
+Captura de David: en la vista **Enviadas**, el nombre de la tarea bajaba **una letra por
+renglón**. Su palabra fue «se ve horrible»; el defecto era peor que estético.
+
+**LA CAUSA, una sola.** `.cl-head` era una fila de tres columnas —avatar · texto · pastillas— y
+en `@media (max-width: 480px)` `.cl-head-actions` pasaba a `flex-direction: row` **pero conservaba
+el `flex-shrink: 0` de su regla base**. Sus tres pastillas llevan `white-space: nowrap`, así que
+el bloque reclamaba su ancho completo y no cedía un píxel:
+
+    ancho útil dentro de la tarjeta          ~345 px
+    avatar + gap                              -48
+    COMPLETO + ENVIADO + MANUAL·3.1-3.13      -284   ← nowrap, sin encoger
+    queda para el título                        0
+
+Con **0 px** y `word-break: break-word`, cada letra es un renglón. Medido: **26 renglones** para
+cuatro palabras, la meta en **6**, y la cabecera midiendo **607 px de alto** por UNA tarea.
+
+**EL ARREGLO ES ESTRUCTURAL, NO UN PARCHE AL `flex-shrink`.** Poner `flex-shrink: 1` habría dejado
+el defecto a un descuido de distancia: la siguiente pastilla con `nowrap` vuelve a estrangular el
+título. En móvil `.cl-head` pasa a **rejilla de dos filas** —`[avatar][texto]` arriba, pastillas
+abajo— con la columna del texto en `minmax(0, 1fr)`. Ya **no existe el camino** por el que una
+pastilla le quite ancho al título.
+
+| en un viewport de 390 px | antes | ahora |
+|---|---|---|
+| ancho del título | **0 px** | **270 px** |
+| renglones del título | **26** | **1** |
+| renglones de la meta | 6 | 2 |
+| alto de la cabecera | 607 px | **115 px** |
+
+Solo `checklist.css`. **`checklist.html` y `checklist.ts` no se abrieron** — el componente de
+4 420 líneas sigue cerrado. Cero migraciones.
+
+#### Chrome NO deja medir un celular con `--window-size`: hay que usar un iframe
+
+Reusable, y no estaba escrito en ninguna parte. Se pidió 390, 360 y 405 de ancho en las **dos**
+variantes de headless y las seis corridas devolvieron un viewport de **504 px**: Chrome topa el
+ancho mínimo de ventana. Y **504 está por encima del breakpoint de 480**, así que la media query
+con el defecto *no se habría aplicado nunca* — la prueba habría medido la versión de escritorio y
+pasado en verde sin tocar el caso.
+
+La salida es cargar la app en un **`<iframe>` de 390 px**: un documento en un marco evalúa sus
+media queries contra el viewport **del marco**. Mismo origen, así que `contentDocument` y
+`localStorage` se comparten. Está en `scripts/prueba-tarjeta-movil.js`, con guardia que aborta si
+el ancho de dentro no queda en 390.
+
+#### EL CONTROL NEGATIVO BORRÓ 1 526 LÍNEAS Y SU RESULTADO ERA CREÍBLE
+
+Es lo más importante del día. Para medir el «antes» se restauró el bloque viejo con
+`s.index('@media (max-width: 480px) {')` … y en `checklist.css` hay **TRES** bloques con ese
+texto (líneas 1449, 1542 y 2929). `index()` tomó el primero y el corte se llevó **1 526 líneas**,
+incluida la regla base `.cl-head { display: flex }`.
+
+**Y no falló: dio una tabla plausible.** Título **318 px en 1 renglón**, meta en 1 renglón — que
+se lee como *«el defecto no se reproduce, tu arreglo no hacía falta»*. Lo delató un solo dato al
+lado: `display: block`, que no es un valor que esa regla pueda tomar por ningún camino legítimo.
+Rehecho con un ancla **única** (dos líneas juntas), cambiando **una sola propiedad**, y con el
+conteo de líneas comprobado antes y después: 3 815 → 3 815.
+
+Entonces sí reprodujo el defecto exacto: **4 aserciones rotas, título 0 px, 26 renglones.**
+
+**La regla que deja:** un control negativo no basta con que falle — hay que comprobar que falló
+**por lo que se cambió**. El corolario del 31/ago decía «un control negativo que no cambia nada
+prueba tanto como un cero sin denominador»; esto es el gemelo: **un control negativo que cambia
+DEMASIADO también miente, y encima suena convincente.**
+
+#### Y otros tres, todos míos
+
+1. **Repetí el `%4d`.** El script escrito para verificar este arreglo imprimía
+   `tarjeta %4d px 360`: `util.format` de Node no soporta el padding de printf. Es **el mismo
+   defecto que arreglé en `diagnostico-silencio-por-unidad.js` el 4/sep**, tres días antes.
+   Saberlo no impide repetirlo; lo que lo caza es leer la propia salida.
+2. **La guardia estaba sobre un proxy del arreglo.** Comprobaba «¿aplicó la media query móvil?»
+   mirando `display: grid` — **y `grid` ES el arreglo**. Con el CSS viejo habría abortado («no
+   medí») en vez de fallar («está roto»), que son dos conclusiones opuestas. Se movió al **ancho
+   del avatar** (38 px en móvil, 44 en la base), que la media query trae y este cambio no toca.
+   §8.11(b), otra vez.
+3. **Dos defectos que solo existían en la CAPTURA, no en las cifras.** El ancho y los renglones
+   ya estaban bien y aun así se veía mal: un **`·` colgando** al final del primer renglón de la
+   meta (la fecha bajaba y el separador quedaba viudo — se esconden en móvil y separa el hueco),
+   y el **anillo en 0 %** con la pastilla COMPLETO. Medir no sustituye mirar.
+
+#### HALLAZGO NUEVO, sin arreglar a propósito: «Enviadas» muestra 0 % siempre
+
+`cargarEnviadas()` (`checklist.ts:1278`) empuja las filas crudas y **nunca calcula
+`calcCompletados` ni `calcProgreso`** — el cargador de «pendientes» sí lo hace (`c.calcCompletados
+= tareasMarcadas`). Así que **toda tarjeta del historial muestra 0 %**, sin importar lo que se
+cumplió. Es la vista de la captura de David.
+
+**No se arregla hoy, y el motivo importa:** arreglarlo es agregar un consumidor nuevo de
+`esItemHecho`, que es exactamente la función que la otra sesión está cambiando en la Fase 2.1.
+Tocarla en paralelo pondría dos reglas de cumplimiento en vuelo a la vez. **Va después de la
+2.1**, y cuando vaya lleva prueba: es un número de una persona (§8.8).
+
+**Pendiente menor, también de la captura:** la fecha decía **`2026-09-31`** y septiembre tiene 30
+días. Dato inválido llegando desde la emisión, no estilo. Sin diagnosticar.
+
+
 ### 4/sep/2026 — EL EJE TRANSVERSAL, en la pantalla del organigrama (NO en los números)
 
 Salió de una captura de David: la misma colaboradora colgando de **COMPRAS**, **MANTENIMIENTO**

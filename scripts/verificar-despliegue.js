@@ -47,18 +47,15 @@ const DIST = path.join(__dirname, '..', 'dist', 'mega-dulces-app', 'browser');
  * prueba que el recorrido llega al chunk del organigrama.
  */
 const MARCADORES = [
-  // Nuevos de la escala (db7579b). La rejilla de datos es el marcador mas
-  // limpio: cinco anchuras juntas no aparecen por casualidad en ningun otro
-  // sitio. OJO — vive en un CHUNK JS, no en un .css: los estilos de un
-  // componente Angular se compilan DENTRO del JS. Buscarlo en los *.css sueltos
-  // da CERO por mirar donde no esta, y ya lo dio hoy (cuatro ceros seguidos).
-  { txt: '40px 46px 64px 50px 38px', nuevo: true, que: 'la rejilla de datos, mas ancha' },
-  { txt: 'font-size:19px',           nuevo: true, que: 'el nombre de la raiz, mas grande' },
-  // De la otra sesion (7a5bd2e), para contrastar su reporte con medicion propia.
-  { txt: 'org-destino',              nuevo: true, que: 'el eje transversal (sesion e2)' },
-  // Controles: ya existian antes de este despliegue y deben seguir en pie.
-  { txt: 'org-chip-uni',        control: true, que: 'los chips (despliegue anterior)' },
-  { txt: 'org-barra-fila',      control: true, que: 'la barra unica (despliegue anterior)' },
+  // Nuevo (c8b4717): la rejilla movil de la tarjeta. `avatar texto` es el
+  // contenido de un `grid-template-areas`, asi que sobrevive la minificacion
+  // -las cadenas no se tocan- y aparece UNA sola vez en todo el bundle.
+  { txt: 'avatar texto', nuevo: true, que: 'la rejilla movil de la tarjeta' },
+  // Controles: existian antes de este despliegue y deben seguir en pie. Los
+  // tres viven en chunks DISTINTOS (tarjeta, organigrama, index), asi que si
+  // uno diera 0 seria por no haber recorrido ese chunk, no por no haber llegado.
+  { txt: 'cl-head-actions',    control: true, que: 'la cabecera de la tarjeta' },
+  { txt: 'org-destino',        control: true, que: 'el eje transversal' },
   { txt: 'md_rescate_arranque', control: true, que: 'el rescate del index' },
 ];
 

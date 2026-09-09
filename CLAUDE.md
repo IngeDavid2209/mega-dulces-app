@@ -191,7 +191,7 @@ Orden por **dependencia y riesgo**, no por importancia. Un paso ≤ 3 días. Mar
 | 0 | Medir antes de tocar (detener `corte.js`, divergencia, KPIs congelados, réplicas) | 0.5 | — | 🔄 **0.1 ✅ · 0.3 ✅ · 0.4 ✅ (1 réplica, 1/sep) · falta 0.2** |
 | 2 | Que los números digan la verdad (hecho ≠ justificado + primeras pruebas) | 1 | 0 | 🔺 **EL SIGUIENTE. Desde el 3/sep los 377 puntos piden foto por orden de Dirección, y `esItemHecho` sigue cerrando un punto sin foto con cualquier nota: la orden vale en pantalla y NO en los tableros** |
 | 1 | Cerrar el ferrocarril: una sola base | 3 | 0 | ⬜ |
-| 3 | La estructura como dato (unidad, sucursal, ámbito, puesto, plaza, cobertura) | 4 | 1 | ⬜ **sin empezar. El 4/sep el eje transversal se hizo VISIBLE en el organigrama, pero NO está en los números: los tableros siguen sumando por `store`, y los 15 vendedores de Padre Hidalgo le siguen contando a la Encargada** |
+| 3 | La estructura como dato (unidad, sucursal, ámbito, puesto, plaza, cobertura) | 4 | 1 | 🔄 **3.1a ✅ (9/sep: `mdtask_plazas` + `mdtask_coberturas` creadas y sembrables; nadie las lee todavía) · falta 3.1b (la Encargada numera su cuadrilla), 3.1c (ámbito), 3.2 (el robot emite a la plaza), 3.3 (los 119 usos de `assigned`). Los tableros SIGUEN sumando por `store`: los 15 vendedores de Padre Hidalgo le siguen contando a la Encargada** |
 | 4 | Navegación (4.1 se puede hacer YA, sin dependencias) | 1.5 | — / 3 | 🔄 **4.1 ✅ · 4.1b: 2a–2d ✅ (15→12 entradas) · falta el Paso 3 para llegar a 7 · 4.3 espera Fase 3 · el Dashboard ya se gatea por jefatura (3/sep)** |
 | 5 | Verificación con muestra + hallazgos + causas | 2 | 3 | ⬜ |
 | 6 | Tablero por nivel + cierre diario + roll-up | 2 | 5 | ⬜ **el tablero de DIRECCIÓN ya existe y está gateado (2–3/sep); el de nivel —«Mi zona», «Mi sucursal»— no, y por eso una Encargada ve un bloque que le nombra el hueco** |
@@ -321,6 +321,94 @@ de que exista la plaza sería partir el problema en dos, no resolverlo.
     columna devuelve cero documentos, sin error.
 
 ## 9. Bitácora del plan
+
+### 9/sep/2026 — PASO 3.1a: la plaza existe como dato. «Anaquelista 1», no un nombre
+
+Instrucción de David, literal: *«en anaquelista si hay 3, no tienen que ser con nombre, solo con
+anaquelista 1, anaquelista 2, así con todos de acuerdo a cómo esté su cuadrilla de equipo de la
+sucursal, zona, etc»*. Es el §4 palabra por palabra —incluido el ejemplo que ya estaba escrito
+ahí— así que **no se abrió un frente nuevo: arrancó la Fase 3.**
+
+**EL CENSO, medido antes de tocar** (`nomina-puestos.ts` × `organigrama.catalogo.ts`, compilados
+con `tsc`, no parseados). Entradas: **189 filas · 89 puestos · 0 `puestoId` huérfanos**.
+
+    personas 189 · sin puesto 5 · con puesto y sin sucursal 10 · ASIGNABLES 174
+    pares puesto × lugar 97   ·  de UNA persona 62  ·  CON VARIAS 35  →  112 plazas a numerar
+
+    CEDIS  chofer-cedis 6   ·   anaquelista 5 en CUATRO sucursales   ·   Padre Hidalgo vendedor-rd 5
+    Padre Hidalgo 38 plazas (23 numeradas) · Morelia Abastos 35 (26) · Canindo 33 (19)
+
+**Qué se construyó:** `056_plazas_y_coberturas.sql` (DDL puro) y `scripts/sembrar-plazas.js`.
+**Cero archivos de `src/` y `api/`**: nadie lee las tablas todavía, la app no cambió un píxel.
+
+**Las decisiones que David tomó y por qué importan:** el número lo **captura la Encargada**, no
+el sistema —ordenar por nombre o por uid sería inventar la cuadrilla (§8.5)— así que las plazas
+nacen con `numero` en **NULL**. Y la plaza va **en paralelo**, sin quitar `assigned`/`store`:
+migrar los 119 usos de golpe rompería la app para 186 personas.
+
+#### La siembra NO PUEDE ir en la migración, y eso solo se ve al intentar escribirla
+
+El primer borrador sembraba con un `insert ... select` sobre `mdtask_usuarios`. Está mal dos veces:
+
+1. **SQL no sabe resolver un puesto.** `resolverPuesto()` tiene DOS caminos: el `puestoId`
+   explícito y el `cargo` de texto libre por `aliasCargos`. Un `where datos->>'puestoId' <> ''`
+   deja fuera a las fichas que hoy funcionan por alias, **en silencio** — y sería una tercera
+   versión de la regla, libre de discrepar de las otras dos (§8.11 d). El script **compila y
+   llama a la función real**, e imprime cuántas resolvió por alias: son exactamente las que el
+   SQL habría perdido.
+2. **La `unidad` no está en la base**, vive en el `.ts` (hallazgo 5). Copiarla a un `VALUES` es
+   la lista local que el §4 prohíbe.
+
+Beneficio que no se buscaba: el despliegue quedó en **DDL puro sobre tablas que nadie lee**.
+
+#### EL ÍNDICE ÚNICO HABRÍA DEJADO CABER UNA PLAZA DE CINCO
+
+Lo más importante del día. Iba `unique (puesto_id, lugar, coalesce(numero, -1))`. Con `numero`
+NULL en todas —**que es justo el estado en que nacen**— ese `coalesce` las colapsa al mismo `-1`:
+de las cinco plazas de anaquelista de Canindo **habría cabido UNA**, o sea el defecto que el paso
+entero viene a romper, reintroducido por el índice puesto para protegerlo. Y no habría reventado
+de forma legible: el sembrador inserta la primera y choca con las otras cuatro.
+
+Lo correcto es **parcial**: `unique (puesto_id, lugar, numero) where numero is not null`. Impide
+dos «Anaquelista 2» —el error que sí importa— y deja convivir N plazas sin numerar.
+
+#### UN CONTROL NEGATIVO QUE REVIENTA NO ES UN CONTROL QUE FALLA
+
+NEG-1 (romper «buscar plaza libre») hizo que la prueba **crasheara** con un `TypeError` en la
+aserción siguiente. Pasa el olfato —«el control detectó»— pero es falso: al crashear, **las
+aserciones de abajo nunca corren**, así que no se puede saber si discriminan. Un `?.` lo convirtió
+en fallo limpio y aparecieron **8 aserciones rotas en vez de 6**. Es el gemelo del 7/sep: allá el
+control negativo cambiaba DEMASIADO, aquí **terminaba ANTES de medir**. **Un crash y un fallo son
+dos resultados distintos.**
+
+**Los dos controles, ya corregidos, cambiando UNA línea cada uno (316 → 316 líneas, `diff` de una
+línea comprobado en los dos):**
+
+    NEG-1  la plaza libre siempre es la primera  ->  8 rotas, y la que importa NOMBRA el
+           defecto de hoy:  «CADA anaquelista tiene su propia plaza: esperaba 6, dio 1»
+    NEG-2  la re-corrida ignora las coberturas  ->  8 rotas: «no escribe NADA: esperaba 0, dio 18»
+
+Ese `dio 1` es el sistema actual medido en una prueba, no un argumento.
+
+#### Y un `order by` que no es adorno
+
+`select ... from mdtask_usuarios where activo is not false` **sin `order by`**: Postgres devuelve
+las filas como quiera, y ese orden decide qué slot le toca a quién. Dos corridas, dos repartos.
+Es la misma familia del `limit 1` sin `order by` de `api/login.js` que hacía entrar a una persona
+a dos cuentas según el día. El slot no significa nada —**y aun así tiene que ser reproducible**
+para poder auditar la siembra.
+
+#### Lo que esto NO hace, dicho para que no se lea como resuelto
+
+- **No mueve un solo número de tablero.** Sigue mandando `esItemHecho` (Fase 2.1). Los tableros
+  suman por `store` igual que ayer.
+- **No dice quién cubre el pasillo 3.** `ambito` y `turno` existen como columnas y están **vacías
+  a propósito**: ese inventario físico no está en ningún dato. Es 3.1c, y necesita que alguien
+  recorra las tiendas.
+- **No lo ha corrido nadie contra la base.** El censo de arriba es de la **nómina de agosto** (189
+  filas) contra ~150 fichas activas. El script imprime las dos columnas lado a lado y **aborta si
+  se apartan más del 50%** — porque a esa distancia no es deriva de plantilla, es un fallo de
+  lectura disfrazado de resultado.
 
 ### 7/sep/2026 — el título de la tarjeta se leía EN VERTICAL en el celular
 

@@ -410,6 +410,34 @@ para poder auditar la siembra.
   se apartan más del 50%** — porque a esa distancia no es deriva de plantilla, es un fallo de
   lectura disfrazado de resultado.
 
+#### DESPLEGADO — 9/sep/2026, y la primera verificación fue un falso positivo
+
+    [migrate][sql] 056 · plazas: 0 filas · coberturas: 0 filas
+    [migrate] aplicada: 056_plazas_y_coberturas.sql
+
+**El `0 · 0` es el resultado esperado y se declaró ANTES de desplegar**, en la propia migración:
+la siembra es un paso aparte. Y el notice sirve de control positivo por su mecanismo, no por su
+aparición — sale de dos `select count(*)`, así que **no puede imprimirse si las tablas no
+existen**; con una faltante el bloque revienta y la transacción hace rollback. Más `● Online`, el
+index en **200 con 30 800 bytes** y `md_rescate_arranque` presente.
+
+**LO QUE FALLÓ ANTES DE ESO, que es la lección.** La primera espera fue
+`until railway logs | grep -q "escuchando en el puerto"`. Devolvió verde, y el log **no traía la
+056** — que se lee como «la migración no se aplicó». Falso: `railway status` decía
+`● Online · **Building (58s)**`. Estaba leyendo el log de la **instancia vieja**, que también dice
+«escuchando». La guardia comprobaba «¿aparece esta línea?» en vez de «¿arrancó la instancia
+NUEVA?», y como la línea existe en las dos, **no discriminaba nada**. §8.11(b) literal, y por poco
+me manda a depurar una migración que estaba bien. La guardia correcta va sobre el **estado del
+despliegue** (`until ! railway status | grep -q Building`), que es lo único que cambia entre las
+dos instancias.
+
+**Y el «no aparece» tampoco valía por su cuenta:** la ventana de `railway logs` viene truncada
+—199 líneas la primera vez, 9 la segunda— así que una ausencia ahí puede ser truncamiento.
+Se citó el tamaño de la ventana antes de concluir (§8.11 a).
+
+**`git push` sigue rechazado** (`Repository not found`): **36 commits** viven solo en esta laptop
+y en producción. Es el mismo pendiente del 2–3/sep y necesita las credenciales de David.
+
 ### 7/sep/2026 — el título de la tarjeta se leía EN VERTICAL en el celular
 
 Captura de David: en la vista **Enviadas**, el nombre de la tarea bajaba **una letra por

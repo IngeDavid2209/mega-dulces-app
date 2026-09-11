@@ -13,6 +13,7 @@ import { esItemHecho, tieneEvidencia } from '../../../shared/item-completado.uti
 import { obtenerSemanaISO, obtenerNombreDia } from '../../../shared/descansos.util';
 import { RobotManualService } from '../../../shared/robot-manual.service';
 import { resolverPuesto } from '../../../shared/puesto.util';
+import { AmbitoVisible, ambitoVisible, entregaVisible } from '../../../shared/rama-visible.util';
 import { nombrePuesto } from '../../../shared/organigrama.catalogo';
 import { tareasAutomaticasDePuesto } from '../../../shared/tareas-manual.catalogo';
 import { NotificacionesService } from '../../../services/notificaciones';
@@ -305,6 +306,46 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     if (u.rol === 'admin') return true;
     return esSupervisor(u);
   }
+
+  /**
+   * 👁️ HASTA DÓNDE VE ESTA PERSONA. Derivado de su puesto en el organigrama.
+   *
+   * `puedeFiltrarVista` de arriba decide QUIÉN abre la puerta; esto decide QUÉ
+   * hay del otro lado. Eran la misma cosa y ese era el defecto: al pasar la
+   * puerta se veía la empresa entera, así que una Gerente de Zona abría sus
+   * tareas y le caían los 11 chips de unidad, los 25 puestos y las 104 entregas
+   * de toda la operación, con «Dirección General» de raíz (captura del 9/sep).
+   *
+   * OJO: el acceso a la puerta NO se tocó. Ensanchar quién ve el árbol sería
+   * una escalada, que es la única dirección verdaderamente peligrosa al mover
+   * visibilidad; este cambio solo RECORTA.
+   *
+   * Memoizado por IDENTIDAD de `currentUser`, no por valor. `ambitoVisible()`
+   * construye Sets nuevos en cada llamada, y este getter lo leen la plantilla y
+   * `checklistsFiltrados`: sin memo se reconstruiría en cada ciclo de detección
+   * de cambios. Es exactamente lo que tumbó el sidebar el 1/sep — allá un
+   * arreglo nuevo por llamada recreaba las 21 entradas del menú en cada tick y
+   * la app dejaba de alcanzar reposo. Vale porque `currentUser` es un campo
+   * plano (`home.ts`), no un getter que fabrique objetos.
+   */
+  private _ambitoPara: any = undefined;
+  private _ambitoCache: AmbitoVisible | null = null;
+  get ambito(): AmbitoVisible {
+    if (this._ambitoPara !== this.currentUser || !this._ambitoCache) {
+      this._ambitoPara = this.currentUser;
+      this._ambitoCache = ambitoVisible(this.currentUser);
+    }
+    return this._ambitoCache;
+  }
+
+  /**
+   * La frase que explica el recorte, para la pantalla.
+   *
+   * Un recorte MUDO se lee como un bug: alguien que ayer veía diez sucursales y
+   * hoy ve dos, sin una línea que lo diga, reporta «se perdieron mis tiendas».
+   * Es la misma regla del bloque con hueco nombrado del tablero (3/sep).
+   */
+  get motivoAmbito(): string { return this.ambito.motivo; }
   get contadorMisChecklists(): number {
     const mi = this.currentUser?.nombre;
     return this.checklists().filter(c => mismoEmpleadoNombre(c.assigned, mi)).length;
@@ -1004,10 +1045,26 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   private _cacheFiltradosHuella = '';
   private _cacheFiltrados: any[] = [];
   get checklistsFiltrados() {
-    const huella = `${this.checklists().length}-${this.vistaTareas}-${this.terminoBusquedaChecklist}-${this.currentUser?.nombre || ''}-${this.modoManual}`;
+    const amb = this.ambito;
+    // La huella lleva el ámbito porque el recorte depende de él: sin esto, una
+    // ficha que gana su puesto seguiría viendo la lista vieja hasta que algo más
+    // cambiara la huella, y el recorte parecería no haber funcionado.
+    const huella = `${this.checklists().length}-${this.vistaTareas}-${this.terminoBusquedaChecklist}-${this.currentUser?.nombre || ''}-${this.modoManual}-${amb.amplitud}${amb.restringido ? ':' + [...(amb.lugares || [])].sort().join(',') : ''}`;
     if (huella === this._cacheFiltradosHuella) return this._cacheFiltrados;
     this._cacheFiltradosHuella = huella;
     let lista = this.checklists();
+
+    // 👁️ EL CORTE POR ÁMBITO — va AQUÍ y no en la vista, por lo que dice el
+    // comentario de abajo: éste es el único punto de filtrado, y las vistas
+    // derivadas (árbol del organigrama, panel de responsables, agrupada por
+    // persona) cuelgan todas de aquí. Puesto en la vista, se colaría por las
+    // otras dos.
+    //
+    // Recorta por LUGAR, que es el eje horizontal. El vertical —qué puesto le
+    // reporta— no esconde nada: marca «servicio a» dentro del árbol, porque la
+    // gente de Ventas que trabaja en la tienda de una Encargada tiene que verse
+    // sin contarle a ella (§5, atribución transversal).
+    if (amb.restringido) lista = lista.filter(c => entregaVisible(amb, c));
 
     // 📕 Separación manual / libre. Este es el único punto donde hay que
     // filtrar: las tres vistas derivadas (mandos, operativos, agrupada por

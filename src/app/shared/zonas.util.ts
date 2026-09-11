@@ -81,6 +81,23 @@ export function nombreZona(z: ClaveZona): string {
   return ZONAS.find(x => x.clave === z)?.nombre || 'Sin zona asignada';
 }
 
+/**
+ * Todas las sucursales de una zona.
+ *
+ * Se DERIVA del mismo `POR_SUCURSAL` de arriba, invirtiéndolo. Escribir aparte
+ * una lista «las de La Piedad son 8 Esquinas y La Piedad Abastos» sería la lista
+ * local que el §4 prohíbe: el día que se abra una sucursal habría que acordarse
+ * de tocar dos sitios, y el que se olvide deja a una Gerente sin ver su tienda
+ * nueva —en silencio, que es el modo de fallo que más cuesta encontrar—.
+ *
+ * `null` devuelve vacío a propósito: «no sé de qué zona es» no puede querer
+ * decir «de todas» (§5.2).
+ */
+export function sucursalesDeZona(z: ClaveZona): string[] {
+  if (!z) return [];
+  return Object.keys(POR_SUCURSAL).filter(s => POR_SUCURSAL[s] === z).sort();
+}
+
 /** Las sucursales de una lista que todavía no tienen zona. */
 export function sucursalesSinZona(sucursales: string[]): string[] {
   const out = new Set<string>();

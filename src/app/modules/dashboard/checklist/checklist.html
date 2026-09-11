@@ -584,6 +584,7 @@
           *ngIf="verPorOrganigrama && vistaEquipo() === 'lista' && vistaHistorial() === 'pendientes'"
           [checklists]="checklistsFiltrados"
           [usuarios]="plantillaParaOrganigrama"
+          [ambitoVisibleDe]="ambito"
           (abrir)="verDetalle($event)">
         </app-vista-organigrama>
 

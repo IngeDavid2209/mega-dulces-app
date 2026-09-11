@@ -62,6 +62,15 @@ const SESIONES = {
   // tablero de la empresa y el organigrama completo.
   anaquelista: { uid: 'a', id: 'a', nombre: 'Carolina Anaquelista', usuario: 'ana', correo: 'an@l.invalid',
     rol: 'trabajador', puestoId: 'anaquelista', sucursales: ['Padre Hidalgo'] },
+  // El caso de la captura del 9/sep: una Gerente de Zona que veía la empresa
+  // entera desde Dirección General, con los 11 chips de unidad y 104 entregas.
+  gerente: { uid: 'z', id: 'z', nombre: 'Veronica Gerente', usuario: 'ger', correo: 'g@l.invalid',
+    rol: 'trabajador', puestoId: 'gerencia-zona', puedeVerEstadisticas: true, sucursales: ['8 Esquinas'] },
+  // Ficha SIN puesto resoluble pero con banderas de supervisión: hoy son
+  // decenas. Es quien se quedaría con la pantalla en blanco si el recorte no
+  // tuviera su lado seguro, y por eso tiene que estar en la muestra.
+  sinPuesto: { uid: 's', id: 's', nombre: 'Sin Puesto', usuario: 'sp', correo: 's@l.invalid',
+    rol: 'trabajador', cargo: 'Cargo Que No Existe', puedeVerEstadisticas: true, sucursales: ['Canindo'] },
 };
 
 // ── LO ESPERADO, escrito antes de correr ──────────────────────────────────
@@ -74,10 +83,26 @@ const ESPERADO = [
   // vacía y una redirección se ven distinto para quien la usa.
   { ruta: 'home', sesion: 'anaquelista', tablero: 0, unidades: 0,  silencioVisible: 0, hueco: 0, url: '/tareas-manual' },
 
-  { ruta: 'tareas-manual', sesion: 'global',      arbol: 1 },
-  { ruta: 'tareas-manual', sesion: 'encargada',   arbol: 1 },
-  // El árbol es el organigrama de la empresa entera. Un anaquelista ve SUS
-  // tareas, no la estructura.
+  // ── EL ÁRBOL: quién lo abre, Y QUÉ VE DENTRO ────────────────────────────
+  // `raizArbol` es la aserción que importa. Hasta el 11/sep aquí solo decía
+  // `arbol: 1` —«el componente monta»— y con eso una Gerente de Zona pasaba en
+  // verde viendo la empresa entera desde Dirección General.
+  { ruta: 'tareas-manual', sesion: 'global',    arbol: 1, raizArbol: 'Dirección General', ambitoVacio: true,  chipsUnidad: 11 },
+  // Su árbol arranca en SU puesto, no en Dirección General, y la pantalla dice
+  // por qué: un recorte mudo se lee como un bug.
+  // Su rama es la sucursal: un solo chip. Antes eran los once.
+  { ruta: 'tareas-manual', sesion: 'encargada', arbol: 1, raizArbol: 'Encargado(a) de Sucursal', ambitoVacio: false, chipsUnidad: 1 },
+  // 5 y no 2, y el número se DERIVÓ del catálogo antes de escribirlo aquí (era
+  // 2 a ojo y estaba mal): de `gerencia-zona` cuelgan 40 puestos repartidos en
+  // zona · staff-zona · ventas · sucursal · operaciones-zona. Ventas SÍ le
+  // reporta a ella, y por eso los vendedores que son «servicio a» para una
+  // Encargada son gente PROPIA para su Gerente. Las dos lecturas son correctas
+  // y es justo lo que el eje vertical tiene que distinguir.
+  { ruta: 'tareas-manual', sesion: 'gerente',   arbol: 1, raizArbol: 'Gerencia de Zona',         ambitoVacio: false, chipsUnidad: 5 },
+  // Una ficha sin puesto NO se recorta —es el lado seguro del error— pero la
+  // pantalla tiene que DECIRLE por qué y a quién pedírselo.
+  { ruta: 'tareas-manual', sesion: 'sinPuesto', arbol: 1, raizArbol: 'Dirección General', ambitoVacio: false, chipsUnidad: 11 },
+  // El árbol es una herramienta de supervisión. Un anaquelista ve SUS tareas.
   { ruta: 'tareas-manual', sesion: 'anaquelista', arbol: 0 },
 ];
 
@@ -113,6 +138,21 @@ function medir(sesion, ruta, puerto) {
       ' tablero: document.querySelectorAll("app-tablero-direccion").length,' +
       ' arbol: document.querySelectorAll("app-vista-organigrama").length,' +
       ' filasArbol: document.querySelectorAll(".org-lista .org-puesto").length,' +
+      // ── EL EJE VERTICAL, medido en el DOM ──────────────────────────────
+      // Hasta el 11/sep esto contestaba «¿MONTA el árbol?» (arbol: 0|1) y
+      // nunca «¿QUÉ VE dentro?». Por eso una Gerente de Zona podía tener el
+      // árbol completo de la empresa con la prueba en verde: el componente
+      // montaba, que era lo único que se miraba. Es el mismo hueco que el
+      // spec del tablero tuvo el 3/sep, un nivel más adentro.
+      //
+      // `raizArbol` es el discriminador bueno: el NOMBRE del primer puesto.
+      // Dirección lee «Dirección General»; una Encargada tiene que leer su
+      // propio puesto. Contar filas no discrimina —dos personas distintas
+      // pueden ver el mismo número de filas de ramas distintas—.
+      ' raizArbol: ((document.querySelector(".org-lista .org-puesto .org-puesto-nombre")||{}).textContent||"").trim(),' +
+      ' chipsUnidad: document.querySelectorAll(".org-chip-uni").length,' +
+      ' servicioA: document.querySelectorAll(".org-lista .org-puesto .org-cruzada").length,' +
+      ' ambito: ((document.querySelector(".org-ambito")||{}).textContent||"").trim(),' +
       ' url: location.pathname,' +
       ' bloques: document.querySelectorAll(".td-bloque").length,' +
       ' unidades: document.querySelectorAll(".td-unidad").length,' +
@@ -188,7 +228,8 @@ function medir(sesion, ruta, puerto) {
       'no el código fuente.');
   }
 
-  const EJES = ['tablero', 'arbol', 'unidades', 'silencioVisible', 'hueco'];
+  // `raizArbol` es el eje que mide QUÉ VE DENTRO del árbol, no si monta.
+  const EJES = ['tablero', 'arbol', 'unidades', 'silencioVisible', 'hueco', 'raizArbol', 'chipsUnidad'];
   const filas = [];
   let puerto = 5300 + Math.floor(Math.random() * 200);
 
@@ -210,6 +251,12 @@ function medir(sesion, ruta, puerto) {
       String(f.d.unidades).padEnd(9), String(f.d.silencioVisible).padEnd(14),
       String(f.d.hueco).padEnd(6), f.d.url);
     if (f.d.alcance) console.log('%s etiqueta: %s', ' '.repeat(29), JSON.stringify(f.d.alcance));
+    if (f.d.arbol) {
+      console.log('%s árbol: raíz=%s · filas=%s · chips=%s · servicio-a=%s',
+        ' '.repeat(29), JSON.stringify(f.d.raizArbol), f.d.filasArbol, f.d.chipsUnidad, f.d.servicioA);
+      console.log('%s ámbito: %s', ' '.repeat(29),
+        f.d.ambito ? JSON.stringify(f.d.ambito.slice(0, 90)) : '(sin línea)');
+    }
   }
   console.log('─'.repeat(100));
 
@@ -225,11 +272,22 @@ function medir(sesion, ruta, puerto) {
   // ── las aserciones ──────────────────────────────────────────────────────
   const fallos = [];
   for (const f of filas) {
-    for (const k of ['tablero', 'arbol', 'unidades', 'silencioVisible', 'hueco', 'url']) {
+    for (const k of ['tablero', 'arbol', 'unidades', 'silencioVisible', 'hueco', 'url', 'raizArbol', 'chipsUnidad']) {
       if (f[k] === undefined) continue;
       if (f.d[k] !== f[k]) {
         fallos.push('/' + f.ruta + ' · ' + f.sesion + ' · ' + k + ': esperaba ' +
           JSON.stringify(f[k]) + ', medí ' + JSON.stringify(f.d[k]));
+      }
+    }
+    // La línea que explica el recorte. `ambitoVacio: true` es tan aserción como
+    // su contrario: a un acceso total NO se le anuncia que ve todo —sería ruido
+    // permanente— y a quien sí tiene recorte no se le puede callar.
+    if (f.ambitoVacio !== undefined) {
+      const hay = !!f.d.ambito;
+      if (hay === f.ambitoVacio) {
+        fallos.push('/' + f.ruta + ' · ' + f.sesion + ' · línea de ámbito: esperaba ' +
+          (f.ambitoVacio ? 'NINGUNA' : 'una que explicara el recorte') + ', medí ' +
+          JSON.stringify(f.d.ambito || ''));
       }
     }
     if (f.prefijo) {

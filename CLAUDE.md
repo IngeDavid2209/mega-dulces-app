@@ -192,7 +192,7 @@ Orden por **dependencia y riesgo**, no por importancia. Un paso ≤ 3 días. Mar
 | 2 | Que los números digan la verdad (hecho ≠ justificado + primeras pruebas) | 1 | 0 | 🔺 **EL SIGUIENTE. Desde el 3/sep los 377 puntos piden foto por orden de Dirección, y `esItemHecho` sigue cerrando un punto sin foto con cualquier nota: la orden vale en pantalla y NO en los tableros** |
 | 1 | Cerrar el ferrocarril: una sola base | 3 | 0 | ⬜ |
 | 3 | La estructura como dato (unidad, sucursal, ámbito, puesto, plaza, cobertura) | 4 | 1 | 🔄 **3.1a ✅ (9/sep: `mdtask_plazas` + `mdtask_coberturas` creadas y sembrables; nadie las lee todavía) · falta 3.1b (la Encargada numera su cuadrilla), 3.1c (ámbito), 3.2 (el robot emite a la plaza), 3.3 (los 119 usos de `assigned`). Los tableros SIGUEN sumando por `store`: los 15 vendedores de Padre Hidalgo le siguen contando a la Encargada** |
-| 4 | Navegación (4.1 se puede hacer YA, sin dependencias) | 1.5 | — / 3 | 🔄 **4.1 ✅ · 4.1b: 2a–2d ✅ (15→12 entradas) · falta el Paso 3 para llegar a 7 · 4.3 espera Fase 3 · el Dashboard ya se gatea por jefatura (3/sep)** |
+| 4 | Navegación (4.1 se puede hacer YA, sin dependencias) | 1.5 | — / 3 | 🔄 **4.1 ✅ · 4.1b: 2a–2d ✅ (15→12 entradas) · falta el Paso 3 para llegar a 7 · 4.3 espera Fase 3 · el Dashboard ya se gatea por jefatura (3/sep) · el ÁRBOL de Tareas del Manual ya se recorta por puesto (11/sep): cada nivel arranca en su propia raíz** |
 | 5 | Verificación con muestra + hallazgos + causas | 2 | 3 | ⬜ |
 | 6 | Tablero por nivel + cierre diario + roll-up | 2 | 5 | ⬜ **el tablero de DIRECCIÓN ya existe y está gateado (2–3/sep); el de nivel —«Mi zona», «Mi sucursal»— no, y por eso una Encargada ve un bloque que le nombra el hueco** |
 | 7 | La norma como dato (manual y organigrama fuera del código) | 3 | 3 | ⬜ |
@@ -321,6 +321,116 @@ de que exista la plaza sería partir el problema en dos, no resolverlo.
     columna devuelve cero documentos, sin error.
 
 ## 9. Bitácora del plan
+
+### 11/sep/2026 — QUIÉN VE QUÉ EN TAREAS DEL MANUAL: el permiso era binario
+
+Captura de David: **Veronica Magaña, Gerente**, abre Tareas del Manual y lee «Organigrama 2026 ·
+**25 puestos · 104 entregadas hoy**», con **Dirección General** de raíz y los **11 chips de
+unidad**. Su instrucción: *«hay que trabajar con las vistas que tendrá de esta sección los
+usuarios, esto lo haremos de acuerdo a su puesto en el organigrama»*.
+
+**LA CAUSA, medida antes de tocar.** `checklist.ts:302`:
+
+    puedeFiltrarVista = rol === 'admin' || esSupervisor(u)
+
+No hay peldaños: **o ves solo lo tuyo, o ves la empresa entera**. Y tres cosas más que solo se
+ven leyendo:
+
+- `vistaTareas === 'todas'` **no filtra nada** (`checklist.ts:1026`): el `if` solo actúa con
+  `'mis'`.
+- El árbol cuelga del mismo interruptor, y **su propio comentario ya narraba este defecto una
+  vez** —una Anaquelista veía el organigrama completo—. Se tapó con `puedeFiltrarVista`, que
+  arregló al colaborador y **dejó a las cinco Gerencias de Zona viendo todo**. El gate estaba de
+  menos abajo y de más arriba: la familia de fallas del 3/sep, otra vez.
+- La escalera **ya existía y esta pantalla no la llamaba**: `alcance.util.ts` exporta `Amplitud`,
+  `nivelDePersona`, `alcanceDeNivel`. El Tablero la usa; el árbol no.
+
+#### EL CORTE NO PUEDE SER SOLO POR RAMA, Y ESO SE VE AL INTENTARLO
+
+Lo primero que iba a hacer era podar por `reportaA`. **No funciona:** el catálogo tiene **UN
+SOLO** puesto `gerencia-zona` para las cinco zonas, a propósito («la sucursal concreta sale de
+los campos `sucursales` del usuario, no del catálogo»). Sus descendientes son los puestos de
+sucursal de TODAS las zonas, así que un corte por rama deja a la Gerente de La Piedad viendo
+Morelia y Yurécuaro — o sea, no arregla nada.
+
+Son **dos ejes ortogonales**, que es la misma conclusión del 4/sep con otra ropa:
+
+    VERTICAL    qué puestos le REPORTAN   → su puesto + descendientes (`reportaA`)
+    HORIZONTAL  en qué lugares OPERA      → su zona / su sucursal / todos
+
+El horizontal **recorta**; el vertical decide qué **le cuenta** y qué sale «servicio a».
+La prueba lo deja como cifra: dos Gerentes del **mismo puesto** con **cero lugares en común**.
+
+| perfil | amplitud | raíz del árbol | lugares |
+|---|---|---|---|
+| Dirección / acceso total | empresa | (toda) | todos |
+| Gerente La Piedad | zona | **Gerencia de Zona** | 8 Esquinas · La Piedad Abastos |
+| Gerente Morelia | zona | Gerencia de Zona | Morelia Abastos · Morelia Madero |
+| Encargada | sucursal | **Encargado(a) de Sucursal** | Canindo |
+| **sin puesto** | ninguno | (toda) | **todos — a propósito** |
+
+#### LA REGLA DE SEGURIDAD: SIN PUESTO NO SE LE ENCOGE LA VISTA A NADIE
+
+`esJefatura()` documenta que las fichas **sin puesto son decenas**. Gatear por puesto a secas
+dejaría a decenas de supervisores con la **pantalla en blanco**, y «no veo nada» y «no tengo nada
+que hacer» se ven idénticos (§5.2). El error se comete siempre hacia el lado seguro: sin puesto
+—o sin sucursal— `restringido: false`, se conserva lo de hoy, y **el motivo sale en pantalla**
+diciendo a quién pedírselo. Un recorte mudo se lee como un bug.
+
+**Y no se ensanchó el acceso.** `puedeFiltrarVista` sigue decidiendo QUIÉN abre el árbol; esto
+solo cambia QUÉ hay del otro lado. Dar el árbol a quien hoy no lo tiene sería una **escalada**,
+que es la única dirección de verdad peligrosa al mover visibilidad.
+
+#### LA PRUEBA CAZÓ UN BUG DE MI PROPIA REGLA, ANTES DE CONECTARLA
+
+Interseccionaba contra `sucursalesPermitidas()` **siempre**, y esa función devuelve la lista
+declarada de la ficha para cualquiera que no sea admin global. Resultado: la intersección
+**deshacía la expansión de zona** y la Gerente quedaba con UNA tienda en vez de sus dos. La
+distinción que faltaba: para una trabajadora, `sucursales[]` dice **dónde trabaja** —es la semilla
+de la que se deduce su zona—, no su techo. El techo solo existe cuando alguien lo declaró, y eso
+es `alcance === 'sucursales'` en un admin.
+
+#### EL ARNÉS MEDÍA «¿MONTA EL ÁRBOL?», NUNCA «¿QUÉ VE DENTRO?»
+
+`prueba-vista-por-nivel.js` aseveraba `arbol: 0|1`. **Con eso, la captura de David pasaba en
+verde**: el componente montaba, que era lo único que se miraba. Es el hueco del spec del tablero
+del 3/sep, un nivel más adentro. Ahora el eje es `raizArbol` —el NOMBRE del primer puesto—, que
+es lo que discrimina: contar filas no sirve, dos personas pueden ver el mismo número de filas de
+ramas distintas. Con dos sesiones nuevas (`gerente` y `sinPuesto`): **9 combinaciones, 7 de 7
+ejes discriminan.**
+
+#### UN NÚMERO QUE IBA A PONER A OJO Y ESTABA MAL
+
+Aserté `chipsUnidad: 2` para la Gerente y midió **5**. Antes de cambiar el esperado —que es
+ajustar la expectativa al artefacto, §8.11— lo derivé del catálogo: de `gerencia-zona` cuelgan
+**40 puestos en 5 unidades** (zona · staff-zona · **ventas** · sucursal · operaciones-zona).
+**5 es lo correcto y mi 2 era el error.**
+
+Y de paso salió el dato que ordena la atribución transversal: **Ventas SÍ le reporta a la
+Gerencia de Zona**. Así que los vendedores que son **«servicio a» para una Encargada** (su rama
+son 14 puestos, todos `sucursal`) son **gente propia para su Gerente**. Las dos lecturas son
+correctas, y distinguirlas es exactamente el trabajo del eje vertical.
+
+#### Los tres controles negativos, una línea cada uno, `diff` comprobado
+
+    NEG-1  el eje horizontal deja de acotar  -> 4 rotas: la Gerente vuelve a ver los 18 lugares
+    NEG-2  se quita el fallback de sin-puesto -> 2 rotas, y el motivo MIENTE («Ves lo tuyo»)
+    NEG-3  se quita el enraizado (en el DOM)  -> 2 rotas, y reproducen la captura literal:
+           «esperaba "Gerencia de Zona", medí "Dirección General"»
+
+#### Lo que esto NO hace, dicho para que no se lea como resuelto
+
+- **No es un candado.** `api/checklists.js:17` declara que «el filtrado fino por rol/sucursal se
+  mantiene EN CLIENTE»: el endpoint le manda toda la operación a cualquiera con token. Esto
+  arregla **lo que se ve**, no lo que viaja por el cable. Cerrarlo es un paso del backend.
+- **El corte horizontal usa el mapa de texto `sucursal→zona`** de `zonas.util.ts` (se le agregó
+  `sucursalesDeZona()`, derivada del mismo mapa, nunca una lista aparte). Es la deuda que la
+  Fase 3 ya tiene registrada.
+- **El arnés sirve `/api` vacío a propósito**, así que mide el recorte **vertical** (raíz, chips,
+  «servicio a») y no el horizontal con datos reales. El horizontal lo cubre
+  `prueba-rama-visible.js` como prueba unitaria. Nadie ha entrado con una cuenta real.
+- **Pendiente que este paso NO decidió:** si una Encargada que hoy NO pasa `puedeFiltrarVista`
+  debería tener árbol. Ensanchar es escalada y no se hace sin que David lo pida.
 
 ### 9/sep/2026 — PASO 3.1a: la plaza existe como dato. «Anaquelista 1», no un nombre
 

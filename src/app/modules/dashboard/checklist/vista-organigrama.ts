@@ -12,6 +12,7 @@ import {
 import {
   DestinoServido, clasificarDestino, esAtribucionCruzada, textoAtribucion
 } from '../../../shared/unidad-servida.util';
+import { AmbitoVisible, ambitoVisible, puestoPropio } from '../../../shared/rama-visible.util';
 import { resolverPuesto } from '../../../shared/puesto.util';
 import {
   ManualPuesto, TareaManual, manualDePuesto, tareasAutomaticasDePuesto
@@ -150,6 +151,16 @@ interface FilaArbol {
   /** Cuántos puestos cuelgan debajo (a cualquier profundidad). */
   cuantosDebajo: number;
 
+  /**
+   * ¿Este puesto le REPORTA a quien está mirando?
+   *
+   * `false` NO quiere decir «escóndelo»: quiere decir que trabaja en su lugar
+   * pero responde a otra unidad, así que se ve y se marca «servicio a» — y no
+   * le cuenta. En Padre Hidalgo 15 de 38 personas son de Ventas: la Encargada
+   * tiene que verlas sin que sus puntos caigan en su número (§5).
+   */
+  propio: boolean;
+
   hijos: FilaArbol[];
 }
 
@@ -270,6 +281,49 @@ export class VistaOrganigramaComponent {
   private personal = signal<any[]>([]);
   @Input() set usuarios(v: any[]) { this.personal.set(Array.isArray(v) ? v : []); }
 
+  /**
+   * 👁️ Hasta dónde ve quien está mirando. Lo calcula el padre desde su puesto.
+   *
+   * El padre ya recortó `checklists` por LUGAR (eje horizontal). Aquí se usa
+   * para dos cosas que solo pueden hacerse con la estructura enfrente: enraizar
+   * el árbol en su puesto, y marcar «servicio a» lo que trabaja en su lugar
+   * pero le reporta a otra unidad.
+   *
+   * Por omisión, SIN restricción: si el padre no lo pasa, el árbol se comporta
+   * como antes. Un componente que se recorta solo cuando le falta un dato es un
+   * componente que se queda en blanco el día que alguien olvida el binding.
+   */
+  private ambito = signal<AmbitoVisible>(ambitoVisible(null));
+  @Input() set ambitoVisibleDe(v: AmbitoVisible | null) {
+    this.ambito.set(v || ambitoVisible(null));
+  }
+
+  /**
+   * El rótulo oficial de una unidad, para la pastilla «servicio a».
+   *
+   * Se lee de `ETIQUETAS_UNIDAD`, nunca de una lista local (§4), y cae al id
+   * crudo si el catálogo gana una unidad que este mapa no tenga: una unidad que
+   * desaparece en silencio es el modo de fallo que este repo persigue.
+   */
+  etiquetaUnidad(u: UnidadOrganigrama): string {
+    return ETIQUETAS_UNIDAD[u] || String(u);
+  }
+
+  /**
+   * La frase que dice qué parte de la operación estás viendo.
+   *
+   * Solo se pinta cuando hay algo que explicar: a un acceso total no se le
+   * anuncia que ve todo —sería ruido permanente— pero a quien SÍ tiene un
+   * recorte, o a quien se le dejó sin recortar por falta de puesto, se le dice.
+   */
+  textoAmbito = computed<string>(() => {
+    const a = this.ambito();
+    if (a.restringido) return a.motivo;
+    // El único «sin restricción» que hay que anunciar es el que viene de un
+    // dato incompleto: ahí el motivo es una instrucción, no una obviedad.
+    return /Pídele/.test(a.motivo) ? a.motivo : '';
+  });
+
   /** Se emite al tocar una tarea: el padre abre la vista de detalle de siempre. */
   @Output() abrir = new EventEmitter<any>();
 
@@ -369,15 +423,31 @@ export class VistaOrganigramaComponent {
   /** ¿Hay algún filtro activo? Cambia el modo del árbol a "abrirse solo". */
   hayCriterio = computed(() => !!this.textoBuscado() || !!this.unidadFiltro());
 
-  /** Los atajos por unidad de control, en el orden del organigrama. */
-  chips = computed<ChipUnidad[]>(() =>
-    ORDEN_UNIDADES.map(u => ({
+  /**
+   * Los atajos por unidad de control, en el orden del organigrama.
+   *
+   * ─── SOLO LAS UNIDADES QUE ESTA PERSONA PUEDE VER ─────────────────────────
+   * Esto contaba SIEMPRE los 89 puestos del catálogo, y la medición del 11/sep
+   * lo destapó: con el árbol ya recortado a su rama, una Gerente de Zona seguía
+   * viendo los ONCE chips —«Dirección 1», «CEDIS 15», «Administrativa 14»—.
+   * Eran botones que ofrecían recorrer unidades cuyo contenido ya no está en su
+   * árbol: al pulsarlos no aparece nada, y una lista vacía se lee como que el
+   * sistema está roto, no como que no te toca.
+   *
+   * El conteo también se acota: un chip que dice «14» y destapa 2 es un número
+   * sin su denominador, que es justo lo que este repo persigue.
+   */
+  chips = computed<ChipUnidad[]>(() => {
+    const amb = this.ambito();
+    const visible = (p: PuestoOrganigrama) =>
+      p.vigente !== false && puestoPropio(amb, p.id);
+    return ORDEN_UNIDADES.map(u => ({
       unidad: u,
       etiqueta: VistaOrganigramaComponent.ETIQUETA_CORTA[u] || ETIQUETAS_UNIDAD[u],
       oficial: ETIQUETAS_UNIDAD[u],
-      puestos: PUESTOS_ORGANIGRAMA.filter(p => p.unidad === u && p.vigente !== false).length,
-    })).filter(c => c.puestos > 0)
-  );
+      puestos: PUESTOS_ORGANIGRAMA.filter(p => p.unidad === u && visible(p)).length,
+    })).filter(c => c.puestos > 0);
+  });
 
   // ==========================================================================
   //  EL MENÚ
@@ -395,6 +465,7 @@ export class VistaOrganigramaComponent {
   arbol = computed<FilaArbol[]>(() => {
     const { mapa } = this.porPuesto();
     const soloManual = this.soloConManual();
+    const amb = this.ambito();
 
     const construir = (n: NodoOrganigrama): FilaArbol => {
       const entregas = mapa.get(n.puesto.id) || [];
@@ -422,11 +493,52 @@ export class VistaOrganigramaComponent {
         hechosArbol,
         porcentajeArbol: puntosArbol ? Math.round((hechosArbol / puntosArbol) * 100) : null,
         cuantosDebajo: hijos.reduce((s, h) => s + h.cuantosDebajo + 1, 0),
+        propio: puestoPropio(amb, n.puesto.id),
         hijos,
       };
     };
 
     let filas = arbolOrganigrama().map(construir);
+
+    // ══════════════════ EL ÁRBOL ARRANCA EN SU PUESTO ══════════════════════
+    // Sin esto, una Gerente de Zona abre sus tareas y lo primero que lee es
+    // «Dirección General», con toda la cadena de mando encima suyo y un 0% que
+    // no es de nadie. Su pirámide empieza donde empieza su responsabilidad.
+    //
+    // Se PODA, no se reconstruye: `construir` ya sumó el subárbol completo, así
+    // que levantar el nodo conserva sus totales sin recalcular nada.
+    //
+    // Lo que NO cuelga de su raíz pero SÍ ocurre en sus lugares —Ventas en la
+    // tienda de una Encargada— sobrevive como raíz aparte, marcado «servicio a».
+    // Tirarlo dejaría a una Encargada viendo 20 personas donde trabajan 38, y
+    // eso se lee como que el sistema está incompleto.
+    if (amb.restringido && amb.raizPuestoId) {
+      const raiz = amb.raizPuestoId;
+      const suyo: FilaArbol[] = [];
+      const ajenos: FilaArbol[] = [];
+      const recorrer = (f: FilaArbol) => {
+        if (f.puesto.id === raiz) { suyo.push(f); return; }   // no se baja más: ya lo trae entero
+        if (!f.propio && f.entregasArbol > 0) { ajenos.push(f); return; }
+        f.hijos.forEach(recorrer);
+      };
+      filas.forEach(recorrer);
+      // Si su puesto no apareció (retirado del catálogo, o fuera del árbol), se
+      // deja el árbol completo en vez de devolver vacío: una pantalla en blanco
+      // y «no tienes nada» se ven idénticas (§5.2).
+      if (suyo.length || ajenos.length) {
+        // La profundidad es LA SANGRÍA, y venía contada desde Dirección General.
+        // Sin rebajarla, la raíz de una Encargada (profundidad 2) abriría
+        // sangrada dos niveles contra el borde izquierdo, como si colgara de algo
+        // que ya no está en pantalla. Se rebaja el subárbol entero, no solo la
+        // raíz, o los hijos quedarían pegados a su padre.
+        const rebajar = (f: FilaArbol, delta: number): FilaArbol => ({
+          ...f,
+          profundidad: f.profundidad - delta,
+          hijos: f.hijos.map(h => rebajar(h, delta)),
+        });
+        filas = [...suyo, ...ajenos].map(f => rebajar(f, f.profundidad));
+      }
+    }
 
     // El filtro PODA DE ABAJO HACIA ARRIBA. Un jefe sin manual propio pero con
     // gente debajo que sí lo tiene se conserva: quitarlo cortaría la rama y sus

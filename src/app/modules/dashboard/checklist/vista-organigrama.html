@@ -27,6 +27,14 @@
               *ngIf="resumen().huerfanas > 0"> · {{ resumen().huerfanas }} sin puesto</span>
           </ng-template>
         </div>
+
+        <!-- QUÉ PARTE DE LA OPERACIÓN ESTÁS VIENDO.
+             Un recorte MUDO se lee como un bug: quien ayer veía diez sucursales
+             y hoy ve dos, sin una línea que lo diga, reporta «se perdieron mis
+             tiendas». Y la frase también cubre el caso contrario —la ficha sin
+             puesto, a la que NO se le recorta— diciéndole por qué y a quién
+             pedirle que se lo arregle. -->
+        <div class="org-ambito" *ngIf="textoAmbito()">{{ textoAmbito() }}</div>
       </div>
 
       <div class="org-buscar"
@@ -146,6 +154,16 @@
             <span class="org-chevron" *ngIf="f.tieneHijos" [class.girado]="f.abierta">›</span>
             <span class="org-chevron org-chevron-hueco" *ngIf="!f.tieneHijos"></span>
             <span class="org-puesto-nombre">{{ f.puesto!.puesto.nombre }}</span>
+
+            <!-- «SERVICIO A»: trabaja en tu lugar, le responde a otra unidad.
+                 Va pegada al NOMBRE y no a la rejilla de cifras de abajo: esa
+                 rejilla tiene cinco columnas fijas a propósito (1/sep, cuando
+                 un `*ngIf` borraba la RANURA y recorría las de la derecha), y
+                 meterle una sexta condicional volvería a desalinearla. -->
+            <span class="org-cruzada" *ngIf="!f.puesto!.propio"
+                  [title]="'Trabaja aquí pero le reporta a ' + etiquetaUnidad(f.puesto!.puesto.unidad) + ': lo ves, no te cuenta.'">
+              servicio a {{ etiquetaUnidad(f.puesto!.puesto.unidad) }}
+            </span>
 
             <!-- Baja el subárbol de un golpe. Solo aparece en la fila abierta
                  con rama: en una fila cerrada el clic normal ya hace lo suyo,

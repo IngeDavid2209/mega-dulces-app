@@ -864,3 +864,18 @@
 @media (max-width: 860px) {
   .org-destino, .org-cruzada, .org-multi { margin-left: var(--sp-1); padding: 2px 6px; }
 }
+
+/* ─── QUÉ PARTE DE LA OPERACIÓN VES ─────────────────────────────────────────
+   Una línea, debajo del subtítulo. No es un aviso ni una alerta: es la
+   coordenada de lo que estás leyendo, y por eso va con el peso del subtítulo y
+   no gritando. Un recorte mudo se lee como un bug.
+
+   `max-width` en ch y no en px: el texto lista sucursales y crece con ellas;
+   atado a píxeles, una zona de cinco tiendas lo rompería contra el buscador. */
+.org-ambito {
+  margin-top: 3px;
+  font-size: var(--fs-nano);
+  color: var(--neutral-600);
+  max-width: 62ch;
+  line-height: 1.35;
+}

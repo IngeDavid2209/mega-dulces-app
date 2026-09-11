@@ -432,6 +432,34 @@ correctas, y distinguirlas es exactamente el trabajo del eje vertical.
 - **Pendiente que este paso NO decidió:** si una Encargada que hoy NO pasa `puedeFiltrarVista`
   debería tener árbol. Ensanchar es escalada y no se hace sin que David lo pida.
 
+#### DESPLEGADO — 11/sep/2026, y la guardia del despliegue falló OTRA VEZ
+
+**58 archivos del `ngsw.json` · 4 524 875 bytes leídos · 0 fallos** (sin esa cifra un cero no
+vale), con `● Online`, index en 200 y `md_rescate_arranque` presente:
+
+| marcador | servido | qué prueba |
+|---|---|---|
+| `org-chip-uni` (**control**) | 1 | los archivos se leyeron de verdad |
+| `org-ambito` | 1 | la línea que explica el recorte |
+| `ambitoVisibleDe` | 1 | el árbol recibe el ámbito |
+| `raizPuestoId` | 1 | el enraizado por puesto |
+
+**Y la lección, que es la del 9/sep repetida con otra ropa.** La espera era
+`until ! railway status | grep -q "Building"` — la corrección que escribí hace dos días. Salió
+con el estado en **`● Online · Deploying (1m)`**: Railway pasa por **dos** estados, `Building` y
+`Deploying`, y mi guardia solo conocía el primero. Volví a anclar el control a **un valor
+concreto** en vez de a la condición que me importa («ya no está trabajando»). Esta vez no cambió
+la conclusión —los marcadores ya salían en 1 y se reconfirmaron con el estado ya en `Online`—
+pero el modo de fallo es idéntico. La guardia correcta niega **los dos**.
+
+**Y una debilidad de mi propio «antes/después», dicha para que no se lea como más fuerte de lo
+que fue:** medí el «antes» buscando los marcadores en el **index**, y estos tres viven en un
+chunk *lazy* — o sea que ese cero era de mirar donde nunca estuvieron, no un antes válido. Es el
+mismo error del 3/sep. Lo que sí sostiene la conclusión es otra cosa: las tres cadenas **no
+existían en el repo** antes de este commit, así que encontrarlas servidas solo puede significar
+que el código nuevo está arriba. El control positivo (`org-chip-uni`) es el que descarta que el
+1 venga de un fallo de lectura.
+
 ### 9/sep/2026 — PASO 3.1a: la plaza existe como dato. «Anaquelista 1», no un nombre
 
 Instrucción de David, literal: *«en anaquelista si hay 3, no tienen que ser con nombre, solo con

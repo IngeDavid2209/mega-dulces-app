@@ -193,7 +193,7 @@ Orden por **dependencia y riesgo**, no por importancia. Un paso ≤ 3 días. Mar
 | 0 | Medir antes de tocar (detener `corte.js`, divergencia, KPIs congelados, réplicas) | 0.5 | — | 🔄 **0.1 ✅ · 0.3 ✅ · 0.4 ✅ (1 réplica, 1/sep) · falta 0.2** |
 | 2 | Que los números digan la verdad (hecho ≠ justificado + primeras pruebas) | 1 | 0 | ✅ **HECHA Y DESPLEGADA 13/sep. 2.1: `estadoItem` con tres estados, `esItemHecho` = `tieneEvidencia`. 2.2: 86 pruebas. Falta 2.3 (recalcular y comparar), que sigue esperando una `DATABASE_URL` de producción** |
 | 1 | Cerrar el ferrocarril: una sola base | 3 | 0 | ⬜ |
-| 3 | La estructura como dato (unidad, sucursal, ámbito, puesto, plaza, cobertura) | 4 | 1 | 🔄 **3.1a ✅ (9/sep) · 3.1b mitad ✅ (13/sep: `mdtask_plantillas` + `mdtask_puestos_declarados` aplicadas, con la regla y 115 pruebas; falta la API y la pantalla) · falta 3.1c (ámbito), 3.2 (el robot emite a la plaza), 3.3 (los 119 usos de `assigned`). Los tableros SIGUEN sumando por `store`** |
+| 3 | La estructura como dato (unidad, sucursal, ámbito, puesto, plaza, cobertura) | 4 | 1 | 🔄 **3.1a ✅ (9/sep) · 3.1b ✅ (13/sep: tablas, regla, API y pantalla desplegadas — nadie ha capturado una plantilla todavía) · falta el PASE DE LISTA y el ACCESO POR PLAZA (lo que David pidió al final), 3.1c (ámbito), 3.2 (el robot emite a la plaza), 3.3 (los 119 usos de `assigned`)** |
 | 4 | Navegación (4.1 se puede hacer YA, sin dependencias) | 1.5 | — / 3 | 🔄 **4.1 ✅ · 4.1b: 2a–2d ✅ (15→12 entradas) · falta el Paso 3 para llegar a 7 · 4.3 espera Fase 3 · el Dashboard ya se gatea por jefatura (3/sep) · el ÁRBOL de Tareas del Manual ya se recorta por puesto (11/sep): cada nivel arranca en su propia raíz** |
 | 5 | Verificación con muestra + hallazgos + causas | 2 | 3 | ⬜ |
 | 6 | Tablero por nivel + cierre diario + roll-up | 2 | 5 | ⬜ **el tablero de DIRECCIÓN ya existe y está gateado (2–3/sep); el de nivel —«Mi zona», «Mi sucursal»— no, y por eso una Encargada ve un bloque que le nombra el hueco** |
@@ -324,7 +324,7 @@ de que exista la plaza sería partir el problema en dos, no resolverlo.
 
 ## 9. Bitácora del plan
 
-### 13/sep/2026 — PASO 3.1b (1/2): la plantilla, y el tercer estado de Railway
+### 13/sep/2026 — PASO 3.1b: la plantilla de cada sucursal, y el tercer estado de Railway
 
 Instrucción de David: *«falta tener una sección donde cada sucursal va a tener su propia
 plantilla de cómo debería estar acomodada su zona de trabajo. Padre Hidalgo debe tener cuatro
@@ -430,9 +430,56 @@ citada porque una ausencia ahí puede ser truncamiento y no ausencia).
 eligibility payment issue)`. **El bot no está pudiendo avisar a la gente.** No es de este paso,
 pero mientras siga así los avisos no salen.
 
-**Lo que falta para cerrar 3.1b:** la API y la pantalla. Este commit **no cambia un píxel** —
-`plantilla.util.ts` no lo importa nadie todavía, así que el tree-shaking ni siquiera lo mete en
-el bundle. Lo único que llegó a producción son las dos tablas vacías.
+#### LA PANTALLA (2/2), Y LA PRUEBA DE AUDIENCIAS QUE ABORTÓ CON RAZÓN
+
+La sección entra como **pestaña de `/control`**, no como entrada de menú (congelamiento §7).
+`api/plantillas.js` y `api/puestos-declarados.js` con el factory `_crud.js`, y los dos
+verificados en producción: **HTTP 401**, que es el endpoint montado pidiendo token — un 404
+habría sido que no se montó.
+
+**Quién ve qué y quién puede guardar son dos preguntas**, y es la lección que ya costó tres fugas
+desplegadas: **ver** es `esJefatura` con la lista de sucursales recortada por
+`sucursalesPermitidas()`; **editar** es solo `esAdminGlobal`, comprobado **antes de cada
+escritura** y no solo en el `*ngIf` del botón — esconder un control es cosmética.
+
+**La pestaña ENSANCHA quién ve el cascarón `/control`**, y está dicho en el código: las otras
+cuatro piden banderas, ésta pide `esJefatura`, así que una Encargada que hoy no entra va a entrar
+y va a ver **exactamente una** pestaña. No se lleva ninguna de las otras cuatro, porque cada una
+se gatea por su propio `ve`.
+
+**`prueba-menu-audiencias.js` ABORTÓ con 4 diferencias, y era su trabajo:** una pestaña nueva no
+es destino de ninguna fusión declarada. **El ajuste no fue aflojarla.** Ahora exige declarar la
+**audiencia exacta** de cada pestaña nueva, por perfil, y comprueba las **dos** direcciones: que
+no la vea nadie de más (alguien ensanchó el permiso) y que no deje de verla nadie de la lista
+(alguien lo estrechó). Declarar solo el nombre —«ésta es nueva, déjala pasar»— habría vuelto la
+prueba decorativa. **Control negativo: abrir la pestaña a todos dispara 11 fallos nombrando cada
+perfil.**
+
+**Tres decisiones de la pantalla que no son de estilo:**
+
+- **El censo usa `resolverPuesto()`**, no `datos.puestoId` a secas. Contar por el campo dejaría
+  fuera **en silencio** a las fichas que hoy funcionan por alias, y la sucursal parecería tener
+  menos gente de la que tiene.
+- **La gente sin puesto resoluble se muestra SIEMPRE, aunque sea cero.** Si se omitiera, los
+  totales cuadrarían y esas personas desaparecerían de la pantalla — que es exactamente lo que
+  produce el hallazgo 1.
+- **Retirar un renglón marca `vigente = false`, no borra** (§5.5). En diciembre, «¿por qué esta
+  sucursal pasó de cinco a cuatro?» sigue teniendo respuesta, con autor y fecha.
+
+**Y seis tokens CSS que usé no existían** —entre ellos `--ink`, `--surface-1` y `--surface-2`,
+los tres **sin respaldo**, o sea que se habrían resuelto a nada—. Los 19 quedaron validados
+contra `styles.css` antes de subir. Es la lección del 4/sep: un token inventado no revienta,
+iguala.
+
+**DESPLEGADO:** `pl-sinpuesto` **0 → 4** en lo servido, **5 controles en pie**, 59 archivos ·
+4.37 MB · 0 fallos, y arranca (67 802 bytes de DOM). La espera usó ya la guardia correcta —el
+estado terminal, no la lista de transitorios— y tardó 5 vueltas.
+
+**Lo que NO está hecho, dicho para que no se lea como resuelto:** **nadie ha capturado una sola
+plantilla**, así que la pantalla abre vacía y su primer valor aparece cuando Dirección teclee los
+números de Padre Hidalgo. **Nadie ha entrado con una cuenta real** a verla. Y los pasos 2 (pase
+de lista) y 3 (acceso por plaza) **no existen**: hoy se sigue entrando con usuario y contraseña
+de persona.
 
 ### 13/sep/2026 — PASO 2.2 ✅, y el día que las guardias valieron más que los datos
 

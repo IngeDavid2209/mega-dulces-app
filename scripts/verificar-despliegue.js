@@ -60,11 +60,16 @@ const MARCADORES = [
   // buenos acaban siendo clases CSS de algo que de verdad se pinta, y cada una
   // se valida en LAS DOS DIRECCIONES: inexistente en HEAD, presente en el dist.
   //
-  // Nuevo de este despliegue: la generacion de plazas desde la plantilla.
-  { txt: 'pl-plazas', nuevo: true, que: 'la generacion de plazas desde la plantilla' },
-  // Los dos anteriores, ahora controles. Cada uno fue el "nuevo" de su dia.
+  // EL NUEVO DE ESTE DESPLIEGUE va SIEMPRE en esta linea, y los de despliegues
+  // anteriores bajan a control. Mantener ese orden importa: dos veces hoy el
+  // comentario se quedo describiendo el marcador ANTERIOR, y un comentario que
+  // narra otra cosa que la linea de abajo es doctrina falsa en dos semanas.
+  { txt: 'pa-sin_asignar', nuevo: true, que: 'la pantalla de pase de lista' },
+  // Los de antes, ahora controles. Cada uno fue el "nuevo" de su momento, y
+  // juntos prueban que el recorrido alcanza los chunks lazy de esas pantallas.
+  { txt: 'pl-plazas',    control: true, que: 'la generacion de plazas desde la plantilla' },
   { txt: 'pl-sinpuesto', control: true, que: 'la pantalla de plantilla' },
-  { txt: 'pr-justif', control: true, que: 'los justificados nombrados en pantalla' },
+  { txt: 'pr-justif',    control: true, que: 'los justificados nombrados en pantalla' },
   // Controles: existian antes de este despliegue y deben seguir en pie. Viven
   // en chunks DISTINTOS (tablero, tarjeta, organigrama, index), asi que si uno
   // diera 0 seria por no haber recorrido ese chunk, no por no haber llegado.

@@ -59,6 +59,14 @@ export interface Cobertura {
   /** null = sigue abierta. Cerrar es ponerle fecha, no borrar (§5.5). */
   hasta: string | null;
   motivo?: string | null;
+  /**
+   * Cuándo se capturó. Es lo que hace que una CORRECCIÓN gane al evento que
+   * corrige: §5.5 dice que corregir es un evento nuevo que apunta al anterior,
+   * así que entre dos coberturas del mismo día y del mismo tipo tiene que
+   * mandar la más reciente. Sin este campo mandaría la primera, y una
+   * corrección no serviría de nada.
+   */
+  creadaEn?: number | null;
 }
 
 export type EstadoPlaza = 'cubierta' | 'suplencia' | 'hueco' | 'sin_asignar';
@@ -91,9 +99,15 @@ export function coberturaVigenteEn(c: Cobertura, fechaYmd: string): boolean {
  * falso con toda la apariencia de un dato bueno. Eso es `verificado_falso`, la
  * quinta causa del §4, producida por el propio software.
  *
- * Entre dos del mismo tipo gana la que empezó DESPUÉS: es la más reciente y la
- * que alguien capturó al final. Con empate en `desde`, el id decide, para que
- * dos corridas den lo mismo — el mismo motivo que el `order by` del sembrador.
+ * Entre dos del mismo tipo gana la que empezó DESPUÉS, y con el mismo `desde`
+ * gana la CAPTURADA DESPUÉS (`creadaEn`). Eso último no es un detalle de
+ * desempate: es lo que hace posible CORREGIR. El §5.5 dice que nada se
+ * sobrescribe y que corregir es un evento nuevo que apunta al anterior — si
+ * mandara el primero, una corrección del mismo día no cambiaría nada y habría
+ * que borrar la fila mala, que es justo lo prohibido.
+ *
+ * El id decide al final, para que dos corridas den lo mismo aunque falte
+ * `creadaEn` — el mismo motivo que el `order by` del sembrador.
  */
 export function coberturaDelDia(
   coberturas: Cobertura[], plazaId: string, fechaYmd: string,
@@ -106,7 +120,9 @@ export function coberturaDelDia(
   candidatas.sort((a, b) => {
     if (peso(a) !== peso(b)) return peso(b) - peso(a);
     if (a.desde !== b.desde) return a.desde < b.desde ? 1 : -1;
-    return String(a.id).localeCompare(String(b.id));
+    const ca = Number(a.creadaEn) || 0, cb = Number(b.creadaEn) || 0;
+    if (ca !== cb) return cb - ca;
+    return String(b.id).localeCompare(String(a.id));
   });
   return candidatas[0];
 }
@@ -293,4 +309,106 @@ export function nombrePlaza(nombrePuesto: string, numero: number | null): string
 /** ¿Esta plaza es de un puesto declarado (de temporada)? */
 export function plazaDeTemporada(p: Plaza): boolean {
   return esPuestoDeclarado(p?.puestoId);
+}
+
+// ============================================================================
+//  ASIGNAR: qué escribir para que una plaza quede cubierta
+// ============================================================================
+
+/** El día anterior a una fecha 'YYYY-MM-DD'. */
+export function diaAnterior(fechaYmd: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(fechaYmd || '');
+  if (!m) return fechaYmd;
+  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  d.setDate(d.getDate() - 1);
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
+export interface CambioCobertura {
+  /** Coberturas a cerrar, con la fecha de cierre. Nunca se borran (§5.5). */
+  cerrar: { id: string; hasta: string }[];
+  /** Coberturas nuevas. */
+  crear: Cobertura[];
+  /** Cuando no hay nada que hacer, por qué. Se muestra en vez de callar. */
+  sinCambios?: string;
+}
+
+/**
+ * Qué hay que escribir para que una plaza quede como se pide.
+ *
+ * Existe como función aparte —y no dentro del componente— porque decide sobre
+ * el HISTÓRICO: qué cobertura se cierra y con qué fecha. Un error aquí no se ve
+ * en pantalla, se ve dentro de tres meses cuando alguien pregunte quién estaba
+ * el 13 de septiembre.
+ *
+ * ─── LAS TRES FORMAS, Y POR QUÉ SE ESCRIBEN DISTINTO ──────────────────────
+ *  · TITULAR    — es un cambio de plantilla de personal. Cierra la cobertura
+ *                 abierta el día ANTERIOR y abre una nueva sin `hasta`. El
+ *                 cierre es el día anterior, no el mismo: si las dos cubrieran
+ *                 la misma fecha, ese día tendría dos responsables y el §5.2
+ *                 dice que eso no puede pasar.
+ *  · SUPLENCIA  — es un solo día. NO cierra al titular: el titular sigue
+ *                 siéndolo, solo que ese día no fue. Al día siguiente vuelve
+ *                 sin que nadie tenga que reabrir nada.
+ *  · HUECO      — igual que la suplencia, un día, sin persona.
+ *
+ * ─── IDEMPOTENTE A PROPÓSITO ──────────────────────────────────────────────
+ * Asignar a quien ya está no escribe nada. Sin esto, tocar el botón dos veces
+ * cerraría la cobertura de alguien y le abriría otra idéntica, partiendo su
+ * historia en dos por un doble clic.
+ */
+export function planDeAsignacion(
+  plazaId: string,
+  uid: string | null,
+  tipo: Cobertura['tipo'],
+  fechaYmd: string,
+  coberturas: Cobertura[],
+  opciones: { motivo?: string; ahora?: number } = {},
+): CambioCobertura {
+  const ahora = opciones.ahora ?? Date.now();
+  const plan: CambioCobertura = { cerrar: [], crear: [] };
+
+  if (tipo !== 'hueco' && !uid) {
+    plan.sinCambios = 'Falta elegir a la persona.';
+    return plan;
+  }
+
+  const nueva: Cobertura = {
+    id: `${plazaId}|${tipo}|${fechaYmd}|${ahora}`,
+    plazaId,
+    uid: tipo === 'hueco' ? null : uid,
+    tipo,
+    desde: fechaYmd,
+    hasta: tipo === 'titular' ? null : fechaYmd,
+    motivo: opciones.motivo || null,
+    creadaEn: ahora,
+  };
+
+  if (tipo === 'titular') {
+    const abierta = (coberturas || []).find(c =>
+      c && c.plazaId === plazaId && c.tipo === 'titular' && !c.hasta);
+    if (abierta && abierta.uid === uid) {
+      plan.sinCambios = 'Esa persona ya es la titular de esta plaza.';
+      return plan;
+    }
+    if (abierta) plan.cerrar.push({ id: abierta.id, hasta: diaAnterior(fechaYmd) });
+  } else {
+    // Una suplencia o un hueco IDÉNTICOS el mismo día no se repiten. Pero una
+    // suplencia con OTRA persona sí se escribe: es una corrección, y gana por
+    // `creadaEn` sin que haya que borrar la anterior (§5.5).
+    const igual = (coberturas || []).find(c =>
+      c && c.plazaId === plazaId && c.tipo === tipo &&
+      c.desde === fechaYmd && c.hasta === fechaYmd &&
+      (c.uid || null) === (tipo === 'hueco' ? null : uid));
+    if (igual) {
+      plan.sinCambios = tipo === 'hueco'
+        ? 'Esta plaza ya está marcada como hueco ese día.'
+        : 'Esa persona ya está puesta como suplencia ese día.';
+      return plan;
+    }
+  }
+
+  plan.crear.push(nueva);
+  return plan;
 }

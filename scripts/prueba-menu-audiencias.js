@@ -256,6 +256,21 @@ const PESTANAS_NUEVAS = {
       'Encargada SIN puesto pero CON sucursal',
     ],
   },
+  'pase-lista': {
+    desde: '13/sep/2026',
+    permiso: 'esJefatura',
+    porque: 'Quien ocupa cada plaza hoy. Mismo permiso de ENTRADA que Plantilla, ' +
+            'pero dentro solo edita quien tenga esa sucursal en su alcance: la ' +
+            'plantilla la captura Direccion y el pase de lista la Encargada.',
+    // La misma audiencia que Plantilla, y a proposito: las dos son esJefatura.
+    // Si algun dia divergen, esta lista deja de cuadrar y la prueba lo dice.
+    audiencia: [
+      'admin global',
+      'admin de sucursales',
+      'Encargada CON puesto (jefatura)',
+      'Encargada SIN puesto pero CON sucursal',
+    ],
+  },
 };
 
 /** ruta de pestaña nueva -> perfiles que de verdad la vieron en esta corrida. */

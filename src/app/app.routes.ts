@@ -120,6 +120,11 @@ export const routes: Routes = [
         canActivate: [tabControlGuard],
         loadComponent: () => import('./modules/dashboard/plantilla/plantilla').then(m => m.PlantillaComponent)
       },
+      {
+        path: 'pase-lista',
+        canActivate: [tabControlGuard],
+        loadComponent: () => import('./modules/dashboard/pase-lista/pase-lista').then(m => m.PaseListaComponent)
+      },
     ]
   },
 

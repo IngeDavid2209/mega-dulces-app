@@ -1,0 +1,91 @@
+/* Pase de lista (paso 3.1b · cobertura).
+   Solo tokens del sistema Mercado: un token inventado no revienta, iguala dos
+   estados distintos y se descubre en pantalla, tarde (lección del 4/sep). */
+
+.pa-intro { margin-bottom: 20px; }
+.pa-intro h1 { font-size: 22px; margin: 0 0 8px; }
+.pa-intro p { margin: 0 0 8px; font-size: 14px; line-height: 1.6; color: var(--neutral-600); }
+.pa-intro-clave {
+  background: var(--surface-ground); border-left: 3px solid var(--action);
+  padding: 10px 14px; border-radius: 6px;
+}
+
+.pa-barra { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+.pa-lbl { font-size: 13px; font-weight: var(--fw-bold); }
+.pa-select {
+  padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px;
+  font-size: 14px; background: var(--card-bg); color: var(--text-main); min-height: 40px;
+}
+.pa-motivo { flex: 1 1 180px; min-width: 0; }
+.pa-solo-lectura { font-size: 12px; color: var(--neutral-500); }
+.pa-guardando { font-size: 12px; color: var(--action); }
+
+.pa-error, .pa-aviso, .pa-problema {
+  padding: 12px 14px; border-radius: 8px; font-size: 13px; margin-bottom: 16px;
+}
+.pa-error { background: var(--bad-soft-bg); border: 1px solid var(--bad-border); color: var(--bad-soft-fg); }
+.pa-aviso { background: var(--info-soft-bg); color: var(--info-soft-fg); }
+.pa-problema { background: var(--warn-soft-bg); border: 1px solid var(--warn-border); color: var(--warn-soft-fg); }
+.pa-cargando, .pa-vacio { padding: 24px; text-align: center; color: var(--neutral-500); font-size: 14px; }
+.pa-vacio { line-height: 1.7; }
+
+.pa-tarjetas {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 12px; margin-bottom: 20px;
+}
+.pa-tarjeta {
+  background: var(--card-bg); border: 1px solid var(--border);
+  border-radius: 10px; padding: 14px; text-align: center;
+}
+.pa-tarjeta.pa-alerta { border-color: var(--warn-border); background: var(--warn-soft-bg); }
+/* «Sin asignar» no es una falla: es trabajo que falta por hacer. Color neutro
+   con borde marcado, distinto del hueco, que sí es un dato ya capturado. */
+.pa-tarjeta.pa-pendiente { border-style: dashed; border-color: var(--neutral-400); }
+.pa-cifra { display: block; font-size: 28px; font-weight: var(--fw-bold); line-height: 1.1; }
+.pa-cifra-lbl { display: block; font-size: 12px; color: var(--neutral-500); margin-top: 4px; }
+
+.pa-tabla { width: 100%; border-collapse: collapse; font-size: 14px; }
+.pa-tabla th {
+  text-align: left; font-size: 12px; text-transform: uppercase;
+  color: var(--neutral-500); padding: 8px 10px; border-bottom: 1px solid var(--border);
+}
+.pa-tabla td { padding: 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.pa-nombre { font-weight: var(--fw-bold); }
+
+/* El estado se marca con el borde, no solo con color: estas filas se leen en un
+   celular dentro de una tienda. */
+.pa-cubierta    { border-left: 3px solid var(--ok-border); }
+.pa-suplencia   { border-left: 3px solid var(--info-soft-fg); }
+.pa-hueco       { border-left: 3px solid var(--warn-border); }
+.pa-sin_asignar { border-left: 3px dashed var(--neutral-300); }
+
+.pa-estado { font-size: 12px; color: var(--neutral-600); }
+.pa-hueco .pa-estado { color: var(--warn-soft-fg); font-weight: var(--fw-bold); }
+.pa-sin_asignar .pa-estado { color: var(--neutral-400); }
+.pa-nada { color: var(--neutral-400); }
+
+.pa-chip {
+  display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 999px;
+  margin-left: 6px; background: var(--info-soft-bg); color: var(--info-soft-fg);
+}
+
+.pa-btn-mini {
+  background: none; border: 1px solid var(--border); border-radius: 6px;
+  padding: 4px 12px; font-size: 12px; cursor: pointer; color: var(--neutral-600);
+  min-height: 32px;
+}
+
+.pa-editor-fila td { background: var(--surface-ground); }
+.pa-editor { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.pa-btn {
+  background: var(--action); color: var(--card-bg); border: none; border-radius: 6px;
+  padding: 9px 16px; font-size: 13px; cursor: pointer; min-height: 40px;
+}
+.pa-btn[disabled] { opacity: .5; cursor: not-allowed; }
+.pa-btn-2 { background: var(--info-soft-fg); }
+.pa-btn-3 { background: var(--warn-soft-fg); }
+
+@media (max-width: 720px) {
+  .pa-editor { flex-direction: column; align-items: stretch; }
+  .pa-tabla { display: block; overflow-x: auto; }
+}

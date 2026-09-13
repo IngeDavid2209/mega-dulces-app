@@ -106,6 +106,19 @@ export const TABS_CONTROL: TabControl[] = [
   // y edita; los demás ven la suya y no pueden guardar.
   { ruta: 'plantilla', etiqueta: 'Plantilla',
     ve: (u) => esJefatura(u) },
+
+  // ── PASE DE LISTA (paso 3.1b · cobertura, 13/sep/2026) ───────────────────
+  // Quien ocupa cada plaza hoy. Mismo permiso de entrada que Plantilla
+  // -esJefatura- pero NO la misma capacidad de editar, y esa es la diferencia
+  // que importa: la PLANTILLA la captura Direccion (cuantas plazas se autorizan
+  // es una decision de la empresa) y el PASE DE LISTA lo hace la Encargada de su
+  // sucursal (quien cubre hoy es una decision de su turno). Pedirle a Direccion
+  // que capture el pase de lista haria que no lo capturara nadie.
+  //
+  // Esa segunda regla vive DENTRO de la pantalla, en `puedeAsignar`, no aqui:
+  // este `ve` decide quien ABRE, y lo que se puede TOCAR es otra pregunta.
+  { ruta: 'pase-lista', etiqueta: 'Pase de lista',
+    ve: (u) => esJefatura(u) },
 ];
 
 /** Las pestañas que este usuario puede abrir. */

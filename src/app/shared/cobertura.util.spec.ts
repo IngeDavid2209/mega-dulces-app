@@ -17,6 +17,7 @@
 import {
   coberturaVigenteEn, coberturaDelDia, pasarLista, resumenDelDia,
   planDePlazas, idPlaza, nombrePlaza, plazaDeTemporada,
+  planDeAsignacion, diaAnterior,
   Plaza, Cobertura,
 } from './cobertura.util';
 
@@ -280,5 +281,127 @@ describe('cómo se llama una plaza', () => {
   it('reconoce una plaza de temporada por su puesto', () => {
     expect(plazaDeTemporada(plaza('tmp-edecan-abc', 1))).toBe(true);
     expect(plazaDeTemporada(plaza('anaquelista', 1))).toBe(false);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+describe('el día anterior', () => {
+
+  it('resta un día', () => {
+    expect(diaAnterior('2026-09-13')).toBe('2026-09-12');
+  });
+
+  it('cruza el cambio de mes y el de año', () => {
+    expect(diaAnterior('2026-09-01')).toBe('2026-08-31');
+    expect(diaAnterior('2026-01-01')).toBe('2025-12-31');
+  });
+
+  it('cruza un 1 de marzo de año bisiesto', () => {
+    // 2028 es bisiesto. Escrito a mano esto sale mal la mitad de las veces.
+    expect(diaAnterior('2028-03-01')).toBe('2028-02-29');
+    expect(diaAnterior('2026-03-01')).toBe('2026-02-28');
+  });
+
+  it('una fecha que no es fecha se devuelve tal cual, sin inventar', () => {
+    expect(diaAnterior('13/09/2026')).toBe('13/09/2026');
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+describe('asignar: qué se escribe', () => {
+
+  const P = idPlaza(LUGAR, 'anaquelista', 1);
+  const HOY = '2026-09-13';
+
+  it('un TITULAR nuevo cierra al anterior EL DÍA ANTES, no el mismo', () => {
+    // Si las dos cubrieran el 13, ese día tendría dos responsables — el §5.2 lo
+    // prohíbe, y además el índice único de la 056 solo impide dos ABIERTAS.
+    const previa = cob(P, 'vieja', 'titular', '2026-01-01', null);
+    const plan = planDeAsignacion(P, 'nueva', 'titular', HOY, [previa], { ahora: 1000 });
+    expect(plan.cerrar).toEqual([{ id: previa.id, hasta: '2026-09-12' }]);
+    expect(plan.crear.length).toBe(1);
+    expect(plan.crear[0].uid).toBe('nueva');
+    expect(plan.crear[0].hasta).toBeNull();   // queda abierta
+  });
+
+  it('y el resultado NO deja dos coberturas vivas el mismo día', () => {
+    // La comprobación de verdad: se aplica el plan y se vuelve a preguntar.
+    const previa = cob(P, 'vieja', 'titular', '2026-01-01', null);
+    const plan = planDeAsignacion(P, 'nueva', 'titular', HOY, [previa], { ahora: 1000 });
+    const aplicado = [
+      { ...previa, hasta: plan.cerrar[0].hasta },
+      ...plan.crear,
+    ];
+    expect(coberturaDelDia(aplicado, P, '2026-09-12')!.uid).toBe('vieja');
+    expect(coberturaDelDia(aplicado, P, HOY)!.uid).toBe('nueva');
+  });
+
+  it('asignar a quien YA es titular no escribe nada (un doble clic no parte su historia)', () => {
+    const previa = cob(P, 'ana', 'titular', '2026-01-01', null);
+    const plan = planDeAsignacion(P, 'ana', 'titular', HOY, [previa]);
+    expect(plan.crear.length).toBe(0);
+    expect(plan.cerrar.length).toBe(0);
+    expect(plan.sinCambios).toContain('ya es la titular');
+  });
+
+  it('una SUPLENCIA no cierra al titular: al día siguiente vuelve solo', () => {
+    const titular = cob(P, 'ana', 'titular', '2026-01-01', null);
+    const plan = planDeAsignacion(P, 'supl', 'suplencia', HOY, [titular], { ahora: 1000 });
+    expect(plan.cerrar.length).toBe(0);
+    const aplicado = [titular, ...plan.crear];
+    expect(coberturaDelDia(aplicado, P, HOY)!.uid).toBe('supl');
+    expect(coberturaDelDia(aplicado, P, '2026-09-14')!.uid).toBe('ana');
+  });
+
+  it('un HUECO es un dato con motivo, y tampoco cierra al titular', () => {
+    const titular = cob(P, 'ana', 'titular', '2026-01-01', null);
+    const plan = planDeAsignacion(P, null, 'hueco', HOY, [titular],
+      { motivo: 'incapacidad', ahora: 1000 });
+    expect(plan.crear[0].uid).toBeNull();
+    expect(plan.crear[0].motivo).toBe('incapacidad');
+    const aplicado = [titular, ...plan.crear];
+    expect(pasarLista([plaza('anaquelista', 1)], aplicado, HOY)[0].estado).toBe('hueco');
+    expect(pasarLista([plaza('anaquelista', 1)], aplicado, '2026-09-14')[0].estado).toBe('cubierta');
+  });
+
+  it('CORREGIR ES UN EVENTO NUEVO: la segunda suplencia del día gana a la primera', () => {
+    // §5.5: nada se sobrescribe. Si mandara la primera, para corregir habría que
+    // BORRAR la fila mala, que es justo lo prohibido.
+    const primera = { ...cob(P, 'equivocada', 'suplencia', HOY, HOY), creadaEn: 1000 };
+    const plan = planDeAsignacion(P, 'correcta', 'suplencia', HOY, [primera], { ahora: 2000 });
+    expect(plan.crear.length).toBe(1);
+    const aplicado = [primera, ...plan.crear];
+    expect(coberturaDelDia(aplicado, P, HOY)!.uid).toBe('correcta');
+  });
+
+  it('la misma suplencia dos veces no se duplica', () => {
+    const ya = { ...cob(P, 'supl', 'suplencia', HOY, HOY), creadaEn: 1000 };
+    const plan = planDeAsignacion(P, 'supl', 'suplencia', HOY, [ya]);
+    expect(plan.crear.length).toBe(0);
+    expect(plan.sinCambios).toContain('ya está puesta');
+  });
+
+  it('sin persona y sin ser hueco, no escribe nada y lo DICE', () => {
+    const plan = planDeAsignacion(P, null, 'titular', HOY, []);
+    expect(plan.crear.length).toBe(0);
+    expect(plan.sinCambios).toContain('Falta elegir');
+  });
+
+  it('sobre una plaza sin historia, el titular se abre sin cerrar nada', () => {
+    const plan = planDeAsignacion(P, 'ana', 'titular', HOY, [], { ahora: 1000 });
+    expect(plan.cerrar.length).toBe(0);
+    expect(plan.crear.length).toBe(1);
+  });
+
+  it('GUARDIA: los tres tipos producen escrituras DISTINTAS', () => {
+    // Si los tres devolvieran lo mismo, la mitad de los casos de arriba pasaría
+    // igual y nadie lo notaría.
+    const t = planDeAsignacion(P, 'u', 'titular', HOY, [], { ahora: 1 }).crear[0];
+    const s = planDeAsignacion(P, 'u', 'suplencia', HOY, [], { ahora: 1 }).crear[0];
+    const h = planDeAsignacion(P, null, 'hueco', HOY, [], { ahora: 1 }).crear[0];
+    expect(new Set([t.tipo, s.tipo, h.tipo]).size).toBe(3);
+    expect(t.hasta).toBeNull();
+    expect(s.hasta).toBe(HOY);
+    expect(h.uid).toBeNull();
   });
 });

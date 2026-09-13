@@ -1,0 +1,132 @@
+<section class="pa-intro">
+  <h1>Pase de lista</h1>
+  <p>
+    Quién ocupa cada plaza hoy. El <strong>titular</strong> es quien la tiene
+    normalmente; la <strong>suplencia</strong> es solo por hoy y al día siguiente
+    vuelve el titular sin que tengas que hacer nada.
+  </p>
+  <p class="pa-intro-clave">
+    Marcar un <strong>hueco</strong> es hacer el trabajo, no reconocer una falla:
+    deja constancia de que alguien miró y de por qué no hay nadie. Una plaza
+    <em>sin asignar</em> es distinta — significa que todavía nadie ha pasado lista.
+  </p>
+</section>
+
+<div class="pa-barra">
+  <label class="pa-lbl">Sucursal</label>
+  <select class="pa-select" [ngModel]="sucursal()" (ngModelChange)="sucursal.set($event)">
+    <option *ngFor="let s of sucursales()" [value]="s">{{ s }}</option>
+  </select>
+
+  <label class="pa-lbl">Día</label>
+  <input class="pa-select" type="date" [ngModel]="fecha()" (ngModelChange)="fecha.set($event)" />
+
+  <span class="pa-solo-lectura" *ngIf="!puedeAsignar()">Solo lectura</span>
+  <span class="pa-guardando" *ngIf="guardando()">guardando…</span>
+</div>
+
+<div class="pa-error" *ngIf="error()"><strong>No se pudo.</strong> {{ error() }}</div>
+<div class="pa-aviso" *ngIf="aviso()">{{ aviso() }}</div>
+<div class="pa-cargando" *ngIf="cargando()">Cargando…</div>
+
+<ng-container *ngIf="!cargando() && !error()">
+
+  <!-- Sin plazas: se dice qué falta y dónde se hace, no se deja en blanco. -->
+  <div class="pa-vacio" *ngIf="!plazasDeLaSucursal().length">
+    <strong>Esta sucursal todavía no tiene plazas.</strong>
+    Se crean desde <em>Control → Plantilla</em>: primero se captura cuántas debe
+    haber de cada puesto, y de ahí salen numeradas.
+  </div>
+
+  <ng-container *ngIf="plazasDeLaSucursal().length">
+
+    <div class="pa-tarjetas">
+      <div class="pa-tarjeta">
+        <span class="pa-cifra">{{ resumen().cubiertas }}</span>
+        <span class="pa-cifra-lbl">con titular</span>
+      </div>
+      <div class="pa-tarjeta">
+        <span class="pa-cifra">{{ resumen().suplencias }}</span>
+        <span class="pa-cifra-lbl">suplencias</span>
+      </div>
+      <div class="pa-tarjeta" [class.pa-alerta]="resumen().huecos > 0">
+        <span class="pa-cifra">{{ resumen().huecos }}</span>
+        <span class="pa-cifra-lbl">huecos</span>
+      </div>
+      <!-- Esta cifra es la que mide si el pase de lista se está haciendo. -->
+      <div class="pa-tarjeta" [class.pa-pendiente]="resumen().sinAsignar > 0">
+        <span class="pa-cifra">{{ resumen().sinAsignar }}</span>
+        <span class="pa-cifra-lbl">sin asignar</span>
+      </div>
+    </div>
+
+    <!-- Una persona en dos plazas el mismo día: su evidencia contaría dos veces
+         y una de las dos plazas está sola en realidad. -->
+    <div class="pa-problema" *ngIf="resumen().duplicadas.length">
+      <strong>Ojo:</strong> {{ resumen().duplicadas.length }} persona(s) están puestas
+      en más de una plaza el mismo día
+      (<span *ngFor="let d of resumen().duplicadas; let i = index">{{ i ? ' · ' : '' }}{{ nombreDe(d) }}</span>).
+      Su trabajo contaría dos veces y una de esas plazas está sola en realidad.
+    </div>
+
+    <table class="pa-tabla">
+      <thead>
+        <tr>
+          <th>Plaza</th>
+          <th>Quién</th>
+          <th>Cómo</th>
+          <th *ngIf="puedeAsignar()"></th>
+        </tr>
+      </thead>
+      <tbody>
+        <ng-container *ngFor="let p of lista(); trackBy: trackPlaza">
+          <tr [ngClass]="claseEstado(p.estado)">
+            <td class="pa-nombre">
+              {{ etiquetaPlaza(p.plaza) }}
+              <span class="pa-chip" *ngIf="esTemporada(p.plaza)">temporada</span>
+            </td>
+            <td>
+              <span *ngIf="p.uid">{{ nombreDe(p.uid) }}</span>
+              <span class="pa-nada" *ngIf="!p.uid">—</span>
+            </td>
+            <td><span class="pa-estado">{{ textoEstado(p) }}</span></td>
+            <td *ngIf="puedeAsignar()">
+              <button class="pa-btn-mini" (click)="abrir(p.plaza.id)">
+                {{ editando() === p.plaza.id ? 'cerrar' : 'cambiar' }}
+              </button>
+            </td>
+          </tr>
+
+          <tr *ngIf="editando() === p.plaza.id && puedeAsignar()" class="pa-editor-fila">
+            <td [attr.colspan]="4">
+              <div class="pa-editor">
+                <select class="pa-select" [ngModel]="elegido()" (ngModelChange)="elegido.set($event)">
+                  <option value="">Elige a la persona…</option>
+                  <option *ngFor="let q of personas()" [value]="q.id">{{ q.nombre }}</option>
+                </select>
+                <input class="pa-select pa-motivo" type="text" placeholder="Motivo (para el hueco)"
+                       [ngModel]="motivo()" (ngModelChange)="motivo.set($event)" />
+                <button class="pa-btn" [disabled]="guardando()"
+                        (click)="asignar(p.plaza.id, 'titular')"
+                        title="Queda como titular desde este día en adelante. Cierra al titular anterior el día antes.">
+                  Titular
+                </button>
+                <button class="pa-btn pa-btn-2" [disabled]="guardando()"
+                        (click)="asignar(p.plaza.id, 'suplencia')"
+                        title="Solo por hoy. El titular sigue siéndolo y vuelve mañana.">
+                  Suplencia hoy
+                </button>
+                <button class="pa-btn pa-btn-3" [disabled]="guardando()"
+                        (click)="asignar(p.plaza.id, 'hueco')"
+                        title="Nadie la cubre hoy, y queda constancia de por qué.">
+                  Hueco
+                </button>
+              </div>
+            </td>
+          </tr>
+        </ng-container>
+      </tbody>
+    </table>
+
+  </ng-container>
+</ng-container>

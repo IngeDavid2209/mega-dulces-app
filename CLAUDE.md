@@ -193,7 +193,7 @@ Orden por **dependencia y riesgo**, no por importancia. Un paso ≤ 3 días. Mar
 | 0 | Medir antes de tocar (detener `corte.js`, divergencia, KPIs congelados, réplicas) | 0.5 | — | 🔄 **0.1 ✅ · 0.3 ✅ · 0.4 ✅ (1 réplica, 1/sep) · falta 0.2** |
 | 2 | Que los números digan la verdad (hecho ≠ justificado + primeras pruebas) | 1 | 0 | ✅ **HECHA Y DESPLEGADA 13/sep. 2.1: `estadoItem` con tres estados, `esItemHecho` = `tieneEvidencia`. 2.2: 86 pruebas. Falta 2.3 (recalcular y comparar), que sigue esperando una `DATABASE_URL` de producción** |
 | 1 | Cerrar el ferrocarril: una sola base | 3 | 0 | ⬜ |
-| 3 | La estructura como dato (unidad, sucursal, ámbito, puesto, plaza, cobertura) | 4 | 1 | 🔄 **3.1a ✅ (9/sep) · 3.1b ✅ (13/sep: tablas, regla, API y pantalla desplegadas — nadie ha capturado una plantilla todavía) · falta el PASE DE LISTA y el ACCESO POR PLAZA (lo que David pidió al final), 3.1c (ámbito), 3.2 (el robot emite a la plaza), 3.3 (los 119 usos de `assigned`)** |
+| 3 | La estructura como dato (unidad, sucursal, ámbito, puesto, plaza, cobertura) | 4 | 1 | 🔄 **3.1a ✅ · 3.1b ✅ · COBERTURA ✅ (13/sep: plantilla → plazas numeradas → pase de lista, todo desplegado; nadie ha capturado una plantilla todavía) · falta el ACCESO POR PLAZA (el login), 3.1c (ámbito), 3.2 (el robot emite a la plaza), 3.3 (los 119 usos de `assigned`)** |
 | 4 | Navegación (4.1 se puede hacer YA, sin dependencias) | 1.5 | — / 3 | 🔄 **4.1 ✅ · 4.1b: 2a–2d ✅ (15→12 entradas) · falta el Paso 3 para llegar a 7 · 4.3 espera Fase 3 · el Dashboard ya se gatea por jefatura (3/sep) · el ÁRBOL de Tareas del Manual ya se recorta por puesto (11/sep): cada nivel arranca en su propia raíz** |
 | 5 | Verificación con muestra + hallazgos + causas | 2 | 3 | ⬜ |
 | 6 | Tablero por nivel + cierre diario + roll-up | 2 | 5 | ⬜ **el tablero de DIRECCIÓN ya existe y está gateado (2–3/sep); el de nivel —«Mi zona», «Mi sucursal»— no, y por eso una Encargada ve un bloque que le nombra el hueco** |
@@ -524,12 +524,59 @@ y la contraria a la del `sinManual: 3`.
 **Desplegado:** `pl-plazas` **0 → 7**, 6 controles en pie, 59 archivos · 4.37 MB, y
 `/api/plazas` y `/api/coberturas` en **401** (montados, pidiendo token).
 
-**LO QUE FALTA PARA LO QUE DAVID PIDIÓ DE VERDAD:** la pantalla del **pase de lista** —donde la
-Encargada dice quién ocupa cada plaza hoy— y después el **acceso por plaza**. La regla ya está
-escrita y probada; lo que no existe es dónde capturarla. Hoy se sigue entrando con usuario y
-contraseña de persona, y hasta que el pase de lista exista **no se debe** cambiar eso: sin él,
-una cuenta de plaza pierde el nombre de quien firmó, que es el problema del correo compartido de
-las migraciones 051–053.
+#### Y EL PASE DE LISTA, también el mismo día
+
+`Control → Pase de lista`. La Encargada elige sucursal y día, y para cada plaza dice quién la
+ocupa: **titular**, **suplencia de hoy** o **hueco con motivo**.
+
+**Quién edita aquí NO es quien edita la plantilla, y es la decisión de diseño del paso.** La
+plantilla la captura **Dirección** —cuántas plazas se autorizan es una decisión de la empresa— y
+el pase de lista lo hace la **Encargada** —quién cubre hoy es una decisión de su turno—.
+Pedirle a Dirección que capture el pase de lista haría que **no lo capturara nadie**. El `ve` de
+la pestaña decide quién ABRE; `puedeAsignar` decide quién TOCA, y se comprueba antes de cada
+escritura: que una sucursal no salga en un `<select>` no es un permiso.
+
+**El manual ya autoriza este trabajo**, así que no hace falta norma nueva: punto 8 del Checklist
+de apertura del Encargado («Tareas del día asignadas en Mega Dulces Task») y punto 7 de su
+operación («Ausencias cubiertas»).
+
+**Tres reglas nuevas, todas probadas:**
+
+- **El titular nuevo cierra al anterior EL DÍA ANTES**, no el mismo: si los dos cubrieran la
+  misma fecha, ese día tendría **dos responsables** (§5.2). Y la prueba no se conforma con mirar
+  el plan —lo **aplica** y vuelve a preguntar quién cubre el 12 y quién el 13.
+- **La suplencia no cierra al titular.** Es un día; al siguiente vuelve solo, sin que nadie
+  reabra nada.
+- **CORREGIR ES UN EVENTO NUEVO (§5.5):** entre dos coberturas del mismo día gana la **capturada
+  después** (`creadaEn`). Antes ganaba la primera, y con eso una corrección no habría servido de
+  nada: para arreglar un error habría que **borrar** la fila mala, que es justo lo prohibido. Fue
+  un cambio de regla sobre `coberturaDelDia`, con su caso.
+
+**E idempotente a propósito:** asignar a quien ya está no escribe nada. Sin eso, un doble clic
+cerraría la cobertura de alguien y le abriría otra idéntica, **partiendo su historia en dos**.
+
+**156 pruebas.** La pantalla nombra lo que falta —«sin asignar» con borde punteado, distinto del
+hueco, que sí es un dato capturado— y **avisa cuando una persona quedó en dos plazas el mismo
+día**: su evidencia contaría dos veces y una de esas plazas está sola.
+
+**Desplegado:** `pa-sin_asignar` 0 → 2, **7 controles en pie**, 63 archivos · 4.39 MB, y arranca
+(67 802 bytes).
+
+**Anécdota de herramienta que vale anotar:** el `perl` que insertó la pestaña iba entre comillas
+dobles, así que **bash evaluó los backticks de mis comentarios** y se comió dos palabras —«dentro
+de la pantalla (), no aqui: este decide»—. El código quedó bien y el comentario **mutilado**, que
+es peor que no tenerlo. Misma familia que el `\n` dentro de `\Q...\E` del 4/sep: la herramienta
+de edición corrompe en silencio y solo se ve releyendo lo que escribió.
+
+**LO QUE FALTA AHORA:** el **acceso por plaza** —entrar como «Anaquelista 1» en vez de con el
+correo de una persona—. La cadena ya está completa hasta aquí: plantilla → plazas numeradas →
+cobertura del día. Lo que falta es el login, y **no se debe tocar hasta que haya sucursales
+pasando lista de verdad**: una cuenta de plaza sin cobertura registrada pierde el nombre de quien
+firmó, que es el problema del correo compartido de las migraciones 051–053.
+
+Y sigue siendo cierto que **nadie ha capturado una sola plantilla**, así que las dos pantallas
+abren vacías: la de plantilla con la lista de puestos, y la de pase de lista diciendo «esta
+sucursal todavía no tiene plazas» y dónde se crean.
 
 ### 13/sep/2026 — PASO 2.2 ✅, y el día que las guardias valieron más que los datos
 

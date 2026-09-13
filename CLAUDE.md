@@ -395,6 +395,50 @@ resultado declarado de antemano— y `/api/credenciales-plaza` en 401.
 **C no se toca hasta que una sucursal real haya entrado por plaza y funcione.** Es el único paso
 de todo el día que puede dejar a 186 personas fuera de la app.
 
+#### PARTE B — DESPLEGADA. Y dos cosas que habrían roto en producción
+
+El flujo completo: código + PIN autentica la **plaza**; después la app pregunta **«hoy esta plaza
+la cubre María, ¿eres tú?»**. Si no, la persona se elige de la lista y **se registra una suplencia
+sola**, para que la Encargada lo vea corregido en vez de adivinarlo.
+
+**Y la plantilla se abrió a cada sucursal**, por instrucción de David: *«necesito pedirle a RH
+cómo van a acomodar las plantillas; mientras, déjalo libre — como crea tu plantilla de tu
+sucursal»*. Lo que **no** se abrió es repartir accesos: proponer cuánta gente debe haber y crear
+las llaves de entrada son cosas distintas, y `esAdmin` sigue gobernando lo segundo.
+
+**Los dos defectos encontrados antes de subir, y los dos eran fatales:**
+
+1. **`ApiService.token()` va SIEMPRE a Firebase Auth.** Quien entrara por plaza no tiene usuario
+   de Firebase, así que el método habría lanzado «Sin sesión activa» y la persona habría entrado
+   a una app **completamente vacía**, sin un solo error visible que explicara por qué. Ahora el
+   JWT propio manda si existe — y **se borra** al entrar por el login normal y al cerrar sesión,
+   porque un token de plaza olvidado haría que la siguiente persona en ese navegador trabajara
+   con la sesión de la anterior, y su evidencia quedaría a nombre de otra.
+2. **`pareceCodigoDePlaza` mira la FORMA**, y un usuario llamado `ana-maria-2` casa con el patrón.
+   Sin caída al login de siempre, esa persona habría quedado desviada a un login que no es el
+   suyo y **no podría entrar nunca**. Ahora, si el código no existe, el servidor responde
+   `campo: "codigo"` y el cliente sigue por el camino normal, en silencio. Un fallo de **red** no
+   cae —no prueba que el código no exista— y se dice lo que pasó.
+
+Verificado en producción: `plz-codigo` 0 → 2, `/api/login` y `/api/login-plaza` los dos vivos, y
+un código inexistente devuelve exactamente `{"error":"Ese código no existe…","campo":"codigo"}`.
+
+#### PARTE C — ESCRITA Y NO APLICADA, y el motivo no es prudencia
+
+`scripts/sql/pendientes/059_apagar_cuentas_de_persona.sql`. **Hoy es imposible aplicarla, como
+hecho:** no existe **una sola credencial de plaza**. Nadie ha capturado una plantilla → no hay
+plazas → no hay códigos ni PINs. Apagar las cuentas ahora cerraría **los dos caminos a la vez**.
+
+Vive en `pendientes/` porque `db-migrate.js` hace `readdirSync` **sin recursión**. Verificado: el
+runner lista **56 archivos y la 059 no está entre ellos**. Sus tres candados abortan en vez de
+dejar a nadie fuera: que exista al menos una credencial activa; que **alguien haya entrado** con
+ella —que exista no prueba que funcione, y no se apaga el acceso de 186 personas sobre una
+teoría—; y que la ficha de `davidcisneros2209@outlook.es` exista y esté activa, o la migración
+dejaría la app **sin administrador**.
+
+**No borra ninguna ficha:** marca `datos.accesoPorCuenta = false`. Nombre, puesto y sucursal
+intactos, y la persona sigue apareciendo en el pase de lista, el historial y el bot.
+
 ### 13/sep/2026 — RESPONSIVO: la regla estaba escrita y no regía
 
 Instrucción de David: la app no es responsiva —empezando por el sidebar— y hay que revisar

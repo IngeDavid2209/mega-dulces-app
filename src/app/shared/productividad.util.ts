@@ -30,7 +30,7 @@
  * y Morelia Abastos, que juntas son el 41% de la plantilla.
  */
 
-import { esItemHecho, completadoEn } from './item-completado.util';
+import { estadoItem, completadoEn } from './item-completado.util';
 import { HorarioSucursal, SUCURSAL_A_TALENTO } from './horarios-sucursal.util';
 import { cuentaEnOperacion } from './medicion.util';
 
@@ -90,6 +90,14 @@ export interface Medicion {
   asignados: number;
   hechos: number;
 
+  /**
+   * Puntos SIN prueba que traen justificación del checklist. Desde la Fase 2.1
+   * no cuentan como hechos (invariante §5.3) pero tampoco se pierden: van aquí.
+   * Un `justificados` alto no es gente floja — es la señal de que algo impide
+   * trabajar, y la Fase 5 le pondrá causa y dueño.
+   */
+  justificados: number;
+
   /** De los hechos: cuántos se pueden situar en el tiempo. */
   conSello: number;
   sinSello: number;
@@ -110,7 +118,7 @@ export interface Medicion {
 
 function vacia(clave: string): Medicion {
   return {
-    clave, asignados: 0, hechos: 0, conSello: 0, sinSello: 0,
+    clave, asignados: 0, hechos: 0, justificados: 0, conSello: 0, sinSello: 0,
     dentroTurno: 0, fueraTurno: 0, aTiempo: 0, tarde: 0,
     minutosActividad: null, diasSinHorario: 0, dias: 0,
   };
@@ -161,7 +169,14 @@ export function medir(
 
     for (const it of (c.items || [])) {
       m.asignados++;
-      if (!esItemHecho(it, c)) continue;
+      // Fase 2.1: lo que no tiene prueba no cuenta como hecho. Pero la
+      // justificación no se tira: se cuenta aparte, porque «no se pudo y lo
+      // dijo» y «no se hizo y nadie dijo nada» tienen dueños distintos.
+      const estado = estadoItem(it, c);
+      if (estado !== 'hecho') {
+        if (estado === 'justificado') m.justificados++;
+        continue;
+      }
       m.hechos++;
 
       const cuando = completadoEn(it, fecha);

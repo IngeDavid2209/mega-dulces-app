@@ -110,6 +110,12 @@
                   {{ pct(m.hechos, m.asignados) == null ? '—' : pct(m.hechos, m.asignados) + '%' }}
                 </span>
                 <span class="pr-sub">{{ m.hechos }} de {{ m.asignados }}</span>
+                <!-- Fase 2.1: si el cumplimiento baja, la pantalla dice POR QUE.
+                     Un numero que cae sin pista al lado se lee como un bug. -->
+                <span class="pr-justif" *ngIf="m.justificados > 0"
+                      title="Puntos sin prueba que traen justificación del colaborador. Desde el 13/sep no cuentan como cumplidos: una nota no sustituye a la evidencia.">
+                  {{ m.justificados }} justificados sin prueba
+                </span>
               </td>
               <td>
                 <span class="pr-pct" [ngClass]="claseNivel(pct(m.aTiempo, m.aTiempo + m.tarde))">
@@ -196,6 +202,12 @@
                       {{ pct(m.hechos, m.asignados) == null ? '—' : pct(m.hechos, m.asignados) + '%' }}
                     </span>
                     <span class="pr-sub">{{ m.hechos }} de {{ m.asignados }}</span>
+                <!-- Fase 2.1: si el cumplimiento baja, la pantalla dice POR QUE.
+                     Un numero que cae sin pista al lado se lee como un bug. -->
+                <span class="pr-justif" *ngIf="m.justificados > 0"
+                      title="Puntos sin prueba que traen justificación del colaborador. Desde el 13/sep no cuentan como cumplidos: una nota no sustituye a la evidencia.">
+                  {{ m.justificados }} justificados sin prueba
+                </span>
                   </td>
                   <td>
                     <span class="pr-pct" [ngClass]="claseNivel(pct(m.aTiempo, m.aTiempo + m.tarde))">

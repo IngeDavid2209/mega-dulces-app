@@ -4,15 +4,54 @@
  * Reglas:
  *   1) Si el item tiene su evidencia real (foto, antes/después, varias fotos)
  *      o quedó palomeado cuando no pedía evidencia → HECHO.
- *   2) Si el checklist completo trae justificación del colaborador
- *      (notaEmpleado con texto o entregaConRetraso === true), TODOS sus items
- *      cuentan como hechos para los KPIs. La idea es que cuando el trabajador
- *      explica por qué no pudo completar, esa entrega justificada se considera
- *      "buena" para el cumplimiento, aunque el badge visual siga marcando
- *      Vencido/Parcial.
+ *   2) Si no la tiene, el punto NO está hecho. Si el checklist trae
+ *      justificación del colaborador, el punto queda `justificado`; si no,
+ *      `no_ejecutado`. Los dos son estados PROPIOS y ninguno cuenta como
+ *      cumplimiento.
  *
  * Esto centraliza la lógica que antes estaba repetida (y a veces
  * inconsistente) en Dashboard, Auditoría, Checkstore, Estadísticas y Ranking.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ *  FASE 2.1 — 13/sep/2026. LA REGLA 2 ANTERIOR QUEDA DEROGADA
+ * ═══════════════════════════════════════════════════════════════════════════
+ * Hasta hoy la regla 2 decía, literalmente:
+ *
+ *   «Si el checklist completo trae justificación del colaborador (notaEmpleado
+ *    con texto o entregaConRetraso === true), TODOS sus items cuentan como
+ *    hechos para los KPIs. La idea es que cuando el trabajador explica por qué
+ *    no pudo completar, esa entrega justificada se considera "buena" para el
+ *    cumplimiento, aunque el badge visual siga marcando Vencido/Parcial.»
+ *
+ * Se deroga porque rompe el invariante §5.3 del CLAUDE.md: «"Hecho" exige
+ * evidencia válida. `justificado` y `no_ejecutado` son estados propios.
+ * Ninguna nota, retraso ni excepción convierte un punto sin prueba en
+ * cumplido.» Con la regla vieja, UN SOLO CARÁCTER escrito en la nota cerraba
+ * los 377 puntos del manual sin una sola foto, en silencio, y los tableros
+ * salían preciosos.
+ *
+ * ─── POR QUÉ ESTO NO ABRE UNA DIVERGENCIA: LA CIERRA ───────────────────────
+ * El bot de WhatsApp lleva meses siendo estricto. `itemHecho` de
+ * `api/asistente-chat.js:569` es espejo de `tieneEvidencia` y su cuerpo NO
+ * consulta la justificación: el bot la ESCRIBE al enviar, pero nunca cierra un
+ * punto con ella. Así que hasta hoy la misma persona, el mismo punto y el mismo
+ * día se contaban DISTINTO según quién preguntara —el tablero o el bot—. Esto
+ * los pone de acuerdo.
+ *
+ * ─── LO QUE ESTE CAMBIO SÍ MUEVE, dicho para que nadie se sorprenda ────────
+ * La regla se aplica AL LEER, no al capturar. O sea que también cambia el
+ * HISTÓRICO: un checklist entregado en agosto con una nota y sin fotos deja de
+ * contar como cumplido. Es exactamente lo que se busca (que no se reporte
+ * cumplimiento sin prueba), pero hace que los tableros NO cuadren contra
+ * reportes impresos antes de hoy. Esa comparación hay que hacerla con el
+ * diagnóstico, no a ojo.
+ *
+ * ─── LO QUE NO TOCA ────────────────────────────────────────────────────────
+ * El ENVÍO. `checklist.ts:3039` gatea la entrega con `tieneEvidencia`, que ya
+ * era la estricta, así que nadie pierde la capacidad de cerrar su turno por
+ * este cambio. Y `tieneJustificacionChecklist` se conserva: la justificación
+ * no desaparece, deja de contar como cumplimiento y pasa a ser su propio
+ * estado, que es lo que la Fase 5 necesita para tipificar la causa.
  */
 
 /** ¿El item por sí solo tiene evidencia válida? */
@@ -40,10 +79,35 @@ export function tieneJustificacionChecklist(checklist: any): boolean {
   return false;
 }
 
-/** Criterio final unificado: ¿este item cuenta como hecho? */
+/**
+ * Los tres estados de un punto. Son excluyentes y cubren todos los casos: un
+ * punto siempre está en uno y solo uno.
+ *
+ * `justificado` NO es una variante de hecho: es la constancia de que alguien
+ * explicó por qué no se pudo. Separarlos es lo que permite que la Fase 5
+ * tipifique la causa (no_ejecutado, sin_prueba, no_verificado…) en vez de
+ * interpretarla después.
+ */
+export type EstadoItem = 'hecho' | 'justificado' | 'no_ejecutado';
+
+/** En qué estado está este punto. Nunca devuelve nada fuera de los tres. */
+export function estadoItem(item: any, checklist?: any): EstadoItem {
+  if (tieneEvidencia(item)) return 'hecho';
+  if (tieneJustificacionChecklist(checklist)) return 'justificado';
+  return 'no_ejecutado';
+}
+
+/**
+ * Criterio final unificado: ¿este item cuenta como hecho?
+ *
+ * Desde la Fase 2.1 (13/sep/2026) esto es EXACTAMENTE `tieneEvidencia`: la
+ * justificación ya no cierra un punto. Se conserva la firma con `checklist`
+ * —que ahora no se usa para decidir— porque la llaman 9 archivos y cambiarla
+ * obligaría a tocarlos todos en el mismo paso; el parámetro sigue sirviendo
+ * para `estadoItem`, que es a donde deben migrar los que quieran distinguir.
+ */
 export function esItemHecho(item: any, checklist?: any): boolean {
-  if (tieneEvidencia(item)) return true;
-  return tieneJustificacionChecklist(checklist);
+  return estadoItem(item, checklist) === 'hecho';
 }
 
 // ============================================================================

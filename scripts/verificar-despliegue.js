@@ -47,14 +47,24 @@ const DIST = path.join(__dirname, '..', 'dist', 'mega-dulces-app', 'browser');
  * prueba que el recorrido llega al chunk del organigrama.
  */
 const MARCADORES = [
-  // Nuevo (c8b4717): la rejilla movil de la tarjeta. `avatar texto` es el
-  // contenido de un `grid-template-areas`, asi que sobrevive la minificacion
-  // -las cadenas no se tocan- y aparece UNA sola vez en todo el bundle.
-  { txt: 'avatar texto', nuevo: true, que: 'la rejilla movil de la tarjeta' },
-  // Controles: existian antes de este despliegue y deben seguir en pie. Los
-  // tres viven en chunks DISTINTOS (tarjeta, organigrama, index), asi que si
-  // uno diera 0 seria por no haber recorrido ese chunk, no por no haber llegado.
-  { txt: 'cl-head-actions',    control: true, que: 'la cabecera de la tarjeta' },
+  // Nuevo (Fase 2.1, 13/sep/2026): la linea que NOMBRA los puntos sin prueba
+  // en la pantalla de productividad.
+  //
+  // LA ELECCION DE ESTE MARCADOR ES LA LECCION DEL DIA. El primer candidato fue
+  // `no_ejecutado`, el estado nuevo de la regla. Parecia perfecto y estaba MAL:
+  // medido contra produccion ANTES de desplegar, ya valia 2 — esa cadena vive
+  // desde hace dias en `tablero-direccion.util.ts` (el modelo de 5 causas). Como
+  // marcador habria dado verde sin desplegar nada. `justificado` tampoco sirve:
+  // esta en 6 archivos de HEAD. El cambio de la 2.1 es logica pura y NO INTRODUCE
+  // NINGUNA CADENA PROPIA -el minificador ademas se come `estadoItem`- asi que el
+  // unico marcador honesto es la clase CSS nueva, verificada como inexistente en
+  // HEAD antes de elegirla. Un marcador se valida en las DOS direcciones.
+  { txt: 'pr-justif', nuevo: true, que: 'los justificados nombrados en pantalla' },
+  // Controles: existian antes de este despliegue y deben seguir en pie. Viven
+  // en chunks DISTINTOS (tablero, tarjeta, organigrama, index), asi que si uno
+  // diera 0 seria por no haber recorrido ese chunk, no por no haber llegado.
+  { txt: 'no_ejecutado',       control: true, que: 'el modelo de causas del tablero' },
+  { txt: 'avatar texto',       control: true, que: 'la rejilla movil de la tarjeta' },
   { txt: 'org-destino',        control: true, que: 'el eje transversal' },
   { txt: 'md_rescate_arranque', control: true, que: 'el rescate del index' },
 ];

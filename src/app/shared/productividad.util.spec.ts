@@ -11,14 +11,14 @@
  * —«sin pruebas, calcula cumplimiento, puntualidad, turno y ritmo»— y lo marcó
  * como «2.2 · primera prueba a escribir». Esto es eso.
  *
- * ─── LO QUE ESTA PRUEBA **NO** HACE, dicho para que no se lea de más ───────
- * NO corrige la regla de cumplimiento. `medir()` llama a `esItemHecho`, que
- * cierra un punto sin evidencia si el checklist trae cualquier nota (invariante
- * §5.3 roto, Fase 2.1 pendiente). Ese defecto se prueba aquí TAL COMO ESTÁ HOY,
- * con el nombre del caso diciendo que está mal, por la misma razón que en
- * `item-completado.util.spec.ts`: cuando la 2.1 lo corrija, esta prueba tiene
- * que ponerse en rojo y cambiarse a mano. Una deuda que rompe una prueba es una
- * deuda que se ve; una que no rompe nada es una que se olvida.
+ * ─── NACIÓ FIJANDO UN DEFECTO, Y EL DEFECTO SE CORRIGIÓ ────────────────────
+ * Escrita el 13/sep/2026 con un bloque que afirmaba el defecto de entonces: una
+ * nota cerraba los tres puntos sin una sola foto (`hechos: 3`). La Fase 2.1 se
+ * aplicó ese mismo día y puso ese bloque en rojo —que era exactamente el
+ * mecanismo buscado— así que se cambió a mano, en el mismo commit que cambió la
+ * regla. Hoy `medir()` usa `estadoItem` y los puntos sin prueba caen en
+ * `justificados` o se quedan fuera, pero ninguno cuenta como cumplimiento.
+ * Una deuda que rompe una prueba es una deuda que se ve.
  *
  * ─── POR QUÉ LAS FECHAS NO SE ESCRIBEN A OJO ───────────────────────────────
  * `ventanaDeTurno` filtra por día de la semana (`h.dias.includes(dia)`). Fijar
@@ -267,33 +267,55 @@ describe('medir: el tiempo, que es lo que se le cuenta a una persona', () => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
-describe('MAL Y A PROPÓSITO: el defecto que la Fase 2.1 tiene que venir a romper', () => {
+describe('FASE 2.1: la justificación deja de contar como cumplimiento', () => {
 
-  it('una nota del colaborador cierra TODOS los puntos sin una sola foto', () => {
+  // Este bloque se llamaba «MAL Y A PROPÓSITO: el defecto que la Fase 2.1 tiene
+  // que venir a romper» y afirmaba `hechos: 3`. La fase vino el 13/sep/2026 y
+  // lo rompió, que era justo el mecanismo: los casos se cambiaron a mano, en el
+  // mismo commit que cambió la regla.
+
+  it('una nota del colaborador YA NO cierra los puntos sin foto', () => {
     const c = checklist([punto(), punto(), punto()], { notaEmpleado: 'no hubo producto' });
     const m = medir([c], [horario()], porPersona)[0];
 
-    // Esto es el invariante §5.3 roto, medido: tres puntos sin evidencia
-    // contando como hechos. Cuando la 2.1 corrija `esItemHecho`, `hechos`
-    // pasará a 0 y este caso se pondrá en rojo. Es lo que queremos.
     expect(m.asignados).toBe(3);
-    expect(m.hechos).toBe(3);
-
-    // Y la consecuencia que casi nadie mira: son hechos SIN SELLO, así que
-    // inflan el cumplimiento y no aportan un solo minuto de actividad.
+    expect(m.hechos).toBe(0);
+    // Pero no se pierden: quedan contados como justificados, que es un estado
+    // con dueño propio en el modelo de causas.
+    expect(m.justificados).toBe(3);
     expect(m.conSello).toBe(0);
-    expect(m.sinSello).toBe(3);
     expect(m.minutosActividad).toBeNull();
   });
 
-  it('la entrega con retraso hace lo mismo', () => {
+  it('la entrega con retraso tampoco los cierra, y también se cuenta aparte', () => {
     const c = checklist([punto(), punto()], { entregaConRetraso: true });
-    expect(medir([c], [horario()], porPersona)[0].hechos).toBe(2);
+    const m = medir([c], [horario()], porPersona)[0];
+    expect(m.hechos).toBe(0);
+    expect(m.justificados).toBe(2);
   });
 
-  it('una nota en blanco NO alcanza: los espacios no justifican nada', () => {
+  it('sin justificación los puntos sin prueba NO engordan `justificados`', () => {
+    // La diferencia entre «no se pudo y lo dijo» y «no se hizo y nadie dijo
+    // nada». Si las dos cayeran en el mismo contador, la Fase 5 no podría
+    // repartir la causa.
+    const m = medir([checklist([punto(), punto()])], [horario()], porPersona)[0];
+    expect(m.hechos).toBe(0);
+    expect(m.justificados).toBe(0);
+  });
+
+  it('una nota en blanco no justifica: los espacios no cuentan', () => {
     const c = checklist([punto(), punto()], { notaEmpleado: '   ' });
-    expect(medir([c], [horario()], porPersona)[0].hechos).toBe(0);
+    const m = medir([c], [horario()], porPersona)[0];
+    expect(m.hechos).toBe(0);
+    expect(m.justificados).toBe(0);
+  });
+
+  it('un punto CON foto se cierra por su prueba aunque el checklist traiga nota', () => {
+    const c = checklist([puntoConFoto('09:00'), punto()], { notaEmpleado: 'faltó material' });
+    const m = medir([c], [horario()], porPersona)[0];
+    expect(m.hechos).toBe(1);
+    expect(m.justificados).toBe(1);
+    expect(m.asignados).toBe(2);
   });
 });
 

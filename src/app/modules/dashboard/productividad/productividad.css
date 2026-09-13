@@ -148,3 +148,13 @@
    que nadie lo lea como una region de la empresa. */
 .pr-btn-pendiente { color: var(--warn-soft-fg) !important; }
 .pr-btn-pendiente.activo { background: var(--warn-soft-bg) !important; color: var(--warn-soft-fg) !important; }
+
+/* Fase 2.1 (13/sep/2026): los puntos sin prueba que traen justificacion. No
+   cuentan como cumplidos, pero se NOMBRAN — si el porcentaje baja y no hay
+   pista al lado, se lee como un bug de la app y no como lo que es. Color de
+   aviso, no de error: no se hizo nada malo, falta la prueba. */
+.pr-justif {
+  display: block;
+  font-size: 11px;
+  color: var(--warn-soft-fg);
+}

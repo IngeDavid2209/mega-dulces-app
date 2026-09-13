@@ -24,15 +24,18 @@
  * día que la plantilla cambie, cada punto del manual queda bloqueado y NADIE
  * puede entregar. El caso de abajo lo deja escrito.
  *
- * ─── Y FIJA EL DEFECTO CONOCIDO, a propósito ───────────────────────────────
- * `esItemHecho` cuenta el punto como hecho si el checklist trae CUALQUIER nota
- * o se entregó con retraso, sin mirar la evidencia. Eso rompe el invariante
- * §5.3 y es la Fase 2.1, pendiente. Se prueba tal como está HOY, con el nombre
- * del caso diciendo que está mal: cuando la Fase 2.1 lo corrija, esta prueba
- * tiene que fallar y cambiarse a mano. Es la diferencia entre una deuda que se
- * ve y una que se olvida.
+ * ─── EL DEFECTO QUE FIJABA, YA CORREGIDO (Fase 2.1, 13/sep/2026) ───────────
+ * Este archivo nació con un caso llamado «MAL Y A PROPÓSITO» que afirmaba que
+ * cualquier nota cerraba un punto sin foto, para que la Fase 2.1 tuviera que
+ * venir a romperlo en vez de cambiar los números de 186 personas sin que nadie
+ * lo notara. Funcionó exactamente así: al aplicar la fase, ese caso se puso en
+ * rojo y se cambió a mano en el mismo commit. Hoy afirma la regla correcta.
+ *
+ * La mecánica queda escrita porque vale más que este caso concreto: una deuda
+ * que rompe una prueba es una deuda que se ve; una que no rompe nada es una que
+ * se olvida.
  */
-import { tieneEvidencia, tieneJustificacionChecklist, esItemHecho } from './item-completado.util';
+import { tieneEvidencia, tieneJustificacionChecklist, esItemHecho, estadoItem } from './item-completado.util';
 
 describe('evidencia de un punto', () => {
 
@@ -95,15 +98,46 @@ describe('evidencia de un punto', () => {
     expect(tieneEvidencia(bloqueado)).toBe(false);
   });
 
-  // ═══ EL DEFECTO CONOCIDO (Fase 2.1) ══════════════════════════════════════
-  it('MAL Y A PROPÓSITO: una nota cierra un punto sin foto en los tableros', () => {
-    // Rompe el invariante §5.3. Se fija tal cual está HOY para que la Fase 2.1
-    // tenga que venir a romper esta prueba en vez de cambiar los números de 186
-    // personas sin que nadie lo note.
+  // ═══ FASE 2.1, APLICADA EL 13/sep/2026 ═══════════════════════════════════
+  //  Este bloque decía «MAL Y A PROPÓSITO: una nota cierra un punto sin foto en
+  //  los tableros» y afirmaba `toBe(true)`, fijando el defecto para que la fase
+  //  tuviera que venir a romperlo. Vino. Ahora afirma la regla correcta, que es
+  //  el invariante §5.3: ninguna nota convierte un punto sin prueba en cumplido.
+  it('una nota NO cierra un punto sin foto: el invariante §5.3, ya en vigor', () => {
     const sinFoto = puntoDelManual();
     expect(tieneEvidencia(sinFoto)).toBe(false);
-    expect(esItemHecho(sinFoto, { notaEmpleado: 'x' })).toBe(true);
-    expect(esItemHecho(sinFoto, { entregaConRetraso: true })).toBe(true);
+    expect(esItemHecho(sinFoto, { notaEmpleado: 'x' })).toBe(false);
+    expect(esItemHecho(sinFoto, { entregaConRetraso: true })).toBe(false);
+  });
+
+  it('la justificación NO desaparece: pasa a ser su propio estado', () => {
+    // Que no cuente como hecho no es lo mismo que tirarla. `justificado` y
+    // `no_ejecutado` tienen dueños distintos en el modelo de causas (§4), y por
+    // eso son estados y no ausencia de dato.
+    const sinFoto = puntoDelManual();
+    expect(estadoItem(sinFoto, { notaEmpleado: 'no llegó el producto' })).toBe('justificado');
+    expect(estadoItem(sinFoto, { entregaConRetraso: true })).toBe('justificado');
+    expect(estadoItem(sinFoto, {})).toBe('no_ejecutado');
+    expect(estadoItem(sinFoto, undefined)).toBe('no_ejecutado');
+  });
+
+  it('con evidencia el estado es hecho, aunque además traiga nota', () => {
+    // Un punto con foto Y con nota se cierra por su prueba: la nota no lo
+    // degrada. Es el caso que el diagnóstico llama «no se mueve».
+    const conFoto = puntoDelManual({ photos: [{ url: 'u' }] });
+    expect(estadoItem(conFoto, { notaEmpleado: 'ojo con el anaquel' })).toBe('hecho');
+    expect(esItemHecho(conFoto, { notaEmpleado: 'ojo con el anaquel' })).toBe(true);
+  });
+
+  it('los tres estados son excluyentes y cubren todo: siempre cae en uno', () => {
+    const casos = [
+      [puntoDelManual({ photos: [{ url: 'u' }] }), {}],
+      [puntoDelManual(), { notaEmpleado: 'x' }],
+      [puntoDelManual(), {}],
+    ];
+    const vistos = casos.map(([it, ck]) => estadoItem(it, ck));
+    expect(vistos).toEqual(['hecho', 'justificado', 'no_ejecutado']);
+    expect(new Set(vistos).size).withContext('la muestra dejó de discriminar').toBe(3);
   });
 
   it('una nota en blanco NO justifica (los espacios no cuentan)', () => {

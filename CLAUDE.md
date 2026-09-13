@@ -189,7 +189,7 @@ Orden por **dependencia y riesgo**, no por importancia. Un paso ≤ 3 días. Mar
 | Fase | Objetivo | Semanas | Depende de | Estado |
 |---|---|---|---|---|
 | 0 | Medir antes de tocar (detener `corte.js`, divergencia, KPIs congelados, réplicas) | 0.5 | — | 🔄 **0.1 ✅ · 0.3 ✅ · 0.4 ✅ (1 réplica, 1/sep) · falta 0.2** |
-| 2 | Que los números digan la verdad (hecho ≠ justificado + primeras pruebas) | 1 | 0 | 🔺 **EL SIGUIENTE. Desde el 3/sep los 377 puntos piden foto por orden de Dirección, y `esItemHecho` sigue cerrando un punto sin foto con cualquier nota: la orden vale en pantalla y NO en los tableros** |
+| 2 | Que los números digan la verdad (hecho ≠ justificado + primeras pruebas) | 1 | 0 | 🔄 **2.2 ✅ (13/sep: `productividad.util.spec.ts`, 28 casos) · 2.1 BLOQUEADA POR UN NÚMERO: la cota de «1 punto» de la 045 CADUCÓ el 3/sep (se midió con 50 de 377 puntos pidiendo evidencia; hoy son los 377). Hay que correr `diagnostico-regla-cumplimiento.js` ANTES de tocar `esItemHecho`** |
 | 1 | Cerrar el ferrocarril: una sola base | 3 | 0 | ⬜ |
 | 3 | La estructura como dato (unidad, sucursal, ámbito, puesto, plaza, cobertura) | 4 | 1 | 🔄 **3.1a ✅ (9/sep: `mdtask_plazas` + `mdtask_coberturas` creadas y sembrables; nadie las lee todavía) · falta 3.1b (la Encargada numera su cuadrilla), 3.1c (ámbito), 3.2 (el robot emite a la plaza), 3.3 (los 119 usos de `assigned`). Los tableros SIGUEN sumando por `store`: los 15 vendedores de Padre Hidalgo le siguen contando a la Encargada** |
 | 4 | Navegación (4.1 se puede hacer YA, sin dependencias) | 1.5 | — / 3 | 🔄 **4.1 ✅ · 4.1b: 2a–2d ✅ (15→12 entradas) · falta el Paso 3 para llegar a 7 · 4.3 espera Fase 3 · el Dashboard ya se gatea por jefatura (3/sep) · el ÁRBOL de Tareas del Manual ya se recorta por puesto (11/sep): cada nivel arranca en su propia raíz** |
@@ -219,7 +219,7 @@ extra por la fase que se indica):
 | ~~Entrada de menú 20: "Productividad y turno"~~ **SALDADA 31/ago (paso 2c)** | Congelamiento §7 | 4.1 — hoy es pestaña de Control, no entrada |
 | Mapa nuevo por texto en `zonas.util.ts → POR_SUCURSAL` | Hallazgo 1 | 3.1 (semilla de unidades) |
 | `productividad.util.ts` hereda el defecto de `esItemHecho` | Invariante §5.3 | 2.1 |
-| `productividad.util.ts` sin pruebas (calcula cumplimiento, puntualidad, turno, ritmo) | §8.8 | 2.2 — **primera prueba a escribir** |
+| ~~`productividad.util.ts` sin pruebas (calcula cumplimiento, puntualidad, turno, ritmo)~~ **SALDADA 13/sep** | §8.8 | 2.2 — 28 casos, con control negativo corrido |
 | Foto obligatoria en los 377 puntos, incluidas 62+ declaraciones donde no hay qué fotografiar (orden de Dirección, 3/sep) | Regla 1 de `evidencia-manual.ts` | 5 — verificación por muestra; la declaración se comprueba firmando, no fotografiando |
 | Migraciones 038, 039, 041, 042, 043 con nombres de personas | Hallazgo 8 | 9.4 · **no se editan** (ya aplicadas) |
 
@@ -321,6 +321,115 @@ de que exista la plaza sería partir el problema en dos, no resolverlo.
     columna devuelve cero documentos, sin error.
 
 ## 9. Bitácora del plan
+
+### 13/sep/2026 — PASO 2.2 ✅, y el día que las guardias valieron más que los datos
+
+Día sin un solo número de producción: los tres diagnósticos que David iba a correr **no
+llegaron a medir**. Y eso, que parece un día perdido, dejó tres cosas que sí valen.
+
+#### LOS DOS CEROS ERAN «NO LEÍ», Y LOS SCRIPTS LO DIJERON SOLOS
+
+    [regla]  checklists leídos desde 2026-08-13 → 0   → ABORTA: «con la app en producción
+                                                        eso no es "no hay": es "no leí"»
+    [plazas] fichas activas leídas de la base  → 0   → ABORTA: «la 050 contó 150, así que
+                                                        esto es un fallo de lectura»
+
+**Ninguno concluyó nada**, que es exactamente para lo que se escribieron esas guardias. Sin
+ellas, el reporte del día habría sido «cero puntos se cierran por justificación, la Fase 2.1 es
+gratis» — la conclusión más cara posible, servida con cara de dato.
+
+**La causa es la que ningún script podía nombrar.** Un `select ... from mdtask_usuarios` que
+devuelve 0 filas **sin error** significa que la tabla existe y está vacía: la `DATABASE_URL`
+apuntaba a una base **con el esquema aplicado y sin datos**, no a producción. Salió de
+`railway variables -s Postgres`, y el §1 ya avisaba que **el Postgres es compartido con otras
+apps**: «el servicio que se llama Postgres» no tiene por qué ser el de MDTask.
+
+**`scripts/diagnostico-conexion.js` (nuevo)** contesta esa pregunta y ninguna otra: a qué base
+le estoy hablando (host, puerto, base, usuario), cuántas tablas `mdtask_` tiene y cuántas filas
+hay en las cinco testigo. Cierra con un veredicto que se apoya en una cifra ya medida —la 050
+contó **150 activas**— así que distingue las tres lecturas que se ven idénticas: base vacía,
+base ajena y base buena. **Nunca imprime la contraseña:** parsea la URL y descarta ese campo
+antes de escribir nada. Probado en su lado negativo: sin `DATABASE_URL` **aborta con código 1**,
+no devuelve un cero.
+
+#### LA PREMISA DE LA FASE 2 CADUCÓ, Y ESTABA ESCRITA AQUÍ COMO SI RIGIERA
+
+El §7 dice «arreglar la regla ahora es gratis: son 1 punto en toda la empresa (migración 045)».
+**Ese 1 se midió el 31/ago, cuando solo ~50 de 377 puntos pedían evidencia.** Desde el 3/sep los
+377 la piden, así que **todo punto palomeado sin foto cae ahora en la rama de la justificación**.
+La cota no vale y nadie sabe cuánto es. Es el corolario (e) —un control anclado a datos de
+producción caduca cuando arreglas los datos— aplicado a **la premisa de una fase entera**, y por
+eso la 2.1 queda marcada como *bloqueada por un número* en vez de *la siguiente*.
+
+**Pero apareció un argumento mejor que el que caducó.** El bot de WhatsApp lleva meses siendo
+estricto: el `itemHecho` de `api/asistente-chat.js:569` es espejo de `tieneEvidencia` y su cuerpo
+**no consulta la justificación**. Así que la 2.1 **no abre una divergencia entre el tablero y el
+bot: CIERRA la que ya existe en producción.** Hoy la misma persona, el mismo punto y el mismo día
+se cuentan distinto según quién pregunte.
+
+**Y el respaldo de ese argumento estaba mal medido, en mi propio script.** La línea 375 imprimía
+«verificado: 0 referencias a notaEmpleado/entregaConRetraso» y el archivo tiene **10**. La
+conclusión aguanta —las 10 están en el mapeo de columnas, un comentario, la **escritura** de la
+justificación al enviar y reportes de envío; **ninguna dentro de las 7 líneas de `itemHecho`**—
+pero era una **cadena escrita a mano, no una medición**, y encima respaldando la decisión más
+importante de la fase. Corregida para decir lo comprobable y dónde mirarlo. Un «verificado» que
+nadie verificó es peor que no escribir nada: se cita después como si fuera dato.
+
+#### PASO 2.2 ✅ — `productividad.util.spec.ts`, 28 casos
+
+La deuda registrada el 31/ago («calcula cumplimiento, puntualidad, turno y ritmo, sin una sola
+prueba») queda saldada. **81 de 81 en verde** en toda la suite. Cubre lo que produce números de
+una persona: la ventana de turno (varios turnos → del más temprano al más tardío; sucursal fuera
+del mapa → `null`, no una ventana inventada), qué entra en la operación (Espacio TEC, archivado,
+y la exclusión **sin** motivo que SIGUE contando, que es el lado seguro del error), dentro/fuera
+de turno, a tiempo/tarde con límites en `HH:mm` y en `h:mm PM`, los minutos de actividad como
+**promedio por día** —tres minutos en dos puntos es la firma de palomear de una sentada— y `pct`
+devolviendo `null` con denominador cero, que es «no se sabe» y no «0%».
+
+**Fija el defecto heredado a propósito**, con el nombre del caso diciendo que está mal. Control
+negativo corrido, cambiando **una línea** (107 → 107 líneas, `diff` de una línea comprobado):
+simular la Fase 2.1 —que la justificación deje de cerrar un punto— pone **3 pruebas en rojo** y
+los mensajes nombran el defecto: `Expected 0 to be 3`. Es decir, **la 2.1 no puede pasar
+inadvertida**: tiene que venir a romper estas pruebas y cambiarlas a mano.
+
+Y una guardia de discriminación al final, por la lección del 31/ago: la misma muestra tiene que
+producir **dentro Y fuera** de turno, **a tiempo Y tarde**. Sin eso, una `medir()` que devolviera
+siempre lo mismo pasaría los 27 casos de arriba.
+
+**Un comentario mío mentía y se corrigió antes de commitear:** decía que los sellos del segundo
+día «se calculan sobre su propia fecha» cuando apuntaban a la del primero. La prueba pasaba igual
+—el rango daba 30 por accidente—, que es justo lo que la vuelve peligrosa.
+
+#### `git push` SIGUE BLOQUEADO, y la causa no era un permiso
+
+`gh auth status` dice **`dev-david24`**; el remoto es **`IngeDavid2209/mega-dulces-app`**. Son
+**cuentas distintas**, y por eso GitHub contesta `Repository not found` en vez de «acceso
+denegado»: para esa cuenta ese repo no existe. Medido con su denominador, que es lo que lo cierra:
+
+| medición | resultado |
+|---|---|
+| repos que ve `dev-david24` | **0 de 0** — el «ninguno» era «no ve nada» |
+| `IngeDavid2209/mega-dulces-app` autenticado | 404 |
+| el usuario `IngeDavid2209` | HTTP 200 (existe) |
+| el repo sin autenticar | 404 (privado o renombrado) |
+
+Siguen **39 commits** solo en esta laptop y en producción. La consecuencia con reloj es la del
+`corte.js`: en `origin/main` esa versión **no tiene la guarda** (`CORTE_MODO` → 0 apariciones,
+`batch.delete` → 1). El cron sí está muerto —el único `- cron:` del remoto es el comentario del
+paso 0.1—, así que el peligro es **el botón «Run workflow»**, no el calendario. Hasta que el push
+funcione, la protección es no clicarlo.
+
+#### Y UNA CREDENCIAL QUEDÓ EXPUESTA, dicho aquí para que no se olvide
+
+La `DATABASE_URL` **completa, con contraseña**, salió en una captura de pantalla compartida en la
+conversación. Hay que **rotarla en Railway**, y antes de rotar comprobar que la `DATABASE_URL` de
+MDTask sea una **referencia** (`${{Postgres.DATABASE_URL}}`) y no un literal pegado — si es
+literal, rotar tumba la app hasta actualizarla. `Read-Host` evita que quede en el historial de
+PowerShell, pero **hace eco en pantalla**: para credenciales, la captura es el descuido fácil.
+
+**Lo que este día NO hizo:** no movió un solo número de tablero, no tocó `esItemHecho`, no
+sembró plazas y no midió divergencia. Los tres diagnósticos siguen pendientes de una
+`DATABASE_URL` que apunte a producción.
 
 ### 11/sep/2026 — QUIÉN VE QUÉ EN TAREAS DEL MANUAL: el permiso era binario
 

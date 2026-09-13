@@ -128,6 +128,43 @@
       </span>
     </div>
 
+    <!-- ═══════════ DE LA PLANTILLA A LAS PLAZAS ═══════════ -->
+    <!-- Se muestra aunque no se pueda tocar: ver «faltan 4 plazas» es la mitad
+         del valor, aunque quien mira no sea quien las crea. -->
+    <div class="pl-plazas">
+      <h2>Plazas numeradas</h2>
+      <p class="pl-plazas-nota">
+        De la plantilla salen las plazas: «Anaquelista&nbsp;1», «Anaquelista&nbsp;2»…
+        El número viene de la <strong>autorización</strong>, no de las personas.
+        Quién es el Anaquelista 1 lo decide la Encargada al asignar.
+      </p>
+
+      <p class="pl-plazas-estado">
+        Hay <strong>{{ plazasDeLaSucursal().length }}</strong> plaza(s) creada(s)
+        <span *ngIf="plan().crear.length">· faltan <strong>{{ plan().crear.length }}</strong></span>
+        <span *ngIf="plan().retirar.length">· sobra(n) <strong>{{ plan().retirar.length }}</strong></span>
+      </p>
+
+      <!-- Las que sobran se NOMBRAN y no se tocan: puede haber alguien dentro. -->
+      <div class="pl-problema" *ngIf="plan().retirar.length">
+        Sobran {{ plan().retirar.length }} plaza(s) respecto a la plantilla. No se
+        retiran solas: puede haber una persona en ellas. Primero baja la plantilla
+        o mueve a esa persona, y luego retíralas a mano.
+      </div>
+
+      <div class="pl-problema" *ngIf="plan().sinPlantilla.length">
+        Hay plazas de puestos sin renglón en la plantilla
+        ({{ plan().sinPlantilla.join(', ') }}). No se tocan: nadie ha autorizado
+        cuántas debe haber.
+      </div>
+
+      <button class="pl-btn" *ngIf="puedeEditar"
+              [disabled]="!plan().crear.length || guardando()"
+              (click)="generarPlazas()">
+        Crear las {{ plan().crear.length }} plaza(s) que faltan
+      </button>
+    </div>
+
     <!-- ═══════════ AGREGAR UN RENGLÓN ═══════════ -->
     <div class="pl-agregar" *ngIf="puedeEditar">
       <h2>Agregar un puesto a la plantilla</h2>

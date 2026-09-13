@@ -42,6 +42,7 @@ import {
   declaracionVigente, RenglonComparado, ResumenPlantilla,
   PuestoDeclarado, RenglonPlantilla, ProblemaDeclaracion,
 } from '../../../shared/plantilla.util';
+import { planDePlazas, PlanDePlazas, Plaza } from '../../../shared/cobertura.util';
 
 /** Hoy en 'YYYY-MM-DD', hora local. */
 function hoyISO(): string {
@@ -68,6 +69,7 @@ export class PlantillaComponent implements OnInit {
   usuarios = signal<any[]>([]);
   plantillas = signal<any[]>([]);
   declarados = signal<PuestoDeclarado[]>([]);
+  plazas = signal<Plaza[]>([]);
   sucursal = signal<string>('');
 
   /** Solo Dirección captura. Ver la cabecera. */
@@ -97,14 +99,16 @@ export class PlantillaComponent implements OnInit {
     this.cargando.set(true);
     this.error.set(null);
     try {
-      const [us, pl, de] = await Promise.all([
+      const [us, pl, de, pz] = await Promise.all([
         this.api.get('/api/usuarios'),
         this.api.get('/api/plantillas'),
         this.api.get('/api/puestos-declarados'),
+        this.api.get('/api/plazas'),
       ]);
       this.usuarios.set(us?.items || us || []);
       this.plantillas.set(pl?.items || pl || []);
       this.declarados.set((de?.items || de || []) as PuestoDeclarado[]);
+      this.plazas.set((pz?.items || pz || []) as Plaza[]);
 
       const dispo = this.sucursales();
       if (dispo.length && !this.sucursal()) this.sucursal.set(dispo[0]);
@@ -215,6 +219,46 @@ export class PlantillaComponent implements OnInit {
       .filter(p => !ya.has(p.id))
       .sort((a, b) => a.nombre.localeCompare(b.nombre));
   });
+
+  // ── De la plantilla a las plazas ─────────────────────────────────────────
+
+  /**
+   * Qué plazas faltan para que esta sucursal cuadre con su plantilla.
+   *
+   * Se calcula SIEMPRE, se aplique o no: ver «faltan 4 plazas por crear» es la
+   * mitad del valor de la pantalla, aunque quien mira no pueda crearlas.
+   */
+  plan = computed<PlanDePlazas>(() =>
+    planDePlazas(this.sucursal(), this.renglones(), this.plazas()));
+
+  /** Las plazas vigentes de esta sucursal, para poder decir cuántas hay ya. */
+  plazasDeLaSucursal = computed<Plaza[]>(() =>
+    this.plazas().filter(p => p?.lugar === this.sucursal() && p?.vigente !== false));
+
+  /**
+   * Crea las plazas que faltan. NO retira las que sobran: el plan las reporta
+   * y la decisión es de quien mira, porque puede haber una persona dentro.
+   * Automatizar el retiro dejaría a alguien sin sitio sin que nadie lo
+   * decidiera (§8.5 aplicado a una acción destructiva).
+   */
+  async generarPlazas() {
+    if (!this.puedeEditar) return;
+    const aCrear = this.plan().crear;
+    if (!aCrear.length) return;
+    this.guardando.set(true);
+    try {
+      for (const p of aCrear) {
+        await this.api.guardar('/api/plazas', {
+          id: p.id, puestoId: p.puestoId, lugar: p.lugar, numero: p.numero,
+          vigente: true, creadaEn: Date.now(),
+          creadaPor: this.currentUser?.nombre || this.currentUser?.usuario || '',
+        });
+      }
+      await this.cargar();
+    } catch (e: any) {
+      this.error.set(e?.message || 'No se pudieron crear las plazas.');
+    } finally { this.guardando.set(false); }
+  }
 
   // ── Escrituras ───────────────────────────────────────────────────────────
 

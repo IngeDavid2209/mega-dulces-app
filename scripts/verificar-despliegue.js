@@ -47,23 +47,23 @@ const DIST = path.join(__dirname, '..', 'dist', 'mega-dulces-app', 'browser');
  * prueba que el recorrido llega al chunk del organigrama.
  */
 const MARCADORES = [
-  // Nuevo (Fase 2.1, 13/sep/2026): la linea que NOMBRA los puntos sin prueba
-  // en la pantalla de productividad.
+  // ── COMO SE ELIGE UN MARCADOR, que es la leccion del 13/sep/2026 ─────────
+  // Para la Fase 2.1 el primer candidato fue `no_ejecutado`, el estado nuevo de
+  // la regla. Parecia inmejorable y estaba MAL: medido contra produccion ANTES
+  // de desplegar YA VALIA 2 — esa cadena vive desde hace dias en
+  // `tablero-direccion.util.ts` (el modelo de 5 causas), asi que habria dado
+  // verde sin desplegar nada. `justificado` tampoco servia: 6 archivos en HEAD.
   //
-  // LA ELECCION DE ESTE MARCADOR ES LA LECCION DEL DIA. El primer candidato fue
-  // `no_ejecutado`, el estado nuevo de la regla. Parecia perfecto y estaba MAL:
-  // medido contra produccion ANTES de desplegar, ya valia 2 — esa cadena vive
-  // desde hace dias en `tablero-direccion.util.ts` (el modelo de 5 causas). Como
-  // marcador habria dado verde sin desplegar nada. `justificado` tampoco sirve:
-  // esta en 6 archivos de HEAD. El cambio de la 2.1 es logica pura y NO INTRODUCE
-  // NINGUNA CADENA PROPIA -el minificador ademas se come `estadoItem`- asi que el
-  // unico marcador honesto es la clase CSS nueva, verificada como inexistente en
-  // HEAD antes de elegirla. Un marcador se valida en las DOS direcciones.
-  // Nuevo (paso 3.1b, 13/sep/2026): la pantalla de plantilla. Verificado como
-  // inexistente en HEAD antes de elegirlo, y presente en el dist despues de
-  // construir — las dos direcciones, que es lo que hace valido un marcador.
-  { txt: 'pl-sinpuesto', nuevo: true, que: 'la pantalla de plantilla' },
-  // Fue el marcador nuevo del despliegue anterior; ahora sirve de control.
+  // La raiz: un cambio de LOGICA PURA no introduce ninguna cadena propia, y el
+  // minificador ademas se come los nombres de funcion (`estadoItem` -> 0 en el
+  // bundle) aunque respete los literales de cadena. Por eso los marcadores
+  // buenos acaban siendo clases CSS de algo que de verdad se pinta, y cada una
+  // se valida en LAS DOS DIRECCIONES: inexistente en HEAD, presente en el dist.
+  //
+  // Nuevo de este despliegue: la generacion de plazas desde la plantilla.
+  { txt: 'pl-plazas', nuevo: true, que: 'la generacion de plazas desde la plantilla' },
+  // Los dos anteriores, ahora controles. Cada uno fue el "nuevo" de su dia.
+  { txt: 'pl-sinpuesto', control: true, que: 'la pantalla de plantilla' },
   { txt: 'pr-justif', control: true, que: 'los justificados nombrados en pantalla' },
   // Controles: existian antes de este despliegue y deben seguir en pie. Viven
   // en chunks DISTINTOS (tablero, tarjeta, organigrama, index), asi que si uno

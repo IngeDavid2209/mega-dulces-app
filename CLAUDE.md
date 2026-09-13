@@ -324,6 +324,77 @@ de que exista la plaza sería partir el problema en dos, no resolverlo.
 
 ## 9. Bitácora del plan
 
+### 13/sep/2026 — SE ACABAN LOS USUARIOS POR PERSONA (parte A de 3)
+
+Instrucción de David, literal: *«no quiero que quede ningún usuario más que el que tiene el correo
+de davidcisneros2209@outlook.es […] dame la forma de cómo vamos a manejar el login […] cómo vamos
+a darle su usuario a anaquelista uno, dos y tres»*. El correo lo confirmó por escrito antes de
+escribir una línea: va a ser **el único acceso administrador de la app**, y equivocarlo deja a
+todo el mundo fuera, él incluido.
+
+**LA DISTINCIÓN QUE HACE QUE ESTO NO SEA UN CORREO COMPARTIDO:**
+
+    CUENTA   por PLAZA      «PH-ANA-1» + un PIN de 6 dígitos
+    PERSONA  por COBERTURA  quién la ocupa hoy lo dice el pase de lista
+
+Sin la segunda mitad esto sería exactamente `mataviejitas778@gmail.com`: una cuenta que varias
+personas usan y cuya evidencia no se puede atribuir a nadie (migraciones 051-053). Con ella, cada
+foto sigue teniendo nombre — que es el invariante §4, «identidad (cobertura, no nombre escrito)».
+
+**Las tres decisiones que David tomó**, y quedan anotadas para no rediscutirlas: las fichas de
+persona **se apagan como cuenta y se conservan como nombres** (borrarlas dejaría al pase de lista
+sin a quién asignar y a los checklists de agosto sin a quién atribuir); la credencial es
+**código + PIN**, no QR; y si nadie pasó lista, la persona **entra igual**, elige quién es y queda
+marcada como «identidad sin confirmar» — porque bloquear la sucursal entera porque la Encargada
+llegó tarde es peor que el problema que resuelve.
+
+#### EL CÓDIGO NO ES UNA CONCATENACIÓN DE TRES LETRAS
+
+Es lo que más trabajo llevó, y sale del catálogo real: **`surtidor-ventas` y `surtidor-sucursal`
+abrevian los dos a SUR**. Si dos plazas comparten código, **dos personas entran a la misma
+cuenta** y toda la trazabilidad construida hoy se cae en el último metro.
+
+`generarCodigos()` genera contra el conjunto de los ya usados y alarga hasta ser único, tomando
+la inicial del **siguiente token** — no más letras de la primera palabra, que en esos dos son
+ocho iguales. Y es **determinista**: el mismo conjunto en otro orden da los mismos códigos,
+porque regenerar no puede cambiarle el código a quien ya lo tiene apuntado en una libreta.
+
+**Nunca reutiliza un código**, ni el de una plaza retirada: si se reciclara, la hoja impresa de
+alguien empezaría a abrir la plaza de otra persona y **ninguna de las dos se enteraría**.
+
+#### EL PIN SE GENERA EN EL SERVIDOR, Y SE VE UNA VEZ
+
+`crypto.randomInt`, no `Math.random` del navegador: con la hora de creación, los PINs de una
+sucursal entera se volverían adivinables. Se guarda como **hash bcrypt** —el mismo esquema de
+`api/_password.js`— y se devuelve **una sola vez**. No hay forma de consultarlo después, y la
+pantalla lo dice **antes** de generar, no después: si alguien cierra sin anotar, hay que
+regenerar.
+
+Los dos índices de la 058 son la mitad de la seguridad: `codigo` único en **toda** la tabla
+(incluidas las inactivas) y **una** credencial activa por plaza.
+
+**173 pruebas**, 17 nuevas. La guardia que importa: en una sucursal con 13 puestos × 4 plazas,
+**ningún código se repite**.
+
+**Y un detalle cazado al elegir el marcador de despliegue:** `pl-hoja` **ya existía** en
+`agenda.css` con otro significado. Angular encapsula, así que no chocan en runtime, pero dos
+clases con el mismo nombre y distinto sentido son una trampa para el siguiente que lea.
+Renombrada a `pl-acc-hoja`. Es la tercera vez hoy que elegir un marcador destapa algo: la
+mecánica de validarlo en las dos direcciones encuentra cosas que no venía a buscar.
+
+**DESPLEGADO:** `pl-accesos` 0 → 5, migración 058 aplicada con `0 filas (0 activas)` —el
+resultado declarado de antemano— y `/api/credenciales-plaza` en 401.
+
+**LO QUE FALTA, y el orden es obligatorio:**
+
+| | qué | riesgo si se adelanta |
+|---|---|---|
+| **B** | el login acepta código+PIN, y la pantalla «¿quién eres hoy?» | ninguno: los dos logins conviven |
+| **C** | apagar las cuentas de persona | **si A y B no están probadas con gente real, la operación se para** |
+
+**C no se toca hasta que una sucursal real haya entrado por plaza y funcione.** Es el único paso
+de todo el día que puede dejar a 186 personas fuera de la app.
+
 ### 13/sep/2026 — RESPONSIVO: la regla estaba escrita y no regía
 
 Instrucción de David: la app no es responsiva —empezando por el sidebar— y hay que revisar

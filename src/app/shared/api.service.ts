@@ -23,6 +23,23 @@ export class ErrorApi extends Error {
 @Injectable({ providedIn: 'root' })
 export class ApiService {
   private async token(forzarRefresco = false): Promise<string> {
+    // ── ACCESO POR PLAZA (13/sep/2026) ─────────────────────────────────────
+    //
+    // Quien entra con «PH-ANA-1» + PIN NO tiene usuario de Firebase: su sesión
+    // la emite `/api/login-plaza` como JWT propio, y `api/_auth.js` ya sabe
+    // verificarlo. Sin esta rama, `getAuth().currentUser` sería null, este
+    // método lanzaría «Sin sesión activa» y la persona entraría a una app
+    // COMPLETAMENTE VACÍA — sin un solo error visible que explicara por qué.
+    //
+    // Va primero y sin `await`: si la llave existe, no hay nada que esperar.
+    // Se borra al entrar por el login normal y al cerrar sesión, para que un
+    // token de plaza olvidado no secuestre la sesión de otra persona en el
+    // mismo navegador.
+    try {
+      const propio = localStorage.getItem('md_token');
+      if (propio) return propio;
+    } catch { /* navegador sin storage: sigue por Firebase */ }
+
     const auth = getAuth();
     let u = auth.currentUser;
     // Tras un reload (F5/PWA update), Firebase restaura la sesión persistida de

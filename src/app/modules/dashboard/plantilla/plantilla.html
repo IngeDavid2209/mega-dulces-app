@@ -21,8 +21,13 @@
     <option *ngFor="let s of sucursales()" [value]="s">{{ s }}</option>
   </select>
 
-  <span class="pl-solo-lectura" *ngIf="!puedeEditar">
-    Solo lectura · la plantilla la captura Dirección
+  <!-- El motivo se NOMBRA. «Solo lectura» a secas manda a la persona a pensar
+       que la app falla, en vez de a pedirle acceso a quien puede dárselo. -->
+  <span class="pl-solo-lectura" *ngIf="!puedeEditar()">
+    Solo lectura · no tienes esta sucursal en tu alcance
+  </span>
+  <span class="pl-solo-lectura" *ngIf="puedeEditar() && !esAdmin">
+    Puedes capturar la plantilla de tu sucursal
   </span>
   <span class="pl-guardando" *ngIf="guardando()">guardando…</span>
 </div>
@@ -73,7 +78,7 @@
           <th>Debe haber</th>
           <th>Hay</th>
           <th>Estado</th>
-          <th *ngIf="puedeEditar"></th>
+          <th *ngIf="puedeEditar()"></th>
         </tr>
       </thead>
       <tbody>
@@ -93,10 +98,10 @@
           </td>
 
           <td>
-            <input class="pl-num" type="number" min="0" *ngIf="puedeEditar && r.autorizado != null"
+            <input class="pl-num" type="number" min="0" *ngIf="puedeEditar() && r.autorizado != null"
                    [value]="r.autorizado"
                    (change)="cambiarCantidad(r.puestoId, $any($event.target).value)" />
-            <span *ngIf="!puedeEditar && r.autorizado != null">{{ r.autorizado }}</span>
+            <span *ngIf="!puedeEditar() && r.autorizado != null">{{ r.autorizado }}</span>
             <!-- El guion NO es cero: es «nadie lo ha capturado». -->
             <span class="pl-nada" *ngIf="r.autorizado == null" title="Nadie ha autorizado cuántos debe haber">—</span>
           </td>
@@ -105,7 +110,7 @@
 
           <td><span class="pl-estado">{{ textoEstado(r) }}</span></td>
 
-          <td *ngIf="puedeEditar">
+          <td *ngIf="puedeEditar()">
             <button class="pl-btn-quitar" *ngIf="r.autorizado != null"
                     (click)="retirarRenglon(r.puestoId)"
                     title="Retira la autorización. No borra nada: queda en la historia con su autor y su fecha.">
@@ -158,7 +163,7 @@
         cuántas debe haber.
       </div>
 
-      <button class="pl-btn" *ngIf="puedeEditar"
+      <button class="pl-btn" *ngIf="puedeEditar()"
               [disabled]="!plan().crear.length || guardando()"
               (click)="generarPlazas()">
         Crear las {{ plan().crear.length }} plaza(s) que faltan
@@ -166,7 +171,7 @@
     </div>
 
     <!-- ═══════════ ACCESOS: EL CÓDIGO Y EL PIN DE CADA PLAZA ═══════════ -->
-    <div class="pl-accesos" *ngIf="puedeEditar && plazasDeLaSucursal().length">
+    <div class="pl-accesos" *ngIf="esAdmin && plazasDeLaSucursal().length">
       <h2>Accesos de las plazas</h2>
       <p class="pl-plazas-nota">
         Con esto entra la gente: <strong>un código por plaza</strong> y un PIN de seis
@@ -244,7 +249,7 @@
     </div>
 
     <!-- ═══════════ AGREGAR UN RENGLÓN ═══════════ -->
-    <div class="pl-agregar" *ngIf="puedeEditar">
+    <div class="pl-agregar" *ngIf="puedeEditar()">
       <h2>Agregar un puesto a la plantilla</h2>
       <div class="pl-agregar-fila">
         <select class="pl-select" [ngModel]="nuevoPuestoId()" (ngModelChange)="nuevoPuestoId.set($event)">

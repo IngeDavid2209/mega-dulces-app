@@ -33,7 +33,51 @@
       </div>
     </div>
 
-    <div class="login-card">
+    <!-- ═══════════ SEGUNDO PASO DEL ACCESO POR PLAZA ═══════════
+         La plaza ya está autenticada; falta saber QUIÉN entró. Sin esto, la
+         evidencia del día quedaría a nombre de una plaza y no de una persona,
+         que es el problema del correo compartido de agosto. -->
+    <div class="login-card" *ngIf="pasoPlaza">
+      <div class="plz-cab">
+        <span class="plz-codigo">{{ pasoPlaza.codigo }}</span>
+        <h2 class="plz-titulo">{{ pasoPlaza.plaza.lugar }}</h2>
+      </div>
+
+      <!-- Camino normal: la Encargada ya pasó lista. -->
+      <ng-container *ngIf="pasoPlaza.sugerida">
+        <p class="plz-pregunta">
+          Hoy esta plaza la cubre<br>
+          <strong class="plz-nombre">{{ pasoPlaza.sugerida.nombre }}</strong>
+        </p>
+        <button type="button" class="login-btn" (click)="confirmarSoyYo()">Sí, soy yo</button>
+        <button type="button" class="plz-link" (click)="pasoPlaza.sugerida = null">No soy yo</button>
+      </ng-container>
+
+      <!-- Nadie pasó lista, o quien entra no es la persona registrada. -->
+      <ng-container *ngIf="!pasoPlaza.sugerida">
+        <p class="plz-pregunta">¿Quién eres?</p>
+        <p class="plz-nota">
+          Tu Encargada no ha pasado lista hoy, o la plaza está a nombre de otra
+          persona. Elígete y entra: queda registrado para que ella lo confirme.
+        </p>
+        <select class="form-input" [(ngModel)]="elegidoPlaza" name="elegidoPlaza">
+          <option value="">Elige tu nombre…</option>
+          <option *ngFor="let q of personasPlaza" [value]="q.id">{{ q.nombre }}</option>
+        </select>
+        <!-- Si la lista no cargó se DICE, en vez de dejar un desplegable vacío
+             que se lee como que la app está rota. -->
+        <p class="plz-nota" *ngIf="!personasPlaza.length">
+          No se pudo cargar la lista de personas de esta sucursal. Revisa tu
+          conexión y vuelve a entrar.
+        </p>
+        <button type="button" class="login-btn" [disabled]="!elegidoPlaza"
+                (click)="confirmarSoyOtro()">Entrar</button>
+      </ng-container>
+
+      <button type="button" class="plz-link" (click)="cancelarPlaza()">Volver</button>
+    </div>
+
+    <div class="login-card" *ngIf="!pasoPlaza">
       <form (ngSubmit)="ingresar()">
 
         <div class="form-group">

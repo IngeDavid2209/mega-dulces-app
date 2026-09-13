@@ -8,6 +8,8 @@ import { APP_BUILD_SELLO } from '../../shared/version';
 import { NotificacionesService } from '../../services/notificaciones';
 import { hayTableroPara } from '../../services/home.guard';
 import { MANTENIMIENTO_ACTIVO, MANTENIMIENTO_TITULO } from '../../shared/mantenimiento.util';
+import { pareceCodigoDePlaza, normalizarCodigo } from '../../shared/codigo-plaza.util';
+import { coberturaDelDia, Cobertura } from '../../shared/cobertura.util';
 
 /**
  * ⏱️ CADA PASO DEL LOGIN CON TOPE DE TIEMPO, Y CON NOMBRE
@@ -53,6 +55,20 @@ export class LoginComponent {
   password = '';
   ingresando = false; // Variable para evitar doble clic en el botón
 
+  // ── SEGUNDO PASO DEL ACCESO POR PLAZA ─────────────────────────────────────
+  // Tras autenticar la plaza hay que saber QUIÉN entró. Va como paso dentro de
+  // esta misma pantalla y no como ruta aparte: una ruta nueva necesitaría su
+  // guard, y un guard mal puesto deja a gente fuera de la app — que es
+  // exactamente el riesgo que este paso no puede correr.
+  pasoPlaza: null | {
+    token: string; codigo: string; fecha: string;
+    plaza: any; coberturas: Cobertura[];
+    sugerida: { uid: string; nombre: string } | null;
+  } = null;
+  /** Personas de la sucursal, para cuando quien entra NO es la sugerida. */
+  personasPlaza: { id: string; nombre: string }[] = [];
+  elegidoPlaza = '';
+
   /** Sello de versión del build (fecha + hora). Se muestra al pie del login. */
   readonly buildSello = APP_BUILD_SELLO;
 
@@ -83,6 +99,27 @@ export class LoginComponent {
     }
 
     this.ingresando = true;
+
+    // ── ¿ES UN CÓDIGO DE PLAZA? ─────────────────────────────────────────────
+    // Se decide por la FORMA de lo tecleado, no por un interruptor que la
+    // persona tenga que encontrar: «PH-ANA-1» no se parece a un usuario ni a un
+    // correo. Si no casa, sigue el login de siempre y nadie pierde nada.
+    if (pareceCodigoDePlaza(this.usuario)) {
+      // Y si NO era un código de plaza, sigue por el login de siempre.
+      //
+      // `pareceCodigoDePlaza` mira la FORMA, y una forma puede coincidir por
+      // accidente: un usuario llamado «ana-maria-2» casa con el patrón. Sin
+      // esta caída, esa persona quedaría desviada a un login que no es el suyo
+      // y NO PODRÍA ENTRAR NUNCA, sin entender por qué. Con ella, el desvío es
+      // una optimización: si el código no existe, no se pierde nada.
+      let manejado = false;
+      try {
+        manejado = await this.entrarPorPlaza();
+      } finally {
+        if (manejado) this.ingresando = false;
+      }
+      if (manejado) return;
+    }
 
     try {
       const entrada = this.usuario.trim();
@@ -160,6 +197,10 @@ export class LoginComponent {
         return;
       }
 
+      // Un token de plaza olvidado en este navegador secuestraría TODAS las
+      // peticiones de quien acaba de entrar con su cuenta. Se borra antes de
+      // guardar la sesión nueva, no después.
+      try { localStorage.removeItem('md_token'); } catch {}
       localStorage.setItem('md_sesion_actual', JSON.stringify(perfil));
       this.usuario = '';
       this.password = '';
@@ -221,5 +262,161 @@ export class LoginComponent {
     } finally {
       this.ingresando = false;
     }
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  //  ACCESO POR PLAZA (parte B) — «PH-ANA-1» + PIN
+  // ══════════════════════════════════════════════════════════════════════════
+
+  /**
+   * Paso 1: autenticar la PLAZA. Todavía no se sabe quién es la persona.
+   *
+   * Devuelve `true` si esto era de verdad un acceso de plaza (haya entrado o no)
+   * y `false` cuando el código no existe — para que quien tecleó algo con forma
+   * de código pero que es su usuario siga por el login de siempre.
+   */
+  private async entrarPorPlaza(): Promise<boolean> {
+    try {
+      const r = await conTope(
+        fetch('/api/login-plaza', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ codigo: normalizarCodigo(this.usuario), pin: this.password.trim() }),
+        }), 20000, 'validar el acceso de la plaza');
+      const d = await conTope(r.json(), 10000, 'leer la respuesta');
+
+      if (!r.ok) {
+        // Código inexistente: NO era una plaza. Se devuelve el control al login
+        // normal en silencio, sin asustar a nadie con un error que no aplica.
+        if (d && d.campo === 'codigo') return false;
+        // PIN equivocado: esto SÍ era una plaza. El mensaje del servidor
+        // distingue los dos casos a propósito — el código va impreso en la
+        // sucursal y no es un secreto, mientras que mandar a alguien a dudar de
+        // su PIN cuando lo que tecleó mal fue el código le cuesta el turno.
+        Swal.fire({ icon: 'error', title: 'No se pudo entrar',
+          text: d?.error || 'Revisa el código y el PIN.',
+          confirmButtonColor: 'var(--action)' });
+        return true;
+      }
+
+      // Quién cubre hoy: con la MISMA función del pase de lista, que sabe que
+      // la suplencia gana al titular. Si aquí se decidiera distinto, la foto
+      // quedaría firmada por quien no fue.
+      const cob = coberturaDelDia(d.coberturas || [], d.plaza.id, d.fecha);
+      const sugerida = cob && cob.uid
+        ? { uid: String(cob.uid), nombre: String((cob as any).nombre || '(sin nombre)') }
+        : null;
+
+      this.pasoPlaza = {
+        token: d.token, codigo: d.codigo, fecha: d.fecha,
+        plaza: d.plaza, coberturas: d.coberturas || [], sugerida,
+      };
+
+      // La lista para el caso «no soy yo». Se pide con el token de la plaza.
+      try {
+        const ru = await conTope(
+          fetch('/api/usuarios', { headers: { Authorization: 'Bearer ' + d.token } }),
+          15000, 'leer la lista de personas');
+        const du = await conTope(ru.json(), 10000, 'leer la lista de personas');
+        const lugar = String(d.plaza.lugar || '');
+        this.personasPlaza = (du?.items || [])
+          .filter((u: any) => u?.activo !== false &&
+            (u?.datos?.sucursales || u?.sucursales || []).map((x: any) => String(x || '').trim()).includes(lugar))
+          .map((u: any) => ({ id: String(u.id), nombre: String(u.nombre || u.usuario || '(sin nombre)') }))
+          .sort((a: any, b: any) => a.nombre.localeCompare(b.nombre));
+      } catch {
+        // Sin lista no se puede elegir, pero SÍ se puede confirmar la sugerida.
+        // Se deja vacía en vez de tumbar el acceso.
+        this.personasPlaza = [];
+      }
+      return true;
+    } catch (e: any) {
+      // Un fallo de RED no prueba que el código no exista, así que NO se cae al
+      // login normal: se dice lo que pasó. Caer aquí mandaría a la persona a
+      // pelearse con una contraseña que no tiene.
+      Swal.fire({ icon: 'error', title: 'No se pudo entrar',
+        text: e?.message || 'Revisa tu conexión e intenta de nuevo.',
+        confirmButtonColor: 'var(--action)' });
+      return true;
+    }
+  }
+
+  /** Paso 2: la persona confirma que es quien el pase de lista dice. */
+  async confirmarSoyYo() {
+    const p = this.pasoPlaza;
+    if (!p || !p.sugerida) return;
+    await this.abrirSesionDePlaza(p.sugerida.uid, p.sugerida.nombre, true);
+  }
+
+  /**
+   * Paso 2 (el otro camino): NO es quien dice el pase de lista.
+   *
+   * Se registra una SUPLENCIA del día, para que la Encargada lo vea corregido
+   * en vez de tener que adivinarlo, y la sesión queda marcada como identidad no
+   * confirmada por ella. Nadie se queda sin trabajar por esto.
+   */
+  async confirmarSoyOtro() {
+    const p = this.pasoPlaza;
+    if (!p || !this.elegidoPlaza) return;
+    const elegido = this.personasPlaza.find(x => x.id === this.elegidoPlaza);
+    if (!elegido) return;
+
+    try {
+      const ahora = Date.now();
+      await conTope(fetch('/api/coberturas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + p.token },
+        body: JSON.stringify({
+          id: p.plaza.id + '|suplencia|' + p.fecha + '|' + ahora,
+          plazaId: p.plaza.id, uid: elegido.id, tipo: 'suplencia',
+          desde: p.fecha, hasta: p.fecha,
+          motivo: 'Se identificó al entrar (sin pase de lista previo)',
+          creadaEn: ahora,
+        }),
+      }), 15000, 'registrar quién entró');
+    } catch {
+      // Si no se pudo registrar, la persona entra IGUAL: dejarla fuera por un
+      // fallo de red sería peor que una cobertura que la Encargada corrige.
+      // La sesión lo dice con `identidadConfirmada: false`.
+    }
+    await this.abrirSesionDePlaza(elegido.id, elegido.nombre, false);
+  }
+
+  /**
+   * Deja la sesión lista y entra.
+   *
+   * La sesión lleva el UID y el NOMBRE de la PERSONA, no de la plaza: así todo
+   * lo que ya existe -los checklists, la evidencia, los tableros- sigue
+   * funcionando sin cambiar una línea, y cada foto conserva su nombre. La plaza
+   * viaja aparte, en los campos `_plaza*`.
+   */
+  private async abrirSesionDePlaza(uid: string, nombre: string, confirmada: boolean) {
+    const p = this.pasoPlaza!;
+    const perfil: any = {
+      uid, id: uid, nombre,
+      usuario: p.codigo, correo: '',
+      rol: 'trabajador',
+      puestoId: p.plaza.puestoId,
+      sucursales: [p.plaza.lugar],
+      activo: true,
+      _plazaId: p.plaza.id,
+      _plazaCodigo: p.codigo,
+      _plazaNumero: p.plaza.numero,
+      // «Entró y la Encargada no había pasado lista» tiene que ser visible, o
+      // se vuelve indistinguible de una cobertura registrada en forma (§5.2).
+      _identidadConfirmada: confirmada,
+    };
+    try { localStorage.setItem('md_token', p.token); } catch {}
+    try { localStorage.setItem('md_sesion_actual', JSON.stringify(perfil)); } catch {}
+    this.pasoPlaza = null;
+    this.router.navigate([hayTableroPara(perfil) ? '/home' : '/tareas-manual']);
+  }
+
+  /** Volver al login normal desde el segundo paso. */
+  cancelarPlaza() {
+    this.pasoPlaza = null;
+    this.personasPlaza = [];
+    this.elegidoPlaza = '';
+    this.password = '';
   }
 }

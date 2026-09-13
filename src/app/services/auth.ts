@@ -48,6 +48,10 @@ export class AuthService {
     await signOut(this.auth);
     // 🔥 2. DESTRUIMOS LA SESIÓN LOCAL (Súper importante para la seguridad) 🔥
     localStorage.removeItem('md_sesion_actual');
+    // El JWT del acceso por plaza. Si se quedara, la siguiente persona que
+    // abriera la app en este navegador haría sus peticiones con la sesión de
+    // la anterior — y su evidencia quedaría a nombre de otra.
+    localStorage.removeItem('md_token');
     // 3. Lo mandamos al login
     this.router.navigate(['/login']);
   }

@@ -35,6 +35,7 @@ import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { ApiService } from '../../../shared/api.service';
 import { esAdminGlobal, sucursalesPermitidas } from '../../../shared/permisos.util';
+import { esJefatura } from '../../../shared/alcance.util';
 import { resolverPuesto } from '../../../shared/puesto.util';
 import { PUESTOS_ORGANIGRAMA } from '../../../shared/organigrama.catalogo';
 import {
@@ -84,8 +85,14 @@ export class PlantillaComponent implements OnInit {
   plazas = signal<Plaza[]>([]);
   sucursal = signal<string>('');
 
-  /** Solo Dirección captura. Ver la cabecera. */
-  puedeEditar = false;
+  /**
+   * ¿Puede REPARTIR ACCESOS? Solo Dirección, y esto NO se relaja.
+   *
+   * Generar un código y un PIN es entregar la llave de una plaza. La plantilla
+   * se abrió (ver abajo); los accesos no, porque una cosa es proponer cuánta
+   * gente debe haber y otra muy distinta es crear credenciales.
+   */
+  esAdmin = false;
 
   // ── Formulario de renglón nuevo ──────────────────────────────────────────
   nuevoPuestoId = signal<string>('');
@@ -103,7 +110,7 @@ export class PlantillaComponent implements OnInit {
     // hubiera entrado, sin un solo error en consola.
     const sesion = localStorage.getItem('md_sesion_actual');
     try { this.currentUser = sesion ? JSON.parse(sesion) : null; } catch { this.currentUser = null; }
-    this.puedeEditar = esAdminGlobal(this.currentUser);
+    this.esAdmin = esAdminGlobal(this.currentUser);
     this.cargar();
   }
 
@@ -225,6 +232,36 @@ export class PlantillaComponent implements OnInit {
 
   resumen = computed<ResumenPlantilla>(() => resumenPlantilla(this.comparado()));
 
+  /**
+   * ¿Puede capturar la plantilla de la sucursal elegida?
+   *
+   * ─── ESTO SE ABRIÓ A PROPÓSITO EL 13/sep/2026 ───────────────────────────
+   * Nació como «solo Dirección captura», y David lo cambió con este motivo:
+   * «necesito pedirle a RH cómo van a acomodar las plantillas; mientras, déjalo
+   * libre — como crea tu plantilla de tu sucursal».
+   *
+   * O sea: mientras no exista el estándar de RH, cada sucursal propone la suya.
+   * Es la decisión correcta para descubrir la realidad: obligar a que Dirección
+   * capture 16 plantillas a ciegas habría producido 16 plantillas inventadas.
+   *
+   * Lo que NO se abrió es repartir accesos (`esAdmin`). Proponer cuánta gente
+   * debe haber y crear las llaves de entrada son cosas distintas.
+   *
+   * Cuando RH entregue el estándar, esto se vuelve a cerrar — y entonces la
+   * plantilla capturada por cada sucursal es justo el insumo de esa
+   * conversación, no un trabajo perdido.
+   */
+  puedeEditar = computed<boolean>(() => {
+    const suc = this.sucursal();
+    if (!suc) return false;
+    if (esAdminGlobal(this.currentUser)) return true;
+    if (!esJefatura(this.currentUser)) return false;
+    // La comprobación se repite aquí aunque el selector ya venga recortado: que
+    // una sucursal no salga en un `<select>` no es un permiso.
+    const permitidas = sucursalesPermitidas(this.currentUser);
+    return !permitidas || permitidas.map(x => x.trim()).includes(suc);
+  });
+
   /** Puestos que todavía no están en la plantilla de esta sucursal. */
   puestosDisponibles = computed(() => {
     const ya = new Set(this.renglones().map(r => r.puestoId));
@@ -257,7 +294,7 @@ export class PlantillaComponent implements OnInit {
    * decidiera (§8.5 aplicado a una acción destructiva).
    */
   async generarPlazas() {
-    if (!this.puedeEditar) return;
+    if (!this.puedeEditar()) return;
     const aCrear = this.plan().crear;
     if (!aCrear.length) return;
     this.guardando.set(true);
@@ -306,7 +343,7 @@ export class PlantillaComponent implements OnInit {
    * abriendo la plaza de otra persona.
    */
   async generarAccesos() {
-    if (!this.puedeEditar) return;
+    if (!this.esAdmin) return;
     const faltan = this.plazasSinAcceso();
     if (!faltan.length) return;
 
@@ -341,7 +378,7 @@ export class PlantillaComponent implements OnInit {
 
   /** Nuevo PIN para una plaza, conservando su código. */
   async regenerarPin(p: Plaza) {
-    if (!this.puedeEditar) return;
+    if (!this.esAdmin) return;
     this.guardando.set(true);
     try {
       const r = await this.api.post('/api/credenciales-plaza', { accion: 'regenerar', plazaId: p.id });
@@ -377,7 +414,7 @@ export class PlantillaComponent implements OnInit {
   async agregarRenglon() {
     // La comprobación va aquí, no solo en el `*ngIf` del botón: esconder un
     // control es cosmética.
-    if (!this.puedeEditar || !this.sucursal() || !this.nuevoPuestoId()) return;
+    if (!this.puedeEditar() || !this.sucursal() || !this.nuevoPuestoId()) return;
     const cant = Math.max(0, Math.trunc(Number(this.nuevaCantidad()) || 0));
     await this.escribir({
       id: `${this.sucursal()}|${this.nuevoPuestoId()}|${Date.now()}`,
@@ -393,7 +430,7 @@ export class PlantillaComponent implements OnInit {
   }
 
   async cambiarCantidad(puestoId: string, valor: any) {
-    if (!this.puedeEditar) return;
+    if (!this.puedeEditar()) return;
     const cant = Math.max(0, Math.trunc(Number(valor) || 0));
     const fila = this.filaDe(puestoId);
     if (!fila) return;
@@ -412,7 +449,7 @@ export class PlantillaComponent implements OnInit {
    * sigue teniendo respuesta, con su autor y su fecha.
    */
   async retirarRenglon(puestoId: string) {
-    if (!this.puedeEditar) return;
+    if (!this.puedeEditar()) return;
     const fila = this.filaDe(puestoId);
     if (!fila) return;
     this.guardando.set(true);
@@ -443,7 +480,7 @@ export class PlantillaComponent implements OnInit {
     this.problemasDeclaracion().some(p => p.gravedad === 'bloquea'));
 
   async declararPuesto() {
-    if (!this.puedeEditar || this.bloqueaDeclaracion()) return;
+    if (!this.puedeEditar() || this.bloqueaDeclaracion()) return;
     const id = idDeclarado(this.decNombre());
     this.guardando.set(true);
     try {

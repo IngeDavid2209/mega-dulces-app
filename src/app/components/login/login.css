@@ -224,3 +224,23 @@
   line-height: 1.55;
   color: var(--warn-soft-fg);
 }
+
+/* ── Segundo paso del acceso por plaza (13/sep/2026) ──────────────────────
+   La pregunta «¿eres tú?» es lo único que separa esto de una cuenta
+   compartida, así que se pinta grande y sin distracciones: quien la contesta
+   está de pie, empezando su turno, con una mano ocupada. */
+.plz-cab { text-align: center; margin-bottom: 18px; }
+.plz-codigo {
+  display: inline-block; font-family: var(--font-mono); font-size: 13px;
+  letter-spacing: 2px; color: var(--text-muted);
+  border: 1px solid var(--border-color); border-radius: 999px; padding: 4px 12px;
+}
+.plz-titulo { font-size: 18px; margin: 8px 0 0; }
+.plz-pregunta { text-align: center; font-size: 15px; color: var(--text-muted); margin: 0 0 14px; }
+.plz-nombre { display: block; font-size: 22px; color: var(--text-main); margin-top: 6px; }
+.plz-nota { font-size: 13px; color: var(--text-muted); line-height: 1.6; margin: 0 0 12px; }
+.plz-link {
+  display: block; width: 100%; background: none; border: 0; margin-top: 10px;
+  color: var(--action); font-size: 14px; cursor: pointer; padding: 12px 0;
+  text-decoration: underline; min-height: 44px;
+}

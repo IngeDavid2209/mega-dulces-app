@@ -28,7 +28,7 @@
  * checklist sintético que devuelve `/api/checklists`. No hace falta base de
  * datos, ni credenciales, ni desplegar.
  *
- * ─── EL PARCHE DE AUTENTICACIÓN, dicho y no escondido ──────────────────────
+ * ─── CÓMO CONSIGUE TOKEN (ya no hay parche; ver la nota de abajo) ──────────
  * `ApiService.token()` lanza «Sin sesión activa» si no hay usuario de Firebase,
  * y entonces el `fetch` nunca sale: la pantalla queda vacía y el conteo mide
  * una pantalla vacía. Así que el script COPIA el `dist/` y en la copia
@@ -57,8 +57,19 @@ const DIST_REAL = path.join(RAIZ, 'dist', 'mega-dulces-app', 'browser');
 
 // El ancla del parche de autenticación. Es código minificado: si el bundler
 // cambia de versión puede dejar de coincidir, y por eso se exige 1 ocurrencia.
-const ANCLA = 'token(t=!1){return i(this,null,function*(){let r=g(),s=r.currentUser;';
-const PARCHE = 'token(t=!1){return i(this,null,function*(){return"token-de-medicion";let r=g(),s=r.currentUser;';
+// ─── YA NO SE PARCHEA LA AUTENTICACION (13/sep/2026) ──────────────────────
+//
+// Estas pruebas copiaban el dist/ y le inyectaban un token dentro de
+// ApiService.token(), buscando una cadena del codigo MINIFICADO. Funcionaba y
+// era fragil: al añadir el acceso por plaza ese metodo cambio, el ancla
+// desaparecio y las TRES pruebas abortaron a la vez.
+//
+// Ahora `token()` devuelve el JWT de localStorage.md_token si existe -el camino
+// del acceso por plaza-, asi que basta sembrarlo. Es un camino legitimo del
+// producto, no un parche al bundle, y no se rompe cada vez que ese metodo se
+// toca. El token no tiene que ser valido: estas pruebas sirven /api ellas
+// mismas.
+const TOKEN_MEDICION = 'token-de-medicion';
 
 // 23 puntos: el tamaño que la 046 midió. Textos del manual real para que el
 // largo del texto no falsee el conteo de nodos.
@@ -152,7 +163,8 @@ function hijo(dist, puerto, cond) {
   const checklist = checklistDe(cond);
 
   const iny =
-    '<script>try{localStorage.setItem("md_sesion_actual",' + JSON.stringify(JSON.stringify(sesion)) + ');}catch(e){}</script>' +
+    '<script>try{localStorage.setItem("md_sesion_actual",' + JSON.stringify(JSON.stringify(sesion)) + ');}catch(e){}'
+      + 'try { localStorage.setItem(\"md_token\", \"token-de-medicion\"); } catch (e) {}</script>' +
     '<script>window.addEventListener("load",function(){' +
     // 1) esperar la lista · 2) tocar la tarjeta · 3) esperar el detalle · 4) contar.
     // Cada paso dice si NO se cumplió, para no confundir "cero porque no abrió"
@@ -255,26 +267,9 @@ function prepararCopia() {
   };
   copiar(DIST_REAL, destino);
 
-  let n = 0;
-  for (const f of fs.readdirSync(destino)) {
-    if (!f.endsWith('.js')) continue;
-    const p = path.join(destino, f);
-    const s = fs.readFileSync(p, 'utf8');
-    if (s.indexOf(ANCLA) >= 0) {
-      n += s.split(ANCLA).length - 1;
-      fs.writeFileSync(p, s.split(ANCLA).join(PARCHE));
-    }
-  }
-  if (n !== 1) {
-    abortar('el ancla del parche de autenticación aparece ' + n + ' veces (esperaba 1). ' +
-      'Si el bundler cambió, hay que reencontrarla: sin el parche la app no pide /api y ' +
-      'el conteo sería de una pantalla vacía.');
-  }
-  // El dist/ real NO se toca. Se comprueba, no se supone.
-  const tocado = fs.readdirSync(DIST_REAL)
-    .filter((f) => f.endsWith('.js'))
-    .some((f) => fs.readFileSync(path.join(DIST_REAL, f), 'utf8').indexOf('token-de-medicion') >= 0);
-  if (tocado) abortar('el dist/ REAL quedó parcheado. Reconstruye antes de desplegar.');
+  // Ya no se parchea nada: el token se siembra en localStorage (ver arriba).
+  // La copia se conserva porque desde aqui se sirve.
+  console.log('[evidencia] copia servida desde %s (sin parchear)', destino);
   return destino;
 }
 

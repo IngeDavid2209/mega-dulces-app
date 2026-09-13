@@ -305,6 +305,42 @@
           <!-- ─── TAREA ───
                Abrirla emite `abrir` y lleva a la vista de detalle de siempre:
                esto es navegación y lectura, no un segundo flujo de entrega. -->
+          <!-- ─── LO QUE EL MANUAL LE MANDA A ESTE PUESTO ───
+               Es el desglose de la pastilla del número. Va ARRIBA de las
+               sucursales: primero la norma, después quién la tiene.
+
+               No lleva `(click)`: una tarea del manual no abre nada. Antes de
+               que exista la norma como dato (Fase 7) no hay a dónde ir, y un
+               renglón que parece pulsable y no hace nada se lee como una app
+               rota. -->
+          <div *ngIf="f.tipo === 'tarea'"
+               class="org-fila org-fila-tarea"
+               role="treeitem"
+               [attr.aria-level]="f.prof + 1">
+            <span class="org-guia" *ngFor="let g of f.guias" aria-hidden="true"></span>
+            <span class="org-chevron org-chevron-hueco"></span>
+            <span class="org-fila-nombre">
+              📕 {{ f.tarea!.nombre }}
+              <!-- El manual la tiene pero el robot NO la entrega. Sin esta
+                   marca alguien esperaría un checklist que nunca va a llegar. -->
+              <span class="org-tarea-evento" *ngIf="f.tarea!.soloPorEvento"
+                    title="El manual la pide cuando ocurre el evento. El robot no la entrega sola.">
+                por evento
+              </span>
+            </span>
+            <span class="org-fila-datos">
+              <span class="org-tarea-meta" *ngIf="f.tarea!.momento">{{ f.tarea!.momento }}</span>
+              <span class="org-tarea-meta" *ngIf="f.tarea!.frecuencia">{{ f.tarea!.frecuencia }}</span>
+              <span class="org-hora" *ngIf="f.tarea!.horaLimite && !f.tarea!.soloPorEvento">
+                {{ f.tarea!.horaLimite }}
+              </span>
+              <span class="org-tarea-puntos"
+                    [title]="f.tarea!.puntos + ' punto(s) de control en esta tarea'">
+                {{ f.tarea!.puntos }} pts
+              </span>
+            </span>
+          </div>
+
           <div *ngIf="f.tipo === 'entrega'"
                class="org-fila org-fila-ent"
                role="treeitem"

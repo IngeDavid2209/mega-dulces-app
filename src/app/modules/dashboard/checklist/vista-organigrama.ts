@@ -15,7 +15,7 @@ import {
 import { AmbitoVisible, ambitoVisible, puestoPropio } from '../../../shared/rama-visible.util';
 import { resolverPuesto } from '../../../shared/puesto.util';
 import {
-  ManualPuesto, TareaManual, manualDePuesto, tareasAutomaticasDePuesto
+  ManualPuesto, TareaManual, manualDePuesto, tareasAutomaticasDePuesto, tareasDePuesto
 } from '../../../shared/tareas-manual.catalogo';
 import { normalizarNombre } from '../../../shared/permisos.util';
 
@@ -170,7 +170,7 @@ interface FilaArbol {
  * luego con sucursal, persona y entrega.
  */
 interface FilaVista {
-  tipo: 'puesto' | 'sucursal' | 'persona' | 'entrega';
+  tipo: 'puesto' | 'sucursal' | 'persona' | 'entrega' | 'tarea';
   /** Id unico y estable: sirve de llave de plegado y de trackBy. */
   clave: string;
   prof: number;
@@ -192,6 +192,33 @@ interface FilaVista {
   sucursal?: SucursalVista;
   persona?: PersonaVista;
   entrega?: EntregaVista;
+  /** La tarea que MANDA el manual de este puesto. Ver `tareasDelPuesto`. */
+  tarea?: TareaVista;
+}
+
+/**
+ * Una tarea del manual de un puesto, para desglosar la pastilla del número.
+ *
+ * ─── POR QUÉ ESTO NO ES LO MISMO QUE UNA «ENTREGA» ────────────────────────
+ * Una ENTREGA es un checklist que el robot ya emitió hoy a una persona: existe
+ * porque alguien la recibió. Una TAREA es lo que el manual MANDA, exista o no
+ * alguien que la reciba.
+ *
+ * La diferencia importa justo donde más duele: un puesto con 3 tareas y sin
+ * nadie asignado mostraba el «3» y, al abrirlo, NADA — porque no hay entregas
+ * que listar. Se leía como que el número mentía. Ahora se ven las tres, y
+ * debajo, si las hay, quién las tiene y cómo va.
+ */
+interface TareaVista {
+  id: string;
+  nombre: string;
+  momento: string;
+  frecuencia: string;
+  horaLimite: string;
+  puntos: number;
+  /** El manual la tiene, pero el robot NO la entrega periódicamente. */
+  soloPorEvento: boolean;
+  codigoFormato?: string;
 }
 
 /** Una persona con tareas cuyo puesto no se pudo resolver. */
@@ -781,6 +808,32 @@ export class VistaOrganigramaComponent {
    * Anaquelista existe en ocho sucursales, y el dato que sirve es comparar el
    * mismo puesto entre ellas.
    */
+  /**
+   * Las tareas que el manual le manda a un puesto, listas para pintar.
+   *
+   * Se piden a `tareasDePuesto()` -la función real del catálogo- y NO se filtran
+   * las de solo-evento: el manual las tiene y quien mira la hoja de un puesto
+   * necesita verlas. Se marcan aparte, porque el robot no las entrega y sin esa
+   * marca alguien esperaría un checklist que nunca va a llegar.
+   *
+   * OJO con el número de la pastilla: cuenta `tareasAutomaticasDePuesto`, que
+   * EXCLUYE las de solo-evento. Así que aquí pueden salir MÁS filas que el
+   * número — y está bien, pero hay que decirlo en pantalla en vez de dejar que
+   * parezca un descuadre.
+   */
+  private tareasDelPuesto(puestoId: string): TareaVista[] {
+    return tareasDePuesto(puestoId).map(t => ({
+      id: t.id,
+      nombre: t.nombre,
+      momento: String(t.momento || ''),
+      frecuencia: String(t.frecuencia || ''),
+      horaLimite: String(t.horaLimite || ''),
+      puntos: (t.items || []).length,
+      soloPorEvento: !!t.soloPorEvento,
+      codigoFormato: t.codigoFormato,
+    }));
+  }
+
   private sucursalesDe(puestoId: string): SucursalVista[] {
     const entregas = this.porPuesto().mapa.get(puestoId) || [];
     const porSuc = new Map<string, Map<string, EntregaVista[]>>();
@@ -894,9 +947,26 @@ export class VistaOrganigramaComponent {
         out.push({
           tipo: 'puesto', clave, prof: f.profundidad, puesto: f, abierta,
           guias: guia(f.profundidad),
-          tieneHijos: f.hijos.length > 0 || f.entregasHoy > 0,
+          // Un puesto CON manual siempre tiene algo que desplegar, aunque no
+          // haya nadie asignado: sus tareas. Antes `tieneHijos` solo miraba
+          // ramas y entregas, así que un puesto con «3» y sin gente se pintaba
+          // como hoja — el número prometía un desglose que no existía.
+          tieneHijos: f.hijos.length > 0 || f.entregasHoy > 0 || f.tieneManual,
         });
         if (!abierta) continue;
+
+        // ── LO QUE EL MANUAL LE MANDA A ESTE PUESTO ─────────────────────────
+        // Va ARRIBA de las sucursales a propósito: primero la norma («qué debe
+        // hacer este puesto»), después la realidad («quién la tiene y cómo
+        // va»). Al revés, un puesto sin gente asignada seguiría sin explicar su
+        // propio número.
+        for (const t of this.tareasDelPuesto(f.puesto.id)) {
+          out.push({
+            tipo: 'tarea', clave: clave + '|t:' + t.id,
+            prof: f.profundidad + 1, tarea: t, abierta: false,
+            guias: guia(f.profundidad + 1), tieneHijos: false,
+          });
+        }
 
         for (const su of sucs) {
           const cs = clave + '|s:' + su.sucursal;

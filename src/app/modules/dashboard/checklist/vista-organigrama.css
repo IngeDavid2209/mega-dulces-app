@@ -879,3 +879,33 @@
   max-width: 62ch;
   line-height: 1.35;
 }
+
+/* ── Desglose del manual de un puesto (13/sep/2026) ───────────────────────
+   La pastilla del número decía «3 tareas» y al abrir el puesto no se veía
+   ninguna: solo salían las ENTREGAS de hoy, que es otra cosa. Un puesto sin
+   gente asignada mostraba el número y nada debajo.
+
+   Se pinta distinto de una entrega a propósito: una entrega es trabajo real
+   de alguien, con su avance; esto es la NORMA, y no tiene avance porque no le
+   pertenece a nadie todavía. */
+.org-fila-tarea {
+  background: var(--surface-ground);
+  cursor: default;                 /* no abre nada: ver la nota del HTML */
+}
+.org-fila-tarea .org-fila-nombre { color: var(--text-muted); }
+.org-tarea-meta {
+  font-size: 12px; color: var(--text-faint);
+  white-space: nowrap;
+}
+.org-tarea-puntos {
+  font-size: 12px; font-variant-numeric: tabular-nums;
+  color: var(--text-muted); white-space: nowrap;
+}
+.org-tarea-evento {
+  font-size: 11px; padding: 1px 8px; border-radius: 999px;
+  background: var(--info-soft-bg); color: var(--info-soft-fg);
+  margin-left: 6px; white-space: nowrap;
+}
+@media (pointer: coarse), (max-width: 768px) {
+  .org-tarea-meta, .org-tarea-puntos, .org-tarea-evento { font-size: 12px; }
+}

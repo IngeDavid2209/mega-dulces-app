@@ -45,8 +45,19 @@ const DIST_REAL = path.join(__dirname, '..', 'dist', 'mega-dulces-app', 'browser
 
 // Misma ancla y mismo parche que `prueba-dom-evidencia.js`: sin esto
 // `ApiService.token()` lanza «Sin sesión activa» y el fetch a /api nunca sale.
-const ANCLA = 'token(t=!1){return i(this,null,function*(){let r=g(),s=r.currentUser;';
-const PARCHE = 'token(t=!1){return i(this,null,function*(){return"token-de-medicion";let r=g(),s=r.currentUser;';
+// ─── YA NO SE PARCHEA LA AUTENTICACION (13/sep/2026) ──────────────────────
+//
+// Estas pruebas copiaban el dist/ y le inyectaban un token dentro de
+// ApiService.token(), buscando una cadena del codigo MINIFICADO. Funcionaba y
+// era fragil: al añadir el acceso por plaza ese metodo cambio, el ancla
+// desaparecio y las TRES pruebas abortaron a la vez.
+//
+// Ahora `token()` devuelve el JWT de localStorage.md_token si existe -el camino
+// del acceso por plaza-, asi que basta sembrarlo. Es un camino legitimo del
+// producto, no un parche al bundle, y no se rompe cada vez que ese metodo se
+// toca. El token no tiene que ser valido: estas pruebas sirven /api ellas
+// mismas.
+const TOKEN_MEDICION = 'token-de-medicion';
 
 /**
  * EL CELULAR SE EMULA CON UN IFRAME, y no con `--window-size`.
@@ -142,12 +153,8 @@ function prepararCopia() {
     if (!f.endsWith('.js')) continue;
     const p = path.join(destino, f);
     const s = fs.readFileSync(p, 'utf8');
-    if (s.indexOf(ANCLA) >= 0) { n += s.split(ANCLA).length - 1; fs.writeFileSync(p, s.split(ANCLA).join(PARCHE)); }
+    if (s.indexOf('ApiService') >= 0) n++;   // solo se cuenta; ya no se parchea
   }
-  if (n !== 1) abortar('el ancla del parche de autenticación aparece ' + n + ' veces (esperaba 1).');
-  const tocado = fs.readdirSync(DIST_REAL).filter((f) => f.endsWith('.js'))
-    .some((f) => fs.readFileSync(path.join(DIST_REAL, f), 'utf8').indexOf('token-de-medicion') >= 0);
-  if (tocado) abortar('el dist/ REAL quedó parcheado. Reconstruye antes de desplegar.');
   return destino;
 }
 
@@ -161,6 +168,7 @@ function medir(dist, puerto) {
       + '<style>body{margin:0;background:#333}iframe{border:0;display:block}</style></head><body>'
       + '<script>'
       + 'try { localStorage.setItem("md_sesion_actual", ' + JSON.stringify(JSON.stringify(SESION)) + '); } catch (e) {}'
+      + 'try { localStorage.setItem(\"md_token\", \"token-de-medicion\"); } catch (e) {}'
       + 'var res = {};'
       + 'var f = document.createElement("iframe");'
       + 'f.width = ' + MARCO.ancho + '; f.height = ' + MARCO.alto + '; f.src = "/tareas-manual";'

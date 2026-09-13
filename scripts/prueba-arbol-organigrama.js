@@ -53,7 +53,7 @@ const { spawn } = require('child_process');
 const DIST_REAL = path.join(__dirname, '..', 'dist', 'mega-dulces-app', 'browser');
 
 /**
- * EL PARCHE DE AUTENTICACION, dicho y no escondido.
+ * COMO CONSIGUE TOKEN (ya no hay parche; ver la nota de abajo).
  *
  * `ApiService.token()` exige un usuario de Firebase Auth y lanza «Sin sesion
  * activa» si no lo hay, asi que en headless el `fetch` a /api NUNCA sale: la
@@ -66,8 +66,19 @@ const DIST_REAL = path.join(__dirname, '..', 'dist', 'mega-dulces-app', 'browser
  * de medir de menos. Mismo mecanismo y misma ancla que
  * `prueba-dom-evidencia.js`, que ya lo tenia resuelto.
  */
-const ANCLA = 'token(t=!1){return i(this,null,function*(){let r=g(),s=r.currentUser;';
-const PARCHE = 'token(t=!1){return i(this,null,function*(){return"token-de-medicion";let r=g(),s=r.currentUser;';
+// ─── YA NO SE PARCHEA LA AUTENTICACION (13/sep/2026) ──────────────────────
+//
+// Estas pruebas copiaban el dist/ y le inyectaban un token dentro de
+// ApiService.token(), buscando una cadena del codigo MINIFICADO. Funcionaba y
+// era fragil: al añadir el acceso por plaza ese metodo cambio, el ancla
+// desaparecio y las TRES pruebas abortaron a la vez.
+//
+// Ahora `token()` devuelve el JWT de localStorage.md_token si existe -el camino
+// del acceso por plaza-, asi que basta sembrarlo. Es un camino legitimo del
+// producto, no un parche al bundle, y no se rompe cada vez que ese metodo se
+// toca. El token no tiene que ser valido: estas pruebas sirven /api ellas
+// mismas.
+const TOKEN_MEDICION = 'token-de-medicion';
 
 /** La copia parcheada. Se llena en la corrida. */
 let DIST = DIST_REAL;
@@ -221,7 +232,7 @@ const CHROME = [
 ].find((p) => { try { return fs.existsSync(p); } catch { return false; } });
 
 // ══════════════════════════════════════════════════════════════════════════
-//  LA COPIA PARCHEADA
+//  LA COPIA QUE SE SIRVE
 // ══════════════════════════════════════════════════════════════════════════
 function prepararCopia() {
   const destino = fs.mkdtempSync(path.join(os.tmpdir(), 'md-arbol-dist-'));
@@ -234,26 +245,10 @@ function prepararCopia() {
   };
   copiar(DIST_REAL, destino);
 
-  let n = 0;
-  for (const f of fs.readdirSync(destino)) {
-    if (!f.endsWith('.js')) continue;
-    const p = path.join(destino, f);
-    const s = fs.readFileSync(p, 'utf8');
-    if (s.indexOf(ANCLA) >= 0) {
-      n += s.split(ANCLA).length - 1;
-      fs.writeFileSync(p, s.split(ANCLA).join(PARCHE));
-    }
-  }
-  if (n !== 1) {
-    abortar('el ancla del parche de autenticacion aparece ' + n + ' veces (esperaba 1). ' +
-      'Si el bundler cambio, hay que reencontrarla: sin el parche la app no pide /api y ' +
-      'el conteo seria de una pantalla vacia.');
-  }
-  const tocado = fs.readdirSync(DIST_REAL)
-    .filter((f) => f.endsWith('.js'))
-    .some((f) => fs.readFileSync(path.join(DIST_REAL, f), 'utf8').indexOf('token-de-medicion') >= 0);
-  if (tocado) abortar('el dist/ REAL quedo parcheado. Reconstruye antes de desplegar.');
-  console.log('[arbol] copia parcheada en %s (ancla: 1 ocurrencia)', destino);
+  // Ya no se parchea nada: el token se siembra en localStorage (ver arriba).
+  // La copia se conserva porque desde aqui se sirve, y servir el dist REAL
+  // dejaria la prueba a merced de un `npm run build` a medias en otra terminal.
+  console.log('[arbol] copia servida desde %s (sin parchear)', destino);
   return destino;
 }
 
@@ -274,7 +269,8 @@ function medir(esc, puerto) {
 
     const iny =
       '<script>try{localStorage.setItem("md_sesion_actual",' +
-      JSON.stringify(JSON.stringify(SESION)) + ');}catch(e){}</script>' +
+      JSON.stringify(JSON.stringify(SESION)) + ');}catch(e){}'
+      + 'try { localStorage.setItem(\"md_token\", \"token-de-medicion\"); } catch (e) {}</script>' +
       '<script>window.addEventListener("load",function(){' +
       // Primero se deja pintar y sembrar; después se teclea; después se mide.
       'setTimeout(function(){' + teclear + 'setTimeout(function(){' +
@@ -285,6 +281,10 @@ function medir(esc, puerto) {
       ' sucursales: document.querySelectorAll(".org-lista .org-fila-suc").length,' +
       ' personas: document.querySelectorAll(".org-lista .org-fila-per").length,' +
       ' entregas: document.querySelectorAll(".org-lista .org-fila-ent").length,' +
+      // El desglose del manual (13/sep). La pastilla decia «3 tareas» y al
+      // abrir el puesto no salia ninguna: solo las ENTREGAS de hoy, que es
+      // otra cosa. Un puesto sin gente mostraba el numero y nada debajo.
+      ' tareas: document.querySelectorAll(".org-lista .org-fila-tarea").length,' +
       ' guias: document.querySelectorAll(".org-lista .org-guia").length,' +
       ' vacio: document.querySelectorAll(".org-menu-vacio").length,' +
       ' campo: document.querySelectorAll(".org-buscar-campo").length,' +
@@ -451,15 +451,18 @@ function medir(esc, puerto) {
   }
 
   console.log('');
-  console.log('escenario                  puestos  sucurs  personas  entregas  guías  vacío  chips');
-  console.log('─'.repeat(92));
+  console.log('escenario                  puestos  sucurs  personas  entregas  tareas  guías  vacío  chips');
+  console.log('─'.repeat(100));
   for (const f of filas) {
-    console.log('%s %s %s %s %s %s %s %s',
+    console.log('%s %s %s %s %s %s %s %s %s',
       f.nombre.padEnd(26), String(f.d.puestos).padEnd(8), String(f.d.sucursales).padEnd(7),
       String(f.d.personas).padEnd(9), String(f.d.entregas).padEnd(9),
+      String(f.d.tareas).padEnd(7),
       String(f.d.guias).padEnd(6), String(f.d.vacio).padEnd(6), String(f.d.chips));
   }
-  console.log('─'.repeat(92));
+  console.log('─'.repeat(100));
+  console.log('«tareas» = lo que MANDA el manual de cada puesto abierto. Es el desglose de la');
+  console.log('pastilla del numero, y es distinto de «entregas», que son los checklists de hoy.');
 
   // EJE TRANSVERSAL, en su propia tabla: son cubetas y hay que verlas separadas.
   console.log('');

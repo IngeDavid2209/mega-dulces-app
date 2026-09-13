@@ -372,8 +372,16 @@ function reportar(ag) {
   console.log('       con foto Y con nota no está aquí: se cierra por su prueba y no se mueve.');
   console.log('   (b) exactamente donde el TABLERO y el BOT ya se contradicen HOY. El');
   console.log('       `itemHecho` de api/asistente-chat.js:569 es espejo de `tieneEvidencia`,');
-  console.log('       sin la rama de la justificación (verificado: 0 referencias a');
-  console.log('       notaEmpleado/entregaConRetraso), y de ahí comen el bot y los avisos de');
+  // CORREGIDO el 13/sep/2026. Aquí decía «verificado: 0 referencias a
+  // notaEmpleado/entregaConRetraso», y eso era una CADENA ESCRITA A MANO, no
+  // una medición: el archivo tiene 10 referencias. La conclusión aguanta —las
+  // 10 están en el mapeo de columnas, en un comentario, en la ESCRITURA de la
+  // justificación al enviar y en reportes de envío; ninguna dentro de las 7
+  // líneas de `itemHecho`— pero un «verificado» que nadie verificó es justo lo
+  // que la §8.11 persigue. Se dice lo comprobable y dónde mirarlo.
+  console.log('       cuyo cuerpo (líneas 569-575) NO consulta notaEmpleado ni');
+  console.log('       entregaConRetraso: el bot ESCRIBE la justificación al enviar, pero');
+  console.log('       nunca cierra un punto con ella. De ahí comen el bot y los avisos de');
   console.log('       WhatsApp (tareas-notificar.js lo importa, no lo copia). Así que la 2.1');
   console.log('       no abre una divergencia: CIERRA la que ya existe en producción.');
   console.log('');

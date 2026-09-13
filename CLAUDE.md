@@ -193,7 +193,7 @@ Orden por **dependencia y riesgo**, no por importancia. Un paso ≤ 3 días. Mar
 | 0 | Medir antes de tocar (detener `corte.js`, divergencia, KPIs congelados, réplicas) | 0.5 | — | 🔄 **0.1 ✅ · 0.3 ✅ · 0.4 ✅ (1 réplica, 1/sep) · falta 0.2** |
 | 2 | Que los números digan la verdad (hecho ≠ justificado + primeras pruebas) | 1 | 0 | ✅ **HECHA Y DESPLEGADA 13/sep. 2.1: `estadoItem` con tres estados, `esItemHecho` = `tieneEvidencia`. 2.2: 86 pruebas. Falta 2.3 (recalcular y comparar), que sigue esperando una `DATABASE_URL` de producción** |
 | 1 | Cerrar el ferrocarril: una sola base | 3 | 0 | ⬜ |
-| 3 | La estructura como dato (unidad, sucursal, ámbito, puesto, plaza, cobertura) | 4 | 1 | 🔄 **3.1a ✅ (9/sep: `mdtask_plazas` + `mdtask_coberturas` creadas y sembrables; nadie las lee todavía) · falta 3.1b (la Encargada numera su cuadrilla), 3.1c (ámbito), 3.2 (el robot emite a la plaza), 3.3 (los 119 usos de `assigned`). Los tableros SIGUEN sumando por `store`: los 15 vendedores de Padre Hidalgo le siguen contando a la Encargada** |
+| 3 | La estructura como dato (unidad, sucursal, ámbito, puesto, plaza, cobertura) | 4 | 1 | 🔄 **3.1a ✅ (9/sep) · 3.1b mitad ✅ (13/sep: `mdtask_plantillas` + `mdtask_puestos_declarados` aplicadas, con la regla y 115 pruebas; falta la API y la pantalla) · falta 3.1c (ámbito), 3.2 (el robot emite a la plaza), 3.3 (los 119 usos de `assigned`). Los tableros SIGUEN sumando por `store`** |
 | 4 | Navegación (4.1 se puede hacer YA, sin dependencias) | 1.5 | — / 3 | 🔄 **4.1 ✅ · 4.1b: 2a–2d ✅ (15→12 entradas) · falta el Paso 3 para llegar a 7 · 4.3 espera Fase 3 · el Dashboard ya se gatea por jefatura (3/sep) · el ÁRBOL de Tareas del Manual ya se recorta por puesto (11/sep): cada nivel arranca en su propia raíz** |
 | 5 | Verificación con muestra + hallazgos + causas | 2 | 3 | ⬜ |
 | 6 | Tablero por nivel + cierre diario + roll-up | 2 | 5 | ⬜ **el tablero de DIRECCIÓN ya existe y está gateado (2–3/sep); el de nivel —«Mi zona», «Mi sucursal»— no, y por eso una Encargada ve un bloque que le nombra el hueco** |
@@ -323,6 +323,116 @@ de que exista la plaza sería partir el problema en dos, no resolverlo.
     columna devuelve cero documentos, sin error.
 
 ## 9. Bitácora del plan
+
+### 13/sep/2026 — PASO 3.1b (1/2): la plantilla, y el tercer estado de Railway
+
+Instrucción de David: *«falta tener una sección donde cada sucursal va a tener su propia
+plantilla de cómo debería estar acomodada su zona de trabajo. Padre Hidalgo debe tener cuatro
+anaquelistas, dos bodegueros, dos surtidores, una encargada, una auxiliar de encargada»*. Y
+junto a eso, el objetivo de fondo: *«dejemos atrás los usuarios… ahora va a ser de acuerdo a la
+plantilla del trabajo»*.
+
+**Son tres pasos, no uno, y el orden no es negociable:** (1) la plantilla, (2) el pase de lista
+—quién ocupa cada plaza hoy—, (3) el acceso por plaza. **El 3 no puede ir sin el 2**: si la
+cuenta es de la plaza y nadie registra quién la cubre, el sistema pierde el nombre de quien
+firmó, que es exactamente el problema del correo compartido de las migraciones 051–053. David
+eligió explícitamente la opción auditable: **la identidad sale de la cobertura** (§4), no del
+nombre escrito. Hoy va el paso 1, y solo su mitad de datos.
+
+**LO QUE LA PLANTILLA ES, Y LA PLAZA NO.** `mdtask_plazas` (056) es la posición concreta y
+numerada; la plantilla es la **autorización**. De la plantilla se generan las plazas, no al
+revés. Separarlas es lo que permite que una plaza siga existiendo, vacía y visible, cuando
+alguien renuncia: la autorización no se va con la persona.
+
+**Y el ejemplo de David ya destapó el primer hallazgo antes de que existiera la pantalla:** él
+dice **CUATRO** anaquelistas en Padre Hidalgo y el guardián de duplicados del 31/ago midió
+**CINCO** fichas activas. De los **tres cajeros** no dijo nada. Una de las dos cifras está mal, y
+hasta hoy no existía el lugar donde esa pregunta se pudiera siquiera hacer.
+
+#### `sin_plantilla` NO ES `excedente`, y esa distinción protege a tres personas
+
+Lo más importante del diseño. Los tres cajeros de Padre Hidalgo **no sobran**: nadie ha dicho
+todavía cuántos debe haber. Si el código los contara como excedente, la pantalla estaría
+**acusando a tres personas de sobrar por un dato que falta**. Por eso `autorizado` es
+`number | null` y el null viaja hasta la pantalla — §5.2 en su forma más cara. El control
+negativo va justo ahí: tratar el null como 0 rompe la aserción que nombra la distinción
+(`Expected 'excedente' to be 'sin_plantilla'`), cambiando **una línea** (320 → 320).
+
+#### PUESTOS DECLARADOS: la Fase 7 entrando por la puerta de la plantilla
+
+David: *«quiero que pienses como un jefe reclutador en el cual, si el puesto no existe, poder
+agregar uno que sea de Temporada»*. Es legítimo y conviene decir por qué: **la §8.5 prohíbe que
+el desarrollo invente un puesto por parecido, no que Dirección declare uno** con autor y fecha.
+
+Pero el hallazgo 1 de este proyecto es que la identidad se cruza por texto, y un puesto tecleado
+a mano es exactamente cómo nace un duplicado. De ahí los tres candados:
+
+1. **El id lleva prefijo `tmp-` por RESTRICCIÓN DE TABLA**, no por convención (`check (id like
+   'tmp-%')`). Sin eso, alguien que teclee «anaquelista» crea un segundo puesto con el id del
+   real y el cruce puesto→unidad empieza a devolver dos respuestas distintas.
+2. **`hasta` es `not null`.** Una temporada sin fecha de fin es un puesto permanente con otro
+   nombre, y en tres meses nadie sabe por qué existe.
+3. **`revisarDeclaracion()` AVISA —no bloquea— cuando el nombre ya existe**, comparando con
+   `normalizarNombre`, que es **la misma función** con la que `resolverPuesto` arma su índice de
+   alias, y mirando también los `aliasCargos`: «Anaquelista» a secas es por donde pasaría el
+   duplicado más probable. No bloquea porque puede haber una razón real para tener los dos.
+
+**Y lo que un puesto declarado NO hace, dicho para que no se lea como roto:** no tiene manual,
+así que **su columna de tareas sale vacía**. Es correcto —no se exige el cumplimiento de una
+norma que nadie ha escrito— pero sin decirlo en pantalla parece un fallo de la app.
+
+#### LAS PRUEBAS CAZARON DOS DEFECTOS ANTES DE QUE HUBIERA PANTALLA
+
+**115 de 115.** Y las dos que fallaron valieron más que las 113 verdes:
+
+1. **`idDeclarado` colisionaba de verdad.** Usaba `String(epoch).slice(-6)`: dos timestamps
+   redondos daban **el mismo id**, y aun sin serlo, seis dígitos de milisegundos solo distinguen
+   dentro de ~16 minutos. Dos temporadas con el mismo nombre habrían compartido id y **los
+   checklists de la vieja habrían pasado a apuntar al puesto de la nueva** — historia reescrita
+   en silencio (§5.5). Corregido a base 36 del epoch completo.
+2. **Mi esperado de `sinManual` era 3 y son 2**, porque `cajero-sucursal` **sí** tiene manual.
+   Derivado del catálogo antes de cambiarlo (19 puestos con manual de 89), no ajustado al
+   resultado. §8.11 otra vez, y van varias.
+
+**Dato para la Fase 7, medido de paso:** de los cinco puestos que David nombró,
+**`auxiliar-encargado`, `surtidor-ventas` y `surtidor-sucursal` NO tienen manual**. Su plantilla
+va a cuadrar y su columna de tareas va a estar vacía.
+
+**Y una ambigüedad que NO se resolvió por parecido (§8.5):** «dos surtidores» puede ser
+`surtidor-ventas` o `surtidor-sucursal`, y «bodeguero» puede ser `bodeguero-sucursal` o
+`almacenista-sucursal`. David dijo que almacén y bodega son los dos, cada uno con su renglón. Lo
+del surtidor **queda pendiente y visible**: lo elige quien capture la plantilla, de una lista,
+que es donde esa decisión pertenece.
+
+#### DESPLEGADO — y un TERCER estado de Railway que la guardia no conocía
+
+    [migrate][sql] 057 · plantillas: 0 filas en 0 sucursal(es) · puestos declarados: 0 filas
+    [migrate] aplicada: 057_plantillas_y_puestos_declarados.sql
+
+**Los ceros son el resultado esperado y se declararon ANTES de desplegar**, dentro de la propia
+migración. El notice sirve de control positivo **por su mecanismo**: sale de dos `count(*)`, así
+que no puede imprimirse si las tablas no existen.
+
+**Y la guardia del despliegue falló por TERCERA VEZ, con el mismo modo de fallo.** El 9/sep
+negaba solo `Building`; el 11/sep apareció `Deploying`; hoy salió **`Initializing (4s)`** y el
+bucle terminó en **0 esperas** porque no era ninguno de los dos. Tres veces anclando el control a
+**valores concretos** en vez de a la condición que importa. La guardia correcta afirma el estado
+**terminal**, no enumera los transitorios — todos ellos llevan sufijo de tiempo entre paréntesis:
+
+    # mal:  until ! railway status | grep -qE "Building|Deploying"
+    # bien: until [ "$(...status...)" = "● Online" ]
+
+Con eso: 4 esperas, `● Online` a secas, y la app arrancando (ventana de log de **12 líneas**,
+citada porque una ausencia ahí puede ser truncamiento y no ausencia).
+
+**HALLAZGO AJENO, visto en ese mismo log y sin diagnosticar:**
+`[tareas-notificar] ... la cuenta de WhatsApp está rebotando las plantillas (Business
+eligibility payment issue)`. **El bot no está pudiendo avisar a la gente.** No es de este paso,
+pero mientras siga así los avisos no salen.
+
+**Lo que falta para cerrar 3.1b:** la API y la pantalla. Este commit **no cambia un píxel** —
+`plantilla.util.ts` no lo importa nadie todavía, así que el tree-shaking ni siquiera lo mete en
+el bundle. Lo único que llegó a producción son las dos tablas vacías.
 
 ### 13/sep/2026 — PASO 2.2 ✅, y el día que las guardias valieron más que los datos
 

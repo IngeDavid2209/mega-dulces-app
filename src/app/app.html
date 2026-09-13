@@ -13,3 +13,21 @@
      administradores. Hoy ESCONDIDO por el interruptor MOSTRAR_ASISTENTE de
      app.ts (ver el comentario de alla para volver a prenderlo). -->
 <app-asistente-chat *ngIf="mostrarAsistente && !verMantenimiento"></app-asistente-chat>
+
+<!-- ═══════════ AVISO DE VERSIÓN NUEVA (13/sep/2026) ═══════════
+     Antes la app se recargaba SOLA al detectar una versión nueva. Ahora decide
+     la persona, por instrucción de David.
+
+     Va ABAJO y no como modal a propósito: quien lo ve suele estar a media
+     captura, de pie en una tienda. Un modal le tapa el trabajo y le obliga a
+     contestar algo que no le importa en ese momento; una barra se queda
+     esperando y no estorba.
+
+     En el login NO llega a mostrarse: ahí se aplica sola (ver app.ts). -->
+<div class="md-update" *ngIf="hayActualizacion" role="status">
+  <span class="md-update-txt">Hay una versión nueva de la app.</span>
+  <div class="md-update-btns">
+    <button type="button" class="md-update-ok" (click)="aplicarActualizacion()">Actualizar</button>
+    <button type="button" class="md-update-no" (click)="posponerActualizacion()">Ahora no</button>
+  </div>
+</div>

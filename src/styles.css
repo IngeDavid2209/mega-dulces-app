@@ -895,3 +895,45 @@ select.form-input, select.select-input {
     flex: 1 1 100%;
   }
 }
+/* ══════════════════════════════════════════════════════════════════════════
+   AVISO DE VERSIÓN NUEVA (13/sep/2026)
+   ──────────────────────────────────────────────────────────────────────────
+   Vive en styles.css y no en un CSS de componente porque `app.html` es la
+   raíz: su componente no tiene hoja propia.
+
+   Se ancla abajo, sobre el área segura del iPhone, y NO tapa el contenido:
+   es una barra, no un modal. Quien la ve está normalmente de pie en una
+   tienda, a media captura, con una mano ocupada — un modal le taparía el
+   trabajo para preguntarle algo que en ese instante no le importa.
+
+   Los dos botones cumplen el mínimo táctil de 44px por su propia regla, sin
+   depender del piso global: este aviso tiene que poder tocarse a la primera.
+   ══════════════════════════════════════════════════════════════════════════ */
+.md-update {
+  position: fixed;
+  left: 12px; right: 12px;
+  bottom: max(12px, env(safe-area-inset-bottom));
+  z-index: 9999;
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 10px;
+  padding: 12px 14px;
+  border-radius: var(--r-md);
+  background: var(--neutral-900);
+  color: var(--neutral-50);
+  box-shadow: var(--shadow-float);
+  font-size: 14px;
+}
+.md-update-txt { flex: 1 1 180px; min-width: 0; }
+.md-update-btns { display: flex; gap: 8px; flex-shrink: 0; }
+.md-update-ok, .md-update-no {
+  min-height: 44px; padding: 0 16px; border-radius: var(--r-sm);
+  font-size: 14px; font-weight: var(--fw-bold); cursor: pointer;
+  border: 1px solid transparent;
+}
+.md-update-ok { background: var(--action); color: var(--action-ink); }
+.md-update-no { background: transparent; color: var(--neutral-300); border-color: var(--neutral-700); }
+
+/* En pantallas anchas no hace falta que ocupe todo el ancho. */
+@media (min-width: 861px) {
+  .md-update { left: auto; right: 24px; max-width: 460px; }
+}

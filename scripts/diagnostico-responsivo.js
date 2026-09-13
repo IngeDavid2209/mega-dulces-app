@@ -26,11 +26,12 @@
  * app se carga en marcos de 390, 768 y 1024, y se comprueba que el ancho de
  * dentro sea el pedido —si no, se aborta en vez de concluir.
  *
- * ─── POR QUÉ HACE FALTA PARCHEAR LA AUTENTICACIÓN ─────────────────────────
- * `ApiService.token()` exige un usuario de Firebase Auth y lanza «Sin sesión
- * activa»: en headless el `fetch` a `/api` nunca sale y media app se queda sin
- * pintar. Se parchea EN UNA COPIA del dist —nunca en el real, y se comprueba
- * que el real quedó intacto— igual que hacen las otras pruebas del repo.
+ * ─── CÓMO CONSIGUE TOKEN SIN PARCHEAR NADA ────────────────────────────────
+ * `ApiService.token()` usa el JWT de `localStorage.md_token` si existe —el
+ * camino del acceso por plaza— y solo va a Firebase cuando no lo hay. Así que
+ * el arnés lo siembra y las peticiones salen. Antes se parcheaba el `dist/`
+ * buscando una cadena minificada, y eso se rompió el mismo día que ese método
+ * cambió: el ancla desapareció y el arnés dejó de poder medir.
  *
  * ─── LO QUE ESTO NO MIDE, dicho para que no se lea de más ─────────────────
  * Que se vea BIEN. Mide que quepa. Un texto ilegible de 9px, un contraste malo
@@ -49,10 +50,19 @@ const { execFile } = require('child_process');
 
 const DIST_REAL = path.join(__dirname, '..', 'dist', 'mega-dulces-app', 'browser');
 
-// El mismo parche de las otras pruebas. Si el ancla deja de aparecer, es que el
-// build cambió: se aborta en vez de medir una app que no carga datos.
-const ANCLA = 'token(t=!1){return i(this,null,function*(){let r=g(),s=r.currentUser;';
-const PARCHE = 'token(t=!1){return i(this,null,function*(){return"token-de-medicion";let r=g(),s=r.currentUser;';
+// ─── YA NO HACE FALTA PARCHEAR LA AUTENTICACIÓN ───────────────────────────
+//
+// La primera versión copiaba el `dist/` y le inyectaba un token falso dentro de
+// `ApiService.token()`, buscando una cadena del código MINIFICADO. Funcionaba y
+// era frágil: el 13/sep, al añadir el acceso por plaza, ese método cambió y el
+// ancla desapareció — el arnés abortó (bien) pero dejó de poder medir.
+//
+// Ya no se parchea nada. Desde el acceso por plaza, `token()` devuelve el JWT
+// de `localStorage.md_token` si existe, así que sembrarlo es un camino legítimo
+// y estable: el mismo que usa una persona que entró con su código de plaza.
+// El token no tiene que ser válido para el servidor — este arnés sirve `/api`
+// él mismo— solo tiene que existir para que el fetch salga.
+const TOKEN_MEDICION = 'token-de-medicion';
 
 /**
  * Los tres anchos que de verdad usa la gente. El 390 es el iPhone más común y
@@ -181,29 +191,15 @@ function abortar(motivo) {
   process.exit(3);
 }
 
+/**
+ * Se sirve el `dist/` REAL, sin copiar ni parchear.
+ *
+ * La guardia que sí hace falta ahora es otra: que el `dist/` exista y sea de un
+ * build reciente. Medir un `dist/` viejo daría cifras de una app que ya no es la
+ * que se va a desplegar.
+ */
 function prepararCopia() {
-  const destino = fs.mkdtempSync(path.join(os.tmpdir(), 'md-resp-'));
-  const copiar = (de, a) => {
-    fs.mkdirSync(a, { recursive: true });
-    for (const e of fs.readdirSync(de, { withFileTypes: true })) {
-      const o = path.join(de, e.name), d = path.join(a, e.name);
-      if (e.isDirectory()) copiar(o, d); else fs.copyFileSync(o, d);
-    }
-  };
-  copiar(DIST_REAL, destino);
-  let n = 0;
-  for (const f of fs.readdirSync(destino)) {
-    if (!f.endsWith('.js')) continue;
-    const p = path.join(destino, f);
-    const s = fs.readFileSync(p, 'utf8');
-    if (s.indexOf(ANCLA) >= 0) { n += s.split(ANCLA).length - 1; fs.writeFileSync(p, s.split(ANCLA).join(PARCHE)); }
-  }
-  if (n !== 1) abortar('el ancla del parche de autenticación aparece ' + n + ' veces (esperaba 1). ' +
-    'El build cambió: sin el parche, media app no carga y todo se mediría vacío.');
-  const tocado = fs.readdirSync(DIST_REAL).filter((f) => f.endsWith('.js'))
-    .some((f) => fs.readFileSync(path.join(DIST_REAL, f), 'utf8').indexOf('token-de-medicion') >= 0);
-  if (tocado) abortar('el dist/ REAL quedó parcheado. Reconstruye antes de desplegar.');
-  return destino;
+  return DIST_REAL;
 }
 
 /** La página marco: siembra sesión, mete la app en un iframe y mide desde fuera. */
@@ -212,6 +208,9 @@ function paginaMarco(ruta, medida) {
     + '<style>html,body{margin:0;background:#333}iframe{border:0;display:block}</style></head><body>'
     + '<script>'
     + 'try { localStorage.setItem("md_sesion_actual", ' + JSON.stringify(JSON.stringify(SESION)) + '); } catch (e) {}'
+    // El token que hace que las peticiones a /api salgan. Ver la nota de arriba:
+    // este es el camino del acceso por plaza, no un parche al código.
+    + 'try { localStorage.setItem("md_token", ' + JSON.stringify(TOKEN_MEDICION) + '); } catch (e) {}'
     + 'var res = { ruta: ' + JSON.stringify(ruta) + ', ancho: ' + medida.ancho + ' };'
     + 'var f = document.createElement("iframe");'
     + 'f.width = ' + medida.ancho + '; f.height = ' + medida.alto + ';'

@@ -523,6 +523,52 @@ export class AppComponent implements OnInit {
    * blanco (no puede bajar el index/chunks nuevos ni traer datos), que es justo
    * lo que hacía ver "todo vacío" con mala señal. Mejor esperar a tener internet.
    */
+  // ══════════════════════════════════════════════════════════════════════════
+  //  AVISO DE VERSIÓN NUEVA
+  // ══════════════════════════════════════════════════════════════════════════
+
+  /** Hay una versión lista y la persona todavía no la ha aplicado. */
+  hayActualizacion = false;
+
+  /** Cuánto se calla el aviso al posponerlo. Vuelve a salir después. */
+  private static readonly POSPONER_MS = 2 * 60 * 60 * 1000;   // 2 horas
+
+  /**
+   * ¿Está en una pantalla donde una recarga no le quita nada a nadie?
+   *
+   * Hoy es solo el login. Se mira `window.location.pathname` además de la ruta
+   * del router porque durante el arranque el router puede no haber resuelto
+   * todavía, y equivocarse aquí significa recargarle la pantalla a alguien que
+   * está capturando.
+   */
+  private enPantallaSinTrabajo(): boolean {
+    let ruta = '';
+    try { ruta = window.location.pathname || ''; } catch { ruta = ''; }
+    const delRouter = this.router.url || '';
+    return ruta.startsWith('/login') || delRouter.startsWith('/login');
+  }
+
+  /** El botón «Actualizar»: aplica la versión y recarga. */
+  aplicarActualizacion() {
+    this.hayActualizacion = false;
+    this.swUpdate.activateUpdate()
+      .then(() => this.recargarSiHayRed('boton-actualizar'))
+      .catch(() => this.recargarSiHayRed('boton-actualizar'));
+  }
+
+  /**
+   * «Ahora no». Se calla dos horas y vuelve.
+   *
+   * No se guarda en `localStorage` a propósito: si se guardara, «ahora no» se
+   * volvería «nunca» en el navegador de quien lo pulse una vez. En
+   * `sessionStorage` muere al cerrar la pestaña, que es lo que se quiere.
+   */
+  posponerActualizacion() {
+    this.hayActualizacion = false;
+    try { sessionStorage.setItem('md_update_pospuesta', String(Date.now())); } catch {}
+    setTimeout(() => { this.hayActualizacion = true; }, AppComponent.POSPONER_MS);
+  }
+
   private recargarSiHayRed(motivo: string) {
     if (navigator.onLine) { document.location.reload(); return; }
     console.warn('[app] recarga diferida (offline):', motivo);
@@ -533,18 +579,35 @@ export class AppComponent implements OnInit {
   private vigilarActualizaciones() {
     if (!this.swUpdate.isEnabled) return;
 
-    // 1) Una versión nueva ya quedó lista en caché → aplicarla SOLA, sin avisar.
-    //    No perdemos trabajo: los checklists/notas viven en Firestore (con cache
-    //    offline) y las fotos a medio subir quedan en la cola de localforage,
-    //    así que un reload no borra nada pendiente.
+    // 1) Una versión nueva quedó lista en caché → SE AVISA, no se aplica sola.
+    //
+    // ═══════════════════════════════════════════════════════════════════════
+    //  ESTO CAMBIÓ EL 13/sep/2026, POR INSTRUCCIÓN DE DAVID
+    // ═══════════════════════════════════════════════════════════════════════
+    // Antes decía «aplicarla SOLA, sin avisar» y recargaba en el acto. El
+    // argumento de entonces era que no se pierde trabajo porque todo vive en
+    // la nube — y es verdad para lo GUARDADO, pero no para lo que la persona
+    // tiene a medias: un motivo de retraso a medio escribir, una foto que
+    // acaba de elegir y no ha subido, el desplazamiento en una lista larga.
+    // Una recarga sorpresa a media captura se vive como que la app «se
+    // reinició sola», y eso es exactamente lo que David pidió quitar.
+    //
+    // ─── PERO EN EL LOGIN SÍ SE APLICA SOLA, y es la mitad del diseño ──────
+    // Ahí no hay nada que perder, y TODO EL MUNDO pasa por el login. Sin esta
+    // excepción, un aviso que se pospone indefinidamente deja gente en
+    // versiones viejas para siempre — que es el modo de fallo de cualquier
+    // «actualizar más tarde». Así, quien ignore el aviso todo el día queda
+    // actualizado la próxima vez que entre, sin enterarse.
     this.swUpdate.versionUpdates
       .pipe(filter((e): e is VersionReadyEvent => e.type === 'VERSION_READY'))
       .subscribe(() => {
-        // Aplica y recarga SOLA. Recarga aunque activateUpdate falle: al recargar
-        // el navegador toma igualmente la versión nueva del Service Worker.
-        this.swUpdate.activateUpdate()
-          .then(() => this.recargarSiHayRed('version-ready'))
-          .catch(() => this.recargarSiHayRed('version-ready'));
+        if (this.enPantallaSinTrabajo()) {
+          this.swUpdate.activateUpdate()
+            .then(() => this.recargarSiHayRed('version-ready-login'))
+            .catch(() => this.recargarSiHayRed('version-ready-login'));
+          return;
+        }
+        this.hayActualizacion = true;
       });
 
     // 2) Buscar actualizaciones en TODOS los momentos donde la PWA "despierta":

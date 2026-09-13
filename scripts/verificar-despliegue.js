@@ -64,7 +64,8 @@ const MARCADORES = [
   // anteriores bajan a control. Mantener ese orden importa: dos veces hoy el
   // comentario se quedo describiendo el marcador ANTERIOR, y un comentario que
   // narra otra cosa que la linea de abajo es doctrina falsa en dos semanas.
-  { txt: 'plz-codigo', nuevo: true, que: 'el login por plaza y su paso de identidad' },
+  { txt: 'md-update', nuevo: true, que: 'el aviso de version nueva' },
+  { txt: 'plz-codigo', control: true, que: 'el login por plaza' },
   { txt: 'pl-accesos', control: true, que: 'la pantalla de accesos de plaza' },
   { txt: 'min-height:var(--tap-min)', control: true, que: 'el minimo tactil' },
   { txt: 'pa-sin_asignar', control: true, que: 'la pantalla de pase de lista' },

@@ -34,6 +34,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { ApiService } from '../../../shared/api.service';
+import { conTope, mensajeDeFallo } from '../../../shared/con-tope.util';
 import { SidebarComponent } from '../../../shared/sidebar/sidebar';
 import { esAdminGlobal, sucursalesPermitidas } from '../../../shared/permisos.util';
 import { esJefatura } from '../../../shared/alcance.util';
@@ -124,11 +125,15 @@ export class PlantillaComponent implements OnInit {
     this.cargando.set(true);
     this.error.set(null);
     try {
+      // CON TOPE, y con el nombre del paso. Sin el, una de estas cuatro que no
+      // vuelva deja la pantalla en «Cargando...» PARA SIEMPRE, sin un solo
+      // error visible — que es exactamente lo que paso el 13/sep y lo que el
+      // 1/sep costo cinco horas en el login.
       const [us, pl, de, pz] = await Promise.all([
-        this.api.get('/api/usuarios'),
-        this.api.get('/api/plantillas'),
-        this.api.get('/api/puestos-declarados'),
-        this.api.get('/api/plazas'),
+        conTope(this.api.get('/api/usuarios'), 20000, 'leer las personas'),
+        conTope(this.api.get('/api/plantillas'), 20000, 'leer la plantilla'),
+        conTope(this.api.get('/api/puestos-declarados'), 20000, 'leer los puestos declarados'),
+        conTope(this.api.get('/api/plazas'), 20000, 'leer las plazas'),
       ]);
       this.usuarios.set(us?.items || us || []);
       this.plantillas.set(pl?.items || pl || []);
@@ -143,7 +148,7 @@ export class PlantillaComponent implements OnInit {
     } catch (e: any) {
       // «No pude leer» y «no hay nada» se ven idénticos si esto se traga
       // (§8.11 a). Por eso el error se muestra y la tabla no se pinta vacía.
-      this.error.set(e?.message || 'No se pudieron cargar los datos.');
+      this.error.set(mensajeDeFallo(e));
     } finally {
       this.cargando.set(false);
     }

@@ -34,6 +34,7 @@ import { Component, signal, computed, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../../shared/api.service';
+import { conTope, mensajeDeFallo } from '../../../shared/con-tope.util';
 import { SidebarComponent } from '../../../shared/sidebar/sidebar';
 import { esAdminGlobal, sucursalesPermitidas } from '../../../shared/permisos.util';
 import { esJefatura } from '../../../shared/alcance.util';
@@ -92,10 +93,11 @@ export class PaseListaComponent implements OnInit {
     this.cargando.set(true);
     this.error.set(null);
     try {
+      // Con tope y con el nombre del paso: ver la nota de plantilla.ts.
       const [us, pz, cb] = await Promise.all([
-        this.api.get('/api/usuarios'),
-        this.api.get('/api/plazas'),
-        this.api.get('/api/coberturas'),
+        conTope(this.api.get('/api/usuarios'), 20000, 'leer las personas'),
+        conTope(this.api.get('/api/plazas'), 20000, 'leer las plazas'),
+        conTope(this.api.get('/api/coberturas'), 20000, 'leer quién cubre cada plaza'),
       ]);
       this.usuarios.set(us?.items || us || []);
       this.plazas.set((pz?.items || pz || []) as Plaza[]);
@@ -103,18 +105,38 @@ export class PaseListaComponent implements OnInit {
       const dispo = this.sucursales();
       if (dispo.length && !this.sucursal()) this.sucursal.set(dispo[0]);
     } catch (e: any) {
-      this.error.set(e?.message || 'No se pudieron cargar los datos.');
+      this.error.set(mensajeDeFallo(e));
     } finally {
       this.cargando.set(false);
     }
   }
 
+  /**
+   * Las sucursales que se pueden elegir.
+   *
+   * ─── SALEN TAMBIEN DE LAS PERSONAS, NO SOLO DE LAS PLAZAS ───────────────
+   * La primera version las sacaba unicamente de `mdtask_plazas`, y eso hacia la
+   * pantalla INUTILIZABLE justo el primer dia: sin plazas creadas no hay
+   * sucursales, sin sucursal elegida el selector sale VACIO, y como
+   * `puedeAsignar()` exige una sucursal, encima aparecia «Solo lectura» — que
+   * ademas era mentira, porque quien miraba si tenia permiso.
+   *
+   * O sea: la pantalla se bloqueaba a si misma en el unico estado en que todo
+   * el mundo la iba a abrir por primera vez. Ahora la lista sale de la union de
+   * lo que existe -plazas y fichas de personal-, igual que en Plantilla.
+   */
   sucursales = computed<string[]>(() => {
     const permitidas = sucursalesPermitidas(this.currentUser);
     const vistas = new Set<string>();
     for (const p of this.plazas()) {
       const n = String(p?.lugar || '').trim();
       if (n) vistas.add(n);
+    }
+    for (const u of this.usuarios()) {
+      for (const sc of (u?.datos?.sucursales || u?.sucursales || [])) {
+        const n = String(sc || '').trim();
+        if (n) vistas.add(n);
+      }
     }
     const todas = [...vistas].sort((a, b) => a.localeCompare(b));
     if (!permitidas) return todas;

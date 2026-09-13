@@ -44,9 +44,15 @@
     <option *ngFor="let s of sucursales()" [value]="s">{{ s }}</option>
   </select>
 
-  <!-- El motivo se NOMBRA. «Solo lectura» a secas manda a la persona a pensar
-       que la app falla, en vez de a pedirle acceso a quien puede dárselo. -->
-  <span class="pl-solo-lectura" *ngIf="!puedeEditar()">
+  <!-- El motivo se NOMBRA, y NO se opina mientras carga.
+       Con `*ngIf="!puedeEditar()"` a secas, durante los segundos de carga -sin
+       sucursal elegida todavia- salia «no tienes esta sucursal en tu alcance» a
+       un administrador. Un mensaje de permisos falso es peor que ninguno: manda
+       a pedir un acceso que ya se tiene. -->
+  <span class="pl-solo-lectura" *ngIf="!cargando() && !sucursales().length">
+    No hay ninguna sucursal que puedas ver
+  </span>
+  <span class="pl-solo-lectura" *ngIf="!cargando() && sucursales().length && !puedeEditar()">
     Solo lectura · no tienes esta sucursal en tu alcance
   </span>
   <span class="pl-solo-lectura" *ngIf="puedeEditar() && !esAdmin">

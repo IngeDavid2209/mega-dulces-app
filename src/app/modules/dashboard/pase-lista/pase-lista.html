@@ -1,3 +1,26 @@
+<!-- El marco: header + sidebar. Antes lo ponia el cascaron de /control; al
+     salir de ahi (13/sep) cada pantalla monta el suyo, como el resto de las de
+     primer nivel. -->
+<div class="app-layout" translate="no">
+  <header class="header">
+    <div class="header-left">
+      <button class="btn-menu-mobile" (click)="toggleMenu()" aria-label="Menu">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="3" y1="12" x2="21" y2="12"></line>
+          <line x1="3" y1="6" x2="21" y2="6"></line>
+          <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+      </button>
+      <div class="header-brand">Mega Dulces<small>Pase de lista</small></div>
+    </div>
+  </header>
+
+  <div class="main-wrapper">
+    <div class="mobile-overlay" *ngIf="isMenuOpen" (click)="toggleMenu()"></div>
+    <app-sidebar [currentUser]="currentUser" [isMenuOpen]="isMenuOpen"
+                 (closeMenu)="isMenuOpen = false"></app-sidebar>
+    <main class="content">
+
 <section class="pa-intro">
   <h1>Pase de lista</h1>
   <p>
@@ -34,7 +57,7 @@
   <!-- Sin plazas: se dice qué falta y dónde se hace, no se deja en blanco. -->
   <div class="pa-vacio" *ngIf="!plazasDeLaSucursal().length">
     <strong>Esta sucursal todavía no tiene plazas.</strong>
-    Se crean desde <em>Control → Plantilla</em>: primero se captura cuántas debe
+    Se crean desde <em>Definiciones → Plantilla de sucursal</em>: primero se captura cuántas debe
     haber de cada puesto, y de ahí salen numeradas.
   </div>
 
@@ -130,3 +153,6 @@
 
   </ng-container>
 </ng-container>
+    </main>
+  </div>
+</div>

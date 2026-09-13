@@ -15,6 +15,7 @@ import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
 
 import { TABS_CONTROL, primeraTab } from '../modules/dashboard/control/control.tabs';
+import { esJefatura } from '../shared/alcance.util';
 
 /*
  * ─── POR QUE ESTOS DOS GUARDS DEVUELVEN UrlTree Y NO `navigate() + false` ───
@@ -82,4 +83,26 @@ export const primeraTabControlGuard: CanActivateFn = () => {
   const router = inject(Router);
   const primera = primeraTab(usuario());
   return router.parseUrl(primera ? `/control/${primera.ruta}` : '/home');
+};
+
+/**
+ * ¿Puede ver una pantalla de estructura (Plantilla, Pase de lista)?
+ *
+ * Sale de `esJefatura`, que es el mismo predicado con el que estas dos vivían
+ * como pestañas de Control: al sacarlas a ruta propia el 13/sep/2026 NO se
+ * cambió quién las ve, solo dónde están. Mezclar una reorganización de menú con
+ * un cambio de permisos hace imposible saber cuál de los dos rompió algo — es
+ * la lección que dejó escrita la fusión de las cuatro pantallas de análisis.
+ *
+ * Quien no pasa va a su trabajo, no a una pantalla vacía ni al login: un
+ * `UrlTree` a /tareas-manual, igual que hace `home.guard`.
+ */
+export const estructuraGuard: CanActivateFn = () => {
+  const router = inject(Router);
+  let u: any = null;
+  try {
+    const s = localStorage.getItem('md_sesion_actual');
+    u = s ? JSON.parse(s) : null;
+  } catch { u = null; }
+  return esJefatura(u) ? true : router.createUrlTree(['/tareas-manual']);
 };

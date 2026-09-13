@@ -32,7 +32,7 @@
 // El permiso del cascaron NO se repite aqui: se importa de su propia
 // definicion, para que menu y guard cambien juntos o no cambien.
 import { veControl } from '../../modules/dashboard/control/control.tabs';
-import { hayTableroPara } from '../alcance.util';
+import { hayTableroPara, esJefatura } from '../alcance.util';
 
 export type SeccionNav = 'mi-trabajo' | 'verifico' | 'control' | 'definiciones';
 
@@ -154,6 +154,10 @@ export const NAV: EntradaNav[] = [
   // permiso. Entrar al cascaron nunca da acceso a una pestaña.
   { seccion: 'control', etiqueta: 'Control operativo', ruta: '/control',
     icono: 'grafica', ve: veControl },
+  // Operacion de CADA DIA, por eso va en Control y no en Definiciones: la
+  // Encargada entra aqui al abrir su turno, no una vez al mes.
+  { seccion: 'control', etiqueta: 'Pase de lista', ruta: '/pase-lista',
+    icono: 'gente', ve: esJefatura },
   { seccion: 'control', etiqueta: 'Auditoría', ruta: '/reportes',
     icono: 'lupa', ve: (u) => esAdmin(u) || u?.puedeVerHistorial },
   { seccion: 'control', etiqueta: 'Cierre Mensual', ruta: '/cierre-mensual',
@@ -163,6 +167,11 @@ export const NAV: EntradaNav[] = [
   // Al fondo porque se visita una vez al mes, no diario.
   { seccion: 'definiciones', etiqueta: 'Manual por Puesto', ruta: '/manual-puestos',
     icono: 'libro', ve: (u) => esAdmin(u) || u?.puedeCrearRutinas },
+  // La estructura de cada sucursal: cuantas plazas de cada puesto debe haber.
+  // Va junto a Manual por Puesto y Usuarios porque es lo mismo que ellas: una
+  // DEFINICION de como esta armada la empresa, no un corte de datos.
+  { seccion: 'definiciones', etiqueta: 'Plantilla de sucursal', ruta: '/plantilla',
+    icono: 'tienda', ve: esJefatura },
   { seccion: 'definiciones', etiqueta: 'Usuarios', ruta: '/personal',
     icono: 'gente', ve: (u) => esAdmin(u) || u?.puedeAdministrarPersonal },
   { seccion: 'definiciones', etiqueta: 'Días de Descanso', ruta: '/descansos',

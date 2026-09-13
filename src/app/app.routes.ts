@@ -2,7 +2,7 @@ import { Routes } from '@angular/router';
 
 import { homeGuard } from './services/home.guard';
 import { authGuard } from './services/auth.guard';
-import { tabControlGuard, primeraTabControlGuard } from './services/control.guards';
+import { tabControlGuard, primeraTabControlGuard, estructuraGuard } from './services/control.guards';
 import { soloTecGuard } from './services/tec.guard';
 import { promocionesGuard } from './services/promociones.guard';
 import { pagosGuard } from './services/pagos.guard';
@@ -115,16 +115,10 @@ export const routes: Routes = [
         canActivate: [tabControlGuard],
         loadComponent: () => import('./modules/dashboard/checkstore/checkstore').then(m => m.CheckstoreComponent)
       },
-      {
-        path: 'plantilla',
-        canActivate: [tabControlGuard],
-        loadComponent: () => import('./modules/dashboard/plantilla/plantilla').then(m => m.PlantillaComponent)
-      },
-      {
-        path: 'pase-lista',
-        canActivate: [tabControlGuard],
-        loadComponent: () => import('./modules/dashboard/pase-lista/pase-lista').then(m => m.PaseListaComponent)
-      },
+      // Vivieron aqui unas horas el 13/sep y se mudaron a ruta propia. NO se
+      // borran: quien haya compartido el enlace por WhatsApp aterriza igual.
+      { path: 'plantilla',  redirectTo: '/plantilla',  pathMatch: 'full' },
+      { path: 'pase-lista', redirectTo: '/pase-lista', pathMatch: 'full' },
     ]
   },
 
@@ -137,6 +131,24 @@ export const routes: Routes = [
   // es la entrada de menu numero 20, la deuda que la §7 registro el 31/ago. La
   // absorbe esta fusion: deja de ser entrada y pasa a ser pestaña de Control.
   { path: 'productividad', redirectTo: 'control/productividad', pathMatch: 'full' },
+
+  // 🧩 ESTRUCTURA DE LA SUCURSAL — la plantilla (cuantas plazas debe haber) y
+  // el pase de lista (quien ocupa cada una hoy).
+  //
+  // Entraron como pestañas de /control y salieron de ahi el mismo dia: esa
+  // pantalla agrupa ANALISIS, y estas dos son una DEFINICION y una operacion
+  // diaria. `estructuraGuard` conserva EXACTAMENTE el permiso que tenian como
+  // pestaña (esJefatura), para que el cambio sea de sitio y no de audiencia.
+  {
+    path: 'plantilla',
+    canActivate: [authGuard, estructuraGuard],
+    loadComponent: () => import('./modules/dashboard/plantilla/plantilla').then(m => m.PlantillaComponent)
+  },
+  {
+    path: 'pase-lista',
+    canActivate: [authGuard, estructuraGuard],
+    loadComponent: () => import('./modules/dashboard/pase-lista/pase-lista').then(m => m.PaseListaComponent)
+  },
 
   // 📕 MANUAL POR PUESTO — reemplaza al sistema de Rutinas (Catálogo,
   // Asignación, Programación y Migración). Ya no se captura qué se hace ni a

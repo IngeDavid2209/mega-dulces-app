@@ -34,6 +34,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { ApiService } from '../../../shared/api.service';
+import { SidebarComponent } from '../../../shared/sidebar/sidebar';
 import { esAdminGlobal, sucursalesPermitidas } from '../../../shared/permisos.util';
 import { esJefatura } from '../../../shared/alcance.util';
 import { resolverPuesto } from '../../../shared/puesto.util';
@@ -66,7 +67,7 @@ function hoyISO(): string {
 @Component({
   selector: 'app-plantilla',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule],
+  imports: [CommonModule, FormsModule, RouterModule, SidebarComponent],
   templateUrl: './plantilla.html',
   styleUrls: ['./plantilla.css'],
 })
@@ -74,6 +75,11 @@ export class PlantillaComponent implements OnInit {
   private api = inject(ApiService);
 
   currentUser: any = null;
+
+  /** El cajon del menu en movil. Lo monta esta pantalla desde que dejo
+   *  de ser pestaña de /control. */
+  isMenuOpen = false;
+  toggleMenu() { this.isMenuOpen = !this.isMenuOpen; }
   cargando = signal(true);
   error = signal<string | null>(null);
   guardando = signal(false);

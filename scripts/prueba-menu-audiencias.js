@@ -238,43 +238,43 @@ const CAMBIOS_INTENCIONALES = {
 //
 // Si se declarara solo el nombre de la pestaña, un cambio posterior de su
 // permiso pasaria en verde y esta prueba se habria vuelto decorativa.
-const PESTANAS_NUEVAS = {
-  plantilla: {
+const RUTAS_NUEVAS = {
+  // ── LAS DOS DE ESTRUCTURA (13/sep/2026) ─────────────────────────────────
+  //
+  // Nacieron como PESTAÑAS de /control por el congelamiento de menu del §7, y
+  // se declararon aqui como tales. Horas despues salieron a ruta propia porque
+  // David no las encontro — y porque estaban mal colocadas: /control agrupa
+  // ANALISIS, y estas son una DEFINICION y una operacion diaria.
+  //
+  // La declaracion se mudo con ellas. Lo que NO cambio es el mecanismo: se
+  // declara la AUDIENCIA EXACTA, por perfil, y se comprueba en las dos
+  // direcciones -que no la vea nadie de mas ni deje de verla nadie de la
+  // lista-. Declarar solo el nombre volveria esta prueba decorativa.
+  '/plantilla': {
     desde: '13/sep/2026',
     permiso: 'esJefatura',
-    porque: 'Paso 3.1b: la plantilla autorizada de cada sucursal. Instruccion de ' +
-            'David. La Encargada tiene que ver la de SU sucursal, y por eso el ' +
-            'permiso es esJefatura y no las banderas de las otras cuatro pestañas.',
-    // Los cuatro que SON jefatura entre los perfiles sinteticos. La supervisora
-    // con banderas NO esta a proposito: no trae sucursales, asi que no pasa
-    // `esSupervisor` — y que este fuera es justo lo que prueba que el permiso
-    // discrimina en vez de dejar entrar a cualquiera con banderas.
+    porque: 'Cuantas plazas de cada puesto debe tener una sucursal. En DEFINICIONES, ' +
+            'junto a Manual por Puesto y Usuarios.',
     audiencia: [
-      'admin global',
-      'admin de sucursales',
-      'Encargada CON puesto (jefatura)',
-      'Encargada SIN puesto pero CON sucursal',
+      'admin global', 'admin de sucursales',
+      'Encargada CON puesto (jefatura)', 'Encargada SIN puesto pero CON sucursal',
     ],
   },
-  'pase-lista': {
+  '/pase-lista': {
     desde: '13/sep/2026',
     permiso: 'esJefatura',
-    porque: 'Quien ocupa cada plaza hoy. Mismo permiso de ENTRADA que Plantilla, ' +
-            'pero dentro solo edita quien tenga esa sucursal en su alcance: la ' +
-            'plantilla la captura Direccion y el pase de lista la Encargada.',
-    // La misma audiencia que Plantilla, y a proposito: las dos son esJefatura.
+    porque: 'Quien ocupa cada plaza hoy. En CONTROL porque es trabajo de cada dia.',
+    // La MISMA audiencia que /plantilla, y a proposito: las dos son esJefatura.
     // Si algun dia divergen, esta lista deja de cuadrar y la prueba lo dice.
     audiencia: [
-      'admin global',
-      'admin de sucursales',
-      'Encargada CON puesto (jefatura)',
-      'Encargada SIN puesto pero CON sucursal',
+      'admin global', 'admin de sucursales',
+      'Encargada CON puesto (jefatura)', 'Encargada SIN puesto pero CON sucursal',
     ],
   },
 };
 
-/** ruta de pestaña nueva -> perfiles que de verdad la vieron en esta corrida. */
-const vistaDePestanaNueva = {};
+/** ruta nueva -> perfiles que de verdad la vieron en esta corrida. */
+const vistaDeRutaNueva = {};
 
 const FUNDIDAS = {
   // ⚠ EL DESTINO ES LA PESTAÑA, NO EL CASCARON, y la diferencia solo se nota
@@ -456,6 +456,17 @@ for (const { nombre, u } of USUARIOS) {
   // una reorganizacion de menu.
   const ganoLimpio = [], escalada = [];
   for (const r of gano) {
+    // Una ruta NUEVA no viene de ninguna fusion. Se acepta solo si esta
+    // declarada arriba Y este perfil esta en su audiencia: asi un
+    // ensanchamiento posterior de su `ve` sigue saltando.
+    const nueva = RUTAS_NUEVAS[r];
+    if (nueva) {
+      (vistaDeRutaNueva[r] = vistaDeRutaNueva[r] || new Set()).add(nombre);
+      if (!nueva.audiencia.includes(nombre)) {
+        escalada.push({ ruta: r, motivo: 'ruta NUEVA que "' + nombre + '" NO tiene declarada' });
+      }
+      continue;
+    }
     const origenes = Object.keys(mapa).filter(o => (mapa[o] || '').split('/')[1] === r.split('/')[1]);
     if (origenes.length === 0) { escalada.push({ ruta: r, motivo: 'no es destino de ninguna fusion declarada' }); continue; }
     const tenia = origenes.filter(o => antes.includes(o));
@@ -498,16 +509,6 @@ for (const { nombre, u } of USUARIOS) {
       // prueba callaria. Por eso se exige DECLARAR SU AUDIENCIA EXACTA, y se
       // compara contra ella perfil por perfil. Si mañana alguien ensancha su
       // `ve`, un perfil de mas la vera y esta comparacion deja de cuadrar.
-      const nueva = PESTANAS_NUEVAS[t.ruta];
-      if (nueva) {
-        (vistaDePestanaNueva[t.ruta] = vistaDePestanaNueva[t.ruta] || new Set()).add(nombre);
-        if (!nueva.audiencia.includes(nombre)) {
-          difs++;
-          console.log('   ✗ pestaña NUEVA %s · la ve "%s", que NO esta en su audiencia declarada',
-                      t.ruta, nombre);
-        }
-        continue;
-      }
       difs++;
       console.log('   ✗ pestaña %s · no es destino de ninguna fusión declarada', t.ruta);
       continue;
@@ -657,20 +658,20 @@ for (const x of perfilesConSubconjunto) console.log('    %s', x);
 // prueba seguiria en verde: solo habria menos filas, y menos nunca dispara una
 // alarma por si solo. Es la misma asimetria que el 31/ago dejo escrita para las
 // perdidas de menu.
-for (const [ruta, decl] of Object.entries(PESTANAS_NUEVAS)) {
-  const vista = vistaDePestanaNueva[ruta] || new Set();
+for (const [ruta, decl] of Object.entries(RUTAS_NUEVAS)) {
+  const vista = vistaDeRutaNueva[ruta] || new Set();
   const faltan = decl.audiencia.filter(p => !vista.has(p));
   if (faltan.length) {
     difs++;
-    console.log('✗ pestaña NUEVA %s · NO la ven %d perfil(es) de su audiencia declarada: %s',
+    console.log('✗ ruta NUEVA %s · NO la ven %d perfil(es) de su audiencia declarada: %s',
                 ruta, faltan.length, faltan.join(', '));
   } else if (vista.size === 0) {
     // Un cero aqui no es "sin problemas": es que ningun perfil ejercio la
     // pestaña, asi que nada de lo de arriba se comprobo (§8.11 a).
     difs++;
-    console.log('✗ pestaña NUEVA %s · NINGUN perfil la ejercio: la comprobacion no midio nada', ruta);
+    console.log('✗ ruta NUEVA %s · NINGUN perfil la ejercio: la comprobacion no midio nada', ruta);
   } else {
-    console.log('✓ pestaña nueva "%s" (%s, %s): la ven exactamente los %d perfiles declarados',
+    console.log('✓ ruta nueva "%s" (%s, %s): la ven exactamente los %d perfiles declarados',
                 ruta, decl.permiso, decl.desde, vista.size);
   }
 }

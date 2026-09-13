@@ -34,6 +34,7 @@ import { Component, signal, computed, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../../shared/api.service';
+import { SidebarComponent } from '../../../shared/sidebar/sidebar';
 import { esAdminGlobal, sucursalesPermitidas } from '../../../shared/permisos.util';
 import { esJefatura } from '../../../shared/alcance.util';
 import { nombrePuesto } from '../../../shared/organigrama.catalogo';
@@ -52,7 +53,7 @@ function hoyISO(): string {
 @Component({
   selector: 'app-pase-lista',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, SidebarComponent],
   templateUrl: './pase-lista.html',
   styleUrls: ['./pase-lista.css'],
 })
@@ -60,6 +61,11 @@ export class PaseListaComponent implements OnInit {
   private api = inject(ApiService);
 
   currentUser: any = null;
+
+  /** El cajon del menu en movil. Lo monta esta pantalla desde que dejo
+   *  de ser pestaña de /control. */
+  isMenuOpen = false;
+  toggleMenu() { this.isMenuOpen = !this.isMenuOpen; }
   cargando = signal(true);
   error = signal<string | null>(null);
   guardando = signal(false);

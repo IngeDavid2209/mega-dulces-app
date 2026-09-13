@@ -88,37 +88,21 @@ export const TABS_CONTROL: TabControl[] = [
   { ruta: 'sucursales', etiqueta: 'Sucursales',
     ve: (u) => esAdmin(u) || u?.puedeVerCheckstore },
 
-  // ── PLANTILLA (paso 3.1b, 13/sep/2026) ───────────────────────────────────
-  // Cuántas plazas de cada puesto DEBE tener cada sucursal, contra las que hay.
+  // ── PLANTILLA Y PASE DE LISTA YA NO VIVEN AQUI (13/sep/2026) ─────────────
+  // Entraron como pestañas por el congelamiento de menu del §7, y salieron el
+  // mismo dia por una razon mejor: David no las encontro. Y no era solo
+  // costumbre — estaban MAL COLOCADAS. Esta pantalla agrupa ANALISIS
+  // (Estadisticas, Ranking, Productividad, Sucursales); la plantilla es una
+  // DEFINICION de la estructura, como Manual por Puesto o Usuarios, y el pase
+  // de lista es operacion de CADA DIA. Ninguna de las dos es un corte de datos.
   //
-  // ESTA PESTAÑA ENSANCHA QUIÉN VE EL CASCARÓN, y se dice aquí en vez de que
-  // alguien lo descubra: las otras cuatro piden `puedeVerEstadisticas` o
-  // `puedeVerCheckstore`, y ésta pide `esJefatura`, que incluye a quien tiene
-  // gente debajo aunque no traiga ninguna bandera. O sea que una Encargada que
-  // hoy NO entra a /control va a empezar a entrar, y va a ver EXACTAMENTE una
-  // pestaña: ésta.
+  // Ahora tienen ruta propia (/plantilla y /pase-lista) y su entrada de menu.
+  // Las rutas viejas /control/plantilla y /control/pase-lista NO se borraron:
+  // redirigen, porque puede haberlas compartido alguien por WhatsApp.
   //
-  // Es deliberado y es la instrucción de David: la Encargada tiene que ver la
-  // plantilla de SU sucursal. No es una escalada encubierta —no le regala
-  // ninguna de las otras cuatro, porque cada pestaña se gatea por su propio
-  // `ve`— pero sí es acceso nuevo, que es la dirección peligrosa al mover
-  // visibilidad. El recorte por sucursal lo hace la pantalla: Dirección captura
-  // y edita; los demás ven la suya y no pueden guardar.
-  { ruta: 'plantilla', etiqueta: 'Plantilla',
-    ve: (u) => esJefatura(u) },
-
-  // ── PASE DE LISTA (paso 3.1b · cobertura, 13/sep/2026) ───────────────────
-  // Quien ocupa cada plaza hoy. Mismo permiso de entrada que Plantilla
-  // -esJefatura- pero NO la misma capacidad de editar, y esa es la diferencia
-  // que importa: la PLANTILLA la captura Direccion (cuantas plazas se autorizan
-  // es una decision de la empresa) y el PASE DE LISTA lo hace la Encargada de su
-  // sucursal (quien cubre hoy es una decision de su turno). Pedirle a Direccion
-  // que capture el pase de lista haria que no lo capturara nadie.
-  //
-  // Esa segunda regla vive DENTRO de la pantalla, en `puedeAsignar`, no aqui:
-  // este `ve` decide quien ABRE, y lo que se puede TOCAR es otra pregunta.
-  { ruta: 'pase-lista', etiqueta: 'Pase de lista',
-    ve: (u) => esJefatura(u) },
+  // QUIEN LAS VE NO CAMBIO: siguen pidiendo `esJefatura`, ahora desde
+  // `estructuraGuard`. Mezclar una reorganizacion de menu con un cambio de
+  // permisos hace imposible saber cual de los dos rompio algo.
 ];
 
 /** Las pestañas que este usuario puede abrir. */

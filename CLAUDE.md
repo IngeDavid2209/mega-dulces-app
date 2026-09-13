@@ -477,9 +477,59 @@ estado terminal, no la lista de transitorios— y tardó 5 vueltas.
 
 **Lo que NO está hecho, dicho para que no se lea como resuelto:** **nadie ha capturado una sola
 plantilla**, así que la pantalla abre vacía y su primer valor aparece cuando Dirección teclee los
-números de Padre Hidalgo. **Nadie ha entrado con una cuenta real** a verla. Y los pasos 2 (pase
-de lista) y 3 (acceso por plaza) **no existen**: hoy se sigue entrando con usuario y contraseña
-de persona.
+números de Padre Hidalgo. **Nadie ha entrado con una cuenta real** a verla.
+
+#### Y EL PASO SIGUIENTE, EL MISMO DÍA: LA PLANTILLA SE VUELVE PLAZAS NUMERADAS
+
+`cobertura.util.ts` + `api/plazas.js` + `api/coberturas.js`, y un botón en la pantalla de
+plantilla que crea las plazas que faltan. Las tablas existían desde la 056 y **hasta hoy no las
+leía nadie**.
+
+**EL NÚMERO DEJÓ DE SER UN PROBLEMA, y eso merece quedar escrito porque contradice —con razón—
+lo que decidimos el 9/sep.** El paso 3.1a dejó las plazas naciendo con `numero` en NULL, y el
+motivo era bueno: se sembraban desde el **censo**, y ordenar personas por nombre o por uid para
+repartir los números habría sido inventar la cuadrilla (§8.5). Generándolas desde la
+**plantilla**, ese problema desaparece: la plantilla dice «cuatro anaquelistas», así que las
+plazas son 1, 2, 3 y 4 **antes de que exista una sola persona**. El número sale de la
+autorización, no de la gente, y quién es el Anaquelista 1 lo decide la Encargada al asignar —que
+es exactamente donde esa decisión pertenece.
+
+**LA SUPLENCIA GANA AL TITULAR**, y es el caso que más importa de `coberturaDelDia`. Si mandara
+el titular, la evidencia de un día de suplencia quedaría **firmada por quien no estuvo**: eso es
+`verificado_falso` (§4) fabricado por el propio software. Control negativo: invertir el peso
+rompe la aserción con `Expected 'ana' to be 'supl'` y tumba además la guardia de discriminación.
+
+**`hueco` ≠ `sin_asignar`**, que es la tercera vez hoy que aparece la misma familia. «Alguien
+miró y declaró que no hay nadie» contra «nadie ha pasado lista». Si se pintaran igual, **la
+sucursal que hace el trabajo bien saldría peor que la que no hace nada**.
+
+**Dos decisiones de `planDePlazas` que no son obvias:**
+
+- **Rellena el hueco en vez de continuar la serie.** Con 1, 2 y 4 existentes y plantilla de
+  cuatro, falta **la 3**. Continuar dejaría una cuadrilla 1, 2, 4, 5 tras una sola baja, y a los
+  dos meses los números no significarían nada.
+- **Cuando sobran plazas, las reporta y no las toca.** Retirar una plaza ocupada dejaría a una
+  persona sin sitio sin que nadie lo decidiera. §8.5 aplicado a una acción destructiva.
+
+**Y `resumenDelDia` detecta a una persona puesta en DOS plazas el mismo día:** su evidencia
+contaría dos veces y una de las dos plazas está sola en realidad. Es el defecto que la plaza vino
+a romper —«los tres anaquelistas reciben la MISMA tarea»— reapareciendo por la puerta de la
+cobertura.
+
+**142 pruebas.** Una falló al escribirla y **era mi fixture**: creaba dos coberturas con el mismo
+`id`, algo imposible en la base donde `id` es *primary key*, así que el desempate se quedaba sin
+nada por lo que desempatar. Se corrigió el fixture, no la función — que es la dirección correcta,
+y la contraria a la del `sinManual: 3`.
+
+**Desplegado:** `pl-plazas` **0 → 7**, 6 controles en pie, 59 archivos · 4.37 MB, y
+`/api/plazas` y `/api/coberturas` en **401** (montados, pidiendo token).
+
+**LO QUE FALTA PARA LO QUE DAVID PIDIÓ DE VERDAD:** la pantalla del **pase de lista** —donde la
+Encargada dice quién ocupa cada plaza hoy— y después el **acceso por plaza**. La regla ya está
+escrita y probada; lo que no existe es dónde capturarla. Hoy se sigue entrando con usuario y
+contraseña de persona, y hasta que el pase de lista exista **no se debe** cambiar eso: sin él,
+una cuenta de plaza pierde el nombre de quien firmó, que es el problema del correo compartido de
+las migraciones 051–053.
 
 ### 13/sep/2026 — PASO 2.2 ✅, y el día que las guardias valieron más que los datos
 

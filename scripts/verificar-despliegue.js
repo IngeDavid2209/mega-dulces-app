@@ -67,7 +67,8 @@ const MARCADORES = [
   // El correo del dueño. YA VALIA 1 antes de este cambio -esta en la lista de
   // cuentas exentas del modo mantenimiento desde hace meses- asi que aqui no
   // vale preguntar "¿aparece?" sino "¿aparece DOS veces?". Ver `minimo` abajo.
-  { txt: 'Sin sucursales', nuevo: true, minimo: 4, que: 'la lista de sucursales sale de la ficha' },
+  { txt: 'CEDIS', nuevo: true, minimo: 78, que: 'el filtro de lugares con cuadrilla' },
+  { txt: 'Sin sucursales', control: true, minimo: 4, que: 'la lista de sucursales sale de la ficha' },
   { txt: 'direccion-general', control: true, minimo: 10, que: 'Usuarios solo para el dueño y Direccion General' },
   { txt: 'a tu nombre', control: true, que: 'el arreglo de «Mis tareas»' },
   { txt: 'davidcisneros2209', control: true, minimo: 2, que: 'el super admin reconocido por correo' },

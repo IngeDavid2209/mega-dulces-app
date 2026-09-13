@@ -14,7 +14,7 @@
  * Por eso el primer caso de abajo es «sin plazas y sin fichas»: es el estado en
  * que TODO EL MUNDO va a abrir esta pantalla la primera vez.
  */
-import { sucursalesElegibles } from './sucursales-elegibles.util';
+import { sucursalesElegibles, tieneCuadrilla } from './sucursales-elegibles.util';
 
 const ENCARGADA = { rol: 'trabajador', sucursales: ['Padre Hidalgo'], puedeVerEstadisticas: true };
 const GERENTE = { rol: 'trabajador', sucursales: ['8 Esquinas', 'La Piedad Abastos'], puedeVerEstadisticas: true };
@@ -85,5 +85,58 @@ describe('sucursales elegibles', () => {
     expect(enc).not.toEqual(glob);
     expect(enc.length).toBe(1);
     expect(glob.length).toBe(2);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+describe('qué lugares tienen cuadrilla a la que pasar lista', () => {
+
+  it('EL CASO DE DAVID: MANTENIMIENTO y SISTEMAS no son sitios de pase de lista', () => {
+    // Su captura: las dos salían en el selector. Son áreas administrativas.
+    expect(tieneCuadrilla('MANTENIMIENTO')).toBe(false);
+    expect(tieneCuadrilla('SISTEMAS')).toBe(false);
+  });
+
+  it('tampoco las demás áreas', () => {
+    for (const a of ['RH', 'FINANZAS', 'COMPRAS', 'MKT', 'CONTABILIDAD', 'OFICINAS CORPORATIVAS']) {
+      expect(tieneCuadrilla(a)).withContext(a + ' NO debería tener pase de lista').toBe(false);
+    }
+  });
+
+  it('las sucursales SÍ', () => {
+    for (const s of ['Canindo', 'Padre Hidalgo', 'La Piedad Abastos', 'Yurécuaro']) {
+      expect(tieneCuadrilla(s)).withContext(s + ' SÍ debería tenerlo').toBe(true);
+    }
+  });
+
+  it('y CEDIS TAMBIÉN, aunque el mapa lo llame corporativo', () => {
+    // La excepción con nombre propio: CEDIS tiene cuadrilla real —16 personas,
+    // seis choferes—. Filtrar por tipo a secas la habría dejado fuera.
+    expect(tieneCuadrilla('CEDIS')).toBe(true);
+    expect(tieneCuadrilla(' cedis ')).toBe(true);
+  });
+
+  it('un lugar que nadie ha mapeado NO se cuela', () => {
+    // «Sin zona» es un pendiente visible, no una sucursal. Dejarlo pasar sería
+    // rellenar por parecido (§8.5).
+    expect(tieneCuadrilla('BODEGA NUEVA')).toBe(false);
+    expect(tieneCuadrilla('')).toBe(false);
+  });
+
+  it('el filtro llega al selector POR LOS DOS CAMINOS', () => {
+    // Por la ficha: alguien cuya ficha trae un área no debe verla aquí.
+    expect(sucursalesElegibles({ rol: 'trabajador', sucursales: ['MANTENIMIENTO', 'Canindo'] }, [], []))
+      .toEqual(['Canindo']);
+    // Y por los datos, para el admin global.
+    expect(sucursalesElegibles({ rol: 'admin' },
+      [{ lugar: 'SISTEMAS' }, { lugar: 'Padre Hidalgo' }, { lugar: 'CEDIS' }], []))
+      .toEqual(['CEDIS', 'Padre Hidalgo']);
+  });
+
+  it('GUARDIA: la muestra discrimina — hay síes y noes', () => {
+    const si = ['Canindo', 'CEDIS'].filter(tieneCuadrilla).length;
+    const no = ['MANTENIMIENTO', 'SISTEMAS', 'RH'].filter(tieneCuadrilla).length;
+    expect(si).toBe(2);
+    expect(no).toBe(0);
   });
 });

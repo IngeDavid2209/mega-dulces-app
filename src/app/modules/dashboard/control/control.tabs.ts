@@ -48,6 +48,7 @@
  */
 
 import { esAdmin } from '../../../shared/permisos.util';
+import { esJefatura } from '../../../shared/alcance.util';
 
 export interface TabControl {
   /** Segmento de la URL: `/control/<ruta>`. */
@@ -86,6 +87,25 @@ export const TABS_CONTROL: TabControl[] = [
   // esta. Si el cascaron se viera con la union, se la llevaria de regalo.
   { ruta: 'sucursales', etiqueta: 'Sucursales',
     ve: (u) => esAdmin(u) || u?.puedeVerCheckstore },
+
+  // ── PLANTILLA (paso 3.1b, 13/sep/2026) ───────────────────────────────────
+  // Cuántas plazas de cada puesto DEBE tener cada sucursal, contra las que hay.
+  //
+  // ESTA PESTAÑA ENSANCHA QUIÉN VE EL CASCARÓN, y se dice aquí en vez de que
+  // alguien lo descubra: las otras cuatro piden `puedeVerEstadisticas` o
+  // `puedeVerCheckstore`, y ésta pide `esJefatura`, que incluye a quien tiene
+  // gente debajo aunque no traiga ninguna bandera. O sea que una Encargada que
+  // hoy NO entra a /control va a empezar a entrar, y va a ver EXACTAMENTE una
+  // pestaña: ésta.
+  //
+  // Es deliberado y es la instrucción de David: la Encargada tiene que ver la
+  // plantilla de SU sucursal. No es una escalada encubierta —no le regala
+  // ninguna de las otras cuatro, porque cada pestaña se gatea por su propio
+  // `ve`— pero sí es acceso nuevo, que es la dirección peligrosa al mover
+  // visibilidad. El recorte por sucursal lo hace la pantalla: Dirección captura
+  // y edita; los demás ven la suya y no pueden guardar.
+  { ruta: 'plantilla', etiqueta: 'Plantilla',
+    ve: (u) => esJefatura(u) },
 ];
 
 /** Las pestañas que este usuario puede abrir. */

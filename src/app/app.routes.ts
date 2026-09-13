@@ -115,6 +115,11 @@ export const routes: Routes = [
         canActivate: [tabControlGuard],
         loadComponent: () => import('./modules/dashboard/checkstore/checkstore').then(m => m.CheckstoreComponent)
       },
+      {
+        path: 'plantilla',
+        canActivate: [tabControlGuard],
+        loadComponent: () => import('./modules/dashboard/plantilla/plantilla').then(m => m.PlantillaComponent)
+      },
     ]
   },
 

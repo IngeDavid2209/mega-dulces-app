@@ -1,0 +1,134 @@
+/* Plantilla de sucursal (paso 3.1b).
+   Los colores salen de los tokens del sistema Mercado. Ni un hexadecimal
+   suelto: el 4/sep un token inventado (`--warning`, que no existe) pintó dos
+   estados DISTINTOS del mismo color, sin un solo error en consola. */
+
+.pl-intro { margin-bottom: 20px; }
+.pl-intro h1 { font-size: 22px; margin: 0 0 8px; }
+.pl-intro p { margin: 0 0 8px; font-size: 14px; line-height: 1.6; color: var(--neutral-600); }
+.pl-intro-clave {
+  background: var(--surface-ground); border-left: 3px solid var(--action);
+  padding: 10px 14px; border-radius: 6px;
+}
+
+.pl-barra {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.pl-lbl { font-size: 13px; font-weight: var(--fw-bold); }
+.pl-select, .pl-text {
+  padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px;
+  font-size: 14px; background: var(--card-bg); color: var(--text-main);
+  min-height: 40px;
+}
+.pl-text-ancho { width: 100%; margin-top: 8px; }
+.pl-solo-lectura { font-size: 12px; color: var(--neutral-500); }
+.pl-guardando { font-size: 12px; color: var(--action); }
+
+.pl-error {
+  background: var(--bad-soft-bg); border: 1px solid var(--bad-border);
+  color: var(--bad-soft-fg); padding: 12px 14px; border-radius: 8px;
+  font-size: 13px; margin-bottom: 16px;
+}
+.pl-cargando, .pl-vacio {
+  padding: 24px; text-align: center; color: var(--neutral-500); font-size: 14px;
+}
+
+/* ── Resumen ─────────────────────────────────────────────────────────────── */
+.pl-tarjetas {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px; margin-bottom: 20px;
+}
+.pl-tarjeta {
+  background: var(--card-bg); border: 1px solid var(--border);
+  border-radius: 10px; padding: 14px; text-align: center;
+}
+.pl-tarjeta.pl-alerta { border-color: var(--warn-border); background: var(--warn-soft-bg); }
+.pl-cifra { display: block; font-size: 28px; font-weight: var(--fw-bold); line-height: 1.1; }
+.pl-cifra-lbl { display: block; font-size: 12px; color: var(--neutral-500); margin-top: 4px; }
+
+/* ── Tabla ───────────────────────────────────────────────────────────────── */
+.pl-tabla { width: 100%; border-collapse: collapse; font-size: 14px; }
+.pl-tabla th {
+  text-align: left; font-size: 12px; text-transform: uppercase;
+  color: var(--neutral-500); padding: 8px 10px; border-bottom: 1px solid var(--border);
+}
+.pl-tabla td { padding: 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.pl-nombre { font-weight: var(--fw-bold); }
+
+/* El estado se distingue por el borde izquierdo y no solo por el color del
+   texto: el color por sí solo no es accesible, y estas filas se miran en un
+   celular a contraluz dentro de una tienda. */
+.pl-vacante   { border-left: 3px solid var(--warn-border); }
+.pl-excedente { border-left: 3px solid var(--bad-border); }
+.pl-cuadra    { border-left: 3px solid var(--ok-border); }
+.pl-sin_plantilla { border-left: 3px solid var(--neutral-300); }
+
+.pl-estado { font-size: 12px; color: var(--neutral-600); }
+.pl-vacante .pl-estado   { color: var(--warn-soft-fg); font-weight: var(--fw-bold); }
+.pl-excedente .pl-estado { color: var(--bad-soft-fg); font-weight: var(--fw-bold); }
+
+/* El guion de «nadie lo ha capturado». No es un cero y no debe parecerlo. */
+.pl-nada { color: var(--neutral-400); }
+
+.pl-num {
+  width: 72px; padding: 6px 8px; border: 1px solid var(--border);
+  border-radius: 6px; font-size: 14px; text-align: center;
+  background: var(--card-bg); color: var(--text-main); min-height: 36px;
+}
+
+.pl-chip {
+  display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 999px;
+  margin-left: 6px; vertical-align: middle; white-space: nowrap;
+}
+.pl-chip-tmp { background: var(--info-soft-bg, var(--surface-ground)); color: var(--info-soft-fg, var(--neutral-600)); }
+.pl-chip-sinmanual { background: var(--warn-soft-bg); color: var(--warn-soft-fg); }
+
+.pl-btn-quitar {
+  background: none; border: 1px solid var(--border); border-radius: 6px;
+  padding: 4px 10px; font-size: 12px; cursor: pointer; color: var(--neutral-600);
+  min-height: 32px;
+}
+
+/* ── Sin puesto ──────────────────────────────────────────────────────────── */
+.pl-sinpuesto {
+  margin-top: 16px; padding: 10px 14px; border-radius: 8px; font-size: 13px;
+  background: var(--surface-ground); color: var(--neutral-600);
+}
+.pl-sinpuesto-hay {
+  background: var(--warn-soft-bg); color: var(--warn-soft-fg);
+  border: 1px solid var(--warn-border);
+}
+
+/* ── Agregar / declarar ──────────────────────────────────────────────────── */
+.pl-agregar { margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--border); }
+.pl-agregar h2 { font-size: 16px; margin: 0 0 12px; }
+.pl-agregar-fila { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.pl-btn {
+  background: var(--action); color: var(--card-bg); border: none;
+  border-radius: 6px; padding: 9px 18px; font-size: 14px; cursor: pointer;
+  min-height: 40px;
+}
+.pl-btn[disabled] { opacity: .5; cursor: not-allowed; }
+.pl-btn-link {
+  background: none; border: none; color: var(--action); cursor: pointer;
+  font-size: 13px; padding: 10px 0; text-decoration: underline;
+}
+
+.pl-declarar {
+  margin-top: 10px; padding: 14px; border: 1px dashed var(--border);
+  border-radius: 8px; background: var(--surface-ground);
+}
+.pl-declarar-nota { font-size: 13px; color: var(--neutral-600); margin: 0 0 12px; line-height: 1.6; }
+.pl-problema {
+  margin-top: 10px; padding: 8px 12px; border-radius: 6px; font-size: 13px;
+  background: var(--warn-soft-bg); color: var(--warn-soft-fg);
+}
+.pl-problema-bloquea { background: var(--bad-soft-bg); color: var(--bad-soft-fg); }
+
+/* En móvil la tabla se desborda a propósito dentro de su propio scroll, que es
+   lo único que puede hacerlo: el cuerpo de la página nunca scrollea a lo ancho. */
+@media (max-width: 720px) {
+  .pl-tabla { display: block; overflow-x: auto; white-space: nowrap; }
+  .pl-agregar-fila { flex-direction: column; align-items: stretch; }
+}

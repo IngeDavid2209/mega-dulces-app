@@ -223,6 +223,44 @@ const CAMBIOS_INTENCIONALES = {
          + 'verlo». La RUTA sigue abierta; se quita la entrada del menu.',
 };
 
+// ── PESTAÑAS NUEVAS, que no vienen de ninguna fusion ───────────────────────
+//
+// El control de fusiones pregunta "¿de que pantalla vieja viene esta pestaña?".
+// Una pestaña NUEVA no viene de ninguna, asi que sin esta tabla la prueba
+// aborta — que es lo que hizo, y esta bien: agregar una pestaña TIENE que ser
+// un acto declarado, porque cada una ensancha quien ve el cascaron /control.
+//
+// Lo que se declara NO es "esta es nueva, dejala pasar": es su AUDIENCIA
+// EXACTA, por nombre de perfil sintetico. Esa es la diferencia entre documentar
+// y ablandar. Con la audiencia declarada:
+//   · un perfil de MAS que la vea -alguien ensancho su `ve`- falla, y
+//   · un perfil de MENOS que deje de verla -alguien la estrecho- tambien.
+//
+// Si se declarara solo el nombre de la pestaña, un cambio posterior de su
+// permiso pasaria en verde y esta prueba se habria vuelto decorativa.
+const PESTANAS_NUEVAS = {
+  plantilla: {
+    desde: '13/sep/2026',
+    permiso: 'esJefatura',
+    porque: 'Paso 3.1b: la plantilla autorizada de cada sucursal. Instruccion de ' +
+            'David. La Encargada tiene que ver la de SU sucursal, y por eso el ' +
+            'permiso es esJefatura y no las banderas de las otras cuatro pestañas.',
+    // Los cuatro que SON jefatura entre los perfiles sinteticos. La supervisora
+    // con banderas NO esta a proposito: no trae sucursales, asi que no pasa
+    // `esSupervisor` — y que este fuera es justo lo que prueba que el permiso
+    // discrimina en vez de dejar entrar a cualquiera con banderas.
+    audiencia: [
+      'admin global',
+      'admin de sucursales',
+      'Encargada CON puesto (jefatura)',
+      'Encargada SIN puesto pero CON sucursal',
+    ],
+  },
+};
+
+/** ruta de pestaña nueva -> perfiles que de verdad la vieron en esta corrida. */
+const vistaDePestanaNueva = {};
+
 const FUNDIDAS = {
   // ⚠ EL DESTINO ES LA PESTAÑA, NO EL CASCARON, y la diferencia solo se nota
   // cuando hay mas de una pestaña — o sea, cuando ya seria tarde.
@@ -439,6 +477,22 @@ for (const { nombre, u } of USUARIOS) {
     const destino = '/control/' + t.ruta;
     const origenes = Object.keys(mapa).filter(o => mapa[o] === destino);
     if (origenes.length === 0) {
+      // Una pestaña NUEVA no viene de ninguna fusion, asi que aqui no hay nada
+      // que "reclamar". Pero dejarla pasar por ser nueva ablandaria el control:
+      // cualquiera podria agregar una pestaña con el `ve` que quisiera y la
+      // prueba callaria. Por eso se exige DECLARAR SU AUDIENCIA EXACTA, y se
+      // compara contra ella perfil por perfil. Si mañana alguien ensancha su
+      // `ve`, un perfil de mas la vera y esta comparacion deja de cuadrar.
+      const nueva = PESTANAS_NUEVAS[t.ruta];
+      if (nueva) {
+        (vistaDePestanaNueva[t.ruta] = vistaDePestanaNueva[t.ruta] || new Set()).add(nombre);
+        if (!nueva.audiencia.includes(nombre)) {
+          difs++;
+          console.log('   ✗ pestaña NUEVA %s · la ve "%s", que NO esta en su audiencia declarada',
+                      t.ruta, nombre);
+        }
+        continue;
+      }
       difs++;
       console.log('   ✗ pestaña %s · no es destino de ninguna fusión declarada', t.ruta);
       continue;
@@ -579,6 +633,32 @@ if (perfilesConSubconjunto.length === 0) {
 console.log('✓ escalada por pestaña: %d pestañas revisadas · %d perfil(es) con subconjunto estricto',
   tabsRevisadas, perfilesConSubconjunto.length);
 for (const x of perfilesConSubconjunto) console.log('    %s', x);
+
+// ── LA OTRA MITAD DE LA AUDIENCIA DECLARADA ────────────────────────────────
+//
+// Arriba se comprobo que nadie de MAS vea una pestaña nueva. Aqui, que nadie de
+// MENOS deje de verla. Sin esta mitad, estrechar el permiso -por ejemplo pasar
+// `esJefatura` a `esAdmin`- dejaria sin plantilla a las dos Encargadas y la
+// prueba seguiria en verde: solo habria menos filas, y menos nunca dispara una
+// alarma por si solo. Es la misma asimetria que el 31/ago dejo escrita para las
+// perdidas de menu.
+for (const [ruta, decl] of Object.entries(PESTANAS_NUEVAS)) {
+  const vista = vistaDePestanaNueva[ruta] || new Set();
+  const faltan = decl.audiencia.filter(p => !vista.has(p));
+  if (faltan.length) {
+    difs++;
+    console.log('✗ pestaña NUEVA %s · NO la ven %d perfil(es) de su audiencia declarada: %s',
+                ruta, faltan.length, faltan.join(', '));
+  } else if (vista.size === 0) {
+    // Un cero aqui no es "sin problemas": es que ningun perfil ejercio la
+    // pestaña, asi que nada de lo de arriba se comprobo (§8.11 a).
+    difs++;
+    console.log('✗ pestaña NUEVA %s · NINGUN perfil la ejercio: la comprobacion no midio nada', ruta);
+  } else {
+    console.log('✓ pestaña nueva "%s" (%s, %s): la ven exactamente los %d perfiles declarados',
+                ruta, decl.permiso, decl.desde, vista.size);
+  }
+}
 
 // ── ¿LAS RUTAS VIEJAS ATERRIZAN DONDE DICE LA FUSION? ────────────────────
 //

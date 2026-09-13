@@ -57,6 +57,11 @@ app.all('/api/usuarios', require('./api/usuarios'));
 app.all('/api/usuarios-agenda', require('./api/usuarios-agenda'));
 // Etapa 3 FERROCARRIL: checklists (el mayor lector). Frontend con dual-write.
 app.all('/api/checklists', require('./api/checklists'));
+// Fase 3 · paso 3.1b: la plantilla autorizada de cada sucursal y los puestos
+// que Direccion declara ("de temporada"). Tablas de la migracion 057.
+app.all('/api/plantillas', require('./api/plantillas'));
+app.all('/api/puestos-declarados', require('./api/puestos-declarados'));
+
 // Etapas 4-8 FERROCARRIL: resto de colecciones (CRUD generado por api/_crud.js).
 app.all('/api/catalogo-rutinas', require('./api/catalogo-rutinas'));
 app.all('/api/asignaciones-rutinas', require('./api/asignaciones-rutinas'));

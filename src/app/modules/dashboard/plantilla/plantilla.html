@@ -1,0 +1,180 @@
+<!-- ═══════════ QUÉ SIGNIFICA ESTA PANTALLA ═══════════ -->
+<section class="pl-intro">
+  <h1>Plantilla de la sucursal</h1>
+  <p>
+    Cuántas plazas de cada puesto <strong>debe</strong> tener esta sucursal, contra
+    las personas que <strong>hay</strong> hoy. La plantilla la autoriza Dirección; el
+    conteo sale de las fichas activas.
+  </p>
+  <p class="pl-intro-clave">
+    De aquí salen dos números que hasta ahora no existían: las <strong>vacantes</strong>
+    —plazas autorizadas sin nadie— y el <strong>excedente</strong>. Sin plantilla, una
+    sucursal a la que le faltan dos anaquelistas reparte ese trabajo entre los que
+    quedan, y el tablero lo muestra como bajo cumplimiento de esas personas.
+  </p>
+</section>
+
+<!-- ═══════════ SELECTOR DE SUCURSAL ═══════════ -->
+<div class="pl-barra">
+  <label class="pl-lbl">Sucursal</label>
+  <select class="pl-select" [ngModel]="sucursal()" (ngModelChange)="sucursal.set($event)">
+    <option *ngFor="let s of sucursales()" [value]="s">{{ s }}</option>
+  </select>
+
+  <span class="pl-solo-lectura" *ngIf="!puedeEditar">
+    Solo lectura · la plantilla la captura Dirección
+  </span>
+  <span class="pl-guardando" *ngIf="guardando()">guardando…</span>
+</div>
+
+<!-- Un error se NOMBRA. Si esto se tragara, «no pude leer» y «no hay nada» se
+     verían idénticos, que es lo que el §8.11 persigue. -->
+<div class="pl-error" *ngIf="error()">
+  <strong>No se pudieron cargar los datos.</strong> {{ error() }}
+</div>
+
+<div class="pl-cargando" *ngIf="cargando()">Cargando…</div>
+
+<ng-container *ngIf="!cargando() && !error()">
+
+  <!-- Sin sucursales visibles: se dice por qué, no se deja la pantalla en blanco. -->
+  <div class="pl-vacio" *ngIf="!sucursales().length">
+    No hay ninguna sucursal a la que tengas acceso. Si crees que es un error,
+    pídele a Dirección que revise las sucursales de tu ficha.
+  </div>
+
+  <ng-container *ngIf="sucursales().length">
+
+    <!-- ═══════════ RESUMEN ═══════════ -->
+    <div class="pl-tarjetas">
+      <div class="pl-tarjeta">
+        <span class="pl-cifra">{{ resumen().autorizados }}</span>
+        <span class="pl-cifra-lbl">plazas autorizadas</span>
+      </div>
+      <div class="pl-tarjeta">
+        <span class="pl-cifra">{{ resumen().ocupados }}</span>
+        <span class="pl-cifra-lbl">personas hoy</span>
+      </div>
+      <div class="pl-tarjeta" [class.pl-alerta]="resumen().vacantes > 0">
+        <span class="pl-cifra">{{ resumen().vacantes }}</span>
+        <span class="pl-cifra-lbl">vacantes</span>
+      </div>
+      <div class="pl-tarjeta" [class.pl-alerta]="resumen().excedente > 0">
+        <span class="pl-cifra">{{ resumen().excedente }}</span>
+        <span class="pl-cifra-lbl">de más</span>
+      </div>
+    </div>
+
+    <!-- ═══════════ LA TABLA ═══════════ -->
+    <table class="pl-tabla">
+      <thead>
+        <tr>
+          <th>Puesto</th>
+          <th>Debe haber</th>
+          <th>Hay</th>
+          <th>Estado</th>
+          <th *ngIf="puedeEditar"></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let r of comparado(); trackBy: trackPuesto" [ngClass]="claseEstado(r.estado)">
+          <td class="pl-nombre">
+            {{ r.nombre }}
+            <span class="pl-chip pl-chip-tmp" *ngIf="r.declarado"
+                  [title]="'Puesto de temporada, vigente hasta ' + r.hasta">
+              temporada · hasta {{ r.hasta }}
+            </span>
+            <!-- Se dice antes de que alguien lo descubra mirando una columna
+                 vacía y piense que la app está rota. -->
+            <span class="pl-chip pl-chip-sinmanual" *ngIf="r.sinManual"
+                  title="No hay manual escrito para este puesto, así que no recibe tareas automáticas. Es de Capital Humano, no de la app.">
+              sin manual
+            </span>
+          </td>
+
+          <td>
+            <input class="pl-num" type="number" min="0" *ngIf="puedeEditar && r.autorizado != null"
+                   [value]="r.autorizado"
+                   (change)="cambiarCantidad(r.puestoId, $any($event.target).value)" />
+            <span *ngIf="!puedeEditar && r.autorizado != null">{{ r.autorizado }}</span>
+            <!-- El guion NO es cero: es «nadie lo ha capturado». -->
+            <span class="pl-nada" *ngIf="r.autorizado == null" title="Nadie ha autorizado cuántos debe haber">—</span>
+          </td>
+
+          <td>{{ r.ocupado }}</td>
+
+          <td><span class="pl-estado">{{ textoEstado(r) }}</span></td>
+
+          <td *ngIf="puedeEditar">
+            <button class="pl-btn-quitar" *ngIf="r.autorizado != null"
+                    (click)="retirarRenglon(r.puestoId)"
+                    title="Retira la autorización. No borra nada: queda en la historia con su autor y su fecha.">
+              retirar
+            </button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- Gente que existe y que la comparación no puede colocar. Se muestra
+         SIEMPRE, incluso en cero: si se ocultara, esas personas desaparecerían
+         de la pantalla y los totales cuadrarían igual (hallazgo 1). -->
+    <div class="pl-sinpuesto" [class.pl-sinpuesto-hay]="sinPuesto().length">
+      <strong>{{ sinPuesto().length }}</strong> persona(s) de esta sucursal sin puesto
+      que el sistema pueda resolver.
+      <span *ngIf="sinPuesto().length">
+        No entran en ningún renglón de arriba: <em>{{ nombresSinPuesto() }}</em>.
+        Hay que capturarles el puesto en su ficha.
+      </span>
+    </div>
+
+    <!-- ═══════════ AGREGAR UN RENGLÓN ═══════════ -->
+    <div class="pl-agregar" *ngIf="puedeEditar">
+      <h2>Agregar un puesto a la plantilla</h2>
+      <div class="pl-agregar-fila">
+        <select class="pl-select" [ngModel]="nuevoPuestoId()" (ngModelChange)="nuevoPuestoId.set($event)">
+          <option value="">Elige un puesto…</option>
+          <option *ngFor="let p of puestosDisponibles()" [value]="p.id">{{ p.nombre }}</option>
+        </select>
+        <input class="pl-num" type="number" min="0"
+               [ngModel]="nuevaCantidad()" (ngModelChange)="nuevaCantidad.set($event)" />
+        <button class="pl-btn" [disabled]="!nuevoPuestoId() || guardando()" (click)="agregarRenglon()">
+          Agregar
+        </button>
+      </div>
+
+      <!-- ═══════════ DECLARAR UN PUESTO DE TEMPORADA ═══════════ -->
+      <button class="pl-btn-link" (click)="declarando.set(!declarando())">
+        {{ declarando() ? 'Cancelar' : '¿El puesto no existe? Declarar uno de temporada' }}
+      </button>
+
+      <div class="pl-declarar" *ngIf="declarando()">
+        <p class="pl-declarar-nota">
+          Un puesto de temporada existe solo hasta su fecha de fin y
+          <strong>no recibe tareas del manual</strong>: nadie ha escrito su norma
+          todavía. Su columna de tareas va a salir vacía, y eso es correcto.
+        </p>
+        <div class="pl-agregar-fila">
+          <input class="pl-text" type="text" placeholder="Nombre del puesto"
+                 [ngModel]="decNombre()" (ngModelChange)="decNombre.set($event)" />
+          <input class="pl-text" type="date" title="Hasta cuándo existe este puesto"
+                 [ngModel]="decHasta()" (ngModelChange)="decHasta.set($event)" />
+        </div>
+        <input class="pl-text pl-text-ancho" type="text" placeholder="¿Por qué hace falta? (opcional)"
+               [ngModel]="decMotivo()" (ngModelChange)="decMotivo.set($event)" />
+
+        <!-- El aviso de parecido es lo que impide que «Surtidor» y «Surtidor de
+             Ventas» acaben partiendo el cumplimiento de esas personas en dos. -->
+        <div class="pl-problema" *ngFor="let p of problemasDeclaracion()"
+             [class.pl-problema-bloquea]="p.gravedad === 'bloquea'">
+          {{ p.mensaje }}
+        </div>
+
+        <button class="pl-btn" [disabled]="bloqueaDeclaracion() || guardando()" (click)="declararPuesto()">
+          Declarar puesto
+        </button>
+      </div>
+    </div>
+
+  </ng-container>
+</ng-container>

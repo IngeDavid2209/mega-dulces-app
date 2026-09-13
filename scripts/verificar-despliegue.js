@@ -59,7 +59,12 @@ const MARCADORES = [
   // NINGUNA CADENA PROPIA -el minificador ademas se come `estadoItem`- asi que el
   // unico marcador honesto es la clase CSS nueva, verificada como inexistente en
   // HEAD antes de elegirla. Un marcador se valida en las DOS direcciones.
-  { txt: 'pr-justif', nuevo: true, que: 'los justificados nombrados en pantalla' },
+  // Nuevo (paso 3.1b, 13/sep/2026): la pantalla de plantilla. Verificado como
+  // inexistente en HEAD antes de elegirlo, y presente en el dist despues de
+  // construir — las dos direcciones, que es lo que hace valido un marcador.
+  { txt: 'pl-sinpuesto', nuevo: true, que: 'la pantalla de plantilla' },
+  // Fue el marcador nuevo del despliegue anterior; ahora sirve de control.
+  { txt: 'pr-justif', control: true, que: 'los justificados nombrados en pantalla' },
   // Controles: existian antes de este despliegue y deben seguir en pie. Viven
   // en chunks DISTINTOS (tablero, tarjeta, organigrama, index), asi que si uno
   // diera 0 seria por no haber recorrido ese chunk, no por no haber llegado.

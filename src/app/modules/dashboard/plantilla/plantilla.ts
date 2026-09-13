@@ -34,6 +34,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { ApiService } from '../../../shared/api.service';
+import { sucursalesElegibles } from '../../../shared/sucursales-elegibles.util';
 import { conTope, mensajeDeFallo } from '../../../shared/con-tope.util';
 import { SidebarComponent } from '../../../shared/sidebar/sidebar';
 import { esAdminGlobal, sucursalesPermitidas } from '../../../shared/permisos.util';
@@ -155,31 +156,14 @@ export class PlantillaComponent implements OnInit {
   }
 
   /**
-   * Las sucursales que este usuario puede mirar.
+   * Las sucursales que se pueden elegir.
    *
-   * `sucursalesPermitidas` devuelve null cuando no hay techo declarado (un
-   * admin global). En ese caso la lista sale de los datos, no de una lista
-   * escrita a mano aquí: una lista local se queda atrás el día que abra una
-   * sucursal nueva, y esa sucursal desaparecería de la pantalla sin ruido.
+   * La regla vive en `sucursales-elegibles.util.ts` y NO se copia aquí: estaba
+   * escrita dos veces —esta pantalla y la otra— y el mismo bug del selector
+   * vacío se arregló dos veces sin quedar arreglado.
    */
-  sucursales = computed<string[]>(() => {
-    const permitidas = sucursalesPermitidas(this.currentUser);
-    const vistas = new Set<string>();
-    for (const u of this.usuarios()) {
-      for (const s of (u?.datos?.sucursales || u?.sucursales || [])) {
-        const n = String(s || '').trim();
-        if (n) vistas.add(n);
-      }
-    }
-    for (const p of this.plantillas()) {
-      const n = String(p?.sucursal || '').trim();
-      if (n) vistas.add(n);
-    }
-    const todas = [...vistas].sort((a, b) => a.localeCompare(b));
-    if (!permitidas) return todas;
-    const set = new Set(permitidas.map(s => s.trim()));
-    return todas.filter(s => set.has(s));
-  });
+  sucursales = computed<string[]>(() =>
+    sucursalesElegibles(this.currentUser, this.plazas(), this.usuarios()));
 
   /** Puestos declarados que siguen vigentes hoy. */
   declaradosVigentes = computed<PuestoDeclarado[]>(() =>

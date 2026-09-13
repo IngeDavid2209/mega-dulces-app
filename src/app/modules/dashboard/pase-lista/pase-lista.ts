@@ -34,6 +34,7 @@ import { Component, signal, computed, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../../shared/api.service';
+import { sucursalesElegibles } from '../../../shared/sucursales-elegibles.util';
 import { conTope, mensajeDeFallo } from '../../../shared/con-tope.util';
 import { SidebarComponent } from '../../../shared/sidebar/sidebar';
 import { esAdminGlobal, sucursalesPermitidas } from '../../../shared/permisos.util';
@@ -114,35 +115,12 @@ export class PaseListaComponent implements OnInit {
   /**
    * Las sucursales que se pueden elegir.
    *
-   * ─── SALEN TAMBIEN DE LAS PERSONAS, NO SOLO DE LAS PLAZAS ───────────────
-   * La primera version las sacaba unicamente de `mdtask_plazas`, y eso hacia la
-   * pantalla INUTILIZABLE justo el primer dia: sin plazas creadas no hay
-   * sucursales, sin sucursal elegida el selector sale VACIO, y como
-   * `puedeAsignar()` exige una sucursal, encima aparecia «Solo lectura» — que
-   * ademas era mentira, porque quien miraba si tenia permiso.
-   *
-   * O sea: la pantalla se bloqueaba a si misma en el unico estado en que todo
-   * el mundo la iba a abrir por primera vez. Ahora la lista sale de la union de
-   * lo que existe -plazas y fichas de personal-, igual que en Plantilla.
+   * La regla vive en `sucursales-elegibles.util.ts` y NO se copia aquí: estaba
+   * escrita dos veces —esta pantalla y la otra— y el mismo bug del selector
+   * vacío se arregló dos veces sin quedar arreglado.
    */
-  sucursales = computed<string[]>(() => {
-    const permitidas = sucursalesPermitidas(this.currentUser);
-    const vistas = new Set<string>();
-    for (const p of this.plazas()) {
-      const n = String(p?.lugar || '').trim();
-      if (n) vistas.add(n);
-    }
-    for (const u of this.usuarios()) {
-      for (const sc of (u?.datos?.sucursales || u?.sucursales || [])) {
-        const n = String(sc || '').trim();
-        if (n) vistas.add(n);
-      }
-    }
-    const todas = [...vistas].sort((a, b) => a.localeCompare(b));
-    if (!permitidas) return todas;
-    const set = new Set(permitidas.map(s => s.trim()));
-    return todas.filter(s => set.has(s));
-  });
+  sucursales = computed<string[]>(() =>
+    sucursalesElegibles(this.currentUser, this.plazas(), this.usuarios()));
 
   /**
    * ¿Puede esta persona pasar lista en la sucursal elegida?

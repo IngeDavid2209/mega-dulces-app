@@ -48,7 +48,7 @@
        sucursal elegida, y quien miraba si tenia permiso. Ahora cada caso dice
        lo suyo, porque «no puedes» y «falta elegir» se arreglan distinto. -->
   <span class="pa-solo-lectura" *ngIf="!sucursales().length">
-    No hay ninguna sucursal que puedas ver
+    Sin sucursales: tu ficha no tiene ninguna asignada
   </span>
   <span class="pa-solo-lectura" *ngIf="sucursales().length && !puedeAsignar()">
     Solo lectura · no tienes esta sucursal en tu alcance

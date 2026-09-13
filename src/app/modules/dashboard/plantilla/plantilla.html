@@ -50,7 +50,7 @@
        un administrador. Un mensaje de permisos falso es peor que ninguno: manda
        a pedir un acceso que ya se tiene. -->
   <span class="pl-solo-lectura" *ngIf="!cargando() && !sucursales().length">
-    No hay ninguna sucursal que puedas ver
+    Sin sucursales: tu ficha no tiene ninguna asignada
   </span>
   <span class="pl-solo-lectura" *ngIf="!cargando() && sucursales().length && !puedeEditar()">
     Solo lectura · no tienes esta sucursal en tu alcance
@@ -72,9 +72,15 @@
 <ng-container *ngIf="!cargando() && !error()">
 
   <!-- Sin sucursales visibles: se dice por qué, no se deja la pantalla en blanco. -->
+  <!-- Dos motivos distintos para la misma lista vacia, y se arreglan en sitios
+       distintos: o a TU ficha le falta la sucursal, o la empresa todavia no
+       tiene nada capturado. Decir solo «no tienes acceso» manda a pedir un
+       permiso cuando a veces lo que falta es capturar. -->
   <div class="pl-vacio" *ngIf="!sucursales().length">
-    No hay ninguna sucursal a la que tengas acceso. Si crees que es un error,
-    pídele a Dirección que revise las sucursales de tu ficha.
+    <strong>Sin sucursales que mostrar.</strong>
+    Si eres Encargada o Gerente, tu ficha no tiene ninguna asignada: pídele a
+    Dirección que la revise en <em>Usuarios</em>. Si administras todo, es que
+    todavía no hay personal ni plazas capturadas.
   </div>
 
   <ng-container *ngIf="sucursales().length">

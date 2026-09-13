@@ -71,7 +71,14 @@ const MARCADORES = [
   { txt: 'direccion-general', control: true, minimo: 10, que: 'Usuarios solo para el dueño y Direccion General' },
   { txt: 'a tu nombre', control: true, que: 'el arreglo de «Mis tareas»' },
   { txt: 'davidcisneros2209', control: true, minimo: 2, que: 'el super admin reconocido por correo' },
-  { txt: 'No hay ninguna sucursal que puedas ver', control: true, que: 'los arreglos de plantilla y pase de lista' },
+  // CADUCADO Y SUSTITUIDO el 13/sep: el control era el texto «No hay ninguna
+  // sucursal que puedas ver», y el mismo despliegue que lo usaba de control LO
+  // REESCRIBIO. Dio 0 y el verificador aborto — correctamente, porque no puede
+  // saber si el cero es «no llego» o «ya no existe». Es el corolario (e) de la
+  // §8.11, y la regla que trae: un control caducado se actualiza EN EL MISMO
+  // COMMIT que lo caduca. Se cambia por la clase del contenedor, que no depende
+  // de como este redactado el aviso de dentro.
+  { txt: 'pa-vacio', control: true, que: 'el estado vacio del pase de lista' },
   { txt: 'apple-mobile-web-app-capable', control: true, que: 'el arreglo de iPhone' },
   { txt: 'Plantilla de sucursal', control: true, que: 'la entrada de menu en Definiciones' },
   { txt: 'org-fila-tarea', control: true, que: 'el desglose del manual en el arbol' },

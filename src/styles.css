@@ -217,6 +217,38 @@
   :where(td, th, small, p, li, dd, dt, figcaption) {
     font-size: max(12px, 1em);
   }
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     EL ZOOM AUTOMATICO DE iOS — reportado por David el 13/sep/2026
+     ═══════════════════════════════════════════════════════════════════════
+     «En iPhone se mueven todas las tablas y los botones».
+
+     LA CAUSA. Safari en iOS hace ZOOM al enfocar un campo cuya fuente mide
+     menos de 16px, y al ampliar descoloca la pantalla entera: la tabla se
+     sale, los botones se recorren, y al salir del campo a veces no vuelve.
+     No es un fallo del diseño responsivo: el diseño estaba bien y el
+     navegador lo estaba ampliando.
+
+     POR QUE NO SE HABIA VISTO. Todo el diagnostico se hizo con Chrome
+     headless, y Chrome NO hace esto. Medido en /tareas-manual: TRES campos
+     a 14px. Es el limite honesto de medir en un motor y desplegar en otro.
+
+     Y OJO: `user-scalable=no` del meta viewport NO lo evita — Safari lo
+     ignora desde iOS 10. La unica forma de que no amplie es que la fuente
+     llegue a 16px.
+
+     ─── POR QUE `!important` ─────────────────────────────────────────────
+     Con `:where()` la especificidad queda en 0 y CUALQUIER regla de
+     componente -`.pl-select { font-size: 14px }`- ganaria, que son
+     justamente las que producen el problema. Es el mismo razonamiento con el
+     que `.app-layout` fija `100dvh !important` mas abajo: va global para no
+     perseguir los veinte archivos que lo fijan por su cuenta.
+
+     16px es el umbral exacto de Safari. No es una preferencia estetica: a
+     15.9px amplia y a 16px no. */
+  input, select, textarea {
+    font-size: 16px !important;
+  }
 }
 
 /* ── DARK — zinc neutro. NO espresso: eso es del storefront. ───────────── */

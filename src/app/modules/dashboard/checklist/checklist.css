@@ -2455,7 +2455,10 @@
   }
 
   .wizard-modal {
-    max-height: 100vh;
+    /* 100dvh: en iOS, 100vh incluye la barra de direcciones y el panel
+       queda mas alto que la pantalla (misma razon que la regla global de
+       .app-layout en styles.css). */
+    max-height: 100dvh;
     max-height: 100dvh;
     height: 100dvh;          /* alto visible real, sin la barra del navegador */
     border-radius: 0;

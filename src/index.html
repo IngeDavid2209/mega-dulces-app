@@ -11,6 +11,21 @@
   
   <link rel="apple-touch-icon" href="icons/icon-192x192.png">
 
+  <!-- ═══════════ EL ACCESO DIRECTO EN iPHONE (13/sep/2026) ═══════════
+       iOS NO lee el `display: standalone` del manifest en versiones anteriores
+       a 16.4, asi que sin estas metas el acceso directo abre la app DENTRO de
+       Safari, con su barra de direcciones. Y esa barra aparece y desaparece al
+       hacer scroll, moviendo el contenido — que es parte de lo que David
+       reporto como «se mueve todo» en iPhone.
+
+       `apple-mobile-web-app-title` es el nombre que queda bajo el icono: sin
+       el, iOS usa el <title>, que es mas largo y se corta.
+
+       Android no las necesita -usa el manifest- pero no le estorban. -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="MDTask">
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 

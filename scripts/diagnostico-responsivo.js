@@ -276,6 +276,18 @@ function paginaMarco(ruta, medida) {
     + '        res.clasesChicas[k2] = (res.clasesChicas[k2] || 0) + 1;'
     + '        if (!res.ejemploChico) res.ejemploChico = Math.round(fs) + "px «" + propio.slice(0,28) + "»"; }'
     + '    }'
+    // ── EL ZOOM AUTOMATICO DE iOS ───────────────────────────────────────
+    // Safari en iPhone hace ZOOM al enfocar un campo cuya fuente mide menos de
+    // 16px, y al hacerlo descoloca la pantalla entera: tablas, botones, todo.
+    // Es invisible en Chrome -de ahi que el diagnostico diera verde- y es la
+    // causa mas probable de «se mueve todo» en iOS. `user-scalable=no` NO lo
+    // evita: Safari lo ignora desde iOS 10.
+    + '    var tagZ = x.tagName.toLowerCase();'
+    + '    if (tagZ === "input" || tagZ === "select" || tagZ === "textarea") {'
+    + '      var fz = parseFloat(st.fontSize);'
+    + '      if (fz && fz < 16) { res.zoomIOS = (res.zoomIOS || 0) + 1;'
+    + '        if (!res.ejemploZoom) res.ejemploZoom = Math.round(fz) + "px <" + tagZ + ">"; }'
+    + '    }'
     + '    var tag = x.tagName.toLowerCase();'
     + '    var tocable = tag === "button" || tag === "a" || tag === "select" ||'
     + '      (tag === "input" && x.type !== "hidden");'
@@ -385,19 +397,22 @@ function chrome(url, perfil) {
   // ── El reporte ───────────────────────────────────────────────────────────
   console.log('En CELULAR (390px), lo que hace una pantalla inusable aunque «quepa»:');
   console.log('');
-  console.log('ruta                        scroll  texto   toque   ejemplo');
-  console.log('                            propio  <12px   <40px');
+  console.log('ruta                        scroll  texto   toque   iOS    ejemplo');
+  console.log('                            propio  <12px   <40px   zoom');
   console.log('─'.repeat(100));
   for (const ruta of RUTAS) {
     const c = filas.find(f => f.ruta === ruta && f.ancho === 390) || {};
     if (c.error) { console.log('%s  (no medida)', ruta.padEnd(26)); continue; }
     const marca = (n) => (n ? String(n).padStart(5) + '!' : '     ·');
-    console.log('%s %s  %s  %s   %s',
+    console.log('%s %s  %s  %s  %s   %s',
       ruta.padEnd(26), marca(c.scrollInterno), marca(c.textoChico), marca(c.tactilChico),
-      (c.ejemploChico || c.ejemploTactil || '').slice(0, 40));
+      marca(c.zoomIOS),
+      (c.ejemploZoom || c.ejemploChico || c.ejemploTactil || '').slice(0, 36));
   }
   console.log('─'.repeat(100));
   console.log('El mínimo táctil de iOS son 44px y el 100% de la operación pasa en celular.');
+  console.log('«iOS zoom» = campos con fuente < 16px. Safari hace zoom al tocarlos y');
+  console.log('descoloca la pantalla entera. En Chrome no pasa, por eso no se veía.');
   console.log('');
 
   // ── DE DÓNDE SALEN LOS TEXTOS PEQUEÑOS ───────────────────────────────────

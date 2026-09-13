@@ -64,7 +64,8 @@ const MARCADORES = [
   // anteriores bajan a control. Mantener ese orden importa: dos veces hoy el
   // comentario se quedo describiendo el marcador ANTERIOR, y un comentario que
   // narra otra cosa que la linea de abajo es doctrina falsa en dos semanas.
-  { txt: 'Plantilla de sucursal', nuevo: true, que: 'la entrada de menu en Definiciones' },
+  { txt: 'apple-mobile-web-app-capable', nuevo: true, que: 'el arreglo de iPhone (zoom y acceso directo)' },
+  { txt: 'Plantilla de sucursal', control: true, que: 'la entrada de menu en Definiciones' },
   { txt: 'org-fila-tarea', control: true, que: 'el desglose del manual en el arbol' },
   { txt: 'md-update', control: true, que: 'el aviso de version nueva' },
   { txt: 'plz-codigo', control: true, que: 'el login por plaza' },

@@ -1376,3 +1376,8 @@ input:checked+.slider:before {
     padding: 10px 16px;
   }
 }
+/* Piso tipográfico en táctil (13/sep/2026). El rol del usuario a 11px es de
+   las etiquetas más repetidas de la app: 16 casos en una sola pantalla. */
+@media (pointer: coarse), (max-width: 768px) {
+  .user-role { font-size: 12px; }
+}

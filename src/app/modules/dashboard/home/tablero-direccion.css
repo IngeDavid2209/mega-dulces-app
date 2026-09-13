@@ -317,3 +317,19 @@
 }
 .td-hueco-txt:last-child { margin-bottom: 0; }
 .td-hueco-txt strong { color: var(--text-main); font-weight: var(--fw-bold); }
+
+/* ── PISO TIPOGRÁFICO EN TÁCTIL (13/sep/2026) ─────────────────────────────
+   `.td-chip` se pinta a NUEVE píxeles, el texto más pequeño de la app entera
+   (25 casos medidos a 390px). Nueve píxeles no es denso: es ilegible. Y esto
+   es el Tablero de Dirección, o sea la pantalla que se enseña en una junta. */
+@media (pointer: coarse), (max-width: 768px) {
+  .td-chip { font-size: 12px; }
+  .td-unidad-etq { font-size: 12px; }
+}
+
+/* Segunda pasada del piso tipográfico: las que quedaron tras la primera
+   medición. `td-unidad-fuente` y `td-dia-etq` seguían a NUEVE píxeles. */
+@media (pointer: coarse), (max-width: 768px) {
+  .td-unidad-nota, .td-unidad-fuente, .td-bloque-sub,
+  .td-dia-etq, .td-proc-origen, .td-cifra-lab { font-size: 12px; }
+}

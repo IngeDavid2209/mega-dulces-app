@@ -140,9 +140,83 @@
   --radius-sm:     var(--r-sm);
 }
 
-/* Touch sube filas y hit areas. Mouse mantiene compacto. */
-@media (pointer: coarse) {
+/* Touch sube filas y hit areas. Mouse mantiene compacto.
+ *
+ * ─── POR QUÉ TAMBIÉN POR ANCHO, Y NO SOLO POR PUNTERO ─────────────────────
+ * `pointer: coarse` es la condición correcta —la densidad la decide el dedo, no
+ * la pantalla— pero tiene dos problemas prácticos, y el segundo casi me hace
+ * dar por bueno un arreglo sin verificar:
+ *
+ *  1. Una ventana de escritorio estrecha, o una tablet con teclado y ratón, se
+ *     queda con los controles de 32px aunque el usuario esté tocando.
+ *  2. NO SE PUEDE MEDIR EN HEADLESS. Chrome reporta `pointer: fine`, así que
+ *     `diagnostico-responsivo.js` no evalúa este bloque: el 13/sep midió el
+ *     «después» del arreglo táctil y salió IDÉNTICO al «antes» —34 controles
+ *     chicos en Tareas del Manual, igual que sin tocar nada—. El arreglo estaba
+ *     bien; lo que no podía verlo era el instrumento.
+ *
+ * Con la coma, la regla aplica si el puntero es grueso O la pantalla es
+ * estrecha. Cubre el caso real y además queda comprobable. */
+@media (pointer: coarse), (max-width: 768px) {
   :root { --row-h-sm:44px; --row-h-md:48px; --tap-min:44px; }
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     EL MÍNIMO TÁCTIL DEJA DE SER UNA INTENCIÓN DECLARADA
+     ═══════════════════════════════════════════════════════════════════════
+     `--tap-min` se declaraba arriba desde que existe el sistema Mercado y
+     tenía CERO USOS. Medido el 13/sep/2026 con `diagnostico-responsivo.js`:
+     las DIECISÉIS pantallas de la app tienen entre 14 y 34 controles por
+     debajo de 40px en un viewport de 390px — 34 en Tareas del Manual, que es
+     justo donde pasa la operación. El mínimo de iOS son 44px.
+
+     O sea: la regla estaba escrita y no regía. Esto la hace regir.
+
+     ─── POR QUÉ AQUÍ Y NO EN CADA COMPONENTE ───────────────────────────────
+     Son 16 pantallas y ~370 controles. Parchearlos uno por uno garantiza que
+     el siguiente botón que alguien escriba vuelva a nacer de 32px. Como regla
+     global, lo nuevo nace bien.
+
+     ─── POR QUÉ NO ROMPE EL ESCRITORIO ─────────────────────────────────────
+     Cuelga de `pointer: coarse`, así que un mouse no la ve NUNCA. Y aunque la
+     viera, `--tap-min` vale `0px` fuera de este bloque: `min-height: 0` no
+     cambia un píxel. Los tableros se siguen leyendo igual de compactos.
+
+     ─── QUÉ NO ENTRA, Y POR QUÉ ────────────────────────────────────────────
+     · `a` a secas NO: un enlace dentro de un párrafo mide lo que mide el
+       renglón, y darle 44px de alto rompería la línea base del texto. Solo
+       los enlaces que actúan como control (`.nav-item`, `.logout-btn`).
+     · checkbox y radio NO: su caja la dibuja el navegador y estirarla los
+       deja flotando en una fila alta. Su área táctil la da su `<label>`.
+     · `:where()` mantiene la especificidad en CERO, así que cualquier
+       componente que declare su propia altura sigue mandando. Esto es un
+       PISO, no una imposición.
+     ══════════════════════════════════════════════════════════════════════ */
+  :where(
+    button,
+    select,
+    summary,
+    [role="button"],
+    .nav-item,
+    .logout-btn,
+    input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"])
+  ) {
+    min-height: var(--tap-min);
+  }
+
+  /* ── PISO TIPOGRÁFICO PARA LOS ELEMENTOS GENÉRICOS ─────────────────────
+     Tras subir las clases con nombre propio quedaban 192 casos por debajo de
+     12px, y la mayoría ya no salían de una clase sino de elementos sueltos:
+     `td` a 11px, `th` a 10px, `small`, `p`, `strong`. Son las celdas de las
+     tablas densas, que en escritorio están bien y en un celular no se leen.
+
+     `max(12px, 1em)` conserva el tamaño heredado cuando ya es mayor y solo
+     levanta el piso cuando es menor — no agranda nada que estuviera bien.
+
+     Con `:where()` la especificidad queda en CERO, así que cualquier regla de
+     componente sigue mandando: esto es el suelo, no una imposición. */
+  :where(td, th, small, p, li, dd, dt, figcaption) {
+    font-size: max(12px, 1em);
+  }
 }
 
 /* ── DARK — zinc neutro. NO espresso: eso es del storefront. ───────────── */

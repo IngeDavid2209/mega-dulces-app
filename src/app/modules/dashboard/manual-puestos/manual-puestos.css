@@ -474,3 +474,14 @@
   .mp-doc-linea { flex-direction: column; gap: 1px; }
   .mp-doc-etq { flex: none; padding-top: 0; }
 }
+
+/* ── PISO TIPOGRÁFICO EN TÁCTIL (13/sep/2026) ─────────────────────────────
+   Esta pantalla es la que más texto pequeño tiene de toda la app: 200 casos
+   por debajo de 12px en un viewport de 390px, medidos con
+   `diagnostico-responsivo.js`. Las filas de nivel (89 casos) y las pastillas
+   (70 + 19) son casi todo. En escritorio se conserva la densidad. */
+@media (pointer: coarse), (max-width: 768px) {
+  .mp-fila-nivel { font-size: 12px; }
+  .mp-badge-pendiente, .mp-badge-manual { font-size: 12px; }
+  .mp-unidad-titulo { font-size: 13px; }
+}

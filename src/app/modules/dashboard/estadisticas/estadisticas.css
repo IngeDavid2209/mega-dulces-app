@@ -1056,3 +1056,9 @@
   .r-row-bar { grid-column: 1 / -1; }
   .r-row-puesto { display: none; }
 }
+/* ── PISO TIPOGRÁFICO EN TÁCTIL (13/sep/2026) ─────────────────────────────
+   18 pastillas de estado a 10px. Es el dato que dice si una sucursal va bien
+   o mal, así que es el último que debería costar leer. */
+@media (pointer: coarse), (max-width: 768px) {
+  .suc-estado-pill { font-size: 12px; }
+}

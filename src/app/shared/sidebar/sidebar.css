@@ -48,3 +48,16 @@
   margin: 18px 0 6px;
 }
 .nav-seccion:first-child { margin-top: 0; }
+
+/* ── PISO TIPOGRÁFICO EN TÁCTIL (13/sep/2026) ─────────────────────────────
+   Medido con `diagnostico-responsivo.js` en un viewport de 390px: «Mi trabajo»
+   —el encabezado de sección— se pinta a 10px, y aparece 48 veces sumando las
+   16 pantallas. A 10px, en un celular a contraluz dentro de una tienda, eso no
+   se lee: se adivina.
+   El tamaño chico era deliberado —son señales de agrupación, no entradas— y en
+   ESCRITORIO se conserva tal cual. Lo que cambia es solo el caso táctil, que es
+   donde pasa el 100% de la operación. */
+@media (pointer: coarse), (max-width: 768px) {
+  .nav-seccion { font-size: 12px; letter-spacing: .5px; }
+  .build-sello { font-size: 12px; }
+}

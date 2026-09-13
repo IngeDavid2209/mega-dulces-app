@@ -64,7 +64,8 @@ const MARCADORES = [
   // anteriores bajan a control. Mantener ese orden importa: dos veces hoy el
   // comentario se quedo describiendo el marcador ANTERIOR, y un comentario que
   // narra otra cosa que la linea de abajo es doctrina falsa en dos semanas.
-  { txt: 'pa-sin_asignar', nuevo: true, que: 'la pantalla de pase de lista' },
+  { txt: 'min-height:var(--tap-min)', nuevo: true, que: 'el minimo tactil, que tenia 0 usos' },
+  { txt: 'pa-sin_asignar', control: true, que: 'la pantalla de pase de lista' },
   // Los de antes, ahora controles. Cada uno fue el "nuevo" de su momento, y
   // juntos prueban que el recorrido alcanza los chunks lazy de esas pantallas.
   { txt: 'pl-plazas',    control: true, que: 'la generacion de plazas desde la plantilla' },

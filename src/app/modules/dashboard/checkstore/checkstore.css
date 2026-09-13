@@ -321,3 +321,11 @@
   .store-grid      { grid-template-columns: 1fr; gap:10px; }
   .store-card      { padding:12px; }
 }
+/* ── PISO TIPOGRÁFICO EN TÁCTIL (13/sep/2026) ─────────────────────────────
+   64 casos por debajo de 12px a 390px, casi todos en las mini-cifras de cada
+   sucursal (36) y en su ubicación (18). Son justo los datos que alguien mira
+   de pie en una tienda. */
+@media (pointer: coarse), (max-width: 768px) {
+  .store-mini-stat { font-size: 12px; }
+  .store-location { font-size: 12px; }
+}

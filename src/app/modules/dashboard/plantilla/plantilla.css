@@ -138,3 +138,29 @@
 .pl-plazas h2 { font-size: 16px; margin: 0 0 8px; }
 .pl-plazas-nota { font-size: 13px; color: var(--neutral-600); margin: 0 0 10px; line-height: 1.6; }
 .pl-plazas-estado { font-size: 14px; margin: 0 0 12px; }
+
+/* ── Accesos de plaza ─────────────────────────────────────────────────────
+   El PIN se muestra UNA vez. Por eso la hoja se destaca y trae su propio
+   aviso: si alguien cierra la pantalla sin anotarlo, hay que regenerarlo. */
+.pl-accesos { margin-top: 24px; padding: 16px; border: 1px solid var(--border); border-radius: 10px; }
+.pl-accesos h2 { font-size: 16px; margin: 0 0 8px; }
+
+.pl-acc-hoja {
+  margin: 16px 0; padding: 16px; border-radius: 10px;
+  border: 2px solid var(--action); background: var(--card-bg);
+}
+.pl-acc-hoja-cab { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.pl-acc-hoja-cab h3 { margin: 0; font-size: 16px; }
+.pl-acc-hoja-aviso { font-size: 13px; color: var(--bad-soft-fg); margin: 8px 0 12px; }
+.pl-mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.pl-pin { font-size: 18px; font-weight: var(--fw-bold); letter-spacing: 2px; }
+
+/* Al imprimir queda SOLO la hoja de accesos: una hoja con la tabla de
+   plantilla, el formulario y el menú detrás no se puede entregar a nadie. */
+@media print {
+  .pl-noprint, .pl-intro, .pl-barra, .pl-tarjetas, .pl-agregar,
+  .pl-plazas, .pl-sinpuesto { display: none !important; }
+  .pl-accesos { border: 0; padding: 0; }
+  .pl-acc-hoja { border: 1px solid #000; }
+  .pl-acc-hoja-tabla { width: 100%; }
+}

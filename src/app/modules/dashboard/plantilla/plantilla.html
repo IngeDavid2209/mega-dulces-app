@@ -165,6 +165,84 @@
       </button>
     </div>
 
+    <!-- ═══════════ ACCESOS: EL CÓDIGO Y EL PIN DE CADA PLAZA ═══════════ -->
+    <div class="pl-accesos" *ngIf="puedeEditar && plazasDeLaSucursal().length">
+      <h2>Accesos de las plazas</h2>
+      <p class="pl-plazas-nota">
+        Con esto entra la gente: <strong>un código por plaza</strong> y un PIN de seis
+        dígitos. No hay usuario por persona — quién ocupa la plaza cada día lo dice
+        el <em>Pase de lista</em>, y de ahí sale el nombre que queda en cada foto.
+      </p>
+
+      <!-- Se dice ANTES de generar, no después: el PIN se guarda cifrado y no
+           se puede volver a consultar. -->
+      <div class="pl-problema" *ngIf="plazasSinAcceso().length">
+        <strong>{{ plazasSinAcceso().length }}</strong> plaza(s) sin acceso todavía.
+        Al generarlos, el PIN se muestra <strong>una sola vez</strong>: se guarda
+        cifrado y después solo se puede regenerar, nunca consultar. Imprime o anota
+        la hoja antes de salir de aquí.
+      </div>
+
+      <button class="pl-btn" [disabled]="!plazasSinAcceso().length || guardando()"
+              (click)="generarAccesos()">
+        Generar los {{ plazasSinAcceso().length }} acceso(s) que faltan
+      </button>
+
+      <!-- ── LA HOJA PARA ENTREGAR ── -->
+      <div class="pl-acc-hoja" *ngIf="pinsNuevos().length">
+        <div class="pl-acc-hoja-cab">
+          <h3>Accesos de {{ sucursal() }}</h3>
+          <button class="pl-btn-link pl-noprint" (click)="imprimirAccesos()">Imprimir</button>
+        </div>
+        <p class="pl-acc-hoja-aviso">
+          Estos PIN <strong>no se van a poder volver a ver</strong>. Entrégalos hoy.
+        </p>
+        <table class="pl-tabla pl-acc-hoja-tabla">
+          <thead><tr><th>Plaza</th><th>Código</th><th>PIN</th></tr></thead>
+          <tbody>
+            <tr *ngFor="let c of pinsNuevos()">
+              <td class="pl-nombre">{{ c.etiqueta }}</td>
+              <td class="pl-mono">{{ c.codigo }}</td>
+              <td class="pl-mono pl-pin">{{ c.pin }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- ── LO QUE YA TIENE ACCESO ── -->
+      <table class="pl-tabla pl-noprint" *ngIf="plazasDeLaSucursal().length">
+        <thead>
+          <tr><th>Plaza</th><th>Código</th><th>Último acceso</th><th></th></tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let p of plazasDeLaSucursal()">
+            <td class="pl-nombre">{{ etiquetaPlaza(p) }}</td>
+            <td class="pl-mono">
+              <span *ngIf="credencialDe(p.id)">{{ credencialDe(p.id)!.codigo }}</span>
+              <span class="pl-nada" *ngIf="!credencialDe(p.id)">sin acceso</span>
+            </td>
+            <td>
+              <!-- «Nunca» es un dato, no un hueco: dice que esa plaza tiene
+                   credencial y nadie la ha usado. -->
+              <span *ngIf="credencialDe(p.id)?.ultimoAcceso">
+                {{ credencialDe(p.id)!.ultimoAcceso | date:'dd/MM/yyyy' }}
+              </span>
+              <span class="pl-nada" *ngIf="credencialDe(p.id) && !credencialDe(p.id)!.ultimoAcceso">
+                nunca ha entrado
+              </span>
+            </td>
+            <td>
+              <button class="pl-btn-quitar" *ngIf="credencialDe(p.id)"
+                      [disabled]="guardando()" (click)="regenerarPin(p)"
+                      title="Genera un PIN nuevo conservando el mismo código. El PIN anterior deja de servir.">
+                nuevo PIN
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
     <!-- ═══════════ AGREGAR UN RENGLÓN ═══════════ -->
     <div class="pl-agregar" *ngIf="puedeEditar">
       <h2>Agregar un puesto a la plantilla</h2>

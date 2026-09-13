@@ -64,6 +64,9 @@ app.all('/api/puestos-declarados', require('./api/puestos-declarados'));
 // La plaza y quien la cubre (tablas de la migracion 056, hasta hoy sin lector).
 app.all('/api/plazas', require('./api/plazas'));
 app.all('/api/coberturas', require('./api/coberturas'));
+// El acceso por PLAZA (migracion 058). Reparte credenciales; NO autentica:
+// entrar con ellas es el paso siguiente, asi que hoy no abren nada.
+app.all('/api/credenciales-plaza', require('./api/credenciales-plaza'));
 
 // Etapas 4-8 FERROCARRIL: resto de colecciones (CRUD generado por api/_crud.js).
 app.all('/api/catalogo-rutinas', require('./api/catalogo-rutinas'));

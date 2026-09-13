@@ -42,7 +42,18 @@ import {
   declaracionVigente, RenglonComparado, ResumenPlantilla,
   PuestoDeclarado, RenglonPlantilla, ProblemaDeclaracion,
 } from '../../../shared/plantilla.util';
-import { planDePlazas, PlanDePlazas, Plaza } from '../../../shared/cobertura.util';
+import { planDePlazas, PlanDePlazas, Plaza, nombrePlaza } from '../../../shared/cobertura.util';
+import { generarCodigos } from '../../../shared/codigo-plaza.util';
+import { nombrePuesto } from '../../../shared/organigrama.catalogo';
+
+/** Una credencial tal como la devuelve `/api/credenciales-plaza` (sin PIN). */
+interface Credencial {
+  id: string; plazaId: string; codigo: string; activa: boolean;
+  creadaEn: number | null; ultimoAcceso: number | null;
+}
+
+/** Lo que se muestra UNA vez tras generar. El PIN no vuelve a existir. */
+interface PinRecienCreado { plazaId: string; codigo: string; pin: string; etiqueta: string; }
 
 /** Hoy en 'YYYY-MM-DD', hora local. */
 function hoyISO(): string {
@@ -65,6 +76,7 @@ export class PlantillaComponent implements OnInit {
   cargando = signal(true);
   error = signal<string | null>(null);
   guardando = signal(false);
+  aviso = signal<string | null>(null);
 
   usuarios = signal<any[]>([]);
   plantillas = signal<any[]>([]);
@@ -109,6 +121,9 @@ export class PlantillaComponent implements OnInit {
       this.plantillas.set(pl?.items || pl || []);
       this.declarados.set((de?.items || de || []) as PuestoDeclarado[]);
       this.plazas.set((pz?.items || pz || []) as Plaza[]);
+      // Las credenciales van aparte: quien no es admin recibe 403 y no debe
+      // hacer fallar la carga de toda la pantalla por eso.
+      await this.cargarCredenciales();
 
       const dispo = this.sucursales();
       if (dispo.length && !this.sucursal()) this.sucursal.set(dispo[0]);
@@ -259,6 +274,96 @@ export class PlantillaComponent implements OnInit {
       this.error.set(e?.message || 'No se pudieron crear las plazas.');
     } finally { this.guardando.set(false); }
   }
+
+  // ── Accesos: el código y el PIN con el que se entra a la plaza ───────────
+
+  credenciales = signal<Credencial[]>([]);
+  /** Los PINs recién creados. Se muestran UNA vez y se van al recargar. */
+  pinsNuevos = signal<PinRecienCreado[]>([]);
+
+  credencialDe(plazaId: string): Credencial | null {
+    return this.credenciales().find(c => c.plazaId === plazaId && c.activa) || null;
+  }
+
+  /** Plazas de esta sucursal que todavía no tienen acceso. */
+  plazasSinAcceso = computed<Plaza[]>(() =>
+    this.plazasDeLaSucursal().filter(p => !this.credencialDe(p.id)));
+
+  etiquetaPlaza(p: Plaza): string {
+    return nombrePlaza(nombrePuesto(p.puestoId) || p.puestoId, p.numero);
+  }
+
+  /**
+   * Genera el acceso de las plazas que no lo tienen.
+   *
+   * El CÓDIGO lo calcula aquí `generarCodigos()`, que sabe desempatar los dos
+   * surtidores y tiene pruebas; el PIN lo genera el SERVIDOR con
+   * `crypto.randomInt`, porque `Math.random` del navegador no es seguro y con
+   * la hora de creación los PINs de una sucursal se volverían adivinables.
+   *
+   * Se le pasan los códigos YA USADOS —incluidos los de credenciales revocadas—
+   * para que ninguno se recicle: una hoja impresa vieja no puede acabar
+   * abriendo la plaza de otra persona.
+   */
+  async generarAccesos() {
+    if (!this.puedeEditar) return;
+    const faltan = this.plazasSinAcceso();
+    if (!faltan.length) return;
+
+    const usados = new Set(this.credenciales().map(c => c.codigo));
+    const codigos = generarCodigos(
+      faltan.map(p => ({ id: p.id, lugar: p.lugar, puestoId: p.puestoId, numero: p.numero })),
+      usados);
+
+    this.guardando.set(true);
+    this.error.set(null);
+    try {
+      const r = await this.api.post('/api/credenciales-plaza', {
+        accion: 'generar',
+        plazas: faltan.map(p => ({ plazaId: p.id, codigo: codigos.get(p.id) })),
+      });
+      const etiquetas = new Map(faltan.map(p => [p.id, this.etiquetaPlaza(p)]));
+      this.pinsNuevos.set((r?.creadas || []).map((c: any) => ({
+        plazaId: c.plazaId, codigo: c.codigo, pin: c.pin,
+        etiqueta: etiquetas.get(c.plazaId) || c.plazaId,
+      })));
+      // Lo saltado se DICE. Un lote que crea 3 de 5 y calla las otras 2 deja a
+      // dos personas sin acceso sin que nadie se entere hasta el primer turno.
+      if (r?.saltadas?.length) {
+        this.aviso.set(`${r.saltadas.length} plaza(s) no se generaron: ` +
+          r.saltadas.map((s: any) => s.motivo).join(' · '));
+      }
+      await this.cargarCredenciales();
+    } catch (e: any) {
+      this.error.set(e?.message || 'No se pudieron generar los accesos.');
+    } finally { this.guardando.set(false); }
+  }
+
+  /** Nuevo PIN para una plaza, conservando su código. */
+  async regenerarPin(p: Plaza) {
+    if (!this.puedeEditar) return;
+    this.guardando.set(true);
+    try {
+      const r = await this.api.post('/api/credenciales-plaza', { accion: 'regenerar', plazaId: p.id });
+      this.pinsNuevos.set([{ plazaId: p.id, codigo: r.codigo, pin: r.pin, etiqueta: this.etiquetaPlaza(p) }]);
+      await this.cargarCredenciales();
+    } catch (e: any) {
+      this.error.set(e?.message || 'No se pudo regenerar el PIN.');
+    } finally { this.guardando.set(false); }
+  }
+
+  private async cargarCredenciales() {
+    try {
+      const r = await this.api.get('/api/credenciales-plaza');
+      this.credenciales.set((r?.items || []) as Credencial[]);
+    } catch {
+      // Silencio a propósito: quien no es admin recibe 403 aquí, y eso no es un
+      // error que deba tapar la pantalla — simplemente no ve la sección.
+      this.credenciales.set([]);
+    }
+  }
+
+  imprimirAccesos() { window.print(); }
 
   // ── Escrituras ───────────────────────────────────────────────────────────
 

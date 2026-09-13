@@ -580,8 +580,16 @@
              quién lo cumple hoy, separado por sucursal. Abrir una tarea desde
              aquí lleva a la MISMA vista de detalle de siempre: esto es
              navegación, no un segundo flujo de entrega. -->
+        <!-- ⚠ EL ARBOL ES UNA VISTA DE «TODA LA OPERACION», y hasta el
+             13/sep/2026 no lo comprobaba: se pintaba tambien en «Mis tareas»,
+             y como la lista de abajo exige `!verPorOrganigrama`, esa pestaña NO
+             MOSTRABA NADA MAS QUE EL ORGANIGRAMA. Reportado por David.
+
+             Tiene sentido por lo que el arbol ES: recorre unidad → puesto →
+             personas. En «Mis tareas» hay UNA persona, asi que el recorrido no
+             tiene nada que recorrer. -->
         <app-vista-organigrama
-          *ngIf="verPorOrganigrama && vistaEquipo() === 'lista' && vistaHistorial() === 'pendientes'"
+          *ngIf="verPorOrganigrama && vistaTareas === 'todas' && vistaEquipo() === 'lista' && vistaHistorial() === 'pendientes'"
           [checklists]="checklistsFiltrados"
           [usuarios]="plantillaParaOrganigrama"
           [ambitoVisibleDe]="ambito"
@@ -605,9 +613,12 @@
           (eliminar)="eliminarDesdePanel($event)">
         </app-panel-responsables>
 
-        <!-- VISTA LISTA (plana por nivel) -->
+        <!-- VISTA LISTA (plana por nivel)
+             `|| vistaTareas === 'mis'`: con el organigrama encendido, esta lista
+             era la unica que podia pintar las tareas propias y estaba apagada
+             por `!verPorOrganigrama`. Ese `&&` a secas era el bug. -->
         <div class="checklist-grid"
-             *ngIf="!verPorOrganigrama && vistaEquipo() === 'lista' && vistaHistorial() === 'pendientes' && (!agruparPorPersona() || !puedeFiltrarVista || vistaTareas !== 'todas')">
+             *ngIf="(!verPorOrganigrama || vistaTareas === 'mis') && vistaEquipo() === 'lista' && vistaHistorial() === 'pendientes' && (!agruparPorPersona() || !puedeFiltrarVista || vistaTareas !== 'todas')">
           <ng-container *ngFor="let checklist of checklistsOrdenadosPorNivel; let i = index; trackBy: trackByChecklist">
             <!-- Encabezado de la sección Mandos cuando arranca con un mando y hay operativos detrás -->
             <div *ngIf="i === 0 && nivelDelAssigned(checklist.assigned) === 'mando' && checklistsDeOperativos.length > 0"
@@ -626,7 +637,11 @@
         </div>
 
         <!-- Estado vacío (compartido por ambas vistas) -->
-        <div class="checklist-grid" *ngIf="!verPorOrganigrama && vistaEquipo() === 'lista' && vistaHistorial() === 'pendientes' && checklistsFiltrados.length === 0">
+        <!-- El estado vacio llevaba el MISMO `!verPorOrganigrama` que la lista,
+             asi que en «Mis tareas» sin tareas propias no salia ni el mensaje:
+             pantalla en blanco. «No tengo tareas» y «la app no pinto» se ven
+             igual, y esa es justo la confusion que este proyecto persigue. -->
+        <div class="checklist-grid" *ngIf="(!verPorOrganigrama || vistaTareas === 'mis') && vistaEquipo() === 'lista' && vistaHistorial() === 'pendientes' && checklistsFiltrados.length === 0">
           <div class="empty-state">
             <div class="empty-state-icon"><svg width="48" height="48" viewBox="0 0 24 24" fill="none"
                 stroke="currentColor" stroke-width="2">

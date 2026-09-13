@@ -210,6 +210,13 @@ const ESCENARIOS = [
   // fixture —la de sucursal y la administrativa— que es lo que hace falta para
   // que la regla de atribución tenga un sí y un no que comparar.
   { nombre: 'eje transversal',          datos: true,  teclea: 'Eje', fixture: EJE },
+  // ── EL BUG DEL 13/sep, FIJADO ────────────────────────────────────────────
+  // David: «el de mis tareas no esta funcionando, solo sale el organigrama».
+  // El `*ngIf` del arbol no miraba `vistaTareas`, asi que se pintaba tambien
+  // en «Mis tareas»; y como la lista exigia `!verPorOrganigrama`, esa pestaña
+  // NO PODIA mostrar nada mas. Aqui se pulsa la pestaña de verdad y se exige
+  // que el arbol DESAPAREZCA.
+  { nombre: 'pulso "Mis tareas"',       datos: true,  teclea: null, pulsaMis: true },
 ];
 
 const TIPOS = {
@@ -267,16 +274,29 @@ function medir(esc, puerto) {
         'else{window.__sinCampo=1;}'
       : '';
 
+    // Se pulsa la pestaña REAL, buscandola por su texto: si algun dia cambia
+    // de clase, esto falla ruidosamente en vez de medir otra cosa.
+    const pulsar = esc.pulsaMis
+      ? 'var tabs=[].slice.call(document.querySelectorAll(".vista-tab"));' +
+        'var mis=tabs.filter(function(b){return (b.textContent||"").indexOf("Mis tareas")>=0;})[0];' +
+        'if(mis){mis.click();}else{window.__sinTabMis=1;}'
+      : '';
+
     const iny =
       '<script>try{localStorage.setItem("md_sesion_actual",' +
       JSON.stringify(JSON.stringify(SESION)) + ');}catch(e){}'
       + 'try { localStorage.setItem(\"md_token\", \"token-de-medicion\"); } catch (e) {}</script>' +
       '<script>window.addEventListener("load",function(){' +
       // Primero se deja pintar y sembrar; después se teclea; después se mide.
-      'setTimeout(function(){' + teclear + 'setTimeout(function(){' +
+      'setTimeout(function(){' + teclear + pulsar + 'setTimeout(function(){' +
       'var sub=document.querySelector(".org-sub");' +
       'document.title="RES "+JSON.stringify({' +
       ' arbol: document.querySelectorAll("app-vista-organigrama").length,' +
+      // Lo que «Mis tareas» TIENE que poder pintar: la lista, o el estado
+      // vacio. Si los dos dan 0 con el arbol tambien en 0, la pestaña esta
+      // en blanco — que es peor que el bug original.
+      ' grid: document.querySelectorAll(".checklist-grid").length,' +
+      ' sinTab: window.__sinTabMis ? 1 : 0,' +
       ' puestos: document.querySelectorAll(".org-lista .org-puesto").length,' +
       ' sucursales: document.querySelectorAll(".org-lista .org-fila-suc").length,' +
       ' personas: document.querySelectorAll(".org-lista .org-fila-per").length,' +
@@ -461,6 +481,20 @@ function medir(esc, puerto) {
       String(f.d.guias).padEnd(6), String(f.d.vacio).padEnd(6), String(f.d.chips));
   }
   console.log('─'.repeat(100));
+  // ── EL BUG DE «MIS TAREAS», con sus dos mitades ─────────────────────────
+  // No basta con que el arbol desaparezca: la pestaña tiene que PINTAR algo.
+  // Si las dos columnas dieran 0, la pestaña quedaria en blanco — peor que el
+  // bug original, porque «no tengo tareas» y «la app no pinto» se ven igual.
+  console.log('');
+  console.log('escenario                  arbol montado   lista/vacio   pestaña hallada');
+  console.log('─'.repeat(72));
+  for (const f of filas) {
+    console.log('%s %s %s %s',
+      f.nombre.padEnd(26), String(f.d.arbol).padEnd(15),
+      String(f.d.grid).padEnd(13), f.d.sinTab ? 'NO — no se pudo pulsar' : 'sí');
+  }
+  console.log('─'.repeat(72));
+  console.log('');
   console.log('«tareas» = lo que MANDA el manual de cada puesto abierto. Es el desglose de la');
   console.log('pastilla del numero, y es distinto de «entregas», que son los checklists de hoy.');
 

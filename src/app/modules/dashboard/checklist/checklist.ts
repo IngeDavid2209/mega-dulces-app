@@ -1118,6 +1118,15 @@ export class ChecklistComponent implements OnInit, OnDestroy {
    * que hoy simplemente no le toque nada.
    */
   motivoSinTareasManual(): string {
+    // ── «MIS TAREAS» VACIO NO ES «NO HAY TAREAS» ───────────────────────────
+    // Reportado el 13/sep: la pestaña decia «Mis tareas 0 · Toda la operacion
+    // 1». Con el mensaje generico, quien la abre concluye que la app no le
+    // entrego nada — cuando lo que pasa es que esas tareas son de OTRA persona
+    // y estan a un clic, en la pestaña de al lado. Se dice, con la cifra.
+    if (this.puedeFiltrarVista && this.vistaTareas === 'mis' && this.totalEnEsteModo > 0) {
+      return `Ninguna de las ${this.totalEnEsteModo} tarea(s) de hoy está a tu nombre. ` +
+             'Las de tu equipo están en «Toda la operación», aquí al lado.';
+    }
     const r = resolverPuesto(this.currentUser);
     if (!r.puestoId) {
       return 'Tu puesto no está capturado en el organigrama, así que la app no sabe qué ' +

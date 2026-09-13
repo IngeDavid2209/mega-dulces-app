@@ -324,6 +324,101 @@ de que exista la plaza sería partir el problema en dos, no resolverlo.
 
 ## 9. Bitácora del plan
 
+### 13/sep/2026 (tarde) — LO QUE DAVID VIO EN PANTALLA, y lo que ninguna medición había visto
+
+Ocho cambios salidos de que **David abrió la app y miró**. Ninguno se habría encontrado con las
+herramientas de la mañana, y esa es la lección que los une: *medir en un motor y desplegar en
+otro deja huecos que no son visibles desde aquí*.
+
+**1 · iPHONE: EL QUE MOVÍA LAS TABLAS ERA EL ZOOM DE SAFARI, NO EL DISEÑO.**
+*«Mis celulares son iPhone, se mueven todas las tablas y los botones.»* Safari hace **zoom al
+enfocar un campo cuya fuente mide menos de 16px**, y al ampliar descoloca la pantalla entera. En
+`/tareas-manual` había **tres campos a 14px**. El diseño responsivo estaba bien; el navegador lo
+estaba ampliando. **No se había visto porque todo el diagnóstico se corrió en Chrome, que no hace
+esto.** Y ojo con el atajo que parece la solución: `user-scalable=no` **no lo evita** —Safari lo
+ignora desde iOS 10—; lo único que funciona es llegar a 16px, que es el umbral exacto. Resultado:
+**3 → 0**, y cero en las 16 pantallas. El diagnóstico ahora lo cuenta como métrica propia.
+
+Y la otra mitad: **faltaban las metas `apple-mobile-web-app`**. iOS no lee `display: standalone`
+del manifest antes de 16.4, así que el acceso directo abría la app **dentro de Safari** — con su
+barra apareciendo y desapareciendo al hacer scroll, moviendo el contenido.
+
+**2 · «MIS TAREAS» MOSTRABA EL ORGANIGRAMA Y NADA MÁS.**
+El `*ngIf` del árbol **no miraba `vistaTareas`**, y la lista exigía `!verPorOrganigrama`: con el
+árbol encendido esa pestaña **no podía pintar otra cosa**. El filtro funcionaba —busca por
+nombre—; su resultado no se pintaba en ningún sitio. **La misma condición estaba en tres sitios**
+y el tercero era el peor: el estado vacío también, así que sin tareas propias quedaba **pantalla
+en blanco**. Verificado en el DOM y discrimina: árbol 1 / lista 0 en «toda la operación»; árbol 0
+/ lista 2 al pulsar «Mis tareas».
+
+**3 · PLANTILLA Y PASE DE LISTA SALEN DE CONTROL.** David no las encontró, y **estaban mal
+colocadas**: `/control` agrupa análisis; la plantilla es una *definición* (como Manual por Puesto)
+y el pase de lista es *operación diaria*. Ahora `DEFINICIONES → Plantilla de sucursal` y
+`CONTROL → Pase de lista`. **Quién las ve no cambió** (sigue `esJefatura`, ahora desde
+`estructuraGuard`): mezclar una reorganización de menú con un cambio de permisos hace imposible
+saber cuál rompió algo.
+
+**4 · TRES BUGS DE PANTALLA QUE ERAN MÍOS.** El selector de sucursal salía **vacío** en Pase de
+lista —la lista salía solo de `mdtask_plazas`, así que sin plazas no había nada que elegir, y la
+pantalla **se bloqueaba a sí misma en el único estado en que todos la iban a abrir por primera
+vez**—. El aviso *«no tienes esta sucursal en tu alcance»* **se le mostraba a un administrador**,
+porque opinaba sobre permisos durante la carga. Y **«Cargando…» eterno**: cuatro peticiones sin
+tope. Eso último es **el «VERIFICANDO…» del 1/sep en otra pantalla**, y el arreglo de entonces se
+había quedado dentro de `login.ts`; ahora vive en `shared/con-tope.util.ts` para que la próxima
+no tenga que aprenderlo.
+
+**5 · EL DUEÑO DE LA APP.** `davidcisneros2209@outlook.es` reconocido **por correo**, no por una
+bandera de su ficha — porque las banderas se pierden, y tras la parte C será la **única cuenta
+nominal**. Tres capas: `esDueno` en los predicados, `conPermisosDeDueno` al entrar, y el JWT
+firmado con rol admin (los endpoints deciden con el token, no con la ficha). 11 pruebas, las dos
+direcciones: no reconoce un typo del dominio, y un perfil **sin correo** no es el dueño —si la
+cadena vacía contara, las decenas de fichas sin correo tendrían acceso total.
+
+**6 · USUARIOS: SOLO EL DUEÑO Y DIRECCIÓN GENERAL.** Antes bastaba ser admin o traer
+`puedeAdministrarPersonal` — **una bandera que se otorga desde esa misma pantalla**, así que el
+acceso se propagaba solo. Y se cerró un hueco que ya existía: `/personal` **solo pedía
+`authGuard`**, o sea que se entraba escribiendo la URL. *El menú no es un permiso.*
+
+**7 · LA ACTUALIZACIÓN LA DECIDE EL USUARIO.** `app.ts` decía literalmente «aplicarla SOLA, sin
+avisar» y recargaba en el acto. Es verdad que no se pierde lo guardado, pero sí lo que está a
+medias. Ahora avisa con una barra — **salvo en el login, donde se aplica sola**, y esa excepción
+es la mitad del diseño: sin ella, un «actualizar más tarde» deja gente en versiones viejas para
+siempre.
+
+**8 · EL NÚMERO DEL MANUAL SE DESGLOSA.** La pastilla decía «3 tareas» y al abrir el puesto no
+aparecía ninguna: solo las *entregas* de hoy, que es otra cosa. Una **tarea** es lo que el manual
+manda, exista o no quien la reciba.
+
+#### LO QUE ESTE BLOQUE DEJA COMO REGLA
+
+- **Chrome no es Safari.** Un diagnóstico headless en un solo motor da verde sobre bugs que el
+  100% de la operación sufre. Si el arnés no puede ver una clase de fallo, hay que **decirlo** —y
+  añadirle la métrica— en vez de leer su verde como ausencia de problemas.
+- **Yo rompí tres pruebas y no me enteré hasta correrlas.** `prueba-arbol-organigrama`,
+  `prueba-dom-evidencia` y `prueba-tarjeta-movil` parcheaban el bundle buscando una cadena del
+  código **minificado** de `ApiService.token()`; al cambiar ese método para el acceso por plaza,
+  el ancla desapareció y **las tres abortaron a la vez**. Ya no parchean: siembran `md_token`, que
+  es el camino legítimo del producto.
+- **El verificador de despliegue aprendió a contar** (`minimo: N`). Hizo falta porque el correo
+  del dueño **ya valía 1** en producción —está en la lista de exentos del modo mantenimiento— y
+  preguntarle «¿aparece?» habría dado verde **antes** de desplegar.
+- **Declarar una audiencia no basta: hay que poder ejercerla.** Al estrechar `/personal`, *ninguno*
+  de los quince perfiles sintéticos la conservaba, así que la regla no se probaba en ningún caso.
+  Y meter dos perfiles nuevos al set histórico salió peor: comparan contra el menú de `78b89a3`,
+  así que «ganan» todo y producen once diferencias que tapan las de verdad. La comprobación vive
+  **aparte** y pregunta lo suyo.
+- **Dos veces me comió texto una herramienta.** Un `perl` entre comillas dobles dejó que bash
+  evaluara los backticks de mis comentarios y borró dos palabras; y un comentario HTML **dentro**
+  de una etiqueta de apertura rompió la compilación (NG5002). El código quedó bien las dos veces
+  y el comentario mutilado — que es peor que no tenerlo.
+
+**Lo que NO se tocó, y sigue esperando decisión:** el **eje transversal**. Medido: el filtro de
+visibilidad tiene **un solo eje** (`permitidas.includes(c.store)`) y el campo `store` hace **dos
+trabajos** —dónde ocurre y de qué departamento es—. Por eso una tarea que la Encargada levanta
+para Mantenimiento la ve uno **o** el otro, nunca los dos. Es exactamente la «unidad responsable
+contra unidad servida» del §5. Ampliar visibilidad es la dirección peligrosa, así que no se toca
+sin una prueba de audiencias propia.
+
 ### 13/sep/2026 — SE ACABAN LOS USUARIOS POR PERSONA (parte A de 3)
 
 Instrucción de David, literal: *«no quiero que quede ningún usuario más que el que tiene el correo

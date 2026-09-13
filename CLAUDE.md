@@ -146,11 +146,13 @@ Si una implementación rompe alguna de estas, está mal aunque funcione:
    puede significar dos cosas distintas.
 3. **"Hecho" exige evidencia válida.** `justificado` y `no_ejecutado` son estados propios.
    Ninguna nota, retraso ni excepción convierte un punto sin prueba en cumplido.
-   > Hoy `shared/item-completado.util.ts` hace exactamente eso: si el colaborador escribe
-   > cualquier nota o entrega con retraso, TODOS los items cuentan como hechos. Medido hoy, el
-   > efecto real es de 1 punto (migración 045): el riesgo es futuro, no presente — y por eso
-   > mismo es el momento más barato para corregirlo. `productividad.util.ts` hereda el defecto
-   > porque llama a `esItemHecho`.
+   > **✅ EN VIGOR desde el 13/sep/2026 (Fase 2.1, desplegada).**
+   > `shared/item-completado.util.ts` exporta `estadoItem()` con los tres estados, y
+   > `esItemHecho()` es exactamente `tieneEvidencia`. La justificación no se tira: se cuenta
+   > aparte (`Medicion.justificados`) y la pantalla de productividad la **nombra**.
+   > Antes hacía lo contrario —cualquier nota cerraba los 377 puntos sin una sola foto— y la
+   > cabecera del archivo conserva el texto derogado, citado, para que nadie lo relea como
+   > vigente.
 4. La **norma se versiona, no se edita**, y cada emisión guarda la versión con la que se juzgó.
 5. **Nada se borra ni se sobrescribe.** Corregir = evento nuevo que apunta al anterior, con
    autor y motivo.
@@ -189,7 +191,7 @@ Orden por **dependencia y riesgo**, no por importancia. Un paso ≤ 3 días. Mar
 | Fase | Objetivo | Semanas | Depende de | Estado |
 |---|---|---|---|---|
 | 0 | Medir antes de tocar (detener `corte.js`, divergencia, KPIs congelados, réplicas) | 0.5 | — | 🔄 **0.1 ✅ · 0.3 ✅ · 0.4 ✅ (1 réplica, 1/sep) · falta 0.2** |
-| 2 | Que los números digan la verdad (hecho ≠ justificado + primeras pruebas) | 1 | 0 | 🔄 **2.2 ✅ (13/sep: `productividad.util.spec.ts`, 28 casos) · 2.1 BLOQUEADA POR UN NÚMERO: la cota de «1 punto» de la 045 CADUCÓ el 3/sep (se midió con 50 de 377 puntos pidiendo evidencia; hoy son los 377). Hay que correr `diagnostico-regla-cumplimiento.js` ANTES de tocar `esItemHecho`** |
+| 2 | Que los números digan la verdad (hecho ≠ justificado + primeras pruebas) | 1 | 0 | ✅ **HECHA Y DESPLEGADA 13/sep. 2.1: `estadoItem` con tres estados, `esItemHecho` = `tieneEvidencia`. 2.2: 86 pruebas. Falta 2.3 (recalcular y comparar), que sigue esperando una `DATABASE_URL` de producción** |
 | 1 | Cerrar el ferrocarril: una sola base | 3 | 0 | ⬜ |
 | 3 | La estructura como dato (unidad, sucursal, ámbito, puesto, plaza, cobertura) | 4 | 1 | 🔄 **3.1a ✅ (9/sep: `mdtask_plazas` + `mdtask_coberturas` creadas y sembrables; nadie las lee todavía) · falta 3.1b (la Encargada numera su cuadrilla), 3.1c (ámbito), 3.2 (el robot emite a la plaza), 3.3 (los 119 usos de `assigned`). Los tableros SIGUEN sumando por `store`: los 15 vendedores de Padre Hidalgo le siguen contando a la Encargada** |
 | 4 | Navegación (4.1 se puede hacer YA, sin dependencias) | 1.5 | — / 3 | 🔄 **4.1 ✅ · 4.1b: 2a–2d ✅ (15→12 entradas) · falta el Paso 3 para llegar a 7 · 4.3 espera Fase 3 · el Dashboard ya se gatea por jefatura (3/sep) · el ÁRBOL de Tareas del Manual ya se recorta por puesto (11/sep): cada nivel arranca en su propia raíz** |
@@ -218,7 +220,7 @@ extra por la fase que se indica):
 |---|---|---|
 | ~~Entrada de menú 20: "Productividad y turno"~~ **SALDADA 31/ago (paso 2c)** | Congelamiento §7 | 4.1 — hoy es pestaña de Control, no entrada |
 | Mapa nuevo por texto en `zonas.util.ts → POR_SUCURSAL` | Hallazgo 1 | 3.1 (semilla de unidades) |
-| `productividad.util.ts` hereda el defecto de `esItemHecho` | Invariante §5.3 | 2.1 |
+| ~~`productividad.util.ts` hereda el defecto de `esItemHecho`~~ **SALDADA 13/sep** | Invariante §5.3 | 2.1 — usa `estadoItem` y cuenta `justificados` |
 | ~~`productividad.util.ts` sin pruebas (calcula cumplimiento, puntualidad, turno, ritmo)~~ **SALDADA 13/sep** | §8.8 | 2.2 — 28 casos, con control negativo corrido |
 | Foto obligatoria en los 377 puntos, incluidas 62+ declaraciones donde no hay qué fotografiar (orden de Dirección, 3/sep) | Regla 1 de `evidencia-manual.ts` | 5 — verificación por muestra; la declaración se comprueba firmando, no fotografiando |
 | Migraciones 038, 039, 041, 042, 043 con nombres de personas | Hallazgo 8 | 9.4 · **no se editan** (ya aplicadas) |
@@ -427,9 +429,75 @@ MDTask sea una **referencia** (`${{Postgres.DATABASE_URL}}`) y no un literal peg
 literal, rotar tumba la app hasta actualizarla. `Read-Host` evita que quede en el historial de
 PowerShell, pero **hace eco en pantalla**: para credenciales, la captura es el descuido fácil.
 
-**Lo que este día NO hizo:** no movió un solo número de tablero, no tocó `esItemHecho`, no
-sembró plazas y no midió divergencia. Los tres diagnósticos siguen pendientes de una
-`DATABASE_URL` que apunte a producción.
+**Lo que este día NO hizo (hasta aquí):** no movió un solo número de tablero, no tocó
+`esItemHecho`, no sembró plazas y no midió divergencia. Los tres diagnósticos siguen pendientes
+de una `DATABASE_URL` que apunte a producción.
+
+#### Y ENTONCES DAVID DIJO «LA APP ESTÁ FUERA DE SERVICIO, HAZLO»
+
+Con la app sin nadie trabajando, el argumento para esperar el número —no mover el cumplimiento
+de 186 personas bajo sus pies— se cae, y la 2.1 se hizo el mismo día. **Queda anotado quién
+decidió.** Lo que se dijo antes de empezar, y sigue siendo cierto: la regla se aplica **al
+leer**, así que **también cambia el histórico**; los tableros no van a cuadrar contra un reporte
+impreso antes de hoy. Esa comparación es el paso 2.3 y necesita el diagnóstico.
+
+**Medido antes de tocar, y decidió el alcance:** el **ENVÍO no usa esta regla**.
+`checklist.ts:3039` lo gatea con `tieneEvidencia`, que ya era la estricta. O sea que el riesgo
+operativo de verdad —dejar a alguien sin poder cerrar su turno— **no existía por este camino**.
+Sin esa comprobación, la 2.1 se habría hecho a ciegas sobre el flujo que usan 186 personas.
+
+*(Nota de precisión: `MANTENIMIENTO_ACTIVO` seguía en `false` y el index respondía 200. «Fuera de
+servicio» era que nadie estaba trabajando, no un corte del sistema. No hizo falta activarlo: esto
+es una regla de lectura, sin migración.)*
+
+**Qué cambió:** `estadoItem()` con tres estados excluyentes —`hecho | justificado |
+no_ejecutado`— y `esItemHecho()` pasa a ser exactamente `tieneEvidencia`. La justificación **no
+se tira**: `productividad.util.ts` la cuenta en `Medicion.justificados`, porque «no se pudo y lo
+dijo» y «no se hizo y nadie dijo nada» tienen **dueños distintos** en el modelo de causas. Y la
+pantalla **los nombra**: un porcentaje que baja sin una pista al lado se lee como un bug de la
+app, no como lo que es.
+
+**Las pruebas hicieron exactamente aquello para lo que se escribieron.** Los dos bloques «MAL Y A
+PROPÓSITO» —el de `item-completado` (3/sep) y el de `productividad` (escrito esta misma mañana)—
+**se pusieron en rojo al aplicar la fase** y se cambiaron a mano en el mismo commit. **86 de 86**
+al final. Control negativo corrido **en las dos direcciones**, cambiando una línea (171 → 171):
+con la regla vieja restaurada caen las pruebas de la fase nombrando la regresión
+(`Expected 3 to be 0`, `'hecho' to equal 'justificado'`).
+
+#### EL MARCADOR DE DESPLIEGUE IBA A DAR VERDE SIN DESPLEGAR NADA
+
+Lo más instructivo del día, y solo se vio por medir el **antes**. El marcador elegido era
+`no_ejecutado`, el estado nuevo de la regla: parece inmejorable y estaba **mal**. Medido contra
+producción antes de subir, **ya valía 2**: esa cadena vive desde hace días en
+`tablero-direccion.util.ts`, en el modelo de las 5 causas. `justificado` tampoco servía (6
+archivos en HEAD). Y `estadoItem` da **0 en el bundle**, porque el minificador se come los
+nombres de función aunque respete los literales de cadena.
+
+**La raíz es que un cambio de lógica pura no introduce ninguna cadena propia**, así que no tiene
+marcador natural. El honesto acabó siendo la clase CSS de la línea nueva —`pr-justif`,
+verificada inexistente en HEAD antes de elegirla—, y esa línea **hacía falta de todos modos**
+por la regla de nombrar el hueco. El marcador salió de resolver un problema real, no al revés.
+
+    ANTES   pr-justif  dist 3 · servido 0        DESPUES  dist 3 · servido 3
+            no_ejecutado         servido 2  ←  el que habría mentido
+            + 3 controles en pie en los dos lados
+
+**Desplegado y verificado:** `● Online` con el deployment ID del propio `railway up`, **58
+archivos · 4.35 MB recorridos · 0 fallos**, y arranca —Chrome headless con perfil limpio devuelve
+**67 802 bytes** de DOM con `app-root` y `md_rescate_arranque` presentes—. La espera negó **los
+dos** estados (`Building` y `Deploying`): la guardia que falló el 9 y el 11 de septiembre por
+conocer solo el primero, esta vez escrita bien desde el principio.
+
+**Y un token que no existía, cazado antes de subir:** el CSS nuevo usaba `var(--warn-600)`, que
+**no está declarado** (0 en `styles.css`). Con el color de respaldo no habría reventado nada — se
+habría visto *casi* bien, que es el modo de fallo del 4/sep. El bueno es `--warn-soft-fg`, el
+mismo que ya usa esa pantalla.
+
+**Lo que sigue pendiente y no lo tapa este despliegue:** el paso **2.3** (recalcular y comparar
+antes/después) no se puede hacer sin una `DATABASE_URL` de producción, así que **nadie sabe
+todavía cuánto bajó el cumplimiento**. Es un número que Dirección va a pedir el primer día. Y las
+otras ocho pantallas siguen llamando a `esItemHecho` sin distinguir: el que quiera separar
+`justificado` de `no_ejecutado` tiene que migrar a `estadoItem`.
 
 ### 11/sep/2026 — QUIÉN VE QUÉ EN TAREAS DEL MANUAL: el permiso era binario
 

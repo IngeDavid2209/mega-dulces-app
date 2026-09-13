@@ -32,7 +32,7 @@
 // El permiso del cascaron NO se repite aqui: se importa de su propia
 // definicion, para que menu y guard cambien juntos o no cambien.
 import { veControl } from '../../modules/dashboard/control/control.tabs';
-import { hayTableroPara, esJefatura } from '../alcance.util';
+import { hayTableroPara, esJefatura, veUsuarios } from '../alcance.util';
 
 export type SeccionNav = 'mi-trabajo' | 'verifico' | 'control' | 'definiciones';
 
@@ -172,8 +172,11 @@ export const NAV: EntradaNav[] = [
   // DEFINICION de como esta armada la empresa, no un corte de datos.
   { seccion: 'definiciones', etiqueta: 'Plantilla de sucursal', ruta: '/plantilla',
     icono: 'tienda', ve: esJefatura },
+  // Solo el dueño y Direccion General (13/sep). Antes: cualquier admin o quien
+  // trajera `puedeAdministrarPersonal` — una bandera que se otorga DESDE esta
+  // misma pantalla, asi que el acceso se propagaba solo.
   { seccion: 'definiciones', etiqueta: 'Usuarios', ruta: '/personal',
-    icono: 'gente', ve: (u) => esAdmin(u) || u?.puedeAdministrarPersonal },
+    icono: 'gente', ve: veUsuarios },
   { seccion: 'definiciones', etiqueta: 'Días de Descanso', ruta: '/descansos',
     icono: 'calendario', ve: (u) => esAdmin(u) || u?.puedeAdministrarPersonal },
 

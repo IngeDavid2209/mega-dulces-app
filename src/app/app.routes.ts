@@ -2,7 +2,7 @@ import { Routes } from '@angular/router';
 
 import { homeGuard } from './services/home.guard';
 import { authGuard } from './services/auth.guard';
-import { tabControlGuard, primeraTabControlGuard, estructuraGuard } from './services/control.guards';
+import { tabControlGuard, primeraTabControlGuard, estructuraGuard, usuariosGuard } from './services/control.guards';
 import { soloTecGuard } from './services/tec.guard';
 import { promocionesGuard } from './services/promociones.guard';
 import { pagosGuard } from './services/pagos.guard';
@@ -66,8 +66,11 @@ export const routes: Routes = [
     loadComponent: () => import('./reportes/reportes').then(m => m.ReportesComponent) 
   },
   { 
-    path: 'personal', 
-    canActivate: [authGuard],
+    path: 'personal',
+    // El menu NO es un permiso: hasta el 13/sep esta ruta solo pedia authGuard,
+    // asi que cualquiera con sesion entraba escribiendo la URL — y aqui se da de
+    // alta gente y se reparten permisos.
+    canActivate: [authGuard, usuariosGuard],
     loadComponent: () => import('./modules/dashboard/personal/personal').then(m => m.PersonalComponent) 
   },
   

@@ -15,7 +15,7 @@ import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
 
 import { TABS_CONTROL, primeraTab } from '../modules/dashboard/control/control.tabs';
-import { esJefatura } from '../shared/alcance.util';
+import { esJefatura, veUsuarios } from '../shared/alcance.util';
 
 /*
  * ─── POR QUE ESTOS DOS GUARDS DEVUELVEN UrlTree Y NO `navigate() + false` ───
@@ -105,4 +105,22 @@ export const estructuraGuard: CanActivateFn = () => {
     u = s ? JSON.parse(s) : null;
   } catch { u = null; }
   return esJefatura(u) ? true : router.createUrlTree(['/tareas-manual']);
+};
+
+/**
+ * La sección de Usuarios: solo el dueño y Dirección General.
+ *
+ * El guard existe porque el menú NO es un permiso. Hasta el 13/sep la ruta
+ * `/personal` solo pedía `authGuard`, así que cualquiera con sesión entraba
+ * escribiendo la URL — y esa pantalla da de alta gente y reparte permisos.
+ * Esconder la entrada del menú lo habría dejado igual de abierto.
+ */
+export const usuariosGuard: CanActivateFn = () => {
+  const router = inject(Router);
+  let u: any = null;
+  try {
+    const s = localStorage.getItem('md_sesion_actual');
+    u = s ? JSON.parse(s) : null;
+  } catch { u = null; }
+  return veUsuarios(u) ? true : router.createUrlTree(['/tareas-manual']);
 };

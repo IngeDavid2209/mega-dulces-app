@@ -67,7 +67,8 @@ const MARCADORES = [
   // El correo del dueño. YA VALIA 1 antes de este cambio -esta en la lista de
   // cuentas exentas del modo mantenimiento desde hace meses- asi que aqui no
   // vale preguntar "¿aparece?" sino "¿aparece DOS veces?". Ver `minimo` abajo.
-  { txt: 'a tu nombre', nuevo: true, que: 'el arreglo de «Mis tareas»' },
+  { txt: 'direccion-general', nuevo: true, minimo: 10, que: 'Usuarios solo para el dueño y Direccion General' },
+  { txt: 'a tu nombre', control: true, que: 'el arreglo de «Mis tareas»' },
   { txt: 'davidcisneros2209', control: true, minimo: 2, que: 'el super admin reconocido por correo' },
   { txt: 'No hay ninguna sucursal que puedas ver', control: true, que: 'los arreglos de plantilla y pase de lista' },
   { txt: 'apple-mobile-web-app-capable', control: true, que: 'el arreglo de iPhone' },

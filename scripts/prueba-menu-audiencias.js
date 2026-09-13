@@ -221,7 +221,27 @@ const CAMBIOS_INTENCIONALES = {
          + 'el organigrama). Lo pidio David el 2/sep y el documento 4 ya lo '
          + 'planteaba: es un tablero de control y «el operador no deberia '
          + 'verlo». La RUTA sigue abierta; se quita la entrada del menu.',
+  '/personal': 'Usuarios pasa a ser SOLO del dueño y de Direccion General '
+         + '(David, 13/sep). Antes bastaba ser admin de cualquier alcance o '
+         + 'traer `puedeAdministrarPersonal` — una bandera que se otorga DESDE '
+         + 'esa misma pantalla, asi que el acceso se propagaba solo. Y la ruta '
+         + 'se gateo tambien: hasta hoy solo pedia authGuard, o sea que se '
+         + 'entraba escribiendo la URL.',
 };
+
+/**
+ * Y QUIEN SI LA CONSERVA. Declarar solo la perdida no basta.
+ *
+ * Al estrechar /personal, NINGUNO de los perfiles sinteticos la veia: el dueño
+ * se reconoce por un correo que ninguno tenia, y el puesto `direccion-general`
+ * tampoco. Con eso la regla nueva no se ejercia en ningun caso y la prueba
+ * habria dado verde sobre un control que no probaba nada (§8.11 c).
+ *
+ * Los dos perfiles de abajo existen para eso, y la comprobacion final exige que
+ * la vean EXACTAMENTE ellos: si mañana alguien reabre la pantalla a los admins,
+ * esta lista deja de cuadrar.
+ */
+const CONSERVAN_PERSONAL = ['el DUEÑO (por correo)', 'Direccion General (por puesto)'];
 
 // ── PESTAÑAS NUEVAS, que no vienen de ninguna fusion ───────────────────────
 //
@@ -649,6 +669,58 @@ if (perfilesConSubconjunto.length === 0) {
 console.log('✓ escalada por pestaña: %d pestañas revisadas · %d perfil(es) con subconjunto estricto',
   tabsRevisadas, perfilesConSubconjunto.length);
 for (const x of perfilesConSubconjunto) console.log('    %s', x);
+
+// ══════════════════════════════════════════════════════════════════════════
+//  QUIEN VE LA SECCION DE USUARIOS (13/sep/2026)
+// ══════════════════════════════════════════════════════════════════════════
+//
+// Se prueba APARTE del resto y no como dos perfiles mas del set de arriba, y
+// la razon es metodologica: ese set compara contra el menu de `78b89a3` para
+// detectar cambios de audiencia. Un perfil que NO EXISTIA entonces «gana» todo
+// lo que ve, asi que meterlo ahi produce once diferencias que no son fallos —
+// solo ruido que tapa las de verdad.
+//
+// Aqui la pregunta es otra y se contesta directa: ¿QUIEN ve /personal HOY?
+// Tiene que ser exactamente el dueño y Direccion General. Se comprueban las dos
+// direcciones, porque las dos tienen consecuencias:
+//   · uno de MAS  → alguien reparte permisos sin que le toque;
+//   · uno de MENOS → David se queda sin poder dar de alta a nadie.
+{
+  const VE_USUARIOS = [
+    { nombre: 'el dueño, por su correo', u: { rol: 'trabajador', correo: 'davidcisneros2209@outlook.es' } },
+    { nombre: 'Direccion General, por su puesto', u: { rol: 'trabajador', puestoId: 'direccion-general' } },
+  ];
+  const NO_VE = [
+    // Los dos que ANTES si entraban. Son el caso que este cambio vino a cerrar.
+    { nombre: 'admin global', u: { rol: 'admin' } },
+    { nombre: 'admin de sucursales', u: { rol: 'admin', alcance: 'sucursales' } },
+    { nombre: 'supervisora con puedeAdministrarPersonal',
+      u: { rol: 'trabajador', puedeAdministrarPersonal: true, sucursales: ['Canindo'] } },
+    { nombre: 'Encargada con puesto', u: { rol: 'trabajador', puestoId: 'encargado-sucursal' } },
+    { nombre: 'operadora sin banderas', u: { rol: 'trabajador' } },
+  ];
+
+  let malas = 0;
+  for (const { nombre, u } of VE_USUARIOS) {
+    const rutas = NAVMOD.menuDe(u).flatMap(s => s.entradas.map(e => e.ruta));
+    if (!rutas.includes('/personal')) {
+      malas++;
+      console.log('✗ /personal: "%s" DEBERIA verla y no la ve. David se quedaria sin poder dar de alta a nadie.', nombre);
+    }
+  }
+  for (const { nombre, u } of NO_VE) {
+    const rutas = NAVMOD.menuDe(u).flatMap(s => s.entradas.map(e => e.ruta));
+    if (rutas.includes('/personal')) {
+      malas++;
+      console.log('✗ /personal: "%s" NO deberia verla. Esa pantalla reparte permisos.', nombre);
+    }
+  }
+  if (malas) { difs += malas; }
+  else {
+    console.log('✓ /personal: la ven los %d declarados y NINGUNO de los %d que antes entraban',
+      VE_USUARIOS.length, NO_VE.length);
+  }
+}
 
 // ── LA OTRA MITAD DE LA AUDIENCIA DECLARADA ────────────────────────────────
 //

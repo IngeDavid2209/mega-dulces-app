@@ -26,7 +26,7 @@
 
 import { NivelPuesto, puestoPorId, tieneSubordinados } from './organigrama.catalogo';
 import { resolverPuesto } from './puesto.util';
-import { esAdmin, esAdminGlobal, esSupervisor, sucursalesPermitidas } from './permisos.util';
+import { esAdmin, esAdminGlobal, esSupervisor, sucursalesPermitidas, esDueno } from './permisos.util';
 
 /**
  * Qué tanto ve alguien. Es una escala ordenada a propósito: comparar dos
@@ -249,4 +249,36 @@ export function hayTableroPara(usuario: any): boolean {
  */
 export function verNivelEmpresa(usuario: any): boolean {
   return esAdminGlobal(usuario);
+}
+
+/** El puesto del organigrama que manda en la empresa. */
+export const PUESTO_DIRECCION = 'direccion-general';
+
+/**
+ * ¿Puede entrar a la sección de Usuarios?
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ *  ESTO SE ESTRECHÓ EL 13/sep/2026, POR INSTRUCCIÓN DE DAVID
+ * ═══════════════════════════════════════════════════════════════════════════
+ * «Quienes solo pueden ver los usuarios es mi perfil y los de Dirección
+ * General; los demás no tendrán acceso a esa sección.»
+ *
+ * Antes bastaba con ser admin **de cualquier alcance** o traer la bandera
+ * `puedeAdministrarPersonal`. Esa pantalla da de alta gente, cambia puestos y
+ * reparte permisos: es la llave de todo lo demás, y el 31/ago ya se vio a dónde
+ * lleva tenerla repartida — una Encargada podía asignarle trabajo a fichas de
+ * otra plaza, incluidas cuentas de prueba.
+ *
+ * Ahora son dos, y ninguna es una bandera editable desde esa misma pantalla:
+ *   · el DUEÑO, reconocido por su correo, y
+ *   · quien tenga el puesto `direccion-general` en el organigrama.
+ *
+ * ─── EL DETALLE QUE LA HACE SEGURA ────────────────────────────────────────
+ * `puedeAdministrarPersonal` se otorga DESDE la pantalla de Usuarios. O sea que
+ * quien entrara podía dar acceso a esa misma pantalla, y eso se propaga solo.
+ * El puesto del organigrama no: sale del catálogo, que es código.
+ */
+export function veUsuarios(usuario: any): boolean {
+  if (esDueno(usuario)) return true;
+  return resolverPuesto(usuario).puestoId === PUESTO_DIRECCION;
 }

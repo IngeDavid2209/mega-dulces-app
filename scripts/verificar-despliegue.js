@@ -64,7 +64,12 @@ const MARCADORES = [
   // anteriores bajan a control. Mantener ese orden importa: dos veces hoy el
   // comentario se quedo describiendo el marcador ANTERIOR, y un comentario que
   // narra otra cosa que la linea de abajo es doctrina falsa en dos semanas.
-  { txt: 'apple-mobile-web-app-capable', nuevo: true, que: 'el arreglo de iPhone (zoom y acceso directo)' },
+  // El correo del dueño. YA VALIA 1 antes de este cambio -esta en la lista de
+  // cuentas exentas del modo mantenimiento desde hace meses- asi que aqui no
+  // vale preguntar "¿aparece?" sino "¿aparece DOS veces?". Ver `minimo` abajo.
+  { txt: 'davidcisneros2209', nuevo: true, minimo: 2, que: 'el super admin reconocido por correo' },
+  { txt: 'No hay ninguna sucursal que puedas ver', control: true, que: 'los arreglos de plantilla y pase de lista' },
+  { txt: 'apple-mobile-web-app-capable', control: true, que: 'el arreglo de iPhone' },
   { txt: 'Plantilla de sucursal', control: true, que: 'la entrada de menu en Definiciones' },
   { txt: 'org-fila-tarea', control: true, que: 'el desglose del manual en el arbol' },
   { txt: 'md-update', control: true, que: 'el aviso de version nueva' },
@@ -203,12 +208,26 @@ function contarEn(textos, aguja) {
     }
   }
   for (const f of nuevos) {
+    // `minimo` para los cambios que NO introducen una cadena propia.
+    //
+    // Un cambio de logica pura no aporta marcador natural -el minificador se
+    // come los nombres- y a veces la unica cadena que se puede mirar YA EXISTIA
+    // en otro archivo. Paso el 13/sep con el correo del dueño: valia 1 en
+    // produccion (la lista de exentos del modo mantenimiento) y con el cambio
+    // pasa a 2. Sin poder contar, ese marcador habria dado "ya esta servido"
+    // ANTES de desplegar — un falso positivo de los que esta herramienta
+    // existe para evitar.
+    const minimo = typeof f.minimo === 'number' ? f.minimo : 1;
     if (f.enDist === 0) {
       fallas.push('"' + f.txt + '" no está ni en el dist/ local: el marcador está mal elegido, ' +
         'no es que no haya llegado. Un marcador que vale 0 en el dist/ no puede validar nada.');
-    } else if (f.enProd === 0) {
+    } else if (f.enDist < minimo) {
+      fallas.push('"' + f.txt + '" tiene ' + f.enDist + ' en el dist/ y se esperaban al menos ' +
+        minimo + '. El `minimo` declarado no corresponde al build: ajústalo o revisa el cambio.');
+    } else if (f.enProd < minimo) {
       fallas.push('"' + f.txt + '" (' + f.que + ') está en el dist/ (' + f.enDist +
-        ') y NO en lo servido: el despliegue todavía no llegó.');
+        ') y en lo servido solo ' + f.enProd + ' de los ' + minimo +
+        ' esperados: el despliegue todavía no llegó.');
     }
   }
 

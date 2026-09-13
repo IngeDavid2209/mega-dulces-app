@@ -89,7 +89,16 @@ module.exports = async (req, res) => {
     if (!ok) return res.status(401).json({ error: 'Usuario o contraseña incorrectos.' });
     if (row.activo === false) return res.status(403).json({ error: 'Tu cuenta está desactivada. Contacta a tu administrador.' });
 
-    const token = firmarToken({ uid: row.id, rol: row.rol });
+    // ── EL DUEÑO ENTRA SIEMPRE COMO ADMIN ──────────────────────────────────
+    // El JWT lleva el rol, y los endpoints deciden con EL, no con la ficha. Si
+    // la de David quedara sin `rol: admin` -un campo que se edita desde la
+    // pantalla de Usuarios- sus propios endpoints le devolverian 403 y no
+    // tendria forma de arreglarlo desde dentro de la app. Es la unica cuenta
+    // nominal que va a quedar tras la parte C, asi que su acceso no puede
+    // depender de un dato editable. Espejo de `esDueno()` en permisos.util.ts.
+    const esDuenoDeLaApp =
+      String(row.correo || '').trim().toLowerCase() === 'davidcisneros2209@outlook.es';
+    const token = firmarToken({ uid: row.id, rol: esDuenoDeLaApp ? 'admin' : row.rol });
     return res.json({ token, usuario: fila(row) });
   } catch (e) {
     console.error('[login] error:', e && e.message);

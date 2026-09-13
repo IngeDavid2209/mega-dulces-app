@@ -13,15 +13,81 @@
 
 export type AlcanceAdmin = 'global' | 'sucursales';
 
-/** Es admin (cualquier alcance). */
-export function esAdmin(user: any): boolean {
-  return user?.rol === 'admin';
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ *  EL DUEÑO DE LA APLICACIÓN
+ * ═══════════════════════════════════════════════════════════════════════════
+ * Instrucción de David (13/sep/2026): «es el super admin, dale a él acceso a
+ * todo, no debe tener límites, es quien creará las plantillas y todo».
+ *
+ * ─── POR QUÉ SE RECONOCE POR CORREO Y NO POR UNA BANDERA DE SU FICHA ──────
+ * Porque las banderas se pierden. Todo el sistema de permisos cuelga de
+ * `user.rol === 'admin'` y de una veintena de `puedeXxx` que viven en el
+ * `datos` jsonb de la ficha; el 13/sep esta misma pantalla le dijo a un
+ * administrador «no tienes esta sucursal en tu alcance». Si el día que se
+ * apaguen las cuentas de persona (parte C) su ficha queda con un campo mal,
+ * NO HAY OTRA FORMA DE ENTRAR: es la única cuenta nominal que va a quedar.
+ *
+ * Reconocerlo por correo hace que su acceso no dependa de ningún dato que
+ * alguien pueda editar por error. El correo lo confirmó él POR ESCRITO antes de
+ * escribir esto, justo porque equivocarlo dejaría la app sin administrador.
+ *
+ * ─── Y EL RIESGO, dicho ───────────────────────────────────────────────────
+ * Quien controle una ficha con este correo tiene acceso total. Es aceptable
+ * porque la cuenta es suya y él administra las fichas — pero por eso mismo el
+ * correo NO se compara a la ligera: se normaliza (minúsculas y sin espacios),
+ * y se mira `correo` Y `email` porque el perfil viaja con los dos nombres según
+ * de dónde venga.
+ */
+export const CORREO_DUENO = 'davidcisneros2209@outlook.es';
+
+/** ¿Es la cuenta dueña de la aplicación? */
+export function esDueno(user: any): boolean {
+  const c = String(user?.correo ?? user?.email ?? '').trim().toLowerCase();
+  return c.length > 0 && c === CORREO_DUENO;
 }
 
-/** Es admin con acceso global a todas las sucursales. */
+/** Es admin (cualquier alcance). El dueño lo es siempre. */
+export function esAdmin(user: any): boolean {
+  return esDueno(user) || user?.rol === 'admin';
+}
+
+/** Es admin con acceso global a todas las sucursales. El dueño, siempre. */
 export function esAdminGlobal(user: any): boolean {
+  if (esDueno(user)) return true;
   if (!esAdmin(user)) return false;
   return (user?.alcance ?? 'global') === 'global';
+}
+
+/**
+ * Deja el perfil del dueño con TODO encendido, antes de guardarlo en la sesión.
+ *
+ * `esAdmin` cubre la mayoría de las condiciones —casi todas son
+ * `esAdmin(u) || u?.puedeXxx`— pero NO todas: quedan pantallas que miran la
+ * bandera a secas. En vez de perseguir esas condiciones una por una (y que la
+ * próxima que alguien escriba vuelva a dejarlo fuera), el perfil se normaliza
+ * UNA vez, al entrar, y toda la app lo lee ya completo.
+ *
+ * No toca a nadie más: si no es el dueño, devuelve el perfil intacto.
+ */
+export function conPermisosDeDueno<T extends Record<string, any>>(perfil: T): T {
+  if (!esDueno(perfil)) return perfil;
+  return {
+    ...perfil,
+    rol: 'admin',
+    alcance: 'global',
+    activo: true,
+    // Las banderas de ficha que la app consulta hoy. Si mañana aparece otra,
+    // `esAdmin` ya cubre las condiciones que la combinan con el rol.
+    puedeAdministrarPersonal: true, puedeAdministrarAreas: true,
+    puedeCrearChecklists: true, puedeCrearRutinas: true, puedeCrearTareasUnicas: true,
+    puedeVerCalendario: true, puedeVerCheckstore: true,
+    puedeVerEstadisticas: true, puedeVerHistorial: true,
+    grupoTec: true, grupoTickets: true, grupoPagos: true,
+    grupoFlotilla: true, grupoPromociones: true,
+    promocionesFormato: true, promocionesExpediente: true,
+    ventaPromosCaja: true, ventaPromosVendedor: true, ventaPromosMonitor: true,
+  } as T;
 }
 
 /** Es admin con acceso restringido a sucursales asignadas. */

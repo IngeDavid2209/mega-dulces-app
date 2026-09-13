@@ -8,6 +8,7 @@ import { APP_BUILD_SELLO } from '../../shared/version';
 import { NotificacionesService } from '../../services/notificaciones';
 import { hayTableroPara } from '../../services/home.guard';
 import { MANTENIMIENTO_ACTIVO, MANTENIMIENTO_TITULO } from '../../shared/mantenimiento.util';
+import { conPermisosDeDueno } from '../../shared/permisos.util';
 import { pareceCodigoDePlaza, normalizarCodigo } from '../../shared/codigo-plaza.util';
 import { coberturaDelDia, Cobertura } from '../../shared/cobertura.util';
 
@@ -201,7 +202,9 @@ export class LoginComponent {
       // peticiones de quien acaba de entrar con su cuenta. Se borra antes de
       // guardar la sesión nueva, no después.
       try { localStorage.removeItem('md_token'); } catch {}
-      localStorage.setItem('md_sesion_actual', JSON.stringify(perfil));
+      // El dueño entra con todo encendido, venga como venga su ficha. Ver
+      // `conPermisosDeDueno` en permisos.util.ts: a nadie mas le cambia nada.
+      localStorage.setItem('md_sesion_actual', JSON.stringify(conPermisosDeDueno(perfil)));
       this.usuario = '';
       this.password = '';
 

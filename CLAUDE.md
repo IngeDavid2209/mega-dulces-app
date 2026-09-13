@@ -324,6 +324,66 @@ de que exista la plaza sería partir el problema en dos, no resolverlo.
 
 ## 9. Bitácora del plan
 
+### 13/sep/2026 — RESPONSIVO: la regla estaba escrita y no regía
+
+Instrucción de David: la app no es responsiva —empezando por el sidebar— y hay que revisar
+**todos** los módulos, para celular y tablet.
+
+**«No es responsiva» no es accionable, así que primero se midió.**
+`scripts/diagnostico-responsivo.js` (nuevo) carga cada pantalla en un **iframe** de 390, 768 y
+1024 —Chrome topa las ventanas en 504px, así que `--window-size` no sirve: lección del 7/sep— y
+cuenta tres cosas distintas: desbordamiento del documento, texto por debajo de 12px y controles
+por debajo de 40px.
+
+**EL RESULTADO NO FUE EL ESPERADO, y por eso valía medir:** *ninguna* pantalla se desborda
+horizontalmente. Lo que está mal es lo **táctil y lo tipográfico**, que no se ve en una captura
+y se sufre con el dedo.
+
+| en celular (390px) | antes | después |
+|---|---|---|
+| controles < 40px | **14 a 34 por pantalla** | **0 en 9 de 16**, resto entre 1 y 11 |
+| textos < 12px | **552 casos** | **152** |
+| desbordamiento horizontal | ninguno | ninguno |
+
+**LA CAUSA RAÍZ.** El sistema Mercado **ya declaraba** `--tap-min: 44px` para punteros gruesos, y
+tenía **cero usos**. `--row-h-sm` (44px en táctil): cero usos. La regla existía desde el design
+system y **nunca se aplicó a un solo elemento** — es el mismo patrón que la Fase 2.1, una norma
+escrita que no rige.
+
+El arreglo es **una regla global, no 370 parches**: `min-height: var(--tap-min)` sobre
+`:where(button, select, .nav-item, input…)`. Con `:where()` la especificidad queda en **cero** —es
+un piso, no una imposición— y en escritorio `--tap-min` vale `0px`, así que **no cambia un píxel**
+ahí. Lo nuevo que alguien escriba nace bien sin tener que acordarse.
+
+**Y la media query lleva también el ancho, no solo `pointer: coarse`.** Dos motivos, y el segundo
+casi me hace dar por bueno un arreglo sin verificar: **Chrome headless reporta `pointer: fine`**,
+así que la primera medición del «después» salió **idéntica** al «antes» —34 controles chicos,
+igual que sin tocar nada—. El arreglo estaba bien; **lo que no podía verlo era el instrumento**.
+
+**Piso tipográfico en 6 archivos, solo en táctil/móvil** (en escritorio se conserva la densidad de
+Operations). Los peores: `td-chip` a **nueve píxeles** en el Tablero de Dirección —la pantalla que
+se enseña en una junta— y `nav-seccion` a 10px en el sidebar, que aparece en las 16 pantallas.
+
+#### EL DIAGNÓSTICO SE CORRIGIÓ A SÍ MISMO DOS VECES, y por eso sus cifras valen
+
+1. **Servía `/api` vacío** y declaró sana `/tareas-manual` — con la pantalla sin una sola tarjeta
+   que desbordar. Es el cero falso del 4/sep. Ahora siembra checklists con textos largos reales y
+   **reporta cuántos nodos midió**; una pantalla con menos de 40 nodos sale marcada porque su
+   «cabe» no vale.
+2. **Decía «21 pantallas» y eran 16.** `/areas`, `/calendario`, `/bloques`, `/turnos` y
+   `/flotilla` son `redirectTo: 'home'` desde que se retiraron, así que medía **/home seis veces**
+   y lo contaba como seis pantallas. Se vio porque las cinco daban cifras **idénticas hasta el
+   último dígito**. Lleva guardia para que no vuelva a pasar.
+
+**Y mordió otra vez el bug de Git Bash:** `/tareas-manual` llegó como
+`C:/Program Files/Git/tareas-manual`, Angular cayó al wildcard y se midió el **login**. Tercera
+vez en el proyecto (31/ago, 3/sep, hoy); ahora la ruta se normaliza por código.
+
+**Lo que queda, dicho con su cifra:** **152 textos** siguen por debajo de 12px, sobre todo en
+`/home` (88). Ya no salen de clases con nombre propio sino de reglas de componente con más
+especificidad que el piso global. Y **falta el rediseño visual de Tareas del Manual**, que David
+pidió aparte: esto la hace usable, no la hace bonita.
+
 ### 13/sep/2026 — PASO 3.1b: la plantilla de cada sucursal, y el tercer estado de Railway
 
 Instrucción de David: *«falta tener una sección donde cada sucursal va a tener su propia

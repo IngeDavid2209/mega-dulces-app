@@ -285,6 +285,24 @@ export function planDeEntregas(e: EntradaPlanEntregas): PlanDeEntregas {
  * afecta: esto solo puede QUITAR copias de más. Nunca deja a nadie en cero.
  *
  * ─── LO QUE NO RESUELVE, DICHO PARA QUE NO SE LEA DE MÁS ──────────────────
+ * MEDIDO, para que el límite no sea una sospecha: de los 19 lugares que la app
+ * ofrece hoy, **2 no están en el mapa de zonas** —`ADMINISTRADORES DEL SISTEMA`
+ * y `CAJA GENERAL`— así que `tieneCuadrilla` los da por NO operativos. Se probó
+ * caso por caso con la lista real y ninguno se queda sin nada:
+ *
+ *     CAJA GENERAL                           -> CAJA GENERAL     (la red de seguridad)
+ *     CAJA GENERAL + MANTENIMIENTO           -> CAJA GENERAL
+ *     Canindo + CAJA GENERAL                 -> Canindo
+ *     8 Esquinas + MANTENIMIENTO + SISTEMAS  -> 8 Esquinas       (el caso de la captura)
+ *     CEDIS + SISTEMAS                       -> CEDIS
+ *     Canindo + Padre Hidalgo                -> Canindo, Padre Hidalgo
+ *
+ * El único hueco que queda es una sucursal NUEVA que todavía no esté en
+ * `zonas.util.ts` Y que su gente tenga además otro lugar mapeado: ahí sí se le
+ * dejaría de entregar en la nueva. Si alguien abre una sucursal, el mapa hay que
+ * tocarlo de todas formas —es la deuda de la Fase 3, el lugar como texto— y este
+ * comentario es para que se sepa que también afecta a la emisión.
+ *
  * Si alguien de verdad trabajara en un área administrativa ADEMÁS de en su
  * sucursal, recibiría una copia en vez de dos. No se puede distinguir: la ficha
  * no dice cuál de sus sitios es su trabajo y cuál es un permiso. Se elige este
@@ -294,9 +312,23 @@ export function planDeEntregas(e: EntradaPlanEntregas): PlanDeEntregas {
 export function lugaresDeEmision(lugares: string[]): string[] {
   const conCuadrilla = lugares.filter(l => tieneCuadrilla(l));
   if (conCuadrilla.length) return conCuadrilla;
-  // Sin ningún sitio operativo: su área ES su trabajo. Una sola entrega, en el
-  // primero, que es el orden en que se capturó su ficha.
-  return lugares.slice(0, 1);
+
+  // Sin ningún sitio operativo: su área ES su trabajo, y se entrega en UNO.
+  //
+  // ⚠ CUÁL de ellos no puede depender del orden de captura, y esto es la misma
+  // falla que el bucle de arriba en pequeño. El lugar entra en `idemKey`
+  // (`man_<tarea>_<periodo>_<LUGAR>_<persona>`), así que si la ficha de alguien
+  // con «RH, FINANZAS» se reordenara a «FINANZAS, RH» —al reeditarla en
+  // Personal, o porque un script reescriba su `datos`— la MISMA tarea del MISMO
+  // día saldría con otro id y se crearía un SEGUNDO documento. Su denominador
+  // volvería a inflarse, por la puerta de al lado.
+  //
+  // Se ordena, entonces. Cuál gane es arbitrario —la ficha no dice cuál de sus
+  // áreas es «la suya»— pero arbitrario y ESTABLE no es lo mismo que arbitrario
+  // y dependiente del orden. Es la lección del `order by` que le faltaba a la
+  // siembra de plazas: el slot no significa nada, y aun así tiene que ser
+  // reproducible para poder auditarlo.
+  return [...lugares].sort((a, b) => a.localeCompare(b)).slice(0, 1);
 }
 
 /** Sucursales donde opera el usuario, normalizando los campos históricos. */

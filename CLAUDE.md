@@ -356,6 +356,28 @@ Más gente sin manual que con manual. A esas 104 personas **no se les puede «ac
 no existe el documento**, y escribírselo desde el código habría sido inventarles obligaciones
 (§8.5) con un despliegue por cada corrección (hallazgo 5).
 
+> **CORRECCIÓN EL MISMO DÍA (§8.11 f) — ESA LISTA SALE DE LA NÓMINA, Y LA BASE DICE OTRA COSA.**
+> Las cifras de arriba cruzan `nomina-puestos.ts` (la nómina de **agosto**, 191 filas) contra el
+> catálogo. El emisor del servidor —puesto anoche por otra sesión— publica el censo **real** en
+> el log de Railway, y a las **00:01 del 15/sep** dijo, medido sobre **154 fichas**:
+>
+>     235 creada(s), 0 ya estaban, 0 fallida(s), de 154 fichas
+>     sin tareas hoy: 87 persona(s) — 20 sin puesto del organigrama + el resto sin manual
+>
+>     11 Auxiliar de Encargado     4 Analista de Ordenes de Entrada   4 Surtidor de Zona
+>      4 Vendedor Ruta Directa     3 Analista de Egresos              3 Aux. Mercadotecnia Zona
+>      3 Direccion General         3 Servicios al Personal            2 Promotora
+>
+> **El orden se invierte donde más importa:** `auxiliar-encargado` pasa de 5 (nómina) a **11**
+> (base) y es el primero de la fila; `vendedor-rd` baja de 11 a **4** y `chofer-cedis` no aparece.
+> Las dos mediciones son correctas sobre poblaciones distintas —191 de nómina contra 154 fichas
+> activas— pero **la que decide a qué puesto escribirle primero es la de la base**, porque es la
+> que tiene gente entrando a la app. Verificado leyendo el log directamente, no tomado de palabra.
+>
+> Y de paso contesta lo que este mismo apartado daba por pendiente: **el emisor SÍ está
+> emitiendo**, 235 documentos sin que nadie abriera la app. El 0 que David vio el 14/sep no se
+> ha explicado todavía, pero hoy no se repitió.
+
 **LAS DOS DECISIONES DE DAVID, enfrentado a las opciones con su precio:** la norma de los puestos
 sin manual **se captura desde la app** (esto), y las **10 tareas no diarias del catálogo se
 respetan** —volverlas diarias habría hecho que el inventario mensual de flotilla del día 25 se

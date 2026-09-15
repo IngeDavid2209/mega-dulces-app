@@ -260,10 +260,18 @@ export class RobotManualService {
     // que esta lectura previa es lo UNICO que impide sobrescribir.
     //
     // Cubre el caso real: si la tarea ya esta, no se escribe. Lo que NO cubre
-    // es una carrera de segundos contra los otros dos emisores (el robot del
-    // navegador y, desde el 14/sep, el del servidor cada 10 min). En esa
-    // ventana el documento del otro acaba de nacer EN BLANCO, asi que
-    // reemplazarlo no pierde trabajo de nadie.
+    // es una carrera de segundos contra los otros dos emisores: el robot del
+    // navegador y, desde el 14/sep, el del servidor cada 10 min. En esa ventana
+    // el documento del otro acaba de nacer EN BLANCO, asi que reemplazarlo no
+    // pierde trabajo de nadie.
+    //
+    // PRECISION QUE EVITA UNA LECTURA DE MAS: de esos dos, solo el del
+    // NAVEGADOR comparte este camino de escritura (`api.post`, arriba en el
+    // bucle). El del SERVIDOR no pasa por HTTP —llama `insertarSiNoExiste` en
+    // proceso desde `api/emitir-manual.js`, que es `on conflict do nothing`—,
+    // asi que el puede aparecer en la carrera creando el documento, pero nunca
+    // sobrescribiendo. Comprobado en el archivo, no supuesto: los dos clientes
+    // del `do update` ciego son este metodo y el robot del navegador.
     //
     // Lo que si seria grave es sobrescribir un checklist YA TRABAJADO, y eso
     // esta fuera de la ventana: para llegar ahi, la lectura tendria que haberlo

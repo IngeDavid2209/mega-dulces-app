@@ -326,6 +326,135 @@ de que exista la plaza sería partir el problema en dos, no resolverlo.
 ## 9. Bitácora del plan
 
 
+### 15/sep/2026 (madrugada) — EL RELOJ A LAS 00:00, Y DOS DEFECTOS QUE ENCONTRARON OTROS
+
+La primera prueba real del emisor de anoche llegó sola, a las 00:01:
+
+    [emisor-manual] 2026-09-15: 235 creada(s), 0 ya estaban, 0 fallida(s), de 154 fichas
+    [emisor-manual] sin tareas hoy: 87 persona(s) — 20: sin puesto del organigrama | 11: el
+    puesto "Auxiliar de Encargado" aún no tiene manual | 4: "Analista de Órdenes de Entrada" | …
+
+**235 documentos sin que nadie abriera la app**, y de paso el mejor censo que tiene el proyecto:
+**87 personas sin una sola tarea, cada una con su motivo**, ordenado por a cuánta gente afecta. La
+sesión de la Fase 7 lo usó para **corregir su lista de prioridades**: su cifra salía de la nómina
+de agosto y decía que el primero era `vendedor-rd` (11); la base dice `auxiliar-encargado` (11
+contra 5 de la nómina) y `vendedor-rd` baja a 4. Las dos mediciones son correctas sobre
+poblaciones distintas, y la que decide a quién escribirle el manual primero es la de la base,
+porque es la que tiene gente entrando a la app.
+
+#### EL RELOJ: ANCLADO A MEDIANOCHE, NO AL DESPLIEGUE
+
+David: *«si el día inicia a las 12 a.m., a las 12 a.m. tienen que estar ya activadas»*. Las 235
+salieron a las 00:01 **por casualidad**: otra sesión desplegó justo entonces y el contenedor
+reinició ahí. El `setInterval` se anclaba al **arranque**, así que con el despliegue de las 23:16
+las vueltas caían en :16, :26, :36. Bajar el intervalo estrecha la ventana pero **no la ancla**:
+la hora a la que la gente ve sus tareas seguiría dependiendo de a qué hora se desplegó por última
+vez, y eso no se le puede explicar a nadie.
+
+**UN SOLO RELOJ PARA DOS TRABAJOS.** El cierre del día (23:59) y la emisión del nuevo (00:00) son
+la MISMA frontera con un minuto de diferencia. Con dos temporizadores, un contenedor que reinicie
+entre los dos deja el día **cerrado y sin emitir** o **emitido y sin cerrar**, y desde fuera se
+ven igual. Van en orden en la misma vuelta, las dos idempotentes, así que un reinicio a cualquier
+hora recupera las dos mitades. `cerrarDia` lo escribe otra sesión en su módulo; si no está, esto
+emite igual.
+
+**El colchón de 5 s no es superstición:** `setTimeout` puede despertar unos ms ANTES de la hora
+pedida, y entonces la fecha calculada sería todavía la de ayer — se emitiría otra vez el día que
+acaba de terminar.
+
+**Y no se prueba esperando.** Un caso que tardara hasta 24 h en correr no se correría nunca, así
+que las tres piezas son funciones puras. **20 afirmaciones**, `ayerDe` probado en primero de mes,
+primero de año y 1 de marzo bisiesto y no bisiesto, más la guardia de que **el reloj AVANZA** —sin
+ella, un `msHastaMedianoche` que devolviera una constante pasaría todo lo demás—.
+
+#### DOS DEFECTOS MÍOS QUE ENCONTRARON OTRAS SESIONES, y los dos eran silenciosos
+
+**1 · EL `await cerrarDia(...)` NO LLEVABA TOPE.** Lo vio `a3` revisando el enganche. Mi
+try/catch solo cubre lo que **lanza**; un cuelgue no lanza —una consulta que no vuelve, un pool
+agotado, un lock— y como el cierre corre ANTES de emitir, ese `await` habría dejado a 186 personas
+sin tareas ese día, **en silencio y sin una línea en el log**. No hace falta un bug del cierre:
+basta la base lenta a esa hora. Es el cuelgue del login del 1/sep con otra ropa.
+
+La guardia va del lado del **que llama**: un tope dentro del módulo de cierre no protege del caso
+en que lo que se atasca sea el propio módulo antes de llegar a él. El peor caso queda en «un día
+sin cerrar», que la vuelta siguiente recupera, en vez de «un día sin emitir», que no.
+
+**Y escribir esa prueba destapó un segundo defecto, mío también:** `cambioDeDia` devolvía **sin
+hacer nada y sin log** cuando la regla compilada no estaba cargada, y solo funcionaba porque
+`iniciarPoll` llamaba a `cargarRegla()` unas líneas más arriba. Un accidente de orden, no una
+garantía. Es la misma clase que la guardia del despliegue que acertó «de milagro por ocho líneas
+de orden de impresión»: **un comportamiento correcto por accidente se lee igual que uno correcto
+por diseño, hasta el día que alguien mueve una llamada.**
+
+**El tope se lee en CADA llamada, no al cargar el módulo.** Congelado en un `const`, la prueba del
+cuelgue tardaba **60 segundos reales**; ahora tarda **226 ms**. Una prueba de un minuto es una
+prueba que nadie corre, y una que nadie corre es una que no existe.
+
+#### 2 · EL MANUAL SE ENTREGABA UNA VEZ POR CADA ÁREA DE LA FICHA
+
+Lo encontró `7d` con una captura de David: «Mis tareas pendientes **9**», con tres tarjetas
+repetidas tres veces. No eran duplicados de escritura — el bucle recorre `sucursales[]` entera, y
+esa Encargada lleva `8 Esquinas`, `MANTENIMIENTO` y `SISTEMAS`. Su manual son 3 tareas → **3 × 3 =
+9**. El daño no es visual: **su denominador se triplicaba**, así que alguien que cumplió todo
+aparecía al 33%.
+
+Su arreglo —entregar solo en los sitios **con cuadrilla**, con caída a uno cuando ninguno lo es—
+lo verifiqué por mi cuenta antes de desplegarlo: **9 → 3**, y RH/FINANZAS **no se quedan en cero**
+(el 84% del organigrama no es de sucursal; sin esa caída el «arreglo» les habría quitado todas sus
+tareas, que es un desastre peor y más silencioso).
+
+**Y tenía un borde que es la misma falla en pequeño.** La caída elegía «el primero de los suyos»,
+y **el lugar entra en `idemKey`**:
+
+    orden 1 (RH, FINANZAS):  man_encargado_sucursal_apertura_2026-9-14_rh_encargada_x
+    orden 2 (FINANZAS, RH):  man_encargado_sucursal_apertura_2026-9-14_finanzas_encargada_x
+
+Reordenar una ficha —al reeditarla en Personal, o porque un script reescriba su `datos`, y anoche
+había scripts haciendo exactamente eso— habría creado un **segundo documento** para la misma tarea
+del mismo día. Ahora se ordena: cuál gane sigue siendo arbitrario, pero **arbitrario y estable no
+es lo mismo que arbitrario y dependiente del orden**. Es el `order by` de la siembra de plazas del
+9/sep otra vez.
+
+**Los `recortes` se registran en su propia línea**, aparte de las omisiones, porque son otra cosa:
+esta gente SÍ recibe, solo que en menos sitios. Un recorte mudo se lee como un bug — quien mañana
+pase de nueve tarjetas a tres va a reportar «se perdieron mis tareas».
+
+**Aviso que hay que dar antes de que alguien lo lea mal:** las **235** de anoche **incluían las
+copias infladas**. El número de mañana va a ser MENOR, y eso es la corrección funcionando, no
+tareas perdidas.
+
+#### UNA PISADA DE COMMIT, Y LA REGLA QUE NINGUNA DE LAS DOS ESCRITAS CUBRÍA
+
+El commit `771bedb` de otra sesión se llevó mi `sort` sin commitear, con un mensaje que no lo
+menciona. Lo que deja, y es nuevo: **«rutas explícitas» (31/ago) y «revisar todos los archivos del
+commit» (4/sep) fallan cuando dos sesiones editan el MISMO archivo.** Se agrega una ruta
+explícita, se revisa por nombre, y aun así se arrastra trabajo ajeno porque está *dentro* de un
+archivo que sí era propio. Lo que hay que mirar es el **diff de lo que se va a commitear**
+(`git diff --cached`), no `git status`.
+
+#### Y UN RESPALDO CON HASHES SUELTO EN LA RAÍZ
+
+`respaldo-duplicados-*.json`: 4405 bytes con nombres de personas y el espejo de contraseña,
+**sin rastrear**, apareciendo en cada `git status` a un `git add -A` de quedar commiteado para
+siempre. El `.gitignore` cubría `respaldo-privilegios-*.json` y no el de al lado. **Una regla que
+cubre un patrón y no el vecino es peor que ninguna: da la impresión de que el caso está
+atendido.** Comprobado en las tres direcciones —el nuevo se ignora, el viejo sigue cubierto, y un
+`.json` cualquiera NO— para que la regla no se volviera tan ancha que tapara ficheros legítimos.
+
+#### DESPLEGADO
+
+    bundle  2 marcadores nuevos servidos, 26 controles en pie, 65 archivos / 4.48 MB
+    log     [emisor-manual] arranca. Ahora en America/Mexico_City: 2026-09-15 04:32
+            siguiente cambio de día en 1168 min (a las 00:00 de America/Mexico_City)
+
+**255 pruebas** (219 → 255), más 16 afirmaciones del emisor y 20 del reloj. Cuatro controles
+negativos, una línea cada uno con su `diff`.
+
+**Lo que NO se puede verificar desde fuera, dicho de antemano:** el tope del cierre es una ruta
+muerta hasta que exista `api/cerrar-dia.js`, así que el log de arranque es idéntico con y sin él.
+Lo comprobado es que el árbol estaba limpio al subir y que el commit es ancestro de lo desplegado.
+La primera prueba real será la línea `cierre de … : N cerrados`.
+
 ### 15/sep/2026 — DOS CORRECCIONES AJENAS SOBRE LO MISMO, Y UNA ES DE PROCESO
 
 **1 · MI CAÍDA ERA ARBITRARIA *Y* INESTABLE, que no es lo mismo.** `lugaresDeEmision` caía a

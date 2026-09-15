@@ -3,6 +3,7 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { esEntregaDeManual } from '../../../shared/origen-manual.util';
 
 type Estado = 'vencida' | 'hoy' | 'completada' | 'programada';
 type Tipo = 'rutina' | 'unica';
@@ -15,6 +16,18 @@ interface TareaVista {
   estado: Estado;
   tipo: Tipo;
   etiquetaTipo: string;   // 'Diaria', 'Semanal'... o 'Única'
+  /**
+   * 📕 ¿Sale del Manual Corporativo? Decide si esta tarjeta ofrece editar y
+   * borrar, y por eso es POR TAREA y no del panel entero.
+   *
+   * Hasta el 14/sep/2026 no hacía falta: `puedeEditar` llegaba apagado desde el
+   * apartado del Manual, que era una PANTALLA aparte. Al unir las dos listas,
+   * el panel pinta las dos clases a la vez, así que el interruptor de arriba
+   * dejó de separar nada — y sin esto habría ofrecido «Editar» sobre una tarea
+   * del manual, que `editarChecklist` rechaza. Ofrecer una acción que va a ser
+   * rechazada es el defecto que el invariante §5.4 obliga a evitar.
+   */
+  esManual: boolean;
   cuando: string;         // 'Hoy · 14:00', 'Venció 10:00 AM', 'Cerrada'...
   progreso: number;
   completados: number;
@@ -235,6 +248,9 @@ export class PanelResponsablesComponent implements OnDestroy {
         titulo: c?.name || 'Sin nombre',
         sucursal: c?.store || '',
         estado, tipo, etiquetaTipo: etiqueta,
+        // La MISMA función que usa la pantalla, no una copia: dos versiones de
+        // esta regla son dos candados que pueden divergir (§2).
+        esManual: esEntregaDeManual(c),
         cuando: this.cuandoDe(c, estado),
         progreso: Number(c?.calcProgreso) || 0,
         completados: Number(c?.calcCompletados) || 0,

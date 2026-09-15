@@ -854,7 +854,7 @@ export class EspacioTecComponent implements OnInit, OnDestroy {
         this.noti.enviar({
           titulo: 'Nueva tarea asignada',
           cuerpo: texto,
-          url: '/checklist',
+          url: '/tareas',
           nombres: destinatariosTec
         });
       }

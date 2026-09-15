@@ -2,7 +2,7 @@ import { Component, signal, OnInit, OnDestroy, inject, effect } from '@angular/c
 import { UsuariosService } from '../../../shared/usuarios.service';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterModule, ActivatedRoute } from '@angular/router';
+import { RouterModule, ActivatedRoute, Router } from '@angular/router';
 import { Firestore, doc, setDoc, deleteDoc } from '@angular/fire/firestore';
 import * as localforage from 'localforage';
 import Swal from 'sweetalert2';
@@ -10,6 +10,7 @@ import { esAdminGlobal, esAdminLimitado, sucursalesPermitidas, esSupervisor, mis
 import { nivelDeCargo } from '../../../shared/nivel-jerarquico.util';
 import { TareaEquipo, FaseEquipo, ItemEquipo, SubtareaEquipo } from '../../../shared/tareas-equipo.types';
 import { esItemHecho, tieneEvidencia } from '../../../shared/item-completado.util';
+import { esEntregaDeManual } from '../../../shared/origen-manual.util';
 import { obtenerSemanaISO, obtenerNombreDia } from '../../../shared/descansos.util';
 import { RobotManualService } from '../../../shared/robot-manual.service';
 import { resolverPuesto } from '../../../shared/puesto.util';
@@ -147,24 +148,65 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   checklists = signal<any[]>([]);
 
   /**
-   * 📕 MODO DE LA PANTALLA
+   * 📕 DE DÓNDE SALE LA TAREA — UN CHIP, YA NO UNA RUTA
    *
-   * El mismo componente sirve dos apartados del menú, y la única diferencia es
-   * qué mitad de la lista muestra:
+   * ─── QUÉ ERA HASTA EL 14/sep/2026 ────────────────────────────────────────
+   * Esto era `modoManual`, una bandera que venía de `data.modoManual` en
+   * app.routes.ts, y partía la app en DOS ENTRADAS DE MENÚ con el mismo
+   * componente: `/tareas-manual` pintaba solo lo que entrega el robot y
+   * `/checklist` solo lo que se asigna a mano.
    *
-   *   /tareas-manual  → modoManual = true   solo las tareas del Manual
-   *                     Corporativo (las que entrega el robot y nadie edita).
-   *   /checklist      → modoManual = false  todo lo demás: lo que se asigna a
-   *                     mano, tareas únicas, de equipo, del día.
+   * Instrucción de David: «quiero que queden unidas […] solo que esté todo
+   * ahí». Así que el origen dejó de ser una ruta y pasó a ser un filtro DENTRO
+   * de la pantalla: una sola lista con las dos clases juntas, y tres chips para
+   * bajar a una mitad cuando hace falta.
    *
-   * Se resuelve con un componente y no con dos porque toda la maquinaria de
-   * cumplir una tarea —evidencia, fotos antes/después, comentarios, envío,
-   * retrasos, offline— vive aquí. Duplicarla para la mitad de la lista sería
-   * mantener dos veces lo más delicado de la app.
+   * ─── POR QUÉ ESTO NO ABRE LA EDICIÓN DEL MANUAL (invariante §5.4) ────────
+   * Porque el candado nunca estuvo aquí. Está POR TARJETA:
+   * `esTareaDeManual(c)` esconde los botones en la plantilla y, sobre todo,
+   * `editarChecklist` y `eliminarChecklist` lo comprueban antes de tocar nada.
+   * El modo de pantalla sólo evitaba OFRECER una acción que iba a ser
+   * rechazada; juntar las listas no le quita el candado a ninguna tarea.
    *
-   * El valor viene de `data.modoManual` en app.routes.ts.
+   * ─── EL VALOR INICIAL Y EL `?ver=` ───────────────────────────────────────
+   * Por omisión 'todas', que es el punto del cambio. Las dos rutas viejas
+   * —vivas como redirección, porque hay enlaces en WhatsApp de hace meses—
+   * llegan con `?ver=manual` o `?ver=libres`, así que quien abre un enlace
+   * viejo ve LA MISMA MITAD que veía, no la lista entera.
    */
-  modoManual = false;
+  filtroOrigen: 'todas' | 'manual' | 'libres' = 'todas';
+
+  /**
+   * El árbol del organigrama es una vista del MANUAL: recorre unidad → puesto y
+   * cuelga las entregas del robot. Se conserva exactamente donde estaba —el
+   * chip «Del manual»— para no cambiar en el mismo paso qué se ve y quién lo
+   * ve. Ver `verPorOrganigrama`.
+   */
+  get modoManual(): boolean { return this.filtroOrigen === 'manual'; }
+
+  /** Cambia el chip de origen. Invalida el cache: la lista depende de él. */
+  cambiarFiltroOrigen(v: 'todas' | 'manual' | 'libres') {
+    if (this.filtroOrigen === v) return;
+    this.filtroOrigen = v;
+    this._cacheFiltradosHuella = '';
+    // La URL sigue al chip para que un enlace compartido abra lo mismo que se
+    // está viendo. `replaceUrl` para no llenar el botón «atrás» de pasos.
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { ver: v === 'todas' ? null : v },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
+  }
+
+  /**
+   * Cuántas hay de cada origen, para los badges de los chips. Lo llena
+   * `checklistsFiltrados` sobre la lista que la pestaña Mis/Toda ya recortó —
+   * así el número del chip es el que se va a ver al pulsarlo, salvo por lo que
+   * quite el buscador.
+   */
+  private _conteoOrigen = { todas: 0, manual: 0, libres: 0 };
+  get conteoOrigen() { this.checklistsFiltrados; return this._conteoOrigen; }
   // 📡 true cuando el último poll a la nube falló: la vista sigue mostrando la
   // última lista buena (cache) y enseña un aviso, en vez de una lista vacía que
   // parezca "se borraron las tareas".
@@ -188,6 +230,17 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   // bajo demanda (getDocs) la primera vez que se abre, para no gastar lecturas.
   vistaHistorial = signal<'pendientes' | 'enviadas'>('pendientes');
   enviadas = signal<any[]>([]);
+  /**
+   * El historial, pasado por el chip de origen.
+   *
+   * ⚠ HASTA HOY «Enviadas» IGNORABA EL APARTADO: `cargarEnviadas()` empuja las
+   * filas crudas, así que el historial del Manual mostraba también las libres y
+   * al revés. Con dos pantallas separadas eso ya era incoherente; con el chip
+   * al lado sería directamente mentira —el chip diría «Del manual» y la lista
+   * traería de las otras—. Aquí se recorta con la MISMA regla que la lista de
+   * pendientes, no con una copia.
+   */
+  get enviadasFiltradas(): any[] { return this.porOrigen(this.enviadas()); }
   cargandoEnviadas = false;
   enviadasCargadas = false;
   empleados = signal<any[]>([]);
@@ -346,16 +399,25 @@ export class ChecklistComponent implements OnInit, OnDestroy {
    * Es la misma regla del bloque con hueco nombrado del tablero (3/sep).
    */
   get motivoAmbito(): string { return this.ambito.motivo; }
+  // ⚠ LOS TRES CUENTAN SOBRE EL CHIP DE ORIGEN, y antes no: contaban sobre
+  //   `checklists()` entero. Mientras fueron dos pantallas casi no se notaba;
+  //   con los chips al lado, un badge que dijera 12 mientras la lista muestra 3
+  //   se lee como que la app perdió tareas. Dos números contiguos que hablan de
+  //   conjuntos distintos son un error de lectura garantizado.
+  //
+  //   Lo que NO cuentan es el recorte por ámbito, y eso viene de antes: es la
+  //   misma cifra que se enseña hoy. Meterlo aquí sería cambiar dos cosas en el
+  //   mismo paso; queda anotado como pendiente.
   get contadorMisChecklists(): number {
     const mi = this.currentUser?.nombre;
-    return this.checklists().filter(c => mismoEmpleadoNombre(c.assigned, mi)).length;
+    return this.porOrigen(this.checklists()).filter(c => mismoEmpleadoNombre(c.assigned, mi)).length;
   }
   get contadorEquipoChecklists(): number {
     const mi = this.currentUser?.nombre;
-    return this.checklists().filter(c => !mismoEmpleadoNombre(c.assigned, mi)).length;
+    return this.porOrigen(this.checklists()).filter(c => !mismoEmpleadoNombre(c.assigned, mi)).length;
   }
   get contadorTodasChecklists(): number {
-    return this.checklists().length;
+    return this.porOrigen(this.checklists()).length;
   }
 
   // ============================================================================
@@ -385,6 +447,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
 
   private firestore = inject(Firestore);
   private route = inject(ActivatedRoute);
+  private router = inject(Router);
   private robotManual = inject(RobotManualService);
   private usuariosSvc = inject(UsuariosService);
   private noti = inject(NotificacionesService);
@@ -1044,12 +1107,25 @@ export class ChecklistComponent implements OnInit, OnDestroy {
    */
   private _cacheFiltradosHuella = '';
   private _cacheFiltrados: any[] = [];
+
+  /**
+   * Aplica el chip de origen. Con 'todas' devuelve la lista TAL CUAL —no una
+   * copia— porque este camino corre en cada change detection y una copia
+   * cambiaría la identidad del arreglo en cada vuelta, que es exactamente lo
+   * que tumbó el sidebar el 1/sep.
+   */
+  private porOrigen(lista: any[]): any[] {
+    if (this.filtroOrigen === 'todas') return lista;
+    const busco = this.filtroOrigen === 'manual';
+    return lista.filter(c => this.esTareaDeManual(c) === busco);
+  }
+
   get checklistsFiltrados() {
     const amb = this.ambito;
     // La huella lleva el ámbito porque el recorte depende de él: sin esto, una
     // ficha que gana su puesto seguiría viendo la lista vieja hasta que algo más
     // cambiara la huella, y el recorte parecería no haber funcionado.
-    const huella = `${this.checklists().length}-${this.vistaTareas}-${this.terminoBusquedaChecklist}-${this.currentUser?.nombre || ''}-${this.modoManual}-${amb.amplitud}${amb.restringido ? ':' + [...(amb.lugares || [])].sort().join(',') : ''}`;
+    const huella = `${this.checklists().length}-${this.vistaTareas}-${this.terminoBusquedaChecklist}-${this.currentUser?.nombre || ''}-${this.filtroOrigen}-${amb.amplitud}${amb.restringido ? ':' + [...(amb.lugares || [])].sort().join(',') : ''}`;
     if (huella === this._cacheFiltradosHuella) return this._cacheFiltrados;
     this._cacheFiltradosHuella = huella;
     let lista = this.checklists();
@@ -1066,16 +1142,12 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     // sin contarle a ella (§5, atribución transversal).
     if (amb.restringido) lista = lista.filter(c => entregaVisible(amb, c));
 
-    // 📕 Separación manual / libre. Este es el único punto donde hay que
-    // filtrar: las tres vistas derivadas (mandos, operativos, agrupada por
-    // persona) se calculan a partir de aquí, así que nada se puede colar por
-    // otro lado. Una tarea pertenece a exactamente uno de los dos apartados.
-    lista = lista.filter(c => this.esTareaDeManual(c) === this.modoManual);
-
-    // Cuántas hay en ESTE apartado antes de aplicar la búsqueda. El estado
-    // vacío lo necesita para no confundir dos cosas muy distintas: "no tienes
-    // tareas de este tipo" y "tu búsqueda no encontró nada".
-    this._totalEnEsteModo = lista.length;
+    // 📕 Cuántas hay en el chip actual ANTES de la pestaña Mis/Toda y de la
+    // búsqueda. `motivoSinTareasManual()` lo usa para poder decir «ninguna de
+    // las N de hoy está a tu nombre», que es una frase que sólo tiene sentido
+    // con el total sin recortar por persona. El orden de estas tres líneas no
+    // es cosmético: moverlo cambia lo que ese mensaje afirma.
+    this._totalEnEsteModo = this.porOrigen(lista).length;
 
     // Filtro por pestaña (Mis / Equipo / Todas). Solo aplica si el usuario
     // puede alternar — para trabajadores puros, la lista ya viene filtrada por
@@ -1087,6 +1159,21 @@ export class ChecklistComponent implements OnInit, OnDestroy {
         return this.vistaTareas === 'mis' ? esMia : !esMia;
       });
     }
+
+    // Los badges de los tres chips, sobre lo que la pestaña ya recortó: el
+    // número del chip es el que se va a ver al pulsarlo. Se cuenta ANTES de
+    // aplicar el chip —si se contara después, «Del manual» y «Fuera del
+    // manual» dirían 0 cada vez que el otro está seleccionado— y en una sola
+    // pasada, porque esto corre en cada change detection.
+    let manual = 0;
+    for (const c of lista) if (this.esTareaDeManual(c)) manual++;
+    this._conteoOrigen = { todas: lista.length, manual, libres: lista.length - manual };
+
+    // 📕 EL CHIP DE ORIGEN. Este es el único punto donde se separa manual de
+    // libre: las tres vistas derivadas (mandos, operativos, agrupada por
+    // persona) y el árbol se calculan a partir de aquí, así que nada se puede
+    // colar por otro lado. Una tarea pertenece a exactamente uno de los dos.
+    lista = this.porOrigen(lista);
 
     // Filtro por búsqueda libre (texto en nombre/empleado/sucursal).
     const termino = this.terminoBusquedaChecklist.trim().toLowerCase();
@@ -1151,14 +1238,21 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     const sesion = localStorage.getItem('md_sesion_actual');
     if (sesion) this.currentUser = JSON.parse(sesion);
 
-    // 📕 Qué mitad de la lista toca pintar. Se lee de la ruta (ver modoManual).
-    // Va suscrito y no leído una sola vez: si algún día las dos rutas comparten
-    // el componente sin recrearlo, el modo tiene que seguir el cambio o la
-    // pantalla se quedaría mostrando la mitad equivocada.
-    this.route.data.subscribe(d => {
-      const nuevo = d['modoManual'] === true;
-      if (nuevo !== this.modoManual) {
-        this.modoManual = nuevo;
+    // 📕 `?ver=manual|libres` — el chip con el que se ABRE la pantalla.
+    //
+    // Existe por las dos rutas viejas: `/tareas-manual` y `/checklist` llevan
+    // meses circulando por WhatsApp y siguen vivas como redirección, cada una
+    // con su `?ver=`. Sin esto, un enlace de hace un mes aterrizaría en «Todas»
+    // y quien lo abre vería una lista distinta de la que le mandaron.
+    //
+    // Va suscrito y no leído una sola vez porque el chip escribe la URL: el
+    // componente no se recrea al cambiar sólo el query param.
+    this.route.queryParams.subscribe(q => {
+      const v = q['ver'];
+      const nuevo: 'todas' | 'manual' | 'libres' =
+        v === 'manual' ? 'manual' : v === 'libres' ? 'libres' : 'todas';
+      if (nuevo !== this.filtroOrigen) {
+        this.filtroOrigen = nuevo;
         this._cacheFiltradosHuella = '';   // invalida el cache de la lista
       }
     });
@@ -2443,7 +2537,10 @@ export class ChecklistComponent implements OnInit, OnDestroy {
    * marcar sus puntos de control y dejar observaciones.
    */
   esTareaDeManual(checklist: any): boolean {
-    return checklist?._origenManual === true || checklist?.datos?._origenManual === true;
+    // La regla vive en `origen-manual.util.ts` porque el panel de responsables
+    // también la necesita POR TAREA desde que las dos listas son una sola. Dos
+    // copias de una regla es una copia que se queda atrás (§2).
+    return esEntregaDeManual(checklist);
   }
 
   /** Código del anexo/formato del manual (CEDIS-CH-01, Anexo A...), para la píldora. */
@@ -4175,7 +4272,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       this.noti.enviar({
         titulo: 'Nueva tarea asignada',
         cuerpo: this.formName,
-        url: '/checklist',
+        url: '/tareas',
         nombres: nombresTec
       });
     }

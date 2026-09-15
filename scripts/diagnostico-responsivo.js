@@ -105,7 +105,11 @@ function normalizarRuta(a) {
 
 /** Las rutas con pantalla propia. Se listan a mano porque no todas son de menú. */
 const RUTAS = process.argv[2] ? [normalizarRuta(process.argv[2])] : [
-  '/home', '/checklist', '/tareas-manual', '/control/estadisticas', '/control/ranking',
+  // 14/sep/2026: '/checklist' y '/tareas-manual' dejaron de ser pantallas y son
+  // redirecciones a '/tareas' (las dos listas se unieron). Dejarlas aqui habria
+  // medido la MISMA pantalla tres veces y reportado «18 pantallas» — el mismo
+  // inflado del denominador que las cinco de abajo.
+  '/home', '/tareas', '/control/estadisticas', '/control/ranking',
   '/control/productividad', '/control/sucursales', '/control/plantilla', '/control/pase-lista',
   '/personal', '/reportes', '/descansos', '/manual-puestos', '/tareas-asignadas',
   '/cierre-mensual', '/perfil',

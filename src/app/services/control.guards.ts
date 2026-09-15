@@ -95,7 +95,7 @@ export const primeraTabControlGuard: CanActivateFn = () => {
  * la lección que dejó escrita la fusión de las cuatro pantallas de análisis.
  *
  * Quien no pasa va a su trabajo, no a una pantalla vacía ni al login: un
- * `UrlTree` a /tareas-manual, igual que hace `home.guard`.
+ * `UrlTree` a /tareas, igual que hace `home.guard`.
  */
 export const estructuraGuard: CanActivateFn = () => {
   const router = inject(Router);
@@ -104,7 +104,7 @@ export const estructuraGuard: CanActivateFn = () => {
     const s = localStorage.getItem('md_sesion_actual');
     u = s ? JSON.parse(s) : null;
   } catch { u = null; }
-  return esJefatura(u) ? true : router.createUrlTree(['/tareas-manual']);
+  return esJefatura(u) ? true : router.createUrlTree(['/tareas']);
 };
 
 /**
@@ -122,5 +122,5 @@ export const usuariosGuard: CanActivateFn = () => {
     const s = localStorage.getItem('md_sesion_actual');
     u = s ? JSON.parse(s) : null;
   } catch { u = null; }
-  return veUsuarios(u) ? true : router.createUrlTree(['/tareas-manual']);
+  return veUsuarios(u) ? true : router.createUrlTree(['/tareas']);
 };

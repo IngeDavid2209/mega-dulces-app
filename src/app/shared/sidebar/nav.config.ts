@@ -87,9 +87,16 @@ const esAdmin = (u: any) => u?.rol === 'admin';
 export const NAV: EntradaNav[] = [
   // ── 1 · MI TRABAJO ────────────────────────────────────────────────────
   // Todos la tienen y nunca está vacía. Es siempre la primera.
-  { seccion: 'mi-trabajo', etiqueta: 'Tareas del Manual', ruta: '/tareas-manual',
-    icono: 'manual', ve: siempre },
-  { seccion: 'mi-trabajo', etiqueta: 'Tareas fuera del manual', ruta: '/checklist',
+  // ⚠ UNA SOLA ENTRADA desde el 14/sep/2026. Eran dos —«Tareas del Manual» y
+  //   «Tareas fuera del manual»— y las dos con `ve: siempre`, así que fundirlas
+  //   NO cambia la audiencia de nadie: quien veía las dos ve ésta.
+  //
+  //   El origen de la tarea dejó de ser una entrada de menú y pasó a ser un chip
+  //   dentro de la pantalla (Todas · Del manual · Fuera del manual). Instrucción
+  //   de David: «quiero que queden unidas […] solo que esté todo ahí».
+  //
+  //   Las dos rutas viejas siguen vivas como redirección, cada una a su chip.
+  { seccion: 'mi-trabajo', etiqueta: 'Tareas', ruta: '/tareas',
     icono: 'check', ve: siempre },
   { seccion: 'mi-trabajo', etiqueta: 'Agenda Personal', ruta: '/agenda',
     icono: 'agenda', ve: siempre },

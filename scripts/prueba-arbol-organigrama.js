@@ -357,6 +357,20 @@ function medir(esc, puerto) {
       // el `org-cab` se mudo a la barra pegajosa. Si sus ejes derechos se
       // separan, los rotulos dejan de nombrar la columna que estan encima —
       // que es el defecto de los 94px del 1/sep, con otra ropa.
+      // DENTRO DE LA BARRA. Cuando `cl-toolbar` mide el doble, la causa es
+      // SIEMPRE una de dos y se ven igual desde fuera: un grupo que no cupo y
+      // envolvio, o un grupo mas alto. Esto las separa — si `der.top` esta por
+      // debajo de `izq.top`, envolvio.
+      ' barra: (function(){var t=document.querySelector(".cl-toolbar");' +
+      '   if(!t) return null; var i=t.querySelector(".cl-toolbar-izq"), d=t.querySelector(".cl-toolbar-der");' +
+      '   var g=[].slice.call(t.querySelectorAll(".cl-toolbar-izq > .vista-tabs")).map(function(e){' +
+      '     return Math.round(e.getBoundingClientRect().width);});' +
+      '   return {alto: Math.round(t.getBoundingClientRect().height),' +
+      '     ancho: Math.round(t.getBoundingClientRect().width),' +
+      '     izq: i ? Math.round(i.getBoundingClientRect().width) : 0,' +
+      '     der: d ? Math.round(d.getBoundingClientRect().width) : 0,' +
+      '     envolvio: (i && d) ? (Math.round(d.getBoundingClientRect().top) > Math.round(i.getBoundingClientRect().top) ? 1 : 0) : -1,' +
+      '     grupos: g};})(),' +
       ' ejes: (function(){var c=document.querySelector(".org-cab .org-puesto-datos");' +
       '   var f=document.querySelector(".org-lista .org-puesto .org-puesto-datos");' +
       '   if(!c||!f) return null;' +
@@ -536,17 +550,41 @@ function medir(esc, puerto) {
       filas[0].d.ventana, geo.top, geo.ancho);
     console.log('  encima de ella: %s', geo.encima.join(' · ') || '(nada)');
   }
+  const barra = filas[0].d.barra;
+  if (barra) {
+    console.log('  dentro de la barra: ancho=%dpx · izquierda=%dpx (grupos %s) · derecha=%dpx · %s',
+      barra.ancho, barra.izq, (barra.grupos || []).join('+'), barra.der,
+      barra.envolvio === 1 ? 'LA DERECHA ENVOLVIO (por eso la barra mide el doble)' : 'una sola linea');
+  }
   console.log('');
   for (const f of filas) console.log('  subtítulo · %s → %s', f.nombre, JSON.stringify(f.d.sub));
 
   const conDato = filas[0], sinDato = filas[1], busca = filas[2], nada = filas[3];
   const eje = filas[4];
+  const mis = filas.find((f) => f.pulsaMis);
 
-  // ── El árbol tiene que estar montado en las cuatro, o no se midió nada ──
+  // ── El árbol tiene que estar montado, o no se midió nada ────────────────
+  //
+  // ⚠ CON UNA EXCEPCION, Y ES LA DEL ESCENARIO QUE MIDE SU AUSENCIA.
+  //
+  //   Esta guardia le exigia `arbol === 1` a TODAS las filas, y el 13/sep se
+  //   añadio el escenario «pulso "Mis tareas"», cuyo punto entero es que el
+  //   arbol DESAPAREZCA. Desde ese commit (fbeeb3a) esta prueba abortaba
+  //   siempre en la ultima fila: llevaba sin poder concluir nada desde que se
+  //   escribio. Se vio al correrla el 14/sep, no antes, porque un aborto con
+  //   codigo 3 dice «no medi» y es facil leerlo como ruido.
+  //
+  //   La guardia correcta no es «todas montan»: es «cada escenario monta lo
+  //   que vino a medir». Y la ausencia, cuando SE ESPERA, deja de ser un
+  //   aborto y pasa a ser una asercion — abajo, con las demas.
   for (const f of filas) {
-    if (f.d.arbol !== 1) {
+    if (!f.pulsaMis && f.d.arbol !== 1) {
       abortar('el escenario "' + f.nombre + '" no montó <app-vista-organigrama> (arbol=' +
         f.d.arbol + '). Todo lo demás sería un cero por no haber pintado.');
+    }
+    if (f.pulsaMis && f.d.sinTab) {
+      abortar('no encontré la pestaña «Mis tareas» para pulsarla, así que el escenario que ' +
+        'mide su contenido no midió NADA. Un arbol=0 aquí sería «no pulsé», no «desapareció».');
     }
     if (f.d.sinCampo) abortar('el buscador no existía al teclear en "' + f.nombre + '".');
   }
@@ -591,6 +629,26 @@ function medir(esc, puerto) {
   pide(conDato.d.puestos > 1,
     'con dato se sigue entrando a ' + conDato.d.puestos + ' fila(s). Era 1 y el rediseño ' +
     'existe justamente para eso.');
+
+  // 1b · «MIS TAREAS» NO PINTA EL ORGANIGRAMA, Y NO SE QUEDA EN BLANCO.
+  //      El escenario existía desde el 13/sep y solo se IMPRIMÍA: no había una
+  //      sola aserción sobre él, así que el bug de David podía volver y la
+  //      tabla lo habría enseñado sin que nada fallara. Son las dos mitades:
+  //      que el árbol se vaya, y que quede algo en su lugar —lista o estado
+  //      vacío—, porque una pestaña en blanco es peor que el bug original.
+  pide(!!mis, 'no existe el escenario que pulsa «Mis tareas»: esa regla dejó de probarse.');
+  if (mis) {
+    pide(mis.d.arbol === 0,
+      'al pulsar «Mis tareas» el árbol SIGUE montado (arbol=' + mis.d.arbol + '). Es el bug ' +
+      'que reportó David el 13/sep: el organigrama tapando las tareas propias.');
+    pide(mis.d.grid > 0,
+      'al pulsar «Mis tareas» no quedó NADA en pantalla (grid=' + mis.d.grid + '): ni lista ' +
+      'ni estado vacío. Eso es peor que el bug original — «no tengo tareas» y «la app no ' +
+      'pintó» se ven idénticos.');
+    pide(conDato.d.arbol === 1 && mis.d.arbol === 0,
+      'la muestra no discrimina: «toda la operación» da arbol=' + conDato.d.arbol +
+      ' y «Mis tareas» da ' + mis.d.arbol + '. Sin un sí y un no, esta regla no se probó.');
+  }
 
   // 2 · La siembra DISCRIMINA: con trabajo del día se destapa más que sin él.
   //     Con el testigo arriba en verde, un empate aquí solo puede ser la siembra.

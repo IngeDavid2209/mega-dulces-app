@@ -81,9 +81,20 @@ const ESPERADO = [
   { ruta: 'home', sesion: 'encargada',   tablero: 1, unidades: 0,  silencioVisible: 0, hueco: 1, prefijo: 'Mi alcance' },
   // No solo "no ve el tablero": el guard lo MANDA a su trabajo. Una pantalla
   // vacía y una redirección se ven distinto para quien la usa.
-  { ruta: 'home', sesion: 'anaquelista', tablero: 0, unidades: 0,  silencioVisible: 0, hueco: 0, url: '/tareas-manual' },
+  // 14/sep/2026: el destino pasó de `/tareas-manual` a `/tareas` — las dos
+  // listas se unieron en una. Se actualiza AQUÍ, en el mismo commit que lo
+  // cambia, que es la única forma de que esta cifra siga significando algo
+  // (corolario (e): un control anclado a algo que se movió, caduca).
+  { ruta: 'home', sesion: 'anaquelista', tablero: 0, unidades: 0,  silencioVisible: 0, hueco: 0, url: '/tareas' },
 
   // ── EL ÁRBOL: quién lo abre, Y QUÉ VE DENTRO ────────────────────────────
+  //
+  // ⚠ SE ENTRA POR `tareas-manual` A PROPÓSITO, y desde el 14/sep eso ya no es
+  //   una ruta sino una REDIRECCIÓN a `/tareas?ver=manual`. Dos cosas se miden
+  //   de un golpe: que el árbol siga recortándose por puesto, y que el enlace
+  //   viejo —el que la gente tiene en WhatsApp— siga aterrizando en la mitad
+  //   que servía. Si el `?ver=` se perdiera, la pantalla abriría en «Todas», el
+  //   árbol no se pintaría y estas cinco filas darían `arbol: 0`.
   // `raizArbol` es la aserción que importa. Hasta el 11/sep aquí solo decía
   // `arbol: 1` —«el componente monta»— y con eso una Gerente de Zona pasaba en
   // verde viendo la empresa entera desde Dirección General.

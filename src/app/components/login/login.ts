@@ -237,7 +237,7 @@ export class LoginComponent {
       // colaboradora aterrizaba en una pantalla con el titulo y nada mas.
       // El guard de la ruta la rebotaria igual, pero rebotar en el primer
       // segundo de sesion se ve como un error de la app. Mejor no mandarla.
-      this.router.navigate([hayTableroPara(perfil) ? '/home' : '/tareas-manual']);
+      this.router.navigate([hayTableroPara(perfil) ? '/home' : '/tareas']);
 
     } catch (error: any) {
       const paso = pasoAgotado(error);
@@ -412,7 +412,7 @@ export class LoginComponent {
     try { localStorage.setItem('md_token', p.token); } catch {}
     try { localStorage.setItem('md_sesion_actual', JSON.stringify(perfil)); } catch {}
     this.pasoPlaza = null;
-    this.router.navigate([hayTableroPara(perfil) ? '/home' : '/tareas-manual']);
+    this.router.navigate([hayTableroPara(perfil) ? '/home' : '/tareas']);
   }
 
   /** Volver al login normal desde el segundo paso. */

@@ -42,7 +42,7 @@ function usuario(): any {
 }
 
 /** A dónde va quien no tiene tablero: a su trabajo del día. */
-const DESTINO_SIN_TABLERO = '/tareas-manual';
+const DESTINO_SIN_TABLERO = '/tareas';
 
 export const homeGuard: CanActivateFn = () => {
   const router = inject(Router);

@@ -40,16 +40,20 @@
         <div class="section-header"
           style="display: flex; flex-wrap: wrap; gap: 15px; align-items: center; justify-content: space-between;">
           <div style="flex: 1; min-width: 200px;">
-            <!-- 📕 El mismo componente sirve los dos apartados; el encabezado
-                 dice en cuál estás para que no se confundan nunca. -->
-            <div class="section-title">
-              {{ modoManual ? 'Tareas del Manual' : 'Tareas fuera del manual' }}
+            <!-- 📕 UNA SOLA PANTALLA desde el 14/sep/2026. Eran dos entradas de
+                 menú —«Tareas del Manual» y «Tareas fuera del manual»— con el
+                 mismo componente y distinta ruta. Ahora el origen es el chip de
+                 la barra, no el sitio al que entraste. -->
+            <div class="section-title">Tareas</div>
+            <div class="section-sub" *ngIf="filtroOrigen === 'todas'">
+              Todo tu trabajo del día en una sola lista: lo que manda el Manual Corporativo
+              —se entrega solo y no se edita— y lo que se asigna a mano.
             </div>
-            <div class="section-sub" *ngIf="modoManual">
+            <div class="section-sub" *ngIf="filtroOrigen === 'manual'">
               Checklists del Manual Corporativo de Operación. Se entregan solas según el
               puesto de cada persona y no se pueden editar ni borrar: solo cumplirse.
             </div>
-            <div class="section-sub" *ngIf="!modoManual">
+            <div class="section-sub" *ngIf="filtroOrigen === 'libres'">
               Todo lo que se asigna a mano: tareas únicas, de equipo y del día. Aquí sí se
               crea, se edita y se borra libremente.
             </div>
@@ -71,7 +75,7 @@
               <!-- Estos tres se esconden cuando el panel de responsables está en
                    pantalla: ese panel ya trae sus propios botones de alta. -->
               <button class="btn-secondary"
-                *ngIf="(currentUser?.rol === 'admin' || currentUser?.puedeCrearChecklists) && !mostrandoPanelResponsables && !modoManual"
+                *ngIf="(currentUser?.rol === 'admin' || currentUser?.puedeCrearChecklists) && !mostrandoPanelResponsables"
                 (click)="abrirModalRutinas()">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                   style="margin-right: 6px;">
@@ -81,7 +85,7 @@
                 </svg> Bloque de Rutinas
               </button>
               <button class="btn-primary"
-                *ngIf="(currentUser?.rol === 'admin' || currentUser?.puedeCrearChecklists) && !mostrandoPanelResponsables && !modoManual"
+                *ngIf="(currentUser?.rol === 'admin' || currentUser?.puedeCrearChecklists) && !mostrandoPanelResponsables"
                 (click)="abrirModal()">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                   style="margin-right: 6px;">
@@ -93,7 +97,7 @@
                    checklist.ts). El botón, el listado, el detalle y el asistente de
                    alta se esconden juntos; la lógica sigue completa por si vuelve. -->
               <button class="btn-equipo btn-primary"
-                *ngIf="mostrarTareasEquipo && !mostrandoPanelResponsables && !modoManual"
+                *ngIf="mostrarTareasEquipo && !mostrandoPanelResponsables"
                 (click)="abrirModalEquipo()">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                      style="margin-right: 6px;">
@@ -104,7 +108,7 @@
                 </svg>
                 Tareas en Equipo
               </button>
-              <button class="btn-secondary" *ngIf="currentUser?.rol === 'admin' && !modoManual"
+              <button class="btn-secondary" *ngIf="currentUser?.rol === 'admin'"
                 (click)="limpiarHuerfanas()" title="Borrar tareas y limpiar asignaciones de personas dadas de baja">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                   style="margin-right: 6px;">
@@ -388,6 +392,43 @@
               </button>
             </section>
 
+            <span class="cl-toolbar-sep"></span>
+
+            <!-- ══════════ DE DÓNDE SALE LA TAREA ══════════
+                 El chip que reemplazó a las dos entradas de menú. «Todas» es el
+                 estado por omisión a propósito: el punto del cambio es que el
+                 día de una persona se vea completo de un golpe, sin tener que
+                 acordarse de en cuál de los dos sitios estaba cada cosa.
+
+                 Los badges salen de `conteoOrigen`, que se calcula sobre lo que
+                 la pestaña Mis/Toda ya recortó: el número es el que se va a ver
+                 al pulsarlo. Se pintan SIEMPRE, incluso en cero, porque un chip
+                 que aparece y desaparece según el dato mueve los otros dos de
+                 sitio y se pulsa el equivocado.
+
+                 También manda en «Enviadas»: hasta hoy el historial no miraba el
+                 apartado, así que enseñaba las dos clases mezcladas en los dos
+                 sitios. -->
+            <section class="vista-tabs cl-chip-origen">
+              <button class="vista-tab" [class.vista-tab-active]="filtroOrigen === 'todas'"
+                      (click)="cambiarFiltroOrigen('todas')">
+                Todas
+                <span class="vista-tab-badge">{{ conteoOrigen.todas }}</span>
+              </button>
+              <button class="vista-tab" [class.vista-tab-active]="filtroOrigen === 'manual'"
+                      (click)="cambiarFiltroOrigen('manual')"
+                      title="Las que entrega el robot desde el Manual Corporativo. No se editan ni se borran.">
+                Del manual
+                <span class="vista-tab-badge">{{ conteoOrigen.manual }}</span>
+              </button>
+              <button class="vista-tab" [class.vista-tab-active]="filtroOrigen === 'libres'"
+                      (click)="cambiarFiltroOrigen('libres')"
+                      title="Lo que se asigna a mano: tareas únicas, del día y de equipo.">
+                Fuera del manual
+                <span class="vista-tab-badge">{{ conteoOrigen.libres }}</span>
+              </button>
+            </section>
+
             <span class="cl-toolbar-sep"
                   *ngIf="puedeFiltrarVista && vistaHistorial() === 'pendientes'"></span>
 
@@ -418,10 +459,19 @@
                  de existir. Un eje menos que decidir antes de trabajar. -->
           </div>
 
-          <!-- 📕 "Agregar mi tarea" no aplica en el apartado del Manual: ahí solo
-               entra lo que entrega el robot desde el documento. Una tarea propia
-               es, por definición, de las libres. -->
-          <div class="cl-toolbar-der" *ngIf="vistaHistorial() === 'pendientes' && !modoManual">
+          <!-- 📕 "Agregar mi tarea" crea SIEMPRE una tarea libre, mire uno el
+               chip que mire: del Manual no se agrega nada a mano, eso lo entrega
+               el robot desde el documento. Antes el botón se escondía en el
+               apartado del Manual; con una sola lista, esconderlo según el chip
+               lo haría aparecer y desaparecer sin motivo visible. -->
+          <!-- `!verPorOrganigrama`, y NO «el chip es manual»: con el árbol en
+               pantalla no hay lista que agrupar —«Agrupar por persona» queda
+               inerte, un control que no hace nada— y la barra se parte en dos
+               renglones que le comen 48px de alto al árbol. Medido el 14/sep:
+               barra 1083px, izquierda 982 + derecha 368, así que la derecha
+               envolvía. Quien está en «Del manual» SIN árbol —cualquiera que no
+               sea supervisión— conserva sus botones. -->
+          <div class="cl-toolbar-der" *ngIf="vistaHistorial() === 'pendientes' && !verPorOrganigrama">
             <!-- Cualquier trabajador puede sumar una tarea propia a su día -->
             <button class="btn-primary" (click)="abrirModalTareaDia()">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -596,16 +646,22 @@
           (abrir)="verDetalle($event)">
         </app-vista-organigrama>
 
-        <!-- 📕 En el apartado del Manual el panel NO ofrece crear ni editar: esas
-             tareas las entrega el robot desde el documento y no se tocan.
-             Notificar SÍ se deja: recordarle a alguien su checklist del manual es
-             justo lo que un Encargado necesita poder hacer. -->
+        <!-- 📕 CREAR Y EDITAR EN EL PANEL, con las dos listas ya unidas.
+             Antes esto se apagaba entero en el apartado del Manual (`!modoManual`),
+             y con una sola lista ese interruptor ya no protege nada: el panel
+             pinta las dos clases de tarea a la vez. El candado se movió a donde
+             tiene que estar —POR TAREA, dentro del panel: `esManual` esconde
+             editar y borrar en cada tarjeta del manual—, y aquí queda sólo el
+             permiso de la persona.
+             Crear sigue creando una tarea LIBRE, que es lo único que se puede
+             crear a mano. Notificar nunca dependió del modo: recordarle a alguien
+             su checklist del manual es justo lo que un Encargado necesita. -->
         <app-panel-responsables
           *ngIf="!verPorOrganigrama && vistaEquipo() === 'lista' && vistaHistorial() === 'pendientes' && agruparPorPersona() && puedeFiltrarVista && vistaTareas === 'todas'"
           [checklists]="checklistsFiltrados"
-          [puedeCrear]="!modoManual && (currentUser?.rol === 'admin' || currentUser?.puedeCrearChecklists)"
+          [puedeCrear]="currentUser?.rol === 'admin' || currentUser?.puedeCrearChecklists"
           [puedeNotificar]="currentUser?.rol === 'admin' || currentUser?.puedeCrearChecklists"
-          [puedeEditar]="!modoManual && currentUser?.rol === 'admin'"
+          [puedeEditar]="currentUser?.rol === 'admin'"
           (abrir)="verDetalle($event)"
           (crear)="altaDesdePanel($event)"
           (notificar)="abrirModalNotificacion($event)"
@@ -657,16 +713,19 @@
 
             <!-- Caso 1: no hay NADA en este apartado -->
             <ng-container *ngIf="totalEnEsteModo === 0">
-              <h3 *ngIf="modoManual">No tienes tareas del manual</h3>
-              <h3 *ngIf="!modoManual">No hay tareas asignadas</h3>
+              <h3 *ngIf="filtroOrigen === 'todas'">No tienes tareas hoy</h3>
+              <h3 *ngIf="filtroOrigen === 'manual'">No tienes tareas del manual</h3>
+              <h3 *ngIf="filtroOrigen === 'libres'">No hay tareas asignadas</h3>
 
-              <!-- En el apartado del manual se explica la causa concreta, que es
-                   distinta según el puesto de cada quien. -->
-              <p *ngIf="modoManual">{{ motivoSinTareasManual() }}</p>
+              <!-- La causa concreta del lado del Manual: es distinta según el
+                   puesto de cada quien, y un vacío sin explicación se lee como
+                   que la app está rota. Se dice también en «Todas», porque ahí
+                   el vacío incluye el del manual y el motivo es el mismo. -->
+              <p *ngIf="filtroOrigen !== 'libres'">{{ motivoSinTareasManual() }}</p>
 
-              <p *ngIf="!modoManual && (currentUser?.rol === 'admin' || currentUser?.puedeCrearChecklists)">
+              <p *ngIf="filtroOrigen !== 'manual' && (currentUser?.rol === 'admin' || currentUser?.puedeCrearChecklists)">
                 Crea el primer checklist para tu equipo.</p>
-              <p *ngIf="!modoManual && currentUser?.rol === 'trabajador' && !currentUser?.puedeCrearChecklists">
+              <p *ngIf="filtroOrigen === 'libres' && currentUser?.rol === 'trabajador' && !currentUser?.puedeCrearChecklists">
                 Actualmente no tienes checklists pendientes.</p>
             </ng-container>
 
@@ -683,18 +742,18 @@
           <div class="checklist-grid" *ngIf="cargandoEnviadas">
             <div class="empty-state"><h3>Cargando historial…</h3></div>
           </div>
-          <div class="checklist-grid" *ngIf="!cargandoEnviadas && enviadas().length === 0">
+          <div class="checklist-grid" *ngIf="!cargandoEnviadas && enviadasFiltradas.length === 0">
             <div class="empty-state">
               <div class="empty-state-icon"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg></div>
               <h3>Sin tareas enviadas</h3>
               <p>No hay tareas enviadas en los últimos 30 días.</p>
             </div>
           </div>
-          <div class="checklist-grid" *ngIf="!verPorOrganigrama && !cargandoEnviadas && enviadas().length > 0">
+          <div class="checklist-grid" *ngIf="!verPorOrganigrama && !cargandoEnviadas && enviadasFiltradas.length > 0">
             <div style="grid-column: 1 / -1; font-size: 12px; font-weight: 700; color: var(--neutral-600); letter-spacing: .5px; text-transform: uppercase; margin: 0 0 4px 4px;">
-              Enviadas · últimos 30 días ({{ enviadas().length }})
+              Enviadas · últimos 30 días ({{ enviadasFiltradas.length }})
             </div>
-            <ng-container *ngFor="let checklist of enviadas(); trackBy: trackByChecklist">
+            <ng-container *ngFor="let checklist of enviadasFiltradas; trackBy: trackByChecklist">
               <ng-container *ngTemplateOutlet="checklistCard; context: { $implicit: checklist }"></ng-container>
             </ng-container>
           </div>

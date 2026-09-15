@@ -1,4 +1,5 @@
-import { Routes } from '@angular/router';
+import { inject } from '@angular/core';
+import { Routes, Router } from '@angular/router';
 
 import { homeGuard } from './services/home.guard';
 import { authGuard } from './services/auth.guard';
@@ -9,6 +10,20 @@ import { pagosGuard } from './services/pagos.guard';
 import { ticketsGuard } from './services/tickets.guard';
 import { ventaPromosGuard } from './services/venta-promos.guard';
 import { AgendaComponent } from './agenda/agenda';
+
+/**
+ * Redirección de una ruta vieja de tareas a `/tareas` con su chip puesto.
+ *
+ * Devuelve un `UrlTree` y no una cadena porque `redirectTo: 'tareas?ver=manual'`
+ * NO funciona: el redirect de cadena es una RUTA, no una URL, y el query param
+ * se pierde en silencio — el enlace viejo aterrizaría en «Todas» sin un solo
+ * error que lo delatara.
+ *
+ * La función corre en contexto de inyección, así que `inject(Router)` es válido
+ * aquí dentro y no fuera.
+ */
+const aTareas = (ver: 'manual' | 'libres') => () =>
+  inject(Router).createUrlTree(['/tareas'], { queryParams: { ver } });
 
 export const routes: Routes = [
   { path: '', redirectTo: 'login', pathMatch: 'full' },
@@ -28,26 +43,35 @@ export const routes: Routes = [
     canActivate: [authGuard, homeGuard],
     loadComponent: () => import('./modules/dashboard/home/home').then(m => m.HomeComponent)
   },
-  { 
-    // ✏️ TAREAS FUERA DEL MANUAL — lo que se asigna a mano: tareas únicas, de
-    // equipo, del día. Aquí sí se crea, se edita y se borra.
-    path: 'checklist',
+  {
+    // ✅ TAREAS — UNA SOLA LISTA (14/sep/2026).
+    //
+    // Hasta hoy esto eran DOS rutas y DOS entradas de menú con el MISMO
+    // componente, separadas por `data.modoManual`: `/tareas-manual` pintaba lo
+    // que entrega el robot y `/checklist` lo que se asigna a mano. Instrucción
+    // de David: «quiero que queden unidas […] solo que esté todo ahí».
+    //
+    // El origen pasó a ser un chip dentro de la pantalla. Ya no hay `data`: lo
+    // que antes decidía la ruta ahora lo decide `filtroOrigen`, y el candado de
+    // «el manual no se edita» nunca estuvo aquí — está por tarjeta, en
+    // `esTareaDeManual`.
+    path: 'tareas',
     canActivate: [authGuard],
-    data: { modoManual: false },
     loadComponent: () => import('./modules/dashboard/checklist/checklist').then(m => m.ChecklistComponent)
   },
 
-  // 📕 TAREAS DEL MANUAL — los checklists del Manual Corporativo que entrega el
-  // robot según el puesto de cada persona. Mismo componente que /checklist: la
-  // única diferencia es `modoManual`, que decide qué mitad de la lista se pinta
-  // y esconde todo lo de crear. Toda la maquinaria de cumplir una tarea
-  // (evidencia, fotos, envío, offline) es la misma y no se duplica.
-  {
-    path: 'tareas-manual',
-    canActivate: [authGuard],
-    data: { modoManual: true },
-    loadComponent: () => import('./modules/dashboard/checklist/checklist').then(m => m.ChecklistComponent)
-  },
+  // ── LAS DOS RUTAS VIEJAS, VIVAS Y APUNTANDO A SU MITAD ──────────────────
+  //
+  // No se borran (§2: hay enlaces de hace meses en WhatsApp). Y no redirigen a
+  // «Todas» a secas: llevan su `?ver=`, así que quien abre un enlace viejo ve
+  // LA MISMA MITAD que veía cuando se lo mandaron. Con un `redirectTo` de
+  // cadena eso no se puede —un redirect de cadena no lleva query params—, por
+  // eso son funciones.
+  //
+  // `pathMatch: 'full'` es obligatorio: sin él el redirect también se dispara
+  // para cualquier cosa que empiece igual.
+  { path: 'checklist',     pathMatch: 'full', redirectTo: aTareas('libres') },
+  { path: 'tareas-manual', pathMatch: 'full', redirectTo: aTareas('manual') },
   { 
     path: 'checkstore',
     redirectTo: 'control/sucursales',

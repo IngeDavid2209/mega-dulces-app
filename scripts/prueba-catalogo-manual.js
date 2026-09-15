@@ -332,7 +332,8 @@ function medir(idSembrado, puerto) {
   if (a.dato.error) abortar('escenario «asignar»: ' + a.dato.error);
 
   // EL ID SALE DE LO QUE LA APP ESCRIBIO, no de una receta paralela.
-  const primero = a.enviados.filter((e) => e.url === '/api/checklists')[0];
+  const primero = a.enviados.filter((e) => e.url === '/api/checklists'
+    && e.cuerpo && e.cuerpo._tareaManualId === TAREA.id && e.cuerpo.assigned === DESTINO)[0];
   if (!primero || !primero.cuerpo || !primero.cuerpo.id) {
     abortar('el primer escenario no envió ningún documento con id, así que el control de ' +
       'idempotencia no tendría qué sembrar.');
@@ -354,25 +355,56 @@ function medir(idSembrado, puerto) {
       'gente que elegir, la pantalla se bloquea a sí misma.');
   }
 
-  const posts = a.enviados.filter((e) => e.url === '/api/checklists');
-  const postsB = b.enviados.filter((e) => e.url === '/api/checklists');
+  /**
+   * ⚠ EL ROBOT TAMBIEN ESCRIBE AQUI, Y HASTA HOY NO LO HACIA.
+   *
+   * Esta prueba contaba TODOS los POST a /api/checklists y daba 1, porque el
+   * robot del navegador moria antes de escribir: hacia `setDoc` a Firestore
+   * primero y esa promesa no vuelve sin red. O sea que mi prueba dependia, sin
+   * saberlo, de que el robot estuviera roto.
+   *
+   * El 14/sep/2026 otra sesion invirtio ese orden —API primero, Firestore
+   * best-effort— y el robot empezo a emitir de verdad: 4 POST en la misma
+   * corrida. Mi `posts[0]` paso a ser el suyo y la prueba reporto siete fallos
+   * sobre un mecanismo intacto.
+   *
+   * Se distingue por el PAR (tarea × persona), que es lo que yo elegi en la
+   * pantalla y el robot no puede producir: esa tarea es del manual de
+   * `encargado-sucursal` y la persona es `anaquelista`, asi que el robot nunca
+   * se la entrega. NO se filtra por `_asignadoAMano`, que es justo lo que se
+   * quiere afirmar: filtrar por la afirmacion la volveria una tautologia.
+   *
+   * Y el ruido del robot se CONSERVA a proposito: que mi documento siga siendo
+   * identificable mientras otro emisor escribe a la vez es ahora una propiedad
+   * del sistema, no una molestia del arnes.
+   */
+  const mio = (e) => e.url === '/api/checklists'
+    && e.cuerpo && e.cuerpo._tareaManualId === TAREA.id && e.cuerpo.assigned === DESTINO;
+  const todosA = a.enviados.filter((e) => e.url === '/api/checklists');
+  const todosB = b.enviados.filter((e) => e.url === '/api/checklists');
+  const posts = todosA.filter(mio);
+  const postsB = todosB.filter(mio);
+  console.log('');
+  console.log('[catalogo] POST a /api/checklists: %d en total, %d míos (el resto los emitió el ' +
+    'robot del navegador para la gente del fixture)', todosA.length, posts.length);
 
   console.log('');
-  console.log('escenario            modal  personas  tareas  POST /api/checklists  aviso');
+  console.log('escenario            modal  personas  tareas  POST míos / total     aviso');
   console.log('─'.repeat(100));
   console.log('%s %s %s %s %s %s', 'asignar'.padEnd(20), String(a.dato.modal).padEnd(6),
     String(a.dato.personas).padEnd(9), String(a.dato.tareas).padEnd(7),
-    String(posts.length).padEnd(21), JSON.stringify(a.dato.aviso || ''));
+    (posts.length + ' de ' + todosA.length).padEnd(21), JSON.stringify(a.dato.aviso || ''));
   console.log('%s %s %s %s %s %s', 'ya existía'.padEnd(20), String(b.dato.modal).padEnd(6),
     String(b.dato.personas).padEnd(9), String(b.dato.tareas).padEnd(7),
-    String(postsB.length).padEnd(21), JSON.stringify(b.dato.aviso || ''));
+    (postsB.length + ' de ' + todosB.length).padEnd(21), JSON.stringify(b.dato.aviso || ''));
   console.log('─'.repeat(100));
 
   const fallos = [];
   const pide = (ok, msg) => { if (!ok) fallos.push(msg); };
 
   pide(posts.length === 1,
-    'se enviaron ' + posts.length + ' POST a /api/checklists y debía ser UNO.');
+    'se enviaron ' + posts.length + ' POST míos (de ' + todosA.length + ' en total) y debía ser ' +
+    'UNO. «Mío» es el par tarea × persona que se eligió en la pantalla; el resto son del robot.');
 
   const doc = posts.length ? posts[0].cuerpo : null;
   if (doc) {
@@ -454,7 +486,7 @@ function medir(idSembrado, puerto) {
 
   // ── EL CONTROL NEGATIVO: LA IDEMPOTENCIA ─────────────────────────────────
   pide(postsB.length === 0,
-    'con el checklist YA existente se enviaron ' + postsB.length + ' POST: la comprobación de ' +
+    'con el checklist YA existente se enviaron ' + postsB.length + ' POST míos: la comprobación de ' +
     'idempotencia no está aplicando y se acaba de crear un duplicado. Un duplicado no se ve: ' +
     'solo sube el denominador de esa persona.');
   pide(/ya tiene esa tarea/i.test(b.dato.aviso || ''),

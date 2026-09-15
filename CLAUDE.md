@@ -439,6 +439,25 @@ Por eso la guardia se ancla al **rótulo `status:`, que aparece una sola vez**, 
 que comparten dieciséis líneas. Es §8.11(b) otra vez —la guardia va sobre la entrada que de
 verdad usas, no sobre un proxy de ella— y la cifra que lo demuestra es ese **1 contra 16**.
 
+**Y la tercera ancla trampa, medida DURANTE el build para no dejarla como teoría.** De las 16
+líneas con `●`, solo 2 nombran MDTask: la del bloque enlazado y la de «All resources». La
+sospecha razonable era que dijeran cosas distintas —una el estado del DESPLIEGUE y otra el del
+SERVICIO, que sigue sirviendo con la instancia vieja—. **No es así:** en la misma llamada, con el
+build corriendo, las dos decían exactamente `● Online · Building (53s)`.
+
+    status:        ● Online · Building (53s)
+      - MDTask:    ● Online · Building (53s) · https://mdtask-production-ed88.up.railway.app
+
+O sea que el peligro de `grep MDTask | grep -q Online` **no es que las líneas difieran**: es que
+`grep -q` casa una SUBCADENA y se come el sufijo, igual que el `grep -o`. Tercera forma del mismo
+defecto en el mismo día. (Y `grep MDTask | head -1` toma la línea 12, que es el rótulo del bloque
+y **no trae estado ninguno**: esa falla hacia el lado seguro, colgándose hasta el timeout.)
+
+**La regla, ya sin rodeos:** anclar al campo único (`status:`) y comparar la **línea completa**
+con igualdad, nunca con `grep`. Cualquier coincidencia parcial sobre esta salida encuentra
+«Online» aunque diga lo contrario tres palabras después.
+
+
 
 Y la comprobación que lo salvó fue no creerle al estado: `0 esperas` se verificó contra el
 **marcador servido**, que seguía en 0. El estado dice «probablemente»; la cifra dice «sí».

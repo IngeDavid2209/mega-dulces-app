@@ -1,3 +1,16 @@
+-- ############################################################################
+-- #  SALDADA EL 15/sep/2026 POR OTRO CAMINO — NO HACE FALTA APLICARLA.       #
+-- #                                                                          #
+-- #  David ordeno cerrar las fichas duplicadas y `scripts/desactivar-fichas-  #
+-- #  duplicadas.js` ya desactivo a "Miriam" y a "EL DAVE" (las dos, por ser   #
+-- #  un correo compartido sin ficha que conservar), con respaldo y reversa.   #
+-- #  Verificado despues: las dos salen [INACTIVA] en el diagnostico.          #
+-- #                                                                          #
+-- #  Se conserva el archivo porque documenta POR QUE se cerraron, y porque    #
+-- #  el orden que exigia (medir la cubeta E antes de desactivar) ya no aplica:#
+-- #  ese control se reconstruyo desde los datos el 31/ago.                    #
+-- ############################################################################
+
 -- =====================================================================
 -- DESACTIVA LAS DOS FICHAS DE `mataviejitas778@gmail.com`
 --

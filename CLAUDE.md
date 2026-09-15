@@ -893,6 +893,50 @@ el espejo de contraseña.
 **aborta si quedaría cero**. Quitar el rol a granel es exactamente como se deja a una empresa
 fuera de su propia app.
 
+#### 15/sep — LAS TRES ORDENES QUE SIGUIERON, Y EL CERO QUE CASI SE USA COMO DATO
+
+**1 · Las 13 fichas sin `puestoId` quedan como trabajadores simples.** Misma dirección que todo
+el paso —quitar, no dar— y **sin inventarles el puesto**: su `puestoId` sigue vacío, que es el
+dato que de verdad falta. Medido después: **44 fichas activas sin puesto, todas en 0/0** banderas
+de gestión.
+
+**2 · Los 10 perfiles incompletos se completan**, por orden expresa (`--completar`). Sigue
+exigiendo pedirlo: por omisión el script no da una sola bandera. Entre los dos, **23 fichas**.
+
+**3 · «Los duplicados bórralos» → se CIERRAN.** El §5.5 prohíbe el borrado físico y aquí se ve por
+qué no es formalismo: la ficha de *Maria Dolores* tiene **84 checklists** colgando y la de
+*Yadira* **144**. Borrar la fila deja ese trabajo sin a quién atribuir y el pase de lista sin a
+quién asignar. Desactivar hace lo que se pidió y se deshace en un comando. **5 fichas cerradas,
+154 → 149 activas**, cada grupo con una sola viva.
+
+**EL CERO QUE CASI SE USA COMO DATO.** Las 12 fichas duplicadas daban **`0 ENVIADOS`** — y un cero
+idéntico en *todas* las filas se parece demasiado a una señal muerta. Medido antes de concluir:
+**134 enviados de 4 148 checklists** en la tabla entera, así que el cero era real. El script lleva
+esa comprobación dentro y **aborta** si algún día el total diera cero, porque entonces «0
+enviados» en una ficha no probaría nada. Es §8.11(a) aplicado a una señal en vez de a una entrada.
+
+**Y ese dato desbloqueó un empate de agosto.** La bitácora daba el caso Yadira/Yaadira por
+irresoluble «porque las dos tienen tareas». Con la señal correcta se ve que **ninguna de las dos
+ha enviado nunca nada**: *tener tareas asignadas* no es *haber trabajado* —el robot reparte, la
+persona envía— así que el empate no existía. Gana la que tiene `puesto`, por **acceso y no por
+historial** (el robot emite por `puestoId`: conservar la ficha sin puesto la dejaría sin tareas
+nuevas). Las migraciones **053 y 054 de `pendientes/` quedan saldadas**, y llevan la nota escrita
+en su cabecera para que nadie las aplique creyendo que faltan.
+
+**Dos casos que el script se negó a resolver, y esa negativa es el diseño:**
+
+- **Correo compartido** (`mataviejitas778@gmail.com`): dos nombres distintos con el mismo correo
+  **no son un duplicado de una persona**. No hay ficha que conservar —quedarse con una sería
+  elegir a cuál de las dos personas posibles se le atribuye lo que haga la otra— así que se
+  cierran las dos.
+- **Edgar Dayan Cortes Garcia**, dos fichas sin puesto, sin latido y sin trabajo: **ninguna señal
+  las separa**, así que quedan intactas y visibles. Pendiente de decisión de David.
+
+**Lo que sigue sin hacerse, dicho para que no se lea como resuelto:** **nada se fusionó**. Los 52
+checklists de la ficha de Yaadira se quedan donde están, así que el historial de esa persona sigue
+partido en dos. Y el modelo no cambió: estas banderas se vuelven a repartir desde la pantalla de
+Usuarios, así que sin la plaza (Fase 3) el desorden se puede rehacer en una tarde.
+
 #### LO QUE ESTE PASO NO HACE, dicho para que no se lea como resuelto
 
 - **No despliega nada.** Cero archivos de `src/`, `api/` o `scripts/sql/`. El cambio ya está vivo

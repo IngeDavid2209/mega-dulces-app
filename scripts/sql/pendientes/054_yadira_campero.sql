@@ -1,3 +1,18 @@
+-- ############################################################################
+-- #  SALDADA EL 15/sep/2026 POR OTRO CAMINO — NO HACE FALTA APLICARLA.       #
+-- #                                                                          #
+-- #  `scripts/desactivar-fichas-duplicadas.js` cerro "Yaadira Campero Ortiz"  #
+-- #  (la del doble 'a', sin puesto) y dejo viva "Yadira Campero Ortiz"        #
+-- #  (encargado-sucursal, 144 checklists). El empate que bloqueaba esto en    #
+-- #  agosto se resolvio con un dato que entonces no se habia medido: NINGUNA  #
+-- #  de las dos ha ENVIADO un solo checklist (134 enviados en toda la tabla,  #
+-- #  asi que el cero es real y no una señal muerta). "Tiene tareas asignadas" #
+-- #  no es "ha trabajado": el robot reparte, la persona envia.                #
+-- #                                                                          #
+-- #  Sigue pendiente lo que ninguna de las dos cosas hace: FUSIONAR. Los 52   #
+-- #  checklists de la ficha cerrada se quedan donde estan.                    #
+-- ############################################################################
+
 -- =====================================================================
 -- ⚠ NO APLICADA. ESPERA UNA RESPUESTA HUMANA.
 --

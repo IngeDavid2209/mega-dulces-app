@@ -196,7 +196,15 @@ function contarEn(textos, aguja) {
     }
   };
   recoger(DIST);
-  console.log('[despliegue] dist/ local: %d archivos', locales.length);
+  // EL DESGLOSE, y no solo el total. Este numero sale MAS ALTO que el de
+  // "servido" —69 contra 65 el 14/sep/2026— y sin explicarlo se lee como
+  // «produccion esta cuatro archivos atras». No lo esta: aqui se cuentan
+  // tambien el `index.html` y los tres service workers (`ngsw-worker.js`,
+  // `safety-worker.js`, `worker-basic.min.js`), que el `hashTable` del ngsw no
+  // declara. Comprobado: 65 + 1 + 3 = 69, cero archivos sobrantes de builds
+  // viejos. Un numero sin su desglose se malinterpreta en dos semanas.
+  console.log('[despliegue] dist/ local: %d archivos (los %d del ngsw + index + 3 service workers)',
+    locales.length, rutas.length);
 
   // ── 4 · la tabla ────────────────────────────────────────────────────────
   console.log('');

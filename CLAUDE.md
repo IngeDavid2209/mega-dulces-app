@@ -397,6 +397,46 @@ Ahora la guardia es «cada escenario monta **lo que vino a medir**», la ausenci
 aserción, y hay una tercera que exige que la muestra **discrimine** (árbol 1 en «toda la
 operación» contra 0 en «Mis tareas»).
 
+#### Y LA GUARDIA DEL DESPLIEGUE FALLÓ POR CUARTA VEZ — ahora en la EXTRACCIÓN
+
+El 9/sep la guardia negaba solo `Building`; el 11 apareció `Deploying`; el 13 salió
+`Initializing (4s)`. La lección quedó escrita: **afirmar el estado terminal, no enumerar los
+transitorios**. Hoy escribí exactamente esa versión… y volvió a terminar en **0 esperas** con el
+build corriendo.
+
+**La condición estaba bien; lo que estaba mal era de dónde sacaba el valor.**
+
+    # mal:  railway status | grep -oE '● [A-Za-z]+' | head -1
+    #       «● Online · Building (53s)»  ->  «● Online»   (el -o corta el sufijo)
+    # bien: railway status | grep -m1 'status:' | sed 's/.*status:[[:space:]]*//'
+    #       y comparar la linea ENTERA contra «● Online»
+
+Dos defectos en una línea, y el segundo es peor que el primero: el `-o` recorta el sufijo que
+justamente dice que sigue trabajando, y el `head -1` podía tomar el `●` de **otro servicio**
+—Redis y Postgres están siempre Online— en vez del de MDTask. La guardia no estaba mirando ni el
+campo correcto ni el valor completo.
+
+**La familia es la misma de siempre**, con una vuelta de tuerca que conviene nombrar: ya no
+basta con que la CONDICIÓN afirme lo correcto — **la extracción también tiene que conservar lo
+que la condición necesita**. Un `grep -o` que recorta convierte un estado transitorio en el
+terminal, y el bucle concluye antes de tiempo con cara de haber esperado.
+
+Y la comprobación que lo salvó fue no creerle al estado: `0 esperas` se verificó contra el
+**marcador servido**, que seguía en 0. El estado dice «probablemente»; la cifra dice «sí».
+
+**DESPLEGADO:** `cl-chip-origen` **0 → 1**, **22 controles en pie**, 65 archivos · 4.43 MB
+recorridos · 0 fallos, y arranca (Chrome headless con perfil limpio: **69 700 bytes** de DOM,
+`app-root` y `md_rescate_arranque` presentes; sin sesión `/tareas` cae al login, que es su
+guard). El marcador se validó en las dos direcciones **antes** de subir —0 ocurrencias en
+`412547c`, 1 en `dist/`— y el que traía el despliegue anterior (`46px 56px 38px`) **bajó a
+control**: ya valía 1 en producción, así que dejarlo arriba habría dado verde sin comprobar nada
+de hoy. Lo avisó la otra sesión antes de que se cobrara.
+
+**Un número del verificador que se iba a malinterpretar:** decía `dist/ local: 69 archivos`
+contra `servido: 65`. No falta nada — son los 65 del `ngsw` más el `index.html` y los **tres
+service workers**, que el `hashTable` no declara. Comprobado archivo por archivo (0 sobrantes de
+builds viejos) y el verificador ahora imprime el desglose en vez del total pelado.
+
 **Lo que esto NO hace, dicho para que no se lea como resuelto:** no toca ningún número de
 tablero, no mueve ninguna fase del plan, y **nadie ha entrado con una cuenta real** — las seis
 combinaciones son sesiones sintéticas en Chrome headless. El **paso B** (el catálogo del manual

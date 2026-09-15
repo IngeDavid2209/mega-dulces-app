@@ -324,6 +324,136 @@ de que exista la plaza sería partir el problema en dos, no resolverlo.
 
 ## 9. Bitácora del plan
 
+### 14/sep/2026 (noche) — LOS PERMISOS DICEN QUÉ CONCEDEN, y el rol admin se desglosa
+
+Instrucción de David, sobre una captura de los tres permisos que SÍ estaban bien explicados
+(Espacio TEC, Promociones, Pagos): *«quiero que vayas a la sección de usuarios y en el apartado
+de los privilegios o permisos, todos estén así, todo lo que pueda hacer un admin quiero que lo
+desgloces»*.
+
+**Y llega justo después de que los privilegios bajaran al puesto** (la entrada de abajo, misma
+noche, otra sesión): con 6 administradores reducidos a 2 y 41 fichas sin banderas de gestión,
+**esta pantalla es ahora el único sitio donde se vuelven a otorgar**. Lo que diga aquí es lo que
+va a regir cuando alguien pida que le devuelvan un permiso.
+
+**EL HUECO, medido antes de tocar.** Los nueve permisos de Colaborador traían **una línea
+genérica** cada uno («Permite crear, editar y asignar tareas generales») y solo se pintan con rol
+Colaborador. Al elegir **Administrador (Panel Total)** ese bloque **desaparece entero**: la
+pantalla concedía **135 condiciones repartidas en 44 archivos** sin decir una palabra. Quien
+capturaba una ficha de administrador estaba firmando en blanco.
+
+**ES INFORMATIVO, NO SON SWITCHES, y David lo eligió con el precio enfrente.** Se le plantearon
+las dos opciones: partir el rol en banderas es rescribir el modelo de acceso en esos 135 puntos,
+con migración y riesgo de dejar gente fuera — Fase 3/5, no un paso de un día. Esto **hace visible
+lo que ya pasa**, y no mueve el acceso de nadie.
+
+#### LO QUE EL DESGLOSE DESTAPÓ, y nadie sabía
+
+Escribir los textos obligó a medir bandera por bandera, y **tres de las nueve no hacen lo que su
+nombre promete**:
+
+| bandera | lo que de verdad hace hoy |
+|---|---|
+| `puedeCrearTareasUnicas` | **no gatea ni una pantalla ni un botón.** Sus únicos usos son la copia de banderas del dueño y `esSupervisor` |
+| `puedeVerCalendario` | abre `/calendario`… que **perdió su entrada de menú**: solo se llega por liga directa |
+| `puedeAdministrarAreas` | igual con `/areas`: la pantalla existe, la entrada no |
+
+Y el efecto que **comparten los nueve y no estaba escrito en ninguna parte**: cualquiera de ellos,
+con una sucursal asignada, convierte a la persona en **supervisora de su sucursal**
+(`esSupervisor`) — deja de ver solo sus tareas y pasa a ver las de toda la gente de ahí. Basta
+**uno**. Es el hallazgo 3 visto de cerca: el permiso que se concede no es el que dice la etiqueta.
+
+**Dos más, del lado del admin:** las nueve banderas **se guardan encendidas** al guardar con ese
+rol (`personal.ts:657-667`), y **al bajarle el nivel a Colaborador el rol se va pero las nueve se
+quedan** — hay que apagarlas a mano. Eso explica por qué el ajuste por puesto de esta misma noche
+tuvo que tocar 41 fichas con un script y no bastaba con cambiarles el rol.
+
+Y un administrador **NO gana** Espacio TEC, Promociones, Venta de Promos ni **esta misma pantalla
+de Usuarios**, que desde el 13/sep es solo del dueño y de Dirección General.
+
+**EL RÓTULO DEL ALCANCE MENTÍA.** Decía «Mismos privilegios pero solo dentro de las sucursales
+asignadas». No son los mismos: hay **seis** cosas que un admin limitado no puede hacer **en
+ninguna sucursal, ni en la suya** (Cierre Mensual, el nivel empresa del tablero, editar la
+plantilla y generar credenciales de plaza, reabrir una tarea cerrada, archivar el mes, y ver a los
+demás administradores). Ahora se listan al elegir esa opción.
+
+#### CADA LÍNEA LLEVA DE DÓNDE SALE, Y ESO NO SE PINTA
+
+`shared/permisos-catalogo.ts`: cada poder trae un campo `fuente` con el archivo y la condición
+exacta de la que se dedujo. No se muestra — está para el día que alguien cambie una condición y no
+cambie el texto. **Una descripción de permiso que miente es peor que ninguna: se decide un acceso
+confiando en ella.**
+
+#### LA PRUEBA, Y SU CONTROL NEGATIVO POR MECANISMO
+
+`scripts/prueba-permisos-desglose.js`, 3 escenarios en el DOM más un teléfono:
+
+    escenario                        9 permisos  desglose  grupos  poderes  «solo Global»  pierde
+    nivel Colaborador                    9          0        0        0          0            0
+    nivel Administrador (Global)         0          1        4       31          4            0
+    nivel Administrador (Limitado)       0          1        4       31          4            6
+
+    en 390px: 31 filas, 0 se salen (borde derecho 327 de 390), fuente mínima 12px
+
+**El control negativo afirma el MECANISMO, no la aparición** (§8.11 c). Vaciado el catálogo en el
+bundle servido: 3 aserciones rotas con código 2 — y **el `<div>` del desglose sigue pintándose**
+con el contenido en 0. Una prueba que solo mirara `pm-desglose > 0` habría dado **verde con el
+catálogo vacío**.
+
+**El teléfono se mide en un IFRAME de 390px**, no con `--window-size`: Chrome topa la ventana en
+504px, que está por encima del breakpoint de 480, así que la media query del móvil no se aplicaría
+y la prueba mediría el escritorio dando verde sin tocar el caso. El testigo es `--tap-min` = 44px,
+que vive en `styles.css`, **fuera de lo que este cambio toca**.
+
+**Tres defectos míos que el arnés cazó, y los tres son de manual:**
+
+1. **Busqué el radio de alcance en el mismo tick que el cambio de rol.** Ese bloque vive bajo
+   `*ngIf="formRol === 'admin'"`, así que todavía no existía. **Abortó con código 3** — dijo «no
+   pude medir» en vez de fingir un cero, que es exactamente para lo que está esa guardia.
+2. **El ancla del control negativo llevaba la vocal acentuada de «menú»**, y el bundle la escapa:
+   no pegaba. Habría sido un **no-op**, y un no-op da verde.
+3. **Una aserción decía «y son 5» los poderes de solo-Global y son 4** — un número puesto a ojo,
+   en el mensaje de un fallo, que es el peor sitio para equivocarse: el día que falle manda a
+   buscar un quinto que no existe.
+
+**Y el heredoc se rompió dos veces con las comillas anidadas del catálogo.** Cuarta y quinta vez
+en este repo que la herramienta de edición corrompe o aborta en silencio (el `perl` con backticks
+del 13/sep, el `\n` dentro de `\Q...\E` del 4/sep). Se reescribió con una herramienta que no
+interpreta el contenido, y el reemplazo de bloque se hizo **por rango de líneas con los bordes
+verificados**, comprobando después que el diff no tocara nada fuera de 573–640.
+
+#### NO DESPLEGADO — y el motivo es de coordinación, no del cambio
+
+**Commiteado y subido** (`a026495`, `HEAD == origin/main`), **sin `railway up`**. Hay **otras dos
+sesiones en este mismo árbol**, y una respondió que `src/` **no compila ahora mismo**: está
+moviendo la emisión del manual del navegador al servidor y tiene `robot-manual.service.ts` a
+medias. `railway up` sube el **directorio de trabajo**, no lo commiteado — desplegar ahora
+publicaría su trabajo roto a 186 personas. Es la regla del 4/sep cobrada por segunda vez, y esta
+vez se resolvió igual: preguntando por `SendMessage` y esperando.
+
+**Medido contra producción antes de subir**, recorriendo los 65 archivos del `ngsw.json`
+(**4.40 MB, 0 fallos de lectura** — sin esa cifra el cero no vale):
+
+    pm-desglose   0   <- el marcador de este paso
+    cat-manual    0   <- el de OTRA sesion, commiteado en eca287d y NUNCA DESPLEGADO
+    cl-bandeja    4   <- control: el recorrido si alcanza los chunks lazy
+
+Ese `cat-manual = 0` es un hallazgo de paso que conviene no perder: **hay trabajo commiteado que
+nadie desplegó y que se estaba dando por vivo.** El próximo `railway up` arrastra tres cosas de
+tres sesiones, y las tres están declaradas como `nuevo` en `verificar-despliegue.js`: si alguna
+sigue en 0 al salir, el despliegue no llevó lo que decimos que lleva.
+
+**Lo que esto NO hace:** no arregla el hallazgo 3 — lo **documenta**. No mueve ninguna fase del
+plan, no cambia una sola bandera ni un `[(ngModel)]`, y `prueba-menu-audiencias` confirma que
+**los 15 perfiles ven exactamente las mismas rutas que antes**. Y **nadie ha entrado con una
+cuenta real**: los tres escenarios son sesiones sintéticas en Chrome headless.
+
+**Pendientes que este paso destapó y no tocó:** las tres banderas muertas siguen repartiendo
+`esSupervisor` sin abrir nada — retirarlas cambia quién ve qué, así que es decisión de David, no
+limpieza. Y `--text-secondary` **no existe** en el sistema de diseño (0 declaraciones) mientras
+tres párrafos de esta pantalla lo invocan desde antes: se resuelven a nada, sin error. El CSS
+nuevo no lo usa.
+
 ### 14/sep/2026 — LOS PRIVILEGIOS BAJAN AL PUESTO: de 6 administradores a 2
 
 Instrucción de David: *«quiero que me des los nombres de los que son administradores, los vamos a

@@ -235,6 +235,21 @@ app.listen(PORT, () => {
     }
   }
 
+  // TAREAS DEL MANUAL: emite las entregas del día según el puesto de cada
+  // persona. Arranca SIEMPRE y no manda ningún mensaje: solo crea lo que falta.
+  //
+  // Hasta hoy esto lo hacía UN NAVEGADOR —el robot vive en el componente de
+  // Checklist y corre mientras alguien tenga /tareas abierto—, así que el día
+  // que nadie la abría, nadie recibía sus tareas y el tablero leía ese silencio
+  // como incumplimiento. Es idempotente (`on conflict do nothing`) y convive
+  // con el robot del navegador: el que llegue primero crea, el otro encuentra
+  // el id tomado. Se apaga con EMISOR_MANUAL=off, sin desplegar.
+  try {
+    require('./api/emitir-manual').iniciarPoll();
+  } catch (e) {
+    console.error('[emisor-manual] no se pudo iniciar el poll:', e && e.message);
+  }
+
   // BLOQUES DE TRABAJO: reparte los bloques del día como checklists. Arranca
   // SIEMPRE (no manda ningún mensaje; solo genera las tareas del día).
   try {

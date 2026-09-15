@@ -52,6 +52,41 @@ function talento() {
   return pool;
 }
 
+// UNA sola definicion de la consulta. La usan el handler HTTP y `leerHorarios`;
+// con dos copias, arreglar una y olvidar la otra haria que la app y el emisor
+// del servidor leyeran horarios distintos sin un solo error visible.
+const SQL_HORARIOS = `
+  SELECT sucursal_id, area_id, nombre, dias, entrada,
+         inicio_comida, fin_comida, salida, tolerancia_min, activo
+    FROM horarios_sucursal
+   WHERE activo = TRUE
+   ORDER BY sucursal_id, area_id NULLS FIRST, entrada
+`;
+
+/**
+ * Los horarios vigentes, como lista. Extraido del handler para que el emisor
+ * del servidor (api/emitir-manual.js) lea EXACTAMENTE la misma consulta que la
+ * app: si cada uno escribiera la suya, el navegador y el servidor podrian
+ * calcular horas limite distintas para la misma tarea del mismo dia.
+ *
+ * Devuelve [] —nunca lanza— cuando no hay conexion o la tabla no esta. Es la
+ * misma decision que ya tomaba el robot: que RH no conteste no puede dejar a
+ * nadie sin sus tareas; se usan las horas del catalogo y se sigue.
+ *
+ * SOLO LEE. La tabla es de Mega Talento y de ella cuelgan asistencia y nomina.
+ */
+async function leerHorarios() {
+  const p = talento();
+  if (!p) return [];
+  try {
+    const r = await p.query(SQL_HORARIOS);
+    return r.rows;
+  } catch (e) {
+    console.error('[horarios-sucursal] lectura para el emisor:', (e && e.message) || e);
+    return [];
+  }
+}
+
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
@@ -76,13 +111,7 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const r = await p.query(`
-      SELECT sucursal_id, area_id, nombre, dias, entrada,
-             inicio_comida, fin_comida, salida, tolerancia_min, activo
-        FROM horarios_sucursal
-       WHERE activo = TRUE
-       ORDER BY sucursal_id, area_id NULLS FIRST, entrada
-    `);
+    const r = await p.query(SQL_HORARIOS);
     return res.json({ ok: true, configured: true, items: r.rows });
   } catch (e) {
     const msg = (e && e.message) || 'Error de consulta';
@@ -102,3 +131,7 @@ module.exports = async (req, res) => {
     return res.status(500).json({ ok: false, configured: true, error: msg });
   }
 };
+
+// Lectura reutilizable para el emisor del servidor. El handler HTTP sigue
+// siendo la exportacion principal; esto se cuelga al lado.
+module.exports.leerHorarios = leerHorarios;

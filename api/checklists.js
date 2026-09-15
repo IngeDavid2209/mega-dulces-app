@@ -273,3 +273,48 @@ module.exports = async (req, res) => {
 
 // Se exporta para el reporte de tareas huérfanas y para pruebas.
 module.exports.resolverUidDeNombre = resolverUidDeNombre;
+
+/**
+ * Crea un checklist SOLO SI SU ID NO EXISTE. Devuelve true si nació.
+ *
+ * ⚠ LA DIFERENCIA CON EL POST DE ARRIBA NO ES DE ESTILO. Ese hace
+ * `on conflict do update` porque es el guardado normal de la app: el front lo
+ * usa para TODO (equivale a un setDoc), así que tiene que reemplazar el
+ * documento. Un EMISOR AUTOMÁTICO no puede hacer eso: corre solo, cada pocos
+ * minutos, y un `do update` sobreescribiría con items en blanco el checklist
+ * que la persona lleva media mañana llenando. Con `do nothing`, lo peor que
+ * puede pasar en una carrera entre el servidor, el navegador y una asignación
+ * a mano es que uno de los tres no haga nada.
+ *
+ * Tampoco avisa por WhatsApp: las tareas recurrentes llegan por decenas cada
+ * día y las cubre el resumen de la mañana. Avisar una por una sería el mismo
+ * error que ya está documentado en el POST.
+ */
+async function insertarSiNoExiste(doc) {
+  const id = String((doc && doc.id) || '').trim();
+  if (!id) throw new Error('insertarSiNoExiste: el documento viene sin id.');
+
+  const { cols, datos } = desglosar(doc);
+
+  // Mismo amarre de dueño que el POST: sin `assigned_uid` el bot de WhatsApp no
+  // puede mostrarle la tarea a nadie. Si el nombre no empareja con UNA sola
+  // ficha activa, se deja en null y se dice — no se adivina (§8.5).
+  if (!cols.assigned_uid && cols.assigned) {
+    cols.assigned_uid = await resolverUidDeNombre(cols.assigned);
+    if (!cols.assigned_uid) {
+      console.warn('[checklists] emitida SIN dueño amarrado: "%s" no empareja con una sola ficha activa (checklist %s).', cols.assigned, id);
+    }
+  }
+
+  const valores = [id, ...COL_LIST.map(c => valorCol(c, cols[c])), JSON.stringify(datos)];
+  const placeholders = valores.map((_, i) => `$${i + 1}`).join(',');
+  const r = await query(
+    `insert into mdtask_checklists (id, ${COL_LIST.join(', ')}, datos)
+     values (${placeholders})
+     on conflict (id) do nothing
+     returning id`,
+    valores
+  );
+  return r.rowCount === 1;
+}
+module.exports.insertarSiNoExiste = insertarSiNoExiste;

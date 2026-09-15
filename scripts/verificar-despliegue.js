@@ -67,6 +67,29 @@ const MARCADORES = [
   // 14/sep/2026 (4) · EL CATALOGO DEL MANUAL, ASIGNABLE A MANO. Validado en
   // las dos direcciones antes de subir: 0 ocurrencias en HEAD.
   { txt: 'cat-manual', nuevo: true, que: 'el modal para dar una tarea del manual' },
+  // 14/sep/2026 (5) · LOS PERMISOS DICEN QUE CONCEDEN, Y EL ROL ADMIN SE
+  // DESGLOSA. Validado en las DOS direcciones antes de subir: 0 ocurrencias en
+  // HEAD (`git grep`), 1 archivo del `dist/`, y 0 en produccion medido
+  // recorriendo los 65 archivos del ngsw (4.40 MB, 0 fallos de lectura — sin
+  // esa cifra el cero no vale).
+  //
+  // ⚠ SON DOS `nuevo` A LA VEZ, y es a proposito: `cat-manual` esta commiteado
+  //   desde eca287d y NUNCA SE DESPLEGO —medido: 0 en lo servido—, asi que el
+  //   proximo `railway up` arrastra los dos. Si uno se queda en 0, el
+  //   despliegue no llevo lo que decimos que lleva.
+  { txt: 'pm-desglose', nuevo: true, que: 'el desglose de lo que concede el rol admin' },
+  // ⚠ ESTE NO ES LA MITAD QUE IMPORTA, Y HAY QUE DECIRLO. La emision de las
+  // tareas del dia se movio al SERVIDOR (api/emitir-manual.js) y eso no deja
+  // ninguna cadena en el bundle: lo que este marcador prueba es que el codigo
+  // nuevo del navegador se sirvio, no que el emisor este emitiendo. La
+  // comprobacion del emisor es su linea en el log de Railway:
+  //     [emisor-manual] poll iniciado (cada N min). Ahora en America/Mexico_City: ...
+  // Sin esa linea, el emisor NO arranco aunque este marcador salga en 1.
+  //
+  // Es una frase entera y no una clase CSS porque un cambio de logica pura no
+  // introduce ningun identificador propio (la leccion de la Fase 2.1): los
+  // nombres de funcion los minifica el compilador, los literales no.
+  { txt: 'ninguna de sus tareas aplica en esa fecha', nuevo: true, que: 'la regla de emision compartida por el navegador y el servidor' },
   // Era el nuevo del despliegue anterior; baja a control porque YA VALE en
   // produccion y dejarlo arriba daria verde sin comprobar nada de este.
   { txt: 'cl-bandeja', control: true, que: 'la bandeja de cuatro botones' },

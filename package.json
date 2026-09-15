@@ -4,7 +4,7 @@
   "scripts": {
     "ng": "ng",
     "start": "node scripts/generar-version.js && ng serve",
-    "build": "node scripts/generar-version.js && ng build",
+    "build": "node scripts/generar-version.js && ng build && node scripts/compilar-manual.js",
     "watch": "node scripts/generar-version.js && ng build --watch --configuration development",
     "test": "ng test",
     "probar-retraso": "node scripts/probar-retraso.js"

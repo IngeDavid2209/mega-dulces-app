@@ -197,7 +197,7 @@ Orden por **dependencia y riesgo**, no por importancia. Un paso ≤ 3 días. Mar
 | 4 | Navegación (4.1 se puede hacer YA, sin dependencias) | 1.5 | — / 3 | 🔄 **4.1 ✅ · 4.1b: 2a–2d ✅ (15→12 entradas) · Tareas unidas ✅ 14/sep (12→11: las dos entradas de tareas son una) · falta el Paso 3 para llegar a 7 · 4.3 espera Fase 3 · el Dashboard ya se gatea por jefatura (3/sep) · el ÁRBOL de Tareas del Manual ya se recorta por puesto (11/sep): cada nivel arranca en su propia raíz** |
 | 5 | Verificación con muestra + hallazgos + causas | 2 | 3 | ⬜ |
 | 6 | Tablero por nivel + cierre diario + roll-up | 2 | 5 | ⬜ **el tablero de DIRECCIÓN ya existe y está gateado (2–3/sep); el de nivel —«Mi zona», «Mi sucursal»— no, y por eso una Encargada ve un bloque que le nombra el hueco** |
-| 7 | La norma como dato (manual y organigrama fuera del código) | 3 | 3 | ⬜ |
+| 7 | La norma como dato (manual y organigrama fuera del código) | 3 | 3 | 🔄 **7.1a ✅ (15/sep, desplegada): `mdtask_tareas_puesto` + la captura en Manual por Puesto. La tabla nace VACÍA y el emisor NO la lee todavía — que lo capturado se entregue es 7.1b, y ése sí mueve el denominador de 104 personas** |
 | 8 | Anclas físicas + hoja de auditoría + fidelidad | 2.5 | 5, 7 | ⬜ |
 | 9 | Higiene: polls fuera del web, partir `checklist.ts`, CORS, enterrar `backend/` | 2 | 1 | ⬜ |
 
@@ -324,6 +324,174 @@ de que exista la plaza sería partir el problema en dos, no resolverlo.
     columna devuelve cero documentos, sin error.
 
 ## 9. Bitácora del plan
+
+### 15/sep/2026 — LA NORMA BAJA A DATO (Fase 7 · paso 7.1a), y la premisa era falsa
+
+Instrucción de David: *«quiero que todos los puestos tengan sus tareas propias activas»*, y
+aclarando en el mismo turno: *«que todas se activen por día, me refiero a las tareas de manual»*.
+Más una tercera, que acabó siendo la que dio forma al paso: *«revisa estrictamente que ninguna
+tarea se repita»*.
+
+**LO PRIMERO QUE MEDÍ DESMINTIÓ LA PREMISA, y ésa es la mitad útil del día.** Simulando la regla
+real (`planDeEntregas`) para los 7 días con un usuario por puesto:
+
+    18 de los 19 puestos con manual YA reciben tareas TODOS LOS DIAS
+    anaquelista 18 pts/dia · encargado-sucursal 23 · cajero-sucursal 23 · checador 28
+
+No había nada que «activar» ahí. El único puesto con manual que se queda en blanco es
+`aux-logistica-flotilla` —5 de 7 días—, y no es un fallo: sus 3 tareas son 2 semanales y 1
+mensual. **Si David veía 0 en pantalla, el catálogo no era la causa** — eso es la emisión, y esa
+pregunta sigue sin contestar (ver abajo).
+
+**DÓNDE ESTABA EL PROBLEMA DE VERDAD, con su denominador:**
+
+    19 de 89 puestos tienen manual escrito  ·  70 no lo tienen
+    38 de esos 70 TIENEN GENTE
+    104 de 191 personas (54%) tienen un puesto SIN manual   <- mas que las que si
+
+    11 vendedor-rd · 10 surtidor-zona · 6 promotora · 6 chofer-cedis
+     6 auxiliar-chofer · 5 auxiliar-encargado · 5 vendedor-vecinal
+
+Más gente sin manual que con manual. A esas 104 personas **no se les puede «activar» nada porque
+no existe el documento**, y escribírselo desde el código habría sido inventarles obligaciones
+(§8.5) con un despliegue por cada corrección (hallazgo 5).
+
+**LAS DOS DECISIONES DE DAVID, enfrentado a las opciones con su precio:** la norma de los puestos
+sin manual **se captura desde la app** (esto), y las **10 tareas no diarias del catálogo se
+respetan** —volverlas diarias habría hecho que el inventario mensual de flotilla del día 25 se
+cobrara ~30 veces al mes, multiplicando por 30 el denominador de esa persona—.
+
+#### «QUE NINGUNA TAREA SE REPITA» SON SEIS COMPROBACIONES, NO UNA
+
+Medido sobre el catálogo en código, que está **limpio en las seis**:
+
+| clase | resultado |
+|---|---|
+| ids de tarea duplicados | 0 |
+| un puesto con dos manuales | 0 |
+| punto repetido dentro de una tarea | 0 |
+| mismo punto en dos tareas diarias del mismo puesto | 0 |
+| nombre de tarea repetido en un puesto | 0 |
+| código de formato repetido **dentro de su documento** | 0 |
+
+**Cinco ceros seguidos son sospechosos de no medir nada**, así que el chequeo lleva control
+positivo: sembrando un duplicado de cada clase, las cuatro cuentas suben (`ids 0→1`,
+`puntoEnTarea 0→1`, `puntoEnPuestoDiario 0→9`, `nombreEnPuesto 0→1`). Discrimina, así que los
+ceros valen.
+
+**Dos falsos positivos de mi propio chequeo, y los dos instructivos.** El primero: los códigos
+«Anexo A» aparecían en 7 tareas y parecían duplicados — **cada manual tiene su propio Anexo A**,
+así que la unicidad es *dentro del documento*, no global. El segundo es peor y es un hueco de
+cobertura: mi chequeo de ids recorría **manuales**, no puestos, así que **no podía ver** que un
+manual compartido por dos puestos entrega tareas con el mismo id. Al medirlo bien aparece la
+única repetición real: las **3 tareas del Checador (28 puntos)** llegan a `checador`
+(operaciones-zona) y `checador-cedis` (cedis). No se duplican para nadie —cada persona recibe la
+suya una vez— pero **al sumar por puesto esos 28 puntos se cuentan dos veces, en dos unidades
+distintas**. Ya estaba anotado el 4/sep; lo resuelve «una plaza, un solo padre» (Fase 6).
+
+#### LOS CANDADOS VIVEN EN LA TABLA, NO EN EL ENDPOINT
+
+Misma decisión que `tmp-%` en la 057, y por el mismo motivo: un candado en el handler queda a
+merced del siguiente camino de escritura que alguien abra.
+
+- **`check (id like 'tp-%')`** — una tarea capturada **no puede pisar el id de una publicada**.
+  Importa más de lo que parece: la llave de idempotencia es
+  `man_<tareaId>_<periodo>_<sucursal>_<persona>`, así que dos tareas con el mismo id producirían
+  **la misma llave** y una pisaría a la otra en silencio.
+- **Único por `(puesto_id, lower(trim(nombre)))` donde vigente.** Sobre `lower(trim(...))` porque
+  **el duplicado real no llega escrito idéntico**: llega como «Apertura» contra «apertura ». Es
+  el hallazgo 1 entrando por esta puerta. Parcial, para que las versiones retiradas convivan.
+- **La frecuencia no puede quedar a medias.** Una Semanal sin día y una Mensual sin día del mes
+  **no se emiten nunca**, y eso se ve idéntico a «esa persona no tiene nada que hacer» (§5.2).
+
+**Y el endpoint no es un CRUD pelado.** El factory da POST-que-sobrescribe y DELETE físico, y los
+dos están mal en una norma: editar en el sitio una regla ya emitida hace imposible saber con qué
+versión se juzgó un día pasado (§5.4), y borrar deja huérfanos los checklists emitidos (§5.5).
+Los dos se cierran, y el **PATCH va con lista BLANCA de tres campos** — si pudiera tocar `items`,
+el candado del POST sería decorativo: se editaría la norma por la otra puerta. La lista es blanca
+y no negra para que **una columna nueva nazca cerrada**.
+
+**Un punto repetido en DOS tareas AVISA y no bloquea**, y la distinción es de diseño: «Caja
+limpia» en apertura y en cierre es correcto —se verifica dos veces al día—. Bloquearlo obligaría
+a quien captura a deformar el texto para esquivar la validación, que es peor que el duplicado.
+
+#### `api.guardar` SE TRAGA EL FALLO, y aquí eso habría sido lo peor posible
+
+La pantalla usa `api.post`, no el helper. `api.guardar` registra en consola y **vuelve sin
+lanzar**, así que con él la pantalla diría «guardada» aunque el servidor la hubiera rechazado — y
+aquí el rechazo es justo lo que más importa: el **409** del candado anti-duplicado. Quien captura
+se iría convencido y la tarea no existiría. Es el **defecto #1 del 14/sep**, cobrado en otra
+pantalla un día después.
+
+#### LAS PRUEBAS, Y TRES CONTROLES NEGATIVOS QUE NOMBRAN EL MECANISMO
+
+**247 de 247** (28 nuevas). Los dos del util, **una línea cada uno** (331 → 331, `diff`
+comprobado), y lo que los hace válidos es que **no tumban la suite**:
+
+| | qué se rompió | qué cayó |
+|---|---|---|
+| NEG-1 | comparación literal en vez de normalizada | **exactamente las 2** que dependen de la normalización |
+| NEG-2 | `declaradasDePuesto` ignora `vigente` | **exactamente las 2** de vigencia |
+
+**`scripts/prueba-captura-norma.js` (nuevo)** contesta lo que ninguna prueba unitaria puede:
+**quién tiene el botón delante**, porque un `*ngIf` no es una función que se pueda llamar.
+
+    sesión         hoja  detalles  sección-propias  botón-nueva  pidió /api
+    dueno            11         1                1            1        true
+    adminGlobal      11         1                1            1        true
+    encargada        11         1                0            0        true   <- ENTRA y no escribe
+
+**La Encargada es la fila que hace válidas a las otras dos.** Control negativo: abierto el gate a
+todos, caza la fuga **nombrando el perfil** y además dispara la guardia de discriminación (3 de 3
+ven el botón), con código 2.
+
+**Y su guardia de «¿pidió /api?» cazó un defecto mío antes de que concluyera nada:** el gate ya
+discriminaba (1/1/0) pero la petición **nunca salía** — `ApiService.token()` sin sesión. Se
+siembra `md_token`, que es el camino legítimo del producto desde el acceso por plaza. Sin esa
+guardia, la tabla habría dado verde sobre una pantalla que no leía la norma.
+
+**Y repetí dos defectos que ya estaban escritos en este archivo**, lo cual dice algo sobre
+releerlo: el `%-10s` de printf que Node no soporta (7/sep) y un `\Q...\E` dentro de `grep -E`,
+que no lo soporta — este último **reportó 7 tokens CSS como inexistentes cuando los 7 existen**.
+Rehecho con control positivo y negativo: **121 tokens declarados, 15 usados, 0 faltantes**.
+
+**Y un cero mío que no era un cero.** La primera simulación de los 7 días dio **133 ceros
+perfectos**, que se leen como «la regla no emite nada». Era mi script leyendo `e.checklist.items`
+donde el campo es `e.payload`. Lo delató **el canario de `compilar-manual.js`**, que produce
+entregas con esa misma entrada: sin él habría ido a depurar una regla intacta. §8.11(a) literal.
+
+#### DESPLEGADO Y VERIFICADO — las tres mitades, que no son la misma
+
+    marcador ... mp-propias 0 -> servido · 26 controles en pie · 66 archivos · 4.48 MB
+    migracion .. [migrate][sql] 060 · tareas de puesto: 0 filas (0 vigentes) en 0 puesto(s)
+                 [migrate] aplicada: 060_tareas_de_puesto.sql
+    endpoint ... GET  /api/tareas-puesto -> 401 «Falta Authorization Bearer token» (montado)
+                 DELETE                  -> 405 «no se borra: se retira con vigente=false»
+
+Los ceros de la migración **se declararon ANTES de desplegar**, dentro de la propia migración, y
+el notice sirve de control positivo **por su mecanismo**: sale de tres `count(*)`, así que no
+puede imprimirse si la tabla no existe. El bundle creció de 4.43 a 4.48 MB, coherente con código
+nuevo. La espera usó la guardia buena —rótulo `status:`, línea completa— y vio `Building`,
+`Deploying` y `● Online` en **4 esperas**.
+
+**`git push` VOLVIÓ A FUNCIONAR.** El bloqueo del 13/sep (`Repository not found`, cuenta
+`dev-david24` contra el remoto `IngeDavid2209`) ya no existe: `HEAD == origin/main` en `bf78417`.
+Los 39 commits que vivían solo en esta laptop están arriba, así que **los workflows programados
+vuelven a ser gobernables** (§1: para Actions, `git push` SÍ es el despliegue).
+
+#### LO QUE ESTO NO HACE, dicho para que no se lea como resuelto
+
+- **NO ENTREGA UNA SOLA TAREA.** La tabla nace vacía y **el emisor no la lee**. Este paso crea el
+  lugar donde escribir la norma y la pantalla para hacerlo; que lo capturado se entregue es
+  **7.1b**, y ése sí mueve el denominador de 104 personas — no podía viajar de contrabando con
+  éste.
+- **Nadie ha capturado una sola tarea**, así que la sección abre vacía en los 89 puestos. Su
+  primer valor aparece cuando Dirección escriba las de `vendedor-rd`.
+- **No se sabe todavía por qué David vio 0** en la barra. `scripts/diagnostico-emision-hoy.js`
+  sigue sin correr: necesita una `DATABASE_URL` de producción.
+- **Nadie ha entrado con una cuenta real.** Las tres sesiones son sintéticas en Chrome headless.
+- **La bitácora del despliegue de anoche quedó sin commitear**, en el árbol, de otra sesión. No
+  se tocó: mezclarla en este commit habría sido el fallo del 4/sep.
 
 ### 14/sep/2026 (noche) — EL RELOJ DE LAS TAREAS SALE DEL NAVEGADOR
 

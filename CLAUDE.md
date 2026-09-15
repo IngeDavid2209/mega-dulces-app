@@ -324,6 +324,99 @@ de que exista la plaza sería partir el problema en dos, no resolverlo.
 
 ## 9. Bitácora del plan
 
+### 14/sep/2026 — LOS PRIVILEGIOS BAJAN AL PUESTO: de 6 administradores a 2
+
+Instrucción de David: *«quiero que me des los nombres de los que son administradores, los vamos a
+dejar como usuarios simples de acuerdo a su puesto»*. La lista **no estaba en el código** —el rol
+y las banderas viven en `mdtask_usuarios`— así que el paso empezó por poder leer producción.
+
+#### EL SCHEMA NO ES `public`, Y ESE CERO COSTÓ LA TARDE
+
+`scripts/censo-administradores.js` abortó con **cero fichas** contra la base **correcta**. La
+guardia hizo su trabajo —no concluyó «no hay administradores»— pero la causa tardó: las tablas de
+MDTask viven en el schema **`eajd`** (159 fichas · 56 migraciones) y en **`public`** quedaron
+**13 tablas vacías con 26 migraciones de mayo**. Un `select … from mdtask_usuarios` sin schema
+resuelve por `search_path`, encuentra las vacías y devuelve **0 sin error**: es el §12 exacto —el
+nombre equivocado no falla, miente— un nivel más arriba, sobre el **schema** en vez del campo.
+Antes de dar con ello, `diagnostico-conexion.js` llegó a decir **«ESTA NO ES LA BASE DE
+PRODUCCIÓN»** sobre la base que sí lo era. Los dos scripts nuevos **buscan** el schema (el de más
+filas) e imprimen cuál eligieron y cuáles descartaron; `diagnostico-conexion.js` sigue mirando
+solo `public` y hay que arreglarlo antes de volver a creerle.
+
+**Lo que lo destapó fue una rareza, no una hipótesis:** `information_schema` devolvió
+`_migraciones` con las columnas **duplicadas** (`id, aplicada_en, id, aplicada_en`). Una tabla no
+puede tener dos veces la misma columna: eran dos tablas con el mismo nombre en schemas distintos.
+
+#### EL CENSO: EL PROBLEMA NO ERAN 6 FICHAS, ERAN 66
+
+    administradores (rol = 'admin')        6   →  4 de ellos de alcance GLOBAL, 3 sin entrar nunca
+    con banderas de gestion y sin el rol  60
+    con EL MISMO bloque de 9 banderas     40   ←  son admins de su sucursal sin llamarse asi
+
+Entre esos 40: **dos anaquelistas, una promotora y una vendedora de piso** con
+`puedeAdministrarPersonal`. Con **una sola** de las nueve, `esSupervisor()` da la vista de gestión
+de **toda la sucursal**. Bajar el rol sin tocar las banderas no habría cambiado nada.
+
+#### MI PRIMER PLAN ERA UNA ESCALADA, Y SOLO SE VIO CORRIÉNDOLO EN SECO
+
+El mapa `privilegios-por-puesto.js` describe un **destino**, y el código lo aplicaba en las **dos
+direcciones**: el primer plan **PONÍA** banderas a **17 personas que hoy no las tienen**. Un paso
+que iba de *bajar* privilegios estaba repartiendo accesos nuevos a analistas y a servicios al
+personal. Ahora **por omisión solo quita**; dar lo que falta exige `--completar` y lo que falta se
+lista aparte, sin aplicarse. Es la regla del 11/sep —«ensanchar es la dirección peligrosa»— y esta
+vez el que iba a ensanchar era yo.
+
+**Y tocaba `alcance` en 70 trabajadores** para no cambiar un solo permiso: ese campo solo
+significa algo en un admin (`permisos.util.ts` lo dice). Se acotó a las fichas con rol admin.
+
+#### LO APLICADO, Y CÓMO SE VERIFICÓ
+
+**41 fichas · 6 admins → 2** (el dueño por correo, y Guillermo Lopez, el único con
+`direccion-general`). Verificado preguntándole a la **base**, no al script que escribió:
+
+| puesto | banderas de gestión (mín/máx) |
+|---|---|
+| anaquelista (22) · cajero (13) · almacenista (6) | **0 / 0** |
+| encargado-sucursal (7) · auxiliar-encargado (5) | 6 / 6 |
+| gerencia-zona (3) | 7 / 7 |
+
+Más: **41 fichas con su evento en `_historialPermisos`** (exactamente las tocadas), **112 sin
+gestión contra 42 con gestión** —la muestra discrimina—, y las **18 fichas con banderas de
+SERVICIO las conservan intactas**, que es el control de que no se barrió de más.
+
+**Las de servicio no se tocan a propósito:** TEC, Tickets, Pagos, Flotilla y Promociones son
+acceso a módulos para trabajar, no privilegios de mando. Quitarlas aquí dejaría gente sin poder
+hacer su trabajo por un cambio que iba de otra cosa.
+
+**Trece fichas sin `puestoId` quedaron pendientes y VISIBLES** (§8.5), no clasificadas por el
+`cargo`, que es texto libre. Los **cuatro admins sin puesto sí se bajaron**, pero por orden
+expresa de David y con interruptor propio (`--bajar-admins-sin-puesto`): pasan a trabajador **sin
+ninguna bandera**, sin adivinarles el puesto.
+
+**La reversa se escribió antes que la ida (§8.3):** `--aplicar` guarda primero un respaldo JSON
+con rol, alcance y `datos` de cada ficha y no escribe nada si el respaldo no queda en disco;
+`--revertir <archivo>` deja todo idéntico. El respaldo va al `.gitignore` porque `datos` incluye
+el espejo de contraseña.
+
+**Guardia nueva:** el script cuenta cuántos administradores quedarían **después** del plan y
+**aborta si quedaría cero**. Quitar el rol a granel es exactamente como se deja a una empresa
+fuera de su propia app.
+
+#### LO QUE ESTE PASO NO HACE, dicho para que no se lea como resuelto
+
+- **No despliega nada.** Cero archivos de `src/`, `api/` o `scripts/sql/`. El cambio ya está vivo
+  porque es **dato**, y la gente lo nota sola: `app.ts:373` resincroniza el perfil **cada 60 s** y
+  recarga al detectar un cambio de permisos.
+- **No arregla el modelo**, solo el estado de hoy. Estas banderas se vuelven a repartir desde la
+  pantalla de Usuarios, así que sin la plaza (Fase 3) el desorden se puede rehacer en una tarde.
+- **Hallazgo de paso, sin resolver:** **«Luis David Navarro Alvarado» tiene dos fichas activas**
+  con el mismo nombre. Es el hallazgo 1 otra vez, y suma al marcador de identidades por texto.
+- **Una credencial quedó expuesta otra vez:** `railway variables -s MDTask` imprimió parte de la
+  `DATABASE_URL` con su contraseña en pantalla (el enmascarado no aguantó el formato de tabla de
+  Railway). **No se listan variables nunca más**: para comparar credenciales sin verlas, se usa
+  `sha256` truncado, que es como se descubrió que MDTask y el proxy público comparten instancia.
+
+
 ### 14/sep/2026 (noche) — EL CATÁLOGO DEL MANUAL SE PUEDE DAR A MANO (paso B)
 
 Instrucción de David: *«los catálogos que creaste de acuerdo a los puestos, los dejarás creados

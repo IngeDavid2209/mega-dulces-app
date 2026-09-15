@@ -63,3 +63,7 @@ service-account.json
 # modificacion que nadie hizo, y habia que filtrarla mentalmente. Asi fue como
 # un `git add -u` lo colo en el commit del scroll sin que se notara.
 src/app/shared/version.ts
+
+# Respaldos de privilegios (scripts/ajustar-privilegios.js): llevan el `datos`
+# completo de cada ficha, incluido el espejo de contrasena. NUNCA al repo.
+respaldo-privilegios-*.json

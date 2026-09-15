@@ -1,19 +1,26 @@
 // ============================================================================
-//  DIAGNOSTICO — POR QUE A UN JEFE DE ZONA NO LE APARECEN SUS TAREAS
+//  DIAGNOSTICO — POR QUE A ESTA PERSONA NO LE APARECEN SUS TAREAS
 //
 //  LA PREGUNTA QUE CONTESTA, y ninguna otra:
 //
-//      David (15/sep/2026): «solo hay tres jefes de zona, ellos deben tener sus
-//      tareas activas» — Ivette Cruz Oceguera, Jose Ramon Rodriguez y Aaron
-//      Tzihuaran Alejo. A unos les aparecen y a otros no.
+//      «A fulano no le aparecen sus tareas del manual.» Eso lo preguntó David
+//      el 15/sep/2026 tres veces en un dia, sobre tres personas distintas y con
+//      tres causas distintas, y la pantalla se ve IGUAL en las tres.
 //
-//      Ese «no aparecen» tiene CINCO causas que en pantalla se ven IDENTICAS, y
-//      cada una se arregla en un sitio distinto:
+//      Nacio mirando a los tres jefes de zona (Ivette Cruz Oceguera, Jose Ramon
+//      Rodriguez y Aaron Tzihuaran Alejo) y por eso son la lista por omision;
+//      sirve para cualquiera con `--nombre=`.
+//
+//      El «no aparecen» tiene SEIS causas que se ven identicas en pantalla, y
+//      cada una se arregla en un sitio distinto — o no se arregla:
 //
 //        A  sin puesto resoluble    -> su ficha no tiene `puestoId` y su `cargo`
 //                                      de texto libre no casa con ningun alias.
 //                                      Se arregla CAPTURANDO el puesto en
 //                                      Personal. No es codigo.
+//        A3 su puesto no tiene manual -> 70 de los 89 puestos no lo tienen. No
+//                                      se arregla en su ficha: es Fase 7, y lo
+//                                      decide Direccion escribiendo la norma.
 //        B  sin sucursal asignada   -> `sucursalesDe()` devuelve vacio.
 //        C  no se emitio hoy        -> tiene todo y aun asi 0 entregas: la regla
 //                                      lo descarto por descanso, cierre o turno.
@@ -39,28 +46,42 @@
 //  Como se corre (PowerShell, desde la raiz del repo):
 //      node scripts/compilar-manual.js
 //      $env:DATABASE_URL = "<URL PUBLICA de Postgres de Railway>"
-//      node scripts/diagnostico-jefes-zona.js
-//      node scripts/diagnostico-jefes-zona.js --nombre="Otra Persona"
-//      node scripts/diagnostico-jefes-zona.js --fecha=2026-09-16
+//      node scripts/diagnostico-sin-tareas.js
+//      node scripts/diagnostico-sin-tareas.js --nombre="Otra Persona"
+//      node scripts/diagnostico-sin-tareas.js --fecha=2026-09-16
 // ============================================================================
 const path = require('path');
 const { query, dbConfigurada } = require('../api/db');
 const { schemaDeMdtask } = require('./_schema-mdtask');
 
-// Los tres que David nombro. Se pueden sustituir con --nombre= (repetible).
-const JEFES_POR_OMISION = [
+// Los tres jefes de zona del 15/sep. Se sustituyen con --nombre= (repetible).
+const POR_OMISION = [
   'Ivette Cruz Oceguera',
   'Jose Ramon Rodriguez',
   'Aaron Tzihuaran Alejo',
 ];
 
-const PUESTO_ESPERADO = 'gerencia-zona';
+/**
+ * Puesto que se ESPERA que tenga la persona. Opcional, y por eso vacio por
+ * omision.
+ *
+ * ⚠ ANTES ESTABA FIJO EN 'gerencia-zona' Y ESO ERA UN DIAGNOSTICO FALSO EN
+ * CUANTO SE MIRABA A OTRA PERSONA. El 15/sep/2026, preguntando por una cajera,
+ * el script la habria puesto en la cubeta «PUESTO DISTINTO: recibe el manual de
+ * OTRO puesto» — que suena a defecto y es, simplemente, que es cajera. Un
+ * control anclado a un caso concreto caduca en cuanto el caso cambia (§8.11 e),
+ * y aqui el caso cambio al dia siguiente de escribirlo.
+ *
+ * Con `--puesto=<id>` se vuelve a exigir uno, que es util cuando se sabe cual
+ * deberia ser: ahi «tiene OTRO puesto» si es un hallazgo.
+ */
+const PUESTO_ESPERADO = (process.argv.find(a => a.startsWith('--puesto=')) || '').split('=')[1] || '';
 const PREFIJO_MANUAL = 'man_';
 const DIAS_VENTANA = 7;
 
 function abortar(codigo, msg, detalle) {
   console.error('');
-  console.error('[jefes-zona] ABORTA: ' + msg);
+  console.error('[sin-tareas] ABORTA: ' + msg);
   if (detalle) console.error('             ' + detalle);
   console.error('');
   process.exit(codigo);
@@ -103,7 +124,7 @@ function ymd(d) {
   const { tareasAutomaticasDePuesto } = R.catalogo;
 
   const nombresArg = argsDe('--nombre');
-  const JEFES = nombresArg.length ? nombresArg : JEFES_POR_OMISION;
+  const JEFES = nombresArg.length ? nombresArg : POR_OMISION;
 
   const fechaArg = argsDe('--fecha')[0];
   const fecha = fechaArg ? new Date(fechaArg + 'T12:00:00') : new Date();
@@ -112,16 +133,16 @@ function ymd(d) {
   const DIAS = ['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado'];
 
   console.log('');
-  console.log('[jefes-zona] fecha analizada: %s (%s)', fechaYmd, DIAS[fecha.getDay()]);
+  console.log('[sin-tareas] fecha analizada: %s (%s)', fechaYmd, DIAS[fecha.getDay()]);
 
-  const SCHEMA = await schemaDeMdtask(query, { prefijo: '[jefes-zona]' });
+  const SCHEMA = await schemaDeMdtask(query, { prefijo: '[sin-tareas]' });
 
   // ── ENTRADAS, con su tamano ANTES de concluir nada (§8.11 a) ──────────────
   const fichas = (await query(
     'select id, usuario, correo, nombre, rol, cargo, alcance, activo, datos from "' + SCHEMA + '".mdtask_usuarios'
   )).rows;
   const activas = fichas.filter(f => f.activo !== false);
-  console.log('[jefes-zona] fichas leidas: %d (activas: %d)', fichas.length, activas.length);
+  console.log('[sin-tareas] fichas leidas: %d (activas: %d)', fichas.length, activas.length);
   if (!fichas.length) {
     abortar(1, 'cero fichas leidas.', 'Con la app en produccion eso no es «no hay»: es «no lei» (schema o base equivocada).');
   }
@@ -142,7 +163,7 @@ function ymd(d) {
   const planTodos = planDeEntregas({
     usuarios, fecha, idsExistentes: [], descansosSemana: [], horarios: [],
   });
-  console.log('[jefes-zona] control: la regla emitiria %d entrega(s) hoy para toda la empresa, %d omitido(s)',
+  console.log('[sin-tareas] control: la regla emitiria %d entrega(s) hoy para toda la empresa, %d omitido(s)',
     planTodos.entregas.length, planTodos.omitidos.length);
   if (planTodos.entregas.length === 0) {
     abortar(1, 'la regla no emite NADA para nadie hoy.',
@@ -152,12 +173,14 @@ function ymd(d) {
   // ── Cuantas fichas resuelven a gerencia-zona en TODA la base ──────────────
   // El denominador que contesta «solo hay tres»: si la base dice otro numero,
   // la lista de David y la base miden poblaciones distintas y hay que decirlo.
-  const conPuestoZona = usuarios.filter(u => resolverPuesto(u).puestoId === PUESTO_ESPERADO);
-  console.log('[jefes-zona] fichas activas que HOY resuelven a "%s": %d — %s',
-    PUESTO_ESPERADO, conPuestoZona.length,
-    conPuestoZona.map(u => u.nombre).join(' | ') || '(ninguna)');
-  console.log('[jefes-zona] tareas automaticas del manual de ese puesto: %d',
-    tareasAutomaticasDePuesto(PUESTO_ESPERADO).length);
+  if (PUESTO_ESPERADO) {
+    const conEsePuesto = usuarios.filter(u => resolverPuesto(u).puestoId === PUESTO_ESPERADO);
+    console.log('[sin-tareas] fichas activas que HOY resuelven a "%s": %d — %s',
+      PUESTO_ESPERADO, conEsePuesto.length,
+      conEsePuesto.map(u => u.nombre).join(' | ') || '(ninguna)');
+    console.log('[sin-tareas] tareas automaticas del manual de ese puesto: %d',
+      tareasAutomaticasDePuesto(PUESTO_ESPERADO).length);
+  }
 
   // ── Los checklists del dia, y la ventana de 7 dias como control ───────────
   const desde = new Date(fecha); desde.setDate(desde.getDate() - DIAS_VENTANA);
@@ -168,7 +191,7 @@ function ymd(d) {
   )).rows;
   const delManual = checklists.filter(c => String(c.id || '').startsWith(PREFIJO_MANUAL));
   const deHoy = delManual.filter(c => c.fecha === fechaYmd);
-  console.log('[jefes-zona] checklists en la ventana de %d dias: %d (del manual: %d) · de hoy: %d',
+  console.log('[sin-tareas] checklists en la ventana de %d dias: %d (del manual: %d) · de hoy: %d',
     DIAS_VENTANA, checklists.length, delManual.length, deHoy.length);
   if (delManual.length === 0) {
     abortar(1, 'cero checklists del manual en ' + DIAS_VENTANA + ' dias.',
@@ -242,9 +265,17 @@ function ymd(d) {
         clave = 'A';
         cubeta = 'A · SIN PUESTO RESOLUBLE — su ficha no tiene `puestoId` y su cargo no casa con ningun alias.'
                + '\n              SE ARREGLA EN LA PANTALLA DE PERSONAL, capturando su puesto. No es codigo.';
-      } else if (r.puestoId !== PUESTO_ESPERADO) {
+      } else if (PUESTO_ESPERADO && r.puestoId !== PUESTO_ESPERADO) {
         clave = 'A2';
-        cubeta = 'A2 · PUESTO DISTINTO (' + r.puestoId + '): recibe el manual de OTRO puesto, no el de zona.';
+        cubeta = 'A2 · PUESTO DISTINTO (' + r.puestoId + '): recibe el manual de OTRO puesto, '
+               + 'no el de "' + PUESTO_ESPERADO + '".';
+      } else if (tareasAutomaticasDePuesto(r.puestoId).length === 0) {
+        // 70 de los 89 puestos no tienen manual escrito. No es un fallo de la
+        // app y no lo arregla nadie desde aqui: es Fase 7, y lo decide
+        // Direccion escribiendo la norma de ese puesto.
+        clave = 'A3';
+        cubeta = 'A3 · SU PUESTO NO TIENE MANUAL (' + r.puestoId + ') — no recibe tareas '
+               + 'automaticas porque no existe el documento. No se arregla en su ficha.';
       } else if (!lugares.length) {
         clave = 'B';
         cubeta = 'B · SIN SUCURSAL ASIGNADA — se arregla capturando su sucursal en Personal.';
@@ -271,7 +302,7 @@ function ymd(d) {
 
   console.log('');
   console.log('======================================================================');
-  console.log('RESUMEN (%d jefe(s) de zona revisado(s))', JEFES.length);
+  console.log('RESUMEN (%d persona(s) revisada(s))', JEFES.length);
   for (const par of cubetas) console.log('  %s -> %s', String(par[0]).padEnd(26), par[1]);
   console.log('');
   console.log('Denominadores: %d fichas (%d activas) · %d checklists del manual en %d dias · %d de hoy.',
@@ -279,6 +310,6 @@ function ymd(d) {
   console.log('');
   process.exit(0);
 })().catch(e => {
-  console.error('[jefes-zona] fallo:', e && e.message ? e.message : e);
+  console.error('[sin-tareas] fallo:', e && e.message ? e.message : e);
   process.exit(1);
 });

@@ -51,7 +51,7 @@
 import { normalizarNombre } from './permisos.util';
 import {
   FrecuenciaManual, MomentoManual, TareaManual, ItemManual,
-  tareasDePuesto,
+  tareasDePuesto, tareasAutomaticasDePuesto,
 } from './tareas-manual.catalogo';
 
 /** Un día de la semana tal como lo acepta la tabla y el catálogo. */
@@ -120,6 +120,19 @@ export function aTareaManual(t: TareaDePuesto): TareaManual {
     ...(t.diaMes != null ? { diaMes: t.diaMes } : {}),
     horaLimite: t.horaLimite,
     items: t.items || [],
+    // ⚠ SU PROPIA NORMA VIAJA CON ELLA. Sin esto, el checklist que salga de
+    // esta tarea se sellaría con el documento y la versión del manual
+    // PUBLICADO del puesto —lo único que `armarChecklist` conoce— y afirmaría
+    // venir de un documento en el que no está. Ver `selloPropio`.
+    //
+    // `version` es `not null` en la tabla (060) justo por esto; `documento`
+    // puede venir vacío, y entonces se dice con todas sus letras en vez de
+    // heredar el del manual publicado, que sería la mentira que se viene a
+    // evitar.
+    selloPropio: {
+      documento: (t.documento || '').trim() || 'Tarea capturada (sin documento)',
+      version: t.version,
+    },
   };
 }
 
@@ -142,6 +155,38 @@ export function tareasCombinadasDePuesto(
   declaradas: TareaDePuesto[],
 ): TareaManual[] {
   const publicadas = tareasDePuesto(puestoId);
+  const propias = declaradasDePuesto(puestoId, declaradas).map(aTareaManual);
+  return [...publicadas, ...propias];
+}
+
+/**
+ * Lo que el EMISOR entrega hoy a un puesto: su manual publicado MÁS lo
+ * capturado, quitando lo que depende de un evento impredecible.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ *  POR QUÉ NO SE REUSA `tareasCombinadasDePuesto`, QUE PARECE LA MISMA
+ * ═══════════════════════════════════════════════════════════════════════════
+ * Porque contestan preguntas distintas y confundirlas entrega de más.
+ * `tareasCombinadasDePuesto` es para MOSTRAR la hoja de un puesto, y ahí las
+ * de solo-evento deben verse: existen en el manual y alguien las consulta.
+ * Ésta es para ENTREGAR, y una tarea de solo-evento no se puede anticipar —
+ * el disparador es un siniestro, un cambio de custodia, un alta de unidad.
+ *
+ * MEDIDO antes de escribir esto, para que no sea una precaución teórica: hay
+ * exactamente **1** tarea `soloPorEvento` en el catálogo, en
+ * `aux-logistica-flotilla`. Si el emisor hubiera pasado a la función de
+ * mostrar, esa persona habría empezado a recibir una tarea que hoy no recibe,
+ * sin que nadie lo pidiera y sin una línea en ningún log. Un cambio silencioso
+ * de lo que se le exige a alguien es justo lo que este proyecto persigue.
+ *
+ * Las capturadas NO se filtran por evento: la tabla no tiene esa columna, así
+ * que todas son automáticas. El día que la tenga, se filtra aquí.
+ */
+export function tareasAutomaticasCombinadas(
+  puestoId: string | undefined | null,
+  declaradas: TareaDePuesto[],
+): TareaManual[] {
+  const publicadas = tareasAutomaticasDePuesto(puestoId);
   const propias = declaradasDePuesto(puestoId, declaradas).map(aTareaManual);
   return [...publicadas, ...propias];
 }

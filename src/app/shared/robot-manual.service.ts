@@ -31,6 +31,7 @@ import { ConfigTurnos } from './turnos.util';
 import { obtenerSemanaISO } from './descansos.util';
 import { HorarioSucursal } from './horarios-sucursal.util';
 import { TareaManual, FrecuenciaManual, tareaManualPorId } from './tareas-manual.catalogo';
+import { TareaDePuesto } from './tareas-puesto.util';
 
 // LA REGLA. Vive fuera del service para que el emisor del servidor pueda
 // llamarla (api/emitir-manual.js la requiere compilada desde dist/manual). Los
@@ -111,7 +112,11 @@ export class RobotManualService {
    * Los dos fallos van a `catch` silencioso y hacia el lado seguro: sin config
    * de turnos no se restringe a nadie, y sin descansos no se omite a nadie.
    */
-  private async cargarInsumos(fecha: Date): Promise<{ configTurnos: ConfigTurnos | null; descansosSemana: any[] }> {
+  private async cargarInsumos(fecha: Date): Promise<{
+    configTurnos: ConfigTurnos | null;
+    descansosSemana: any[];
+    tareasDeclaradas: TareaDePuesto[];
+  }> {
     let configTurnos: ConfigTurnos | null = null;
     try {
       const r = await this.api.get('/api/config?id=turnos').catch(() => null);
@@ -125,7 +130,19 @@ export class RobotManualService {
       descansosSemana = r?.items || [];
     } catch { /* sin descansos => no se omite a nadie por descanso */ }
 
-    return { configTurnos, descansosSemana };
+    // Las tareas capturadas desde «Manual por Puesto» (paso 7.1b). El servidor
+    // lee la MISMA tabla en api/emitir-manual.js; las dos vias tienen que ver
+    // lo mismo o la persona tendria dos denominadores segun quien emitiera
+    // primero. Fallo => lista vacia => se entrega solo el manual publicado,
+    // que es el comportamiento anterior a este paso.
+    let tareasDeclaradas: TareaDePuesto[] = [];
+    try {
+      const r = await this.api.get('/api/tareas-puesto');
+      const filas: any[] = Array.isArray(r?.items) ? r.items : [];
+      tareasDeclaradas = filas.filter(x => x && x.vigente !== false) as TareaDePuesto[];
+    } catch { /* sin capturadas => solo el manual publicado */ }
+
+    return { configTurnos, descansosSemana, tareasDeclaradas };
   }
 
   /**
@@ -152,12 +169,12 @@ export class RobotManualService {
     if (!usuario) return sinRespuesta;
 
     await this.cargarHorarios();
-    const { configTurnos, descansosSemana } = await this.cargarInsumos(fecha);
+    const { configTurnos, descansosSemana, tareasDeclaradas } = await this.cargarInsumos(fecha);
 
     const plan = planDeEntregas({
       usuarios: [usuario], fecha,
       horarios: this.horarios,
-      configTurnos, descansosSemana,
+      configTurnos, descansosSemana, tareasDeclaradas,
       idsExistentes: new Set<string>(),
       esDiaCerrado: hooks.esDiaCerrado,
       esSucursalAdministrativa: hooks.esSucursalAdministrativa,
@@ -219,7 +236,7 @@ export class RobotManualService {
     // descansos de la semana (a quien descansa no se le entrega nada). Salen de
     // `cargarInsumos`, la MISMA carga que usa `explicarPara`: ver alli por que
     // no pueden ser dos lecturas distintas.
-    const { configTurnos, descansosSemana } = await this.cargarInsumos(fecha);
+    const { configTurnos, descansosSemana, tareasDeclaradas } = await this.cargarInsumos(fecha);
 
     // -- LA DECISION YA NO VIVE AQUI --------------------------------------
     //
@@ -231,7 +248,7 @@ export class RobotManualService {
     const plan = planDeEntregas({
       usuarios, fecha,
       horarios: this.horarios,
-      configTurnos, descansosSemana,
+      configTurnos, descansosSemana, tareasDeclaradas,
       idsExistentes: idsDeHoy,
       esDiaCerrado: hooks.esDiaCerrado,
       esSucursalAdministrativa: hooks.esSucursalAdministrativa,

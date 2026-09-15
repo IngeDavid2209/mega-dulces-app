@@ -223,6 +223,50 @@ async function emitirDeHoy() {
 
   const horarios = await leerHorarios();
 
+  // ── Las tareas CAPTURADAS desde la app (paso 7.1b) ────────────────────────
+  //
+  // La tabla la llena Dirección o Capital Humano desde «Manual por Puesto», y
+  // hasta este paso NADIE la leía: se podía capturar una tarea y no se
+  // entregaba a nadie, que es la peor combinación posible porque quien la
+  // captura se va convencido de que ya rige.
+  //
+  // ⚠ EL `catch` DEVUELVE LISTA VACÍA Y ESO ES LA DECISIÓN, no un descuido. Si
+  // esta consulta falla, se emite SOLO el manual publicado — exactamente lo de
+  // antes de este paso. La alternativa (abortar la vuelta) dejaría sin sus
+  // tareas de siempre a toda la plantilla por una tabla que hoy está casi
+  // vacía. Se entrega de menos lo nuevo antes que perder lo que ya funciona.
+  //
+  // Se filtra `vigente` en SQL Y la regla lo vuelve a filtrar en
+  // `declaradasDePuesto`: retirar una norma es marcarla no vigente (§5.5,
+  // nunca se borra), y una retirada que se siguiera entregando es trabajo
+  // exigido por una regla derogada.
+  let tareasDeclaradas = [];
+  try {
+    const t = await query(
+      `select id, puesto_id, nombre, momento, frecuencia, dia_semana, dia_mes,
+              hora_limite, documento, version, vigente, datos
+         from mdtask_tareas_puesto
+        where vigente = true`
+    );
+    tareasDeclaradas = t.rows.map(x => ({
+      id: x.id, puestoId: x.puesto_id, nombre: x.nombre,
+      momento: x.momento, frecuencia: x.frecuencia,
+      diaSemana: x.dia_semana, diaMes: x.dia_mes,
+      horaLimite: x.hora_limite,
+      documento: x.documento, version: x.version,
+      vigente: x.vigente !== false,
+      items: Array.isArray((x.datos || {}).items) ? x.datos.items : [],
+    }));
+    if (tareasDeclaradas.length) {
+      console.log('[emisor-manual] tareas capturadas vigentes: %d en %d puesto(s)',
+        tareasDeclaradas.length,
+        new Set(tareasDeclaradas.map(t2 => t2.puestoId)).size);
+    }
+  } catch (e) {
+    console.error('[emisor-manual] tareas capturadas (se emite solo el manual publicado):',
+      (e && e.message) || e);
+  }
+
   // ── La decisión: la MISMA función que corre en el navegador ───────────────
   //
   // `esDiaCerrado` y `esSucursalAdministrativa` no se pasan a propósito: esos
@@ -232,6 +276,7 @@ async function emitirDeHoy() {
   // se lee como que la persona no trabajó. Queda anotado como pendiente.
   const plan = r.planDeEntregas({
     usuarios, fecha, horarios, configTurnos, descansosSemana, idsExistentes,
+    tareasDeclaradas,
   });
 
   // ── La escritura ──────────────────────────────────────────────────────────

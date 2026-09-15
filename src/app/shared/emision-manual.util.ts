@@ -42,6 +42,7 @@ import { evidenciaDe } from './evidencia-manual';
 import {
   TareaManual, FrecuenciaManual, manualDePuesto, tareasAutomaticasDePuesto,
 } from './tareas-manual.catalogo';
+import { TareaDePuesto, tareasAutomaticasCombinadas } from './tareas-puesto.util';
 
 export const DIAS_SEMANA = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 
@@ -86,6 +87,21 @@ export interface EntradaPlanEntregas {
    *  ELIMINADOS a propósito: un id tomado es un id tomado, y recrearlo pisaría
    *  con items en blanco un checklist que alguien ya contestó. */
   idsExistentes: Set<string>;
+  /**
+   * Las tareas CAPTURADAS (`mdtask_tareas_puesto`), ya leídas por quien llama.
+   *
+   * Viajan como insumo en vez de leerse aquí porque esta función es PURA: no
+   * conoce Postgres ni la API, y esa es la condición para que el navegador y
+   * el servidor decidan idéntico. Si cada uno las leyera por su cuenta con su
+   * propio criterio de «vigente», la misma persona tendría dos denominadores
+   * según quién emitiera primero (§8.11 d).
+   *
+   * Vacío o ausente = solo se entrega el manual publicado, que es exactamente
+   * el comportamiento anterior a este paso. La lectura falla hacia ese lado a
+   * propósito: quitarle a una cajera sus 3 tareas de siempre porque una
+   * consulta no respondió sería peor que no darle todavía las nuevas.
+   */
+  tareasDeclaradas?: TareaDePuesto[];
   esDiaCerrado?: (sucursal: string, fecha: Date) => boolean;
   esSucursalAdministrativa?: (sucursal: string) => boolean;
 }
@@ -133,7 +149,11 @@ export function planDeEntregas(e: EntradaPlanEntregas): PlanDeEntregas {
       continue;
     }
 
-    const tareas = tareasAutomaticasDePuesto(puestoId);
+    // Su manual publicado MÁS lo capturado para su puesto. Ver
+    // `tareasAutomaticasCombinadas`: NO es la función que usa la pantalla para
+    // mostrar la hoja del puesto, porque aquélla incluye las de solo-evento y
+    // entregarlas daría trabajo que nadie puede anticipar.
+    const tareas = tareasAutomaticasCombinadas(puestoId, e.tareasDeclaradas || []);
     if (!tareas.length) {
       omitidos.push({ nombre, motivo: `el puesto "${nombrePuesto(puestoId)}" aún no tiene manual` });
       continue;
@@ -680,9 +700,23 @@ export function armarChecklist(args: {
     _origenManual: true,
     _puestoId: puestoId,
     _tareaManualId: tarea.id,
-    _manualDocumento: manual?.documento || '',
-    _manualCodigo: manual?.codigo || '',
-    _manualVersion: manual?.version || '',
+    // ⚠ LA NORMA CON LA QUE SE JUZGA, y cuál gana.
+    //
+    // Una tarea CAPTURADA (`tp-…`) trae su propio documento y su propia
+    // versión en `selloPropio`, y esos mandan. Sin esa preferencia se sellaría
+    // con los del manual PUBLICADO del puesto —lo único que esta función
+    // conoce— y el checklist afirmaría venir de un documento en el que esa
+    // tarea no está: para una cajera, «Manual Corporativo de Operación —
+    // Cajera de Sucursal · v1.1». El `|| ''` hace que eso no falle, así que se
+    // emitiría igual y simplemente no se podría auditar — el invariante §5.4
+    // perdido justo en el paso que viene a cumplirlo.
+    //
+    // El código de formato NO se hereda: es el anexo del manual publicado y
+    // una tarea capturada no tiene anexo. Heredarlo la haría citar un formato
+    // que no le corresponde.
+    _manualDocumento: tarea.selloPropio?.documento || manual?.documento || '',
+    _manualCodigo: tarea.selloPropio ? '' : (manual?.codigo || ''),
+    _manualVersion: tarea.selloPropio?.version || manual?.version || '',
     _formatoCodigo: tarea.codigoFormato || '',
     _momento: tarea.momento,
     _porEvento: !!tarea.porEvento,

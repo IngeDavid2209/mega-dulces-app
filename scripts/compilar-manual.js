@@ -51,6 +51,11 @@ const ESPERADOS = [
   // `sucursales-elegibles` (que a su vez clasifica el destino con las zonas).
   // Se listan aqui para que, si alguien cambia un import y tsc deja de
   // emitirlos, el build se detenga en vez de dejar al servidor sin la regla.
+  // El que entro con 7.1b: la regla ahora suma las tareas CAPTURADAS desde la
+  // app a las del manual publicado. Si tsc dejara de emitirlo, el emisor
+  // arrancaria entregando SOLO lo publicado y nadie lo notaria hasta que
+  // alguien preguntara por la tarea que capturo y no le llego.
+  'tareas-puesto.util.js',
   'sucursales-elegibles.util.js',
   'unidad-servida.util.js',
   'zonas.util.js',

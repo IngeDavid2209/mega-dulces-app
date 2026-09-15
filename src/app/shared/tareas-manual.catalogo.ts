@@ -78,6 +78,30 @@ export interface TareaManual {
   /** Código del anexo/formato en el manual (CEDIS-CH-01, RM-PH-02, ...). */
   codigoFormato?: string;
   /**
+   * Con qué norma se juzga esta tarea, cuando NO es la del manual publicado.
+   *
+   * ═════════════════════════════════════════════════════════════════════════
+   *  POR QUÉ EXISTE, Y POR QUÉ ES UN OBJETO Y NO DOS CAMPOS SUELTOS
+   * ═════════════════════════════════════════════════════════════════════════
+   * Las tareas CAPTURADAS (`mdtask_tareas_puesto`, prefijo `tp-`) traen su
+   * propio documento y su propia versión. Sin esto, `armarChecklist` sellaría
+   * el checklist con los del manual publicado del puesto —porque es lo único
+   * que conoce— y afirmaría que una tarea capturada viene de un documento en
+   * el que no está. Para una cajera diría «Manual Corporativo de Operación —
+   * Cajera de Sucursal · v1.1», que es sencillamente falso, y el `|| ''` de
+   * abajo hace que eso NO falle: se emite igual y simplemente no se puede
+   * auditar. Sería perder el invariante §5.4 —«cada emisión guarda la versión
+   * con la que se juzgó»— en el paso que viene a cumplirlo.
+   *
+   * Va como OBJETO para que no se pueda llenar a medias: un documento sin
+   * versión, o al revés, es media coordenada, y media coordenada no imprime
+   * una hoja de auditoría. O están los dos o no está ninguno.
+   *
+   * Ausente = la tarea es del catálogo publicado y se sella con su manual,
+   * exactamente como hasta hoy.
+   */
+  selloPropio?: { documento: string; version: string };
+  /**
    * El manual lo llena una vez por CADA evento del día (cada pedido, cada
    * recepción). La app entrega una instancia diaria que hace de registro
    * consolidado de la jornada; el detalle por evento va en las observaciones.

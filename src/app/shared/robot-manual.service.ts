@@ -251,6 +251,30 @@ export class RobotManualService {
     const periodo = this.llavePeriodo(tarea.frecuencia, args.fecha);
     const checklistId = this.idemKey(tarea.id, periodo, args.sucursal, args.destinatario);
 
+    // ══════════════════════════════════════════════════════════════════════
+    //  EL LIMITE DE ESTA COMPROBACION, DICHO PARA QUE NO SE LEA DE MAS
+    // ══════════════════════════════════════════════════════════════════════
+    // `POST /api/checklists` hace `on conflict (id) do update`: es un UPSERT
+    // CIEGO que reemplaza el documento entero. No es un descuido del endpoint
+    // —es el guardado normal de la app, que lo usa para todo— pero significa
+    // que esta lectura previa es lo UNICO que impide sobrescribir.
+    //
+    // Cubre el caso real: si la tarea ya esta, no se escribe. Lo que NO cubre
+    // es una carrera de segundos contra los otros dos emisores (el robot del
+    // navegador y, desde el 14/sep, el del servidor cada 10 min). En esa
+    // ventana el documento del otro acaba de nacer EN BLANCO, asi que
+    // reemplazarlo no pierde trabajo de nadie.
+    //
+    // Lo que si seria grave es sobrescribir un checklist YA TRABAJADO, y eso
+    // esta fuera de la ventana: para llegar ahi, la lectura tendria que haberlo
+    // visto y no verlo. Por eso un fallo de lectura ABORTA en vez de seguir.
+    //
+    // PENDIENTE, y es del endpoint, no de aqui: `api/checklists.js` ya tiene
+    // `insertarSiNoExiste` (`on conflict do nothing`) para el emisor del
+    // servidor, pero no esta expuesto por HTTP. El dia que lo este, esta
+    // escritura deberia usarlo y la lectura previa pasaria a ser solo para
+    // poder DECIR «ya la tiene», no para proteger.
+    //
     // ¿Ya existe? Se pregunta por la FECHA, que es donde el robot también mira.
     // Un fallo de lectura NO se trata como «no existe»: eso escribiría encima
     // de lo que alguien pudo haber contestado ya, y ese es el daño que no se

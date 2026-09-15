@@ -64,10 +64,15 @@ const MARCADORES = [
   // anteriores bajan a control. Mantener ese orden importa: dos veces hoy el
   // comentario se quedo describiendo el marcador ANTERIOR, y un comentario que
   // narra otra cosa que la linea de abajo es doctrina falsa en dos semanas.
-  // El correo del dueño. YA VALIA 1 antes de este cambio -esta en la lista de
-  // cuentas exentas del modo mantenimiento desde hace meses- asi que aqui no
-  // vale preguntar "¿aparece?" sino "¿aparece DOS veces?". Ver `minimo` abajo.
-  { txt: 'CEDIS', nuevo: true, minimo: 78, que: 'el filtro de lugares con cuadrilla' },
+  // 14/sep/2026 · EL ARBOL EN UN CELULAR. Un cambio de PURO CSS tampoco
+  // introduce una cadena propia -misma raiz que la Fase 2.1-, asi que el
+  // marcador honesto es el VALOR que solo existe en la regla nueva: las tres
+  // columnas a las que se reduce la rejilla de cifras en un telefono. Medido
+  // en las dos direcciones antes de subir: 1 en dist/, 0 en produccion.
+  // (Va tal cual, con espacios: el minificador de Angular conserva el valor de
+  // `grid-template-columns` aunque se coma los nombres de funcion.)
+  { txt: '46px 56px 38px', nuevo: true, que: 'la rejilla de cifras del arbol en movil' },
+  { txt: 'CEDIS', control: true, minimo: 78, que: 'el filtro de lugares con cuadrilla' },
   { txt: 'Sin sucursales', control: true, minimo: 4, que: 'la lista de sucursales sale de la ficha' },
   { txt: 'direccion-general', control: true, minimo: 10, que: 'Usuarios solo para el dueño y Direccion General' },
   { txt: 'a tu nombre', control: true, que: 'el arreglo de «Mis tareas»' },

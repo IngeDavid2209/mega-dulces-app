@@ -3816,6 +3816,30 @@
   flex-wrap: wrap;
 }
 
+/* ── EL RIEL SEGMENTADO ES **UN** CONTROL, NO DOS BOTONES ──────────────────
+   La regla de arriba le estaba metiendo 6px de separación y `flex-wrap: wrap`
+   DENTRO del riel de «Mis tareas / Toda la operación», porque
+   `.cl-toolbar .vista-tabs` y `.vista-tabs.eje-alcance` tienen la MISMA
+   especificidad (0,2,0) y gana la que va después en el archivo. Es un empate
+   que no se ve leyendo ninguna de las dos por separado: hay que pintarlo.
+   Con la separación puesta, las dos mitades se leen como dos pastillas sueltas
+   metidas en una caja; y con `wrap`, en cuanto el contador crece lo suficiente
+   el interruptor se parte en dos filas dentro de una pastilla redondeada. */
+.cl-toolbar .vista-tabs.eje-alcance { gap: 0; flex-wrap: nowrap; }
+
+@media screen and (max-width: 640px) {
+  /* En un teléfono los dos rieles van cada uno en SU renglón y de borde a
+     borde. A media pantalla, un interruptor se lee como si estuviera cortado —
+     que es la mitad de lo que David señaló en la captura. */
+  .cl-toolbar-izq { width: 100%; }
+  .cl-toolbar-izq > .vista-tabs { width: 100%; }
+  .cl-toolbar-izq > .vista-tabs > .vista-tab {
+    flex: 1 1 0;
+    min-width: 0;
+    justify-content: center;
+  }
+}
+
 @media screen and (max-width: 768px) {
   .cl-toolbar { gap: 10px; }
   .cl-toolbar-der { width: 100%; }

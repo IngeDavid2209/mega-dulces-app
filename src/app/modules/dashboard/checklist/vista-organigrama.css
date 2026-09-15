@@ -909,3 +909,136 @@
 @media (pointer: coarse), (max-width: 768px) {
   .org-tarea-meta, .org-tarea-puntos, .org-tarea-evento { font-size: 12px; }
 }
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   14/sep/2026 · EL ÁRBOL EN UN CELULAR — «se descuadra» (captura de David)
+
+   Instrucción literal: «cuando están en un dispositivo móvil, ya sea iPhone o
+   Android, se descuadra; hazla responsiva».
+
+   ─── LO MEDIDO ANTES DE TOCAR, a 390px ────────────────────────────────────
+       filas del árbol que se salen de la pantalla ....  5 de 5
+       borde derecho más lejano ......................  x = 698   (pantalla 390)
+       eje derecho: cabecera 333  ·  filas 688 ........  355px de desfase
+       «Solo con manual» llegaba a x = 397 ............  la barra acaba en 359
+
+   Y el documento NO se desbordaba: 390 de 390. Por eso el diagnóstico
+   responsivo del 13/sep dio verde en esta pantalla y tenía razón — el
+   desbordamiento vive DENTRO de `.org-card`, que lleva `overflow: hidden`, así
+   que el exceso no se desplaza: DESAPARECE. Medir el scroll del documento no
+   contesta esta pregunta; hay que medir el borde de las filas contra el ancho
+   de la pantalla.
+
+   ─── LA CAUSA RAÍZ, que son dos y la primera no se ve leyendo esta clase ───
+   (1) `.org-menu` es un ITEM DE REJILLA de `.org-cuerpo`, y un item de rejilla
+       trae `min-width: auto`: no puede encogerse por debajo del ancho MÍNIMO de
+       su contenido. Con una fila que pide 698px, el contenedor se estiraba a
+       698 aunque la pantalla midiera 390.
+   (2) `.org-puesto-datos` era `flex: 0 0 auto` con cinco columnas fijas —262px
+       que no ceden un píxel—. Es EXACTAMENTE el defecto del 7/sep con otra
+       ropa: allá eran tres pastillas en `nowrap` estrangulando el título de la
+       tarjeta; aquí son cinco cifras empujando la fila fuera del teléfono.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* (1) — y va SIN media query porque es correcto a cualquier ancho: en
+   escritorio el mínimo (698) cabe de sobra, así que no cambia un píxel ahí. */
+.org-cuerpo > .org-menu,
+.org-cuerpo > .org-detalle { min-width: 0; }
+
+@media (max-width: 860px) {
+  /* Los DOS contenedores con el MISMO padding horizontal. El encabezado de
+     columnas vive en `.org-barra` y las cifras en `.org-menu`: si no coinciden,
+     los rótulos dejan de caer sobre su columna. Es el defecto de 4px del
+     4/sep — aquí eran 6, porque la barra bajaba a 12 y la lista se quedaba en
+     18, y nadie lo había medido en móvil. */
+  .org-menu { padding: 10px 12px 18px; }
+
+  /* «Solo con manual» salía CORTADO. `.org-acciones` es `flex: 0 0 auto`, así
+     que se dimensiona por su contenido: envuelve por dentro y aun así se
+     desborda, porque su base nunca baja del ancho de los tres botones. */
+  .org-barra .org-acciones { flex: 1 1 100%; }
+
+  /* Y EL ENCABEZADO DE COLUMNAS SIGUE A LA FILA, que desde 860px baja a
+     `padding-right: 10px` (línea 388, de un cambio anterior). La cabecera se
+     quedó en 14 y nadie lo midió: el desfase del 4/sep llevaba vivo en TABLET
+     desde entonces. Medido a 768px antes de esta línea: cabecera 711 contra
+     fila 715. A ojo es «casi alineado»; en la pantalla son los rótulos
+     RAMA/MANUAL/AVANCE fuera de su columna. Las dos mitades del mismo eje se
+     mueven juntas o no se mueven. */
+  .org-barra .org-cab { padding-right: 10px; }
+}
+
+@media (max-width: 640px) {
+  /* (2) LA REJILLA DE CIFRAS DEJA DE SER INTOCABLE.
+     En un teléfono no caben cinco cifras al lado del nombre. Se quedan las TRES
+     que se leen de un vistazo:
+
+         MANUAL   cuántas tareas manda su manual
+         AVANCE   el porcentaje de toda la rama
+         VENC.    lo vencido, que es la alarma
+
+     «Rama» (cuántos puestos debajo) ya lo dice el chevron, y «Propio» es el
+     mismo avance sin contar a los de abajo: en 390px es ruido, no dato.
+
+     Se esconden POR POSICIÓN sobre `.org-puesto-datos`, que es la misma clase
+     que usa el encabezado —tal como dice el comentario de arriba, una sola
+     definición de anchuras—. Así la cabecera pierde exactamente las mismas dos
+     columnas y los ejes NO PUEDEN desalinearse. */
+  .org-puesto-datos {
+    grid-template-columns: 46px 56px 38px;   /* manual · avance · venc. */
+    gap: 0 8px;
+    margin-left: auto;
+  }
+
+  /* Los rótulos van pegados al borde derecho de su columna (`justify-self:end`),
+     así que con 4px de separación «AVANCE» y «VENC.» se leían como una sola
+     palabra: AVANCEVENC. Eso no lo dice ninguna medición de anchos — salió de
+     mirar la captura. Ocho de separación y un punto menos de cuerpo. */
+  .org-barra .org-cab .org-slot { font-size: 10.5px; letter-spacing: .02em; }
+  .org-puesto-datos > .org-slot:nth-child(1),   /* rama   */
+  .org-puesto-datos > .org-slot:nth-child(4) {  /* propio */
+    display: none;
+  }
+
+  /* Y LA FILA ENVUELVE EN VEZ DE CORTAR. Con `nowrap`, la pastilla «servicio a»
+     o el botón «rama» empujaban las cifras fuera del borde y ahí desaparecían.
+     Envuelto, lo peor que pasa es que la fila crezca un renglón — que en un
+     teléfono es el precio correcto. */
+  .org-puesto { flex-wrap: wrap; row-gap: 2px; padding: 8px 10px; }
+
+  /* El nombre puede caer en dos renglones: «Checklist de supervisión de
+     sucurs…» cortado no dice cuál checklist es. */
+  .org-puesto-nombre {
+    flex: 1 1 140px;
+    font-size: 15.5px;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  /* Cinco niveles × 24px son 120px de sangría: un tercio de la pantalla gastado
+     en líneas verticales. A 12 siguen leyéndose y cabe el nombre. */
+  .org-guia { flex: 0 0 12px; }
+
+  /* ── Y LO MISMO EN LAS OTRAS FILAS, que tienen el defecto idéntico ───────
+     `.org-fila` (sucursal · persona · tarea · entrega) lleva
+     `.org-fila-datos { flex: 0 0 auto }`: el mismo bloque que no cede. En la
+     captura se veía como «📕 …» — el nombre de la tarea reducido a tres puntos
+     mientras «Semanal 19:00 6 pts» se quedaba con todo el ancho.
+     Se arregla aquí y no en cuatro sitios porque las cuatro comparten clase. */
+  .org-fila { flex-wrap: wrap; row-gap: 2px; padding: 6px 10px; }
+  .org-fila-nombre {
+    flex: 1 1 140px;
+    font-size: 15px;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .org-fila-datos { margin-left: auto; flex-wrap: wrap; justify-content: flex-end; }
+
+  /* El botón «rama» hereda el mínimo táctil de 44px (`--tap-min`, 13/sep), y
+     con un texto de cuatro letras eso lo dejaba casi CUADRADO — con el radio
+     de pastilla se leía como un círculo suelto al lado del nombre. No se le
+     baja la altura: ese mínimo existe para que se pueda pulsar con el dedo.
+     Se le da ancho, que es lo que lo vuelve a parecer un botón. */
+  .org-rama-btn { padding: 3px 18px; margin-right: 0; }
+}

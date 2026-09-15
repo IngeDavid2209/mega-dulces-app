@@ -324,6 +324,101 @@ de que exista la plaza sería partir el problema en dos, no resolverlo.
 
 ## 9. Bitácora del plan
 
+### 14/sep/2026 — TAREAS DEL MANUAL EN UN CELULAR: no era el riel, era el árbol
+
+Instrucción de David sobre una captura de las dos pastillas «Mis tareas / Toda la operación»:
+*«cuando están en un dispositivo móvil, ya sea iPhone o Android, se descuadra; hazla
+responsiva»*.
+
+**LO PRIMERO QUE MEDÍ ESTABA BIEN, Y ESA ES LA MITAD ÚTIL DEL DÍA.** La hipótesis obvia era que
+el riel segmentado se partía en dos renglones. Se midió a 390, 375 y 360px con el contador real
+de la captura (286, tres dígitos): **cae en un renglón en los tres anchos**. La hipótesis era
+falsa y la prueba lo dijo antes de que tocara una línea.
+
+Lo que destapó el defecto fue **mirar la captura**, no medirla — la lección del 7/sep otra vez.
+Debajo del riel, el árbol del organigrama:
+
+| a 390px | antes | después |
+|---|---|---|
+| filas que se salen de la pantalla | **5 de 5** | **0 de 12** |
+| borde derecho más lejano | **x = 698** | x = 347 |
+| eje derecho cabecera / filas | 333 / 688 | **337 / 337** |
+| «Solo con manual» | cortado (x=397 con la barra en 359) | dentro |
+| riel «Mis / Toda» | 295px, segmentos 114 y 169 | 345px, **170 y 170** |
+
+**Y EL DIAGNÓSTICO RESPONSIVO DEL 13/SEP DECÍA «ninguna pantalla se desborda» CON RAZÓN.**
+El documento medía 390 de 390. El desbordamiento vive **dentro de `.org-card`**, que lleva
+`overflow: hidden`: el exceso no se desplaza, **DESAPARECE**. Medir el scroll del documento no
+contesta esta pregunta. La métrica correcta es el borde derecho de las filas contra el ancho de
+la pantalla — y mi primer intento tampoco la tenía: usé `scrollWidth > clientWidth` de la fila,
+que da **0 filas cortadas** con el eje en x=698, porque la fila mide 100% de un padre que ya se
+desbordó. Un proxy del arreglo, §8.11(b), a la primera.
+
+#### LAS DOS CAUSAS, Y LA PRIMERA NO SE VE LEYENDO LA CLASE
+
+1. **`.org-menu` es un ITEM DE REJILLA**, y un item de rejilla trae `min-width: auto`: no puede
+   encogerse por debajo del ancho **mínimo** de su contenido. Con una fila que pedía 698px, el
+   contenedor se estiraba a 698 en una pantalla de 390. El arreglo es `min-width: 0`, y va **sin
+   media query** porque es correcto a cualquier ancho.
+2. **`.org-puesto-datos` era `flex: 0 0 auto` con cinco columnas fijas (262px).** Es
+   **exactamente el defecto del 7/sep con otra ropa**: allá tres pastillas en `nowrap`
+   estrangulando el título de la tarjeta, aquí cinco cifras empujando la fila fuera del teléfono.
+   En móvil se reduce a las tres que se leen —MANUAL · AVANCE · VENC.— escondiendo las ranuras
+   **por posición sobre la misma clase que usa el encabezado**, así que la cabecera pierde las
+   mismas dos columnas y los ejes **no pueden** desalinearse. Una sola definición, como ya estaba
+   escrito en ese archivo.
+
+Lo mismo en `.org-fila` (sucursal · persona · tarea · entrega), que tenía `.org-fila-datos {
+flex: 0 0 auto }`: en la captura se veía como «📕 …», el nombre de la tarea reducido a tres
+puntos mientras «Semanal 19:00 6 pts» se quedaba con todo el ancho.
+
+#### UN DESFASE DE 4px QUE YA LLEVABA MESES EN TABLET
+
+Al bajar el padding de la fila de 14 a 10 reabrí el desfase del 4/sep… y al medirlo apareció que
+**ya estaba roto desde antes**: `@media (max-width: 860px) { .org-puesto { padding-right: 10px } }`
+(de un cambio anterior) movía la fila y **dejaba la cabecera en 14**. Medido a 768px: cabecera
+711 contra fila 715. A ojo es «casi alineado»; en la pantalla son los rótulos fuera de su
+columna. Las dos mitades de un mismo eje se mueven juntas o no se mueven.
+
+**Y una asercion que culpaba sin datos:** decía «no llevan el mismo padding horizontal» sin
+haberlo comprobado. Ahora imprime los cuatro paddings medidos — y gracias a eso se vio que el
+culpable era la regla de 860, no la mía.
+
+#### EL RIEL SEGMENTADO: UN EMPATE DE ESPECIFICIDAD QUE NO SE LEE
+
+`.cl-toolbar .vista-tabs { gap: 6px; flex-wrap: wrap }` y `.vista-tabs.eje-alcance { gap: 0 }`
+tienen **la misma especificidad (0,2,0)**, así que gana la que va después en el archivo — la
+primera. Resultado: 6px de separación **dentro** del riel y `wrap` encendido, o sea dos pastillas
+sueltas metidas en una caja y un interruptor que se parte en cuanto el contador crece. Eso no se
+ve leyendo ninguna de las dos reglas: hay que pintarlo. En teléfono los dos rieles van ahora de
+borde a borde con los segmentos al 50%.
+
+#### LO QUE MIRAR AÑADIÓ Y MEDIR NO
+
+Con las cuatro aserciones en verde, la captura seguía mostrando **`AVANCEVENC.`** pegados —los
+rótulos van pegados al borde derecho de su columna, y con 4px de separación se leen como una
+palabra— y el botón «rama» convertido en un **círculo**, porque hereda el mínimo táctil de 44px
+(`--tap-min`, 13/sep) con un texto de cuatro letras. No se le bajó la altura: ese mínimo existe
+para el dedo. Se le dio ancho.
+
+#### LA PRUEBA, Y SU CONTROL DE ESCRITORIO
+
+`scripts/prueba-eje-alcance-movil.js` (nueva). El ancho y el contador son parámetros —la primera
+corrida midió 390px con 6 tareas y **pasó en verde**; el caso de la captura son 286—. Aborta si
+`--tap-min` no vale 44px, que es el testigo de «es móvil» y **vive en `styles.css`, fuera de lo
+que este arreglo toca** (§8.11 b). Y lleva `ESCRITORIO=1`, que invierte la pregunta: a 1024px la
+rejilla tiene que seguir teniendo **5 columnas y 262px**. Sin eso, un arreglo que arrasara con la
+pantalla grande habría pasado las cuatro corridas de móvil en verde. **201 pruebas** unitarias en
+verde, sin tocar ningún `.ts`.
+
+**DESPLEGADO:** `46px 56px 38px` **0 → 1** (marcador validado en las dos direcciones antes de
+subir: 1 en `dist/`, 0 en producción), **20 controles en pie**.
+
+**Lo que esto NO hace:** el **rediseño visual** de Tareas del Manual que David pidió aparte sigue
+pendiente. Esto la hace caber, no la hace bonita. Y nadie la ha abierto todavía desde un iPhone
+real — Chrome no es Safari, y esa lección ya está escrita arriba.
+
+
 ### 13/sep/2026 (tarde) — LO QUE DAVID VIO EN PANTALLA, y lo que ninguna medición había visto
 
 Ocho cambios salidos de que **David abrió la app y miró**. Ninguno se habría encontrado con las

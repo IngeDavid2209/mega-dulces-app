@@ -59,8 +59,26 @@ function sembrarModulo(ruta, exportaciones) {
 }
 
 // La base y los horarios se simulan para que cargar el emisor no toque nada.
+// La ficha es real (un anaquelista en Canindo tiene tareas diarias), porque el
+// caso que importa mas abajo es «el cierre se cuelga y AUN ASI se emite», y con
+// una base vacia la emision no crearia nada: el caso pasaria por no haber tenido
+// nada que emitir, no por el tope. §8.11(c).
+const FICHAS = [{
+  id: 'u1', nombre: 'Ana Anaquelista', rol: 'trabajador', activo: true,
+  datos: { puestoId: 'anaquelista', sucursales: ['Canindo'] },
+}];
+const creados = [];
 sembrarModulo(path.join(RAIZ, 'api/db.js'), {
-  query: async () => ({ rows: [], rowCount: 0 }), dbConfigurada: () => true,
+  dbConfigurada: () => true,
+  query: async (sql, params) => {
+    const s = String(sql);
+    if (/from mdtask_usuarios/i.test(s)) return { rows: FICHAS, rowCount: FICHAS.length };
+    if (/^\s*insert into mdtask_checklists/i.test(s)) {
+      creados.push(String(params[0]));
+      return { rows: [{ id: params[0] }], rowCount: 1 };
+    }
+    return { rows: [], rowCount: 0 };
+  },
 });
 sembrarModulo(path.join(RAIZ, 'api/horarios-sucursal.js'), { leerHorarios: async () => [] });
 
@@ -137,7 +155,50 @@ const tieneDistincion = /MODULE_NOT_FOUND/.test(fuente) &&
   /el módulo de cierre EXISTE y no se pudo cargar/.test(fuente);
 afirmar('distingue «aun no esta» de «esta y revienta»', tieneDistincion, true);
 
-console.log('\n=== GUARDIA DE DISCRIMINACION ===');
+console.log('\n=== 5. EL TOPE DEL CIERRE: un cuelgue NO puede dejar el dia sin emitir ===');
+// Lo pidio `mega-dulces-app-a3` al revisar el enganche, y tenia razon: el
+// try/catch solo cubre lo que LANZA. Un cuelgue no lanza —una consulta que no
+// vuelve, un pool agotado, un lock— y como el cierre va ANTES de emitir, ese
+// `await` sin tope dejaria a 186 personas sin tareas ese dia, en silencio.
+// Es el cuelgue del login del 1/sep con otra ropa.
+(async () => {
+  const { conTope, cambioDeDia } = emisor;
+
+  // a) El tope relanza, no se traga, y NOMBRA el paso.
+  const colgada = new Promise(() => { /* nunca resuelve, a proposito */ });
+  let err = null;
+  try { await conTope(colgada, 60, 'cerrar el dia 2026-09-14'); }
+  catch (e) { err = e; }
+  afirmar('un cuelgue vence y RELANZA (no se traga)', err !== null, true);
+  afirmar('el error trae su codigo', err && err.codigo, 'TOPE');
+  afirmar('y NOMBRA el paso abandonado',
+    !!(err && /cerrar el dia 2026-09-14/.test(err.message)), true);
+
+  // b) Lo que termina a tiempo pasa intacto.
+  const rapida = await conTope(Promise.resolve({ cerrados: 7 }), 1000, 'algo rapido');
+  afirmar('lo que responde a tiempo pasa sin tocarse', rapida, { cerrados: 7 });
+
+  // c) EL CASO QUE IMPORTA, de punta a punta.
+  process.env.EMISOR_CIERRE_TOPE_SEG = '0.2';
+  const antes = creados.length;
+  const cierreColgado = { cerrarDia: () => new Promise(() => {}) };
+  const inicio = Date.now();
+  await cambioDeDia('prueba', cierreColgado);
+  const tardo = Date.now() - inicio;
+  const nuevas = creados.length - antes;
+  console.log('  el cierre colgado se abandono en %d ms y se crearon %d tarea(s)', tardo, nuevas);
+  afirmar('con el cierre COLGADO, la emision ocurre igual', nuevas > 0, true);
+
+  // d) Y el control por el otro lado: un cierre que responde NO estorba.
+  const antes2 = creados.length;
+  creados.length = 0;
+  let llamado = false;
+  const cierreBueno = { cerrarDia: async () => { llamado = true; return { cerrados: 3, yaCerrados: 1, saltados: 0 }; } };
+  await cambioDeDia('prueba', cierreBueno);
+  afirmar('un cierre sano SI se llama', llamado, true);
+  afirmar('y la emision tambien ocurre', creados.length > 0, true);
+
+  console.log('\n=== GUARDIA DE DISCRIMINACION ===');
 // Sin esto, un `msHastaMedianoche` que devolviera siempre la misma constante
 // pasaria los casos de arriba. Dos llamadas separadas por una espera real
 // tienen que DECRECER.
@@ -159,5 +220,6 @@ if (fallos) {
   console.log('[prueba-reloj] %d FALLA(S) de %d afirmaciones.', fallos, corridas);
   process.exit(2);
 }
-console.log('[prueba-reloj] %d afirmaciones en verde, mas la guardia.', corridas);
-process.exit(0);
+  console.log('[prueba-reloj] %d afirmaciones en verde, mas las dos guardias.', corridas);
+  process.exit(0);
+})().catch(e => abortar('error no previsto: ' + ((e && e.stack) || e)));

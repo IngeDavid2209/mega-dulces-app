@@ -56,6 +56,38 @@ const INTERVALO_MS = Number(process.env.EMISOR_MANUAL_MIN || 10) * 60 * 1000;
 // el nuevo se quedaría sin nada hasta la vuelta de respaldo. Cinco segundos lo
 // hacen imposible y nadie los nota.
 const COLCHON_SEG = Number(process.env.EMISOR_MANUAL_COLCHON_SEG || 5);
+// Cuánto se le concede al cierre del día antes de abandonarlo y seguir a emitir.
+// Un minuto es holgado para lo que hace y es una eternidad para un cuelgue.
+//
+// Se lee EN CADA LLAMADA, no al cargar el módulo, y no es un capricho: con el
+// valor congelado en un `const`, la prueba del cuelgue tardaba 60 segundos
+// reales — y una prueba de un minuto es una prueba que nadie corre. De paso,
+// cambiar la variable en Railway surte efecto sin redesplegar.
+function topeCierreMs() {
+  return Number(process.env.EMISOR_CIERRE_TOPE_SEG || 60) * 1000;
+}
+
+/**
+ * Espera una promesa con límite de tiempo, relanzando —nunca tragándose— el
+ * vencimiento, y diciendo QUÉ PASO se abandonó.
+ *
+ * El nombre del paso no es adorno: sin él, el log dice «se agotó el tiempo» y
+ * quien lo lea mañana no sabe si fue la base, el cierre o la emisión. La app
+ * tiene el mismo helper en `shared/con-tope.util.ts`, pero ese es TypeScript de
+ * `src/` y la imagen de producción no lo lleva.
+ */
+function conTope(promesa, ms, paso) {
+  let reloj;
+  const vencimiento = new Promise((_, rechazar) => {
+    reloj = setTimeout(() => {
+      const e = new Error('Se agotó el tiempo al ' + paso + ' (' + Math.round(ms / 1000) + ' s).');
+      e.codigo = 'TOPE';
+      e.paso = paso;
+      rechazar(e);
+    }, ms);
+  });
+  return Promise.race([promesa, vencimiento]).finally(() => clearTimeout(reloj));
+}
 
 // La regla compilada. Vive en `dist/` porque es lo único que la imagen final se
 // lleva de la etapa de build (el Dockerfile no copia `src/` ni instala tsc).
@@ -310,15 +342,47 @@ function cargarCierre() {
  * con las tareas de hoy ya en la tabla y cualquier error de fecha las alcanzaría
  * — se cerraría como no ejecutado algo que nace en ese instante.
  */
-async function cambioDeDia(motivo) {
-  const hoy = regla ? regla.toYmd(ahoraEnZona(ZONA)) : null;
-  if (!hoy) return;
+async function cambioDeDia(motivo, cierreInyectado) {
+  // Se carga la regla AQUI en vez de confiar en que alguien la haya cargado
+  // antes. Hasta que la prueba lo destapó, esta función devolvía en SILENCIO
+  // —sin log, sin emitir— cuando `regla` seguía en null, y solo funcionaba
+  // porque `iniciarPoll` llamaba a `cargarRegla()` unas líneas más arriba. Eso
+  // es un accidente de orden, no una garantía: el día que alguien invoque el
+  // cambio de día por otro camino, el día entero se quedaría sin emitir y no
+  // habría nada que leer. `cargarRegla` ya memoiza y ya grita si falla.
+  const r = cargarRegla();
+  if (!r) return;
+  const hoy = r.toYmd(ahoraEnZona(ZONA));
 
-  const cierre = cargarCierre();
+  // La costura es para la prueba, y merece explicación: el caso que hay que
+  // poder ejercitar es «el cierre SE CUELGA y aun así se emite», y escribir un
+  // `api/cerrar-dia.js` de mentira en el disco para provocarlo dejaría un
+  // módulo falso en el repo si la prueba muriera a medias. En producción nadie
+  // pasa este parámetro y se usa el módulo real.
+  const cierre = cierreInyectado || cargarCierre();
   if (cierre && typeof cierre.cerrarDia === 'function') {
     const ayer = ayerDe(hoy);
     try {
-      const r = await cierre.cerrarDia(ayer);
+      // ⚠ CON TOPE, Y LA DIFERENCIA NO ES DE ESTILO.
+      //
+      // El try/catch de abajo solo cubre lo que LANZA. Un cuelgue no lanza: una
+      // consulta que no vuelve, un pool agotado, una transacción esperando un
+      // lock. Sin tope, ese `await` se queda ahí y —como el cierre va ANTES de
+      // emitir— deja a 186 personas sin sus tareas ese día, en silencio y sin
+      // una sola línea en el log.
+      //
+      // Es el cuelgue del login del 1/sep con otra ropa: cinco `await` sin tope,
+      // y el peor era el que estaba después de guardar la sesión. Allá la
+      // persona quedaba autenticada mirando «VERIFICANDO...» para siempre; aquí
+      // el día se quedaría sin emitir mirando nada.
+      //
+      // Y la guardia va del lado del QUE LLAMA, no dentro del módulo de cierre:
+      // un tope que viviera allí dentro no protege del caso en que lo que se
+      // atasca sea el propio módulo antes de llegar a él.
+      //
+      // El peor caso queda en «un día sin cerrar», que la vuelta siguiente
+      // recupera, en vez de «un día sin emitir», que no se recupera solo.
+      const r = await conTope(cierre.cerrarDia(ayer), topeCierreMs(), 'cerrar el día ' + ayer);
       console.log('[emisor-manual] cierre de %s (%s): %d cerrados, %d ya lo estaban, %d saltados',
         ayer, motivo, r?.cerrados ?? 0, r?.yaCerrados ?? 0, r?.saltados ?? 0);
     } catch (e) {
@@ -374,4 +438,4 @@ function iniciarPoll() {
     console.error('[emisor-manual] vuelta de respaldo:', (e && e.stack) || e)), INTERVALO_MS);
 }
 
-module.exports = { iniciarPoll, emitirDeHoy, ahoraEnZona, resumenDeMotivos };
+module.exports = { iniciarPoll, emitirDeHoy, ahoraEnZona, resumenDeMotivos, cambioDeDia, conTope };

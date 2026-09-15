@@ -2604,7 +2604,15 @@
   font-weight: var(--fw-bold);
 }
 
-/* ALCANCE — segmentado: las dos opciones viven DENTRO de un mismo riel, que es
+/* ⚠ SIN USO DESDE EL 14/sep/2026 — NINGUNA PLANTILLA LLEVA YA `eje-alcance`.
+   El riel de dos segmentos («Mis tareas / Toda la operación») se retiró cuando
+   David rehizo la barra en cuatro botones. Se deja el bloque, marcado, en vez de
+   borrarlo aquí: quitar CSS de una pantalla viva merece su propia verificación y
+   mezclarlo con un cambio de comportamiento haría imposible saber cuál de los
+   dos rompió qué (misma razón que las 44 clases `.org-` del 4/sep). Lo que NO
+   puede pasar es que alguien lo lea dentro de un mes creyendo que rige.
+
+   ALCANCE — segmentado: las dos opciones viven DENTRO de un mismo riel, que es
    lo que comunica "esto es un interruptor de dos", no dos botones sueltos. */
 .vista-tabs.eje-alcance {
   gap: 0; margin-bottom: 0;

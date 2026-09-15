@@ -513,7 +513,48 @@ vuelven a ser gobernables** (§1: para Actions, `git push` SÍ es el despliegue)
   sigue sin correr: necesita una `DATABASE_URL` de producción.
 - **Nadie ha entrado con una cuenta real.** Las tres sesiones son sintéticas en Chrome headless.
 - **La bitácora del despliegue de anoche quedó sin commitear**, en el árbol, de otra sesión. No
-  se tocó: mezclarla en este commit habría sido el fallo del 4/sep.
+  se tocó: mezclarla en este commit habría sido el fallo del 4/sep. *(Luego resultó ser de la
+  sesión a3, y David **había rechazado** esa edición: la herramienta le dijo que no había
+  escrito y sí lo había hecho. La revirtió ella. Y de paso destapó un error mío: al restaurar el
+  árbol desde una copia hecha antes, **reintroduje su bloque unos minutos** — restaurar desde una
+  copia vieja es reescribir el trabajo de otro con un estado caducado.)*
+
+#### LOS TRES AGUJEROS DE 7.1b, SEÑALADOS POR LA SESIÓN DEL EMISOR ANTES DE ESCRIBIRLO
+
+Revisión cruzada de `mega-dulces-app-b0`, que lleva el emisor. Se anotan aquí porque **7.1b se
+escribe contra esta lista**, no contra la intuición:
+
+1. **La colisión de ids — YA CERRADO, antes de que lo señalara.** `idemKey` es
+   `man_<tareaId>_<periodo>_<sucursal>_<persona>`, así que una tarea capturada que recibiera el
+   id de una publicada produciría **el mismo checklist id**: el emisor crearía una, encontraría
+   la otra tomada y la descartaría **en silencio**, sin que nadie supiera qué norma quedó escrita.
+   Lo impide el `check (id like 'tp-%')` de la 060 (línea 91), en SQL y no por convención. Vale
+   anotar que **dos sesiones llegaron por separado al mismo candado** partiendo del mismo
+   razonamiento sobre `idemKey`: es la señal de que el prefijo de la 057 era la pieza correcta.
+
+2. **LA VERSIÓN DE LA NORMA SE QUEDARÍA EN BLANCO — hallazgo real, sin resolver.** Confirmado
+   leyendo el archivo, no de palabra:
+
+       emision-manual.util.ts:424   _manualDocumento: manual?.documento || '',
+                             426   _manualVersion:   manual?.version   || '',
+
+   `manual` sale de `manualDePuesto(puestoId)`, que lee el catálogo de TypeScript. Para un puesto
+   sin manual es **null**, así que los tres sellos saldrían **cadena vacía** — y el `|| ''` hace
+   que eso **no falle**: el checklist se emite igual y simplemente no se puede auditar. Sería
+   perder el invariante §5.4 (*«cada emisión guarda la versión con la que se juzgó»*) **por el
+   camino, en el paso que viene a cumplirlo**. La fila ya trae `documento` y `version` (esta
+   última `not null`, justo por esto); falta que `armarChecklist` **los prefiera cuando existan**.
+
+3. **La regla de mezcla se decide, no se descubre.** Qué pasa si un puesto tiene manual **y**
+   tareas capturadas. `tareasCombinadasDePuesto` ya decidió —**se suman**, publicadas primero— y
+   `revisarTareaPuesto` **bloquea** capturar una con el mismo nombre que una publicada, así que
+   el choque no puede nacer. Pero su recomendación se toma: **7.1b arranca solo por los 70 puestos
+   SIN manual**, donde la tabla no compite con nada, y la mezcla espera a un caso real.
+
+4. **Y el `omitidos` del cliente va a mentir** mientras el navegador no lea la tabla: su robot
+   seguiría reportando «el puesto X aún no tiene manual» para gente que sí la tiene. No hace daño
+   —la idempotencia es por id y el servidor las crea igual— pero las dos lecturas tienen que
+   salir en el mismo paso.
 
 ### 14/sep/2026 (noche) — EL RELOJ DE LAS TAREAS SALE DEL NAVEGADOR
 

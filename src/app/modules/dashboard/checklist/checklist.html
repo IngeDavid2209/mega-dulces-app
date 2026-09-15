@@ -85,6 +85,21 @@
                   <line x1="5" y1="12" x2="19" y2="12"></line>
                 </svg> Tareas Únicas
               </button>
+
+              <!-- 📕 DEL MANUAL. La otra mitad de lo que David pidió: que el
+                   catálogo por puesto se pueda dar a mano a cualquier
+                   trabajador. Mismo permiso que «Tareas Únicas» —no se ensancha
+                   ni se estrecha a nadie en este paso— y la tarea que sale es
+                   del MANUAL: nace con su candado, su documento y su versión. -->
+              <button class="btn-secondary cat-manual-btn"
+                *ngIf="(currentUser?.rol === 'admin' || currentUser?.puedeCrearChecklists) && !mostrandoPanelResponsables"
+                (click)="abrirCatalogoManual()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                  style="margin-right: 6px;">
+                  <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                  <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                </svg> Del manual
+              </button>
               <!-- 🧹 "Tareas en Equipo" quedó retirado (MOSTRAR_TAREAS_EQUIPO en
                    checklist.ts). El botón, el listado, el detalle y el asistente de
                    alta se esconden juntos; la lógica sigue completa por si vuelve. -->
@@ -1165,6 +1180,112 @@
       <!-- ╔════════════════════════════════════════════════╗ -->
       <!-- ║   WIZARD DE TAREAS ÚNICAS (Modo Asistido)      ║ -->
       <!-- ╚════════════════════════════════════════════════╝ -->
+      <!-- ══════════════════════════════════════════════════════════════════
+           📕 CATÁLOGO DEL MANUAL → UNA PERSONA
+           ══════════════════════════════════════════════════════════════════
+           Cuatro decisiones en UNA pantalla y no un asistente de cuatro pasos:
+           las cuatro caben juntas y el asistente sirve para lo que no cabe.
+           Quien asigna necesita ver a la vez a quién y qué, porque el aviso de
+           «esta persona ya la recibe sola» depende de las dos.
+
+           El orden NO es cosmético: sucursal → persona → tarea. La lista de
+           personas sale DE la sucursal (es lo que David pidió), así que
+           preguntarla antes dejaría el selector vacío — el defecto que ya se
+           cobró dos veces en Plantilla y Pase de lista. -->
+      <div class="wizard-overlay cat-manual" *ngIf="catAbierto">
+        <div class="wizard-modal cat-modal">
+          <div class="wizard-header">
+            <div class="wizard-title">Dar una tarea del manual</div>
+            <button class="wizard-close" (click)="cerrarCatalogoManual()" aria-label="Cerrar">&times;</button>
+          </div>
+
+          <div class="cat-cuerpo">
+            <!-- 1 · SUCURSAL -->
+            <section class="cat-bloque">
+              <h3 class="cat-titulo">1 · ¿En qué sucursal?</h3>
+              <div class="cat-chips">
+                <button type="button" class="cat-chip" *ngFor="let s of sucursalesDisponibles()"
+                        [class.cat-chip-on]="catStore === s" (click)="catElegirSucursal(s)">{{ s }}</button>
+              </div>
+              <p class="cat-vacio" *ngIf="sucursalesDisponibles().length === 0">
+                Tu ficha no tiene sucursales, así que no hay dónde asignar. Pídele a un
+                administrador que te las capture en Usuarios.
+              </p>
+            </section>
+
+            <!-- 2 · PERSONA — la gente DE esa sucursal -->
+            <section class="cat-bloque" *ngIf="catStore">
+              <h3 class="cat-titulo">2 · ¿A quién? <span class="cat-sub">gente de {{ catStore }}</span></h3>
+              <div class="cat-personas">
+                <button type="button" class="cat-persona" *ngFor="let emp of catEmpleados"
+                        [class.cat-persona-on]="catPersona === emp.nombre"
+                        (click)="catElegirPersona(emp)">
+                  <span class="cat-ini">{{ (emp.nombre || '?').charAt(0) | uppercase }}</span>
+                  <span class="cat-nom">{{ emp.nombre }}</span>
+                </button>
+              </div>
+              <!-- Un vacío aquí no es «no hay nadie»: casi siempre es que la
+                   ficha de esa gente no tiene esta sucursal escrita igual. -->
+              <p class="cat-vacio" *ngIf="catEmpleados.length === 0">
+                Nadie de tu lista tiene «{{ catStore }}» en su ficha. Si sabes que ahí trabaja
+                gente, su sucursal está escrita distinto y hay que corregirla en Usuarios.
+              </p>
+            </section>
+
+            <!-- 3 · LA TAREA, del catálogo -->
+            <section class="cat-bloque" *ngIf="catPersona">
+              <h3 class="cat-titulo">3 · ¿Qué tarea del manual?</h3>
+              <input type="text" class="form-input cat-buscar" [(ngModel)]="catBusqueda"
+                     placeholder="Buscar por puesto, documento o nombre de la tarea…">
+              <div class="cat-lista">
+                <div class="cat-grupo" *ngFor="let g of catGrupos">
+                  <div class="cat-grupo-cab">
+                    <strong>{{ g.puesto }}</strong>
+                    <span class="cat-doc">{{ g.documento }}</span>
+                  </div>
+                  <button type="button" class="cat-tarea" *ngFor="let t of g.tareas"
+                          [class.cat-tarea-on]="catTareaId === t.id && catPuestoId === g.puestoId"
+                          (click)="catElegirTarea(g.puestoId, t.id)">
+                    <span class="cat-tarea-nom">{{ t.nombre }}</span>
+                    <span class="cat-tarea-meta">{{ t.frecuencia }} · {{ t.items.length }} puntos</span>
+                    <!-- El aviso que evita el clic inútil: si es de SU puesto, el
+                         robot ya se la entrega. No se bloquea —puede haber un
+                         motivo— pero se dice. -->
+                    <span class="cat-ya" *ngIf="catYaLaRecibe(t.id)">ya la recibe sola</span>
+                  </button>
+                </div>
+                <p class="cat-vacio" *ngIf="catTotalVisible === 0">
+                  Ninguna tarea del manual coincide con «{{ catBusqueda }}».
+                </p>
+              </div>
+            </section>
+
+            <!-- 4 · FECHA -->
+            <section class="cat-bloque" *ngIf="catTareaId">
+              <h3 class="cat-titulo">4 · ¿Para qué día?</h3>
+              <input type="date" class="form-input cat-fecha" [(ngModel)]="catFecha">
+              <p class="cat-nota">
+                Es una entrega de <strong>ese día</strong>: no se repite sola al siguiente.
+              </p>
+            </section>
+          </div>
+
+          <div class="wizard-footer cat-pie">
+            <p class="cat-aviso" *ngIf="catAviso">{{ catAviso }}</p>
+            <p class="cat-resumen" *ngIf="catListoParaGuardar">
+              <strong>{{ catTareaElegida?.nombre }}</strong> → {{ catPersona }} ({{ catStore }}), el {{ catFecha }}
+            </p>
+            <div class="cat-botones">
+              <button class="wizard-btn wizard-btn-back" (click)="cerrarCatalogoManual()">Cancelar</button>
+              <button class="wizard-btn wizard-btn-next" [disabled]="!catListoParaGuardar"
+                      (click)="guardarDelCatalogo()">
+                {{ catGuardando ? 'Asignando…' : 'Asignar' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="wizard-overlay" *ngIf="isModalOpen">
         <div class="wizard-modal">
 

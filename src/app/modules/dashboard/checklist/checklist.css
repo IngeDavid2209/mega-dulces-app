@@ -3880,3 +3880,167 @@
   .cl-toolbar-sep { display: none; }
 }
 
+/* ══════════════════════════════════════════════════════════════════════════
+   📕 CATÁLOGO DEL MANUAL → UNA PERSONA
+   ══════════════════════════════════════════════════════════════════════════
+   Los 17 tokens usados aquí se validaron contra `styles.css` ANTES de
+   escribirlos. Es la lección del 4/sep: un token que no existe NO revienta —
+   se resuelve al valor de respaldo y dos cosas distintas acaban pintándose
+   igual, sin un solo error en consola.
+
+   Alturas: nada baja de `--tap-min`, que vale 44px en táctil y 0 en
+   escritorio. Así el mínimo del dedo sale gratis y no hay que acordarse.  */
+
+.cat-modal {
+  max-width: 760px;
+  width: min(760px, 96vw);
+  display: flex;
+  flex-direction: column;
+  max-height: 92vh;
+}
+
+/* El cuerpo scrollea y el pie NO: el resumen de lo que se va a asignar y el
+   botón tienen que estar visibles mientras se elige, no al final de una lista
+   de cien tareas. */
+.cat-cuerpo {
+  overflow-y: auto;
+  padding: 4px 2px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.cat-bloque { display: flex; flex-direction: column; gap: 8px; }
+
+.cat-titulo {
+  margin: 0;
+  font-size: 14px;
+  font-weight: var(--fw-bold);
+  color: var(--text-main);
+}
+.cat-sub { font-weight: 500; color: var(--neutral-500); font-size: 13px; }
+
+.cat-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.cat-chip {
+  min-height: var(--tap-min);
+  padding: 8px 14px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--r-pill);
+  background: var(--card-bg);
+  color: var(--text-main);
+  font-size: 13px;
+  cursor: pointer;
+}
+.cat-chip-on { background: var(--text-main); color: var(--card-bg); border-color: var(--text-main); }
+
+.cat-personas {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 8px;
+  max-height: 210px;
+  overflow-y: auto;
+}
+.cat-persona {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: var(--tap-min);
+  padding: 8px 10px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--r-md);
+  background: var(--card-bg);
+  color: var(--text-main);
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+.cat-persona-on { border-color: var(--action); background: var(--surface-ground); }
+.cat-ini {
+  flex: 0 0 auto;
+  width: 28px; height: 28px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: var(--r-pill);
+  background: var(--surface-ground);
+  font-weight: var(--fw-bold);
+}
+/* `min-width: 0` en el nombre: sin él, un nombre largo ensancha la celda de la
+   rejilla y se sale. Es el defecto del 7/sep con la pastilla y el título. */
+.cat-nom { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.cat-buscar { min-height: var(--tap-min); }
+
+.cat-lista {
+  max-height: 260px;
+  overflow-y: auto;
+  border: 1px solid var(--border-color);
+  border-radius: var(--r-md);
+  padding: 6px;
+}
+.cat-grupo { margin-bottom: 10px; }
+.cat-grupo-cab {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px;
+  padding: 4px 6px;
+  font-size: 13px;
+  color: var(--text-main);
+}
+.cat-doc { font-size: 11px; color: var(--neutral-500); }
+
+.cat-tarea {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: var(--tap-min);
+  padding: 8px 10px;
+  margin-top: 4px;
+  border: 1px solid transparent;
+  border-radius: var(--r-md);
+  background: var(--card-bg);
+  color: var(--text-main);
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+.cat-tarea:hover { background: var(--surface-ground); }
+.cat-tarea-on { border-color: var(--action); background: var(--surface-ground); }
+.cat-tarea-nom { flex: 1 1 auto; min-width: 0; }
+.cat-tarea-meta { flex: 0 0 auto; font-size: 11px; color: var(--neutral-500); }
+
+/* El aviso de «ya la recibe sola» va en color de ADVERTENCIA y no de error:
+   asignarla no rompe nada —la llave es la misma y no se duplica— pero es un
+   clic que no hace nada. */
+.cat-ya {
+  flex: 0 0 auto;
+  padding: 2px 8px;
+  border-radius: var(--r-pill);
+  background: var(--warn-soft-bg);
+  color: var(--warn-soft-fg);
+  font-size: 11px;
+  font-weight: var(--fw-bold);
+}
+
+.cat-fecha { min-height: var(--tap-min); max-width: 220px; }
+.cat-nota, .cat-vacio { margin: 0; font-size: 12px; color: var(--neutral-500); }
+
+.cat-pie { flex-direction: column; align-items: stretch; gap: 8px; }
+.cat-resumen { margin: 0; font-size: 13px; color: var(--text-main); }
+/* El aviso del pie es el único sitio donde se dice «ya existía»: un toast se
+   va solo y esta es justo la frase que hay que poder releer. */
+.cat-aviso {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: var(--r-md);
+  background: var(--warn-soft-bg);
+  color: var(--warn-soft-fg);
+  font-size: 13px;
+}
+.cat-botones { display: flex; gap: 10px; justify-content: flex-end; }
+
+@media screen and (max-width: 640px) {
+  /* En un teléfono los dos botones del pie van de borde a borde: a media
+     pantalla, «Asignar» queda del tamaño de un dedo y medio y se falla. */
+  .cat-botones { flex-direction: column-reverse; }
+  .cat-botones .wizard-btn { width: 100%; }
+  .cat-personas { grid-template-columns: 1fr; max-height: 180px; }
+}

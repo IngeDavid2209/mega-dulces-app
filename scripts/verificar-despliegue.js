@@ -64,9 +64,12 @@ const MARCADORES = [
   // anteriores bajan a control. Mantener ese orden importa: dos veces hoy el
   // comentario se quedo describiendo el marcador ANTERIOR, y un comentario que
   // narra otra cosa que la linea de abajo es doctrina falsa en dos semanas.
-  // 14/sep/2026 (3) · LA BANDEJA DE CUATRO BOTONES. Validado en las dos
-  // direcciones antes de subir: 0 ocurrencias en HEAD, 4 en el dist/.
-  { txt: 'cl-bandeja', nuevo: true, que: 'la bandeja de cuatro botones' },
+  // 14/sep/2026 (4) · EL CATALOGO DEL MANUAL, ASIGNABLE A MANO. Validado en
+  // las dos direcciones antes de subir: 0 ocurrencias en HEAD.
+  { txt: 'cat-manual', nuevo: true, que: 'el modal para dar una tarea del manual' },
+  // Era el nuevo del despliegue anterior; baja a control porque YA VALE en
+  // produccion y dejarlo arriba daria verde sin comprobar nada de este.
+  { txt: 'cl-bandeja', control: true, que: 'la bandeja de cuatro botones' },
   //
   // ⚠ `cl-chip-origen` SE QUITO DE ESTA LISTA, y no por limpieza: era el
   //   marcador NUEVO del despliegue de hace una hora y esa clase YA NO

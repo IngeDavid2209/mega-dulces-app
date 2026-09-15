@@ -16,7 +16,9 @@ import { RobotManualService } from '../../../shared/robot-manual.service';
 import { resolverPuesto } from '../../../shared/puesto.util';
 import { AmbitoVisible, ambitoVisible, entregaVisible } from '../../../shared/rama-visible.util';
 import { nombrePuesto } from '../../../shared/organigrama.catalogo';
-import { tareasAutomaticasDePuesto } from '../../../shared/tareas-manual.catalogo';
+import {
+  tareasAutomaticasDePuesto, MANUALES_POR_PUESTO, tareaManualPorId, TareaManual,
+} from '../../../shared/tareas-manual.catalogo';
 import { NotificacionesService } from '../../../services/notificaciones';
 import { ApiService } from '../../../shared/api.service';
 import { comprimirImagenSiAplica } from '../../../shared/imagen.util';
@@ -427,6 +429,182 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   }
 
   // ============================================================================
+  //  📕 DAR UNA TAREA DEL CATÁLOGO DEL MANUAL A CUALQUIER TRABAJADOR
+  // ============================================================================
+  //
+  // Instrucción de David (14/sep/2026): «los catálogos que creaste de acuerdo a
+  // los puestos, los dejarás creados como un catálogo para poder agregarlo a
+  // cualquier trabajador, quiero que le aparezca los usuarios que tiene de
+  // acuerdo su sucursal».
+  //
+  // Es una ENTREGA PUNTUAL: un checklist para UNA fecha, sellado con su
+  // documento y su versión, que no vuelve solo al día siguiente. La decisión
+  // fue suya entre las dos opciones que se le plantearon; lo permanente
+  // —declarar que a esa persona le aplica ese manual— necesita tabla y robot.
+  //
+  // El payload NO se arma aquí: lo arma `RobotManualService.entregarDelCatalogo`,
+  // que reusa las mismas dos funciones que la entrega automática. Dos versiones
+  // del sellado de una norma serían dos reglas libres de discrepar en silencio.
+
+  catAbierto = false;
+  catStore = '';
+  catPersona = '';
+  catPersonaUid: string | null = null;
+  /** Puesto del que sale la tarea elegida. NO es el puesto de la persona. */
+  catPuestoId = '';
+  catTareaId = '';
+  catFecha = '';
+  catBusqueda = '';
+  catGuardando = false;
+  /** Lo último que pasó, dicho en la misma pantalla y no en un toast que se va. */
+  catAviso = '';
+
+  abrirCatalogoManual() {
+    if (!(this.currentUser?.rol === 'admin' || this.currentUser?.puedeCrearChecklists)) return;
+    this.catAbierto = true;
+    this.catAviso = '';
+    this.catBusqueda = '';
+    this.catTareaId = '';
+    this.catPuestoId = '';
+    this.catPersona = '';
+    this.catPersonaUid = null;
+    // Una sola sucursal disponible se elige sola: obligar a pulsar lo único que
+    // hay es un paso que no decide nada.
+    const suc = this.sucursalesDisponibles();
+    this.catStore = suc.length === 1 ? suc[0] : '';
+    const off = new Date().getTimezoneOffset() * 60000;
+    this.catFecha = new Date(Date.now() - off).toISOString().split('T')[0];
+  }
+
+  cerrarCatalogoManual() { this.catAbierto = false; }
+
+  /** Al cambiar de sucursal, la persona elegida deja de tener sentido. */
+  catElegirSucursal(s: string) {
+    if (this.catStore === s) return;
+    this.catStore = s;
+    this.catPersona = '';
+    this.catPersonaUid = null;
+  }
+
+  catElegirPersona(emp: any) {
+    this.catPersona = emp?.nombre || '';
+    this.catPersonaUid = emp?.id || emp?.uid || null;
+  }
+
+  catElegirTarea(puestoId: string, tareaId: string) {
+    this.catPuestoId = puestoId;
+    this.catTareaId = tareaId;
+  }
+
+  /**
+   * La gente de esa sucursal, que es lo que David pidió. Se usa el MISMO
+   * predicado que el wizard de tareas (`empleadoPerteneceASucursal`), no una
+   * comparación de texto nueva: el hallazgo 1 de este proyecto es justamente
+   * que la identidad se cruza por nombre, y dos reglas de pertenencia serían
+   * dos formas distintas de dejar a alguien fuera en silencio.
+   */
+  get catEmpleados(): any[] {
+    if (!this.catStore) return [];
+    return this.empleados()
+      .filter(emp => this.empleadoPerteneceASucursal(emp, this.catStore))
+      .sort((a, b) => String(a.nombre || '').localeCompare(String(b.nombre || '')));
+  }
+
+  /**
+   * El catálogo, agrupado por puesto. Sale de `MANUALES_POR_PUESTO`, que es la
+   * transcripción de los documentos: nunca una lista local (§4).
+   */
+  get catGrupos(): { puestoId: string; puesto: string; documento: string; tareas: TareaManual[] }[] {
+    const term = normalizarNombre(this.catBusqueda || '');
+    const grupos: { puestoId: string; puesto: string; documento: string; tareas: TareaManual[] }[] = [];
+    for (const m of MANUALES_POR_PUESTO) {
+      for (const pid of m.puestoIds) {
+        // Solo las que el robot entrega por calendario: una `soloPorEvento` se
+        // dispara por un hecho (un siniestro, un cambio de custodia), y darla a
+        // mano por fecha sería inventar el evento.
+        const tareas = m.tareas.filter(t => !t.soloPorEvento).filter(t => {
+          if (!term) return true;
+          return normalizarNombre([nombrePuesto(pid), m.documento, t.nombre].join(' ')).includes(term);
+        });
+        if (tareas.length) {
+          grupos.push({ puestoId: pid, puesto: nombrePuesto(pid), documento: m.documento, tareas });
+        }
+      }
+    }
+    return grupos.sort((a, b) => a.puesto.localeCompare(b.puesto));
+  }
+
+  /** Cuántas tareas quedan con el filtro puesto. Lo usa el estado vacío. */
+  get catTotalVisible(): number {
+    return this.catGrupos.reduce((n, g) => n + g.tareas.length, 0);
+  }
+
+  /**
+   * ⚠ ¿ESTA PERSONA YA RECIBE ESTA TAREA SOLA?
+   *
+   * Si la tarea es de SU propio puesto, el robot ya se la entrega los días que
+   * toque. Asignarla a mano no rompe nada —la llave de idempotencia es la
+   * misma, así que no se duplica— pero es un clic que no hace nada, y sin
+   * decirlo quien asigna se queda creyendo que hizo algo.
+   */
+  catYaLaRecibe(tareaId: string): boolean {
+    if (!this.catPersona) return false;
+    const ficha = this.empleados().find(e => mismoEmpleadoNombre(e.nombre, this.catPersona));
+    const suyo = resolverPuesto(ficha).puestoId;
+    if (!suyo) return false;
+    return tareasAutomaticasDePuesto(suyo).some(t => t.id === tareaId);
+  }
+
+  get catTareaElegida(): TareaManual | null {
+    return this.catTareaId ? tareaManualPorId(this.catTareaId) : null;
+  }
+
+  get catListoParaGuardar(): boolean {
+    return !!this.catStore && !!this.catPersona && !!this.catTareaId && !!this.catFecha
+        && !this.catGuardando;
+  }
+
+  async guardarDelCatalogo() {
+    if (!this.catListoParaGuardar) return;
+    // El permiso se comprueba ANTES de escribir, no solo en el `*ngIf` del
+    // botón: esconder un control es cosmética (lección del 13/sep).
+    if (!(this.currentUser?.rol === 'admin' || this.currentUser?.puedeCrearChecklists)) {
+      this.catAviso = 'No tienes permiso para asignar tareas.';
+      return;
+    }
+    this.catGuardando = true;
+    this.catAviso = '';
+    try {
+      const r = await this.robotManual.entregarDelCatalogo({
+        tareaId: this.catTareaId,
+        puestoId: this.catPuestoId,
+        sucursal: this.catStore,
+        destinatario: this.catPersona,
+        destinatarioUid: this.catPersonaUid,
+        // Mediodía a propósito: con 'T00:00' un cambio de horario puede correr
+        // la fecha un día hacia atrás y la tarea aparecería el día que no es.
+        fecha: new Date(this.catFecha + 'T12:00:00'),
+        autor: this.currentUser?.nombre || '(sin autor)',
+      });
+      if (r.estado === 'creado') {
+        this.mostrarToast('Listo: «' + (this.catTareaElegida?.nombre || 'la tarea') +
+          '» quedó para ' + this.catPersona + '.');
+        this.cerrarCatalogoManual();
+        this.recargarChecklistsAhora?.();
+      } else if (r.estado === 'ya-existia') {
+        this.catAviso = 'Esa persona YA tiene esa tarea ese día, así que no se creó otra. ' +
+          'Si no la ves en la lista, búscala por su nombre.';
+      } else if (r.estado === 'sin-tarea') {
+        this.catAviso = 'Esa tarea ya no está en el catálogo del manual.';
+      } else {
+        this.catAviso = r.detalle || 'No se pudo guardar.';
+      }
+    } finally {
+      this.catGuardando = false;
+    }
+  }
+
+  // ============================================================================
   //  🧙 WIZARD DE TAREAS ÚNICAS (Modo Asistido para adultos mayores)
   // ============================================================================
   wizardStep: number = 1;
@@ -450,6 +628,13 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   wizardTotalStepsRutina: number = 8;
   wizardTipoEvidenciaRutina: 'ninguna' | 'foto' | 'antesDespues' | 'variasFotos' = 'ninguna';
   terminoBusquedaEmpleadoWizardRutina: string = '';
+
+  /**
+   * Fuerza un poll de checklists. Lo llena `conectarRadarNube` con su propia
+   * closure: es la MISMA función que corre cada 20s, no una copia, para que
+   * el post-proceso (filtros por rol, dedup, progreso) sea idéntico.
+   */
+  private recargarChecklistsAhora: (() => Promise<void>) | null = null;
 
   private firestore = inject(Firestore);
   private route = inject(ActivatedRoute);
@@ -1778,6 +1963,11 @@ export class ChecklistComponent implements OnInit, OnDestroy {
         this.edadDatos.set(textoAntiguedad(cacheInicial.edadMinutos));
       }
     }
+    // Se guarda la referencia para poder FORZAR una recarga desde fuera (lo usa
+    // la entrega a mano desde el catálogo). Sin esto, la tarea recién asignada
+    // tardaría hasta 20 segundos en aparecer y quien la asignó creería que no
+    // se guardó — y volvería a pulsar.
+    this.recargarChecklistsAhora = recargarChecklists;
     recargarChecklists();
     const idRadarChecklists = setInterval(recargarChecklists, 20000);
     this.destructoresRadares.push(() => clearInterval(idRadarChecklists));
@@ -4386,7 +4576,23 @@ export class ChecklistComponent implements OnInit, OnDestroy {
    * quita nada.
    */
   get mostrandoPanelResponsables(): boolean {
-    return this.vistaEquipo() === 'lista'
+    // ⚠ `!verPorOrganigrama` FALTABA, y con una sola pantalla eso esconde los
+    //   botones de crear a quien más los usa.
+    //
+    //   Este getter decía «el panel está en pantalla» sin mirar si lo que está
+    //   es el ÁRBOL, que ocupa su sitio y tiene su propio `*ngIf` con
+    //   `!verPorOrganigrama`. Mientras fueron dos pantallas no se notaba: en
+    //   /checklist el árbol nunca salía —así que el getter acertaba— y en
+    //   /tareas-manual los botones de alta ya estaban escondidos por el modo.
+    //
+    //   Con las dos listas unidas, una jefatura aterriza en «Pendientes del
+    //   equipo», donde se pinta el árbol: el panel NO está, pero el getter
+    //   decía que sí y se llevaba por delante «Tareas Únicas», «Bloque de
+    //   Rutinas» y «Del manual». O sea, ninguna de las personas que crean
+    //   tareas podía crear una. Lo destapó la prueba del catálogo al no
+    //   encontrar su botón.
+    return !this.verPorOrganigrama
+      && this.vistaEquipo() === 'lista'
       && this.vistaHistorial() === 'pendientes'
       && this.agruparPorPersona()
       && this.puedeFiltrarVista

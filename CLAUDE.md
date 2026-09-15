@@ -324,6 +324,87 @@ de que exista la plaza sería partir el problema en dos, no resolverlo.
 
 ## 9. Bitácora del plan
 
+### 14/sep/2026 (noche) — EL CATÁLOGO DEL MANUAL SE PUEDE DAR A MANO (paso B)
+
+Instrucción de David: *«los catálogos que creaste de acuerdo a los puestos, los dejarás creados
+como un catálogo para poder agregarlo a cualquier trabajador, quiero que le aparezca los usuarios
+que tiene de acuerdo su sucursal»*. Y antes, enfrentado a las dos opciones: **entrega puntual**,
+no aplicabilidad permanente.
+
+**QUÉ ES.** Botón «Del manual» en la barra de Tareas → sucursal → **la gente de esa sucursal** →
+la tarea, del catálogo agrupado por puesto y con buscador → fecha. Crea **un** checklist sellado
+con su documento, su código y su **versión**, que no vuelve solo al día siguiente.
+
+**LO QUE NO SE HIZO, Y ES LA DECISIÓN DE FONDO.** El payload **no se arma en la pantalla**: lo
+arma `RobotManualService.entregarDelCatalogo`, que reusa `idemKey` y `armarChecklist` —las mismas
+dos funciones de la entrega automática—. Dos versiones del sellado de una norma serían dos reglas
+libres de discrepar, y la que discrepara lo haría en silencio: tareas que se ven iguales y se
+juzgan distinto.
+
+**LA LLAVE ES LA DEL ROBOT, y de ahí salen las dos propiedades que importan.** `idemKey` es
+`tarea × periodo × sucursal × persona`, **sin el puesto dentro**. Así que asignar a mano algo que
+el puesto de esa persona ya recibe produce **la misma llave**: no se duplica. Y volver a pulsar
+no escribe nada. Un duplicado no se ve —solo sube el denominador de esa persona— que es
+exactamente la clase de daño que nadie reporta.
+
+#### TRES DEFECTOS ENCONTRADOS ANTES DE SUBIR, Y LOS TRES ERAN MÍOS
+
+**1 · `guardarChecklist` SE TRAGA EL FALLO.** Reintenta tres veces y, si las tres fallan,
+**registra en consola y devuelve** — no lanza. Envolverla en un `try/catch` daba un «creado»
+aunque no se hubiera guardado nada: el peor resultado posible, porque quien asigna se va
+convencido y la persona nunca ve la tarea. Se cambió por `post`, que sí lanza. Perder los
+reintentos es aceptable: la llave es idempotente, así que volver a pulsar no puede duplicar.
+
+**2 · `await setDoc` NO VUELVE SIN RED.** La promesa de Firestore se queda pendiente para
+siempre, así que «Asignando…» habría sido el **«VERIFICANDO…» del 1/sep** otra vez. Ahora las dos
+escrituras llevan tope con el nombre del paso, y **el orden se invirtió respecto al robot**: aquí
+va primero la API. El motivo está escrito en el código — la app **lee de Postgres**, así que un
+documento que solo esté en Firestore no lo ve nadie; de las dos escrituras, la que decide si esto
+sirvió es la de la API. La copia a Firestore queda best-effort y su fallo se registra sin cambiar
+el resultado.
+
+**3 · `mostrandoPanelResponsables` ESCONDÍA TODOS LOS BOTONES DE CREAR.** Este getter decía «el
+panel está en pantalla» sin mirar si lo que está es **el árbol**, que ocupa su sitio. Mientras
+fueron dos pantallas no se notaba; con la lista unida, **una jefatura aterriza donde se pinta el
+árbol**, así que «Tareas Únicas», «Bloque de Rutinas» y «Del manual» desaparecían — o sea,
+**ninguna de las personas que crean tareas podía crear una**. Lo destapó la prueba nueva al no
+encontrar su propio botón. Es el defecto más caro del día y llevaba horas desplegado.
+
+#### LA PRUEBA CAPTURA EL DOCUMENTO QUE SALE POR EL CABLE
+
+`scripts/prueba-catalogo-manual.js`. No mira la pantalla: el servidor de la prueba **intercepta el
+POST** y lo compara campo por campo contra el catálogo **compilado con `tsc`**, no contra valores
+tecleados en la prueba.
+
+    id       man_encargado_sucursal_apertura_2026-9-14_canindo_ana_prueba_catalogo
+    sello    _origenManual=true · _puestoId=encargado-sucursal
+             _tareaManualId=encargado-sucursal.apertura
+             _manualDocumento="… Encargada de Sucursal PH" · _manualVersion="1.0 · Agosto 2026"
+    a mano   _asignadoAMano=true · _asignadoPor="Jefa Prueba Catalogo"
+    8 puntos, los 8 pidiendo evidencia
+
+**Y LA PRUEBA SE CORRIGIÓ A SÍ MISMA, que es lo que la vuelve fiable.** El primer intento
+**reconstruía la llave a mano** y falló: mi periodo decía `2026-09-14` y el de la app `2026-9-14`,
+porque `llavePeriodo` arma la fecha **sin rellenar** los ceros. Con esa llave falsa, el escenario
+de idempotencia sembraba un checklist que la app no reconocía, así que creaba otro — y el reporte
+habría dicho **«la idempotencia no aplica» sobre un mecanismo intacto**. Es §8.11(d) por tercera
+vez. La solución es más fuerte que arreglar la réplica: **se quitó la réplica**. El segundo
+escenario siembra **el id que la propia app acaba de producir**, así que no existe una tercera
+versión de la regla que pueda discrepar, y lo que se prueba es justo lo que importa: que la app
+**reconoce su propia llave**. De la forma se afirma lo que no depende del periodo (prefijo `man_`
+y los tres slugs).
+
+    escenario     POST /api/checklists   aviso en pantalla
+    asignar              1               —
+    ya existía           0               «Esa persona YA tiene esa tarea ese día…»
+
+**Lo que este paso NO hace, dicho para que no se lea como resuelto:** no declara aplicabilidad
+—mañana no vuelve sola—, **no cambia quién puede asignar** (sigue siendo el mismo permiso que
+abre «Nueva Tarea», porque David dijo «eso lo veremos después»), y **nadie ha entrado con una
+cuenta real**. La copia a Firestore es best-effort a propósito y su fallo no se le enseña a nadie
+más que a la consola.
+
+
 ### 14/sep/2026 (tarde) — LA BARRA SE REHIZO EN CUATRO BOTONES, y dos defectos míos
 
 David, sobre una captura de la barra que se había desplegado por la mañana

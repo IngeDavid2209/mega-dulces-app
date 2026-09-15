@@ -26,6 +26,7 @@ import { Injectable, inject } from '@angular/core';
 import { Firestore, doc, setDoc } from '@angular/fire/firestore';
 
 import { ApiService } from './api.service';
+import { conTope, pasoAgotado } from './con-tope.util';
 import { normalizarNombre } from './permisos.util';
 import { ConfigTurnos, fechaISO, rutinaPermitidaEnTurno } from './turnos.util';
 import { esDiaDescansoEnFecha, obtenerSemanaISO } from './descansos.util';
@@ -35,6 +36,7 @@ import { HorarioSucursal, limiteAperturaDe, trabajaEsteDia } from './horarios-su
 import { evidenciaDe } from './evidencia-manual';
 import {
   TareaManual, FrecuenciaManual, manualDePuesto, tareasAutomaticasDePuesto,
+  tareaManualPorId,
 } from './tareas-manual.catalogo';
 
 /** Lógica que vive en el componente de checklist y el robot necesita consultar. */
@@ -219,6 +221,163 @@ export class RobotManualService {
     }
 
     return { creados, omitidos };
+  }
+
+  // ==========================================================================
+  //  ENTREGA A MANO DESDE EL CATALOGO
+  // ==========================================================================
+
+  /**
+   * 📕 DARLE A UNA PERSONA UNA TAREA DEL MANUAL QUE SU PUESTO NO RECIBE.
+   *
+   * Instrucción de David (14/sep/2026): «los catálogos que creaste de acuerdo a
+   * los puestos, los dejarás creados como un catálogo para poder agregarlo a
+   * cualquier trabajador».
+   *
+   * ─── POR QUÉ VIVE AQUÍ Y NO EN LA PANTALLA ──────────────────────────────
+   * Porque tiene que producir EXACTAMENTE el mismo documento que el robot. Si
+   * la pantalla armara su propio payload, habría dos versiones de la regla de
+   * evidencia, dos de la hora límite y dos del sellado de norma, libres de
+   * discrepar — y la que discrepara lo haría en silencio, produciendo tareas
+   * que se ven iguales y se juzgan distinto. Aquí se reusan `idemKey` y
+   * `armarChecklist`, que son las mismas dos funciones que usa la entrega
+   * automática.
+   *
+   * ─── ES UNA ENTREGA PUNTUAL, NO UNA APLICABILIDAD ───────────────────────
+   * Decisión de David entre las dos opciones que se le plantearon: esto crea UN
+   * checklist para UNA fecha. No declara que a esa persona le aplique ese
+   * manual, así que mañana no vuelve sola. Lo permanente —norma → aplicabilidad
+   * del §4— necesita tabla y robot, y es otro paso.
+   *
+   * ─── LA LLAVE ES LA DEL ROBOT, Y ESO NO ES UN DETALLE ───────────────────
+   * `idemKey` no incluye el puesto: es `tarea × periodo × sucursal × persona`.
+   * Dos consecuencias, las dos buscadas:
+   *   · Si se asigna a mano una tarea que el puesto de esa persona YA recibe,
+   *     sale la misma llave, así que no se duplica: o ya existe y se dice, o se
+   *     crea y el robot la ve y la salta.
+   *   · Volver a asignar lo mismo el mismo día no escribe nada. Sin esto, dos
+   *     clics crearían dos documentos y el denominador de esa persona subiría
+   *     por una torpeza de la interfaz.
+   *
+   * @returns `creado` con el id, o el motivo por el que no se creó. Nunca lanza
+   *          por «ya existe»: eso no es un error, es el resultado correcto.
+   */
+  async entregarDelCatalogo(args: {
+    tareaId: string;
+    puestoId: string;
+    sucursal: string;
+    destinatario: string;
+    destinatarioUid: string | null;
+    fecha: Date;
+    /** Quién lo asignó. Va sellado en el documento: sin autor no es auditable. */
+    autor: string;
+  }): Promise<{ estado: 'creado' | 'ya-existia' | 'sin-tarea' | 'error'; id?: string; detalle?: string }> {
+    const tarea = tareaManualPorId(args.tareaId);
+    if (!tarea) return { estado: 'sin-tarea' };
+    if (!args.destinatario || !args.sucursal) {
+      return { estado: 'error', detalle: 'Falta la persona o la sucursal.' };
+    }
+
+    // Las horas de apertura salen de Mega Talento y `armarChecklist` las lee de
+    // `this.horarios`. Sin esta línea, una tarea de apertura entregada a mano
+    // vencería a la hora del catálogo y no a la que esa sucursal abre de verdad
+    // — la misma tarea, dos horas límite distintas según quién la emitió.
+    await this.cargarHorarios();
+
+    const fechaYmd = this.toYmd(args.fecha);
+    const periodo = this.llavePeriodo(tarea.frecuencia, args.fecha);
+    const checklistId = this.idemKey(tarea.id, periodo, args.sucursal, args.destinatario);
+
+    // ¿Ya existe? Se pregunta por la FECHA, que es donde el robot también mira.
+    // Un fallo de lectura NO se trata como «no existe»: eso escribiría encima
+    // de lo que alguien pudo haber contestado ya, y ese es el daño que no se
+    // puede deshacer (§5.5).
+    try {
+      const r: any = await this.api.get(
+        `/api/checklists?desde=${fechaYmd}&hasta=${fechaYmd}`
+      );
+      const ids = new Set<string>((r?.checklists || []).map((c: any) => String(c.id)));
+      if (ids.has(checklistId)) return { estado: 'ya-existia', id: checklistId };
+    } catch (e: any) {
+      return {
+        estado: 'error',
+        detalle: 'No pude comprobar si ya existe, así que no escribo nada. ' +
+                 'Revisa tu conexión y vuelve a intentar.',
+      };
+    }
+
+    const payload = this.armarChecklist({
+      checklistId, tarea, puestoId: args.puestoId, sucursal: args.sucursal,
+      destinatario: args.destinatario, destinatarioUid: args.destinatarioUid, fechaYmd,
+    });
+
+    // El sello de que esto lo decidió una persona, no el reloj. `createdBy` se
+    // queda en «Manual Corporativo» a propósito —el documento SIGUE siendo del
+    // manual, y hay reportes que separan por ese campo— y el autor va aparte,
+    // donde no se confunde con la autoría de la norma.
+    payload._asignadoAMano = true;
+    payload._asignadoPor = args.autor || '(sin autor)';
+    payload._asignadoEn = Date.now();
+
+    // ══════════════════════════════════════════════════════════════════════
+    //  EL ORDEN DE LAS DOS ESCRITURAS, Y POR QUE AQUI ES AL REVES QUE ARRIBA
+    // ══════════════════════════════════════════════════════════════════════
+    // El robot escribe Firestore y despues la API. Aqui va primero la API, y
+    // no es un descuido:
+    //
+    //  1. LA APP LEE DE POSTGRES (§3, hallazgo 2: las lecturas ya migraron).
+    //     Un documento que solo esta en Firestore NO LO VE NADIE; uno que solo
+    //     esta en Postgres se ve y se cumple. De las dos escrituras, la que
+    //     decide si esto sirvio es la de la API.
+    //
+    //  2. ESTO LO DISPARA UNA PERSONA Y SE QUEDA MIRANDO. El robot corre solo
+    //     en un bucle: si una vuelta falla, la siguiente lo arregla. Aqui hay
+    //     alguien esperando, asi que el resultado tiene que llegar pronto y ser
+    //     honesto.
+    //
+    // ── Y LOS DOS TOPES, QUE SON LA LECCION DEL 1/sep ─────────────────────
+    // `setDoc` de Firestore NO RESUELVE mientras no haya red: la promesa se
+    // queda pendiente para siempre. Sin tope, quien pulse «Asignar» con mala
+    // senal se queda en «Asignando...» eternamente — que es, exactamente, el
+    // «VERIFICANDO...» que costo cinco horas de diagnostico. Nada opcional
+    // merece bloquear a nadie.
+    let idServidor = '';
+    try {
+      // ⚠ `post` Y NO `guardarChecklist`, Y ESTO IMPORTA. `guardarChecklist`
+      //   reintenta tres veces y, si las tres fallan, REGISTRA EN CONSOLA Y
+      //   DEVUELVE — no lanza. O sea que envolverla en un try/catch da un
+      //   «creado» aunque no se haya guardado nada: el peor resultado posible,
+      //   porque quien asignó se va convencido y la persona nunca ve la tarea.
+      //   Un tope no se traga, y un fallo tampoco (lección del 1/sep).
+      //   Perder los reintentos es aceptable: la llave es idempotente, así que
+      //   volver a pulsar no puede duplicar nada.
+      await conTope(this.api.post('/api/checklists', payload), 20000, 'guardar la tarea');
+      idServidor = checklistId;
+    } catch (e: any) {
+      const paso = pasoAgotado(e);
+      return {
+        estado: 'error',
+        detalle: paso
+          ? 'Se agoto el tiempo al ' + paso + '. No se creo nada: vuelve a intentar.'
+          : (e?.message || 'No se pudo guardar.'),
+      };
+    }
+
+    // Firestore es la segunda base que la Fase 1 viene a retirar. Se sigue
+    // escribiendo para que el historial no se parta mientras exista, pero su
+    // fallo NO cambia el resultado: la tarea ya esta donde la app la lee. Se
+    // registra en consola, que es donde se puede ver si empieza a fallar
+    // siempre.
+    try {
+      await conTope(
+        setDoc(doc(this.firestore, 'checklists', checklistId), payload),
+        15000, 'copiar a la base vieja');
+    } catch (e) {
+      console.warn('[manual] la copia a Firestore no se pudo hacer; la tarea SI quedo ' +
+        'guardada en la base que lee la app.', e);
+    }
+
+    return { estado: 'creado', id: idServidor };
   }
 
   // ==========================================================================

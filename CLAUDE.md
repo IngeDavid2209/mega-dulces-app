@@ -421,6 +421,25 @@ basta con que la CONDICIÓN afirme lo correcto — **la extracción también tie
 que la condición necesita**. Un `grep -o` que recorta convierte un estado transitorio en el
 terminal, y el bucle concluye antes de tiempo con cara de haber esperado.
 
+**Y EL NÚMERO QUE CIERRA CUÁL ES LA GUARDIA BUENA** —medido en las dos sesiones por separado,
+sobre la misma salida de `railway status`:
+
+    lineas de la salida ...........  40
+    veces que aparece «status:» ...   1      <- rotulo UNICO
+    lineas que llevan el circulo ●    16      <- de ellas, solo 2 nombran MDTask
+
+Quince de esas dieciséis están **Online para siempre** —Redis, Postgres, conta-api,
+hub-apps…—, así que **una guardia anclada al `●` tiene quince formas de equivocarse y una de
+acertar**. La mía acertó de milagro: el bloque del servicio enlazado se imprime en la línea 10 y
+la lista de todos los recursos en la 21, así que el `head -1` cayó en la 13, que es la de MDTask.
+**Acerté por ocho líneas de orden de impresión.** Si Railway invirtiera esos dos bloques, el
+bucle leería `conta-api` y volvería a concluir con el build corriendo.
+
+Por eso la guardia se ancla al **rótulo `status:`, que aparece una sola vez**, y no al símbolo
+que comparten dieciséis líneas. Es §8.11(b) otra vez —la guardia va sobre la entrada que de
+verdad usas, no sobre un proxy de ella— y la cifra que lo demuestra es ese **1 contra 16**.
+
+
 Y la comprobación que lo salvó fue no creerle al estado: `0 esperas` se verificó contra el
 **marcador servido**, que seguía en 0. El estado dice «probablemente»; la cifra dice «sí».
 

@@ -71,6 +71,18 @@ function hhmm(epochMs) {
 }
 
 /**
+ * Padding hecho en JS, no con printf.
+ *
+ * `util.format` (lo que usa console.log) NO soporta el ancho de printf: un
+ * '%-12s' se imprime LITERAL y el argumento se va al final de la linea. Ya
+ * mordio dos veces en este repo (el %4d del 4/sep y el del 7/sep), y la tabla
+ * de un diagnostico es justo donde mas duele: sale ilegible y parece que el
+ * dato esta mal, no el formato.
+ */
+const izq = (s, n) => String(s == null ? '' : s).padEnd(n).slice(0, n);
+const der = (s, n) => String(s == null ? '' : s).padStart(n);
+
+/**
  * Reparte las filas de un dia en las cubetas que importan.
  *
  * El orden de las condiciones NO es libre: es el MISMO que aplica el poll de
@@ -178,18 +190,21 @@ async function main() {
   }
 
   console.log('\n=== DIA POR DIA  (los dias pasados son el CONTROL POSITIVO: prueban que la tabla se lee) ===');
-  console.log('  %-12s %7s %7s %7s %9s %11s %11s %9s',
-    'fecha', 'total', 'manual', 'vivas', 'enviadas', 'eliminadas', 'archivadas', 'personas');
+  console.log('  ' + izq('fecha', 12) + der('total', 7) + der('manual', 7) +
+    der('vivas', 7) + der('enviadas', 9) + der('eliminadas', 11) +
+    der('archivadas', 11) + der('personas', 9));
   const dias = [...porDia.keys()].sort();
   for (const d of dias) {
     const c = cubetas(porDia.get(d));
-    console.log('  %-12s %7d %7d %7d %9d %11d %11d %9d%s',
-      d, c.total, c.manual, c.vivas, c.enviadas, c.eliminadas, c.archivadas, c.personas.size,
-      d === DIA ? '   <- el dia en cuestion' : '');
+    console.log('  ' + izq(d, 12) + der(c.total, 7) + der(c.manual, 7) +
+      der(c.vivas, 7) + der(c.enviadas, 9) + der(c.eliminadas, 11) +
+      der(c.archivadas, 11) + der(c.personas.size, 9) +
+      (d === DIA ? '   <- el dia en cuestion' : ''));
   }
   if (!porDia.has(DIA)) {
-    console.log('  %-12s %7d %7d %7d %9d %11d %11d %9d   <- el dia en cuestion (SIN UNA SOLA FILA)',
-      DIA, 0, 0, 0, 0, 0, 0, 0);
+    console.log('  ' + izq(DIA, 12) + der(0, 7) + der(0, 7) + der(0, 7) +
+      der(0, 9) + der(0, 11) + der(0, 11) + der(0, 9) +
+      '   <- el dia en cuestion (SIN UNA SOLA FILA)');
   }
 
   const deDia = porDia.get(DIA) || [];
@@ -211,13 +226,11 @@ async function main() {
     console.log('  La hora es la de CREACION (timestamp_creacion). La tabla NO guarda cuando');
     console.log('  ni quien borro: `eliminado` es un booleano sin bitacora (009_checklists.sql),');
     console.log('  asi que esa pregunta no se puede contestar con estos datos y no se finge.');
-    console.log('  %-6s %-28s %-20s %s', 'creada', 'persona', 'sucursal', 'id');
+    console.log('  ' + izq('creada', 7) + izq('persona', 29) + izq('sucursal', 21) + 'id');
     for (const f of eliminadasManual.slice(0, 15)) {
-      console.log('  %-6s %-28s %-20s %s',
-        hhmm(f.timestamp_creacion),
-        String(f.assigned || '(sin asignado)').slice(0, 28),
-        String(f.store || '(sin sucursal)').slice(0, 20),
-        f.id);
+      console.log('  ' + izq(hhmm(f.timestamp_creacion), 7) +
+        izq(f.assigned || '(sin asignado)', 29) +
+        izq(f.store || '(sin sucursal)', 21) + f.id);
     }
   }
 

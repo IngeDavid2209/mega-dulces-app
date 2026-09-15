@@ -55,6 +55,15 @@ const COMPLETAR = process.argv.includes('--completar');
 // despues, en su ficha, con la pantalla de Usuarios.
 // El dueño NUNCA entra aqui: su ficha se reconoce por correo y conserva admin.
 const BAJAR_SIN_PUESTO = process.argv.includes('--bajar-admins-sin-puesto');
+// ─── Y LAS FICHAS SIN PUESTO QUE NO SON ADMIN ─────────────────────────────
+// Orden de David (14/sep, tras ver los 13 pendientes): dejarlas «como
+// trabajadores sin puesto». Es la MISMA direccion que todo el paso —quitar, no
+// dar— aplicada a las fichas que el mapa no puede clasificar: pasan a
+// trabajador sin ninguna bandera de gestion, y su `puestoId` sigue vacio, que
+// es el dato que de verdad falta y que hay que capturar en su ficha.
+// NO se les inventa un puesto (§8.5): quedarse sin privilegios es reversible;
+// recibir las obligaciones de un puesto ajeno, no.
+const LIMPIAR_SIN_PUESTO = process.argv.includes('--limpiar-sin-puesto');
 const REVERTIR = process.argv.includes('--revertir') ? process.argv[process.argv.indexOf('--revertir') + 1] : null;
 
 function abortar(msg) {
@@ -122,11 +131,14 @@ async function schemaDeMdtask(c) {
     const perfilId = POR_PUESTO[puesto];
     if (!perfilId) {
       const tiene = GESTION.filter(b => r.datos && r.datos[b] === true);
-      // Admin sin puesto + orden expresa: baja a usuario simple.
-      if (r.rol === 'admin' && !esDueno && BAJAR_SIN_PUESTO) {
+      // Sin puesto + orden expresa: baja a usuario simple (admin o no).
+      const bajaPorOrden = (r.rol === 'admin' && BAJAR_SIN_PUESTO)
+                        || (r.rol !== 'admin' && LIMPIAR_SIN_PUESTO && tiene.length > 0);
+      if (bajaPorOrden && !esDueno) {
         plan.push({ id: r.id, nombre: r.nombre, puesto: puesto || '(sin puesto)',
                     perfilId: 'operativo', etiqueta: PERFILES.operativo.etiqueta, faltan: [],
                     rolAntes: r.rol, rolDespues: 'trabajador',
+                    sinPuesto: true,
                     alcAntes: r.alcance, alcDespues: null,
                     quitar: tiene, poner: [], datos: r.datos, esDueno: false });
         continue;

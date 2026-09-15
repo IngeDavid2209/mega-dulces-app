@@ -224,6 +224,7 @@ extra por la fase que se indica):
 | ~~`productividad.util.ts` sin pruebas (calcula cumplimiento, puntualidad, turno, ritmo)~~ **SALDADA 13/sep** | §8.8 | 2.2 — 28 casos, con control negativo corrido |
 | Foto obligatoria en los 377 puntos, incluidas 62+ declaraciones donde no hay qué fotografiar (orden de Dirección, 3/sep) | Regla 1 de `evidencia-manual.ts` | 5 — verificación por muestra; la declaración se comprueba firmando, no fotografiando |
 | Migraciones 038, 039, 041, 042, 043 con nombres de personas | Hallazgo 8 | 9.4 · **no se editan** (ya aplicadas) |
+| **Un 5.º poll dentro del servidor web**: el emisor del manual (14/sep, noche) | Hallazgo 6 · Fase 9.1 | 9.1 — sale junto con los otros cuatro. Se contrajo a sabiendas: el reloj estaba **peor** que dentro del web, estaba dentro de un navegador, así que moverlo aquí es un peldaño hacia arriba, no hacia abajo. Amarra la app a **una réplica**, que ya era el caso (paso 0.4) |
 
 **Fase 9.2 va al final a propósito:** partir `checklist.ts` antes de quitarle Firestore y antes
 de que exista la plaza sería partir el problema en dos, no resolverlo.
@@ -323,6 +324,135 @@ de que exista la plaza sería partir el problema en dos, no resolverlo.
     columna devuelve cero documentos, sin error.
 
 ## 9. Bitácora del plan
+
+### 14/sep/2026 (noche) — EL RELOJ DE LAS TAREAS SALE DEL NAVEGADOR
+
+Captura de David: «Pendientes del equipo **0** · Mis tareas pendientes **0**», y su instrucción:
+*«quiero que todos tengan activas sus tareas del día»*. Por la mañana esa misma barra decía 112.
+
+**LA CAUSA, medida antes de tocar, y es peor de lo que parecía.** La emisión del manual **no
+existe en el servidor**. Los cuatro polls de `server.js` son flotilla, avisos, bloques y pagos;
+ninguno emite. La única emisión era `RobotManualService`, y corre **dentro del navegador** de
+quien abre `/tareas` (`checklist.ts:2055`), repitiéndose cada 5 min *mientras esa pestaña siga
+abierta*. O sea: **las tareas del día de 186 personas dependían de que alguien las abriera.** Es
+el hallazgo 6 un peldaño más abajo — el reloj no vivía en el servidor web, vivía en un CLIENTE.
+
+**Y un segundo hallazgo que explica por qué un cero no se repone solo:** la idempotencia lee
+`/api/checklists?desde=hoy&hasta=hoy` y **esa respuesta incluye los eliminados**
+(`api/checklists.js:17` deja el filtro de `eliminado` en el cliente). Un `man_…` de hoy marcado
+eliminado **bloquea su propia reemisión el resto del día**. Mañana vuelve solo, porque cambia la
+llave de periodo. Eso convierte un 112 → 0 en algo que ningún robot arregla ese día.
+
+#### LO QUE SE HIZO
+
+`src/app/shared/emision-manual.util.ts` (nuevo): la decisión, **pura**, movida tal cual desde el
+service —mismos cuerpos, mismos comentarios—. `api/emitir-manual.js` (nuevo) la llama desde el
+servidor cada 10 min. **No es una copia:** el navegador y el servidor invocan la MISMA
+`planDeEntregas`. Dos implementaciones de «qué le toca hoy a quién» divergirían en silencio y la
+misma persona tendría **dos denominadores** según quién emitiera primero (§8.11 d).
+
+**La regla viaja compilada.** `scripts/compilar-manual.js` corre al final de `npm run build` y
+emite a `dist/manual`. Hacía falta porque la imagen final **no lleva `src/` ni `tsc`**: el
+Dockerfile solo copia `dist`, `server.js`, `api` y `scripts`, y la segunda etapa instala
+`--omit=dev`. Va **después** de `ng build` a propósito: así no depende de saber qué borra el
+builder de Angular, sino del orden, que sí se controla.
+
+**`on conflict do nothing`, NO `do update`.** El POST de `/api/checklists` hace `do update`
+porque es el guardado normal de la app. Un emisor automático no puede: corre solo cada pocos
+minutos y un `do update` **sobreescribiría con items en blanco** el checklist que alguien lleva
+media mañana llenando. Es la diferencia entre emitir y borrar el trabajo de la mañana.
+
+**LA FECHA SE CALCULA EN HORA DE MÉXICO, y esto se cazó midiendo, no razonando.** El contenedor
+corre en UTC. Medido en el momento de escribirlo, con el proceso en `TZ=UTC`:
+
+    new Date() a secas ......  2026-09-15  Martes   03:00
+    ahoraEnZona(Mexico) .....  2026-09-14  Lunes    21:00
+
+O sea que **el servidor habría emitido el día equivocado esa misma noche**: las semanales caerían
+en el día que no es, y las de hoy no saldrían nunca. El navegador nunca tuvo el problema porque
+siempre estuvo en México.
+
+#### EL ROBOT DEL NAVEGADOR SE MORÍA ANTES DE ESCRIBIR, Y OTRA SESIÓN LO MIDIÓ SIN QUERER
+
+Los dos `await` del bucle iban **desnudos**: sin try/catch, la tarea 3 de 112 tumbaba las 109
+restantes. Y peor, **`setDoc` no rechaza sin red: se queda pendiente**, así que la corrida podía
+colgarse en la primera escritura sin un solo error en ninguna parte. Ahora cada entrega va
+aislada y con `conTope`, y **primero la API**: la app lee de Postgres, así que un documento que
+solo llegara a Firestore se contaría como creado y la persona seguiría sin su tarea.
+
+**La confirmación llegó por una puerta que nadie buscó.** El arnés de otra sesión
+(`prueba-catalogo-manual.js`) contaba los POST a `/api/checklists` y siempre daba 1 — porque en
+headless, sin Firestore alcanzable, **el robot moría antes de escribir y sus emisiones nunca
+llegaban al servidor de la prueba**. Al invertir el orden, esa misma corrida pasó a **4 POST** y
+la prueba reportó siete fallos sobre un mecanismo intacto. O sea: aquella prueba dependía, sin
+saberlo, de que el robot estuviera roto.
+
+**Lo que eso NO prueba, dicho con precisión:** en producción Firestore sí es alcanzable, así que
+esto no demuestra que el robot estuviera muerto para la gente. Demuestra que **el modo de fallo
+es real** —y que cuando ocurre, no deja rastro—, que es justo por lo que se blindó.
+
+#### LAS PRUEBAS, Y LOS CUATRO CONTROLES NEGATIVOS
+
+**219 de 219** (18 nuevas) más **16 afirmaciones** del emisor contra una base simulada. Los
+cuatro controles, una línea cada uno con su `diff` comprobado:
+
+| | qué se rompió | qué pasó |
+|---|---|---|
+| NEG-1 | `idemKey` con un sufijo (432 → 432) | 1 falla, **nombra la llave exacta** |
+| NEG-2 | la inserción pasa a `do update` (320 → 320) | 2 fallas |
+| NEG-3 | se quita la guardia de cero fichas (261 → 261) | 3 fallas, y la vuelta abortada **pasa a `ok`** |
+| NEG-4 | la imagen llega sin `dist/manual` | grita y **no arranca mudo** |
+
+**El NEG-3 es el que más enseña.** Sin esa guardia, leer cero fichas —base equivocada, conexión a
+medias— produce `estado: 'ok'` con «0 creadas», que es **exactamente indistinguible de un día
+normal sin trabajo pendiente**. La guardia cita la cifra conocida (la 050 contó 150 activas) y
+aborta la vuelta sin escribir.
+
+**La llave quedó fijada contra un literal** en el spec, y el canario del build la vuelve a
+comprobar: `man_anaquelista_pasillo_2026-9-14_canindo_ana_perez`. No es purismo — en producción
+ya existen miles de documentos con esa forma, y cambiarla crearía un **segundo** documento por
+cada punto ya emitido. Además comparte llave con la entrega a mano de `eca287d`, que es lo que
+impide que las dos vías se dupliquen.
+
+#### DESPLEGADO Y VERIFICADO — las dos mitades, porque no son la misma
+
+    bundle .... los 3 marcadores nuevos servidos, 23 controles en pie, 65 archivos / 4.46 MB
+    emisor .... [emisor-manual] poll iniciado (cada 10 min). Ahora en America/Mexico_City: 2026-09-14 23:16
+
+**Un marcador en el bundle NO prueba que el emisor emita** — es un cambio de lógica y de
+servidor, así que el marcador tuvo que ser una frase del texto de la regla (el minificador se
+come los nombres de función, respeta los literales). La prueba del emisor es su línea en el log,
+y se buscaron **las dos** cadenas, no solo la buena: `NO SE PUDO CARGAR LA REGLA` dio 0 con la
+buena presente. Ventana de log citada: **11 líneas** (truncada, así que una ausencia ahí no
+concluye por sí sola).
+
+Salieron tres trabajos en un solo `railway up` —el catálogo del manual a mano (`eca287d`, que
+llevaba commiteado y **nunca desplegado**) y el desglose de permisos (`a026495`)—, coordinado por
+`SendMessage` con las otras dos sesiones. La guardia de espera, por fin correcta a la primera:
+anclada al rótulo `status:` y comparando la línea completa. Vio `● Online · Building (27s)`,
+`Deploying (2m)` y terminó en `● Online` a secas tras **5 esperas**.
+
+#### LO QUE ESTO NO HACE, dicho para que no se lea como resuelto
+
+- **No repone las tareas de HOY.** Si las del 14/sep fueron eliminadas, sus ids están tomados y
+  el emisor no las recrea ese día. Reponerlas es marcar `eliminado = false` en producción, y eso
+  no se toca sin que David lo pida (§8.6).
+- **No se sabe todavía por qué hoy salió 0.** `scripts/diagnostico-emision-hoy.js` (commit
+  `7b5b2b2`, solo lee) lo contesta, y **nadie lo ha corrido**: necesita una `DATABASE_URL` de
+  producción. Separa las tres lecturas —nunca se emitieron / se emitieron y se borraron / existen
+  y el cero es de la interfaz— y aborta si los ocho días salen en cero.
+- **«Todos» no puede ser 186 personas.** **70 de 89 puestos no tienen manual escrito**, y esa
+  gente sale `omitido` con su motivo. Ahora el motivo **se reporta** en el log agrupado en vez de
+  tirarse, que es lo único que este paso podía hacer: escribirles un manual es Fase 7 y lo decide
+  Dirección, no el código (§8.5).
+- **El emisor no pasa `esDiaCerrado` ni `esSucursalAdministrativa`**: esos ganchos viven en el
+  componente y dependen de datos que el servidor no tiene. Omitirlos entrega de MÁS, no de menos
+  —el lado correcto del error— y queda anotado en el código. **Falta medir cuánto de más**: un
+  domingo en una administrativa son tareas que nadie puede hacer y que alguien ve en rojo el
+  lunes.
+- **Nadie ha entrado con una cuenta real.** La primera prueba de verdad es mañana por la mañana:
+  si el log dice `[emisor-manual] … N creada(s)` sin que nadie haya abierto la app, el paso
+  sirvió.
 
 ### 14/sep/2026 (noche) — LOS PERMISOS DICEN QUÉ CONCEDEN, y el rol admin se desglosa
 

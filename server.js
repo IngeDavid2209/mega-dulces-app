@@ -61,6 +61,11 @@ app.all('/api/checklists', require('./api/checklists'));
 // que Direccion declara ("de temporada"). Tablas de la migracion 057.
 app.all('/api/plantillas', require('./api/plantillas'));
 app.all('/api/puestos-declarados', require('./api/puestos-declarados'));
+// Fase 7 · paso 7.1a: la NORMA COMO DATO. Las tareas de los 70 puestos que no
+// tienen manual escrito en el catalogo de TypeScript (104 personas, medido el
+// 14/sep). Tabla de la migracion 060. NO la lee la emision todavia: este paso
+// solo crea donde escribirla.
+app.all('/api/tareas-puesto', require('./api/tareas-puesto'));
 // La plaza y quien la cubre (tablas de la migracion 056, hasta hoy sin lector).
 app.all('/api/plazas', require('./api/plazas'));
 app.all('/api/coberturas', require('./api/coberturas'));

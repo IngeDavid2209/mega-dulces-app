@@ -485,3 +485,219 @@
   .mp-badge-pendiente, .mp-badge-manual { font-size: 12px; }
   .mp-unidad-titulo { font-size: 13px; }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   LA NORMA CAPTURADA (Fase 7 · paso 7.1a)
+
+   Se distingue del manual publicado a propósito: quien lee la hoja tiene que
+   poder ver de dónde sale cada obligación. Un checklist que salga de una tarea
+   capturada y uno que salga del Manual Corporativo se cumplen igual, pero NO
+   los autoriza el mismo documento — y el día que alguien discuta un punto, esa
+   diferencia es la primera pregunta.
+
+   Todos los tokens usados aquí se verificaron contra los que este archivo ya
+   usaba. Un token inventado no revienta: IGUALA dos cosas distintas, sin un
+   solo error en consola (lección del 4/sep).
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.mp-propias {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--neutral-300);
+}
+
+.mp-propias-cab {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.mp-propias-por-que {
+  margin: 0 0 10px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--neutral-600);
+}
+
+/* El borde de color es lo que separa de un vistazo la norma capturada de la
+   publicada, sin tener que leer la pastilla. */
+.mp-tarea-propia {
+  border-left: 3px solid var(--warn-border);
+  background: var(--warn-soft-bg);
+}
+
+.mp-tarea-capturada {
+  background: var(--warn-soft-bg);
+  border-color: var(--warn-border);
+  color: var(--warn-soft-fg);
+}
+
+/* ── El formulario ─────────────────────────────────────────────────────── */
+
+.mp-form {
+  margin-top: 10px;
+  padding: 12px;
+  border: 1px solid var(--neutral-300);
+  border-radius: 10px;
+  background: var(--neutral-50);
+}
+
+.mp-form-titulo {
+  margin: 0 0 10px;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--neutral-900);
+}
+
+.mp-campo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 10px;
+  /* Sin esto, un campo dentro de la rejilla no puede encogerse por debajo del
+     ancho mínimo de su contenido y empuja la fila fuera del teléfono: el
+     defecto exacto del 14/sep con `.org-menu`. */
+  min-width: 0;
+}
+
+.mp-campo > span {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--neutral-600);
+}
+
+.mp-campo input,
+.mp-campo select {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  border: 1px solid var(--neutral-300);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--neutral-900);
+  /* 16px NO es estética: por debajo de eso Safari hace zoom al enfocar y
+     descoloca la pantalla entera (lección del 13/sep, iPhone). */
+  font-size: 16px;
+  font-family: var(--font-body);
+}
+
+.mp-campo-fila {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.mp-puntos { margin-top: 6px; }
+
+.mp-punto {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  min-width: 0;
+}
+
+.mp-punto-num {
+  flex: 0 0 auto;
+  width: 22px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--neutral-500);
+  text-align: right;
+}
+
+.mp-punto input {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--neutral-300);
+  border-radius: 8px;
+  font-size: 16px;
+  font-family: var(--font-body);
+  color: var(--neutral-900);
+}
+
+.mp-punto-quitar {
+  flex: 0 0 auto;
+  width: 32px;
+  border: 1px solid var(--neutral-300);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--neutral-600);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.mp-btn-nueva,
+.mp-btn-punto,
+.mp-btn-guardar,
+.mp-btn-cancelar,
+.mp-btn-retirar {
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: var(--font-body);
+  cursor: pointer;
+  border: 1px solid var(--neutral-300);
+  background: #fff;
+  color: var(--neutral-700);
+}
+
+.mp-btn-nueva { border-color: var(--brand-700); color: var(--brand-700); }
+
+.mp-btn-guardar {
+  background: var(--brand-700);
+  border-color: var(--brand-700);
+  color: #fff;
+}
+
+.mp-btn-guardar[disabled] {
+  background: var(--neutral-300);
+  border-color: var(--neutral-300);
+  color: var(--neutral-500);
+  cursor: not-allowed;
+}
+
+.mp-btn-retirar {
+  margin-top: 8px;
+  border-color: var(--bad-border);
+  color: var(--bad-fg);
+}
+
+.mp-form-acciones { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+
+/* ── Lo que impide guardar y lo que solo advierte NO se pintan igual ──────
+   Si se vieran iguales, quien captura no sabría cuál tiene que corregir y
+   cuál puede dejar a propósito (un punto repetido entre apertura y cierre es
+   legítimo). */
+
+.mp-aviso {
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.mp-aviso-bloquea {
+  background: var(--bad-soft-bg);
+  border: 1px solid var(--bad-border);
+  color: var(--bad-soft-fg);
+}
+
+.mp-aviso-avisa {
+  background: var(--warn-soft-bg);
+  border: 1px solid var(--warn-border);
+  color: var(--warn-soft-fg);
+}
+
+@media (max-width: 480px) {
+  .mp-campo-fila { grid-template-columns: 1fr; }
+  .mp-propias-cab { align-items: stretch; }
+  .mp-btn-nueva { width: 100%; }
+}

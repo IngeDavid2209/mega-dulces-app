@@ -23,8 +23,10 @@ import { RouterModule, Router } from '@angular/router';
 
 import { SidebarComponent } from '../../../shared/sidebar/sidebar';
 import { UsuariosService } from '../../../shared/usuarios.service';
+import { ApiService } from '../../../shared/api.service';
+import { conTope } from '../../../shared/con-tope.util';
 import { cerrarSesionSegura } from '../../../shared/sesion.util';
-import { normalizarNombre } from '../../../shared/permisos.util';
+import { normalizarNombre, esAdminGlobal, esDueno } from '../../../shared/permisos.util';
 import {
   PuestoOrganigrama, puestosPorUnidad, UnidadOrganigrama,
 } from '../../../shared/organigrama.catalogo';
@@ -33,6 +35,12 @@ import {
   ManualPuesto, TareaManual, manualDePuesto, tareasDePuesto,
   totalTareasAutomaticas, MANUALES_POR_PUESTO,
 } from '../../../shared/tareas-manual.catalogo';
+import {
+  TareaDePuesto, BorradorTarea, AvisoTarea, DiaSemanaManual,
+  DIAS_CAPTURABLES, MOMENTOS_CAPTURABLES, FRECUENCIAS_CAPTURABLES,
+  ETIQUETA_MOMENTO, declaradasDePuesto, revisarTareaPuesto, puedeGuardarse,
+  nuevoIdTareaPuesto, aTareaManual,
+} from '../../../shared/tareas-puesto.util';
 
 /** Una fila de la hoja: el puesto con su manual y su gente. */
 interface FilaPuesto {
@@ -43,6 +51,12 @@ interface FilaPuesto {
   automaticas: number;
   /** Personas activas que hoy tienen este puesto. */
   ocupantes: string[];
+  /**
+   * Las tareas CAPTURADAS para este puesto (Fase 7, paso 7.1a). Van aparte de
+   * `tareas` a propósito: en pantalla se distinguen del manual publicado, y
+   * quien las lee tiene que poder ver de dónde sale cada obligación.
+   */
+  propias: TareaDePuesto[];
 }
 
 interface GrupoUnidad {
@@ -61,9 +75,44 @@ interface GrupoUnidad {
 export class ManualPuestosComponent implements OnInit, OnDestroy {
   private router = inject(Router);
   private usuariosSvc = inject(UsuariosService);
+  private api = inject(ApiService);
 
   isMenuOpen = false;
   currentUser: any = null;
+
+  // ── LA NORMA COMO DATO (Fase 7 · paso 7.1a) ─────────────────────────────
+  //
+  // Medido el 14/sep: 70 de 89 puestos no tienen manual escrito, 38 de ellos
+  // con gente, 104 personas. Esto es donde se les escribe.
+
+  /** Lo capturado, de todos los puestos. Se filtra por puesto al usarlo. */
+  declaradas = signal<TareaDePuesto[]>([]);
+  cargandoNorma = signal(false);
+  errorNorma = signal<string | null>(null);
+
+  /** Listas del catálogo, para los selectores. */
+  readonly DIAS = DIAS_CAPTURABLES;
+  readonly MOMENTOS = MOMENTOS_CAPTURABLES;
+  readonly FRECUENCIAS = FRECUENCIAS_CAPTURABLES;
+  readonly ETIQUETA_MOMENTO = ETIQUETA_MOMENTO;
+
+  /**
+   * VER NO ES EDITAR, y aquí la distinción pesa más que en la plantilla: lo que
+   * se escriba en esta pantalla se convierte en obligaciones diarias para
+   * personas reales. Capturar queda en Dirección/dueño, igual que la plantilla.
+   *
+   * Se comprueba ANTES DE CADA ESCRITURA, no solo en el `*ngIf` del botón:
+   * esconder un control es cosmética (lección del 13/sep, tres fugas
+   * desplegadas).
+   */
+  get puedeEditarNorma(): boolean {
+    return esAdminGlobal(this.currentUser) || esDueno(this.currentUser);
+  }
+
+  /** El puesto cuyo formulario está abierto, y el borrador en curso. */
+  capturando = signal<string | null>(null);
+  borrador = signal<BorradorTarea | null>(null);
+  guardando = signal(false);
 
   /**
    * Plantilla, leída del listener compartido. Es la señal del service, no una
@@ -97,6 +146,35 @@ export class ManualPuestosComponent implements OnInit, OnDestroy {
 
     // La plantilla llega por el listener compartido; aquí solo se lee.
     this.usuariosSvc.iniciar();
+    this.cargarNorma();
+  }
+
+  /**
+   * Trae lo capturado. CON TOPE: sin él, una petición que no vuelve deja la
+   * pantalla en «Cargando…» para siempre — el «VERIFICANDO...» del 1/sep, que
+   * ya se cobró en Pase de lista el 13/sep.
+   */
+  async cargarNorma() {
+    this.cargandoNorma.set(true);
+    this.errorNorma.set(null);
+    try {
+      const r: any = await conTope(
+        this.api.get('/api/tareas-puesto'), 20000, 'leer las tareas capturadas');
+      this.declaradas.set((r?.items || []).map((t: any) => ({
+        ...t,
+        items: Array.isArray(t.items) ? t.items : [],
+      })));
+    } catch (e: any) {
+      // Se NOMBRA. Una lista vacía por fallo de red y un puesto sin tareas
+      // capturadas se ven idénticos, y confundirlos haría que alguien capture
+      // por segunda vez lo que ya existe (§5.2).
+      this.errorNorma.set(
+        'No se pudieron leer las tareas capturadas, así que esta pantalla puede ' +
+        'estar mostrando de menos. ' + (e?.message || ''));
+      console.error('[manual-puestos] no se pudo leer /api/tareas-puesto', e);
+    } finally {
+      this.cargandoNorma.set(false);
+    }
   }
 
   ngOnDestroy() {
@@ -112,14 +190,25 @@ export class ManualPuestosComponent implements OnInit, OnDestroy {
   /** Cuánta gente activa está recibiendo tareas de su manual. */
   cobertura = computed(() => {
     const act = this.activos();
+    const propias = this.declaradas();
     let recibiendo = 0, sinPuesto = 0, sinManual = 0;
+    // De los que reciben, cuántos lo hacen por norma CAPTURADA y no publicada.
+    // Se cuenta aparte porque es el número que dice si este paso está sirviendo
+    // para algo: arranca en 0 y sube conforme Dirección escribe.
+    let porCaptura = 0;
     for (const u of act) {
       const id = resolverPuesto(u).puestoId;
       if (!id) { sinPuesto++; continue; }
-      if (tareasDePuesto(id).some(t => !t.soloPorEvento)) recibiendo++;
-      else sinManual++;
+      const publicada = tareasDePuesto(id).some(t => !t.soloPorEvento);
+      const capturada = declaradasDePuesto(id, propias).length > 0;
+      if (publicada || capturada) {
+        recibiendo++;
+        if (!publicada) porCaptura++;
+      } else {
+        sinManual++;
+      }
     }
-    return { total: act.length, recibiendo, sinPuesto, sinManual };
+    return { total: act.length, recibiendo, sinPuesto, sinManual, porCaptura };
   });
 
   // ── QUIENES NO TIENEN PUESTO ────────────────────────────────────────────
@@ -166,6 +255,8 @@ export class ManualPuestosComponent implements OnInit, OnDestroy {
       ocupantesPorPuesto.set(id, lista);
     }
 
+    const capturadas = this.declaradas();
+
     return puestosPorUnidad().map(g => {
       const filas: FilaPuesto[] = g.puestos.map(p => {
         const manual = manualDePuesto(p.id);
@@ -176,9 +267,13 @@ export class ManualPuestosComponent implements OnInit, OnDestroy {
           tareas,
           automaticas: tareas.filter(t => !t.soloPorEvento).length,
           ocupantes: (ocupantesPorPuesto.get(p.id) || []).sort((a, b) => a.localeCompare(b)),
+          propias: declaradasDePuesto(p.id, capturadas),
         };
       }).filter(f => {
-        if (filtrarConManual && !f.manual) return false;
+        // «Solo con manual» incluye ahora las capturadas: si no, un puesto al
+        // que Dirección acaba de escribirle sus tareas desaparecería del filtro
+        // justo después de dejar de estar sin norma.
+        if (filtrarConManual && !f.manual && !f.propias.length) return false;
         if (!term) return true;
         // Busca en el puesto, el documento y los nombres de las tareas: es lo
         // que alguien teclea cuando anda buscando "cierre" o "caducidades".
@@ -187,6 +282,7 @@ export class ManualPuestosComponent implements OnInit, OnDestroy {
           f.manual?.documento || '',
           f.manual?.codigo || '',
           ...f.tareas.map(t => t.nombre),
+          ...f.propias.map(t => t.nombre),
         ].join(' '));
         return heno.includes(term);
       });
@@ -227,6 +323,178 @@ export class ManualPuestosComponent implements OnInit, OnDestroy {
       administrativo: '📋 Administrativo',
     };
     return m[t.momento] || t.momento;
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  //  CAPTURA DE LA NORMA (Fase 7 · paso 7.1a)
+  // ══════════════════════════════════════════════════════════════════════
+
+  /** Los problemas del borrador en curso. Vacío = se puede guardar. */
+  avisos = computed<AvisoTarea[]>(() => {
+    const b = this.borrador();
+    if (!b) return [];
+    return revisarTareaPuesto(b, this.declaradas());
+  });
+
+  /** ¿El borrador de ahora se puede guardar? */
+  get borradorValido(): boolean {
+    return !!this.borrador() && puedeGuardarse(this.avisos());
+  }
+
+  avisosQueBloquean = computed(() => this.avisos().filter(a => a.nivel === 'bloquea'));
+  avisosQueAvisan = computed(() => this.avisos().filter(a => a.nivel === 'avisa'));
+
+  abrirCaptura(puestoId: string) {
+    if (!this.puedeEditarNorma) return;
+    this.capturando.set(puestoId);
+    this.borrador.set({
+      puestoId,
+      nombre: '',
+      momento: 'operacion',
+      frecuencia: 'Diaria',
+      diaSemana: null,
+      diaMes: null,
+      horaLimite: '19:00',
+      // Arranca en 1.0 y quien captura la sube al publicar una corrección. No
+      // se autogenera: la versión es una decisión de quien autoriza el
+      // documento, no un contador (§5.4).
+      version: '1.0',
+      items: [{ texto: '' }],
+    });
+  }
+
+  cancelarCaptura() {
+    this.capturando.set(null);
+    this.borrador.set(null);
+  }
+
+  estaCapturando(puestoId: string): boolean {
+    return this.capturando() === puestoId;
+  }
+
+  /** Cambia un campo del borrador sin perder el resto. */
+  editarBorrador(campo: keyof BorradorTarea, valor: any) {
+    const b = this.borrador();
+    if (!b) return;
+    const siguiente: BorradorTarea = { ...b, [campo]: valor };
+    // Al cambiar de frecuencia se limpia el día que ya no aplica: dejarlo
+    // colgado guardaría un «Mensual, los Viernes», que no significa nada.
+    if (campo === 'frecuencia') {
+      if (valor !== 'Semanal') siguiente.diaSemana = null;
+      if (valor !== 'Mensual') siguiente.diaMes = null;
+    }
+    this.borrador.set(siguiente);
+  }
+
+  editarPunto(i: number, texto: string) {
+    const b = this.borrador();
+    if (!b) return;
+    const items = b.items.slice();
+    items[i] = { texto };
+    this.borrador.set({ ...b, items });
+  }
+
+  agregarPunto() {
+    const b = this.borrador();
+    if (!b) return;
+    this.borrador.set({ ...b, items: [...b.items, { texto: '' }] });
+  }
+
+  quitarPunto(i: number) {
+    const b = this.borrador();
+    if (!b) return;
+    const items = b.items.filter((_, k) => k !== i);
+    this.borrador.set({ ...b, items: items.length ? items : [{ texto: '' }] });
+  }
+
+  /**
+   * Guarda la tarea capturada.
+   *
+   * USA `api.post`, NO `api.guardar`. El helper se TRAGA el fallo (registra en
+   * consola y vuelve sin lanzar), así que con él la pantalla diría «guardada»
+   * aunque el servidor la hubiera rechazado — y aquí el rechazo es justo lo que
+   * más importa: el 409 del candado anti-duplicado y el índice único de la
+   * tabla. Quien captura se iría convencido y la tarea no existiría. Es el
+   * defecto #1 del 14/sep, cobrado en otra pantalla.
+   */
+  async guardarTarea() {
+    // Se comprueba aquí, no solo en el *ngIf del botón.
+    if (!this.puedeEditarNorma) return;
+    const b = this.borrador();
+    if (!b || !this.borradorValido || this.guardando()) return;
+
+    this.guardando.set(true);
+    this.errorNorma.set(null);
+    try {
+      const id = nuevoIdTareaPuesto(
+        b.puestoId, b.nombre, this.declaradas().map(t => t.id));
+      const fila: TareaDePuesto = {
+        id,
+        puestoId: b.puestoId,
+        nombre: b.nombre.trim(),
+        momento: b.momento,
+        frecuencia: b.frecuencia,
+        diaSemana: b.frecuencia === 'Semanal' ? (b.diaSemana as DiaSemanaManual) : null,
+        diaMes: b.frecuencia === 'Mensual' ? Number(b.diaMes) : null,
+        horaLimite: b.horaLimite,
+        version: b.version.trim(),
+        documento: 'Capturado en MDTask',
+        vigente: true,
+        creadoEn: Date.now(),
+        creadoPor: this.currentUser?.nombre || this.currentUser?.correo || '(sin nombre)',
+        items: b.items
+          .map(i => ({ texto: (i.texto || '').trim() }))
+          .filter(i => i.texto),
+      };
+      await conTope(this.api.post('/api/tareas-puesto', fila), 20000, 'guardar la tarea');
+      this.declaradas.update(lista => [...lista, fila]);
+      this.cancelarCaptura();
+    } catch (e: any) {
+      this.errorNorma.set('No se guardó: ' + (e?.message || 'error desconocido'));
+      console.error('[manual-puestos] no se pudo guardar la tarea', e);
+    } finally {
+      this.guardando.set(false);
+    }
+  }
+
+  /**
+   * Retira una tarea capturada. NO la borra (§5.5): los checklists ya emitidos
+   * tienen que seguir teniendo a qué tarea apuntar, y en diciembre «¿por qué
+   * este puesto dejó de tener esta tarea?» tiene que seguir teniendo respuesta.
+   */
+  async retirarTarea(t: TareaDePuesto) {
+    if (!this.puedeEditarNorma || this.guardando()) return;
+    const motivo = (prompt(
+      `Retirar «${t.nombre}».\n\n` +
+      'No se borra: deja de entregarse y su historia queda. ¿Por qué se retira?') || '').trim();
+    if (!motivo) return;   // Sin motivo no se retira: en dos meses nadie sabría por qué.
+
+    this.guardando.set(true);
+    this.errorNorma.set(null);
+    try {
+      await conTope(
+        this.api.patch('/api/tareas-puesto', { id: t.id, vigente: false, motivo }),
+        20000, 'retirar la tarea');
+      this.declaradas.update(lista =>
+        lista.map(x => (x.id === t.id ? { ...x, vigente: false, motivo } : x)));
+    } catch (e: any) {
+      this.errorNorma.set('No se retiró: ' + (e?.message || 'error desconocido'));
+      console.error('[manual-puestos] no se pudo retirar la tarea', e);
+    } finally {
+      this.guardando.set(false);
+    }
+  }
+
+  /**
+   * Sin esto, cada tecla reemplaza el arreglo de puntos, el *ngFor recrea los
+   * inputs y el foco se pierde: habría que volver a hacer clic para escribir la
+   * segunda letra. Por índice porque los puntos no tienen id propio todavía.
+   */
+  trackPorIndice(i: number): number { return i; }
+
+  /** Etiqueta de periodicidad de una tarea capturada (reusa la del manual). */
+  textoFrecuenciaPropia(t: TareaDePuesto): string {
+    return this.textoFrecuencia(aTareaManual(t));
   }
 
   limpiarFiltros() {

@@ -64,32 +64,35 @@ const MARCADORES = [
   // anteriores bajan a control. Mantener ese orden importa: dos veces hoy el
   // comentario se quedo describiendo el marcador ANTERIOR, y un comentario que
   // narra otra cosa que la linea de abajo es doctrina falsa en dos semanas.
-  // 14/sep/2026 (4) · EL CATALOGO DEL MANUAL, ASIGNABLE A MANO. Validado en
-  // las dos direcciones antes de subir: 0 ocurrencias en HEAD.
-  { txt: 'cat-manual', nuevo: true, que: 'el modal para dar una tarea del manual' },
-  // 14/sep/2026 (5) · LOS PERMISOS DICEN QUE CONCEDEN, Y EL ROL ADMIN SE
-  // DESGLOSA. Validado en las DOS direcciones antes de subir: 0 ocurrencias en
-  // HEAD (`git grep`), 1 archivo del `dist/`, y 0 en produccion medido
-  // recorriendo los 65 archivos del ngsw (4.40 MB, 0 fallos de lectura — sin
-  // esa cifra el cero no vale).
+  // 14/sep/2026 (6) · LA NORMA COMO DATO (Fase 7 · paso 7.1a). La pantalla
+  // donde Direccion captura las tareas de los 70 puestos sin manual (38 con
+  // gente, 104 personas). Validado en LAS DOS DIRECCIONES antes de subir:
+  // `git grep mp-propias HEAD` -> 0 ocurrencias · dist/ -> 9, en un chunk lazy.
   //
-  // ⚠ SON DOS `nuevo` A LA VEZ, y es a proposito: `cat-manual` esta commiteado
-  //   desde eca287d y NUNCA SE DESPLEGO —medido: 0 en lo servido—, asi que el
-  //   proximo `railway up` arrastra los dos. Si uno se queda en 0, el
-  //   despliegue no llevo lo que decimos que lleva.
-  { txt: 'pm-desglose', nuevo: true, que: 'el desglose de lo que concede el rol admin' },
+  // ⚠ LO QUE ESTE MARCADOR *NO* PRUEBA: que alguien pueda guardar una tarea.
+  //   Eso necesita la migracion 060 aplicada (su `raise notice` en el log) y
+  //   el endpoint montado (401 sin token). El marcador solo dice que el bundle
+  //   con la pantalla se sirvio — la misma distincion que el emisor del 14/sep.
+  { txt: 'mp-propias', nuevo: true, que: 'la pantalla de captura de la norma' },
+  // Los tres de anoche bajan a control: YA VALEN en produccion (medido tras el
+  // railway up de las 23:16), y dejarlos arriba daria verde sin comprobar nada
+  // de este despliegue.
+  { txt: 'cat-manual', control: true, que: 'el modal para dar una tarea del manual' },
+  // 14/sep/2026 (5) · el desglose del rol admin. Era `nuevo` del despliegue de
+  // las 23:16 y salio verificado (0 -> 3): baja a control.
+  { txt: 'pm-desglose', control: true, que: 'el desglose de lo que concede el rol admin' },
   // ⚠ ESTE NO ES LA MITAD QUE IMPORTA, Y HAY QUE DECIRLO. La emision de las
-  // tareas del dia se movio al SERVIDOR (api/emitir-manual.js) y eso no deja
+  // tareas del dia vive en el SERVIDOR (api/emitir-manual.js) y eso no deja
   // ninguna cadena en el bundle: lo que este marcador prueba es que el codigo
-  // nuevo del navegador se sirvio, no que el emisor este emitiendo. La
-  // comprobacion del emisor es su linea en el log de Railway:
+  // del navegador se sirvio, no que el emisor este emitiendo. La comprobacion
+  // del emisor es su linea en el log de Railway:
   //     [emisor-manual] poll iniciado (cada N min). Ahora en America/Mexico_City: ...
   // Sin esa linea, el emisor NO arranco aunque este marcador salga en 1.
   //
   // Es una frase entera y no una clase CSS porque un cambio de logica pura no
   // introduce ningun identificador propio (la leccion de la Fase 2.1): los
   // nombres de funcion los minifica el compilador, los literales no.
-  { txt: 'ninguna de sus tareas aplica en esa fecha', nuevo: true, que: 'la regla de emision compartida por el navegador y el servidor' },
+  { txt: 'ninguna de sus tareas aplica en esa fecha', control: true, que: 'la regla de emision compartida por el navegador y el servidor' },
   // Era el nuevo del despliegue anterior; baja a control porque YA VALE en
   // produccion y dejarlo arriba daria verde sin comprobar nada de este.
   { txt: 'cl-bandeja', control: true, que: 'la bandeja de cuatro botones' },

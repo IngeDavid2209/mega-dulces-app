@@ -52,6 +52,13 @@
       </div>
     </div>
 
+    <!-- Un fallo al leer lo capturado se NOMBRA: si no, la pantalla mostraría
+         de menos y alguien capturaría por segunda vez lo que ya existe. -->
+    <div class="mp-aviso mp-aviso-bloquea mp-aviso-carga" *ngIf="errorNorma()">
+      {{ errorNorma() }}
+      <button type="button" class="mp-btn-punto" (click)="cargarNorma()">Reintentar</button>
+    </div>
+
     <!-- ═══════════════ TABLERO DE COBERTURA ═══════════════ -->
     <section class="mp-tablero">
       <div class="mp-kpi">
@@ -72,6 +79,12 @@
         <span class="mp-kpi-num">{{ cobertura().recibiendo }}</span>
         <span class="mp-kpi-lbl">Personas recibiendo tareas</span>
         <span class="mp-kpi-pie">de {{ cobertura().total }} activas</span>
+        <!-- Arranca en 0 y sube conforme Dirección escribe: es el número que
+             dice si la captura está sirviendo para algo. Se esconde en 0 para
+             no anunciar una función que todavía no ha producido nada. -->
+        <span class="mp-kpi-pie" *ngIf="cobertura().porCaptura > 0">
+          {{ cobertura().porCaptura }} por tareas capturadas
+        </span>
       </div>
       <!-- Esta tarjeta se abre: el numero dice cuantos estan fuera, pero para
            corregirlo hace falta la lista. Solo es boton cuando hay a quien
@@ -198,12 +211,19 @@
         <!-- Detalle -->
         <div class="mp-detalle" *ngIf="esAbierto(f.puesto.id)">
 
-          <!-- Sin manual: se dice por qué no recibe nada, sin rodeos -->
-          <div class="mp-detalle-vacio" *ngIf="!f.manual">
+          <!-- Sin manual Y sin tareas capturadas: se dice por qué no recibe nada -->
+          <div class="mp-detalle-vacio" *ngIf="!f.manual && !f.propias.length">
             A este puesto todavía no le llega su Manual Corporativo de Operación, así
-            que no recibe tareas automáticas. No se le inventan: cuando el manual se
-            levante y se autorice, sus checklists aparecen aquí y en el apartado de
-            Tareas de su gente.
+            que no recibe tareas automáticas. No se le inventan.
+            <ng-container *ngIf="puedeEditarNorma">
+              Si su trabajo ya está definido, se le pueden capturar sus tareas aquí
+              abajo: quedan con autor, fecha y versión.
+            </ng-container>
+            <ng-container *ngIf="!puedeEditarNorma">
+              Cuando el manual se levante y se autorice —o Dirección capture sus
+              tareas—, sus checklists aparecen aquí y en el apartado de Tareas de su
+              gente.
+            </ng-container>
           </div>
 
           <ng-container *ngIf="f.manual">
@@ -273,6 +293,142 @@
               </ul>
             </div>
           </ng-container>
+
+          <!-- ══ LA NORMA CAPTURADA (Fase 7 · 7.1a) ══════════════════════ -->
+          <section class="mp-propias" *ngIf="f.propias.length || puedeEditarNorma">
+            <header class="mp-propias-cab">
+              <span class="mp-doc-etq">Tareas capturadas para este puesto</span>
+              <button type="button" class="mp-btn-nueva"
+                      *ngIf="puedeEditarNorma && !estaCapturando(f.puesto.id)"
+                      (click)="abrirCaptura(f.puesto.id)">
+                + Agregar tarea
+              </button>
+            </header>
+
+            <p class="mp-propias-por-que" *ngIf="!f.propias.length && puedeEditarNorma">
+              No son el Manual Corporativo: son tareas que Dirección declara para este
+              puesto mientras su documento no exista. Quedan con autor, fecha y versión,
+              y no se editan — para corregir una se publica una versión nueva.
+            </p>
+
+            <article class="mp-tarea mp-tarea-propia" *ngFor="let t of f.propias">
+              <header class="mp-tarea-cab">
+                <h3>{{ t.nombre }}</h3>
+                <span class="mp-tarea-codigo mp-tarea-capturada">CAPTURADA</span>
+              </header>
+
+              <div class="mp-tarea-meta">
+                <span class="mp-meta">{{ ETIQUETA_MOMENTO[t.momento] }}</span>
+                <span class="mp-meta">{{ textoFrecuenciaPropia(t) }}</span>
+                <span class="mp-meta">Hasta las {{ t.horaLimite }}</span>
+                <span class="mp-meta">Versión {{ t.version }}</span>
+              </div>
+
+              <p class="mp-tarea-nota" *ngIf="t.creadoPor">
+                La capturó {{ t.creadoPor }}<span *ngIf="t.creadoEn"> · {{ t.creadoEn | date:'d/MM/yyyy' }}</span>
+              </p>
+
+              <ol class="mp-items">
+                <li *ngFor="let it of t.items">{{ it.texto }}</li>
+              </ol>
+
+              <button type="button" class="mp-btn-retirar"
+                      *ngIf="puedeEditarNorma" [disabled]="guardando()"
+                      (click)="retirarTarea(t)">
+                Retirar esta tarea
+              </button>
+            </article>
+
+            <!-- El formulario -->
+            <div class="mp-form" *ngIf="estaCapturando(f.puesto.id) && borrador() as b">
+              <h3 class="mp-form-titulo">Nueva tarea para {{ f.puesto.nombre }}</h3>
+
+              <label class="mp-campo">
+                <span>Nombre de la tarea</span>
+                <input type="text" [ngModel]="b.nombre"
+                       (ngModelChange)="editarBorrador('nombre', $event)"
+                       placeholder="Por ejemplo: Ruta del día" />
+              </label>
+
+              <div class="mp-campo-fila">
+                <label class="mp-campo">
+                  <span>Momento</span>
+                  <select [ngModel]="b.momento" (ngModelChange)="editarBorrador('momento', $event)">
+                    <option *ngFor="let m of MOMENTOS" [value]="m">{{ ETIQUETA_MOMENTO[m] }}</option>
+                  </select>
+                </label>
+
+                <label class="mp-campo">
+                  <span>Cada cuándo</span>
+                  <select [ngModel]="b.frecuencia" (ngModelChange)="editarBorrador('frecuencia', $event)">
+                    <option *ngFor="let fr of FRECUENCIAS" [value]="fr">{{ fr }}</option>
+                  </select>
+                </label>
+
+                <label class="mp-campo" *ngIf="b.frecuencia === 'Semanal'">
+                  <span>Qué día</span>
+                  <select [ngModel]="b.diaSemana" (ngModelChange)="editarBorrador('diaSemana', $event)">
+                    <option [ngValue]="null">Elige el día…</option>
+                    <option *ngFor="let d of DIAS" [value]="d">{{ d }}</option>
+                  </select>
+                </label>
+
+                <label class="mp-campo" *ngIf="b.frecuencia === 'Mensual'">
+                  <span>Qué día del mes</span>
+                  <input type="number" min="1" max="31" [ngModel]="b.diaMes"
+                         (ngModelChange)="editarBorrador('diaMes', $event)" />
+                </label>
+
+                <label class="mp-campo">
+                  <span>Hora límite</span>
+                  <input type="time" [ngModel]="b.horaLimite"
+                         (ngModelChange)="editarBorrador('horaLimite', $event)" />
+                </label>
+
+                <label class="mp-campo">
+                  <span>Versión</span>
+                  <input type="text" [ngModel]="b.version"
+                         (ngModelChange)="editarBorrador('version', $event)" />
+                </label>
+              </div>
+
+              <div class="mp-puntos">
+                <span class="mp-doc-etq">Puntos de control</span>
+                <div class="mp-punto"
+                     *ngFor="let it of b.items; let i = index; trackBy: trackPorIndice">
+                  <span class="mp-punto-num">{{ i + 1 }}</span>
+                  <input type="text" [ngModel]="it.texto"
+                         (ngModelChange)="editarPunto(i, $event)"
+                         placeholder="Lo que se tiene que verificar" />
+                  <button type="button" class="mp-punto-quitar" (click)="quitarPunto(i)"
+                          title="Quitar este punto">×</button>
+                </div>
+                <button type="button" class="mp-btn-punto" (click)="agregarPunto()">
+                  + Agregar punto
+                </button>
+              </div>
+
+              <!-- Lo que impide guardar -->
+              <div class="mp-aviso mp-aviso-bloquea" *ngFor="let a of avisosQueBloquean()">
+                {{ a.texto }}
+              </div>
+              <!-- Lo que solo advierte: se puede guardar igual -->
+              <div class="mp-aviso mp-aviso-avisa" *ngFor="let a of avisosQueAvisan()">
+                {{ a.texto }}
+              </div>
+
+              <div class="mp-form-acciones">
+                <button type="button" class="mp-btn-guardar"
+                        [disabled]="!borradorValido || guardando()"
+                        (click)="guardarTarea()">
+                  {{ guardando() ? 'Guardando…' : 'Guardar tarea' }}
+                </button>
+                <button type="button" class="mp-btn-cancelar" (click)="cancelarCaptura()">
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          </section>
         </div>
       </div>
     </section>

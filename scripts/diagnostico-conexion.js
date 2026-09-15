@@ -26,6 +26,18 @@
 //  NO ESCRIBE NADA. Ni un insert, ni un update, ni un create.
 // ============================================================================
 const { query, dbConfigurada } = require('../api/db');
+const { schemaDeMdtask } = require('./_schema-mdtask');
+
+/**
+ * Padding en JS, NO con printf.
+ *
+ * `util.format` (lo que usa console.log) no soporta el ancho de printf: un
+ * '%-20s' se imprime LITERAL y el argumento se va al final de la linea. Este
+ * archivo lo tenia en las dos lineas de la tabla de testigos, asi que la unica
+ * tabla que el script produce salia ilegible — y una tabla rota se lee como un
+ * dato malo, no como un formato malo. Es el mismo mordisco del 4/sep y el 7/sep.
+ */
+const izq = (s, n) => String(s == null ? '' : s).padEnd(n).slice(0, n);
 
 // Las cinco que dicen si la base es la de produccion o una cascara vacia.
 // `mdtask_usuarios` es la de referencia: la migracion 050 conto 150 activas.
@@ -93,16 +105,30 @@ async function main() {
     console.log('  OJO: la URL dice "%s" y la base responde "%s".', decl.base, ident.base);
   }
 
-  // Cuantas tablas mdtask_ hay. Cero = esquema nunca aplicado; muchas y vacias
-  // = base recien migrada sin datos, que es la hipotesis del 12/sep.
+  // ── EL SCHEMA SE BUSCA. Este era EL defecto de este archivo ───────────────
+  // Hasta el 15/sep esta consulta filtraba por `table_schema = 'public'`, y por
+  // eso el 14/sep este script llego a decir «ESTA NO ES LA BASE DE PRODUCCION»
+  // sobre la base que SI lo era: las tablas de MDTask viven en `eajd` y en
+  // `public` quedaron 13 cascaras vacias con migraciones de mayo. El script
+  // escrito para resolver la duda la estaba CREANDO.
+  let S;
+  try {
+    S = (await schemaDeMdtask(query, { prefijo: '[conexion]' })).schema;
+  } catch (e) {
+    console.log('\n=== ESQUEMA ===');
+    console.log('  ' + e.message);
+    abortar('no hay un schema de MDTask utilizable en esta base.');
+  }
+
   const tablas = (await query(
     `select table_name from information_schema.tables
-      where table_schema = 'public' and table_name like 'mdtask\\_%'
-      order by table_name`
+      where table_schema = $1 and table_name like 'mdtask\\_%'
+      order by table_name`, [S]
   )).rows.map(r => r.table_name);
 
   console.log('\n=== ESQUEMA ===');
-  console.log('  tablas mdtask_ en esta base: %d', tablas.length);
+  console.log('  schema en uso .............. %s', S);
+  console.log('  tablas mdtask_ ahi ......... %d', tablas.length);
   if (tablas.length === 0) {
     console.log('  CERO tablas mdtask_. Esta base no es de MDTask: puede ser la de otra');
     console.log('  app del Postgres compartido, o la de Mega Talento (que NO se toca).');
@@ -113,14 +139,14 @@ async function main() {
   for (const [tabla, esperado, nota] of TESTIGO) {
     let n;
     try {
-      n = Number((await query('select count(*)::int as n from ' + tabla)).rows[0].n);
+      n = Number((await query('select count(*)::int as n from "' + S + '".' + tabla)).rows[0].n);
     } catch (e) {
-      console.log('  %-20s  NO EXISTE  (%s)', tabla, (e && e.message || '').split('\n')[0]);
+      console.log('  ' + izq(tabla, 20) + '  NO EXISTE  (' + (e && e.message || '').split('\n')[0] + ')');
       continue;
     }
     if (tabla === 'mdtask_usuarios') usuarios = n;
     const ref = esperado === null ? '' : '  [se esperaba ~' + esperado + ']';
-    console.log('  %-20s  %7d%s  · %s', tabla, n, ref, nota);
+    console.log('  ' + izq(tabla, 20) + '  ' + String(n).padStart(7) + ref + '  · ' + nota);
   }
 
   // El veredicto, que es la unica razon de ser del script. Se apoya en la tabla
@@ -130,6 +156,12 @@ async function main() {
     console.log('  NO SE PUDO LEER mdtask_usuarios. Esta base no sirve para los diagnosticos.');
     process.exit(2);
   }
+  // Desde el 15/sep este caso es DEFENSA EN PROFUNDIDAD, no el camino normal:
+  // `schemaDeMdtask` mide por `mdtask_usuarios` y ya aborta con TODOS_VACIOS
+  // antes de llegar aqui. Se conserva porque vuelve a ser alcanzable en cuanto
+  // alguien le cambie la tabla testigo al modulo, y porque un veredicto que
+  // depende de que otro archivo siga comportandose igual es justo el que hay
+  // que dejar escrito. Queda anotado para que nadie lo lea como la via principal.
   if (usuarios === 0) {
     console.log('  ESTA NO ES LA BASE DE PRODUCCION: el esquema esta aplicado (%d tablas)', tablas.length);
     console.log('  pero mdtask_usuarios tiene CERO filas. Es una base migrada y vacia.');

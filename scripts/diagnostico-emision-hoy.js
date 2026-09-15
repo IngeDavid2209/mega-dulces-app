@@ -32,6 +32,7 @@
 //      node scripts/diagnostico-emision-hoy.js --fecha=2026-09-14
 // ============================================================================
 const { query, dbConfigurada } = require('../api/db');
+const { schemaDeMdtask } = require('./_schema-mdtask');
 
 const PREFIJO_MANUAL = 'man_';   // robot de manual (robot-manual.service.ts, idemKey)
 const DIAS_VENTANA = 7;
@@ -156,18 +157,34 @@ async function main() {
   // a la vez y eso se ve; con dos consultas, una podria fallar sola y el cero
   // del dia pareceria un dato.
   const desde = ymd(new Date(new Date(DIA + 'T12:00:00').getTime() - DIAS_VENTANA * 86400000));
+
+  // ── EL SCHEMA SE MIDE, NO SE SUPONE ───────────────────────────────────────
+  // Hasta el 15/sep esta consulta decia `from mdtask_checklists` a secas, y eso
+  // resuelve por `search_path`: en la base de produccion encuentra las 13 tablas
+  // VACIAS que quedaron en `public` —las buenas viven en `eajd`— y devuelve 0
+  // filas SIN ERROR. La guardia de abajo habria abortado con «CERO filas en ocho
+  // dias», que es correcto («no lei») pero nunca habria llegado a medir nada.
+  // Se pregunta por `mdtask_checklists` y no por `mdtask_usuarios` porque la
+  // guardia va sobre la entrada que de verdad se usa (§8.11 b).
+  let S;
+  try {
+    S = (await schemaDeMdtask(query, { tabla: 'mdtask_checklists', prefijo: '[emision]' })).schema;
+  } catch (e) {
+    abortar(e.message, '  Comprueba a que base le estas hablando con:  node scripts/diagnostico-conexion.js');
+  }
+
   let filas;
   try {
     filas = (await query(
       `select id, assigned, store, fecha, enviado, eliminado, archivado,
               timestamp_creacion, created_by
-         from mdtask_checklists
+         from "${S}".mdtask_checklists
         where fecha >= $1 and fecha <= $2
         order by fecha asc`,
       [desde, DIA]
     )).rows;
   } catch (e) {
-    abortar('no se pudo leer mdtask_checklists: ' + (e && e.message));
+    abortar('no se pudo leer "' + S + '".mdtask_checklists: ' + (e && e.message));
   }
 
   // §8.11(a): el tamano de la entrada ANTES de concluir nada.
@@ -239,11 +256,19 @@ async function main() {
   const letra = veredicto(h);
   if (letra === 'A') {
     console.log('  (A) NUNCA SE EMITIERON. No hay una sola fila `man_` con fecha %s.', DIA);
-    console.log('      La emision del manual vive SOLO en el navegador de quien abre /tareas');
-    console.log('      (checklist.ts:2055; se repite cada 5 min mientras esa pestana siga');
-    console.log('      abierta). Si nadie la abrio ese dia, nadie recibio nada: no hay ningun');
-    console.log('      proceso en el servidor que lo haga. Los cuatro polls de server.js son');
-    console.log('      flotilla, avisos, bloques y pagos.');
+    console.log('      DESDE EL 14/sep/2026 ESO YA NO SE EXPLICA CON «nadie abrio la app».');
+    console.log('      Hasta esa noche la emision vivia SOLO en el navegador de quien abria');
+    console.log('      /tareas (checklist.ts:2055), asi que un dia sin nadie dentro era un dia');
+    console.log('      sin tareas. Ya no: `api/emitir-manual.js` es el quinto poll de server.js');
+    console.log('      y emite sin que nadie entre —el 15/sep creo 235 documentos a las 00:01—,');
+    console.log('      y desde el 15/sep su reloj esta anclado a las 00:00 y no al arranque del');
+    console.log('      contenedor. Asi que una (A) de hoy significa que ESE emisor no corrio o');
+    console.log('      aborto, y eso se lee en el log de Railway. Las tres lineas a buscar:');
+    console.log('        · «[emisor-manual] arranca.»            -> el poll llego a encenderse');
+    console.log('        · «ABORTA la vuelta: 0 fichas activas»  -> leyo la base equivocada');
+    console.log('        · «NO SE PUDO CARGAR LA REGLA»          -> falta dist/manual en la imagen');
+    console.log('      Si no aparece NINGUNA de las tres, mira antes el tamano de la ventana de');
+    console.log('      log: viene truncada, y ahi una ausencia puede ser truncamiento (§8.11 a).');
   } else if (letra === 'B') {
     console.log('  (B) SE EMITIERON Y SE BORRARON: %d filas `man_` de ese dia, %d eliminadas,',
       h.manual, h.eliminadas);

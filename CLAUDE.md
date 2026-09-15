@@ -325,6 +325,43 @@ de que exista la plaza sería partir el problema en dos, no resolverlo.
 
 ## 9. Bitácora del plan
 
+
+### 15/sep/2026 — DOS CORRECCIONES AJENAS SOBRE LO MISMO, Y UNA ES DE PROCESO
+
+**1 · MI CAÍDA ERA ARBITRARIA *Y* INESTABLE, que no es lo mismo.** `lugaresDeEmision` caía a
+«el primero de los suyos» con `slice(0, 1)`. Otra sesión midió lo que eso significa, y el dato es
+el que lo condena — **el lugar entra en `idemKey`**:
+
+    orden 1 (RH, FINANZAS):  man_..._2026-9-14_rh_encargada_x
+    orden 2 (FINANZAS, RH):  man_..._2026-9-14_finanzas_encargada_x
+
+O sea que si la ficha de alguien se reordenara —al reeditarla en Personal, o porque un script
+reescriba su `datos`, **y ahora mismo hay scripts haciendo justo eso**— la misma tarea del mismo
+día saldría con otro id y se crearía un **segundo documento**. El denominador que este arreglo
+vino a desinflar volvía a inflarse por la puerta de al lado.
+
+Corregido con un `sort` antes del `slice`. Cuál gane sigue siendo arbitrario —la ficha no dice
+cuál de sus áreas es «la suya»— pero **arbitrario y estable no es lo mismo que arbitrario y
+dependiente del orden**. Es, literalmente, el `order by` que le faltaba a la siembra de plazas
+del 9/sep: «el slot no significa nada, y aun así tiene que ser reproducible».
+
+**2 · Y LA DE PROCESO, QUE ES MÍA.** Mi commit `771bedb` se llevó ese `sort` cuando todavía
+estaba sin commitear en el árbol, y su mensaje no lo menciona: quien lea ese commit dentro de
+tres meses no encuentra ahí el porqué. El motivo vive en `a561ccb`, aparte.
+
+**Lo que esto añade a las dos reglas que ya estaban escritas, porque ninguna lo cubría:**
+
+> El 31/ago: «siempre `git add` con rutas explícitas». El 4/sep: «revisar TODOS los archivos del
+> commit, no solo los que uno sospecha». **Las dos fallan cuando dos sesiones editan el MISMO
+> archivo:** yo agregué una ruta explícita, la revisé por nombre, y aun así me llevé trabajo
+> ajeno que estaba dentro. Lo que hay que mirar es el **diff de cada archivo que se agrega**, no
+> su nombre — `git diff --cached` antes de commitear, no `git status`.
+
+**Lo que las dos correcciones tienen en común:** salieron de que el otro **midiera**, no de que
+leyera el código. El `sort` lo destapó imprimir las dos llaves; la pisada del commit, mirar el
+diff real de `771bedb`. Y las dos son la misma familia de fallo que este archivo lleva un mes
+registrando: algo que «funciona» porque hoy el orden ayuda.
+
 ### 15/sep/2026 — «HAY MÓDULOS REPETIDOS»: el manual se entregaba una vez por ÁREA
 
 David, mirando su pantalla: *«hay módulos repetidos»*, sobre una captura de

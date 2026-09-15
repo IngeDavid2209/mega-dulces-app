@@ -1,5 +1,4 @@
-import { inject } from '@angular/core';
-import { Routes, Router } from '@angular/router';
+import { Routes } from '@angular/router';
 
 import { homeGuard } from './services/home.guard';
 import { authGuard } from './services/auth.guard';
@@ -10,20 +9,6 @@ import { pagosGuard } from './services/pagos.guard';
 import { ticketsGuard } from './services/tickets.guard';
 import { ventaPromosGuard } from './services/venta-promos.guard';
 import { AgendaComponent } from './agenda/agenda';
-
-/**
- * Redirección de una ruta vieja de tareas a `/tareas` con su chip puesto.
- *
- * Devuelve un `UrlTree` y no una cadena porque `redirectTo: 'tareas?ver=manual'`
- * NO funciona: el redirect de cadena es una RUTA, no una URL, y el query param
- * se pierde en silencio — el enlace viejo aterrizaría en «Todas» sin un solo
- * error que lo delatara.
- *
- * La función corre en contexto de inyección, así que `inject(Router)` es válido
- * aquí dentro y no fuera.
- */
-const aTareas = (ver: 'manual' | 'libres') => () =>
-  inject(Router).createUrlTree(['/tareas'], { queryParams: { ver } });
 
 export const routes: Routes = [
   { path: '', redirectTo: 'login', pathMatch: 'full' },
@@ -60,18 +45,19 @@ export const routes: Routes = [
     loadComponent: () => import('./modules/dashboard/checklist/checklist').then(m => m.ChecklistComponent)
   },
 
-  // ── LAS DOS RUTAS VIEJAS, VIVAS Y APUNTANDO A SU MITAD ──────────────────
+  // ── LAS DOS RUTAS VIEJAS, VIVAS ─────────────────────────────────────────
   //
-  // No se borran (§2: hay enlaces de hace meses en WhatsApp). Y no redirigen a
-  // «Todas» a secas: llevan su `?ver=`, así que quien abre un enlace viejo ve
-  // LA MISMA MITAD que veía cuando se lo mandaron. Con un `redirectTo` de
-  // cadena eso no se puede —un redirect de cadena no lleva query params—, por
-  // eso son funciones.
+  // No se borran (§2: hay enlaces de hace meses en WhatsApp). Aterrizan en la
+  // lista completa, que es lo único que hay: el eje de origen (Del manual /
+  // Fuera del manual) se retiró el 14/sep, así que ya no existe «la mitad» a la
+  // que llevaba cada una. Durante unas horas llevaron un `?ver=` para eso; se
+  // fue con el chip, porque un filtro que no se puede ver ni quitar es peor que
+  // no filtrar.
   //
   // `pathMatch: 'full'` es obligatorio: sin él el redirect también se dispara
   // para cualquier cosa que empiece igual.
-  { path: 'checklist',     pathMatch: 'full', redirectTo: aTareas('libres') },
-  { path: 'tareas-manual', pathMatch: 'full', redirectTo: aTareas('manual') },
+  { path: 'checklist', pathMatch: 'full', redirectTo: 'tareas' },
+  { path: 'tareas-manual', pathMatch: 'full', redirectTo: 'tareas' },
   { 
     path: 'checkstore',
     redirectTo: 'control/sucursales',

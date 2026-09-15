@@ -148,65 +148,23 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   checklists = signal<any[]>([]);
 
   /**
-   * 📕 DE DÓNDE SALE LA TAREA — UN CHIP, YA NO UNA RUTA
+   * 📕 EL EJE DE ORIGEN (Todas · Del manual · Fuera del manual) SE RETIRÓ.
    *
-   * ─── QUÉ ERA HASTA EL 14/sep/2026 ────────────────────────────────────────
-   * Esto era `modoManual`, una bandera que venía de `data.modoManual` en
-   * app.routes.ts, y partía la app en DOS ENTRADAS DE MENÚ con el mismo
-   * componente: `/tareas-manual` pintaba solo lo que entrega el robot y
-   * `/checklist` solo lo que se asigna a mano.
+   * Vivió unas horas el 14/sep/2026. Se quitó por instrucción de David sobre
+   * una captura de la barra: «solo debe estar Pendientes del equipo · Enviadas
+   * del equipo · Mis tareas pendientes · Mis tareas enviadas».
    *
-   * Instrucción de David: «quiero que queden unidas […] solo que esté todo
-   * ahí». Así que el origen dejó de ser una ruta y pasó a ser un filtro DENTRO
-   * de la pantalla: una sola lista con las dos clases juntas, y tres chips para
-   * bajar a una mitad cuando hace falta.
+   * El motivo se ve en su propio número: en producción los chips decían
+   * `Del manual 112 · Fuera del manual 0`. Un eje cuyo segundo valor es cero en
+   * toda la empresa no está separando nada — está cobrando un renglón de barra
+   * y una decisión antes de mirar. Y el día que vuelva a haber tareas creadas a
+   * mano, la pastilla 🔒 MANUAL de cada tarjeta ya las distingue una por una,
+   * que es donde la distinción de verdad importa.
    *
-   * ─── POR QUÉ ESTO NO ABRE LA EDICIÓN DEL MANUAL (invariante §5.4) ────────
-   * Porque el candado nunca estuvo aquí. Está POR TARJETA:
-   * `esTareaDeManual(c)` esconde los botones en la plantilla y, sobre todo,
-   * `editarChecklist` y `eliminarChecklist` lo comprueban antes de tocar nada.
-   * El modo de pantalla sólo evitaba OFRECER una acción que iba a ser
-   * rechazada; juntar las listas no le quita el candado a ninguna tarea.
-   *
-   * ─── EL VALOR INICIAL Y EL `?ver=` ───────────────────────────────────────
-   * Por omisión 'todas', que es el punto del cambio. Las dos rutas viejas
-   * —vivas como redirección, porque hay enlaces en WhatsApp de hace meses—
-   * llegan con `?ver=manual` o `?ver=libres`, así que quien abre un enlace
-   * viejo ve LA MISMA MITAD que veía, no la lista entera.
+   * Lo que NO se fue con el chip es el candado: `esTareaDeManual` sigue
+   * gobernando qué se puede editar y borrar, por tarjeta (invariante §5.4).
    */
-  filtroOrigen: 'todas' | 'manual' | 'libres' = 'todas';
 
-  /**
-   * El árbol del organigrama es una vista del MANUAL: recorre unidad → puesto y
-   * cuelga las entregas del robot. Se conserva exactamente donde estaba —el
-   * chip «Del manual»— para no cambiar en el mismo paso qué se ve y quién lo
-   * ve. Ver `verPorOrganigrama`.
-   */
-  get modoManual(): boolean { return this.filtroOrigen === 'manual'; }
-
-  /** Cambia el chip de origen. Invalida el cache: la lista depende de él. */
-  cambiarFiltroOrigen(v: 'todas' | 'manual' | 'libres') {
-    if (this.filtroOrigen === v) return;
-    this.filtroOrigen = v;
-    this._cacheFiltradosHuella = '';
-    // La URL sigue al chip para que un enlace compartido abra lo mismo que se
-    // está viendo. `replaceUrl` para no llenar el botón «atrás» de pasos.
-    this.router.navigate([], {
-      relativeTo: this.route,
-      queryParams: { ver: v === 'todas' ? null : v },
-      queryParamsHandling: 'merge',
-      replaceUrl: true,
-    });
-  }
-
-  /**
-   * Cuántas hay de cada origen, para los badges de los chips. Lo llena
-   * `checklistsFiltrados` sobre la lista que la pestaña Mis/Toda ya recortó —
-   * así el número del chip es el que se va a ver al pulsarlo, salvo por lo que
-   * quite el buscador.
-   */
-  private _conteoOrigen = { todas: 0, manual: 0, libres: 0 };
-  get conteoOrigen() { this.checklistsFiltrados; return this._conteoOrigen; }
   // 📡 true cuando el último poll a la nube falló: la vista sigue mostrando la
   // última lista buena (cache) y enseña un aviso, en vez de una lista vacía que
   // parezca "se borraron las tareas".
@@ -231,16 +189,28 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   vistaHistorial = signal<'pendientes' | 'enviadas'>('pendientes');
   enviadas = signal<any[]>([]);
   /**
-   * El historial, pasado por el chip de origen.
+   * El historial, recortado por el MISMO eje que la bandeja: «Enviadas del
+   * equipo» son las de los demás y «Mis tareas enviadas» las tuyas.
    *
-   * ⚠ HASTA HOY «Enviadas» IGNORABA EL APARTADO: `cargarEnviadas()` empuja las
-   * filas crudas, así que el historial del Manual mostraba también las libres y
-   * al revés. Con dos pantallas separadas eso ya era incoherente; con el chip
-   * al lado sería directamente mentira —el chip diría «Del manual» y la lista
-   * traería de las otras—. Aquí se recorta con la MISMA regla que la lista de
-   * pendientes, no con una copia.
+   * ⚠ HASTA HOY «Enviadas» NO MIRABA DE QUIÉN ERAN. `cargarEnviadas()` aplica
+   * el alcance —global ve todo, supervisión su sucursal, colaborador lo suyo—
+   * y ahí se acababa: los dos botones de historial habrían mostrado LA MISMA
+   * lista, uno de ellos mintiendo en su etiqueta. Es el defecto que tenían las
+   * dos pestañas viejas, que solo se ve cuando el nombre del botón se vuelve
+   * específico.
+   *
+   * La condición `puedeFiltrarVista` es la misma que en los pendientes, y por
+   * la misma razón: a un colaborador la lista ya le viene recortada a su nombre
+   * desde el cargador, así que volver a filtrarla no añade nada y sí podría
+   * perderle una tarea por un apellido de más o de menos.
    */
-  get enviadasFiltradas(): any[] { return this.porOrigen(this.enviadas()); }
+  get enviadasFiltradas(): any[] {
+    const lista = this.enviadas();
+    if (!this.puedeFiltrarVista) return lista;
+    const mi = this.currentUser?.nombre;
+    const mio = this.vistaTareas === 'mis';
+    return lista.filter(c => mismoEmpleadoNombre(c.assigned, mi) === mio);
+  }
   cargandoEnviadas = false;
   enviadasCargadas = false;
   empleados = signal<any[]>([]);
@@ -350,8 +320,44 @@ export class ChecklistComponent implements OnInit, OnDestroy {
 
   // 🎯 Tab activo (Mis / Equipo / Todas). Solo aplica a admin o supervisor;
   // un trabajador puro ya ve solo lo suyo.
+  /**
+   * 🗂️ LA BANDEJA: de quién × en qué estado. Cuatro botones, un solo riel.
+   *
+   * `vistaTareas` dice DE QUIÉN y `vistaHistorial` EN QUÉ ESTADO. Hasta el
+   * 14/sep/2026 eran dos rieles separados y había que combinarlos mentalmente;
+   * ahora la barra ofrece las cuatro combinaciones con todas sus letras y estos
+   * dos campos son su estado interno, no dos controles.
+   *
+   * ⚠ EL VALOR INICIAL DEPENDE DE QUIÉN ENTRÓ, y tiene que hacerlo: quien no ve
+   * lo de otros solo tiene los dos botones de «mis», así que arrancar en
+   * 'equipo' le dejaría los cuatro apagados —una barra sin nada seleccionado, y
+   * la lista mostrando algo que ningún botón dice—. Se fija en `ngOnInit`,
+   * cuando ya se sabe quién es.
+   *
+   * 'todas' se conserva como valor posible porque es lo que significa «no
+   * filtres por persona», y es lo que usa un colaborador: su lista ya viene
+   * recortada a su nombre desde el poll, así que volver a filtrarla no cambia
+   * nada y sí podría perder una tarea por un apellido de más.
+   */
   vistaTareas: 'mis' | 'equipo' | 'todas' = 'todas';
   cambiarVistaTareas(v: 'mis' | 'equipo' | 'todas') { this.vistaTareas = v; }
+
+  /** ¿Está activo este botón de la bandeja? */
+  esBandeja(quien: 'mis' | 'equipo', historial: 'pendientes' | 'enviadas'): boolean {
+    const mio = this.vistaTareas === 'mis';
+    return (quien === 'mis' ? mio : !mio) && this.vistaHistorial() === historial;
+  }
+
+  /**
+   * Pulsar uno de los cuatro. Mueve los DOS ejes a la vez, que es justo el
+   * punto: antes, cambiar de «Pendientes» a «Enviadas» te dejaba en el «de
+   * quién» anterior sin decírtelo.
+   */
+  cambiarBandeja(quien: 'mis' | 'equipo', historial: 'pendientes' | 'enviadas') {
+    this.vistaTareas = quien === 'mis' ? 'mis' : 'equipo';
+    this._cacheFiltradosHuella = '';   // la lista depende de este eje
+    this.cambiarVistaHistorial(historial);
+  }
 
   get puedeFiltrarVista(): boolean {
     const u = this.currentUser;
@@ -410,14 +416,14 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   //   mismo paso; queda anotado como pendiente.
   get contadorMisChecklists(): number {
     const mi = this.currentUser?.nombre;
-    return this.porOrigen(this.checklists()).filter(c => mismoEmpleadoNombre(c.assigned, mi)).length;
+    return this.checklists().filter(c => mismoEmpleadoNombre(c.assigned, mi)).length;
   }
   get contadorEquipoChecklists(): number {
     const mi = this.currentUser?.nombre;
-    return this.porOrigen(this.checklists()).filter(c => !mismoEmpleadoNombre(c.assigned, mi)).length;
+    return this.checklists().filter(c => !mismoEmpleadoNombre(c.assigned, mi)).length;
   }
   get contadorTodasChecklists(): number {
-    return this.porOrigen(this.checklists()).length;
+    return this.checklists().length;
   }
 
   // ============================================================================
@@ -1037,9 +1043,25 @@ export class ChecklistComponent implements OnInit, OnDestroy {
    * nuevo: se recupera el que el interruptor aplicaba sin decirlo.
    */
   get verPorOrganigrama(): boolean {
-    return this.modoManual
-        && this.puedeFiltrarVista
-        && this.agrupacion() === 'organigrama';
+    // Ya no lleva `modoManual`: el eje de origen se retiró el 14/sep/2026 y con
+    // él la condición «estás en el apartado del Manual». Ahora decide la
+    // BANDEJA, y la condición va ENTERA aquí, no repartida en la plantilla.
+    //
+    // ⚠ ESO ÚLTIMO COSTÓ UN DEFECTO, cazado por el arnés el mismo día: al
+    // quitarle `modoManual` y dejar solo `puedeFiltrarVista && organigrama`,
+    // este getter quedó PERMANENTEMENTE TRUE para cualquier supervisor. El
+    // árbol seguía saliendo donde debía —la plantilla lo acotaba— pero la
+    // rejilla de ENVIADAS se esconde con `!verPorOrganigrama`, así que una
+    // Encargada abría «Enviadas del equipo» y veía la pantalla en blanco. Con
+    // la condición en un solo sitio, los cuatro `*ngIf` que dependen de ella
+    // no pueden volver a desalinearse. Tiene sentido por lo que el árbol ES —recorre
+    // unidad → puesto → personas—: en «Mis tareas» hay una sola persona, así
+    // que el recorrido no tendría nada que recorrer (bug del 13/sep), y en el
+    // historial no hay nada que supervisar.
+    return this.puedeFiltrarVista
+        && this.agrupacion() === 'organigrama'
+        && this.vistaTareas === 'equipo'
+        && this.vistaHistorial() === 'pendientes';
   }
 
   /**
@@ -1108,24 +1130,12 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   private _cacheFiltradosHuella = '';
   private _cacheFiltrados: any[] = [];
 
-  /**
-   * Aplica el chip de origen. Con 'todas' devuelve la lista TAL CUAL —no una
-   * copia— porque este camino corre en cada change detection y una copia
-   * cambiaría la identidad del arreglo en cada vuelta, que es exactamente lo
-   * que tumbó el sidebar el 1/sep.
-   */
-  private porOrigen(lista: any[]): any[] {
-    if (this.filtroOrigen === 'todas') return lista;
-    const busco = this.filtroOrigen === 'manual';
-    return lista.filter(c => this.esTareaDeManual(c) === busco);
-  }
-
   get checklistsFiltrados() {
     const amb = this.ambito;
     // La huella lleva el ámbito porque el recorte depende de él: sin esto, una
     // ficha que gana su puesto seguiría viendo la lista vieja hasta que algo más
     // cambiara la huella, y el recorte parecería no haber funcionado.
-    const huella = `${this.checklists().length}-${this.vistaTareas}-${this.terminoBusquedaChecklist}-${this.currentUser?.nombre || ''}-${this.filtroOrigen}-${amb.amplitud}${amb.restringido ? ':' + [...(amb.lugares || [])].sort().join(',') : ''}`;
+    const huella = `${this.checklists().length}-${this.vistaTareas}-${this.terminoBusquedaChecklist}-${this.currentUser?.nombre || ''}-${amb.amplitud}${amb.restringido ? ':' + [...(amb.lugares || [])].sort().join(',') : ''}`;
     if (huella === this._cacheFiltradosHuella) return this._cacheFiltrados;
     this._cacheFiltradosHuella = huella;
     let lista = this.checklists();
@@ -1142,12 +1152,12 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     // sin contarle a ella (§5, atribución transversal).
     if (amb.restringido) lista = lista.filter(c => entregaVisible(amb, c));
 
-    // 📕 Cuántas hay en el chip actual ANTES de la pestaña Mis/Toda y de la
-    // búsqueda. `motivoSinTareasManual()` lo usa para poder decir «ninguna de
-    // las N de hoy está a tu nombre», que es una frase que sólo tiene sentido
-    // con el total sin recortar por persona. El orden de estas tres líneas no
-    // es cosmético: moverlo cambia lo que ese mensaje afirma.
-    this._totalEnEsteModo = this.porOrigen(lista).length;
+    // Cuántas hay HOY antes de recortar por persona y antes de la búsqueda.
+    // `motivoSinTareasManual()` lo usa para poder decir «ninguna de las N de hoy
+    // está a tu nombre», que es una frase que solo tiene sentido con el total
+    // sin recortar. El orden de estas líneas no es cosmético: moverlo cambia lo
+    // que ese mensaje afirma.
+    this._totalEnEsteModo = lista.length;
 
     // Filtro por pestaña (Mis / Equipo / Todas). Solo aplica si el usuario
     // puede alternar — para trabajadores puros, la lista ya viene filtrada por
@@ -1159,21 +1169,6 @@ export class ChecklistComponent implements OnInit, OnDestroy {
         return this.vistaTareas === 'mis' ? esMia : !esMia;
       });
     }
-
-    // Los badges de los tres chips, sobre lo que la pestaña ya recortó: el
-    // número del chip es el que se va a ver al pulsarlo. Se cuenta ANTES de
-    // aplicar el chip —si se contara después, «Del manual» y «Fuera del
-    // manual» dirían 0 cada vez que el otro está seleccionado— y en una sola
-    // pasada, porque esto corre en cada change detection.
-    let manual = 0;
-    for (const c of lista) if (this.esTareaDeManual(c)) manual++;
-    this._conteoOrigen = { todas: lista.length, manual, libres: lista.length - manual };
-
-    // 📕 EL CHIP DE ORIGEN. Este es el único punto donde se separa manual de
-    // libre: las tres vistas derivadas (mandos, operativos, agrupada por
-    // persona) y el árbol se calculan a partir de aquí, así que nada se puede
-    // colar por otro lado. Una tarea pertenece a exactamente uno de los dos.
-    lista = this.porOrigen(lista);
 
     // Filtro por búsqueda libre (texto en nombre/empleado/sucursal).
     const termino = this.terminoBusquedaChecklist.trim().toLowerCase();
@@ -1212,7 +1207,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     // y estan a un clic, en la pestaña de al lado. Se dice, con la cifra.
     if (this.puedeFiltrarVista && this.vistaTareas === 'mis' && this.totalEnEsteModo > 0) {
       return `Ninguna de las ${this.totalEnEsteModo} tarea(s) de hoy está a tu nombre. ` +
-             'Las de tu equipo están en «Toda la operación», aquí al lado.';
+             'Las de tu equipo están en «Pendientes del equipo», aquí al lado.';
     }
     const r = resolverPuesto(this.currentUser);
     if (!r.puestoId) {
@@ -1238,24 +1233,14 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     const sesion = localStorage.getItem('md_sesion_actual');
     if (sesion) this.currentUser = JSON.parse(sesion);
 
-    // 📕 `?ver=manual|libres` — el chip con el que se ABRE la pantalla.
+    // 🗂️ LA BANDEJA CON LA QUE SE ABRE, y por qué depende de quién entró.
     //
-    // Existe por las dos rutas viejas: `/tareas-manual` y `/checklist` llevan
-    // meses circulando por WhatsApp y siguen vivas como redirección, cada una
-    // con su `?ver=`. Sin esto, un enlace de hace un mes aterrizaría en «Todas»
-    // y quien lo abre vería una lista distinta de la que le mandaron.
-    //
-    // Va suscrito y no leído una sola vez porque el chip escribe la URL: el
-    // componente no se recrea al cambiar sólo el query param.
-    this.route.queryParams.subscribe(q => {
-      const v = q['ver'];
-      const nuevo: 'todas' | 'manual' | 'libres' =
-        v === 'manual' ? 'manual' : v === 'libres' ? 'libres' : 'todas';
-      if (nuevo !== this.filtroOrigen) {
-        this.filtroOrigen = nuevo;
-        this._cacheFiltradosHuella = '';   // invalida el cache de la lista
-      }
-    });
+    // Quien NO puede ver lo de otros solo tiene los dos botones de «mis», así
+    // que arrancar en 'equipo' le dejaría los cuatro apagados: una barra sin
+    // nada seleccionado, con la lista mostrando algo que ningún botón nombra.
+    // Se fija aquí porque `puedeFiltrarVista` necesita `currentUser`, que se
+    // acaba de leer tres líneas arriba.
+    this.vistaTareas = this.puedeFiltrarVista ? 'equipo' : 'mis';
     // Listener compartido de usuarios (refcount; no abre uno duplicado si ya existe).
     this.usuariosSvc.iniciar();
     this.conectarRadarNube();
@@ -3189,6 +3174,13 @@ export class ChecklistComponent implements OnInit, OnDestroy {
    * Limpieza de "huérfanos": borra tareas pendientes asignadas a personas que ya
    * no existen en el sistema y saca esos nombres de las asignaciones de rutinas.
    * Resuelve los casos viejos (bajas hechas antes de la limpieza automática).
+   *
+   * ⚠ SIN BOTÓN DESDE EL 14/sep/2026. David pidió retirar «Limpiar bajas» de la
+   * barra («este bórralo»), así que hoy no hay forma de llamar a esto desde la
+   * interfaz. El método se conserva a propósito y no se borra: es una acción
+   * DESTRUCTIVA y quitarle el código en el mismo paso que se le quita la entrada
+   * dejaría sin nada que recuperar si mañana hace falta correrla una vez. Lo que
+   * desapareció es el camino para dispararla sin querer, que era el problema.
    */
   async limpiarHuerfanas() {
     if (this.currentUser?.rol !== 'admin' && !esAdminGlobal(this.currentUser)) {
@@ -4398,7 +4390,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       && this.vistaHistorial() === 'pendientes'
       && this.agruparPorPersona()
       && this.puedeFiltrarVista
-      && this.vistaTareas === 'todas';
+      && this.vistaTareas === 'equipo';
   }
 
   // ── Puentes para el panel de responsables ─────────────────────────────────

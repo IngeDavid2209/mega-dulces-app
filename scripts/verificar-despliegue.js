@@ -64,11 +64,18 @@ const MARCADORES = [
   // anteriores bajan a control. Mantener ese orden importa: dos veces hoy el
   // comentario se quedo describiendo el marcador ANTERIOR, y un comentario que
   // narra otra cosa que la linea de abajo es doctrina falsa en dos semanas.
-  // 14/sep/2026 (2) · LAS DOS LISTAS DE TAREAS SON UNA. El chip de origen es
-  // una clase que se pinta, asi que aqui si hay marcador natural — y se
-  // valido en las dos direcciones antes de subir: `git grep` en HEAD anterior
-  // daba 0 ocurrencias y el dist/ local lo trae.
-  { txt: 'cl-chip-origen', nuevo: true, que: 'los chips de origen de la lista unica' },
+  // 14/sep/2026 (3) · LA BANDEJA DE CUATRO BOTONES. Validado en las dos
+  // direcciones antes de subir: 0 ocurrencias en HEAD, 4 en el dist/.
+  { txt: 'cl-bandeja', nuevo: true, que: 'la bandeja de cuatro botones' },
+  //
+  // ⚠ `cl-chip-origen` SE QUITO DE ESTA LISTA, y no por limpieza: era el
+  //   marcador NUEVO del despliegue de hace una hora y esa clase YA NO
+  //   EXISTE — David retiro los chips de origen el mismo dia. Dejarlo como
+  //   control habria dado 0 en lo servido y el verificador habria abortado
+  //   diciendo «el recorrido no alcanza el chunk», que es una conclusion
+  //   FALSA: el cero seria porque el codigo se borro a proposito. Es el
+  //   corolario (e) de la §8.11 —un control caducado se sustituye en el
+  //   MISMO commit que lo caduca— y van dos veces en dos dias.
   // 14/sep/2026 · EL ARBOL EN UN CELULAR. Era el `nuevo` del despliegue
   // anterior (otra sesion, commit 412547c, ya desplegado y verificado 0 -> 1).
   // BAJA A CONTROL, que es la regla de esta lista: un marcador que YA VALE 1 en

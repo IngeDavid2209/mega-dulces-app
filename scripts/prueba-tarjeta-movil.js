@@ -199,9 +199,19 @@ function medir(dist, puerto) {
       + '  if (!hayTabs) { res.error = "nunca aparecieron las pestanas .vista-tab dentro del marco";'
       + '    res.enPantalla = d ? (d.body.innerText || "").replace(/\\s+/g, " ").slice(0, 180) : "(sin documento)";'
       + '    return fin(); }'
+      // 14/sep/2026: la pestaña dejó de llamarse «Enviadas» a secas. David rehizo
+      // la barra en cuatro botones —«Pendientes del equipo», «Enviadas del
+      // equipo», «Mis tareas pendientes», «Mis tareas enviadas»— y esta sesión es
+      // una TRABAJADORA, así que solo tiene los dos suyos. Se busca por
+      // «enviadas» en minúsculas y en cualquier posición para que valga tanto la
+      // suya como la del equipo: lo que esta prueba mide es la TARJETA del
+      // historial, no cuál de los dos botones la trajo.
+      //
+      // Su guardia hizo exactamente lo que debía al caducar el nombre: abortó
+      // diciendo qué pestañas SÍ vio, en vez de medir una pantalla que no era.
       + '  var env = [].slice.call(d.querySelectorAll(".vista-tab"))'
-      + '    .filter(function (b) { return (b.textContent || "").trim().indexOf("Enviadas") === 0; })[0];'
-      + '  if (!env) { res.error = "no encontre la pestana Enviadas";'
+      + '    .filter(function (b) { return (b.textContent || "").toLowerCase().indexOf("enviadas") >= 0; })[0];'
+      + '  if (!env) { res.error = "no encontre ninguna pestana de enviadas";'
       + '    res.tabs = [].slice.call(d.querySelectorAll(".vista-tab"))'
       + '      .map(function (b) { return (b.textContent || "").trim().slice(0, 20); }).join(" | ");'
       + '    return fin(); }'

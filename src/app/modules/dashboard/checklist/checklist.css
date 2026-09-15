@@ -3825,7 +3825,11 @@
    Con la separación puesta, las dos mitades se leen como dos pastillas sueltas
    metidas en una caja; y con `wrap`, en cuanto el contador crece lo suficiente
    el interruptor se parte en dos filas dentro de una pastilla redondeada. */
-.cl-toolbar .vista-tabs.eje-alcance { gap: 0; flex-wrap: nowrap; }
+/* El riel «Mis tareas / Toda la operación» se retiró el 14/sep/2026 junto con
+   los chips de origen: la barra es ahora UN solo grupo de cuatro botones
+   (`.cl-bandeja`). La regla de abajo es su heredera y conserva el motivo: el
+   contador que crece dentro de un segmento es lo que parte el riel en dos. */
+.cl-toolbar .vista-tabs.cl-bandeja { flex-wrap: wrap; }
 
 @media screen and (max-width: 640px) {
   /* En un teléfono los dos rieles van cada uno en SU renglón y de borde a
@@ -3837,6 +3841,26 @@
     flex: 1 1 0;
     min-width: 0;
     justify-content: center;
+  }
+
+  /* ── LA BANDEJA EN UN TELÉFONO: 2×2, NO CUATRO EN FILA ──────────────────
+     Los cuatro rótulos son largos a propósito —«Pendientes del equipo» dice lo
+     que hace, «Todas» no decía nada— y a 390px no caben en una fila: con
+     `flex: 1 1 0` cada uno quedaría en ~90px y «Pendientes del equipo» se
+     partiría en tres renglones dentro de su propia pastilla. Eso es el «se
+     descuadra» de la captura del 13/sep, otra vez.
+
+     En rejilla de dos columnas cada botón tiene ~180px, que es donde el rótulo
+     cabe en dos renglones legibles. Y con DOS botones —el colaborador, que no
+     ve lo del equipo— la misma rejilla da una sola fila, sin regla aparte. */
+  .cl-toolbar-izq > .vista-tabs.cl-bandeja {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .cl-toolbar-izq > .vista-tabs.cl-bandeja > .vista-tab {
+    text-align: center;
+    line-height: 1.25;
   }
 }
 

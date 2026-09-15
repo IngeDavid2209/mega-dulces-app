@@ -7,19 +7,30 @@
  * ═══════════════════════════════════════════════════════════════════════════
  * NO «¿se ve bien?». La pregunta es:
  *
- *     ¿LOS DOS BOTONES DEL RIEL CAEN EN EL MISMO RENGLÓN, Y CABE LA BARRA
- *     ENTERA DENTRO DEL ANCHO DE LA PANTALLA?
+ *     ¿LA BANDEJA CABE EN LA PANTALLA, CON SUS CUATRO BOTONES REPARTIDOS
+ *     POR IGUAL Y SIN DESBORDAR EL ANCHO?
  *
- * Es la captura de David del 14/sep/2026: en iPhone y en Android «se descuadra».
- * Un control segmentado —dos opciones dentro de UN riel con forma de pastilla—
- * solo comunica «esto es un interruptor de dos» mientras las dos opciones estén
- * lado a lado. Si se parte en dos renglones, el riel redondeado queda con dos
- * filas dentro y deja de leerse como un interruptor: se lee como roto.
+ * Nació de la captura de David del 14/sep/2026: en iPhone y en Android «se
+ * descuadra». Entonces el control eran DOS segmentos dentro de un riel con
+ * forma de pastilla, y la pregunta era si caían en el mismo renglón.
+ *
+ * ─── EL CONTROL CAMBIÓ EL MISMO DÍA, Y ESTA PRUEBA CON ÉL ──────────────────
+ * Horas después, David rehízo la barra: «solo debe estar Pendientes del equipo ·
+ * Enviadas del equipo · Mis tareas pendientes · Mis tareas enviadas». Ya no hay
+ * riel de dos: hay CUATRO botones, y en un teléfono van en rejilla 2×2 porque
+ * los cuatro rótulos son largos a propósito —«Pendientes del equipo» dice lo que
+ * hace, «Todas» no decía nada— y en una fila quedarían a ~90px cada uno, con el
+ * texto partido en tres renglones. O sea: el «se descuadra» de la captura, por
+ * la otra puerta.
+ *
+ * Así que la pregunta pasó de «¿una fila?» a «¿exactamente dos, repartidas por
+ * igual?». Es el corolario (e) de la §8.11 —un control anclado a algo que se
+ * movió, caduca— y se actualiza en el mismo commit que lo mueve, no después.
  *
  * ─── POR QUÉ NO SE VE DESDE EL CÓDIGO ───────────────────────────────────────
  * Porque el que decide es el REPARTO DE ESPACIO del navegador, y eso solo
  * existe cuando la página se pinta a un ancho concreto. Dos reglas con la misma
- * especificidad —`.cl-toolbar .vista-tabs` y `.vista-tabs.eje-alcance`— se
+ * especificidad —`.cl-toolbar .vista-tabs` y `.vista-tabs.cl-bandeja`— se
  * resuelven por ORDEN EN EL ARCHIVO, y el resultado no se lee mirando ninguna
  * de las dos por separado.
  *
@@ -152,14 +163,14 @@ function guionDeMedicion() {
     '    for (var k = 0; k < ys.length; k++) { if (Math.abs(ys[k] - y) <= 3) { visto = true; break; } }',
     '    if (!visto) ys.push(y); }',
     '  return ys.length; }',
-    'espera(".vista-tabs.eje-alcance", function (hay) {',
+    'espera(".vista-tabs.cl-bandeja", function (hay) {',
     '  var w = f.contentWindow, d = dentro();',
     '  res.marco = w ? (w.innerWidth + "x" + w.innerHeight) : "sin acceso";',
     '  res.tapMin = w ? w.getComputedStyle(d.documentElement).getPropertyValue("--tap-min").trim() : "?";',
-    '  if (!hay) { res.error = "nunca aparecio el riel .vista-tabs.eje-alcance";',
+    '  if (!hay) { res.error = "nunca aparecio el riel .vista-tabs.cl-bandeja";',
     '    res.enPantalla = d ? (d.body.innerText || "").replace(/\\s+/g, " ").slice(0, 200) : "(sin documento)";',
     '    return fin(); }',
-    '  var riel = d.querySelector(".vista-tabs.eje-alcance");',
+    '  var riel = d.querySelector(".vista-tabs.cl-bandeja");',
     '  var vista = d.querySelector(".vista-tabs.eje-vista");',
     '  var barra = d.querySelector(".cl-toolbar");',
     '  var izq = d.querySelector(".cl-toolbar-izq");',
@@ -228,7 +239,16 @@ function guionDeMedicion() {
     '  var barraOrg = d.querySelector(".org-barra");',
     '  res.accionesDer = acc ? Math.round(acc.getBoundingClientRect().right) : -1;',
     '  res.barraOrgDer = barraOrg ? Math.round(barraOrg.getBoundingClientRect().right) : -1;',
-    '  fin();',
+    // EL TESTIGO. La guardia de abajo pide que el árbol tenga filas, y eso NO
+  // basta: el árbol pinta su estructura aunque no haya llegado ni un
+  // checklist —«sin dato» da 5 filas—, así que una corrida que midiera antes
+  // de que respondiera el poll pasaría con la lista vacía. Pasó el
+  // 14/sep/2026: una corrida dio 5 filas y los badges en 0, y la siguiente,
+  // sin tocar nada, 12 filas y 286. El componente publica en su subtítulo
+  // cuántas entregas contó; eso es lo único que separa «no llegó el dato» de
+  // «el dato es así».
+  '  res.sub = (function(){var e=d.querySelector(".org-sub"); return e ? e.textContent.replace(/\s+/g," ").trim() : null;})();',
+  '  fin();',
     '}, 20000);',
   ].join('\n');
 }
@@ -395,15 +415,41 @@ function medir(puerto) {
   const fallos = [];
   const pide = (ok, msg) => { if (!ok) fallos.push(msg); };
 
-  pide(d.botones.length === 2,
-    'el riel tiene ' + d.botones.length + ' botón(es) y son dos: «Mis tareas» y «Toda la '
-    + 'operación». Con otro número esta prueba no está midiendo el control de la captura.');
+  // EL TESTIGO, ANTES DE CUALQUIER VERDE.
+  const entregas = /(\d+)\s+entregada/.exec(d.sub || '');
+  if (!entregas || Number(entregas[1]) === 0) {
+    abortar('el componente declara ' + (entregas ? '0 entregas' : 'un subtítulo ilegible')
+      + ' con ' + CHECKLISTS.length + ' checklists servidos: el dato NO llegó. Sin él, el árbol '
+      + 'pinta su estructura vacía —5 filas— y los badges dan 0, que se lee como un defecto '
+      + 'cuando lo que hubo fue una medición antes de tiempo. Subtítulo: ' + JSON.stringify(d.sub));
+  }
 
-  // LA ASERCIÓN DEL DÍA.
-  pide(d.rielRenglones === 1,
-    'el riel se parte en ' + d.rielRenglones + ' renglones. Un control segmentado con dos filas '
-    + 'dentro de una pastilla redondeada es exactamente el «se descuadra» de la captura: deja de '
-    + 'leerse como un interruptor de dos.');
+  pide(d.botones.length === 4,
+    'la bandeja tiene ' + d.botones.length + ' botón(es) y son CUATRO: «Pendientes del equipo», '
+    + '«Enviadas del equipo», «Mis tareas pendientes» y «Mis tareas enviadas» (instrucción de '
+    + 'David, 14/sep/2026). Con otro número esta prueba no está midiendo el control de hoy. '
+    + 'Ojo: con DOS es que la sesión dejó de poder ver lo de otros.');
+
+  // LA ASERCIÓN DEL DÍA, actualizada con el control que la caducó.
+  //
+  // Antes eran DOS segmentos y la pregunta era «¿cabe en un renglón?». Con
+  // cuatro rótulos largos —y son largos a propósito: «Pendientes del equipo»
+  // dice lo que hace y «Todas» no decía nada— la respuesta a 390px es que no,
+  // y forzarlos daría ~90px por botón, con el rótulo partido en tres. Así que
+  // el móvil usa una rejilla 2×2 y lo que hay que exigir es que sean
+  // EXACTAMENTE dos renglones: tres significaría que uno se desbordó.
+  pide(d.rielRenglones === 2,
+    'la bandeja ocupa ' + d.rielRenglones + ' renglón(es) y en un teléfono son DOS (rejilla '
+    + '2×2). Tres o más es que un botón no cupo en su columna y arrastró a los demás.');
+
+  // Y las dos columnas tienen que medir lo mismo: cuatro botones de anchos
+  // distintos dejan de leerse como un control y se leen como cuatro cosas.
+  const anchoBase = d.botones[0] ? d.botones[0].w : 0;
+  const desiguales = d.botones.filter((b) => Math.abs(b.w - anchoBase) > 2);
+  pide(!desiguales.length,
+    desiguales.length + ' botón(es) miden distinto que el primero (' + anchoBase + 'px): '
+    + desiguales.map((b) => b.t + '=' + b.w).join(', ') + '. La rejilla 2×2 los reparte por '
+    + 'igual, así que una diferencia aquí es que alguno se salió de la rejilla.');
 
   pide(d.docScroll <= d.docAncho + 2,
     'el documento mide ' + d.docScroll + 'px de scroll contra ' + d.docAncho + 'px de ventana: '
@@ -423,9 +469,13 @@ function medir(puerto) {
   // interruptor que miden muy distinto se leen como si uno estuviera cortado.
   const anchos = d.botones.map((b) => b.w);
   const menor = Math.min.apply(null, anchos);
-  pide(menor >= 90,
-    'el segmento más angosto mide ' + menor + 'px. A ese ancho «Toda la operación» no cabe y se '
-    + 'parte por palabras dentro del riel.');
+  // Dos columnas de una barra de ~345px son ~169 cada una. El umbral no es un
+  // número a ojo: por debajo de 140 la rejilla dejó de repartir en dos y algo
+  // más se está llevando el ancho, que es el defecto del 7/sep con otra ropa.
+  pide(menor >= 140,
+    'el botón más angosto mide ' + menor + 'px, y en una rejilla de dos columnas sobre una barra '
+    + 'de ' + (d.barra ? d.barra.w : '?') + 'px deberían ser ~' + Math.round(((d.barra ? d.barra.w : 345) - 8) / 2)
+    + '. Algo le está quitando el ancho a la columna.');
 
   // ───────────────── EL ÁRBOL ─────────────────
   // Sin filas no hay nada que concluir: un «0 cortadas» sobre 0 filas es el
@@ -460,11 +510,13 @@ function medir(puerto) {
     for (const x of fallos) console.error('   · ' + x);
     process.exit(2);
   }
-  console.log('✓ el riel cae en 1 renglón (%dpx), los segmentos miden %s, y las %d filas del',
-    d.riel.h, anchos.join(' y ') + 'px', d.filas);
-  console.log('  árbol caben dentro de la pantalla (borde máximo x=%d de %d, ejes en %d).',
+  console.log('✓ la bandeja cae en %d renglón(es) (%dpx de alto) con %d botones de %s, y las %d',
+    d.rielRenglones, d.riel.h, d.botones.length, anchos.join('/') + 'px', d.filas);
+  console.log('  filas del árbol caben en la pantalla (borde máximo x=%d de %d, ejes en %d).',
     d.filaDerMax, d.docAncho, d.ejeFila);
+  console.log('  testigo: el componente contó %s de %d entregas servidas.',
+    entregas[1], CHECKLISTS.length);
   console.log('');
   console.log('Lo que esto NO prueba: que se vea bonito, ni el comportamiento con un dedo real.');
-  console.log('Prueba que el interruptor no se parte y que nada se sale del ancho.');
+  console.log('Prueba que la bandeja no se desborda y que nada se sale del ancho.');
 })();

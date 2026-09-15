@@ -324,6 +324,94 @@ de que exista la plaza sería partir el problema en dos, no resolverlo.
 
 ## 9. Bitácora del plan
 
+### 14/sep/2026 (tarde) — LA BARRA SE REHIZO EN CUATRO BOTONES, y dos defectos míos
+
+David, sobre una captura de la barra que se había desplegado por la mañana
+(`Pendientes | Enviadas` + `Todas 112 · Del manual 112 · Fuera del manual 0` +
+`Mis tareas 9 | Toda la operación 112`): *«aquí lo vamos a cambiar, solo debe estar Pendientes
+del equipo · Enviadas del equipo · Mis tareas pendientes · Mis tareas enviadas»*. Y dos
+instrucciones más, cada una con su captura: *«quita este»* (el bloque «Avance del día») y *«este
+bórralo»* (el botón «Limpiar bajas»).
+
+**TRES EJES PASARON A UNO.** Había que cruzar mentalmente «pendientes/enviadas» × «origen» ×
+«de quién». Ahora son las cuatro combinaciones que de verdad se usan, escritas con todas sus
+letras. **El eje de origen se retiró entero**, y su propio número lo justificaba: los chips
+decían `Del manual 112 · Fuera del manual 0`. Un eje cuyo segundo valor es cero en toda la
+empresa no separa nada — y la pastilla 🔒 MANUAL de cada tarjeta sigue distinguiéndolas una por
+una, que es donde la distinción importa.
+
+**«DEL EQUIPO» ES ESTRICTO, Y LO DECIDIÓ DAVID ENFRENTADO AL NÚMERO.** Se le plantearon las dos
+lecturas con su consecuencia: «todas, las mías incluidas» conservaba el 112, y «solo las de los
+demás» lo bajaba a 103. Eligió lo segundo. **Los dos badges ahora suman el total sin repetir**,
+que es justo lo que el eje anterior no podía dar: «Toda la operación» incluía las propias, así
+que los dos números se solapaban y no se podían leer juntos.
+
+#### LOS DOS DEFECTOS QUE EL ARNÉS CAZÓ, Y LOS DOS ERAN MÍOS
+
+**1 · `verPorOrganigrama` QUEDÓ PERMANENTEMENTE TRUE.** Al quitarle `modoManual` y dejar solo
+`puedeFiltrarVista && organigrama`, el getter pasó a valer siempre para cualquier supervisor. El
+árbol seguía saliendo donde debía —la plantilla lo acotaba— pero **la rejilla de enviadas se
+esconde con `!verPorOrganigrama`**, así que una Encargada abría «Enviadas del equipo» y veía la
+**pantalla en blanco**. La prueba lo dio como `0 tarjetas` en los dos botones de historial y
+abortó por falta de discriminación. El arreglo no fue parchear el `*ngIf`: la condición completa
+vive ahora **en el getter**, para que los cuatro `*ngIf` que dependen de ella no puedan
+desalinearse otra vez.
+
+**2 · MI PROPIA MEDICIÓN CONTABA MAL, y esa es la más instructiva.** Para probar que «del
+equipo» es estricto, contaba cuántas tarjetas llevaban mi nombre **en el `textContent` entero**.
+Dio `2 de 2` en «Enviadas del equipo» — que se lee como **«el recorte no aplica»** — cuando el
+recorte estaba perfecto: yo era la `createdBy` de las ocho filas del fixture, así que mi nombre
+aparecía en tarjetas que no eran mías. **El defecto estaba en el instrumento, y me habría mandado
+a depurar código que funcionaba.** Se corrigió mirando `.cl-meta-empleado`, que es el campo que
+la regla usa de verdad (§8.11 b).
+
+#### EL MÓVIL: 2×2, PORQUE LOS RÓTULOS SON LARGOS A PROPÓSITO
+
+«Pendientes del equipo» dice lo que hace; «Todas» no decía nada. En 390px los cuatro en fila
+quedarían a ~90px cada uno, con el texto partido en tres renglones — el «se descuadra» de la
+captura del 13/sep por la otra puerta. En rejilla de dos columnas cada botón mide **169px y 51 de
+alto**, y con DOS botones —el colaborador— la misma rejilla da una sola fila, sin regla aparte.
+
+    la bandeja: 2 renglones, 109px de alto, 4 botones de 169/169/169/169px
+    documento: scroll 390 de ventana 390 (no se desborda)
+    testigo: el componente contó 286 de 286 entregas servidas
+
+#### TRES CONTROLES CADUCARON A LA VEZ, Y SE SUSTITUYERON EN ESTE MISMO COMMIT
+
+Es el corolario (e) cobrado tres veces seguidas en un día:
+
+| control | qué le pasó |
+|---|---|
+| `prueba-eje-alcance-movil` | buscaba `.vista-tabs.eje-alcance`, clase que retiré. Abortaba. |
+| `prueba-tarjeta-movil` | pulsaba la pestaña «Enviadas», que hoy se llama «Mis tareas enviadas» |
+| `verificar-despliegue` | su marcador NUEVO era `cl-chip-origen`… y esa clase ya no existe |
+
+El tercero es el que más enseña: de haberlo dejado como control, habría dado **0 en lo servido**
+y el verificador habría abortado diciendo «el recorrido no alcanza el chunk» — una conclusión
+**falsa**, porque el cero venía de haber borrado el código a propósito.
+
+**Y una flakiness que salió de paso, dicha con sus dos corridas:** la prueba móvil dio una vez
+`5 filas y badges en 0` y a la siguiente, **sin tocar nada**, `12 filas y 286`. Medía antes de
+que respondiera el poll, y su guardia («¿hay filas?») no lo veía porque **el árbol pinta su
+estructura aunque no haya llegado un solo checklist**. Se le puso el testigo que ya usa el otro
+arnés: el subtítulo del componente, que dice cuántas entregas contó.
+
+#### LO QUE SE QUITÓ, Y QUÉ SE CONSERVÓ DE CADA COSA
+
+- **«Avance del día»** (la tira de `0% · 0 de 112 puntos cumplidos` con 62 en curso y 50
+  vencidas). Se retiró del panel. **La medición NO se borró**: `resumen()` se sigue calculando
+  —lo usan las tarjetas por persona— y con ella sus dos aciertos escritos, por si vuelve a
+  pintarse: con total 0 sale «—» y no «0%», y la barra solo la llena lo CUMPLIDO.
+- **«Limpiar bajas»**. Se fue el botón; `limpiarHuerfanas()` **sigue en el código sin nada que la
+  llame**. Es una acción destructiva: quitarle la entrada y el código en el mismo paso dejaría
+  sin nada que recuperar. Lo que desapareció es el camino para dispararla sin querer.
+
+**Lo que esto NO prueba:** que se vea bien con un dedo real, y **nadie ha entrado con una cuenta
+real**. Los seis escenarios son sesiones sintéticas. Y el `?ver=` que las rutas viejas llevaban
+desde la mañana se fue con los chips: `/tareas-manual` y `/checklist` aterrizan ahora en la lista
+completa, que es lo único que hay.
+
+
 ### 14/sep/2026 — LAS DOS LISTAS DE TAREAS SON UNA (paso A de 2)
 
 Instrucción de David: *«quiero que estas dos queden unidas (Tareas fuera del manual y tareas

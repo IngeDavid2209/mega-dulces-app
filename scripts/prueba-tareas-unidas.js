@@ -1,45 +1,42 @@
 /**
- * ✅ LAS DOS LISTAS SON UNA — medido en el DOM, no leído en el código
+ * 🗂️ LA BANDEJA DE TAREAS: cuatro botones, medidos en el DOM
  * ══════════════════════════════════════════════════════════════════════════
  *
- * El 14/sep/2026 «Tareas del Manual» y «Tareas fuera del manual» dejaron de ser
- * dos entradas de menú y pasaron a ser UNA lista con tres chips. Instrucción de
- * David: «quiero que queden unidas […] solo que esté todo ahí».
+ * Instrucción de David (14/sep/2026), sobre una captura de la barra anterior:
+ * «aquí lo vamos a cambiar, solo debe estar Pendientes del equipo · Enviadas
+ * del equipo · Mis tareas pendientes · Mis tareas enviadas».
  *
- * Esta prueba contesta las tres preguntas que ese cambio abre, y NINGUNA de las
- * tres se puede contestar leyendo el código:
+ * Antes eran TRES grupos de fichas —Pendientes/Enviadas, los tres chips de
+ * origen y Mis tareas/Toda la operación—, o sea tres ejes que había que cruzar
+ * mentalmente. Ahora son las cuatro combinaciones escritas con todas sus letras.
  *
- *  1 · ¿De verdad está todo junto? El chip «Todas» tiene que traer las dos
- *      clases, y cada chip bajar a SU mitad. Un `*ngIf` no es una función que
- *      se pueda llamar: o se pinta y se cuenta, o no se sabe.
+ * ─── LA PREGUNTA CARA, Y LA RAZÓN DE QUE ESTA PRUEBA EXISTA ───────────────
+ * David eligió, enfrentado al número, que «del equipo» sea ESTRICTO: las de los
+ * DEMÁS, no todas. El «Toda la operación 112» de antes incluía sus 9, así que
+ * los dos botones se solapaban y sus badges no se podían sumar.
  *
- *  2 · ¿SIGUE CERRADO EL MANUAL? Es la pregunta cara. Mientras fueron dos
- *      pantallas, «no se edita el manual» lo garantizaba el modo: en
- *      /tareas-manual no existían los botones. Al juntarlas, eso lo tiene que
- *      garantizar el candado POR TARJETA — y si ese candado fallara, la app
- *      ofrecería editar un documento controlado (invariante §5.4) sin un solo
- *      error visible.
+ * Eso convierte la regla en algo comprobable y con un modo de fallo silencioso:
+ * si el recorte fallara, «Pendientes del equipo» traería también las propias y
+ * NADIE lo notaría —la lista se ve igual de plausible, solo con una tarea más—.
+ * Por eso aquí no se cuentan solo tarjetas: se cuenta **cuántas de ellas llevan
+ * MI NOMBRE**, que es el mecanismo mismo de la regla. En «del equipo» tiene que
+ * ser CERO y en «mis tareas» TODAS.
  *
- *  3 · ¿Aterrizan los enlaces viejos DONDE SERVÍAN? `/tareas-manual` y
- *      `/checklist` llevan meses en WhatsApp. Redirigen a `/tareas` con su
- *      `?ver=`, y ese query param se pierde en silencio si alguien cambia el
- *      redirect a uno de cadena: no da error, sólo aterriza en «Todas».
+ * ─── LAS OTRAS TRES QUE CONTESTA ─────────────────────────────────────────
+ *  · Los dos badges SUMAN el total sin repetir (3 + 2 = 5). Es lo que el eje
+ *    anterior no podía dar.
+ *  · Quien NO puede ver lo de otros ve DOS botones, no cuatro con dos inertes.
+ *  · El historial también se reparte. Hasta hoy `cargarEnviadas()` no miraba de
+ *    quién eran las tareas, así que los dos botones de enviadas habrían
+ *    mostrado LA MISMA lista, uno de ellos mintiendo en su etiqueta — un
+ *    defecto que solo se ve cuando el nombre del botón se vuelve específico.
  *
- * ─── EL CONTROL NEGATIVO AFIRMA EL MECANISMO, NO LA APARIENCIA ─────────────
- * El último escenario sirve EL MISMO fixture sin `_origenManual`. Si el chip y
- * el candado cuelgan de ese sello —que es lo que se afirma—, entonces sin él
- * las cinco tareas tienen que volverse editables y el chip «Del manual» caer a
- * cero. Un control que sólo dijera «el caso conocido aparece» lo pasaría una
- * pantalla que marcara todo (§8.11 c).
- *
- * ─── LA SESIÓN ES UNA TRABAJADORA A PROPÓSITO ─────────────────────────────
- * Sin banderas de supervisión: así `puedeFiltrarVista` es false, no se monta el
- * árbol del organigrama y lo que se cuenta son TARJETAS. Con un admin, el chip
- * «Del manual» enseña el árbol y las tarjetas darían cero — un cero que no
- * significaría «no hay», sino «se pintó otra cosa».
- * `createdBy` es ella en las cinco: el botón de editar pide ser admin o autora,
- * así que sin eso el conteo de acciones daría cero por el permiso y no por el
- * candado, y las dos causas se ven idénticas.
+ * ─── POR QUÉ HAY DOS SESIONES ────────────────────────────────────────────
+ * La supervisora ve los cuatro botones, y en «Pendientes del equipo» se le
+ * pinta el ÁRBOL del organigrama en vez de la lista (es la vista de supervisión
+ * de siempre). La trabajadora no tiene árbol, así que es la que deja contar
+ * tarjetas sin que otra cosa las sustituya. Con una sola de las dos, la mitad
+ * de las preguntas no se podría hacer.
  */
 
 const fs = require('fs');
@@ -53,8 +50,8 @@ let DIST = DIST_REAL;
 
 function abortar(motivo) {
   console.error('');
-  console.error('[unidas] ABORTA: ' + motivo);
-  console.error('[unidas] No concluyas de esta corrida.');
+  console.error('[bandeja] ABORTA: ' + motivo);
+  console.error('[bandeja] No concluyas de esta corrida.');
   process.exit(3);
 }
 
@@ -70,67 +67,104 @@ function hoyLocal() {
 }
 const HOY = hoyLocal();
 
-const YO = 'Ana Prueba Unidas';
-const SESION = {
+const YO = 'Ana Prueba Bandeja';
+const OTRA = 'Beto Prueba Bandeja';
+const OTRA2 = 'Carmen Prueba Bandeja';
+
+/**
+ * La supervisora ES «Ana», y eso importa: la regla que se mide es «las mías
+ * contra las de los demás», así que la sesión tiene que tener tareas propias
+ * DENTRO del conjunto. Con una sesión sin tareas, «del equipo» y «todas» darían
+ * el mismo número y la prueba pasaría sin ejercer el recorte.
+ */
+const SUPERVISORA = {
+  uid: 's1', id: 's1', nombre: YO, usuario: 'ana', correo: 'ana@l.invalid',
+  rol: 'trabajador', sucursales: ['Canindo'], puedeVerEstadisticas: true,
+};
+/** Sin banderas de supervisión: no ve lo de otros, así que no tiene árbol. */
+const TRABAJADORA = {
   uid: 'w1', id: 'w1', nombre: YO, usuario: 'ana', correo: 'ana@l.invalid',
   rol: 'trabajador', sucursales: ['Canindo'],
 };
 
 const ITEMS = [{ id: 'i1', text: 'Punto uno' }, { id: 'i2', text: 'Punto dos' }];
-const BASE = { store: 'Canindo', assigned: YO, createdBy: YO, items: ITEMS, timestampCreacion: Date.now() };
-
-/** TRES del manual y DOS libres: los dos lados tienen que poder compararse. */
-const MANUALES = [
-  { id: 'm1', date: HOY, time: '08:00', name: 'Apertura de pasillo', _puestoId: 'anaquelista', ...BASE },
-  { id: 'm2', date: HOY, time: '09:00', name: 'Acomodo de anaquel', _puestoId: 'anaquelista', ...BASE },
-  { id: 'm3', date: HOY, time: '10:00', name: 'Cierre de pasillo', _puestoId: 'anaquelista', ...BASE },
-];
-const LIBRES = [
-  { id: 'l1', date: HOY, time: '11:00', name: 'Limpiar bodega chica', ...BASE },
-  { id: 'l2', date: HOY, time: '12:00', name: 'Apoyo en caja', ...BASE },
-];
-const USUARIOS = [{ id: 'w1', nombre: YO, puestoId: 'anaquelista', activo: true, sucursales: ['Canindo'] }];
-
-function fixture(conSello) {
-  const marca = conSello
-    ? { _origenManual: true, _manualDocumento: 'Manual de prueba', _formatoCodigo: 'PR-01' }
-    : {};
-  return {
-    checklists: MANUALES.map((c) => ({ ...c, ...marca })).concat(LIBRES),
-    usuarios: USUARIOS,
-    areas: [],
-  };
-}
+const BASE = { store: 'Canindo', createdBy: YO, items: ITEMS, timestampCreacion: Date.now() };
+const MANUAL = { _origenManual: true, _puestoId: 'anaquelista', _formatoCodigo: 'PR-01' };
 
 /**
- * Qué se espera de cada escenario. Los números salen del fixture de arriba
- * (3 + 2), no de lo que la pantalla devolvió.
+ * TRES pendientes de otros y DOS mías · DOS enviadas de otros y UNA mía.
+ * Los números son distintos a propósito (3≠2, 2≠1): con conjuntos del mismo
+ * tamaño, intercambiar los dos filtros daría el mismo resultado y la prueba no
+ * distinguiría «recorta bien» de «recorta al revés».
  */
+const FILAS = [
+  { id: 'p1', date: HOY, time: '08:00', name: 'Apertura de pasillo', assigned: OTRA, ...BASE, ...MANUAL },
+  { id: 'p2', date: HOY, time: '09:00', name: 'Acomodo de anaquel', assigned: OTRA, ...BASE, ...MANUAL },
+  { id: 'p3', date: HOY, time: '10:00', name: 'Cierre de pasillo', assigned: OTRA2, ...BASE, ...MANUAL },
+  { id: 'p4', date: HOY, time: '11:00', name: 'Limpiar bodega chica', assigned: YO, ...BASE },
+  { id: 'p5', date: HOY, time: '12:00', name: 'Apoyo en caja', assigned: YO, ...BASE, ...MANUAL },
+  // Enviadas: el poll de pendientes las descarta (`enviado === true`) y
+  // `cargarEnviadas()` las recoge aparte, del mismo endpoint.
+  { id: 'e1', date: HOY, time: '07:00', name: 'Corte de ayer uno', assigned: OTRA, enviado: true, ...BASE, ...MANUAL },
+  { id: 'e2', date: HOY, time: '07:10', name: 'Corte de ayer dos', assigned: OTRA2, enviado: true, ...BASE, ...MANUAL },
+  { id: 'e3', date: HOY, time: '07:20', name: 'Mi corte de ayer', assigned: YO, enviado: true, ...BASE, ...MANUAL },
+];
+const PEND_OTROS = 3, PEND_MIAS = 2, ENV_OTROS = 2, ENV_MIAS = 1;
+
+const USUARIOS = [
+  { id: 's1', nombre: YO, puestoId: 'anaquelista', activo: true, sucursales: ['Canindo'] },
+  { id: 'u2', nombre: OTRA, puestoId: 'anaquelista', activo: true, sucursales: ['Canindo'] },
+  { id: 'u3', nombre: OTRA2, puestoId: 'anaquelista', activo: true, sucursales: ['Canindo'] },
+];
+
+const CUERPO = JSON.stringify({ checklists: FILAS, usuarios: USUARIOS, areas: [] });
+
+const B_EQ_PEND = 'Pendientes del equipo';
+const B_EQ_ENV = 'Enviadas del equipo';
+const B_MIS_PEND = 'Mis tareas pendientes';
+const B_MIS_ENV = 'Mis tareas enviadas';
+
 const ESCENARIOS = [
-  { nombre: 'entro a /tareas (por omision)', url: '/tareas', sello: true,
-    chipActivo: 'Todas', tarjetas: 5, conPastilla: 3, conAcciones: 2,
-    badges: { 'Todas': 5, 'Del manual': 3, 'Fuera del manual': 2 },
-    ruta: '/tareas', query: '' },
-  { nombre: 'pulso «Del manual»', url: '/tareas', sello: true, pulsa: 'Del manual',
-    chipActivo: 'Del manual', tarjetas: 3, conPastilla: 3, conAcciones: 0,
-    badges: { 'Todas': 5, 'Del manual': 3, 'Fuera del manual': 2 },
-    ruta: '/tareas', query: '?ver=manual' },
-  { nombre: 'pulso «Fuera del manual»', url: '/tareas', sello: true, pulsa: 'Fuera del manual',
-    chipActivo: 'Fuera del manual', tarjetas: 2, conPastilla: 0, conAcciones: 2,
-    badges: { 'Todas': 5, 'Del manual': 3, 'Fuera del manual': 2 },
-    ruta: '/tareas', query: '?ver=libres' },
-  // Los dos enlaces viejos, tal como están escritos en WhatsApp.
-  { nombre: 'enlace viejo /tareas-manual', url: '/tareas-manual', sello: true,
-    chipActivo: 'Del manual', tarjetas: 3, conPastilla: 3, conAcciones: 0,
-    ruta: '/tareas', query: '?ver=manual' },
-  { nombre: 'enlace viejo /checklist', url: '/checklist', sello: true,
-    chipActivo: 'Fuera del manual', tarjetas: 2, conPastilla: 0, conAcciones: 2,
-    ruta: '/tareas', query: '?ver=libres' },
-  // CONTROL NEGATIVO DEL MECANISMO: el mismo fixture sin el sello del robot.
-  { nombre: 'sin _origenManual (control)', url: '/tareas', sello: false,
-    chipActivo: 'Todas', tarjetas: 5, conPastilla: 0, conAcciones: 5,
-    badges: { 'Todas': 5, 'Del manual': 0, 'Fuera del manual': 5 },
-    ruta: '/tareas', query: '' },
+  // ── SUPERVISORA: los cuatro botones ────────────────────────────────────
+  {
+    nombre: 'supervisora, por omision', sesion: SUPERVISORA, pulsa: null,
+    botones: 4, activo: B_EQ_PEND,
+    // En «del equipo» se pinta el ÁRBOL, no la lista: es la vista de
+    // supervisión de siempre. Por eso aquí las tarjetas son 0 y lo que se
+    // comprueba son los badges.
+    arbol: 1, tarjetas: 0, conMiNombre: 0,
+    badges: { [B_EQ_PEND]: PEND_OTROS, [B_MIS_PEND]: PEND_MIAS },
+  },
+  {
+    nombre: 'supervisora → mis pendientes', sesion: SUPERVISORA, pulsa: B_MIS_PEND,
+    botones: 4, activo: B_MIS_PEND,
+    arbol: 0, tarjetas: PEND_MIAS, conMiNombre: PEND_MIAS,
+    badges: { [B_EQ_PEND]: PEND_OTROS, [B_MIS_PEND]: PEND_MIAS },
+  },
+  {
+    nombre: 'supervisora → enviadas equipo', sesion: SUPERVISORA, pulsa: B_EQ_ENV,
+    botones: 4, activo: B_EQ_ENV,
+    // LA QUE CAZA EL DEFECTO: hasta hoy el historial no miraba de quién eran,
+    // así que este botón habría traído las 3, con la mía dentro.
+    arbol: 0, tarjetas: ENV_OTROS, conMiNombre: 0,
+  },
+  {
+    nombre: 'supervisora → mis enviadas', sesion: SUPERVISORA, pulsa: B_MIS_ENV,
+    botones: 4, activo: B_MIS_ENV,
+    arbol: 0, tarjetas: ENV_MIAS, conMiNombre: ENV_MIAS,
+  },
+  // ── TRABAJADORA: solo los dos suyos ────────────────────────────────────
+  {
+    nombre: 'trabajadora, por omision', sesion: TRABAJADORA, pulsa: null,
+    botones: 2, activo: B_MIS_PEND,
+    arbol: 0, tarjetas: PEND_MIAS, conMiNombre: PEND_MIAS,
+    badges: { [B_MIS_PEND]: PEND_MIAS },
+  },
+  {
+    nombre: 'trabajadora → mis enviadas', sesion: TRABAJADORA, pulsa: B_MIS_ENV,
+    botones: 2, activo: B_MIS_ENV,
+    arbol: 0, tarjetas: ENV_MIAS, conMiNombre: ENV_MIAS,
+  },
 ];
 
 const TIPOS = {
@@ -140,7 +174,7 @@ const TIPOS = {
 };
 
 function prepararCopia() {
-  const destino = fs.mkdtempSync(path.join(os.tmpdir(), 'md-unidas-dist-'));
+  const destino = fs.mkdtempSync(path.join(os.tmpdir(), 'md-bandeja-dist-'));
   const copiar = (de, a) => {
     fs.mkdirSync(a, { recursive: true });
     for (const e of fs.readdirSync(de, { withFileTypes: true })) {
@@ -149,61 +183,70 @@ function prepararCopia() {
     }
   };
   copiar(DIST_REAL, destino);
-  console.log('[unidas] copia servida desde %s', destino);
+  console.log('[bandeja] copia servida desde %s', destino);
   return destino;
 }
 
 function medir(esc, puerto) {
   return new Promise((resolve) => {
-    // Se pulsa el chip REAL buscándolo por su texto: si cambia de clase, esto
-    // falla ruidosamente en vez de medir otra cosa.
+    // Se pulsa el botón REAL buscándolo por su texto, que es el que David
+    // dictó: si alguien lo reescribe, esto falla ruidosamente en vez de medir
+    // otra cosa.
     const pulsar = esc.pulsa
-      ? 'var ch=[].slice.call(document.querySelectorAll(".cl-chip-origen .vista-tab"));' +
-        'var b=ch.filter(function(e){return (e.textContent||"").indexOf(' +
+      ? 'var bs=[].slice.call(document.querySelectorAll(".cl-bandeja .vista-tab"));' +
+        'var b=bs.filter(function(e){return (e.textContent||"").indexOf(' +
         JSON.stringify(esc.pulsa) + ')>=0;})[0];' +
-        'if(b){b.click();}else{window.__sinChip=1;}'
+        'if(b){b.click();}else{window.__sinBoton=1;}'
       : '';
 
     // OJO CON LOS `+` DEL FINAL DE CADA LÍNEA: sin uno, JS no da error — la
     // inserción automática de punto y coma parte la expresión en dos sentencias
     // válidas, el script sale truncado y el título nunca se fija. Se lee como
-    // «la app no pintó». Ya pasó en este repo (4/sep y otra vez hoy).
+    // «la app no pintó». Ya pasó dos veces en este repo.
     const iny =
       '<script>try{localStorage.setItem("md_sesion_actual",' +
-      JSON.stringify(JSON.stringify(SESION)) + ');}catch(e){}' +
+      JSON.stringify(JSON.stringify(esc.sesion)) + ');}catch(e){}' +
       'try{localStorage.setItem("md_token","token-de-medicion");}catch(e){}</script>' +
       '<script>window.addEventListener("load",function(){' +
       'setTimeout(function(){' + pulsar + 'setTimeout(function(){' +
-      'var chips=[].slice.call(document.querySelectorAll(".cl-chip-origen .vista-tab"));' +
+      'var bs=[].slice.call(document.querySelectorAll(".cl-bandeja .vista-tab"));' +
+      'var cards=[].slice.call(document.querySelectorAll(".checklist-card"));' +
       'document.title="RES "+JSON.stringify({' +
-      ' chips: chips.map(function(b){' +
+      ' botones: bs.map(function(b){' +
       '   var bg=b.querySelector(".vista-tab-badge");' +
       '   return {texto:(b.textContent||"").replace(/\\s+/g," ").replace(/\\s*\\d+\\s*$/,"").trim(),' +
-      '           badge: bg ? Number((bg.textContent||"").trim()) : -1,' +
+      '           badge: bg ? Number((bg.textContent||"").trim()) : null,' +
       '           activo: b.className.indexOf("vista-tab-active")>=0 ? 1 : 0};}),' +
-      ' tarjetas: document.querySelectorAll(".checklist-card").length,' +
-      // La pastilla 🔒 MANUAL y los botones de editar/borrar son las DOS mitades
-      // del candado: la que se ve y la que se puede pulsar.
-      ' conPastilla: document.querySelectorAll(".checklist-card .cl-pill-manual").length,' +
-      ' conAcciones: document.querySelectorAll(".checklist-card .cl-actions").length,' +
+      ' tarjetas: cards.length,' +
+      // EL MECANISMO, no la apariencia: de cuántas tarjetas visibles soy YO la
+      // ASIGNADA. Es lo que separa «recorta» de «recorta al revés».
+      //
+      // ⚠ SE MIRA `.cl-meta-empleado`, NO el texto de la tarjeta. La primera
+      // versión buscaba mi nombre en el `textContent` entero y dio 2 de 2 en
+      // «Enviadas del equipo» —que se lee como «el recorte no aplica»— cuando
+      // el recorte estaba bien: yo era la `createdBy` de las ocho filas del
+      // fixture, así que mi nombre salía en tarjetas que no son mías. El
+      // defecto estaba en la MEDICIÓN, no en la app, y era del tipo que manda a
+      // depurar lo que funciona.
+      ' conMiNombre: cards.filter(function(c){' +
+      '   var e=c.querySelector(".cl-meta-empleado");' +
+      '   return e && (e.textContent||"").trim() === ' + JSON.stringify(YO) + ';}).length,' +
       ' arbol: document.querySelectorAll("app-vista-organigrama").length,' +
-      ' sinChip: window.__sinChip ? 1 : 0,' +
-      ' ruta: location.pathname,' +
-      ' query: location.search' +
-      '});},1200);},3200);});</script>';
+      ' sinBoton: window.__sinBoton ? 1 : 0,' +
+      ' ruta: location.pathname' +
+      '});},1400);},3400);});</script>';
 
     const sano = fs.readFileSync(path.join(DIST, 'index.html'), 'utf8');
     const html = sano.replace('<body>', '<body>' + iny);
     if (html === sano) return resolve({ error: 'no pude inyectar la sesión en el index' });
 
-    const cuerpo = JSON.stringify(fixture(esc.sello));
     let apiPedidos = 0;
     const srv = http.createServer((req, res) => {
       const url = req.url.split('?')[0];
       if (url.indexOf('/api/') === 0) {
         apiPedidos++;
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        return res.end(cuerpo);
+        return res.end(CUERPO);
       }
       if (url === '/' || !path.extname(url)) {
         res.writeHead(200, { 'Content-Type': 'text/html', 'Cache-Control': 'no-store' });
@@ -216,7 +259,7 @@ function medir(esc, puerto) {
     });
     srv.on('error', (e) => resolve({ error: 'el servidor local no levantó: ' + e.message }));
     srv.listen(puerto, () => {
-      const perfil = fs.mkdtempSync(path.join(os.tmpdir(), 'md-unidas-'));
+      const perfil = fs.mkdtempSync(path.join(os.tmpdir(), 'md-bandeja-'));
       // La URL se arma AQUÍ, con la barra puesta por código: en Git Bash MSYS
       // convierte '/tareas' en 'C:/Program Files/Git/tareas' si pasa por una
       // variable de entorno, y el DOM llega vacío — que se lee como «la app no
@@ -225,7 +268,7 @@ function medir(esc, puerto) {
         '--window-size=1440,1052', '--user-data-dir=' + perfil, '--virtual-time-budget=25000',
         '--disable-background-networking', '--disable-sync', '--disable-component-update',
         '--disable-features=PushMessaging,OptimizationHints',
-        '--dump-dom', 'http://localhost:' + puerto + esc.url],
+        '--dump-dom', 'http://localhost:' + puerto + '/tareas'],
         { stdio: ['ignore', 'pipe', 'ignore'] });
       let dom = '';
       h.stdout.on('data', (d) => { dom += d.toString('utf8'); });
@@ -239,7 +282,7 @@ function medir(esc, puerto) {
           return resolve({ error: 'sin medición · title=' + (t ? JSON.stringify(t[1]) : 'ninguno') +
             ' · dom=' + dom.length + 'B' });
         }
-        try { resolve({ dato: JSON.parse(m[1]), apiPedidos, dom: dom.length }); }
+        try { resolve({ dato: JSON.parse(m[1]), apiPedidos }); }
         catch (e) { resolve({ error: 'el título no era JSON: ' + m[1].slice(0, 140) }); }
       });
     });
@@ -252,13 +295,13 @@ function medir(esc, puerto) {
     abortar('no hay dist/ en ' + DIST_REAL + '. Corre `npm run build`: esto mide lo COMPILADO.');
   }
   console.log('');
-  console.log('[unidas] entrada: %d checklists (%d del manual · %d libres) · %d ficha(s) · fecha %s',
-    MANUALES.length + LIBRES.length, MANUALES.length, LIBRES.length, USUARIOS.length, HOY);
+  console.log('[bandeja] entrada: %d filas · pendientes %d de otros + %d mías · enviadas %d de otros + %d mía',
+    FILAS.length, PEND_OTROS, PEND_MIAS, ENV_OTROS, ENV_MIAS);
 
   DIST = prepararCopia();
 
   const filas = [];
-  let puerto = 5900 + Math.floor(Math.random() * 200);
+  let puerto = 5700 + Math.floor(Math.random() * 200);
   for (const e of ESCENARIOS) {
     const r = await medir(e, puerto++);
     if (r.error) {
@@ -274,94 +317,96 @@ function medir(esc, puerto) {
       abortar('el escenario "' + f.nombre + '" nunca pidió /api/*: se midió una pantalla vacía. ' +
         'Todos los conteos serían cero por no haber dato, no por el filtro.');
     }
-    if (f.d.sinChip) {
-      abortar('en "' + f.nombre + '" no encontré el chip «' + f.pulsa + '» para pulsarlo. ' +
+    if (f.d.sinBoton) {
+      abortar('en "' + f.nombre + '" no encontré el botón «' + f.pulsa + '» para pulsarlo. ' +
         'Lo medido sería la pantalla sin tocar, no la que dice el escenario.');
     }
-    if (f.d.chips.length !== 3) {
-      abortar('en "' + f.nombre + '" hay ' + f.d.chips.length + ' chips de origen y son 3. ' +
-        'Sin los tres, «cada chip baja a su mitad» no se puede ni preguntar.');
+    if (f.d.botones === 0) {
+      abortar('en "' + f.nombre + '" no se pintó ningún botón de la bandeja. Sin barra, ' +
+        'cualquier conteo de abajo sería de una pantalla que no es la que se quiere medir.');
     }
-    if (f.d.arbol !== 0) {
-      abortar('en "' + f.nombre + '" se montó el árbol del organigrama. Esta sesión es una ' +
-        'trabajadora justamente para que no salga: con el árbol en pantalla las tarjetas dan ' +
-        'cero y ese cero NO significa «no hay».');
+    if (f.d.ruta !== '/tareas') {
+      abortar('en "' + f.nombre + '" la app aterrizó en "' + f.d.ruta + '" y no en /tareas.');
     }
   }
 
   // ── LA TABLA ─────────────────────────────────────────────────────────────
   console.log('');
-  console.log('escenario                      aterriza en          chip activo        tarjetas  manual  editables');
-  console.log('─'.repeat(108));
+  console.log('escenario                        botones  activo                  árbol  tarjetas  con mi nombre');
+  console.log('─'.repeat(104));
   for (const f of filas) {
-    const act = (f.d.chips.find((c) => c.activo) || {}).texto || '(ninguno)';
+    const act = (f.d.botones.find((b) => b.activo) || {}).texto || '(ninguno)';
     console.log('%s %s %s %s %s %s',
-      f.nombre.padEnd(30), (f.d.ruta + f.d.query).padEnd(20), act.padEnd(18),
-      String(f.d.tarjetas).padEnd(9), String(f.d.conPastilla).padEnd(7), String(f.d.conAcciones));
+      f.nombre.padEnd(32), String(f.d.botones.length).padEnd(8), act.padEnd(23),
+      String(f.d.arbol).padEnd(6), String(f.d.tarjetas).padEnd(9), String(f.d.conMiNombre));
   }
-  console.log('─'.repeat(108));
+  console.log('─'.repeat(104));
   console.log('');
-  console.log('badges de los chips por escenario');
-  console.log('─'.repeat(108));
+  console.log('badges');
+  console.log('─'.repeat(104));
   for (const f of filas) {
-    console.log('  %s %s', f.nombre.padEnd(30),
-      f.d.chips.map((c) => c.texto + '=' + c.badge).join(' · '));
+    console.log('  %s %s', f.nombre.padEnd(32),
+      f.d.botones.map((b) => b.texto + '=' + (b.badge === null ? '—' : b.badge)).join(' · '));
   }
-  console.log('─'.repeat(108));
+  console.log('─'.repeat(104));
 
   // ── LAS ASERCIONES ───────────────────────────────────────────────────────
   const fallos = [];
   const pide = (ok, msg) => { if (!ok) fallos.push(msg); };
 
   for (const f of filas) {
-    const act = (f.d.chips.find((c) => c.activo) || {}).texto || '(ninguno)';
-    pide(f.d.ruta === f.ruta,
-      f.nombre + ': aterrizó en "' + f.d.ruta + '" y se esperaba "' + f.ruta + '". Un redirect ' +
-      'que no casa NO da error de compilación: cae al wildcard y manda al login.');
-    pide(f.d.query === f.query,
-      f.nombre + ': la URL quedó con "' + f.d.query + '" y se esperaba "' + f.query + '". El ' +
-      'ver= es lo que hace que un enlace viejo abra la mitad que servía.');
-    pide(act === f.chipActivo,
-      f.nombre + ': el chip activo es «' + act + '» y debía ser «' + f.chipActivo + '».');
+    const act = (f.d.botones.find((b) => b.activo) || {}).texto || '(ninguno)';
+    pide(f.d.botones.length === f.botones,
+      f.nombre + ': ' + f.d.botones.length + ' botón(es) y se esperaban ' + f.botones +
+      '. A quien no ve lo de otros se le pintan DOS, no cuatro con dos inertes.');
+    pide(act === f.activo,
+      f.nombre + ': el botón activo es «' + act + '» y debía ser «' + f.activo + '». Una barra ' +
+      'sin nada seleccionado deja la lista mostrando algo que ningún botón nombra.');
+    pide(f.d.arbol === f.arbol,
+      f.nombre + ': el árbol del organigrama salió ' + f.d.arbol + ' y se esperaba ' + f.arbol + '.');
     pide(f.d.tarjetas === f.tarjetas,
       f.nombre + ': ' + f.d.tarjetas + ' tarjeta(s) y se esperaban ' + f.tarjetas + '.');
-    pide(f.d.conPastilla === f.conPastilla,
-      f.nombre + ': ' + f.d.conPastilla + ' tarjeta(s) con la pastilla MANUAL y se esperaban ' +
-      f.conPastilla + '.');
-    // LA QUE MÁS IMPORTA: el candado del documento controlado (§5.4).
-    pide(f.d.conAcciones === f.conAcciones,
-      f.nombre + ': ' + f.d.conAcciones + ' tarjeta(s) ofrecen editar/borrar y se esperaban ' +
-      f.conAcciones + '. Si sobran, la app está ofreciendo editar el Manual Corporativo.');
+    // LA QUE IMPORTA: «del equipo» es estricto, decisión de David.
+    pide(f.d.conMiNombre === f.conMiNombre,
+      f.nombre + ': ' + f.d.conMiNombre + ' de las tarjetas llevan mi nombre y se esperaban ' +
+      f.conMiNombre + '. «Del equipo» son las de los DEMÁS: si aparecen las mías, el recorte ' +
+      'no está aplicando, y una lista con una tarea de más se ve igual de plausible.');
     if (f.badges) {
-      for (const c of f.d.chips) {
-        pide(c.badge === f.badges[c.texto],
-          f.nombre + ': el chip «' + c.texto + '» dice ' + c.badge + ' y el fixture tiene ' +
-          f.badges[c.texto] + '. Un badge que no cuadra con su lista se lee como tareas perdidas.');
+      for (const [texto, esperado] of Object.entries(f.badges)) {
+        const b = f.d.botones.find((x) => x.texto === texto);
+        pide(b && b.badge === esperado,
+          f.nombre + ': el badge de «' + texto + '» dice ' + (b ? b.badge : '(no está)') +
+          ' y el fixture tiene ' + esperado + '.');
       }
     }
   }
 
-  // ── «TODO ESTÁ AHÍ»: la suma, que es el punto entero del cambio ──────────
-  const todas = filas[0], soloManual = filas[1], soloLibres = filas[2];
-  pide(todas.d.tarjetas === soloManual.d.tarjetas + soloLibres.d.tarjetas,
-    'la lista de «Todas» (' + todas.d.tarjetas + ') no es la suma de las dos mitades (' +
-    soloManual.d.tarjetas + ' + ' + soloLibres.d.tarjetas + '). O sobra algo o se está ' +
-    'perdiendo una tarea al juntar las listas, que es justo lo que este paso no puede hacer.');
+  // ── LOS DOS BADGES SUMAN EL TOTAL SIN REPETIR ────────────────────────────
+  // Es lo que el eje anterior NO podía dar: «Toda la operación» incluía las
+  // propias, así que los dos números se solapaban y no se podían leer juntos.
+  const sup = filas[0];
+  const bEq = sup.d.botones.find((b) => b.texto === B_EQ_PEND);
+  const bMis = sup.d.botones.find((b) => b.texto === B_MIS_PEND);
+  pide(bEq && bMis && bEq.badge + bMis.badge === PEND_OTROS + PEND_MIAS,
+    'los badges no suman el total: ' + (bEq ? bEq.badge : '?') + ' + ' + (bMis ? bMis.badge : '?') +
+    ' ≠ ' + (PEND_OTROS + PEND_MIAS) + '. O se repite una tarea en los dos botones o se pierde.');
 
   // ── GUARDIA DE DISCRIMINACIÓN ────────────────────────────────────────────
-  // Sin esto, una pantalla que mostrara SIEMPRE lo mismo pasaría lo de arriba.
-  const distintos = new Set(filas.map((f) => f.d.tarjetas + '/' + f.d.conAcciones));
+  const distintos = new Set(filas.map((f) => f.d.tarjetas + '/' + f.d.conMiNombre + '/' + f.d.arbol));
   if (distintos.size < 3) {
     abortar('los ' + filas.length + ' escenarios produjeron ' + distintos.size + ' resultado(s) ' +
       'distinto(s). Una muestra que no discrimina no prueba nada, por muchos casos que tenga.');
   }
-
-  // ── EL CONTROL NEGATIVO, afirmado por su mecanismo ───────────────────────
-  const neg = filas[filas.length - 1];
-  pide(neg.d.conPastilla === 0 && neg.d.conAcciones === todas.d.tarjetas,
-    'quité _origenManual del fixture y la pantalla siguió marcando ' + neg.d.conPastilla +
-    ' tarjeta(s) como del manual con ' + neg.d.conAcciones + ' editable(s). Entonces el chip y ' +
-    'el candado NO cuelgan de ese sello, y esta prueba no está midiendo lo que dice.');
+  // Y que los dos lados del eje se ejerzan de verdad: sin un escenario con
+  // `conMiNombre > 0` y otro con `=== 0` sobre tarjetas visibles, la regla
+  // estricta no se estaría comparando contra nada.
+  const conMias = filas.filter((f) => f.d.tarjetas > 0 && f.d.conMiNombre === f.d.tarjetas).length;
+  const sinMias = filas.filter((f) => f.d.tarjetas > 0 && f.d.conMiNombre === 0).length;
+  if (!conMias || !sinMias) {
+    abortar('la muestra no enfrenta los dos lados del eje: ' + conMias + ' escenario(s) con ' +
+      'tarjetas todas mías y ' + sinMias + ' con ninguna mía. Sin un sí y un no, «del equipo ' +
+      'es estricto» no se comprueba.');
+  }
 
   console.log('');
   if (fallos.length) {
@@ -369,16 +414,14 @@ function medir(esc, puerto) {
     for (const f of fallos) console.log('   · %s', f);
     process.exit(2);
   }
-  console.log('✓ las %d mediciones pasan · %d resultados distintos entre escenarios.',
-    filas.length, distintos.size);
+  console.log('✓ los %d escenarios pasan · %d resultados distintos · %d con todas mías y %d con ninguna.',
+    filas.length, distintos.size, conMias, sinMias);
   console.log('');
-  console.log('  «Todas» = %d = %d del manual + %d libres', todas.d.tarjetas,
-    soloManual.d.tarjetas, soloLibres.d.tarjetas);
-  console.log('  el candado: %d tarjetas del manual y NINGUNA ofrece editar ni borrar',
-    soloManual.d.conPastilla);
-  console.log('  los dos enlaces viejos aterrizan en /tareas con su mitad puesta');
+  console.log('  los badges suman sin repetir: %d del equipo + %d mías = %d',
+    bEq.badge, bMis.badge, bEq.badge + bMis.badge);
+  console.log('  «del equipo» es estricto: 0 tarjetas con mi nombre, en pendientes y en enviadas');
+  console.log('  quien no ve lo de otros ve 2 botones, no 4');
   console.log('');
-  console.log('Lo que esto NO prueba: que se VEA bien, ni que el candado del servidor exista.');
-  console.log('El de verdad está en editarChecklist/eliminarChecklist, que rechazan la tarea');
-  console.log('del manual aunque alguien llame al método; esto mide que ni siquiera se ofrezca.');
+  console.log('Lo que esto NO prueba: que se vea bien, ni el comportamiento en un celular real.');
+  console.log('Los cuatro rótulos son largos y en 390px la barra es otra pregunta.');
 })();

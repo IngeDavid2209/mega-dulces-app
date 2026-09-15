@@ -1,57 +1,17 @@
-<!-- ===================== RESUMEN DEL DÍA ===================== -->
-<section class="pr-strip" aria-label="Resumen del día">
-  <div class="pr-strip-head">
-    <h2>Avance del día</h2>
-    <div class="pr-total">
-      <!-- El numero grande es el % CUMPLIDO, y su denominador va debajo. Con
-           total 0 no se pinta 0%: se pinta guion, porque "no se emitio nada"
-           y "se emitio y nadie cumplio" no son lo mismo. -->
-      <span class="pr-big" *ngIf="resumen().porcentaje !== null">{{ resumen().porcentaje }}<span class="pr-pc">%</span></span>
-      <span class="pr-big pr-big-nulo" *ngIf="resumen().porcentaje === null">—</span>
-      <span class="pr-lab">{{ resumen().completada }} de {{ resumen().total }} {{ resumen().total === 1 ? 'punto cumplido' : 'puntos cumplidos' }}</span>
-    </div>
-  </div>
+<!-- ═══════ «AVANCE DEL DÍA» SE RETIRÓ — 14/sep/2026 ═══════════════════════
+     Instrucción de David, sobre una captura de la tira: «quita este».
 
-  <div class="pr-bar" role="img"
-       [attr.aria-label]="'Completadas ' + resumen().completada + ', en curso ' + resumen().hoy +
-                          ', vencidas ' + resumen().vencida + ', programadas ' + resumen().programada">
-    <!-- ══════════ LA BARRA MIDE CUMPLIDO, NO ACTIVIDAD ══════════
-         ANTES: "en curso" pintaba un tramo AMBAR LLENO. Con 0 completadas y
-         190 en curso la barra salia ~87% de color y se leia "casi listo",
-         cuando lo cumplido era CERO. Encima el ambar en Mercado es color de
-         ACCION, no de estado: un boton y un avance no pueden pintarse igual.
+     Lo que enseñaba era «0% · 0 de 112 puntos cumplidos» con 62 en curso y 50
+     vencidas: una barra casi entera en rojo encima de la lista, todos los días
+     y para todo el mundo. El panel de abajo ya dice lo mismo por persona y con
+     su nombre al lado, que es donde un Encargado puede hacer algo con el dato.
 
-         AHORA: solo lo CUMPLIDO llena (verde) y lo VENCIDO al final (rojo).
-         Lo "en curso" y lo "programado" son PISTA VACIA, porque todavia no son
-         nada — y una pista vacia es exactamente lo que hay que ver.
-
-         Propiedad que ahora es cierta y antes no: la barra NO PUEDE parecer
-         llena si nadie cumplio nada. -->
-    <span [style.flex]="resumen().completada" style="background:var(--ok-fg)"></span>
-    <span [style.flex]="resumen().hoy" style="background:var(--neutral-200)"></span>
-    <span [style.flex]="resumen().programada" style="background:var(--neutral-200)"></span>
-    <span [style.flex]="resumen().vencida" style="background:var(--bad-fg)"></span>
-  </div>
-
-  <div class="pr-legend">
-    <div class="pr-legend-item">
-      <span class="k"><i class="pr-dot" style="background:var(--ok-fg)"></i>Completadas</span>
-      <span class="v">{{ resumen().completada }}</span>
-    </div>
-    <div class="pr-legend-item">
-      <span class="k"><i class="pr-dot" style="background:var(--neutral-200)"></i>En curso</span>
-      <span class="v">{{ resumen().hoy }}</span>
-    </div>
-    <div class="pr-legend-item">
-      <span class="k"><i class="pr-dot" style="background:var(--bad-fg)"></i>Vencidas</span>
-      <span class="v">{{ resumen().vencida }}</span>
-    </div>
-    <div class="pr-legend-item">
-      <span class="k"><i class="pr-dot" style="background:var(--neutral-200)"></i>Programadas</span>
-      <span class="v">{{ resumen().programada }}</span>
-    </div>
-  </div>
-</section>
+     NO SE BORRÓ LA MEDICIÓN: `resumen()` sigue calculándose en
+     panel-responsables.ts —lo usan las tarjetas de cada persona— y con ella los
+     dos aciertos que este bloque dejó escritos, por si vuelve a pintarse en
+     algún sitio: con total 0 se pinta «—» y no «0%» (porque «no se emitió nada»
+     y «se emitió y nadie cumplió» no son lo mismo), y la barra solo la llena lo
+     CUMPLIDO, para que no pueda parecer llena con cero cumplido. -->
 
 <!-- ===================== ALTAS POR TIPO ===================== -->
 <div class="pr-altas" *ngIf="puedeCrear">

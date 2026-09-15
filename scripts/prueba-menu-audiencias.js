@@ -824,36 +824,21 @@ function revisarRutas(plano) {
     }
   }
 
-  // (3) cada fusion declarada tiene su redirect realmente escrito.
+  // (3) cada fusion declarada tiene su `redirectTo` realmente escrito.
   //
-  //     HAY DOS FORMAS, y las dos se comprueban por CADENA EXACTA — sin
-  //     parsear nada (corolario (d)):
-  //
-  //     · CADENA   `path: 'x', redirectTo: 'y'`
-  //       Las cuatro pestañas de /control. Aterrizan en una ruta, sin mas.
-  //
-  //     · FUNCION  `path: 'x', pathMatch: 'full', redirectTo: aTareas('...')`
-  //       Las dos de tareas. Existe porque el destino lleva `?ver=`, y un
-  //       redirectTo de CADENA no puede llevar query params: se pierden en
-  //       silencio y el enlace viejo aterriza en «Todas» en vez de en la mitad
-  //       que servia. Como el destino no aparece escrito en esa linea, se
-  //       comprueba aparte que el helper construya la URL del destino.
+  //     Hubo unas horas en que dos de estas fusiones redirigian con una FUNCION
+  //     -para poder añadir un `?ver=` que un redirect de cadena no lleva- y esta
+  //     comprobacion conocia las dos formas. El eje que necesitaba ese query
+  //     param se retiro el mismo dia, asi que la rama de funcion se quito con
+  //     el: una rama que ningun caso ejerce es una rama que nadie sabe si
+  //     funciona, y esta prueba ya abortaba a proposito cuando eso pasaba.
   for (const origen of Object.keys(FUNDIDAS)) {
     const destino = FUNDIDAS[origen];
     if (!destino) continue;
-    const cadena = "path: '" + origen.slice(1) + "', redirectTo: '" + destino.slice(1) + "'";
-    const funcion = "path: '" + origen.slice(1) + "', pathMatch: 'full', redirectTo: aTareas(";
-    if (plano.includes(cadena)) continue;
-    if (plano.includes(funcion)) {
-      // El helper NO se da por bueno por llamarse como se llama: se exige que
-      // arme la URL del destino declarado. Si alguien cambiara el
-      // `createUrlTree` a otra ruta, este `includes` deja de encontrarlo.
-      if (!plano.includes("createUrlTree(['" + destino + "']")) {
-        fallas.push(origen + ' redirige con funcion, pero el helper NO construye ' + destino);
-      }
-      continue;
+    if (!plano.includes("path: '" + origen.slice(1) + "', pathMatch: 'full', redirectTo: '" + destino.slice(1) + "'") &&
+        !plano.includes("path: '" + origen.slice(1) + "', redirectTo: '" + destino.slice(1) + "'")) {
+      fallas.push(origen + ' no redirige a ' + destino + ' (el enlace viejo cae al wildcard)');
     }
-    fallas.push(origen + ' no redirige a ' + destino + ' (el enlace viejo cae al wildcard)');
   }
   return fallas;
 }
@@ -896,31 +881,6 @@ const planoRutas = textoRutas.replace(/\s+/g, ' ');
   if (quejas.length === 0) {
     abortar('duplique el loadComponent de ' + spec + ' y el chequeo NO se quejo. El check (4) ' +
       'no esta contando lo que dice contar.');
-  }
-}
-
-// Control NEGATIVO de la rama de FUNCION del (3): si el helper dejara de
-// construir /tareas, los dos enlaces viejos de WhatsApp caerian al wildcard y la
-// gente aterrizaria en el login. El (3) de cadena NO cubre este caso —esas dos
-// rutas no tienen `redirectTo: '...'` escrito—, asi que sin este control la rama
-// nueva podria no estar mirando nada y «0 fallas» no significaria nada.
-{
-  const rotas = Object.keys(FUNDIDAS).filter(function (o) {
-    return planoRutas.includes("path: '" + o.slice(1) + "', pathMatch: 'full', redirectTo: aTareas(");
-  });
-  if (rotas.length === 0) {
-    abortar('ninguna fusion usa la forma de FUNCION, asi que esa rama del check (3) no se ' +
-      'ejerce en esta corrida. O se quito el helper, o las rutas cambiaron de forma.');
-  }
-  const roto = planoRutas.replace("createUrlTree(['/tareas']", "createUrlTree(['/otra-cosa']");
-  if (roto === planoRutas) {
-    abortar('el control negativo del helper no cambio NADA: no probo nada. Buscaba ' +
-      "createUrlTree(['/tareas']");
-  }
-  const quejas = revisarRutas(roto).filter(function (f) { return f.indexOf('NO construye') !== -1; });
-  if (quejas.length !== rotas.length) {
-    abortar('apunte el helper a otra ruta y el chequeo reporto ' + quejas.length +
-      ' de ' + rotas.length + ' fusiones por funcion. Esa rama no esta mirando lo que dice.');
   }
 }
 

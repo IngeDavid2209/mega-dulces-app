@@ -73,34 +73,11 @@ function ymd(d) {
   return new Date(d.getTime() - off).toISOString().split('T')[0];
 }
 
-/**
- * ¿Este checklist lo toco alguien?
- *
- * Deliberadamente AMPLIO: cualquier senal cuenta. El error se comete hacia el
- * lado de NO borrar, porque las consecuencias no son simetricas — dejar una
- * tarjeta de mas es una molestia, borrar el turno de alguien no se deshace con
- * una disculpa. Incluye el palomeo aunque no tenga foto: que la regla de
- * cumplimiento no lo cuente (Fase 2.1) no significa que la persona no lo haya
- * hecho, y aqui la pregunta es «¿trabajo en esto?», no «¿cumplio?».
- */
-function fueTrabajado(c) {
-  if (c.enviado || c.archivado) return true;
-  if (String(c.status || '') === 'completo') return true;
-  const d = c.datos || {};
-  if (String(d.notaEmpleado || '').trim()) return true;
-  if (d.entregaConRetraso) return true;
-  const items = Array.isArray(d.items) ? d.items : [];
-  for (const it of items) {
-    if (!it) continue;
-    if (it.checked === true) return true;
-    if (it.photo || it.photoAntes || it.photoDespues) return true;
-    if (Array.isArray(it.photos) && it.photos.length) return true;
-    if (String(it.comentario || '').trim()) return true;
-    if (it.monto != null && it.monto !== '') return true;
-    if (String(it.folio || '').trim()) return true;
-  }
-  return false;
-}
+// `fueTrabajado` ya NO vive aqui: se movio a la regla compartida
+// (emision-manual.util.ts) porque la usan el servidor y este script, y dos
+// copias de "que cuenta como trabajado" es exactamente la guarda que no
+// puede discrepar: la mas floja de las dos decide que se borra.
+
 
 /** Las sucursales de una ficha, como las ve la app. */
 function sucursalesDeFicha(f) {
@@ -202,69 +179,33 @@ async function main() {
   const porNombre = new Map();
   for (const f of fichas) porNombre.set(norm(f.nombre), f);
 
-  // ── Agrupar: misma persona, misma tarea, mismo dia ────────────────────────
-  // La llave NO incluye el `store`, que es justo el eje por el que se
-  // duplicaron. `_tareaManualId` lo sella el emisor en cada documento.
-  const grupos = new Map();
-  let sinTareaId = 0;
-  for (const c of cks) {
-    const tareaId = (c.datos || {})._tareaManualId;
-    if (!tareaId) { sinTareaId++; continue; }
-    const k = norm(c.assigned) + '||' + tareaId + '||' + c.fecha;
-    if (!grupos.has(k)) grupos.set(k, []);
-    grupos.get(k).push(c);
-  }
-  console.log('  grupos (persona x tarea x dia) ........ %d', grupos.size);
-  if (sinTareaId) console.log('  sin `_tareaManualId`, no se tocan ..... %d', sinTareaId);
+  // ── Decidir: NO se decide aqui ────────────────────────────────────────────
+  //
+  // Agrupar, elegir cual sobra y proteger lo trabajado lo hace `planDeLimpieza`,
+  // la MISMA funcion compilada que corre el servidor en cada cambio de dia. Este
+  // script escribia su propia version hasta que la limpieza se movio al emisor,
+  // y dejarla habria sido tener dos criterios de «que sobra» sueltos: el de aqui
+  // podria borrar justo lo que el servidor vuelve a crear, o al reves. Lo unico
+  // que queda en este archivo es leer, imprimir y escribir.
+  const lugares = new Map();
+  for (const f of fichas) lugares.set(norm(f.nombre), sucursalesDeFicha(f));
 
-  // ── Decidir ───────────────────────────────────────────────────────────────
-  const aQuitar = [];
-  const conflictos = [];
-  let gruposConRepetidas = 0;
+  const plan = regla.planDeLimpieza(cks, lugares);
+  const aQuitar = plan.quitar.map(q => ({
+    c: cks.find(c => c.id === q.id),
+    conserva: q.conserva,
+    conservaStore: q.conservaEn,
+  })).filter(q => q.c);
+  const conflictos = plan.conflictos;
   const porPersona = new Map();
-
-  for (const [, lista] of grupos) {
-    if (lista.length < 2) continue;         // no hay repeticion
-    gruposConRepetidas++;
-
-    const ficha = porNombre.get(norm(lista[0].assigned));
-    // Sin ficha resoluble NO se decide: no se sabe cuales son sus lugares.
-    if (!ficha) {
-      conflictos.push({ lista, motivo: 'no encuentro su ficha activa por nombre' });
-      continue;
-    }
-    const validos = new Set(regla.lugaresDeEmision(sucursalesDeFicha(ficha)));
-
-    const conservar = lista.filter(c => validos.has(c.store));
-    const sobran = lista.filter(c => !validos.has(c.store));
-
-    // Si la regla no conserva ninguna, algo no cuadra: no se borra el grupo entero.
-    if (conservar.length === 0) {
-      conflictos.push({ lista, motivo: 'la regla no conserva ninguna de las ' + lista.length });
-      continue;
-    }
-    // Si alguna de las que sobran YA SE TRABAJO, no se toca el grupo: hay que
-    // mirarlo a mano. Borrar la trabajada perderia el trabajo; borrar la otra
-    // dejaria a la persona con la tarjeta en un sitio que la regla no reconoce.
-    const trabajadasQueSobran = sobran.filter(fueTrabajado);
-    if (trabajadasQueSobran.length) {
-      conflictos.push({
-        lista,
-        motivo: 'una copia que sobra YA SE TRABAJO (' +
-          trabajadasQueSobran.map(c => c.store).join(', ') + ')',
-      });
-      continue;
-    }
-
-    for (const c of sobran) {
-      aQuitar.push({ c, conserva: conservar[0].id, conservaStore: conservar[0].store });
-      porPersona.set(c.assigned, (porPersona.get(c.assigned) || 0) + 1);
-    }
+  for (const q of aQuitar) {
+    porPersona.set(q.c.assigned, (porPersona.get(q.c.assigned) || 0) + 1);
   }
 
   // ── El plan ───────────────────────────────────────────────────────────────
   console.log('\n=== EL PLAN ===');
-  console.log('  grupos con repeticion ................ %d', gruposConRepetidas);
+  console.log('  grupos con repeticion ................ %d',
+    new Set(plan.quitar.map(q => q.assigned + '||' + q.fecha)).size + conflictos.length);
   console.log('  entregas a marcar como eliminadas .... %d', aQuitar.length);
   console.log('  personas afectadas ................... %d', porPersona.size);
   console.log('  grupos que NO se tocan (conflicto) ... %d', conflictos.length);
@@ -289,8 +230,8 @@ async function main() {
   if (conflictos.length) {
     console.log('\n  ⚠ NO SE TOCAN, hay que mirarlos a mano (hasta 15):');
     for (const k of conflictos.slice(0, 15)) {
-      console.log('    %s%s  [%s]', izq(k.lista[0].assigned, 26),
-        izq(k.lista.map(c => c.store).join(' + '), 34), k.motivo);
+      console.log('    %s%s  [%s]', izq(k.assigned, 26),
+        izq(k.lugares.join(' + '), 34), k.motivo);
     }
   }
 

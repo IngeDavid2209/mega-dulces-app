@@ -40,21 +40,20 @@ function abortar(msg) {
 }
 if (!fs.existsSync(REGLA)) abortar('falta la regla compilada. `node scripts/compilar-manual.js`');
 
-// ── `fueTrabajado`, extraida del propio script ──────────────────────────────
-// Se compila la funcion real en vez de reescribirla: una copia aqui podria
-// discrepar de la que de verdad protege, y entonces la prueba diria que hay
-// guarda donde no la hay. Si el corte falla, ABORTA (no concluye con un cero).
+// La funcion REAL, compilada. Ya no se extrae del script: vive en la regla
+// compartida y la usan el servidor y el script, asi que probar la de verdad es
+// probar la que protege. (Antes se cortaba del archivo con `indexOf`, y un
+// parser roto no da error: da una funcion que no es la que corre — §8.11 d.)
 const fuente = fs.readFileSync(path.join(RAIZ, 'scripts/quitar-entregas-repetidas.js'), 'utf8');
-const i = fuente.indexOf('function fueTrabajado(');
-if (i === -1) abortar('no encontre `fueTrabajado` en el script. Si le cambiaste el nombre, actualiza esta prueba en el MISMO commit.');
-const fin = fuente.indexOf('\n}\n', i);
-if (fin === -1) abortar('no encontre el cierre de `fueTrabajado`');
-let fueTrabajado;
-try {
-  // eslint-disable-next-line no-eval
-  fueTrabajado = eval('(function(){ ' + fuente.slice(i, fin + 3) + ' return fueTrabajado; })')();
-} catch (e) { abortar('el corte no evalua: ' + ((e && e.message) || e)); }
-if (typeof fueTrabajado !== 'function') abortar('el corte no produjo una funcion');
+const regla = require(REGLA);
+const fueTrabajado = regla.fueTrabajado;
+if (typeof fueTrabajado !== 'function') {
+  abortar('la regla compilada no exporta `fueTrabajado`. Recompila con ' +
+          '`node scripts/compilar-manual.js`; sin ella no hay guarda que probar.');
+}
+if (typeof regla.planDeLimpieza !== 'function') {
+  abortar('la regla compilada no exporta `planDeLimpieza`.');
+}
 
 const limpio = () => ({ enviado: false, archivado: false, status: 'pendiente', datos: { items: [{ checked: false, photos: [] }] } });
 
@@ -92,6 +91,51 @@ if (fueTrabajado(limpio()) !== false) {
 } else {
   console.log('  ok     distingue: intacto=false y las %d senales=true', senales.length + 1);
 }
+
+console.log('\n=== EL PLAN: que se quita y que NO se toca ===');
+const ck = (id, store, extra) => Object.assign({
+  id, assigned: 'Veronica Magana Corona', store, fecha: '2026-09-15',
+  enviado: false, archivado: false, status: 'pendiente',
+  datos: { _tareaManualId: 'encargado-sucursal.apertura', items: [{ checked: false, photos: [] }] },
+}, extra || {});
+const lugares = new Map([['veronica magana corona', ['8 Esquinas', 'MANTENIMIENTO', 'SISTEMAS']]]);
+
+const caso = regla.planDeLimpieza(
+  [ck('man_a_8e', '8 Esquinas'), ck('man_a_mant', 'MANTENIMIENTO'), ck('man_a_sis', 'SISTEMAS')],
+  lugares);
+afirmar('de tres copias quita dos', caso.quitar.length, 2);
+afirmar('y conserva la del sitio con cuadrilla',
+  [...new Set(caso.quitar.map(q => q.conservaEn))], ['8 Esquinas']);
+afirmar('las que quita son las dos administrativas',
+  caso.quitar.map(q => q.store).sort(), ['MANTENIMIENTO', 'SISTEMAS']);
+afirmar('sin conflictos', caso.conflictos.length, 0);
+
+// EL CASO QUE MAS IMPORTA: si la copia que sobra ya se trabajo, NO se toca nada.
+const trabajada = regla.planDeLimpieza(
+  [ck('man_a_8e', '8 Esquinas'),
+   ck('man_a_mant', 'MANTENIMIENTO', { datos: { _tareaManualId: 'encargado-sucursal.apertura', items: [{ checked: true }] } })],
+  lugares);
+afirmar('si la copia que sobra YA SE TRABAJO, no se quita nada', trabajada.quitar.length, 0);
+afirmar('y sale como conflicto, con su motivo',
+  /YA SE TRABAJ/.test((trabajada.conflictos[0] || {}).motivo || ''), true);
+
+// La asignada A MANO nunca se toca: alguien la puso ahi a proposito.
+const aMano = regla.planDeLimpieza(
+  [ck('man_a_8e', '8 Esquinas'),
+   ck('man_a_mant', 'MANTENIMIENTO', { datos: { _tareaManualId: 'encargado-sucursal.apertura', _asignadoAMano: true, items: [] } })],
+  lugares);
+afirmar('la asignada a mano queda fuera del grupo', aMano.quitar.length, 0);
+
+// Una sola copia no se toca jamas, aunque su sitio no tenga cuadrilla: seria
+// dejar a la persona sin la tarea, que es peor que la copia de mas.
+const sola = regla.planDeLimpieza([ck('man_a_mant', 'MANTENIMIENTO')], lugares);
+afirmar('una entrega sola nunca se quita', sola.quitar.length, 0);
+
+// Sin ficha no se decide.
+const sinFicha = regla.planDeLimpieza(
+  [ck('man_a_8e', '8 Esquinas'), ck('man_a_mant', 'MANTENIMIENTO')], new Map());
+afirmar('sin ficha resoluble no se toca nada', sinFicha.quitar.length, 0);
+afirmar('y se reporta', sinFicha.conflictos.length, 1);
 
 console.log('\n=== EL SCRIPT NO ESCRIBE SIN --aplicar ===');
 // Se corre de verdad, sin DATABASE_URL: tiene que ABORTAR y no intentar nada.

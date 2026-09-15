@@ -276,6 +276,104 @@ async function emitirDeHoy() {
   return resumen;
 }
 
+/**
+ * Quita las copias que el bucle viejo dejó de más.
+ *
+ * ─── POR QUÉ VIVE AQUÍ Y NO EN UN SCRIPT A MANO ───────────────────────────
+ * Porque así DESPLEGAR ES APLICARLA: el contenedor reinicia, corre la vuelta
+ * de arranque, y las copias de hoy quedan limpias sin que nadie tenga que
+ * pasarle a nadie la contraseña de la base. Un script que solo puede correr
+ * quien tiene la credencial es un script que se corre una vez y se olvida.
+ *
+ * ─── LAS GUARDAS, Y CUÁL ES LA QUE IMPORTA ────────────────────────────────
+ * La decisión NO está aquí: la toma `planDeLimpieza`, en el mismo archivo que
+ * `lugaresDeEmision`, para que «dónde se entrega» y «qué sobra» las conteste
+ * la misma función. Si discreparan, esto borraría justo lo que la emisión
+ * vuelve a crear diez minutos después.
+ *
+ * De todo lo que hay debajo, la que de verdad protege es que NO SE TOCA NADA
+ * TRABAJADO: el resto puede equivocarse y lo peor es que sobre una tarjeta; si
+ * esa falla, se destruye el turno de una persona.
+ *
+ *  · soft-delete, nunca `delete`: queda el rastro con el id de la conservada
+ *  · solo `man_`, solo de hoy en adelante, solo vivas
+ *  · nunca una asignada a mano (`_asignadoAMano`)
+ *  · nunca un grupo donde no sobreviva ninguna
+ *  · se apaga con LIMPIEZA_REPETIDAS=off, sin desplegar
+ */
+async function limpiarRepetidas(fechaYmd) {
+  if (String(process.env.LIMPIEZA_REPETIDAS || '').toLowerCase() === 'off') return null;
+  const r = cargarRegla();
+  if (!r || typeof r.planDeLimpieza !== 'function') return null;
+
+  // Las fichas, con la MISMA guarda que la emisión: cero no es «no hay gente»,
+  // es «no leí», y aquí importa el doble — sin fichas, TODA persona quedaría
+  // «sin ficha resoluble» y el plan saldría lleno de conflictos… o, si la
+  // guarda faltara y el código fuera menos cuidadoso, con todo por borrar.
+  const filas = (await query(
+    `select id, usuario, correo, nombre, rol, telefono, alcance, cargo, activo, datos
+       from mdtask_usuarios
+      where coalesce(activo, true) = true`
+  )).rows;
+  if (filas.length === 0) {
+    console.error('[emisor-manual] limpieza CANCELADA: 0 fichas activas leídas. ' +
+      'La 050 contó 150, así que es un fallo de lectura. No se toca nada.');
+    return null;
+  }
+  const usuarios = filas.map(fichaComoLaVeLaApp);
+
+  const cks = (await query(
+    `select id, assigned, store, fecha, enviado, archivado, status, datos
+       from mdtask_checklists
+      where fecha >= $1
+        and coalesce(eliminado,false) = false
+        and id like 'man\\_%'`, [fechaYmd]
+  )).rows;
+  if (!cks.length) return null;
+
+  const norm = (s) => String(s || '').trim().toLowerCase();
+  const lugares = new Map();
+  for (const u of usuarios) lugares.set(norm(u.nombre), r.sucursalesDe(u));
+
+  const plan = r.planDeLimpieza(cks, lugares);
+  if (!plan.quitar.length && !plan.conflictos.length) return null;
+
+  let quitadas = 0;
+  const ahora = new Date().toISOString();
+  for (const q of plan.quitar) {
+    const fila = cks.find(c => c.id === q.id);
+    const datos = { ...((fila && fila.datos) || {}) };
+    datos._repetidaPorArea = {
+      motivo: 'copia de mas: el manual se entregaba una vez por cada area de la ficha',
+      conservada: q.conserva, conservadaEn: q.conservaEn, quitadaEn: q.store,
+      por: 'api/emitir-manual.js', en: ahora,
+    };
+    try {
+      await query('update mdtask_checklists set eliminado = true, datos = $2 where id = $1',
+        [q.id, JSON.stringify(datos)]);
+      quitadas++;
+    } catch (e) {
+      console.error('[emisor-manual] no se pudo quitar la repetida %s: %s', q.id, (e && e.message) || e);
+    }
+  }
+
+  const personas = new Set(plan.quitar.map(q => q.assigned)).size;
+  if (quitadas) {
+    console.log('[emisor-manual] repetidas quitadas: %d copia(s) de mas de %d persona(s)',
+      quitadas, personas);
+  }
+  // Los conflictos se DICEN aunque no se toquen: son los que alguien tiene que
+  // mirar, y si se callaran nadie sabría que existen.
+  for (const k of plan.conflictos.slice(0, 10)) {
+    console.log('[emisor-manual] repetida SIN TOCAR — %s (%s) en %s: %s',
+      k.assigned, k.fecha, k.lugares.join(' + '), k.motivo);
+  }
+  if (plan.conflictos.length > 10) {
+    console.log('[emisor-manual] … y %d conflicto(s) más', plan.conflictos.length - 10);
+  }
+  return { quitadas, personas, conflictos: plan.conflictos.length };
+}
+
 /** Los motivos agrupados, para que el log diga QUIÉNES faltan y por qué, no
  *  solo cuántos. Un hueco sin motivo no lo arregla nadie. */
 function resumenDeMotivos(omitidos) {
@@ -407,6 +505,17 @@ async function cambioDeDia(motivo, cierreInyectado) {
 
   await emitirDeHoy().catch(e =>
     console.error('[emisor-manual] emisión del cambio de día:', (e && e.stack) || e));
+
+  // La limpieza va DESPUÉS de emitir, y el orden importa: así la copia que se
+  // conserva existe con seguridad antes de que se quite ninguna otra. Al revés,
+  // un grupo podría quedarse sin superviviente durante unos segundos.
+  //
+  // Y va solo aquí —arranque y medianoche—, no en la vuelta de respaldo de cada
+  // 10 minutos. Un proceso que BORRA no tiene por qué correr seis veces por
+  // hora: con una vez al día, y otra cada vez que se despliega, se limpia todo
+  // lo que el emisor pueda haber dejado, y se acota cuánto puede equivocarse.
+  await limpiarRepetidas(hoy).catch(e =>
+    console.error('[emisor-manual] limpieza de repetidas:', (e && e.stack) || e));
 }
 
 /** Programa la vuelta de medianoche y se REPROGRAMA cada noche. Devuelve los ms

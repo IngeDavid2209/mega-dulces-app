@@ -331,6 +331,145 @@ export function lugaresDeEmision(lugares: string[]): string[] {
   return [...lugares].sort((a, b) => a.localeCompare(b)).slice(0, 1);
 }
 
+// ============================================================================
+//  LA LIMPIEZA: quitar las copias que el bucle viejo dejó de más
+// ============================================================================
+//
+//  `lugaresDeEmision` impide que nazcan copias nuevas, pero las que ya
+//  existían siguen ahí — y siguen inflando el denominador de quien las tiene.
+//  Esto decide cuáles sobran. Vive AQUÍ, junto a la regla que emite, para que
+//  las dos preguntas —«¿dónde se entrega?» y «¿qué sobra?»— las conteste la
+//  MISMA función. Si la limpieza tuviera su propio criterio de qué sitio vale,
+//  podría borrar justo lo que la emisión vuelve a crear diez minutos después.
+//
+//  Es pura: recibe lo leído y devuelve el plan. No borra nada; quien la llame
+//  decide si escribe (el servidor en cada cambio de día, o el script a mano).
+
+export interface ChecklistParaLimpiar {
+  id: string;
+  assigned: string;
+  store: string;
+  fecha: string;
+  enviado?: boolean;
+  archivado?: boolean;
+  status?: string;
+  datos?: any;
+}
+
+export interface PlanDeLimpieza {
+  /** Las que sobran, cada una diciendo cuál se conserva en su lugar. */
+  quitar: { id: string; assigned: string; store: string; fecha: string; conserva: string; conservaEn: string }[];
+  /** Grupos que NO se tocan, con el motivo. Se reportan; no se resuelven solos. */
+  conflictos: { assigned: string; fecha: string; lugares: string[]; motivo: string }[];
+}
+
+/**
+ * ¿Alguien tocó este checklist?
+ *
+ * Deliberadamente AMPLIA: cualquier señal cuenta. El error se comete hacia el
+ * lado de NO borrar, porque las consecuencias no son simétricas — dejar una
+ * tarjeta de más es una molestia; borrar el turno que alguien ya hizo no se
+ * deshace con una disculpa.
+ *
+ * Incluye el palomeo aunque no tenga foto: que la regla de cumplimiento no lo
+ * cuente (Fase 2.1) no significa que la persona no lo haya hecho, y aquí la
+ * pregunta es «¿trabajó en esto?», no «¿cumplió?».
+ */
+export function fueTrabajado(c: ChecklistParaLimpiar): boolean {
+  if (!c) return true;                       // sin dato, no se toca
+  if (c.enviado || c.archivado) return true;
+  if (String(c.status || '') === 'completo') return true;
+  const d = c.datos || {};
+  if (String(d.notaEmpleado || '').trim()) return true;
+  if (d.entregaConRetraso) return true;
+  const items = Array.isArray(d.items) ? d.items : [];
+  for (const it of items) {
+    if (!it) continue;
+    if (it.checked === true) return true;
+    if (it.photo || it.photoAntes || it.photoDespues) return true;
+    if (Array.isArray(it.photos) && it.photos.length) return true;
+    if (String(it.comentario || '').trim()) return true;
+    // Un monto de 0 es un arqueo que dio cero, no un campo vacío.
+    if (it.monto !== undefined && it.monto !== null && it.monto !== '') return true;
+    if (String(it.folio || '').trim()) return true;
+  }
+  return false;
+}
+
+/**
+ * Qué copias sobran, agrupando por persona × tarea × día.
+ *
+ * La llave NO incluye el lugar, que es justo el eje por el que se duplicaron.
+ *
+ * @param checklists Solo del manual (`man_`), vivos, de hoy en adelante.
+ * @param lugaresPorPersona Nombre normalizado → sucursales de su ficha.
+ */
+export function planDeLimpieza(
+  checklists: ChecklistParaLimpiar[],
+  lugaresPorPersona: Map<string, string[]>
+): PlanDeLimpieza {
+  const quitar: PlanDeLimpieza['quitar'] = [];
+  const conflictos: PlanDeLimpieza['conflictos'] = [];
+  const norm = (s: string) => String(s || '').trim().toLowerCase();
+
+  const grupos = new Map<string, ChecklistParaLimpiar[]>();
+  for (const c of checklists) {
+    const tareaId = (c.datos || {})._tareaManualId;
+    if (!tareaId) continue;                   // no es del emisor: no se toca
+    // ⚠ LA ASIGNADA A MANO NUNCA SE TOCA. `entregarDelCatalogo` permite dar una
+    // tarea del manual a alguien en el sitio que quien asigna elija, y ese sitio
+    // puede no tener cuadrilla A PROPÓSITO. Borrarla sería deshacer la decisión
+    // de una persona con un criterio pensado para las del robot.
+    if ((c.datos || {})._asignadoAMano) continue;
+    const k = norm(c.assigned) + '||' + tareaId + '||' + c.fecha;
+    if (!grupos.has(k)) grupos.set(k, []);
+    grupos.get(k)!.push(c);
+  }
+
+  for (const lista of grupos.values()) {
+    if (lista.length < 2) continue;           // sin repetición no hay nada que quitar
+    const base = lista[0];
+    const lugares = lugaresPorPersona.get(norm(base.assigned));
+    const info = { assigned: base.assigned, fecha: base.fecha, lugares: lista.map(c => c.store) };
+
+    // Sin ficha no se decide: no se sabe cuáles son sus lugares.
+    if (!lugares) {
+      conflictos.push({ ...info, motivo: 'no encuentro su ficha activa por nombre' });
+      continue;
+    }
+    const validos = new Set(lugaresDeEmision(lugares));
+    const conservar = lista.filter(c => validos.has(c.store));
+    const sobran = lista.filter(c => !validos.has(c.store));
+
+    // Si no sobreviviría ninguna, no se borra el grupo entero: la persona se
+    // quedaría sin la tarea. Puede pasar si su ficha cambió tras la emisión.
+    if (conservar.length === 0) {
+      conflictos.push({ ...info, motivo: 'la regla no conserva ninguna de las ' + lista.length });
+      continue;
+    }
+    // Si una de las que sobran ya se trabajó, el grupo entero se mira a mano:
+    // borrar la trabajada pierde el trabajo, y borrar la otra deja la tarjeta
+    // en un sitio que la regla no reconoce. Ninguna de las dos la decide esto.
+    const trabajadas = sobran.filter(fueTrabajado);
+    if (trabajadas.length) {
+      conflictos.push({
+        ...info,
+        motivo: 'una copia que sobra YA SE TRABAJÓ (' + trabajadas.map(c => c.store).join(', ') + ')',
+      });
+      continue;
+    }
+
+    for (const c of sobran) {
+      quitar.push({
+        id: c.id, assigned: c.assigned, store: c.store, fecha: c.fecha,
+        conserva: conservar[0].id, conservaEn: conservar[0].store,
+      });
+    }
+  }
+
+  return { quitar, conflictos };
+}
+
 /** Sucursales donde opera el usuario, normalizando los campos históricos. */
 export function sucursalesDe(u: any): string[] {
   const lista: string[] = (u.sucursales && u.sucursales.length)

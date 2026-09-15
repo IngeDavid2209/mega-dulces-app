@@ -15,6 +15,7 @@ import {
 // ExcelJS pesa ~700 KB. Se carga dinámicamente cuando el admin pulsa "Exportar".
 import Swal from 'sweetalert2';
 import { esAdmin, esAdminGlobal, esAdminLimitado, normalizarNombre, mismoEmpleadoNombre, sucursalesPermitidas } from '../../../shared/permisos.util';
+import { PODERES_ADMIN, LO_QUE_PIERDE_EL_LIMITADO } from '../../../shared/permisos-catalogo';
 import { nivelDeUsuario, NivelJerarquico } from '../../../shared/nivel-jerarquico.util';
 import { puestosPorUnidad, puestoPorId, nombrePuesto } from '../../../shared/organigrama.catalogo';
 import { resolverPuesto, usuariosSinPuesto, usuariosConPuestoPorAlias } from '../../../shared/puesto.util';
@@ -48,6 +49,17 @@ export class PersonalComponent implements OnInit, OnDestroy {
   // 🏷️ Tabs por nivel jerárquico. 'todos' es default para no romper a nadie.
   vistaNivel: 'todos' | 'mando' | 'operativo' = 'todos';
   cambiarVistaNivel(v: 'todos' | 'mando' | 'operativo') { this.vistaNivel = v; }
+  /**
+   * El desglose de lo que concede el rol Administrador, para pintarlo al
+   * elegir ese nivel de acceso. Es SOLO TEXTO: no decide ningun acceso, no se
+   * guarda en la ficha y no entra en el payload. Vive en su propio archivo
+   * porque ahi cada linea lleva anotada la condicion real de la que sale
+   * (`shared/permisos-catalogo.ts`), y asi el texto y el permiso se revisan
+   * juntos el dia que alguien cambie una condicion.
+   */
+  poderesAdmin = PODERES_ADMIN;
+  /** Las seis cosas que un admin LIMITADO no puede hacer ni en su propia sucursal. */
+  pierdeElLimitado = LO_QUE_PIERDE_EL_LIMITADO;
   isModalOpen = false;
   mostrarPassword = false;
   formPuedeAdministrarAreas = false;

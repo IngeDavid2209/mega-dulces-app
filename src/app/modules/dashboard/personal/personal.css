@@ -1218,3 +1218,168 @@
 .pmi-badge-rojo { background: var(--bad-border); color: var(--bad-soft-fg); }
 
 .pmi-texto { flex: 1 1 auto; min-width: 0; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   EL DESGLOSE DE PERMISOS — 14/sep/2026
+   ═══════════════════════════════════════════════════════════════════════════
+   Instruccion de David: que los permisos se expliquen como los tres de la
+   captura (Espacio TEC, Promociones, Pagos) y que lo que concede el rol
+   Administrador se desglose en vez de resumirse en dos palabras.
+
+   POR QUE VA AL FINAL DEL ARCHIVO. Las reglas de `.perm-text span` ya existen
+   arriba y estas las afinan por clase; ponerlas despues evita depender de un
+   empate de especificidad, que es justo el defecto que costo el riel segmentado
+   del 14/sep (dos reglas con la misma especificidad y gana la ultima escrita —
+   eso no se ve leyendo ninguna de las dos).
+
+   LOS 19 TOKENS ESTAN VALIDADOS contra `styles.css` antes de escribir esto. Un
+   token que no existe NO revienta: se resuelve a nada e iguala dos cosas que
+   deberian verse distintas, sin un solo error en consola (leccion del 4/sep). */
+
+/* La frase que encabeza un grupo de permisos. NO usa `--text-secondary`: ese
+   token NO EXISTE en el sistema de diseño (0 declaraciones), aunque tres
+   parrafos de esta misma pantalla lo invocan desde antes. Aqui se usa el que si
+   existe; los tres viejos quedan anotados como pendiente aparte. */
+.perm-intro {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-muted);
+  margin: -2px 0 12px;
+}
+
+.perm-intro strong { color: var(--text-main); font-weight: 700; }
+
+/* Los limites de un permiso: que NO puede hacer. Va en rojo suave porque es la
+   mitad que la gente no lee y es la que evita conceder de mas. */
+.perm-text .perm-no {
+  color: var(--bad-soft-fg);
+  margin-top: 6px;
+}
+
+/* La trampa: la consecuencia que no se deduce del nombre del permiso. */
+.perm-text .perm-ojo {
+  color: var(--warn-soft-fg);
+  margin-top: 6px;
+  font-weight: 600;
+}
+
+/* ─── EL DESGLOSE DEL ADMINISTRADOR ──────────────────────────────────────── */
+
+.pm-desglose { padding-top: 4px; }
+
+.pm-grupo {
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--ok-border);
+  border-radius: var(--radius);
+  background: #ffffff;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+}
+
+/* El bloque de advertencia y el de negacion se distinguen por COLOR DEL BORDE y
+   por la marca de cada linea, no solo por el color: quien no distingue bien los
+   colores sigue leyendo el simbolo. */
+.pm-grupo-ojo   { border-left-color: var(--warn-border); background: var(--warn-soft-bg); }
+.pm-grupo-quita { border-left-color: var(--bad-border); }
+
+.pm-grupo-cab { display: flex; flex-direction: column; margin-bottom: 10px; }
+
+.pm-grupo-cab strong {
+  font-size: 13.5px;
+  color: var(--text-main);
+  margin-bottom: 3px;
+}
+
+.pm-grupo-cab span {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+.pm-lista { list-style: none; margin: 0; padding: 0; }
+
+.pm-poder {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 0;
+  border-top: 1px solid var(--border);
+}
+
+.pm-poder:first-child { border-top: none; }
+
+.pm-marca {
+  flex: 0 0 auto;
+  width: 16px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ok-fg);
+  font-weight: 700;
+  text-align: center;
+}
+
+.pm-grupo-ojo   .pm-marca { color: var(--warn-soft-fg); }
+.pm-grupo-quita .pm-marca { color: var(--bad-fg); }
+
+/* `min-width: 0` no es adorno: sin el, un item flex no puede encogerse por
+   debajo del ancho minimo de su contenido y la fila se sale del telefono. Es
+   exactamente el defecto que saco las filas del organigrama de la pantalla el
+   14/sep, y va SIN media query porque es correcto a cualquier ancho. */
+.pm-texto {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-main);
+}
+
+.pm-solo-global {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--info-soft-bg);
+  color: var(--info-soft-fg);
+  border: 1px solid var(--info-border);
+  font-size: 10.5px;
+  font-style: normal;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* ─── LO QUE PIERDE EL ADMIN LIMITADO ────────────────────────────────────── */
+
+.pm-pierde {
+  margin-top: 12px;
+  padding: 12px 14px;
+  background: var(--bad-soft-bg);
+  border: 1px solid var(--bad-border);
+  border-radius: var(--radius);
+}
+
+.pm-pierde strong {
+  display: block;
+  font-size: 12.5px;
+  color: var(--bad-soft-fg);
+  margin-bottom: 6px;
+}
+
+.pm-pierde ul { margin: 0; padding-left: 18px; }
+
+.pm-pierde li {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-main);
+  margin-bottom: 3px;
+}
+
+/* ─── EN TELEFONO ────────────────────────────────────────────────────────────
+   El piso tipografico del 13/sep es 12px en tactil, y todo lo de arriba ya
+   nace en 12 o mas, asi que aqui NO hay que subir tamaños: solo se recorta el
+   relleno lateral, que es lo que hace que un bloque de texto largo se sienta
+   apretado contra el borde en 390px. */
+@media (max-width: 480px), (pointer: coarse) {
+  .pm-grupo { padding: 12px 12px; }
+  .pm-poder { padding: 7px 0; }
+  .pm-solo-global { margin-left: 0; margin-top: 3px; display: block; width: fit-content; }
+}

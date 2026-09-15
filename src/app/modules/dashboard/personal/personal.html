@@ -561,81 +561,234 @@
                   <div class="alcance-icon">🏪</div>
                   <div class="alcance-text">
                     <strong>Limitado a Sucursales</strong>
-                    <span>Mismos privilegios pero solo dentro de las sucursales asignadas abajo.</span>
+                    <span>Casi los mismos privilegios, y solo dentro de las sucursales de abajo. Hay seis cosas que no puede hacer en ninguna parte: se listan al elegirlo.</span>
                   </div>
                 </label>
               </div>
+
+              <!-- LO QUE EL LIMITADO PIERDE, DICHO CON NOMBRE Y APELLIDO.
+                   El rotulo de arriba decia «mismos privilegios» y era falso:
+                   medido el 14/sep, hay SEIS poderes que un admin limitado no
+                   tiene en ninguna sucursal, ni siquiera en la suya. Se pinta
+                   solo cuando esta elegida esa opcion, para que aparezca en el
+                   momento en que la decision se esta tomando y no antes. -->
+              <div class="pm-pierde" *ngIf="formAlcance === 'sucursales'">
+                <strong>Lo que este administrador NO va a poder hacer, en ninguna sucursal:</strong>
+                <ul>
+                  <li *ngFor="let x of pierdeElLimitado">{{ x }}</li>
+                </ul>
+              </div>
+
               <div *ngIf="!puedeEditarAlcanceActual()"
                    style="margin-top: 10px; padding: 10px 14px; background: var(--warn-soft-bg); border: 1px solid var(--warn-border); border-radius: 8px; font-size: 13px; color: var(--warn-soft-fg);">
                 ℹ️ Solo el Administrador principal (con acceso Global) puede modificar este campo.
               </div>
             </div>
 
+            <!-- ══════════════════════════════════════════════════════════════
+                 LOS NUEVE PERMISOS DEL COLABORADOR, DICHOS COMPLETOS
+                 ══════════════════════════════════════════════════════════════
+                 Antes cada uno traía una línea genérica («Permite crear, editar
+                 y asignar tareas generales») que no alcanzaba para decidir. Se
+                 reescribieron el 14/sep/2026 contra lo que la app HACE de
+                 verdad, medido condición por condición — no contra lo que el
+                 nombre del permiso sugiere.
+
+                 LO QUE LA MEDICIÓN DESTAPÓ, y por eso aparece escrito abajo:
+                 tres de los nueve ya no abren ninguna pantalla (Tareas Únicas
+                 no gatea nada; Calendario y Áreas perdieron su entrada de menú
+                 al reorganizar la navegación), y los nueve comparten un efecto
+                 invisible: cualquiera de ellos convierte a la persona en
+                 supervisora de su sucursal. Eso último es lo que de verdad se
+                 concede aquí, y no estaba dicho en ningún lado.
+
+                 ⚠ LOS SWITCHES NO SE TOCARON. Cada `[(ngModel)]` sigue atado al
+                 mismo campo que antes: esto cambia lo que se LEE, nunca lo que
+                 se guarda. Un cambio de texto no puede mover el acceso de
+                 nadie, y así se mantiene. -->
             <div class="form-group form-full" *ngIf="formRol === 'trabajador'">
               <label class="form-label"
-                style="margin-bottom: 12px; padding-top: 16px; border-top: 1px solid var(--border);">Privilegios
-                Especiales del Colaborador</label>
+                style="margin-bottom: 10px; padding-top: 16px; border-top: 1px solid var(--border);">
+                🔑 Privilegios Especiales del Colaborador
+              </label>
+              <p class="perm-intro">
+                Cada uno le agrega algo al menú o le da un poder dentro de una pantalla.
+                Y los nueve comparten una consecuencia que no se ve: <strong>basta UNO
+                de ellos</strong>, con al menos una sucursal asignada más abajo, para que
+                la persona pase a ser <strong>supervisora de su sucursal</strong> — deja de
+                ver solo sus propias tareas y empieza a ver las de toda la gente de ahí.
+                No hace falta prenderle los nueve.
+              </p>
+
               <div class="premium-permissions-list">
                 <label class="premium-perm-item">
-                  <div class="perm-text"><strong>Gestión de Checklists</strong><span>Permite crear, editar y asignar
-                      tareas generales.</span></div>
+                  <div class="perm-text">
+                    <strong>Gestión de Checklists</strong>
+                    <span>Crea tareas nuevas, las edita, se las asigna a otras personas y manda
+                      el recordatorio por WhatsApp (el botón de la campanita).</span>
+                    <span class="perm-no">NO puede editar ni borrar las tareas que creó alguien
+                      más —eso solo el Administrador— ni tocar las del Manual, que son fijas.</span>
+                    <span class="perm-ojo">OJO: es el permiso que más se pide y también el que
+                      más amplía lo que ve. La vuelve supervisora.</span>
+                  </div>
                   <div class="perm-switch"><input type="checkbox" [(ngModel)]="formPuedeCrearChecklists"><span
                       class="slider"></span></div>
                 </label>
+
                 <label class="premium-perm-item">
                   <!-- El permiso sigue llamandose puedeCrearRutinas en la base
                        (hay miles de fichas guardadas con ese nombre), pero ya no
                        habilita configurar nada: abre la consulta del Manual por
                        Puesto. La etiqueta dice lo que de verdad hace. -->
-                  <div class="perm-text"><strong>Ver Manual por Puesto</strong><span>Consultar qué tareas
-                      del Manual Corporativo recibe cada puesto.</span></div>
+                  <div class="perm-text">
+                    <strong>Ver Manual por Puesto</strong>
+                    <span>Le agrega al menú el apartado "Manual por Puesto": consulta qué tareas
+                      del Manual Corporativo le tocan a cada puesto del organigrama.</span>
+                    <span class="perm-no">Es de solo lectura para todos, incluido el Administrador.
+                      El Manual no se edita desde la app.</span>
+                    <span class="perm-ojo">OJO: en la base todavía se llama "puedeCrearRutinas"
+                      por las fichas viejas, pero ya no crea nada. La vuelve supervisora.</span>
+                  </div>
                   <div class="perm-switch"><input type="checkbox" [(ngModel)]="formPuedeCrearRutinas"><span
                       class="slider"></span></div>
                 </label>
+
                 <label class="premium-perm-item">
-                  <div class="perm-text"><strong>Asignación de Tareas Únicas</strong><span>Permite delegar actividades
-                      esporádicas.</span></div>
+                  <div class="perm-text">
+                    <strong>Asignación de Tareas Únicas</strong>
+                    <span class="perm-no">HOY NO ABRE NINGUNA PANTALLA NI NINGÚN BOTÓN. Se revisó
+                      el 14/sep/2026: esta bandera ya no gatea nada en la app. Delegar actividades
+                      sueltas se hace con "Gestión de Checklists".</span>
+                    <span class="perm-ojo">OJO: aun así prenderlo tiene consecuencia — sigue
+                      volviéndola supervisora, o sea que le amplía lo que ve de su sucursal sin
+                      agregarle una sola pantalla.</span>
+                  </div>
                   <div class="perm-switch"><input type="checkbox" [(ngModel)]="formPuedeCrearTareasUnicas"><span
                       class="slider"></span></div>
                 </label>
+
                 <label class="premium-perm-item">
-                  <div class="perm-text"><strong>Acceso a Checkstore</strong><span>Vista global del estado de
-                      sucursales.</span></div>
+                  <div class="perm-text">
+                    <strong>Acceso a Checkstore</strong>
+                    <span>Le agrega al menú "Control operativo" con TRES pestañas: Sucursales,
+                      Ranking y Productividad.</span>
+                    <span class="perm-no">NO incluye Estadísticas: esa pide el permiso de abajo.
+                      Quien tenga los dos ve las cuatro pestañas.</span>
+                    <span class="perm-ojo">OJO: la vuelve supervisora.</span>
+                  </div>
                   <div class="perm-switch"><input type="checkbox" [(ngModel)]="formPuedeVerCheckstore"><span
                       class="slider"></span></div>
                 </label>
+
                 <label class="premium-perm-item">
-                  <div class="perm-text"><strong>Acceso a Estadísticas</strong><span>Visualización de reportes y
-                      cumplimiento.</span></div>
+                  <div class="perm-text">
+                    <strong>Acceso a Estadísticas</strong>
+                    <span>Le agrega al menú "Control operativo" con TRES pestañas: Estadísticas,
+                      Ranking y Productividad.</span>
+                    <span class="perm-no">NO incluye Sucursales: esa pide el permiso de arriba.</span>
+                    <span class="perm-ojo">OJO: la vuelve supervisora.</span>
+                  </div>
                   <div class="perm-switch"><input type="checkbox" [(ngModel)]="formPuedeVerEstadisticas"><span
                       class="slider"></span></div>
                 </label>
 
                 <label class="premium-perm-item">
-                  <div class="perm-text"><strong>Acceso a Calendario</strong><span>Visualización de tareas, rutinas y
-                      programación mensual.</span></div>
+                  <div class="perm-text">
+                    <strong>Acceso a Calendario</strong>
+                    <span class="perm-no">HOY NO LE AGREGA NADA VISIBLE. El Calendario perdió su
+                      entrada de menú cuando se reorganizó la navegación, así que este permiso solo
+                      le abre la pantalla si alguien le pasa la liga directa.</span>
+                    <span class="perm-ojo">OJO: lo que sí hace hoy es volverla supervisora.</span>
+                  </div>
                   <div class="perm-switch"><input type="checkbox" [(ngModel)]="formPuedeVerCalendario"><span
                       class="slider"></span></div>
                 </label>
 
                 <label class="premium-perm-item">
-                  <div class="perm-text"><strong>Auditoría e Historial</strong><span>Consulta de bóveda y tareas
-                      pasadas.</span></div>
+                  <div class="perm-text">
+                    <strong>Auditoría e Historial</strong>
+                    <span>Le agrega al menú el apartado "Auditoría": busca tareas de días pasados,
+                      de cualquier persona de su alcance, y abre las fotos que se entregaron.</span>
+                    <span class="perm-no">Es consulta. No puede cambiar ni borrar lo que ya se
+                      entregó.</span>
+                    <span class="perm-ojo">OJO: la vuelve supervisora.</span>
+                  </div>
                   <div class="perm-switch"><input type="checkbox" [(ngModel)]="formPuedeVerHistorial"><span
                       class="slider"></span></div>
                 </label>
+
                 <label class="premium-perm-item">
-                  <div class="perm-text"><strong>Administración de Áreas</strong><span>Creación y modificación de áreas
-                      de trabajo.</span></div>
+                  <div class="perm-text">
+                    <strong>Administración de Áreas</strong>
+                    <span class="perm-no">HOY NO LE AGREGA NADA VISIBLE. Igual que Calendario, la
+                      pantalla de Áreas perdió su entrada de menú, así que este permiso solo le abre
+                      la pantalla si alguien le pasa la liga directa.</span>
+                    <span class="perm-ojo">OJO: lo que sí hace hoy es volverla supervisora.</span>
+                  </div>
                   <div class="perm-switch"><input type="checkbox" [(ngModel)]="formPuedeAdministrarAreas"><span
                       class="slider"></span></div>
                 </label>
+
                 <label class="premium-perm-item admin-level">
-                  <div class="perm-text"><strong style="color: var(--primary-navy);">Administración de
-                      Personal</strong><span>Creación y modificación de usuarios del sistema.</span></div>
+                  <div class="perm-text">
+                    <strong style="color: var(--primary-navy);">Administración de Personal</strong>
+                    <span>Le agrega al menú "Días de Descanso", donde programa los descansos de la
+                      gente.</span>
+                    <span class="perm-no">YA NO ABRE esta pantalla de Usuarios. Desde el 13/sep solo
+                      entran el dueño de la app y quien tenga el puesto de Dirección General.</span>
+                    <span class="perm-ojo">OJO: es el más fuerte de los nueve. La vuelve supervisora
+                      y, dentro de Usuarios, es el que manda los botones de alta, edición y baja —
+                      por si esa pantalla se le vuelve a abrir algún día.</span>
+                  </div>
                   <div class="perm-switch"><input type="checkbox" [(ngModel)]="formPuedeAdministrarPersonal"><span
                       class="slider admin-slider"></span></div>
                 </label>
+              </div>
+            </div>
+
+            <!-- ══════════════════════════════════════════════════════════════
+                 EL DESGLOSE DEL ADMINISTRADOR
+                 ══════════════════════════════════════════════════════════════
+                 Instrucción de David (14/sep/2026): «todo lo que pueda hacer un
+                 admin quiero que lo desgloces».
+
+                 POR QUÉ HACÍA FALTA. Al elegir «Administrador (Panel Total)» el
+                 bloque de los nueve permisos DESAPARECE, así que hasta hoy la
+                 pantalla no decía una sola palabra de lo que se acababa de
+                 conceder — y son 135 condiciones repartidas en 44 archivos.
+                 Quien capturaba una ficha de administrador estaba firmando en
+                 blanco.
+
+                 ES INFORMATIVO, NO SON SWITCHES, y es a propósito: partir el
+                 rol en banderas es rescribir el modelo de acceso entero, con
+                 riesgo de dejar gente fuera. Esto hace visible lo que ya pasa.
+                 El texto sale de `shared/permisos-catalogo.ts`, donde cada línea
+                 lleva anotada la condición exacta de la que se dedujo. -->
+            <div class="form-group form-full pm-desglose" *ngIf="formRol === 'admin'">
+              <label class="form-label" style="margin-bottom: 10px; padding-top: 16px; border-top: 1px solid var(--border);">
+                🛡️ Esto es lo que le estás dando
+              </label>
+              <p class="perm-intro">
+                "Panel Total" son dos palabras y esto es lo que hay detrás. No se prende ni se
+                apaga desde aquí: es lo que el nivel de acceso concede por sí solo. Léelo antes
+                de guardar.
+              </p>
+
+              <div class="pm-grupo" *ngFor="let g of poderesAdmin" [class.pm-grupo-ojo]="g.tono === 'ojo'"
+                   [class.pm-grupo-quita]="g.tono === 'quita'">
+                <div class="pm-grupo-cab">
+                  <strong>{{ g.titulo }}</strong>
+                  <span>{{ g.entrada }}</span>
+                </div>
+                <ul class="pm-lista">
+                  <li class="pm-poder" *ngFor="let p of g.poderes">
+                    <span class="pm-marca">{{ g.tono === 'quita' ? '✕' : (g.tono === 'ojo' ? '⚠' : '✓') }}</span>
+                    <span class="pm-texto">
+                      {{ p.texto }}
+                      <em class="pm-solo-global" *ngIf="p.soloGlobal">solo con acceso Global</em>
+                    </span>
+                  </li>
+                </ul>
               </div>
             </div>
             <div class="form-group form-full"

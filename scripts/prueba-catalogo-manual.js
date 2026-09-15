@@ -484,6 +484,37 @@ function medir(idSembrado, puerto) {
     }
   }
 
+  // ── LA COSTURA QUE PROTEGE ESTA ENTREGA DE UN BORRADO AUTOMÁTICO ─────────
+  //
+  // Desde el 15/sep el servidor LIMPIA las entregas repetidas del robot: las
+  // marca como eliminadas solo. Y `entregarDelCatalogo` permite dar una tarea
+  // del manual en el sitio que quien asigna elija —que puede no tener cuadrilla
+  // A PROPÓSITO—, así que sin una excepción esa limpieza borraría decisiones de
+  // una persona aplicándoles un criterio pensado para el robot.
+  //
+  // La excepción existe y mira `datos._asignadoAMano`. Que el sello llegue en el
+  // POST ya se afirmó arriba; lo que se comprueba aquí es que SOBREVIVA AL
+  // GUARDADO, que es otra cosa: `api/checklists.js` reparte el documento entre
+  // columnas tipadas y el jsonb `datos`, y un campo que cayera en el saco de los
+  // ignorados desaparecería sin error. Dos comparaciones de cadena exactas, sin
+  // parsear nada (§8.11 d): que el campo NO esté tratado de forma especial en
+  // ese archivo, y que siga existiendo la línea que manda al jsonb todo lo que
+  // no es columna.
+  const apiChecklists = fs.readFileSync(path.join(__dirname, '..', 'api', 'checklists.js'), 'utf8');
+  if (apiChecklists.length < 1000) {
+    abortar('api/checklists.js vino con ' + apiChecklists.length + ' caracteres: eso es «no ' +
+      'pude leerlo», no «está bien».');
+  }
+  pide(apiChecklists.indexOf('_asignadoAMano') === -1,
+    '`api/checklists.js` menciona `_asignadoAMano`. Hoy NO lo hace, y eso es lo que garantiza ' +
+    'que caiga en el jsonb `datos` como un campo más. Si ahora lo trata aparte, revisa que la ' +
+    'limpieza automática del servidor lo siga viendo: de ese campo depende que no borre las ' +
+    'asignaciones hechas a mano.');
+  pide(apiChecklists.indexOf('else if (!IGNORAR.has(k)) datos[k] = v;') !== -1,
+    'cambió la línea que manda al jsonb `datos` todo lo que no es columna. El sello ' +
+    '`_asignadoAMano` viaja por ahí, y sin él la limpieza del servidor borraría entregas ' +
+    'asignadas a mano.');
+
   // ── EL CONTROL NEGATIVO: LA IDEMPOTENCIA ─────────────────────────────────
   pide(postsB.length === 0,
     'con el checklist YA existente se enviaron ' + postsB.length + ' POST míos: la comprobación de ' +

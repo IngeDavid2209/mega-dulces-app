@@ -259,6 +259,19 @@ async function emitirDeHoy() {
       fechaYmd, creadas, yaEstaban, fallidas, usuarios.length);
     console.log('[emisor-manual] sin tareas hoy: %d persona(s) — %s',
       plan.omitidos.length, resumenDeMotivos(plan.omitidos));
+
+    // Los RECORTES son otra cosa que las omisiones y por eso van en su propia
+    // línea: esta gente SÍ recibe, solo que en menos sitios de los que lleva su
+    // ficha. Se registran porque un recorte mudo se lee como un bug — alguien
+    // que ayer veía nueve tarjetas y hoy ve tres reporta «se perdieron mis
+    // tareas», cuando lo que pasó es que dejó de contársele tres veces la misma.
+    // Es la misma regla del hueco nombrado del tablero: si el número baja, la
+    // pantalla (o el log) tiene que decir por qué.
+    const recortes = plan.recortes || [];
+    if (recortes.length) {
+      console.log('[emisor-manual] entregas recortadas: %d persona(s) — %s',
+        recortes.length, resumenDeMotivos(recortes));
+    }
   }
   return resumen;
 }

@@ -335,6 +335,24 @@ describe('emision-manual: piezas sueltas', () => {
     expect(sucursalesDe({})).toEqual([]);
   });
 
+  it('la caída a un solo lugar es ESTABLE: reordenar la ficha no crea un segundo documento', () => {
+    // El lugar entra en `idemKey`. Si la caída eligiera «el primero de la lista»,
+    // reordenar «RH, FINANZAS» a «FINANZAS, RH» —al reeditar la ficha en
+    // Personal, o porque un script reescriba su `datos`— daría OTRO id para la
+    // misma tarea del mismo día, y la persona acabaría con dos documentos. Es la
+    // triplicación del 15/sep por la puerta de al lado, y en pequeño.
+    const uno = plan([persona('Ana', { puestoId: 'encargado-sucursal', sucursales: ['RH', 'FINANZAS'] })]);
+    const otro = plan([persona('Ana', { puestoId: 'encargado-sucursal', sucursales: ['FINANZAS', 'RH'] })]);
+    const ids = (p: any) => p.entregas.map((e: any) => e.checklistId).sort();
+
+    expect(ids(uno)).toEqual(ids(otro));
+    // Y que la muestra no pase por vacía: si no hubiera entregas, los dos
+    // arreglos vacíos serían «iguales» y el caso no mediría nada.
+    expect(uno.entregas.length).toBeGreaterThan(0);
+    // Un solo lugar, no los dos: eso es lo que evita el denominador inflado.
+    expect(new Set(uno.entregas.map(e => e.payload.store)).size).toBe(1);
+  });
+
   it('GUARDIA DE DISCRIMINACIÓN: la muestra produce entregas Y omisiones', () => {
     // Sin esto, un `planDeEntregas` que devolviera siempre listas vacías
     // pasaría la mitad de los casos de arriba.

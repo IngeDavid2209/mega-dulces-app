@@ -423,6 +423,61 @@ pase de nueve tarjetas a tres va a reportar «se perdieron mis tareas».
 copias infladas**. El número de mañana va a ser MENOR, y eso es la corrección funcionando, no
 tareas perdidas.
 
+#### Y LAS REPETIDAS QUE YA EXISTÍAN: 78 copias de más, de 18 personas
+
+`lugaresDeEmision` impide que nazcan nuevas, pero las de hoy nacieron a las 00:01, **antes** del
+arreglo, y seguían inflando denominadores. David: *«hay muchas repetidas, elimina las que estén
+repetidas, revisa a cada usuario»*. Y después: *«arréglalo y súbelo a producción»*.
+
+**LA DECISIÓN DE DISEÑO FUE DÓNDE PONERLA, y salió de esa segunda frase.** Lo primero que
+escribí fue un script a mano… que solo puede correr quien tiene la `DATABASE_URL`. Eso no es
+«subirlo a producción»: es dejarle a David una tarea. La limpieza se movió al emisor y corre en
+la vuelta de **arranque**, así que **el propio despliegue la aplica** y no hace falta que ninguna
+credencial pase por ningún lado.
+
+**Y la decisión no vive ni en el emisor ni en el script:** `planDeLimpieza` está en el MISMO
+archivo que `lugaresDeEmision`. Si la limpieza tuviera su propio criterio de qué sitio vale,
+**borraría justo lo que la emisión vuelve a crear diez minutos después**. Las dos preguntas
+—«¿dónde se entrega?» y «¿qué sobra?»— las contesta una sola función. El script se reescribió
+para llamarla también; se queda para la reversa y para días pasados, que el servidor no toca.
+
+**LAS GUARDAS, Y CUÁL ES LA QUE IMPORTA.** De todas, la que de verdad protege es que **no se toca
+nada trabajado**: el resto puede equivocarse y lo peor es que sobre una tarjeta; si esa falla, se
+destruye el turno de una persona. Son 12 señales, probadas **una por una** —basta que falle una
+para que ese caso se borre sin que nadie lo note—, incluido **un monto de 0**, que es un arqueo
+que dio cero y no un campo vacío.
+
+Las demás: soft-delete con el rastro del id conservado (nunca un `delete`); solo `man_`, solo de
+hoy en adelante, solo vivas; **nunca una asignada a mano** (`_asignadoAMano` — alguien la puso en
+ese sitio a propósito, y borrarla sería deshacer su decisión con un criterio pensado para las del
+robot: el sello de otra sesión acabó siendo una de mis guardas); **nunca un grupo donde no
+sobreviva ninguna** (la persona se quedaría sin la tarea, que es peor que la copia de más); una
+entrega sola no se toca jamás; 0 fichas leídas **cancela** la limpieza. Va **después** de emitir,
+para que la conservada exista con seguridad, y solo en arranque y medianoche: un proceso que borra
+no tiene por qué correr seis veces por hora.
+
+**Y LA REVERSA ALCANZA LAS DOS VÍAS.** El script busca la marca `_repetidaPorArea`, que es la
+misma que escribe el servidor, así que `--revertir --aplicar` deshace también lo que hizo el
+despliegue. Comprobado antes de subir, no supuesto.
+
+**DESPLEGADO Y MEDIDO:**
+
+    [emisor-manual] arranca. Ahora en America/Mexico_City: 2026-09-15 04:53
+    [emisor-manual] repetidas quitadas: 78 copia(s) de mas de 18 persona(s)
+
+Ninguna línea de conflicto en esa ventana de **13 líneas** — a las 04:53 nadie había trabajado
+todavía, que es justo cuando esta limpieza es más barata. **27 afirmaciones** en su arnés (el caso
+exacto de la captura: 3 copias → quita 2, conserva 8 Esquinas) y de punta a punta contra base
+simulada: **9 → 3 vivas, 6 marcadas**. 255 de Angular.
+
+**Lo que esto NO prueba, dicho para que no se lea de más:** que las 78 fueran exactamente las que
+sobraban. Lo que está probado es el mecanismo —la regla que las eligió es la misma que decide
+dónde se entrega— y que nada trabajado entró en el conteo. **Nadie ha abierto la app con una
+cuenta real** para ver las tres tarjetas de Veronica en lugar de nueve.
+
+**Y un número que hay que decir antes de que alguien lo lea al revés:** las **235** de las 00:01
+incluían esas 78. El total de hoy baja a ~157, y **eso es la corrección, no tareas perdidas**.
+
 #### UNA PISADA DE COMMIT, Y LA REGLA QUE NINGUNA DE LAS DOS ESCRITAS CUBRÍA
 
 El commit `771bedb` de otra sesión se llevó mi `sort` sin commitear, con un mensaje que no lo

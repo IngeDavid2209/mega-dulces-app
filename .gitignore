@@ -67,3 +67,12 @@ src/app/shared/version.ts
 # Respaldos de privilegios (scripts/ajustar-privilegios.js): llevan el `datos`
 # completo de cada ficha, incluido el espejo de contrasena. NUNCA al repo.
 respaldo-privilegios-*.json
+
+# Lo mismo, por el otro script que escribe un respaldo en la raiz
+# (scripts/desactivar-fichas-duplicadas.js). Se agrego el 15/sep tras
+# encontrarse uno SIN RASTREAR de 4405 bytes con nombres de personas y el
+# espejo de contrasena dentro: la regla de arriba cubria un patron y no el
+# otro, asi que ese archivo aparecia en cada `git status` a un `git add -A` de
+# quedar commiteado. Un respaldo de fichas no se ignora "por si acaso": se
+# ignora porque el repo no es donde vive.
+respaldo-duplicados-*.json

@@ -50,6 +50,12 @@ const { insertarSiNoExiste } = require('./checklists');
 const ZONA = process.env.ZONA_HORARIA || 'America/Mexico_City';
 const APAGADO = String(process.env.EMISOR_MANUAL || '').toLowerCase() === 'off';
 const INTERVALO_MS = Number(process.env.EMISOR_MANUAL_MIN || 10) * 60 * 1000;
+// Colchón tras la medianoche. No es superstición: `setTimeout` puede despertar
+// unos milisegundos ANTES de la hora pedida, y entonces `ahoraEnZona` devolvería
+// todavía la fecha de AYER — la vuelta emitiría el día que acaba de terminar y
+// el nuevo se quedaría sin nada hasta la vuelta de respaldo. Cinco segundos lo
+// hacen imposible y nadie los nota.
+const COLCHON_SEG = Number(process.env.EMISOR_MANUAL_COLCHON_SEG || 5);
 
 // La regla compilada. Vive en `dist/` porque es lo único que la imagen final se
 // lleva de la etapa de build (el Dockerfile no copia `src/` ni instala tsc).
@@ -236,6 +242,108 @@ function resumenDeMotivos(omitidos) {
     .join(' | ') || '(ninguno)';
 }
 
+// ============================================================================
+//  EL RELOJ: UN SOLO TEMPORIZADOR PARA EL CAMBIO DE DÍA
+// ============================================================================
+//
+//  David pidió que las tareas estén activas «a las 12 a.m. en punto», no cuando
+//  alguien entra. La primera mitad ya estaba (el servidor emite solo); esto es
+//  la precisión.
+//
+//  POR QUÉ NO BASTABA CON BAJAR EL INTERVALO. El `setInterval` se ancla al
+//  ARRANQUE DEL CONTENEDOR, así que con un despliegue a las 23:16 las vueltas
+//  caen en :16, :26, :36… y el día nuevo aparece a las 00:06. Bajar el intervalo
+//  estrecha la ventana pero NO la ancla: sigue siendo deriva del despliegue, y
+//  la hora a la que la gente ve sus tareas dependería de a qué hora se desplegó
+//  por última vez. Eso no se puede explicar a nadie.
+//
+//  POR QUÉ UN SOLO RELOJ PARA DOS TRABAJOS. El cierre del día (23:59) y la
+//  emisión del nuevo (00:00) son la MISMA frontera con un minuto de diferencia.
+//  Con dos temporizadores independientes, un contenedor que reinicie entre los
+//  dos deja el día **cerrado y sin emitir** o **emitido y sin cerrar**, y desde
+//  fuera las dos se ven igual. Aquí van en orden, en la misma vuelta: primero
+//  se cierra el día que termina, después nace el nuevo. Es lo que David pidió
+//  —«el día nuevo entra limpio sin arrastre»— y de paso hace que un reinicio a
+//  cualquier hora recupere las dos mitades, porque las dos son idempotentes.
+
+/** Milisegundos hasta la próxima medianoche de ZONA, más un colchón. */
+function msHastaMedianoche(colchonSeg = 5) {
+  const a = ahoraEnZona(ZONA);
+  const transcurridoMs = ((a.getHours() * 60 + a.getMinutes()) * 60 + a.getSeconds()) * 1000;
+  return (86400000 - transcurridoMs) + colchonSeg * 1000;
+}
+
+/** El día anterior a un 'YYYY-MM-DD', en el calendario y no en la aritmética de
+ *  cadenas: restar 1 al día daría '2026-09-00' el primero de mes. */
+function ayerDe(fechaYmd) {
+  const [y, m, d] = fechaYmd.split('-').map(Number);
+  const dia = new Date(y, m - 1, d);
+  dia.setDate(dia.getDate() - 1);
+  const off = dia.getTimezoneOffset() * 60000;
+  return new Date(dia.getTime() - off).toISOString().split('T')[0];
+}
+
+/**
+ * El cierre del día, que lo escribe otra sesión en su propio módulo.
+ *
+ * Su AUSENCIA es normal mientras no exista y no se dice nada: el emisor tiene
+ * que seguir emitiendo aunque el cierre no esté escrito todavía. Pero un módulo
+ * que EXISTE y revienta al cargarse es otra cosa —un error de programación, no
+ * una pieza pendiente— y ese sí se grita. Son las dos lecturas de un require
+ * fallido, y confundirlas dejaría un cierre roto pasando por «aún no está».
+ */
+function cargarCierre() {
+  try {
+    return require('./cerrar-dia');
+  } catch (e) {
+    if (e && e.code === 'MODULE_NOT_FOUND' && /cerrar-dia/.test(String(e.message))) return null;
+    console.error('[emisor-manual] el módulo de cierre EXISTE y no se pudo cargar: %s',
+      (e && e.message) || e);
+    return null;
+  }
+}
+
+/**
+ * La vuelta del cambio de día: cierra el que termina y emite el que empieza.
+ *
+ * El orden no es negociable. Si se emitiera primero, el cierre de ayer correría
+ * con las tareas de hoy ya en la tabla y cualquier error de fecha las alcanzaría
+ * — se cerraría como no ejecutado algo que nace en ese instante.
+ */
+async function cambioDeDia(motivo) {
+  const hoy = regla ? regla.toYmd(ahoraEnZona(ZONA)) : null;
+  if (!hoy) return;
+
+  const cierre = cargarCierre();
+  if (cierre && typeof cierre.cerrarDia === 'function') {
+    const ayer = ayerDe(hoy);
+    try {
+      const r = await cierre.cerrarDia(ayer);
+      console.log('[emisor-manual] cierre de %s (%s): %d cerrados, %d ya lo estaban, %d saltados',
+        ayer, motivo, r?.cerrados ?? 0, r?.yaCerrados ?? 0, r?.saltados ?? 0);
+    } catch (e) {
+      // Que el cierre falle NO puede impedir que la gente reciba sus tareas.
+      console.error('[emisor-manual] el cierre de %s falló, sigo emitiendo: %s',
+        ayer, (e && e.message) || e);
+    }
+  }
+
+  await emitirDeHoy().catch(e =>
+    console.error('[emisor-manual] emisión del cambio de día:', (e && e.stack) || e));
+}
+
+/** Programa la vuelta de medianoche y se REPROGRAMA cada noche. Devuelve los ms
+ *  que va a esperar, para poder decirlo en el log y para poder probarlo. */
+function programarMedianoche() {
+  const ms = msHastaMedianoche(COLCHON_SEG);
+  const t = setTimeout(() => {
+    cambioDeDia('medianoche').finally(() => programarMedianoche());
+  }, ms);
+  // Que un temporizador de 24 h no sea lo que mantiene vivo al proceso.
+  if (typeof t.unref === 'function') t.unref();
+  return ms;
+}
+
 function iniciarPoll() {
   if (APAGADO) {
     console.log('[emisor-manual] APAGADO por EMISOR_MANUAL=off: las tareas del día ' +
@@ -248,14 +356,22 @@ function iniciarPoll() {
   // `util.format` NO soporta el padding de printf: un '%02d' se imprime literal.
   // Ya pasó dos veces en este repo (4/sep y 7/sep), así que el cero va a mano.
   const dosDigitos = (n) => String(n).padStart(2, '0');
-  console.log('[emisor-manual] poll iniciado (cada %d min). Ahora en %s: %s %s:%s',
-    INTERVALO_MS / 60000, ZONA, regla.toYmd(ahora),
-    dosDigitos(ahora.getHours()), dosDigitos(ahora.getMinutes()));
+  console.log('[emisor-manual] arranca. Ahora en %s: %s %s:%s',
+    ZONA, regla.toYmd(ahora), dosDigitos(ahora.getHours()), dosDigitos(ahora.getMinutes()));
 
-  const vuelta = () => emitirDeHoy().catch(e =>
-    console.error('[emisor-manual] vuelta:', (e && e.stack) || e));
-  vuelta();                                    // una al arrancar
-  setInterval(vuelta, INTERVALO_MS);
+  // Una al arrancar, que además RECUPERA el cambio de día si el contenedor
+  // estuvo caído a medianoche: `cerrarDia` es idempotente, así que cerrar ayer
+  // otra vez no escribe nada nuevo.
+  cambioDeDia('arranque');
+
+  // La de medianoche, y la red de seguridad detrás.
+  const ms = programarMedianoche();
+  console.log('[emisor-manual] siguiente cambio de día en %s min (a las 00:00 de %s); ' +
+    'respaldo cada %d min por si el contenedor reinicia', Math.round(ms / 60000), ZONA,
+    INTERVALO_MS / 60000);
+
+  setInterval(() => emitirDeHoy().catch(e =>
+    console.error('[emisor-manual] vuelta de respaldo:', (e && e.stack) || e)), INTERVALO_MS);
 }
 
 module.exports = { iniciarPoll, emitirDeHoy, ahoraEnZona, resumenDeMotivos };

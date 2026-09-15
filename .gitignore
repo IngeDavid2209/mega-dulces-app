@@ -76,3 +76,14 @@ respaldo-privilegios-*.json
 # quedar commiteado. Un respaldo de fichas no se ignora "por si acaso": se
 # ignora porque el repo no es donde vive.
 respaldo-duplicados-*.json
+
+# El organigrama exportado con NOMBRES DE PERSONAS (David lo pidio el 15/sep en
+# la raiz del proyecto, y en la misma frase dijo "no lo quiero en produccion").
+# Es la tercera vez que un archivo con nombres de gente aparece suelto aqui, y
+# las dos anteriores fueron por el mismo motivo: la regla cubria un patron y no
+# el vecino. Se ignora por familia, no por nombre exacto.
+#
+# No tapa nada legitimo: los 9 JSON rastreados de la raiz son de configuracion
+# (angular, firebase, ngsw-config, railway, tsconfig*, package*) y ninguno
+# empieza por "organigrama".
+organigrama*.json

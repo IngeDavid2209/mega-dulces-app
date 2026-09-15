@@ -324,6 +324,87 @@ de que exista la plaza sería partir el problema en dos, no resolverlo.
 
 ## 9. Bitácora del plan
 
+### 14/sep/2026 — LAS DOS LISTAS DE TAREAS SON UNA (paso A de 2)
+
+Instrucción de David: *«quiero que estas dos queden unidas (Tareas fuera del manual y tareas
+del manual) […] solo que esté todo ahí, ya te diré cómo le iremos haciendo»*.
+
+Eran **dos entradas de menú y dos rutas con el MISMO componente**, separadas por
+`data.modoManual` (el hallazgo 4, el componente dios sirviendo dos rutas). Ahora es **una
+entrada `/tareas`** con una lista y tres chips —**Todas · Del manual · Fuera del manual**—, por
+omisión «Todas». El menú baja de 12 a 11 entradas para un admin; el objetivo del documento 4
+siguen siendo 7.
+
+**LO QUE HABRÍA SIDO EL DESASTRE, y por qué no lo fue.** Mientras fueron dos pantallas, «el
+manual no se edita» (§5.4) lo garantizaba **el modo**: en `/tareas-manual` no existían los
+botones. Al juntarlas, ese interruptor deja de separar nada. Se midió **antes de tocar** y el
+candado de verdad ya estaba **por tarjeta** —`esTareaDeManual` en la plantilla y, sobre todo,
+dentro de `editarChecklist` y `eliminarChecklist`—, así que unir las listas no le quita el
+candado a ninguna tarea. **Donde sí faltaba era en el panel de responsables**, que recibe un
+`puedeEditar` único para todo el panel: ahora cada tarea lleva su `esManual` y la regla vive en
+`shared/origen-manual.util.ts`, **una sola definición** para los dos componentes.
+
+**LOS ENLACES VIEJOS ATERRIZAN EN SU MITAD, NO EN «TODAS».** `/tareas-manual` y `/checklist`
+llevan meses en WhatsApp: siguen vivas y redirigen **con su `?ver=`**. El redirect es una
+**función** y no una cadena porque un `redirectTo` de cadena **no puede llevar query params** —
+se pierden en silencio, sin un solo error, y el enlace viejo abriría la lista entera.
+
+#### TRES COSAS QUE SOLO SALIERON MIDIENDO
+
+1. **La barra se partió en dos y le comió 48px al árbol.** El arnés del organigrama lo cazó con
+   su aserción de diseño (al árbol le toca ≥55% de la pantalla): bajó de 58% a **50%**. Medido
+   dentro de la barra —**ancho 1083px, izquierda 982 + derecha 368**— la derecha envolvía. Y la
+   regla correcta no era «esconde las acciones en el chip manual» sino **«escóndelas con el
+   ÁRBOL en pantalla»**: ahí no hay lista que agrupar y «Agrupar por persona» es un control que
+   no hace nada. Quedó en **56%**. El arnés ahora imprime ese desglose: «la barra mide el doble»
+   tiene dos causas —un grupo que envolvió o un grupo más alto— y desde fuera se ven igual.
+2. **«Enviadas» nunca miró el apartado.** `cargarEnviadas()` empuja las filas crudas, así que el
+   historial del Manual traía **también** las libres, y al revés. Con dos pantallas ya era
+   incoherente; con el chip al lado sería mentira. Ahora se recorta con la misma función.
+3. **Los badges de «Mis tareas / Toda la operación» contaban otro conjunto** (`checklists()`
+   entero). Un badge que dice 12 al lado de una lista de 3 se lee como que la app perdió tareas.
+
+#### LA PRUEBA NUEVA, Y SU CONTROL NEGATIVO POR MECANISMO
+
+`scripts/prueba-tareas-unidas.js`, **6 escenarios en el DOM**:
+
+    escenario                      aterriza en          chip activo        tarjetas  manual  editables
+    entro a /tareas (por omision)  /tareas              Todas              5         3       2
+    pulso «Del manual»             /tareas?ver=manual   Del manual         3         3       0
+    pulso «Fuera del manual»       /tareas?ver=libres   Fuera del manual   2         0       2
+    enlace viejo /tareas-manual    /tareas?ver=manual   Del manual         3         3       0
+    enlace viejo /checklist        /tareas?ver=libres   Fuera del manual   2         0       2
+    sin _origenManual (control)    /tareas              Todas              5         0       5
+
+**Todas = 5 = 3 + 2**, y en «Del manual» **ninguna** de las tres ofrece editar ni borrar. El
+control negativo **afirma el mecanismo, no la aparición** (§8.11 c): servido el mismo fixture
+**sin `_origenManual`**, las cinco se vuelven editables y el chip «Del manual» cae a **0** — o
+sea que el chip y el candado cuelgan de ese sello y no de otra cosa. La sesión es **una
+trabajadora** a propósito: con un admin, el chip «Del manual» enseña el árbol y las tarjetas
+darían cero, un cero que significaría «se pintó otra cosa» y no «no hay».
+
+#### UN ARNÉS QUE LLEVABA UN DÍA SIN PODER CONCLUIR, Y NO SE VIO
+
+`prueba-arbol-organigrama.js` exigía `arbol === 1` a **todas** las filas, y el 13/sep se le
+añadió el escenario que mide **justo lo contrario** —que al pulsar «Mis tareas» el árbol
+DESAPAREZCA—. Desde ese commit (`fbeeb3a`) **abortaba siempre en la última fila**: comprobado
+con `git show fbeeb3a:…`, la guardia ya estaba escrita así. Un aborto con código 3 dice «no
+medí» y es fácil leerlo como ruido.
+
+Peor: el escenario **se imprimía y no se comprobaba**. No había una sola aserción sobre él, así
+que el bug que David reportó podía volver y la tabla lo habría enseñado sin que nada fallara.
+Ahora la guardia es «cada escenario monta **lo que vino a medir**», la ausencia esperada es una
+aserción, y hay una tercera que exige que la muestra **discrimine** (árbol 1 en «toda la
+operación» contra 0 en «Mis tareas»).
+
+**Lo que esto NO hace, dicho para que no se lea como resuelto:** no toca ningún número de
+tablero, no mueve ninguna fase del plan, y **nadie ha entrado con una cuenta real** — las seis
+combinaciones son sesiones sintéticas en Chrome headless. El **paso B** (el catálogo del manual
+asignable a cualquier trabajador, como entrega puntual sellada con su documento y versión)
+queda acordado y sin empezar; el permiso para asignar lo decide David después («eso lo veremos
+después»), así que hoy sigue siendo el mismo que abre «Nueva Tarea».
+
+
 ### 14/sep/2026 — TAREAS DEL MANUAL EN UN CELULAR: no era el riel, era el árbol
 
 Instrucción de David sobre una captura de las dos pastillas «Mis tareas / Toda la operación»:

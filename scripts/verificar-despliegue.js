@@ -64,14 +64,17 @@ const MARCADORES = [
   // anteriores bajan a control. Mantener ese orden importa: dos veces hoy el
   // comentario se quedo describiendo el marcador ANTERIOR, y un comentario que
   // narra otra cosa que la linea de abajo es doctrina falsa en dos semanas.
-  // 14/sep/2026 · EL ARBOL EN UN CELULAR. Un cambio de PURO CSS tampoco
-  // introduce una cadena propia -misma raiz que la Fase 2.1-, asi que el
-  // marcador honesto es el VALOR que solo existe en la regla nueva: las tres
-  // columnas a las que se reduce la rejilla de cifras en un telefono. Medido
-  // en las dos direcciones antes de subir: 1 en dist/, 0 en produccion.
-  // (Va tal cual, con espacios: el minificador de Angular conserva el valor de
-  // `grid-template-columns` aunque se coma los nombres de funcion.)
-  { txt: '46px 56px 38px', nuevo: true, que: 'la rejilla de cifras del arbol en movil' },
+  // 14/sep/2026 (2) · LAS DOS LISTAS DE TAREAS SON UNA. El chip de origen es
+  // una clase que se pinta, asi que aqui si hay marcador natural — y se
+  // valido en las dos direcciones antes de subir: `git grep` en HEAD anterior
+  // daba 0 ocurrencias y el dist/ local lo trae.
+  { txt: 'cl-chip-origen', nuevo: true, que: 'los chips de origen de la lista unica' },
+  // 14/sep/2026 · EL ARBOL EN UN CELULAR. Era el `nuevo` del despliegue
+  // anterior (otra sesion, commit 412547c, ya desplegado y verificado 0 -> 1).
+  // BAJA A CONTROL, que es la regla de esta lista: un marcador que YA VALE 1 en
+  // produccion da verde sin comprobar nada del despliegue de hoy. Es el caso
+  // del 13/sep con `no_ejecutado`, y esta vez lo avisaron antes de que pasara.
+  { txt: '46px 56px 38px', control: true, que: 'la rejilla de cifras del arbol en movil' },
   { txt: 'CEDIS', control: true, minimo: 78, que: 'el filtro de lugares con cuadrilla' },
   { txt: 'Sin sucursales', control: true, minimo: 4, que: 'la lista de sucursales sale de la ficha' },
   { txt: 'direccion-general', control: true, minimo: 10, que: 'Usuarios solo para el dueño y Direccion General' },

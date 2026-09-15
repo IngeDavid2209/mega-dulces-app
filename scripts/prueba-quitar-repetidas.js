@@ -10,8 +10,12 @@
 //                         deshace con una disculpa.
 //
 //  Asi que lo que mas se prueba aqui NO es que borre bien: es que NO BORRE lo
-//  que no debe. La guarda `fueTrabajado` se ejercita en las seis senales, una
-//  por una, porque basta que una falle para que ese caso pase desapercibido.
+//  que no debe. `fueTrabajado` se ejercita en sus DOCE senales, una por una,
+//  porque basta que una falle para que ese caso se borre sin que nadie lo note.
+//
+//  Y la ultima seccion prueba la costura de la que depende todo: que el sello
+//  `_asignadoAMano` SOBREVIVA al guardado. No comparando cadenas, sino metiendo
+//  el sello por el camino real y mirando que sale al otro lado.
 //
 //  Corre con:  node scripts/prueba-quitar-repetidas.js
 // ============================================================================
@@ -137,6 +141,52 @@ const sinFicha = regla.planDeLimpieza(
 afirmar('sin ficha resoluble no se toca nada', sinFicha.quitar.length, 0);
 afirmar('y se reporta', sinFicha.conflictos.length, 1);
 
+console.log('\n=== EL SELLO SOBREVIVE AL GUARDADO (la costura de la que depende la guarda) ===');
+// La exclusion de arriba lee `datos._asignadoAMano`. Pero quien decide si ese
+// campo acaba en el jsonb es `desglosar()` de api/checklists.js, y hoy acaba
+// ahi porque el campo NO esta en su mapa de columnas: la proteccion descansa en
+// una AUSENCIA, que es justo lo que nadie nota cuando desaparece.
+//
+// Otra sesion lo cazo y lo fijo comparando cadenas. Esto lo comprueba de la
+// forma fuerte: mete el sello por el camino de guardado REAL y mira que sale al
+// otro lado. Si algun dia `desglosar` cambia, esto falla aunque el nombre del
+// campo siga escrito en todas partes.
+const Module = require('module');
+function sembrarModulo(ruta, exportaciones) {
+  const resuelto = require.resolve(ruta);
+  const m = new Module(resuelto, null);
+  m.filename = resuelto; m.loaded = true; m.exports = exportaciones;
+  require.cache[resuelto] = m;
+}
+let jsonbCapturado = null;
+sembrarModulo(path.join(RAIZ, 'api/db.js'), {
+  dbConfigurada: () => true,
+  query: async (sql, p) => {
+    if (/^\s*insert into mdtask_checklists/i.test(String(sql))) {
+      jsonbCapturado = p[p.length - 1];
+      return { rows: [{ id: p[0] }], rowCount: 1 };
+    }
+    return { rows: [], rowCount: 0 };
+  },
+});
+const errReal = console.error, warnReal = console.warn;
+console.error = () => {}; console.warn = () => {};
+require(path.join(RAIZ, 'api/checklists')).insertarSiNoExiste({
+  id: 'man_prueba_sello', name: 'X', assigned: 'Nadie Existente',
+  store: 'MANTENIMIENTO', date: '2026-09-15',
+  _tareaManualId: 't.x', _asignadoAMano: true, _asignadoPor: 'David', items: [],
+}).then(() => {
+  console.error = errReal; console.warn = warnReal;
+  const d = JSON.parse(jsonbCapturado || '{}');
+  afirmar('el sello de asignacion a mano llega al jsonb', d._asignadoAMano, true);
+  afirmar('y tambien el id de tarea, que es lo que agrupa', d._tareaManualId, 't.x');
+  cerrar();
+}).catch(e => {
+  console.error = errReal; console.warn = warnReal;
+  abortar('el guardado real no se pudo ejercitar: ' + ((e && e.message) || e));
+});
+
+function cerrar() {
 console.log('\n=== EL SCRIPT NO ESCRIBE SIN --aplicar ===');
 // Se corre de verdad, sin DATABASE_URL: tiene que ABORTAR y no intentar nada.
 let salida = '', codigo = 0;
@@ -159,3 +209,4 @@ if (fallos) {
 }
 console.log('[prueba-repetidas] %d afirmaciones en verde, mas la guardia.', corridas);
 process.exit(0);
+}

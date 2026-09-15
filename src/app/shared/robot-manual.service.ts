@@ -54,6 +54,25 @@ export interface ResultadoRobotManual {
   omitidos: { nombre: string; motivo: string }[];
 }
 
+/**
+ * Por qué a UNA persona no le toca nada hoy, en sus propias palabras.
+ *
+ * Existe porque el mensaje de «No tienes tareas hoy» enumeraba TRES causas
+ * posibles —«puede ser que ya las enviaste, que es tu día de descanso o que la
+ * hora cae fuera de tu turno»— y la app ya sabía cuál era. El 15/sep/2026 una
+ * Jefa de Zona con su puesto bien capturado leyó esas tres y ninguna era la
+ * suya: un mensaje que enumera causas falsas es peor que no decir nada, porque
+ * manda a corregir lo que no está roto.
+ */
+export interface ExplicacionManual {
+  /** El motivo por el que la regla no le entrega nada. `null` si sí le toca. */
+  motivo: string | null;
+  /** Cuántas le tocarían hoy, contadas COMO SI no existiera ninguna todavía. */
+  planeadas: number;
+  /** Lugares que se le recortaron (`lugaresDeEmision`), si los hubo. */
+  recorte: string | null;
+}
+
 const DIAS_SEMANA = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 
 @Injectable({ providedIn: 'root' })
@@ -75,6 +94,80 @@ export class RobotManualService {
     } catch {
       this.horarios = [];
     }
+  }
+
+  /**
+   * Turnos y descansos de la semana: los otros dos insumos de la regla.
+   *
+   * ⚠ ESTÁ EXTRAÍDO A PROPÓSITO, y es la mitad de por qué `explicarPara` se
+   * puede creer. Si el motivo que se le enseña a la persona saliera de una
+   * carga distinta a la de la emisión, la pantalla podría decirle «hoy es tu
+   * día de descanso» mientras el emisor le crea la tarea igual —o al revés, lo
+   * que es peor: «no te toca nada» a quien sí le toca—. Las dos preguntas
+   * («¿qué se te entrega?» y «¿por qué no se te entregó?») se contestan con
+   * los MISMOS datos, igual que `planDeLimpieza` vive junto a
+   * `lugaresDeEmision` por este mismo motivo.
+   *
+   * Los dos fallos van a `catch` silencioso y hacia el lado seguro: sin config
+   * de turnos no se restringe a nadie, y sin descansos no se omite a nadie.
+   */
+  private async cargarInsumos(fecha: Date): Promise<{ configTurnos: ConfigTurnos | null; descansosSemana: any[] }> {
+    let configTurnos: ConfigTurnos | null = null;
+    try {
+      const r = await this.api.get('/api/config?id=turnos').catch(() => null);
+      if (r?.item) configTurnos = r.item as ConfigTurnos;
+    } catch { /* sin config => sin restriccion por turno */ }
+
+    let descansosSemana: any[] = [];
+    try {
+      const sem = obtenerSemanaISO(fecha);
+      const r = await this.api.get('/api/descansos-semanales?semanaISO=' + encodeURIComponent(sem));
+      descansosSemana = r?.items || [];
+    } catch { /* sin descansos => no se omite a nadie por descanso */ }
+
+    return { configTurnos, descansosSemana };
+  }
+
+  /**
+   * ¿Por qué a esta persona no le aparece nada del manual hoy?
+   *
+   * NO ESCRIBE NADA: corre la regla y devuelve lo que decidió. Es la misma
+   * `planDeEntregas` que usan el emisor del servidor y el robot de esta
+   * pantalla, así que el motivo que se muestra no puede contradecir a la
+   * emisión — sería una segunda versión de «qué le toca hoy a quién», libre de
+   * divergir en silencio (§8.11 d).
+   *
+   * ⚠ `idsExistentes` VA VACÍO A PROPÓSITO, y no es un descuido. La pregunta
+   * aquí es «¿qué te tocaría hoy?», no «¿qué falta por crear?». Pasando los
+   * ids de hoy, una tarea YA creada haría que la regla no la contara como
+   * entrega nueva ni como omitida, y esta función devolvería «0 planeadas, sin
+   * motivo» — o sea, reproduciría exactamente el silencio que viene a romper.
+   */
+  async explicarPara(
+    usuario: any,
+    fecha: Date = new Date(),
+    hooks: RobotManualHooks = {}
+  ): Promise<ExplicacionManual> {
+    const sinRespuesta: ExplicacionManual = { motivo: null, planeadas: 0, recorte: null };
+    if (!usuario) return sinRespuesta;
+
+    await this.cargarHorarios();
+    const { configTurnos, descansosSemana } = await this.cargarInsumos(fecha);
+
+    const plan = planDeEntregas({
+      usuarios: [usuario], fecha,
+      horarios: this.horarios,
+      configTurnos, descansosSemana,
+      idsExistentes: new Set<string>(),
+      esDiaCerrado: hooks.esDiaCerrado,
+      esSucursalAdministrativa: hooks.esSucursalAdministrativa,
+    });
+
+    return {
+      motivo: plan.omitidos.length ? plan.omitidos[0].motivo : null,
+      planeadas: plan.entregas.length,
+      recorte: plan.recortes.length ? plan.recortes[0].motivo : null,
+    };
   }
 
   /**
@@ -122,21 +215,11 @@ export class RobotManualService {
       return { creados, omitidos: [] };
     }
 
-    // Config de turnos (Canindo): para no entregar una tarea a quien a esa hora
-    // ya no esta en su turno.
-    let configTurnos: ConfigTurnos | null = null;
-    try {
-      const r = await this.api.get('/api/config?id=turnos').catch(() => null);
-      if (r?.item) configTurnos = r.item as ConfigTurnos;
-    } catch { /* sin config => sin restriccion por turno */ }
-
-    // Dias de descanso de la semana: a quien descansa no se le entrega nada.
-    let descansosSemana: any[] = [];
-    try {
-      const sem = obtenerSemanaISO(fecha);
-      const r = await this.api.get('/api/descansos-semanales?semanaISO=' + encodeURIComponent(sem));
-      descansosSemana = r?.items || [];
-    } catch { /* sin descansos => no se omite a nadie por descanso */ }
+    // Turnos (para no entregar a quien a esa hora ya no esta en su turno) y
+    // descansos de la semana (a quien descansa no se le entrega nada). Salen de
+    // `cargarInsumos`, la MISMA carga que usa `explicarPara`: ver alli por que
+    // no pueden ser dos lecturas distintas.
+    const { configTurnos, descansosSemana } = await this.cargarInsumos(fecha);
 
     // -- LA DECISION YA NO VIVE AQUI --------------------------------------
     //

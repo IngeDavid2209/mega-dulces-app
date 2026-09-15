@@ -6,13 +6,13 @@ import { RouterModule, ActivatedRoute, Router } from '@angular/router';
 import { Firestore, doc, setDoc, deleteDoc } from '@angular/fire/firestore';
 import * as localforage from 'localforage';
 import Swal from 'sweetalert2';
-import { esAdminGlobal, esAdminLimitado, sucursalesPermitidas, esSupervisor, mismoEmpleadoNombre, existeEmpleadoEnUsuarios, normalizarNombre, puedeSerAsignado } from '../../../shared/permisos.util';
+import { esAdminGlobal, esAdminLimitado, sucursalesPermitidas, alcanceCubre, esSupervisor, mismoEmpleadoNombre, existeEmpleadoEnUsuarios, normalizarNombre, puedeSerAsignado } from '../../../shared/permisos.util';
 import { nivelDeCargo } from '../../../shared/nivel-jerarquico.util';
 import { TareaEquipo, FaseEquipo, ItemEquipo, SubtareaEquipo } from '../../../shared/tareas-equipo.types';
 import { esItemHecho, tieneEvidencia } from '../../../shared/item-completado.util';
 import { esEntregaDeManual } from '../../../shared/origen-manual.util';
 import { obtenerSemanaISO, obtenerNombreDia } from '../../../shared/descansos.util';
-import { RobotManualService } from '../../../shared/robot-manual.service';
+import { RobotManualService, ExplicacionManual } from '../../../shared/robot-manual.service';
 import { resolverPuesto } from '../../../shared/puesto.util';
 import { AmbitoVisible, ambitoVisible, entregaVisible } from '../../../shared/rama-visible.util';
 import { nombrePuesto } from '../../../shared/organigrama.catalogo';
@@ -676,6 +676,14 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   // Antes aquí vivían además el catálogo y las asignaciones de rutinas; ese
   // modelo se retiró: ya no hay nada que capturar.
   private plantillaUsuarios: any[] = [];
+
+  /**
+   * Por qué a quien está mirando no le toca nada hoy, calculado con la regla
+   * real. Lo llena `calcularExplicacionSinTareas()` y lo lee
+   * `motivoSinTareasManual()`. Mientras sea `null` la pantalla usa el texto
+   * genérico de siempre, así que un fallo de red no deja el hueco sin mensaje.
+   */
+  private explicacionManual = signal<ExplicacionManual | null>(null);
   private robotManualCorriendo = false;
   /**
    * Cuándo terminó la última corrida del robot.
@@ -1405,8 +1413,57 @@ export class ChecklistComponent implements OnInit, OnDestroy {
              'levantado, así que no recibe tareas automáticas. Cuando el manual se autorice, ' +
              'sus checklists van a aparecer aquí solos.';
     }
+    // ── LA CAUSA EXACTA, NO TRES POSIBLES ──────────────────────────────────
+    // Lo de abajo enumeraba «puede ser que ya las enviaste, que es tu día de
+    // descanso o que la hora cae fuera de tu turno» — tres causas, y el
+    // 15/sep/2026 una Jefa de Zona con su puesto bien capturado leyó las tres
+    // sin que ninguna fuera la suya. Un mensaje que enumera causas falsas es
+    // peor que el silencio: manda a corregir lo que no está roto.
+    //
+    // `explicacionManual` sale de correr la MISMA regla que emite, así que lo
+    // que se lee aquí no puede contradecir a lo que el robot hizo.
+    const exp = this.explicacionManual();
+    if (exp?.motivo) {
+      return `Hoy no te toca ninguna tarea del manual: ${exp.motivo}.`;
+    }
+    // Le tocan y no están en su lista. Es el caso que más importa nombrar,
+    // porque es el único que NO se arregla solo y necesita que alguien mire.
+    if (exp && exp.planeadas > 0) {
+      return `Según tu puesto te toca(n) ${exp.planeadas} tarea(s) del manual hoy, y no ` +
+             'están en tu lista. Puede ser que ya las enviaste; si no, avísale a un ' +
+             'administrador con esta pantalla abierta.';
+    }
     return 'Hoy no tienes pendientes del manual. Puede ser que ya las enviaste, que es tu ' +
            'día de descanso o que la hora de esas tareas cae fuera de tu turno.';
+  }
+
+  /**
+   * Calcula por qué a quien está mirando no le toca nada, con la regla real.
+   *
+   * Se dispara desde `procesarUsuariosCompartidos` y no desde el getter del
+   * mensaje: un getter de plantilla se evalúa en CADA ciclo de detección de
+   * cambios, y esto hace tres peticiones —horarios, turnos y descansos—. Sería
+   * la caída del sidebar del 1/sep otra vez, con red de por medio.
+   *
+   * Usa la ficha VIVA de la lista de usuarios, no `currentUser` de
+   * localStorage: si un admin acaba de capturarle el puesto, la sesión guardada
+   * todavía no lo tiene y el motivo saldría equivocado justo el día que alguien
+   * lo está corrigiendo.
+   *
+   * Nunca lanza: si falla, el signal se queda en null y la pantalla usa el
+   * texto genérico de siempre.
+   */
+  private calcularExplicacionSinTareas(todosLosUsuarios: any[]) {
+    try {
+      const miUid = this.currentUser?.uid;
+      const yo = (miUid && todosLosUsuarios.find((u: any) => u.uid === miUid)) || this.currentUser;
+      if (!yo) return;
+      this.robotManual.explicarPara(yo, new Date(), {
+        esDiaCerrado: (suc, f) => this.esDiaCerrado(suc, f),
+        esSucursalAdministrativa: (suc) => this.esSucursalAdministrativa(suc),
+      }).then(exp => this.explicacionManual.set(exp))
+        .catch(() => { /* sin explicación => mensaje genérico */ });
+    } catch { /* idem */ }
   }
 
   mostrarToast(mensaje: string) {
@@ -1602,7 +1659,10 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       const esGlobal = esAdminGlobal(sesion);
       const esLimitado = esAdminLimitado(sesion);
       const supervisor = esSupervisor(sesion);
-      const permitidas = sucursalesPermitidas(sesion) ?? [];
+      // OJO con el `?? []` que había aquí: `null` significa TODAS, no ninguna.
+      // Ver `alcanceCubre`. Con el comodín «General (Acceso Total)» esta lista
+      // salía vacía entera y el historial se veía como si no existiera.
+      const permitidas = sucursalesPermitidas(sesion);
       const miNombre = sesion?.nombre;
 
       const lista: any[] = [];
@@ -1611,7 +1671,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
         if (c.eliminado === true || c.archivado === true) return;
         // Alcance
         if (esGlobal) { /* ve todas */ }
-        else if (esLimitado || supervisor) { if (!permitidas.includes(c.store)) return; }
+        else if (esLimitado || supervisor) { if (!alcanceCubre(permitidas, c.store)) return; }
         else { if (!mismoEmpleadoNombre(c.assigned, miNombre)) return; }
         lista.push(c);
       });
@@ -1647,6 +1707,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     // Cache para el Robot V2 (necesita expandir roles → personas)
     this.plantillaUsuarios = todosLosUsuarios;
     this.dispararRobotManual();
+    this.calcularExplicacionSinTareas(todosLosUsuarios);
 
     const todasLasSucursales = [
       'ADMINISTRADORES DEL SISTEMA', 'Canindo', 'La Piedad Abastos', '8 Esquinas', 'Padre Hidalgo',
@@ -1718,6 +1779,12 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       this.empleados.set(personalActivo);
     } else if (esAdminLimitado(this.currentUser) || this.currentUser?.puedeCrearChecklists) {
       const permitidas = sucursalesPermitidas(this.currentUser);
+      // Aquí el `?? []` SÍ es correcto, y conviene decir por qué para que nadie
+      // lo "arregle" como los otros cuatro: `puedeSerAsignado` trata la lista
+      // objetivo vacía como SIN FILTRO y devuelve true (permisos.util.ts:322),
+      // así que el `null` de «todas» acaba dando todas. Es correcto por el
+      // camino contrario al de `alcanceCubre`, donde una lista vacía esconde
+      // todo. Dos funciones que reciben `[]` y significan lo opuesto.
       const misSucursales = permitidas ?? [];
       // Candidatos: trabajadores + admins (incluye admin global). Algunos cargos
       // operativos tienen cuenta admin y aun asi deben poder recibir tareas.
@@ -1900,10 +1967,15 @@ export class ChecklistComponent implements OnInit, OnDestroy {
         resultado = listasFinales;
       } else if (esLimitado) {
         rama = 'admin-limitado';
-        resultado = listasFinales.filter((c: any) => (permitidas ?? []).includes(c.store));
+        resultado = listasFinales.filter((c: any) => alcanceCubre(permitidas, c.store));
       } else if (supervisor) {
+        // ⚠ ESTA ES LA RAMA DE LA CAPTURA DEL 15/sep. Con `(permitidas ?? [])`,
+        // una Jefa de Zona con el comodín «General (Acceso Total)» filtraba
+        // contra una lista VACÍA, así que no le quedaba ni una tarea —ni las de
+        // su equipo ni las suyas—, y la pantalla decía «No tienes tareas hoy»
+        // con sus checklists vivos en la base. Ver `alcanceCubre`.
         rama = 'supervisor';
-        resultado = listasFinales.filter((c: any) => (permitidas ?? []).includes(c.store));
+        resultado = listasFinales.filter((c: any) => alcanceCubre(permitidas, c.store));
       } else {
         rama = 'trabajador-puro';
         // 🔥 Match tolerante: tildes/espacios/casing + apellido extra/de menos
@@ -1998,7 +2070,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
         if (esGlobal) {
           arr.push(tarea);
         } else if (esLimitado) {
-          if ((permitidas ?? []).includes(tarea.store)) arr.push(tarea);
+          if (alcanceCubre(permitidas, tarea.store)) arr.push(tarea);
         } else {
           // Trabajador: solo si está como integrante o jefe del proyecto
           if (mismoEmpleadoNombre(tarea.jefeEquipo, miNombre) ||

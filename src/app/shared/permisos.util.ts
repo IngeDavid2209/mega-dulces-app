@@ -134,6 +134,46 @@ export function sucursalesPermitidas(user: any): string[] | null {
 }
 
 /**
+ * ¿El alcance de esta persona cubre este lugar?
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ *  EXISTE PORQUE EL `?? []` INVIERTE EL SIGNIFICADO DE `null`
+ * ═══════════════════════════════════════════════════════════════════════════
+ * `sucursalesPermitidas()` devuelve `null` para decir **TODAS** — un admin
+ * global, o cualquiera cuya ficha traiga el comodín «General (Acceso Total)».
+ * El patrón que se había repetido en cuatro sitios era:
+ *
+ *     const permitidas = sucursalesPermitidas(sesion) ?? [];
+ *     if (!permitidas.includes(c.store)) return;        // <- lo esconde
+ *
+ * y ese `?? []` convierte «todas» en **NINGUNA**, que es lo contrario exacto.
+ * El efecto no se ve en un admin global, porque su rama se comprueba antes;
+ * lo sufre quien NO es admin y sí es supervisor con el comodín: la lista le
+ * sale COMPLETAMENTE VACÍA —ni las de su equipo ni las suyas propias— y la
+ * pantalla dice «No tienes tareas hoy» con las tareas existiendo en la base.
+ *
+ * Lo reportó David el 15/sep/2026 con la captura de una Jefa de Zona: su
+ * puesto estaba bien capturado, su manual existía, sus tareas se habían
+ * emitido, y los dos contadores decían 0. Reproducido con las funciones
+ * reales: con el comodín no ve NADA en NINGÚN sitio; con una sucursal normal
+ * ve lo suyo.
+ *
+ * ─── Y YA ESTABA ARREGLADO EN UN SITIO, QUE ES LO QUE MÁS ENSEÑA ──────────
+ * `checklist.ts` trataba el `null` correctamente al armar la lista de
+ * sucursales del formulario, con un comentario que dice literalmente «antes
+ * esto se volvia [] y dejaba la lista vacia (bug de Ivette)». Se corrigió ahí
+ * y no en los otros cuatro: dos copias de una regla son una copia que se
+ * queda atrás (§2). Por eso esto es una FUNCIÓN y no un `if` repetido.
+ *
+ * No ensancha el acceso de nadie: devuelve lo que la ficha ya declara. Quien
+ * no tiene el comodín sigue viendo exactamente su lista de siempre.
+ */
+export function alcanceCubre(permitidas: string[] | null, store: string): boolean {
+  if (permitidas === null) return true;   // null = TODAS, nunca «ninguna»
+  return permitidas.includes(store);
+}
+
+/**
  * ¿Es admin de la sucursal Canindo? (admin global, o admin limitado con Canindo
  * en su lista de sucursales). Solo estos pueden configurar los TURNOS de Canindo.
  */

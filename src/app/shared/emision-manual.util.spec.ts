@@ -29,6 +29,7 @@
  */
 import {
   planDeEntregas, idemKey, llavePeriodo, tareaAplicaEnFecha, sucursalesDe, slug, toYmd,
+  lugaresDeEmision,
 } from './emision-manual.util';
 import { tareasAutomaticasDePuesto } from './tareas-manual.catalogo';
 import { PUESTOS_ORGANIGRAMA } from './organigrama.catalogo';
@@ -219,6 +220,111 @@ describe('emision-manual: quien no recibe nada sale NOMBRADO y con su motivo', (
     ]);
     expect(p.entregas.length).toBe(0);
     expect(p.omitidos.length).toBe(0);
+  });
+});
+
+describe('emision-manual: el manual NO se entrega una vez por cada área de la ficha', () => {
+  /**
+   * EL CASO REAL, reportado por David el 15/sep/2026 mirando su pantalla:
+   * «hay módulos repetidos». Una Encargada de 8 Esquinas veía NUEVE tareas
+   * pendientes y su manual son TRES — porque su ficha lleva además
+   * MANTENIMIENTO y SISTEMAS, y el emisor recorría la lista entera.
+   *
+   * El esperado se DERIVA del catálogo, no se teclea: si el manual del
+   * Encargado gana o pierde una tarea, este caso sigue midiendo lo suyo.
+   */
+  it('el caso de la captura: 3 lugares en la ficha NO son 3 veces el manual', () => {
+    const esperadas = tareasQueAplican('encargado-sucursal', LUNES, 'Lunes');
+    expect(esperadas).toBeGreaterThan(0);   // si el catálogo se vacía, deja de medir
+
+    const p = plan([persona('Veronica', {
+      puestoId: 'encargado-sucursal',
+      sucursales: ['8 Esquinas', 'MANTENIMIENTO', 'SISTEMAS'],
+    })]);
+
+    // Lo que se veía: esperadas × 3. Lo que debe verse: esperadas.
+    expect(p.entregas.length).toBe(esperadas);
+    // Y todas en el ÚNICO sitio donde de verdad opera.
+    expect(new Set(p.entregas.map(e => e.payload.store))).toEqual(new Set(['8 Esquinas']));
+  });
+
+  it('CEDIS cuenta como sitio con cuadrilla; un área administrativa no', () => {
+    const p = plan([persona('Chofer', {
+      puestoId: 'chofer-cedis', sucursales: ['CEDIS', 'SISTEMAS'],
+    })]);
+    if (p.entregas.length) {
+      expect(new Set(p.entregas.map(e => e.payload.store))).toEqual(new Set(['CEDIS']));
+    }
+    // La pieza, aparte del plan: es la que decide y no depende del catálogo.
+    expect(lugaresDeEmision(['CEDIS', 'SISTEMAS'])).toEqual(['CEDIS']);
+  });
+
+  /**
+   * ⚠ LA RED DE SEGURIDAD, y es la mitad del arreglo.
+   *
+   * El 84% del organigrama NO es de sucursal: RH, FINANZAS, COMPRAS, MKT y
+   * CONTABILIDAD tienen como único sitio un área administrativa. Si el filtro
+   * se aplicara a secas, este caso daría CERO y el «arreglo» habría cambiado un
+   * denominador inflado por la desaparición de las tareas de toda esa gente —
+   * más grave, y mudo.
+   */
+  it('quien SOLO trabaja en un área sigue recibiendo su manual, ahí mismo', () => {
+    const esperadas = tareasQueAplican('encargado-sucursal', LUNES, 'Lunes');
+    const p = plan([persona('Admin', {
+      puestoId: 'encargado-sucursal', sucursales: ['MKT'],
+    })]);
+    expect(p.entregas.length).toBe(esperadas);
+    expect(new Set(p.entregas.map(e => e.payload.store))).toEqual(new Set(['MKT']));
+  });
+
+  it('dos sucursales REALES siguen contando dos veces: eso no era el defecto', () => {
+    const esperadas = tareasQueAplican('anaquelista', LUNES, 'Lunes');
+    const p = plan([persona('Beto', {
+      puestoId: 'anaquelista', sucursales: ['Canindo', 'MANTENIMIENTO', 'Padre Hidalgo'],
+    })]);
+    expect(p.entregas.length).toBe(esperadas * 2);
+    expect(new Set(p.entregas.map(e => e.payload.store)))
+      .toEqual(new Set(['Canindo', 'Padre Hidalgo']));
+  });
+
+  /**
+   * CONTROL NEGATIVO, sobre la pieza que decide: si `lugaresDeEmision`
+   * devolviera la lista tal cual —el comportamiento de ayer— el caso de la
+   * captura volvería a dar el triple. Se afirma aquí para que la diferencia
+   * entre las dos reglas quede escrita como número y no como intención.
+   */
+  it('el recorte NO es mudo: sale nombrado, y con los lugares que se le quitaron', () => {
+    const p = plan([persona('Veronica', {
+      puestoId: 'encargado-sucursal',
+      sucursales: ['8 Esquinas', 'MANTENIMIENTO', 'SISTEMAS'],
+    })]);
+    // No es una OMISIÓN: esta persona sí recibe. Por eso va en su propia lista.
+    expect(p.omitidos.length).toBe(0);
+    expect(p.recortes.length).toBe(1);
+    expect(p.recortes[0].nombre).toBe('Veronica');
+    expect(p.recortes[0].motivo).toContain('MANTENIMIENTO');
+    expect(p.recortes[0].motivo).toContain('SISTEMAS');
+    // Y el sitio donde SÍ opera no aparece como quitado.
+    expect(p.recortes[0].motivo).not.toContain('8 Esquinas');
+  });
+
+  it('a quien no se le recorta nada, no se le inventa un recorte', () => {
+    const p = plan([persona('Ana', { puestoId: 'anaquelista', sucursales: ['Canindo'] })]);
+    expect(p.recortes.length).toBe(0);
+  });
+
+  it('la regla DISCRIMINA: sin ella, los mismos datos dan el triple', () => {
+    const lugares = ['8 Esquinas', 'MANTENIMIENTO', 'SISTEMAS'];
+    expect(lugaresDeEmision(lugares).length).toBe(1);
+    expect(lugares.length).toBe(3);   // la lista de la que se partió, sin tocar
+
+    const esperadas = tareasQueAplican('encargado-sucursal', LUNES, 'Lunes');
+    const conRegla = plan([persona('Veronica', {
+      puestoId: 'encargado-sucursal', sucursales: lugares,
+    })]).entregas.length;
+    const sinRegla = esperadas * lugares.length;   // lo que producía el bucle de ayer
+    expect(conRegla).toBe(esperadas);
+    expect(sinRegla).toBe(conRegla * 3);
   });
 });
 

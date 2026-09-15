@@ -46,6 +46,14 @@ const ESPERADOS = [
   'descansos.util.js',
   'horarios-sucursal.util.js',
   'evidencia-manual.js',
+  // Los tres que entraron el 15/sep con `lugaresDeEmision`: la regla ahora
+  // necesita saber que un lugar tenga cuadrilla, y esa definicion vive en
+  // `sucursales-elegibles` (que a su vez clasifica el destino con las zonas).
+  // Se listan aqui para que, si alguien cambia un import y tsc deja de
+  // emitirlos, el build se detenga en vez de dejar al servidor sin la regla.
+  'sucursales-elegibles.util.js',
+  'unidad-servida.util.js',
+  'zonas.util.js',
 ];
 
 function abortar(motivo, detalle) {

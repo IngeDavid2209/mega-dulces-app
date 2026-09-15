@@ -73,6 +73,16 @@ const MARCADORES = [
   //   Eso necesita la migracion 060 aplicada (su `raise notice` en el log) y
   //   el endpoint montado (401 sin token). El marcador solo dice que el bundle
   //   con la pantalla se sirvio — la misma distincion que el emisor del 14/sep.
+  // 15/sep/2026 · EL MANUAL DEJA DE ENTREGARSE UNA VEZ POR CADA AREA DE LA
+  // FICHA. Un cambio de LOGICA PURA no aporta cadena propia —la raiz de
+  // siempre— y se comprobo MIDIENDO: con el arreglo ya compilado, los 26
+  // marcadores daban el MISMO numero en dist/ y en produccion, o sea que el
+  // despliegue habria sido inverificable. El marcador honesto acabo siendo el
+  // motivo del recorte, y esa linea hacia falta igual: un recorte mudo se lee
+  // como un bug. Salio de resolver un problema real, no al reves.
+  // Validado en las dos direcciones: 0 en HEAD, 1 en el dist/.
+  { txt: 'no son sitios con cuadrilla', nuevo: true,
+    que: 'el manual ya no se entrega una vez por cada area de la ficha' },
   { txt: 'mp-propias', nuevo: true, que: 'la pantalla de captura de la norma' },
   // Los tres de anoche bajan a control: YA VALEN en produccion (medido tras el
   // railway up de las 23:16), y dejarlos arriba daria verde sin comprobar nada

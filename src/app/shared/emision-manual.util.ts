@@ -34,6 +34,7 @@
 
 import { ConfigTurnos, fechaISO, rutinaPermitidaEnTurno } from './turnos.util';
 import { esDiaDescansoEnFecha } from './descansos.util';
+import { tieneCuadrilla } from './sucursales-elegibles.util';
 import { puestoIdDe } from './puesto.util';
 import { nombrePuesto } from './organigrama.catalogo';
 import { HorarioSucursal, limiteAperturaDe, trabajaEsteDia } from './horarios-sucursal.util';
@@ -59,6 +60,16 @@ export interface OmitidoManual {
 export interface PlanDeEntregas {
   entregas: EntregaPlaneada[];
   omitidos: OmitidoManual[];
+  /**
+   * Gente a la que se le RECORTÓ algún lugar de su ficha (ver
+   * `lugaresDeEmision`). NO son omitidos: éstos SÍ reciben sus tareas, solo que
+   * en menos sitios de los que su ficha lista.
+   *
+   * Existe porque el recorte, sin esto, es mudo: el día que alguien pregunte
+   * «¿por qué ya no me salen las de MANTENIMIENTO?», la respuesta tiene que
+   * estar en algún sitio. Quien consuma el plan decide si lo registra.
+   */
+  recortes: { nombre: string; motivo: string }[];
 }
 
 export interface EntradaPlanEntregas {
@@ -94,7 +105,9 @@ export interface EntradaPlanEntregas {
 export function planDeEntregas(e: EntradaPlanEntregas): PlanDeEntregas {
   const entregas: EntregaPlaneada[] = [];
   const omitidos: OmitidoManual[] = [];
-  if (!e.usuarios?.length) return { entregas, omitidos };
+  /** Gente a la que se le recortó algún lugar. NO son omitidos: sí reciben. */
+  const recortes: { nombre: string; motivo: string }[] = [];
+  if (!e.usuarios?.length) return { entregas, omitidos, recortes };
 
   const fecha = e.fecha;
   const fechaYmd = toYmd(fecha);
@@ -134,12 +147,27 @@ export function planDeEntregas(e: EntradaPlanEntregas): PlanDeEntregas {
       continue;
     }
 
-    // La sucursal donde se le entrega. Una persona con varias sucursales
-    // recibe su checklist en cada una: su manual aplica en todas donde opera.
-    const sucursales = sucursalesDe(u);
-    if (!sucursales.length) {
+    // Dónde se le entrega. Ver `lugaresDeEmision`: NO es su lista de sucursales
+    // tal cual, porque en esa lista conviven los sitios donde alguien trabaja
+    // con las áreas a las que solo tiene acceso.
+    const todosSusLugares = sucursalesDe(u);
+    if (!todosSusLugares.length) {
       omitidos.push({ nombre, motivo: 'sin sucursal asignada' });
       continue;
+    }
+    const sucursales = lugaresDeEmision(todosSusLugares);
+
+    // ⚠ UN RECORTE MUDO SE LEE COMO UN BUG. Si a alguien deja de entregársele su
+    // manual en MANTENIMIENTO, la pregunta que llega es «¿por qué ya no me
+    // salen?», y sin esto la respuesta no existe en ningún sitio. No es una
+    // omisión —esa persona SÍ recibe sus tareas— así que va en su propia lista,
+    // aparte de `omitidos`, que significa «no recibió nada».
+    if (sucursales.length < todosSusLugares.length) {
+      const quitados = todosSusLugares.filter(l => !sucursales.includes(l));
+      recortes.push({
+        nombre,
+        motivo: `no se le entrega en ${quitados.join(', ')}: no son sitios con cuadrilla`,
+      });
     }
 
     // Cuántas entregas le salieron a ESTA persona. Si termina en cero teniendo
@@ -204,12 +232,72 @@ export function planDeEntregas(e: EntradaPlanEntregas): PlanDeEntregas {
     }
   }
 
-  return { entregas, omitidos };
+  return { entregas, omitidos, recortes };
 }
 
 // ============================================================================
 //  LAS PIEZAS
 // ============================================================================
+
+/**
+ * 🏪 DÓNDE SE LE ENTREGA EL MANUAL A UNA PERSONA — y no es «en todos sus sitios».
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ *  EL DEFECTO QUE ESTO ARREGLA, CON SU CIFRA
+ * ═══════════════════════════════════════════════════════════════════════════
+ * Reportado por David el 15/sep/2026 mirando su pantalla: *«hay módulos
+ * repetidos»*. Una Encargada de 8 Esquinas tenía **9 tareas pendientes** y su
+ * manual son **3**. No estaban repetidas por error: el emisor recorría su
+ * `sucursales[]` y entregaba el manual completo EN CADA ENTRADA. Su ficha
+ * decía `8 Esquinas`, `MANTENIMIENTO` y `SISTEMAS`, así que 3 × 3 = 9.
+ *
+ * Y el daño no es la molestia de ver tres tarjetas iguales: es que su
+ * **denominador se triplica**. Con 3 hechas de 9 emitidas, una persona que
+ * cumplió TODO su manual aparece al 33% en el tablero. Un número así no se lee
+ * como un defecto de la app: se lee como una persona que no trabaja.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ *  POR QUÉ LA LISTA NO SE PUEDE USAR TAL CUAL
+ * ═══════════════════════════════════════════════════════════════════════════
+ * Porque `sucursales[]` hace DOS trabajos a la vez y la ficha no los distingue:
+ * dice dónde trabaja alguien Y a qué áreas tiene acceso. MANTENIMIENTO y
+ * SISTEMAS están en su ficha para que pueda levantar un ticket, no porque ahí
+ * abra una tienda. Es el hallazgo 1 —la organización no existe como dato— en su
+ * forma más cara: un campo que significa dos cosas.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ *  LA REGLA, Y SU RED DE SEGURIDAD
+ * ═══════════════════════════════════════════════════════════════════════════
+ * Se entrega en los lugares **con cuadrilla** (sucursales y CEDIS), usando
+ * `tieneCuadrilla()` — que YA EXISTE y salió de una instrucción del propio
+ * David sobre el pase de lista: «quítale esas dos», MANTENIMIENTO y SISTEMAS.
+ * Una sola definición para las dos preguntas, que son la misma: ¿este sitio
+ * tiene gente operando?
+ *
+ * ⚠ Y SI NO TIENE NINGUNO, SE ENTREGA EN EL PRIMERO DE LOS SUYOS. Esta línea
+ * es la mitad del arreglo. El 84% del organigrama NO es de sucursal: toda la
+ * gente de RH, FINANZAS, COMPRAS, MKT y CONTABILIDAD tiene como único sitio un
+ * área administrativa. Sin esta caída, el «arreglo» les quitaría TODAS sus
+ * tareas — cambiar un denominador inflado por un cero es un desastre peor y más
+ * silencioso que el que se viene a resolver.
+ *
+ * La propiedad que deja, y es lo que permite desplegarla sin medir a quién
+ * afecta: esto solo puede QUITAR copias de más. Nunca deja a nadie en cero.
+ *
+ * ─── LO QUE NO RESUELVE, DICHO PARA QUE NO SE LEA DE MÁS ──────────────────
+ * Si alguien de verdad trabajara en un área administrativa ADEMÁS de en su
+ * sucursal, recibiría una copia en vez de dos. No se puede distinguir: la ficha
+ * no dice cuál de sus sitios es su trabajo y cuál es un permiso. Se elige este
+ * lado del error porque el otro —inflar el denominador de todo el mundo— ya
+ * está midiéndose en producción y hace que la gente parezca incumplida.
+ */
+export function lugaresDeEmision(lugares: string[]): string[] {
+  const conCuadrilla = lugares.filter(l => tieneCuadrilla(l));
+  if (conCuadrilla.length) return conCuadrilla;
+  // Sin ningún sitio operativo: su área ES su trabajo. Una sola entrega, en el
+  // primero, que es el orden en que se capturó su ficha.
+  return lugares.slice(0, 1);
+}
 
 /** Sucursales donde opera el usuario, normalizando los campos históricos. */
 export function sucursalesDe(u: any): string[] {

@@ -325,6 +325,71 @@ de que exista la plaza sería partir el problema en dos, no resolverlo.
 
 ## 9. Bitácora del plan
 
+### 15/sep/2026 — «HAY MÓDULOS REPETIDOS»: el manual se entregaba una vez por ÁREA
+
+David, mirando su pantalla: *«hay módulos repetidos»*, sobre una captura de
+**«Mis tareas pendientes 9»** con las mismas tres tarjetas tres veces. Y después:
+*«quiero que revises en todos los usuarios que no hayan módulos repetidos»*.
+
+**NO ESTABAN DUPLICADAS: ESTABAN EMITIDAS TRES VECES, UNA POR LUGAR.** La ficha de esa Encargada
+lleva `8 Esquinas`, `MANTENIMIENTO` y `SISTEMAS`, y el emisor recorría esa lista entera
+entregando el manual completo en cada entrada. Su manual son **3 tareas**: 3 × 3 = **las 9 de la
+captura**.
+
+**Y EL DAÑO NO ES VER TRES TARJETAS IGUALES: ES EL DENOMINADOR.** Con 3 hechas de 9 emitidas,
+alguien que cumplió **todo** su manual aparece al **33%**. Un número así no se lee como un
+defecto de la app — se lee como una persona que no trabaja. Es el invariante §5.7 (todo número
+lleva su coordenada) roto por la puerta más tonta: el lugar.
+
+#### LA CAUSA ES EL HALLAZGO 1 EN SU FORMA MÁS CARA: UN CAMPO QUE SIGNIFICA DOS COSAS
+
+`sucursales[]` dice **dónde trabaja alguien** Y **a qué áreas tiene acceso**, y la ficha no los
+distingue. MANTENIMIENTO y SISTEMAS están ahí para que pueda levantar un ticket, no porque abra
+una tienda. Mientras nadie cruzara esa lista con la emisión, la ambigüedad no costaba nada.
+
+**La regla nueva (`lugaresDeEmision`) no inventa un criterio:** usa `tieneCuadrilla()`, que ya
+existía y salió de una instrucción del propio David sobre el pase de lista — «quítale esas dos»,
+MANTENIMIENTO y SISTEMAS. Una sola definición para dos preguntas que son la misma.
+
+**⚠ LA RED DE SEGURIDAD ES LA MITAD DEL ARREGLO.** El **84%** del organigrama no es de sucursal:
+RH, FINANZAS, COMPRAS, MKT y CONTABILIDAD tienen como único sitio un área. Filtrar a secas les
+habría quitado **todas** sus tareas — cambiar un denominador inflado por un cero es peor y más
+mudo. Si alguien no tiene ningún lugar con cuadrilla, se le entrega **una vez en el primero de
+los suyos**. La propiedad que deja, y es lo que permitió desplegar sin medir antes a quién
+afecta: **esto solo puede quitar copias de más; nunca deja a nadie en cero.**
+
+#### EL MARCADOR NO EXISTÍA, Y BUSCARLO DESTAPÓ LO QUE FALTABA
+
+Un cambio de lógica pura no introduce ninguna cadena propia. Se comprobó **midiendo**, no
+suponiendo: con el arreglo ya compilado, los **26 marcadores daban el mismo número en `dist/` y
+en producción**. O sea que el despliegue habría sido inverificable.
+
+El marcador honesto acabó siendo **una línea que hacía falta igual**: el recorte era **mudo**.
+Si a alguien dejan de salirle sus tareas en MANTENIMIENTO, la pregunta «¿por qué ya no me salen?»
+no tenía respuesta en ningún sitio. Ahora el plan devuelve `recortes` —con nombre y los lugares
+quitados— aparte de `omitidos`, porque esta gente **sí recibe**: confundirlos sería decir que no
+recibió nada. Es la tercera vez que elegir un marcador destapa algo que no se venía a buscar.
+
+#### LO QUE CONTESTA «EN TODOS LOS USUARIOS», Y LO QUE NO
+
+`scripts/diagnostico-entregas-repetidas.js` (nuevo, **solo lee**) contesta las dos mitades:
+
+- **El modelo:** de las fichas activas, a cuántas se les entregaba de más y cuántas entregas al
+  día son. Con sus denominadores: cuántas fichas se leyeron, cuántas reciben manual.
+- **El hecho:** los duplicados **ya escritos** — misma persona, misma tarea, mismo día, en dos
+  sitios— de los últimos 7 días, sobre el total de checklists de manual de la semana.
+
+Los dos hay que mirarlos: el modelo puede estar bien y la base traer lo de antes. **No borra
+nada** a propósito: algunas de esas copias pueden estar contestadas, y borrar evidencia de
+alguien es lo que el §5.5 prohíbe hacer sin decidirlo con la lista enfrente. Aborta sin
+`DATABASE_URL` (probado: código 3) y aborta con cero fichas o cero checklists, porque con la app
+en producción eso no es «no hay»: es «no leí».
+
+**Lo más importante para no malinterpretar el resultado: las 9 de la captura NO desaparecen.** La
+regla gobierna lo que se emite **desde ahora**; lo ya escrito sigue ahí hasta que se decida qué
+hacer con ello. Si mañana siguen saliendo 9, el arreglo no falló: son las de hoy.
+
+
 ### 15/sep/2026 — LA NORMA BAJA A DATO (Fase 7 · paso 7.1a), y la premisa era falsa
 
 Instrucción de David: *«quiero que todos los puestos tengan sus tareas propias activas»*, y

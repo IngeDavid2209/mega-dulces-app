@@ -202,6 +202,41 @@
 .pr-buscar > svg { position: absolute; left: 9px; top: 8px; width: 14px; height: 14px; stroke: var(--pr-txt-3); stroke-width: 1.8; }
 
 /* ---------- Cuadrícula ---------- */
+/* ═══════ ENCABEZADO DE SUCURSAL (17/sep/2026) ═══════
+   Separa bloques sin meter una caja más: una línea con el nombre y su cuenta.
+   Los cuatro tokens salen de los ya declarados arriba en este mismo archivo
+   —comprobado antes de escribirlos: un token inventado no revienta, IGUALA,
+   y dos cosas distintas se pintarían idénticas sin un solo error (4/sep). */
+.pr-suc {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  /* El primero no despega del filtro; los siguientes sí respiran. */
+  margin: 22px 2px 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--pr-linea);
+}
+.pr-suc:first-of-type { margin-top: 6px; }
+.pr-suc-icono { width: 16px; height: 16px; color: var(--pr-txt-3); flex: 0 0 auto; }
+.pr-suc-nombre {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--pr-tinta);
+  letter-spacing: .2px;
+  /* Un nombre largo encoge en vez de empujar la cuenta fuera de la pantalla:
+     es el defecto del 7/sep (el título estrangulado por lo que no cede). */
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pr-suc-meta {
+  font-size: 12px;
+  color: var(--pr-txt-3);
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
 .pr-grid {
   display: grid;
   /* 300 px, no 268: con 45 responsables en pantalla, unas decenas de pixeles
@@ -419,6 +454,8 @@
 /* ---------- Móvil ---------- */
 @media screen and (max-width: 768px) {
   .pr-grid { grid-template-columns: 1fr; }
+  .pr-suc { flex-wrap: wrap; }
+  .pr-suc-meta { margin-left: 24px; }
   .pr-strip { padding: 14px; }
   .pr-big { font-size: 26px; }
   .pr-legend { gap: 16px; }

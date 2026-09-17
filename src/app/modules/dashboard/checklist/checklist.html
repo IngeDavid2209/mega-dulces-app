@@ -460,9 +460,18 @@
                barra 1083px, izquierda 982 + derecha 368, así que la derecha
                envolvía. Quien está en «Del manual» SIN árbol —cualquiera que no
                sea supervisión— conserva sus botones. -->
-          <div class="cl-toolbar-der" *ngIf="vistaHistorial() === 'pendientes' && !verPorOrganigrama">
+          <!-- ⚠ EL AGRUPADOR YA NO SE ESCONDE EN EL HISTORIAL. Hasta el
+               17/sep/2026 esta barra entera pedía `vistaHistorial() ===
+               'pendientes'`, así que en «Enviadas del equipo» —donde David
+               estaba— no había un solo control de agrupación. La condición se
+               bajó al botón que sí es solo de pendientes («Agregar mi tarea»:
+               no se agrega nada a un historial), y el agrupador vive ahora en
+               las cuatro bandejas.
+               `!verPorOrganigrama` se conserva: con el ÁRBOL en pantalla no hay
+               lista que agrupar y el botón quedaría inerte (14/sep). -->
+          <div class="cl-toolbar-der" *ngIf="!verPorOrganigrama">
             <!-- Cualquier trabajador puede sumar una tarea propia a su día -->
-            <button class="btn-primary" (click)="abrirModalTareaDia()">
+            <button class="btn-primary" *ngIf="vistaHistorial() === 'pendientes'" (click)="abrirModalTareaDia()">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                    style="margin-right:6px; vertical-align:middle;">
                 <line x1="12" y1="5" x2="12" y2="19"></line>
@@ -470,15 +479,30 @@
               </svg> Agregar mi tarea
             </button>
 
-            <!-- Agrupar por persona (el panel) o lista plana -->
-            <button class="agrupar-toggle" *ngIf="puedeFiltrarVista && vistaTareas === 'equipo'"
-                    [class.on]="agruparPorPersona()" (click)="toggleAgruparPorPersona()">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <!-- ══════════ TRES MODOS EN UN SOLO BOTÓN ══════════
+                 «el agrupador de los usuarios para que los tengas por
+                 sucursal» (David, 17/sep/2026). Cicla sucursal → persona →
+                 lista plana, y el rótulo dice el estado ACTUAL, no el que se
+                 va a aplicar: un botón que anuncia lo que hará deja sin saber
+                 qué se está viendo ahora.
+
+                 Ya no pide `puedeFiltrarVista && vistaTareas === 'equipo'`:
+                 quien trabaja en varias áreas también quiere sus tareas
+                 separadas por sitio, y cuando solo hay una, el encabezado
+                 simplemente no se pinta. -->
+            <button class="agrupar-toggle"
+                    [class.on]="agrupacionLista() !== 'plana'"
+                    (click)="toggleAgruparPorPersona()"
+                    title="Cambiar agrupación: por sucursal → por persona → lista plana">
+              <svg *ngIf="agrupacionLista() === 'sucursal'" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 9l1-5h16l1 5"></path><path d="M4 9v11h16V9"></path><path d="M9 20v-6h6v6"></path>
+              </svg>
+              <svg *ngIf="agrupacionLista() !== 'sucursal'" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
                 <circle cx="9" cy="7" r="4"></circle>
                 <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
               </svg>
-              {{ agruparPorPersona() ? 'Agrupado por persona' : 'Lista plana' }}
+              {{ rotuloAgrupacion }}
             </button>
           </div>
         </div>
@@ -507,7 +531,10 @@
                     </svg>
                   </button>
                   <span class="cl-meta-sep">·</span>
-                  <span class="cl-meta-item">{{ checklist.store }}</span>
+                  <!-- La clase la usa el arnés para medir DE QUÉ SUCURSAL es
+                       cada tarjeta: contar tarjetas no distingue «filtró» de
+                       «filtró al revés» (§8.11 b). -->
+                  <span class="cl-meta-item cl-meta-sucursal">{{ checklist.store }}</span>
                   <span class="cl-meta-sep">·</span>
                   <span class="cl-meta-item">{{ checklist.date }}</span>
                   <span class="cl-meta-proxima" *ngIf="checklist.esFutura"
@@ -645,9 +672,16 @@
              Crear sigue creando una tarea LIBRE, que es lo único que se puede
              crear a mano. Notificar nunca dependió del modo: recordarle a alguien
              su checklist del manual es justo lo que un Encargado necesita. -->
+        <!-- El `*ngIf` es `mostrandoPanelResponsables`, que es LA MISMA
+             condición que el componente ya usaba para decidir si el panel está
+             en pantalla. Estaba escrita dos veces —aquí y en el getter— y el
+             14/sep se desalinearon: el getter decía «sí» con el árbol delante y
+             se llevó por delante los tres botones de alta. Una sola definición
+             para las dos preguntas. -->
         <app-panel-responsables
-          *ngIf="!verPorOrganigrama && vistaEquipo() === 'lista' && vistaHistorial() === 'pendientes' && agruparPorPersona() && puedeFiltrarVista && vistaTareas === 'equipo'"
+          *ngIf="mostrandoPanelResponsables"
           [checklists]="checklistsFiltrados"
+          [agruparPorSucursal]="agrupacionLista() === 'sucursal'"
           [puedeCrear]="currentUser?.rol === 'admin' || currentUser?.puedeCrearChecklists"
           [puedeNotificar]="currentUser?.rol === 'admin' || currentUser?.puedeCrearChecklists"
           [puedeEditar]="currentUser?.rol === 'admin'"
@@ -662,8 +696,16 @@
              `|| vistaTareas === 'mis'`: con el organigrama encendido, esta lista
              era la unica que podia pintar las tareas propias y estaba apagada
              por `!verPorOrganigrama`. Ese `&&` a secas era el bug. -->
+        <!-- `!mostrandoPanelResponsables` en vez de repetir aquí las tres
+             condiciones del panel: estaban escritas dos veces y el 14/sep se
+             desalinearon. Es equivalente término a término, con el árbol ya
+             descartado por el `(!verPorOrganigrama || vistaTareas === 'mis')`.
+
+             Y `agrupacionLista() === 'plana'`: esta rejilla es la de SIEMPRE,
+             con sus separadores de Mandos/Operativos. Los otros dos modos van
+             en el bloque de abajo, para no tocar el camino que ya funcionaba. -->
         <div class="checklist-grid"
-             *ngIf="(!verPorOrganigrama || vistaTareas === 'mis') && vistaEquipo() === 'lista' && vistaHistorial() === 'pendientes' && (!agruparPorPersona() || !puedeFiltrarVista || vistaTareas !== 'equipo')">
+             *ngIf="(!verPorOrganigrama || vistaTareas === 'mis') && vistaEquipo() === 'lista' && vistaHistorial() === 'pendientes' && !mostrandoPanelResponsables && agrupacionLista() === 'plana'">
           <ng-container *ngFor="let checklist of checklistsOrdenadosPorNivel; let i = index; trackBy: trackByChecklist">
             <!-- Encabezado de la sección Mandos cuando arranca con un mando y hay operativos detrás -->
             <div *ngIf="i === 0 && nivelDelAssigned(checklist.assigned) === 'mando' && checklistsDeOperativos.length > 0"
@@ -678,6 +720,34 @@
               Operativos ({{ checklistsDeOperativos.length }})
             </div>
             <ng-container *ngTemplateOutlet="checklistCard; context: { $implicit: checklist }"></ng-container>
+          </ng-container>
+        </div>
+
+        <!-- ══════════ LA MISMA LISTA, AGRUPADA (17/sep/2026) ══════════
+             Sucursal → persona → tareas. Los separadores de Mandos/Operativos
+             no se pintan aquí a propósito: ya hay una jerarquía en pantalla
+             —el mando va primero DENTRO de cada bloque— y dos a la vez se leen
+             como encabezados repetidos, que es lo que la barra de arriba tuvo
+             que dejar de hacer el 14/sep. -->
+        <div class="checklist-grid"
+             *ngIf="(!verPorOrganigrama || vistaTareas === 'mis') && vistaEquipo() === 'lista' && vistaHistorial() === 'pendientes' && !mostrandoPanelResponsables && agrupacionLista() !== 'plana'">
+          <ng-container *ngFor="let g of gruposDePendientes; trackBy: trackGrupoSuc">
+            <div class="cl-grupo-suc" *ngIf="pintarSucursalEnPendientes">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 9l1-5h16l1 5"></path><path d="M4 9v11h16V9"></path><path d="M9 20v-6h6v6"></path>
+              </svg>
+              <span class="cl-grupo-suc-nombre">{{ g.sucursal }}</span>
+              <span class="cl-grupo-suc-meta">{{ g.total }} {{ g.total === 1 ? 'tarea' : 'tareas' }}</span>
+            </div>
+            <ng-container *ngFor="let per of g.personas; trackBy: trackGrupoPer">
+              <div class="cl-grupo-per" *ngIf="hayQuePintarPersona(g)">
+                <span class="cl-grupo-per-nombre" [attr.data-nivel]="per.nivel">{{ per.nombre }}</span>
+                <span class="cl-grupo-per-meta">{{ per.entregas.length }}</span>
+              </div>
+              <ng-container *ngFor="let checklist of per.entregas; trackBy: trackByChecklist">
+                <ng-container *ngTemplateOutlet="checklistCard; context: { $implicit: checklist }"></ng-container>
+              </ng-container>
+            </ng-container>
           </ng-container>
         </div>
 
@@ -728,19 +798,50 @@
           <div class="checklist-grid" *ngIf="cargandoEnviadas">
             <div class="empty-state"><h3>Cargando historial…</h3></div>
           </div>
+          <!-- EL VACÍO DICE CUÁL DE LOS DOS VACÍOS ES. Desde que el buscador
+               rige aquí (17/sep) hay dos causas distintas: no hay historial, o
+               la búsqueda no encontró nada dentro de él. Con un solo mensaje,
+               quien busca «la piedad abastos» y no la tiene en su alcance
+               concluiría que esas tareas no se enviaron nunca. -->
           <div class="checklist-grid" *ngIf="!cargandoEnviadas && enviadasFiltradas.length === 0">
             <div class="empty-state">
               <div class="empty-state-icon"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg></div>
-              <h3>Sin tareas enviadas</h3>
-              <p>No hay tareas enviadas en los últimos 30 días.</p>
+              <ng-container *ngIf="totalEnviadasSinBuscar === 0">
+                <h3>Sin tareas enviadas</h3>
+                <p>No hay tareas enviadas en los últimos 30 días.</p>
+              </ng-container>
+              <ng-container *ngIf="totalEnviadasSinBuscar > 0">
+                <h3>No se encontraron resultados</h3>
+                <p>Ninguna de las {{ totalEnviadasSinBuscar }} tarea(s) enviadas de los últimos
+                   30 días coincide con «{{ terminoBusquedaChecklist }}». Prueba con otro
+                   nombre, empleado o sucursal.</p>
+              </ng-container>
             </div>
           </div>
           <div class="checklist-grid" *ngIf="!verPorOrganigrama && !cargandoEnviadas && enviadasFiltradas.length > 0">
             <div style="grid-column: 1 / -1; font-size: 12px; font-weight: 700; color: var(--neutral-600); letter-spacing: .5px; text-transform: uppercase; margin: 0 0 4px 4px;">
-              Enviadas · últimos 30 días ({{ enviadasFiltradas.length }})
+              <!-- El contador dice «N de M» cuando hay búsqueda activa: un (3)
+                   a secas donde antes había (94) se lee como tareas perdidas. -->
+              Enviadas · últimos 30 días ({{ enviadasFiltradas.length }}<ng-container
+                *ngIf="enviadasFiltradas.length !== totalEnviadasSinBuscar"> de {{ totalEnviadasSinBuscar }}</ng-container>)
             </div>
-            <ng-container *ngFor="let checklist of enviadasFiltradas; trackBy: trackByChecklist">
-              <ng-container *ngTemplateOutlet="checklistCard; context: { $implicit: checklist }"></ng-container>
+            <ng-container *ngFor="let g of gruposDeEnviadas; trackBy: trackGrupoSuc">
+              <div class="cl-grupo-suc" *ngIf="pintarSucursalEnEnviadas">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M3 9l1-5h16l1 5"></path><path d="M4 9v11h16V9"></path><path d="M9 20v-6h6v6"></path>
+                </svg>
+                <span class="cl-grupo-suc-nombre">{{ g.sucursal }}</span>
+                <span class="cl-grupo-suc-meta">{{ g.total }} {{ g.total === 1 ? 'tarea' : 'tareas' }}</span>
+              </div>
+              <ng-container *ngFor="let per of g.personas; trackBy: trackGrupoPer">
+                <div class="cl-grupo-per" *ngIf="hayQuePintarPersona(g)">
+                  <span class="cl-grupo-per-nombre" [attr.data-nivel]="per.nivel">{{ per.nombre }}</span>
+                  <span class="cl-grupo-per-meta">{{ per.entregas.length }}</span>
+                </div>
+                <ng-container *ngFor="let checklist of per.entregas; trackBy: trackByChecklist">
+                  <ng-container *ngTemplateOutlet="checklistCard; context: { $implicit: checklist }"></ng-container>
+                </ng-container>
+              </ng-container>
             </ng-container>
           </div>
         </ng-container>

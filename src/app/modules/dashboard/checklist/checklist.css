@@ -3717,6 +3717,54 @@
 }
 .agrupar-toggle.on { background: var(--neutral-900); color: #fff; border-color: var(--neutral-900); }
 
+/* ═══════ ENCABEZADOS DE GRUPO: SUCURSAL Y PERSONA (17/sep/2026) ═══════
+   «el agrupador de los usuarios para que los tengas por sucursal» (David).
+
+   Los dos ocupan la fila entera de la rejilla (`grid-column: 1 / -1`), igual
+   que los separadores de Mandos/Operativos que ya vivían aquí: sin eso caerían
+   como una columna más y partirían la cuadrícula.
+
+   Los cuatro tokens están comprobados en styles.css antes de escribirlos —un
+   token que no existe no revienta, IGUALA, y dos jerarquías se pintarían
+   idénticas sin un solo error en consola (4/sep). */
+.cl-grupo-suc {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 18px 4px 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--neutral-200);
+}
+.cl-grupo-suc:first-child { margin-top: 2px; }
+.cl-grupo-suc svg { width: 16px; height: 16px; color: var(--neutral-500); flex: 0 0 auto; }
+.cl-grupo-suc-nombre {
+  font-size: 14px; font-weight: 700; color: var(--neutral-900); letter-spacing: .2px;
+  /* Encoge en vez de empujar la cuenta fuera de la pantalla: es el defecto del
+     7/sep, cuando lo que no cedía estrangulaba al título hasta 0px de ancho. */
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.cl-grupo-suc-meta { font-size: 12px; color: var(--neutral-500); margin-left: auto; flex: 0 0 auto; }
+
+.cl-grupo-per {
+  grid-column: 1 / -1;
+  display: flex; align-items: center; gap: 8px;
+  margin: 10px 4px 2px;
+}
+.cl-grupo-per-nombre {
+  font-size: 12px; font-weight: 700; color: var(--neutral-600);
+  letter-spacing: .5px; text-transform: uppercase;
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+/* El mando se distingue del operativo con el MISMO color que ya usa el
+   separador «Mandos de sucursal» de la lista plana: dos jerarquías con dos
+   colores distintos para lo mismo se leen como dos cosas distintas. */
+.cl-grupo-per-nombre[data-nivel="mando"] { color: var(--info-fg); }
+.cl-grupo-per-meta {
+  font-size: 11px; font-weight: 700; color: var(--neutral-600);
+  background: var(--neutral-100); border-radius: 999px; padding: 1px 8px; flex: 0 0 auto;
+}
+
 .persona-grupo {
   border: 1px solid var(--neutral-200); border-radius: 14px; background: #fff;
   margin-bottom: 14px; overflow: hidden;

@@ -4,6 +4,8 @@ import {
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { esEntregaDeManual } from '../../../shared/origen-manual.util';
+import { normalizarNombre } from '../../../shared/permisos.util';
+import { ETIQUETA_SIN_SUCURSAL, CLAVE_SIN_SUCURSAL } from '../../../shared/agrupacion-entregas.util';
 
 type Estado = 'vencida' | 'hoy' | 'completada' | 'programada';
 type Tipo = 'rutina' | 'unica';
@@ -37,6 +39,22 @@ interface TareaVista {
 interface PersonaVista {
   id: string;
   nombre: string;
+  /**
+   * ⚠ LA SUCURSAL DE ESTA TARJETA, y no es decorativa.
+   *
+   * Cuando se agrupa por sucursal, una misma persona puede aparecer en DOS
+   * bloques —pasa de verdad: hay Encargadas con su tienda más MANTENIMIENTO y
+   * SISTEMAS en la ficha (15/sep/2026)— y entonces la tarjeta de cada bloque
+   * tiene que contar SOLO lo de ese sitio. Si contara todo lo suyo, el bloque
+   * de «La Piedad Abastos» diría «9 tareas · 56%» mezclando tareas de otra
+   * sucursal: un número sin su coordenada (§5.7), que es exactamente el
+   * defecto del denominador inflado que costó caro en septiembre.
+   *
+   * Vacío cuando no se agrupa por sucursal: ahí la tarjeta es la persona
+   * entera, que es lo correcto para esa pregunta.
+   */
+  sucursalClave: string;
+  sucursalTexto: string;
   iniciales: string;
   colorFondo: string;
   colorTexto: string;
@@ -87,6 +105,14 @@ export class PanelResponsablesComponent implements OnDestroy {
   @Input() puedeNotificar = false;
   /** Permite editar y borrar desde la tarjeta de tarea. */
   @Input() puedeEditar = false;
+  /**
+   * Agrupa las tarjetas bajo un encabezado por sucursal (instrucción de David,
+   * 17/sep/2026). Lo decide la pantalla, no el panel: el mismo interruptor
+   * gobierna esta vista y la lista plana, y dos criterios distintos para el
+   * mismo botón se desalinean en cuanto alguien toque uno.
+   */
+  private _porSucursal = signal<boolean>(false);
+  @Input() set agruparPorSucursal(v: boolean) { this._porSucursal.set(!!v); }
 
   @Output() abrir = new EventEmitter<any>();
   @Output() crear = new EventEmitter<'unica' | 'rutina' | 'equipo'>();
@@ -224,15 +250,24 @@ export class PanelResponsablesComponent implements OnDestroy {
   /** Todas las personas con sus tareas ya clasificadas, sin filtros aplicados. */
   private personas = computed<PersonaVista[]>(() => {
     const mapa = new Map<string, PersonaVista>();
+    const porSuc = this._porSucursal();
 
     for (const c of this.lista()) {
       const nombre = (c?.assigned || 'Sin asignar').trim();
-      const clave = nombre.toLowerCase();
+      // La CLAVE lleva la sucursal solo cuando se agrupa por ella. Así la misma
+      // persona con tareas en dos sitios produce dos tarjetas —una por bloque,
+      // cada una con SU cuenta— en vez de una tarjeta cuyo porcentaje mezcla
+      // sucursales. Sin sucursal, la clave es la de siempre y nada cambia.
+      const sucTexto = (c?.store || '').trim();
+      const sucClave = porSuc ? (normalizarNombre(sucTexto) || CLAVE_SIN_SUCURSAL) : '';
+      const clave = porSuc ? `${sucClave}|${normalizarNombre(nombre)}` : nombre.toLowerCase();
 
       if (!mapa.has(clave)) {
         const col = this.colorDe(nombre);
         mapa.set(clave, {
           id: clave, nombre, iniciales: this.inicialesDe(nombre),
+          sucursalClave: sucClave,
+          sucursalTexto: porSuc ? (sucTexto || ETIQUETA_SIN_SUCURSAL) : '',
           colorFondo: col.bg, colorTexto: col.fg, tareas: [],
           total: 0, completadas: 0, vencidas: 0, hoy: 0, programadas: 0,
           porcentaje: 0, mezcla: ''
@@ -321,6 +356,54 @@ export class PanelResponsablesComponent implements OnDestroy {
       return a.porcentaje - b.porcentaje;
     });
   });
+
+  /**
+   * Las personas visibles, repartidas en bloques de sucursal.
+   *
+   * Cuelga de `personasVisibles()` —no de `personas()`— a propósito: así los
+   * chips de estado y de tipo siguen recortando igual, y una sucursal cuyas
+   * tareas quedan todas fuera del filtro NO pinta un encabezado vacío.
+   *
+   * Con el agrupado apagado devuelve UN bloque sin nombre, para que la
+   * plantilla tenga un solo camino en vez de dos que puedan desalinearse.
+   */
+  bloques = computed<{ clave: string; sucursal: string; personas: PersonaVista[]; total: number }[]>(() => {
+    const personas = this.personasVisibles();
+    if (!this._porSucursal()) {
+      return personas.length
+        ? [{ clave: '__todas__', sucursal: '', personas, total: personas.length }]
+        : [];
+    }
+    const mapa = new Map<string, { clave: string; sucursal: string; personas: PersonaVista[]; total: number }>();
+    for (const p of personas) {
+      let b = mapa.get(p.sucursalClave);
+      if (!b) {
+        b = { clave: p.sucursalClave, sucursal: p.sucursalTexto, personas: [], total: 0 };
+        mapa.set(p.sucursalClave, b);
+      }
+      b.personas.push(p);
+      b.total += this.tareasVisibles(p).length;
+    }
+    // Orden estable, con el bloque de las que no tienen sucursal al final: es
+    // el pendiente, no por donde se empieza a leer. Y visible SIEMPRE — una
+    // tarea sin sucursal escondida es una persona que desaparece del tablero.
+    return [...mapa.values()].sort((a, b) => {
+      if (a.clave === CLAVE_SIN_SUCURSAL) return 1;
+      if (b.clave === CLAVE_SIN_SUCURSAL) return -1;
+      return a.clave.localeCompare(b.clave);
+    });
+  });
+
+  /** ¿Se pinta el encabezado? Con un solo bloque diría siempre lo mismo. La
+   *  excepción es que ese único bloque sea el de «sin sucursal»: eso sí hay que
+   *  decirlo, porque es un dato que falta. */
+  hayQuePintarSucursal = computed<boolean>(() => {
+    const b = this.bloques();
+    if (!this._porSucursal()) return false;
+    return b.length > 1 || (b.length === 1 && b[0].clave === CLAVE_SIN_SUCURSAL);
+  });
+
+  trackBloque = (_: number, b: { clave: string }) => b.clave;
 
   /** Cuántas tareas caen en cada filtro, para los contadores de los chips. */
   conteoFiltros = computed(() => {

@@ -69,9 +69,32 @@
   </div>
 </div>
 
-<!-- ===================== CUADRÍCULA DE RESPONSABLES ===================== -->
+<!-- ===================== CUADRÍCULA DE RESPONSABLES =====================
+     Envuelta en BLOQUES DE SUCURSAL desde el 17/sep/2026 (instrucción de
+     David: «el agrupador de los usuarios para que los tengas por sucursal»).
+
+     Con el agrupado apagado, `bloques()` devuelve UN bloque sin nombre y el
+     encabezado no se pinta: la cuadrícula queda exactamente como estaba. Un
+     solo camino en la plantilla, no dos que puedan desalinearse — que es como
+     nacieron los cuatro `*ngIf` desincronizados del 14/sep. -->
+<ng-container *ngFor="let b of bloques(); trackBy: trackBloque">
+
+  <!-- El encabezado solo aparece cuando de verdad separa algo: con una sola
+       sucursal diría siempre lo mismo y sería ruido. La excepción es el bloque
+       de las que NO tienen sucursal capturada, que sí se nombra. -->
+  <div class="pr-suc" *ngIf="hayQuePintarSucursal()">
+    <svg class="pr-suc-icono" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M3 9l1-5h16l1 5"/><path d="M4 9v11h16V9"/><path d="M9 20v-6h6v6"/>
+    </svg>
+    <span class="pr-suc-nombre">{{ b.sucursal }}</span>
+    <span class="pr-suc-meta">
+      {{ b.personas.length }} {{ b.personas.length === 1 ? 'persona' : 'personas' }}
+      · {{ b.total }} {{ b.total === 1 ? 'tarea' : 'tareas' }}
+    </span>
+  </div>
+
 <div class="pr-grid">
-  <ng-container *ngFor="let p of personasVisibles(); trackBy: trackPersona">
+  <ng-container *ngFor="let p of b.personas; trackBy: trackPersona">
 
     <button type="button" class="pr-card"
             [class.pr-card-abierta]="abiertoId() === p.id"
@@ -187,8 +210,10 @@
     </section>
 
   </ng-container>
-
-  <p class="pr-vacio pr-vacio-total" *ngIf="personasVisibles().length === 0">
-    Nadie coincide con el filtro actual.
-  </p>
 </div>
+
+</ng-container>
+
+<p class="pr-vacio pr-vacio-total" *ngIf="personasVisibles().length === 0">
+  Nadie coincide con el filtro actual.
+</p>

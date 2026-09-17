@@ -326,6 +326,149 @@ de que exista la plaza sería partir el problema en dos, no resolverlo.
 ## 9. Bitácora del plan
 
 
+### 17/sep/2026 — «NO ESTÁ FUNCIONANDO EL BUSCADOR»: y el agrupador no existía
+
+Reporte de David, con captura de «Enviadas del equipo»: *«no esta funcionando el buscador y
+tampoco el agrupador de los usuarios para que los tengas por sucursal»*. En la captura había
+tecleado **«la piedad abastos»** y las cuatro tarjetas en pantalla eran de **Padre Hidalgo**,
+con el contador intacto en **(94)**.
+
+**LAS DOS CAUSAS, Y NINGUNA ERA «la regla está mal escrita».**
+
+**1 · El filtro de texto vivía DENTRO de `checklistsFiltrados`**, que solo alimenta
+**Pendientes**. La bandeja de la captura se pinta desde `enviadasFiltradas`, que recortaba por
+*de quién es la tarea* y **nunca leía `terminoBusquedaChecklist`**. O sea que el buscador
+funcionaba en media pantalla y no en la otra media — el peor modo de fallo posible: **no da
+error y no se queda vacío**, devuelve la lista COMPLETA, que se lee como «no hay más
+resultados». Quien busca concluye que esas tareas no existen.
+
+**2 · EL AGRUPADOR NO ES QUE NO FUNCIONARA: NO SE PINTABA NUNCA.** Y esto solo se ve juntando
+dos condiciones que están en archivos distintos:
+
+    contenedor (checklist.html)  *ngIf="vistaHistorial() === 'pendientes' && !verPorOrganigrama"
+    boton                        *ngIf="puedeFiltrarVista && vistaTareas === 'equipo'"
+    y  verPorOrganigrama   ===   puedeFiltrarVista && equipo && pendientes
+
+Sustituyendo: el botón pedía `!(A && B && C) && A && B && C`. **Contradictorio.** No había una
+sola combinación de sesión y bandeja en la que ese control apareciera. Verificado en el DOM y
+no solo razonado: la columna `btn` del arnés vale **0** en el escenario de supervisión.
+
+**Y DE AHÍ SALE UN HALLAZGO QUE NADIE BUSCABA: `<app-panel-responsables>` ES CÓDIGO MUERTO.**
+Su `*ngIf` es `mostrandoPanelResponsables`, que exige `!verPorOrganigrama` **junto con** las
+tres condiciones que definen `verPorOrganigrama`. Misma contradicción, un nivel más arriba.
+`agrupacion` es un signal que nace en `'organigrama'` y **nunca se cambia** (comprobado: 0
+asignaciones en todo el repo), así que desde que el interruptor de vista se retiró, ese panel
+de 365 líneas no se pinta para nadie. **No se borró** —quitarle la entrada y el código en el
+mismo paso deja sin nada que recuperar, la lección de `limpiarHuerfanas`— y sí recibió el
+agrupado por sucursal, para que esté listo el día que se decida reactivarlo o enterrarlo.
+Queda anotado como pendiente: **es una decisión de David, no limpieza.**
+
+#### LO QUE SE HIZO, Y LA MITAD QUE IMPORTA ES DÓNDE VIVE LA REGLA
+
+`shared/filtro-busqueda.util.ts` (nuevo) y `shared/agrupacion-entregas.util.ts` (nuevo). Copiar
+el `filter` al historial habría «arreglado» la captura y dejado **dos reglas de búsqueda libres
+de discrepar**: el día que alguien agregue un campo buscable en una, la misma búsqueda
+devolvería dos listas distintas según la bandeja — que es el defecto de hoy reintroducido por
+la puerta de al lado. Una definición, dos listas.
+
+**El buscador ahora ignora acentos**, en los dos lados y con `normalizarNombre` —la misma
+función con la que la app cruza identidades, no una tercera—. No es purismo: en un teléfono
+nadie escribe «Yurécuaro» con acento, y hasta hoy esa búsqueda no encontraba nada **sin que la
+pantalla dijera por qué**.
+
+**El agrupador pasa de booleano a tres modos** —sucursal · persona · lista plana— en un solo
+botón, presente en las cuatro bandejas, con la elección recordada por navegador (`try/catch`:
+en una ventana privada `localStorage` LANZA, y eso tumbaría el componente entero por una
+preferencia de vista).
+
+**⚠ EL ÁRBOL DEL ORGANIGRAMA NO SE TOCÓ**, por instrucción expresa (*«solo no toques el
+organigrama»*): en «Pendientes del equipo» sigue mandando él, y ahí el agrupador no se pinta
+—no hay lista que agrupar—. `git diff` de `vista-organigrama.*` **vacío**, y hay un escenario
+del arnés que lo exige, no que lo suponga.
+
+**Tres decisiones que no son de estilo:**
+
+- **La tarjeta de una persona dentro de un bloque cuenta SOLO lo de ese sitio.** Hay Encargadas
+  con su tienda más MANTENIMIENTO y SISTEMAS en la ficha (15/sep), así que una misma persona
+  aparece en dos bloques. Si su tarjeta contara todo lo suyo, el bloque de «La Piedad Abastos»
+  diría «9 tareas · 56%» mezclando otra sucursal: un número sin su coordenada (§5.7), que es
+  **el defecto del denominador inflado de septiembre por otra puerta**.
+- **Las tareas sin `store` son un bloque propio y visible, al final.** Descartarlas habría
+  hecho cuadrar los totales y desaparecer gente de la pantalla, que es exactamente lo que
+  produce el hallazgo 1.
+- **Con un solo grupo el encabezado no se pinta** —diría siempre lo mismo—, salvo que ese único
+  grupo sea el de «Sin sucursal»: un dato que falta, callado, es un dato que nadie arregla.
+
+**Y la clave de agrupación va normalizada mientras se pinta el texto original.** La sucursal
+sale de `store`, que es texto libre: sin eso, «Yurécuaro» y «yurecuaro » serían **dos
+encabezados con el mismo nombre** y se leería como que la app duplicó la sucursal. No arregla
+el hallazgo 1; lo contiene hasta la Fase 3.
+
+#### EL CACHE NO ES OPTIMIZACIÓN PREMATURA: ES LA CAÍDA DEL 1/SEP
+
+Los dos getters de grupos construyen un arreglo. Sin cache por huella, el `*ngFor` recibiría
+uno **nuevo** en cada ciclo de detección y destruiría y recrearía la lista entera —con cuatro
+polls y cada respuesta HTTP disparando uno—. Es literalmente `menuDe()` del sidebar. Con la
+huella, el `*ngFor` recibe el MISMO arreglo y no hace nada.
+
+#### LAS PRUEBAS, Y EL CONTROL NEGATIVO QUE AFIRMA EL MECANISMO
+
+**294 de 294** unitarias (18 nuevas) más `scripts/prueba-buscador-y-agrupacion.js`, **6
+escenarios en el DOM**:
+
+    escenario                             tarjetas  de PH  de LPA  encSuc  btn  árbol
+    enviadas equipo, sin buscar           3         2      1       2       1    0
+    enviadas equipo + «la piedad abastos» 1         0      1       0       1    0   <- LA CAPTURA
+    pendientes equipo (árbol intacto)     0         0      0       0       0    1
+    mis pendientes, sin buscar            3         2      1       2       1    0
+    mis pendientes + «la piedad abastos»  1         0      1       0       1    0
+    mis pendientes + «anden» (sin acento) 1         0      1       0       1    0
+
+**No se cuentan tarjetas: se cuenta DE QUÉ SUCURSAL son las que quedan** (§8.11 b). «Hay menos
+tarjetas» lo pasa un filtro que borre al azar; `dePH: 2 → 0` es el mecanismo.
+
+| | qué se rompió (una línea, `diff` comprobado) | qué pasó |
+|---|---|---|
+| NEG-1 | el historial deja de llamar al filtro | 4 rotas, y **reproduce la captura literal**: «quedaron 2 de Padre Hidalgo». Y **solo cae ese camino** — «mis pendientes» sigue filtrando |
+| NEG-2 | la agrupación ignora la sucursal (clave fija) | **aborta con código 3** por falta de discriminación… **con las tarjetas todavía correctas**: un control que solo mirara tarjetas habría dado VERDE |
+
+**Y una guardia que cazó un no-op antes de que concluyera nada:** el arnés escribe en el
+buscador real y **comprueba que el valor quedó en el input**. Fijar `.value` sin disparar
+`input` no avisa a `ngModel`, así que la medición saldría como si nadie hubiera escrito — un
+no-op que da verde, que es peor que fallar.
+
+#### DOS DEFECTOS MÍOS, Y LOS DOS ESTABAN YA ESCRITOS EN ESTE ARCHIVO
+
+1. **La primera corrida dio `dePH: 0` en TODAS las filas**, incluidas las que no buscaban —que
+   se lee como «la app no pinta la sucursal»—. No era la app: había añadido la clase medible
+   **después** del `ng build`, así que el arnés servía un `dist/` sin ella. *«Después de
+   restaurar un archivo, reconstruir»* (1/sep), y vale igual para «después de editarlo». El
+   resto de columnas estaba bien, que es lo que lo hizo evidente: si hubieran fallado todas,
+   habría ido a depurar la app.
+2. **El heredoc se rompió con las comillas anidadas del arnés** — quinta vez en este repo. No
+   dejó archivo a medias (abortó antes), pero la salida es la de siempre: una herramienta que
+   no interprete el contenido.
+
+Y una que no es defecto pero conviene anotar: **`diff` salió entero por CRLF/LF** en los
+controles negativos. El repo sigue sin `.gitattributes`. Se comprobó con `--strip-trailing-cr`
+que el cambio real era **de una línea**, y que el commit no arrastra finales de línea
+(`--numstat`: 465 añadidas, 37 quitadas, sin explosión).
+
+#### LO QUE ESTO NO HACE, dicho para que no se lea como resuelto
+
+- **NADIE HA ENTRADO CON UNA CUENTA REAL.** Los seis escenarios son sesiones sintéticas en
+  Chrome headless. Que el buscador recorte está probado; que se **vea** bien, no.
+- **El contador va a bajar al teclear, y eso es la corrección, no tareas perdidas.** Por eso
+  ahora dice «N de M» cuando hay búsqueda activa, y el vacío distingue «no hay historial» de
+  «tu búsqueda no encontró nada dentro de él» — dos frases que con un solo mensaje llevan a
+  concluir que esas tareas nunca se enviaron.
+- **No arregla el hallazgo 1**, lo contiene: dos capturas de la misma sucursal que difieran en
+  algo más que tildes, espacios o puntuación siguen siendo dos bloques.
+- **El panel de responsables sigue muerto**, con o sin este cambio. Reactivarlo o enterrarlo es
+  decisión de David.
+- **No mueve ningún número de tablero ni ninguna fase del plan.** Cero migraciones, cero
+  escrituras, y el organigrama intacto.
+
 ### 15/sep/2026 (madrugada) — EL RELOJ A LAS 00:00, Y DOS DEFECTOS QUE ENCONTRARON OTROS
 
 La primera prueba real del emisor de anoche llegó sola, a las 00:01:

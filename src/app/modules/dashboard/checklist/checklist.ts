@@ -11,6 +11,11 @@ import { nivelDeCargo } from '../../../shared/nivel-jerarquico.util';
 import { TareaEquipo, FaseEquipo, ItemEquipo, SubtareaEquipo } from '../../../shared/tareas-equipo.types';
 import { esItemHecho, tieneEvidencia } from '../../../shared/item-completado.util';
 import { esEntregaDeManual } from '../../../shared/origen-manual.util';
+import { filtrarPorBusqueda } from '../../../shared/filtro-busqueda.util';
+import {
+  agruparEntregas, mostrarEncabezadoSucursal, mostrarEncabezadoPersona,
+  ModoAgrupacion, GrupoSucursal
+} from '../../../shared/agrupacion-entregas.util';
 import { obtenerSemanaISO, obtenerNombreDia } from '../../../shared/descansos.util';
 import { RobotManualService, ExplicacionManual } from '../../../shared/robot-manual.service';
 import { resolverPuesto } from '../../../shared/puesto.util';
@@ -206,12 +211,49 @@ export class ChecklistComponent implements OnInit, OnDestroy {
    * desde el cargador, así que volver a filtrarla no añade nada y sí podría
    * perderle una tarea por un apellido de más o de menos.
    */
+  /**
+   * ⚠ Y HASTA EL 17/sep TAMPOCO MIRABA EL BUSCADOR. Reportado por David con
+   * una captura: en «Enviadas del equipo» tecleó «la piedad abastos» y las
+   * cuatro tarjetas en pantalla eran de **Padre Hidalgo**, con el contador
+   * intacto en (94). El `[(ngModel)]` escribía en `terminoBusquedaChecklist`
+   * y esta lista nunca leía esa variable — o sea que el buscador funcionaba
+   * en Pendientes y no en el historial, que es la peor forma de fallar: no da
+   * error, devuelve una lista COMPLETA que se lee como «no hay más
+   * resultados».
+   *
+   * El filtro es el MISMO de los pendientes (`filtrarPorBusqueda`), no una
+   * copia: dos reglas de búsqueda serían dos listas distintas para el mismo
+   * término según la bandeja, que es el defecto de hoy por la otra puerta.
+   */
+  private _cacheEnviadasHuella = '';
+  private _cacheEnviadas: any[] = [];
   get enviadasFiltradas(): any[] {
+    // El historial son ~100 tarjetas y este getter lo consulta la plantilla en
+    // cada ciclo de detección. Con cache, filtrar por texto no le cuesta nada
+    // a la pantalla; sin él, se recorrería la lista entera por cada tecla.
+    const huella = `${this.enviadas().length}-${this.vistaTareas}-${this.terminoBusquedaChecklist}-${this.currentUser?.nombre || ''}`;
+    if (huella === this._cacheEnviadasHuella) return this._cacheEnviadas;
+    this._cacheEnviadasHuella = huella;
+
+    let lista = this.enviadas();
+    if (this.puedeFiltrarVista) {
+      const mi = this.currentUser?.nombre;
+      const mio = this.vistaTareas === 'mis';
+      lista = lista.filter(c => mismoEmpleadoNombre(c.assigned, mi) === mio);
+    }
+    lista = filtrarPorBusqueda(lista, this.terminoBusquedaChecklist);
+    this._cacheEnviadas = lista;
+    return lista;
+  }
+
+  /** Cuántas enviadas hay antes de la búsqueda. La pantalla lo necesita para
+   *  poder decir «0 de 94», que es distinto de «no hay historial». */
+  get totalEnviadasSinBuscar(): number {
     const lista = this.enviadas();
-    if (!this.puedeFiltrarVista) return lista;
+    if (!this.puedeFiltrarVista) return lista.length;
     const mi = this.currentUser?.nombre;
     const mio = this.vistaTareas === 'mis';
-    return lista.filter(c => mismoEmpleadoNombre(c.assigned, mi) === mio);
+    return lista.filter(c => mismoEmpleadoNombre(c.assigned, mi) === mio).length;
   }
   cargandoEnviadas = false;
   enviadasCargadas = false;
@@ -1270,12 +1312,103 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     return this.plantillaUsuarios;
   }
 
-  /** Vista agrupada por persona (solo para admin/supervisor con varias personas). */
-  agruparPorPersona = signal<boolean>(true);
+  /**
+   * ══════════ CÓMO SE ORDENA LA LISTA: SUCURSAL · PERSONA · PLANA ══════════
+   *
+   * Instrucción de David (17/sep/2026): «el agrupador de los usuarios para que
+   * los tengas por sucursal». Antes esto era un booleano —agrupado por persona
+   * sí o no— y la sucursal solo viajaba DENTRO de cada tarjeta, así que no
+   * había forma de ver una sucursal como bloque en ninguna bandeja.
+   *
+   * Arranca en 'sucursal' porque es lo que se pidió, y la elección se recuerda
+   * por navegador: obligar a elegir el mismo modo cada mañana es la forma de
+   * que nadie lo use. El `try/catch` no es ceremonia — en una ventana privada
+   * o con el almacenamiento bloqueado, leer `localStorage` LANZA, y eso
+   * tumbaría el arranque del componente entero por una preferencia de vista.
+   */
+  private static readonly LLAVE_AGRUPACION = 'md_agrupacion_tareas';
+  agrupacionLista = signal<ModoAgrupacion>(ChecklistComponent.leerAgrupacionGuardada());
+  private static leerAgrupacionGuardada(): ModoAgrupacion {
+    try {
+      const v = localStorage.getItem(ChecklistComponent.LLAVE_AGRUPACION);
+      if (v === 'sucursal' || v === 'persona' || v === 'plana') return v;
+    } catch { /* sin almacenamiento: se usa el de siempre */ }
+    return 'sucursal';
+  }
+
   /** Nombres (en minusculas) de los grupos colapsados. */
   gruposColapsados = new Set<string>();
 
-  toggleAgruparPorPersona() { this.agruparPorPersona.set(!this.agruparPorPersona()); }
+  /** El botón cicla los tres modos en el orden en que se leen de más a menos
+   *  estructura. No es un menú: un solo control con tres estados ocupa el
+   *  mismo sitio que el interruptor que había. */
+  toggleAgruparPorPersona() {
+    const orden: ModoAgrupacion[] = ['sucursal', 'persona', 'plana'];
+    const siguiente = orden[(orden.indexOf(this.agrupacionLista()) + 1) % orden.length];
+    this.agrupacionLista.set(siguiente);
+    try { localStorage.setItem(ChecklistComponent.LLAVE_AGRUPACION, siguiente); } catch { }
+  }
+
+  /** Rótulo del botón. Dice el estado ACTUAL, no el que se va a aplicar:
+   *  un botón que anuncia lo que hará al pulsarlo deja al usuario sin saber
+   *  qué está viendo ahora mismo. */
+  get rotuloAgrupacion(): string {
+    const m = this.agrupacionLista();
+    return m === 'sucursal' ? 'Agrupado por sucursal'
+         : m === 'persona'  ? 'Agrupado por persona'
+         : 'Lista plana';
+  }
+
+  /**
+   * Los grupos de la lista de PENDIENTES cuando no manda el panel de
+   * responsables (colaborador, «Mis tareas», o modo plana).
+   *
+   * Cuelga de `checklistsOrdenadosPorNivel` —no de `checklists()`— para que
+   * herede el recorte por ámbito, por bandeja y por búsqueda. Agrupar sobre la
+   * lista cruda habría devuelto a la pantalla tareas que el ámbito ya había
+   * escondido: una fuga de visibilidad disfrazada de mejora visual.
+   *
+   * ⚠ CACHEADO POR HUELLA, Y NO ES OPTIMIZACIÓN PREMATURA. Un getter que
+   * construye un arreglo NUEVO en cada llamada es literalmente la caída del
+   * 1/sep/2026: `menuDe()` devolvía un arreglo nuevo, el `*ngFor` lo comparaba
+   * por identidad y destruía y recreaba el bloque entero en cada ciclo de
+   * detección —con cuatro polls y cada respuesta HTTP disparando uno—. Aquí
+   * son ~160 tarjetas y la plantilla lo consulta varias veces por ciclo.
+   * Con la huella, el `*ngFor` recibe EL MISMO arreglo y no hace nada.
+   */
+  private _cacheGruposPendHuella = '';
+  private _cacheGruposPend: GrupoSucursal[] = [];
+  get gruposDePendientes(): GrupoSucursal[] {
+    const lista = this.checklistsOrdenadosPorNivel;
+    const huella = `${this._cacheChecklistsHuella}-${this.agrupacionLista()}`;
+    if (huella === this._cacheGruposPendHuella) return this._cacheGruposPend;
+    this._cacheGruposPendHuella = huella;
+    this._cacheGruposPend = agruparEntregas(lista, this.agrupacionLista(), n => this.nivelDelAssigned(n));
+    return this._cacheGruposPend;
+  }
+
+  /** Los mismos grupos, para el historial. Mismo cache, misma razón. */
+  private _cacheGruposEnvHuella = '';
+  private _cacheGruposEnv: GrupoSucursal[] = [];
+  get gruposDeEnviadas(): GrupoSucursal[] {
+    const lista = this.enviadasFiltradas;   // deja el cache de enviadas al día
+    const huella = `${this._cacheEnviadasHuella}-${this.agrupacionLista()}`;
+    if (huella === this._cacheGruposEnvHuella) return this._cacheGruposEnv;
+    this._cacheGruposEnvHuella = huella;
+    this._cacheGruposEnv = agruparEntregas(lista, this.agrupacionLista(), n => this.nivelDelAssigned(n));
+    return this._cacheGruposEnv;
+  }
+
+  /**
+   * ¿Se pinta el encabezado de sucursal? Son propiedades y no una función con
+   * argumento: `hayQuePintarSucursal(gruposDePendientes)` habría re-evaluado el
+   * getter en cada binding, que es justo lo que el cache viene a evitar.
+   */
+  get pintarSucursalEnPendientes(): boolean { return mostrarEncabezadoSucursal(this.gruposDePendientes); }
+  get pintarSucursalEnEnviadas(): boolean { return mostrarEncabezadoSucursal(this.gruposDeEnviadas); }
+  hayQuePintarPersona(g: GrupoSucursal): boolean { return mostrarEncabezadoPersona(g); }
+  trackGrupoSuc(_: number, g: GrupoSucursal): string { return g.clave; }
+  trackGrupoPer(_: number, g: { clave: string }): string { return g.clave; }
   grupoEstaColapsado(nombre: string): boolean { return this.gruposColapsados.has((nombre || '').toLowerCase()); }
   toggleGrupoColapsado(nombre: string) {
     const k = (nombre || '').toLowerCase();
@@ -1364,14 +1497,13 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     }
 
     // Filtro por búsqueda libre (texto en nombre/empleado/sucursal).
-    const termino = this.terminoBusquedaChecklist.trim().toLowerCase();
-    if (termino) {
-      lista = lista.filter(c =>
-        c.name?.toLowerCase().includes(termino) ||
-        c.assigned?.toLowerCase().includes(termino) ||
-        c.store?.toLowerCase().includes(termino)
-      );
-    }
+    //
+    // ⚠ LA REGLA YA NO VIVE AQUÍ, y ese es el arreglo del 17/sep/2026. Estaba
+    // escrita en este `filter` y por eso solo la tenía la mitad de la
+    // pantalla: el historial (`enviadasFiltradas`) nunca la llamaba, así que
+    // buscar «la piedad abastos» en «Enviadas del equipo» devolvía la lista
+    // entera con el contador intacto. Una sola definición, dos listas.
+    lista = filtrarPorBusqueda(lista, this.terminoBusquedaChecklist);
     this._cacheFiltrados = lista;
     return lista;
   }
@@ -4666,7 +4798,9 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     return !this.verPorOrganigrama
       && this.vistaEquipo() === 'lista'
       && this.vistaHistorial() === 'pendientes'
-      && this.agruparPorPersona()
+      // Antes era `agruparPorPersona()`. Con tres modos, el panel manda en DOS
+      // de ellos —por sucursal y por persona— y solo cede el sitio en 'plana'.
+      && this.agrupacionLista() !== 'plana'
       && this.puedeFiltrarVista
       && this.vistaTareas === 'equipo';
   }

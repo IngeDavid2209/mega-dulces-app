@@ -81,9 +81,26 @@ const MARCADORES = [
   // motivo del recorte, y esa linea hacia falta igual: un recorte mudo se lee
   // como un bug. Salio de resolver un problema real, no al reves.
   // Validado en las dos direcciones: 0 en HEAD, 1 en el dist/.
-  { txt: 'no son sitios con cuadrilla', nuevo: true,
+  // 17/sep/2026 · EL BUSCADOR EN LAS CUATRO BANDEJAS Y EL AGRUPADOR POR
+  // SUCURSAL. Reporte de David con captura: tecleo «la piedad abastos» en
+  // «Enviadas del equipo» y siguio viendo Padre Hidalgo con el contador en
+  // (94). Dos defectos: el filtro de texto vivia dentro de
+  // `checklistsFiltrados` (solo Pendientes), y el boton de agrupar tenia dos
+  // condiciones CONTRADICTORIAS, asi que no se pintaba nunca en ninguna
+  // combinacion posible.
+  // Validado en LAS DOS DIRECCIONES antes de subir: `git grep cl-grupo-suc
+  // HEAD` -> 0 archivos · dist/ -> 9 ocurrencias.
+  //
+  // ⚠ LO QUE ESTE MARCADOR *NO* PRUEBA: que el buscador filtre. Es la clase
+  //   del encabezado de sucursal, o sea que el bundle con el codigo nuevo se
+  //   sirvio. Que recorte lo prueba `scripts/prueba-buscador-y-agrupacion.js`
+  //   en el DOM, y que se vea bien lo prueba una persona abriendo la app.
+  { txt: 'cl-grupo-suc', nuevo: true, que: 'el encabezado de sucursal en la lista de tareas' },
+  // Los dos del despliegue anterior bajan a control: YA VALEN en produccion, y
+  // dejarlos arriba daria verde sin comprobar nada de este.
+  { txt: 'no son sitios con cuadrilla', control: true,
     que: 'el manual ya no se entrega una vez por cada area de la ficha' },
-  { txt: 'mp-propias', nuevo: true, que: 'la pantalla de captura de la norma' },
+  { txt: 'mp-propias', control: true, que: 'la pantalla de captura de la norma' },
   // Los tres de anoche bajan a control: YA VALEN en produccion (medido tras el
   // railway up de las 23:16), y dejarlos arriba daria verde sin comprobar nada
   // de este despliegue.

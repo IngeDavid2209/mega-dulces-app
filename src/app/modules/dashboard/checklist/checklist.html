@@ -732,20 +732,39 @@
         <div class="checklist-grid"
              *ngIf="(!verPorOrganigrama || vistaTareas === 'mis') && vistaEquipo() === 'lista' && vistaHistorial() === 'pendientes' && !mostrandoPanelResponsables && agrupacionLista() !== 'plana'">
           <ng-container *ngFor="let g of gruposDePendientes; trackBy: trackGrupoSuc">
-            <div class="cl-grupo-suc" *ngIf="pintarSucursalEnPendientes">
+            <!-- Cada encabezado es un BOTON que se desglosa (17/sep/2026). Las tarjetas
+                 NO se envuelven en un contenedor: la lista es una rejilla CSS y meterlas
+                 dentro de un <div> las aplastaria en una sola celda. Se esconden con
+                 *ngIf, y los encabezados conservan su grid-column: 1 / -1. -->
+            <button type="button" class="cl-grupo-suc" *ngIf="pintarSucursalEnPendientes"
+                    (click)="alternarSuc('pend', g)"
+                    [class.cl-grupo-abierto]="sucAbierta('pend', g)"
+                    [attr.aria-expanded]="sucAbierta('pend', g)">
+              <svg class="cl-grupo-flecha" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <polyline points="9 6 15 12 9 18"></polyline>
+              </svg>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M3 9l1-5h16l1 5"></path><path d="M4 9v11h16V9"></path><path d="M9 20v-6h6v6"></path>
               </svg>
               <span class="cl-grupo-suc-nombre">{{ g.sucursal }}</span>
               <span class="cl-grupo-suc-meta">{{ g.total }} {{ g.total === 1 ? 'tarea' : 'tareas' }}</span>
-            </div>
+            </button>
             <ng-container *ngFor="let per of g.personas; trackBy: trackGrupoPer">
-              <div class="cl-grupo-per" *ngIf="hayQuePintarPersona(g)">
+              <button type="button" class="cl-grupo-per"
+                      *ngIf="hayQuePintarPersona(g) && sucAbierta('pend', g)"
+                      (click)="alternarPer('pend', g, per)"
+                      [class.cl-grupo-abierto]="perAbierta('pend', g, per)"
+                      [attr.aria-expanded]="perAbierta('pend', g, per)">
+                <svg class="cl-grupo-flecha" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <polyline points="9 6 15 12 9 18"></polyline>
+                </svg>
                 <span class="cl-grupo-per-nombre" [attr.data-nivel]="per.nivel">{{ per.nombre }}</span>
                 <span class="cl-grupo-per-meta">{{ per.entregas.length }}</span>
-              </div>
-              <ng-container *ngFor="let checklist of per.entregas; trackBy: trackByChecklist">
-                <ng-container *ngTemplateOutlet="checklistCard; context: { $implicit: checklist }"></ng-container>
+              </button>
+              <ng-container *ngIf="perAbierta('pend', g, per)">
+                <ng-container *ngFor="let checklist of per.entregas; trackBy: trackByChecklist">
+                  <ng-container *ngTemplateOutlet="checklistCard; context: { $implicit: checklist }"></ng-container>
+                </ng-container>
               </ng-container>
             </ng-container>
           </ng-container>
@@ -826,20 +845,39 @@
                 *ngIf="enviadasFiltradas.length !== totalEnviadasSinBuscar"> de {{ totalEnviadasSinBuscar }}</ng-container>)
             </div>
             <ng-container *ngFor="let g of gruposDeEnviadas; trackBy: trackGrupoSuc">
-              <div class="cl-grupo-suc" *ngIf="pintarSucursalEnEnviadas">
+              <!-- Cada encabezado es un BOTON que se desglosa (17/sep/2026). Las tarjetas
+                   NO se envuelven en un contenedor: la lista es una rejilla CSS y meterlas
+                   dentro de un <div> las aplastaria en una sola celda. Se esconden con
+                   *ngIf, y los encabezados conservan su grid-column: 1 / -1. -->
+              <button type="button" class="cl-grupo-suc" *ngIf="pintarSucursalEnEnviadas"
+                      (click)="alternarSuc('env', g)"
+                      [class.cl-grupo-abierto]="sucAbierta('env', g)"
+                      [attr.aria-expanded]="sucAbierta('env', g)">
+                <svg class="cl-grupo-flecha" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <polyline points="9 6 15 12 9 18"></polyline>
+                </svg>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M3 9l1-5h16l1 5"></path><path d="M4 9v11h16V9"></path><path d="M9 20v-6h6v6"></path>
                 </svg>
                 <span class="cl-grupo-suc-nombre">{{ g.sucursal }}</span>
                 <span class="cl-grupo-suc-meta">{{ g.total }} {{ g.total === 1 ? 'tarea' : 'tareas' }}</span>
-              </div>
+              </button>
               <ng-container *ngFor="let per of g.personas; trackBy: trackGrupoPer">
-                <div class="cl-grupo-per" *ngIf="hayQuePintarPersona(g)">
+                <button type="button" class="cl-grupo-per"
+                        *ngIf="hayQuePintarPersona(g) && sucAbierta('env', g)"
+                        (click)="alternarPer('env', g, per)"
+                        [class.cl-grupo-abierto]="perAbierta('env', g, per)"
+                        [attr.aria-expanded]="perAbierta('env', g, per)">
+                  <svg class="cl-grupo-flecha" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <polyline points="9 6 15 12 9 18"></polyline>
+                  </svg>
                   <span class="cl-grupo-per-nombre" [attr.data-nivel]="per.nivel">{{ per.nombre }}</span>
                   <span class="cl-grupo-per-meta">{{ per.entregas.length }}</span>
-                </div>
-                <ng-container *ngFor="let checklist of per.entregas; trackBy: trackByChecklist">
-                  <ng-container *ngTemplateOutlet="checklistCard; context: { $implicit: checklist }"></ng-container>
+                </button>
+                <ng-container *ngIf="perAbierta('env', g, per)">
+                  <ng-container *ngFor="let checklist of per.entregas; trackBy: trackByChecklist">
+                    <ng-container *ngTemplateOutlet="checklistCard; context: { $implicit: checklist }"></ng-container>
+                  </ng-container>
                 </ng-container>
               </ng-container>
             </ng-container>

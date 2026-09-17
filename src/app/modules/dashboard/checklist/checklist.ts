@@ -1409,6 +1409,95 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   hayQuePintarPersona(g: GrupoSucursal): boolean { return mostrarEncabezadoPersona(g); }
   trackGrupoSuc(_: number, g: GrupoSucursal): string { return g.clave; }
   trackGrupoPer(_: number, g: { clave: string }): string { return g.clave; }
+
+  // ══════════ CADA BLOQUE ES UN BOTÓN QUE SE DESGLOSA (17/sep/2026) ══════════
+  //
+  // Instrucción de David, sobre la captura de «8 Esquinas · 42 tareas» con las
+  // tarjetas debajo: «no lo quiero solo así, quiero que esté dentro de botones
+  // y de ahí se desglose». Hasta hoy los dos encabezados eran <div> de adorno:
+  // la bandeja escupía las 42 tarjetas de golpe y para llegar a la tercera
+  // sucursal había que recorrer cien tarjetas con el dedo.
+  //
+  // EL CONJUNTO GUARDA LOS ABIERTOS, NO LOS CERRADOS, y no es un detalle. David
+  // eligió que todo arranque cerrado, así que el conjunto VACÍO es exactamente
+  // ese estado inicial y no hay que sembrarlo con nada. Al revés —guardando los
+  // cerrados— habría que registrar cada grupo que nace, y el que llegara sin
+  // registrar aparecería ABIERTO: el poll de 20 s iría abriendo bloques solo
+  // cada vez que entrara una sucursal nueva. Es la misma decisión que ya tomó
+  // el árbol del organigrama (2–3/sep).
+  //
+  // Y NO SE RECUERDA ENTRE SESIONES, también por decisión suya: una sucursal
+  // que quedó plegada hace tres días se lee como «esa tienda no tiene tareas»,
+  // que es el mismo modo de fallo mudo que este proyecto lleva un mes cazando.
+  private abiertosLista = signal<Set<string>>(new Set<string>());
+
+  /**
+   * La llave lleva la BANDEJA delante porque Pendientes y Enviadas son dos
+   * listas distintas con las mismas sucursales: sin el prefijo, abrir «8
+   * Esquinas» en una la abriría también en la otra. Y la llave de persona lleva
+   * la sucursal, porque `per.clave` solo es única DENTRO de su grupo: sin eso,
+   * abrir a Claudia en 8 Esquinas la abriría también en La Piedad.
+   */
+  private llaveSuc(bandeja: 'pend' | 'env', g: GrupoSucursal): string {
+    return bandeja + '|' + g.clave;
+  }
+  private llavePer(bandeja: 'pend' | 'env', g: GrupoSucursal, per: { clave: string }): string {
+    return bandeja + '|' + g.clave + '|' + per.clave;
+  }
+
+  /** Abre o cierra. Se crea un Set NUEVO: mutar el mismo no dispara la señal. */
+  private alternarBloque(llave: string) {
+    const s = new Set(this.abiertosLista());
+    if (s.has(llave)) s.delete(llave); else s.add(llave);
+    this.abiertosLista.set(s);
+  }
+  alternarSuc(bandeja: 'pend' | 'env', g: GrupoSucursal) { this.alternarBloque(this.llaveSuc(bandeja, g)); }
+  alternarPer(bandeja: 'pend' | 'env', g: GrupoSucursal, per: { clave: string }) {
+    this.alternarBloque(this.llavePer(bandeja, g, per));
+  }
+
+  /**
+   * ⚠ HAY BLOQUES QUE NO SE PLIEGAN, y los tres casos son la misma regla:
+   * plegar solo sirve cuando hay ENTRE QUÉ elegir. Sin estas tres salidas, el
+   * cambio de hoy dejaría gente mirando una pantalla de botones sin tareas, que
+   * es indistinguible de «no tengo trabajo» (§5.2).
+   *
+   *   1. El encabezado no se pinta. Sin botón no habría forma de volver a
+   *      abrirlo: quedaría cerrado para siempre.
+   *   2. Hay UNA sola persona en toda la bandeja. Es el caso de «Mis tareas» de
+   *      los 154 trabajadores: abrirían la app para encontrar su propio nombre
+   *      y cero tarjetas, y tendrían que pulsarse a sí mismos para trabajar.
+   *   3. Hay búsqueda escrita. Quien tecleó «Pasillo» ya recortó la lista;
+   *      esconderle el resultado detrás de un clic es deshacerle el trabajo.
+   */
+  private get busquedaActiva(): boolean {
+    return !!String(this.terminoBusquedaChecklist || '').trim();
+  }
+
+  private cuantasPersonasEn(bandeja: 'pend' | 'env'): number {
+    const grupos = bandeja === 'pend' ? this.gruposDePendientes : this.gruposDeEnviadas;
+    let n = 0;
+    for (const g of grupos) n += g.personas.length;
+    return n;
+  }
+
+  /** ¿Se ve lo que hay dentro de esta sucursal? */
+  sucAbierta(bandeja: 'pend' | 'env', g: GrupoSucursal): boolean {
+    const pinta = bandeja === 'pend' ? this.pintarSucursalEnPendientes : this.pintarSucursalEnEnviadas;
+    if (!pinta) return true;                       // caso 1: no hay botón
+    if (this.busquedaActiva) return true;          // caso 3
+    return this.abiertosLista().has(this.llaveSuc(bandeja, g));
+  }
+
+  /** ¿Se ven las TARJETAS de esta persona? La sucursal manda: cerrada ella,
+   *  no se pinta nada de dentro aunque la persona estuviera abierta. */
+  perAbierta(bandeja: 'pend' | 'env', g: GrupoSucursal, per: { clave: string }): boolean {
+    if (!this.sucAbierta(bandeja, g)) return false;
+    if (!this.hayQuePintarPersona(g)) return true;              // caso 1
+    if (this.busquedaActiva) return true;                       // caso 3
+    if (this.cuantasPersonasEn(bandeja) <= 1) return true;      // caso 2
+    return this.abiertosLista().has(this.llavePer(bandeja, g, per));
+  }
   grupoEstaColapsado(nombre: string): boolean { return this.gruposColapsados.has((nombre || '').toLowerCase()); }
   toggleGrupoColapsado(nombre: string) {
     const k = (nombre || '').toLowerCase();

@@ -209,6 +209,22 @@ function medir(esc, puerto) {
       'try{localStorage.setItem("md_agrupacion_tareas","sucursal");}catch(e){}</script>' +
       '<script>window.addEventListener("load",function(){' +
       'setTimeout(function(){' + pulsar + 'setTimeout(function(){' + escribir +
+      // ⚠ SE ABREN LOS BLOQUES ANTES DE CONTAR (17/sep/2026).
+      //
+      // Desde que la lista se pliega (`scripts/prueba-lista-plegable.js`), las
+      // tarjetas nacen ESCONDIDAS detrás de sus botones. Este arnés no vino a
+      // medir el plegado sino el filtrado, así que sin estos dos clics contaría
+      // 0 tarjetas y reportaría «el buscador no filtra» sobre un buscador
+      // intacto: un control caducado que manda a depurar lo que funciona.
+      //
+      // Se pulsa solo lo que se anuncia CERRADO (`aria-expanded="false"`), que
+      // es lo mismo que mira la prueba del plegado: si alguien invirtiera ese
+      // atributo, esto cerraría en vez de abrir y las dos pruebas caerían
+      // juntas, en vez de que ésta tape a la otra.
+      'function abrirNivel(sel){[].slice.call(document.querySelectorAll(sel))' +
+      '  .forEach(function(b){if(b.getAttribute("aria-expanded")==="false")b.click();});}' +
+      'setTimeout(function(){abrirNivel("button.cl-grupo-suc");' +
+      'setTimeout(function(){abrirNivel("button.cl-grupo-per");' +
       'setTimeout(function(){' +
       'var cards=[].slice.call(document.querySelectorAll(".checklist-card"));' +
       'function suc(c){var e=c.querySelector(".cl-meta-sucursal");return e?(e.textContent||"").trim():"";}' +
@@ -230,7 +246,7 @@ function medir(esc, puerto) {
       ' sinBoton: window.__sinBoton ? 1 : 0,' +
       ' sinInput: window.__sinInput ? 1 : 0,' +
       ' ruta: location.pathname' +
-      '});},900);},900);},3400);});</script>';
+      '});},600);},600);},900);},900);},3400);});</script>';
 
     const sano = fs.readFileSync(path.join(DIST, 'index.html'), 'utf8');
     const html = sano.replace('<body>', '<body>' + iny);

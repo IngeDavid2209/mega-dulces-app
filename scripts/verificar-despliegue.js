@@ -95,7 +95,22 @@ const MARCADORES = [
   //   del encabezado de sucursal, o sea que el bundle con el codigo nuevo se
   //   sirvio. Que recorte lo prueba `scripts/prueba-buscador-y-agrupacion.js`
   //   en el DOM, y que se vea bien lo prueba una persona abriendo la app.
-  { txt: 'cl-grupo-suc', nuevo: true, que: 'el encabezado de sucursal en la lista de tareas' },
+  // 17/sep/2026 · BAJA A CONTROL: medido contra produccion antes de este
+  // despliegue, ya vale 9. Dejarlo como `nuevo` habria dado verde SIN
+  // comprobar nada del cambio de hoy, que es justo el falso positivo que este
+  // archivo lleva tres semanas evitando.
+  { txt: 'cl-grupo-suc', control: true, que: 'el encabezado de sucursal en la lista de tareas' },
+
+  // 17/sep/2026 · LA LISTA SE PLIEGA: cada encabezado es un boton que se
+  // desglosa (instruccion de David: «quiero que este dentro de botones y de
+  // ahi se desglose»). Los dos marcadores son de CSS porque el minificador se
+  // come los nombres de metodo: `alternarSuc` habria sido un FALSO POSITIVO
+  // —ya vale 2 en produccion, porque es prefijo de `alternarSucursal`, que
+  // existe en Bloques y en Venta de Promos desde hace meses— y eso se vio
+  // midiendo, no leyendo. Validados en LAS DOS DIRECCIONES antes de subir:
+  // produccion 0 y 0 · dist/ 4 y 7.
+  { txt: 'cl-grupo-flecha', nuevo: true, que: 'la flecha que gira al abrir un bloque' },
+  { txt: 'cl-grupo-abierto', nuevo: true, que: 'el estado abierto del bloque plegable' },
   // Los dos del despliegue anterior bajan a control: YA VALEN en produccion, y
   // dejarlos arriba daria verde sin comprobar nada de este.
   { txt: 'no son sitios con cuadrilla', control: true,

@@ -326,6 +326,109 @@ de que exista la plaza sería partir el problema en dos, no resolverlo.
 ## 9. Bitácora del plan
 
 
+### 17/sep/2026 — LA LISTA SE PLIEGA: cada bloque es un botón que se desglosa
+
+Instrucción de David, sobre la captura de «8 Esquinas · 42 tareas» con las tarjetas debajo:
+*«no lo quiero solo así, quiero que esté dentro de botones y de ahí se desglose»*. Y las dos
+decisiones que tomó enfrentado a las opciones con su precio: **dos niveles** (sucursal y
+persona), **todo cerrado** al entrar, y **sin recordar** nada entre sesiones.
+
+El agrupado por sucursal salió esta misma mañana, así que el defecto duró horas: los dos
+encabezados eran `<div>` de adorno y la bandeja escupía las 42 tarjetas de golpe. Para llegar a
+la tercera sucursal había que recorrer cien tarjetas con el dedo.
+
+**LO QUE NO SE HIZO, Y ES LA DECISIÓN DE FONDO.** Las tarjetas **no se envuelven** en un
+contenedor. La lista es una rejilla CSS y meterlas dentro de un `<div>` las aplastaría en una
+sola celda: se esconden con `*ngIf` y los encabezados conservan su `grid-column: 1 / -1`. Cero
+riesgo para el diseño de la tarjeta, que es lo único que ya funcionaba.
+
+**EL CONJUNTO GUARDA LOS ABIERTOS, NO LOS CERRADOS**, y con «todo cerrado» el conjunto vacío
+**es** el estado inicial. Al revés habría que registrar cada grupo que nace, y el que llegara
+sin registrar aparecería abierto: el poll de 20 s iría abriendo bloques solo cada vez que
+entrara una sucursal nueva. Es la misma decisión que ya tomó el árbol del organigrama (2–3/sep).
+
+#### ⚠ TRES BLOQUES NO SE PLIEGAN, y sin eso el cambio habría sido un desastre mudo
+
+Plegarlo todo es fácil; el riesgo es dejar a alguien mirando **botones sin sus tareas**, que se
+ve idéntico a «no tengo trabajo» (§5.2). Las tres salidas son la misma regla —plegar solo sirve
+cuando hay **entre qué elegir**—:
+
+1. **El encabezado no se pinta.** Sin botón no habría forma de volver a abrirlo.
+2. **Una sola persona en la bandeja.** Es «Mis tareas» de los **154 que entregan**: abrirían la
+   app para encontrar su propio nombre y cero tarjetas, y tendrían que pulsarse a sí mismos
+   para trabajar.
+3. **Hay búsqueda escrita.** Quien tecleó «Pasillo» ya recortó la lista; esconderle el
+   resultado detrás de un clic es deshacerle el trabajo.
+
+#### LA PRUEBA, Y LOS DOS CONTROLES NEGATIVOS
+
+`scripts/prueba-lista-plegable.js` (nueva), 6 escenarios en el DOM sobre **Enviadas** —la
+bandeja de la captura, y la única donde un supervisor ve esta rejilla: en «Pendientes del
+equipo» se pinta el árbol—:
+
+    escenario                           suc  per  tarjetas
+    entro a Enviadas (todo cerrado)       2    0         0
+    abro 8 Esquinas                       2    2         0
+    abro 8 Esquinas y a Claudia           2    2         3
+    abro Canindo (la otra sigue cerrada)  2    1         0
+    escribo en el buscador                0    1         1
+    TRABAJADORA: sus tareas, sin pulsar   0    1         3
+
+**Las cifras del fixture son distintas a propósito** (8 Esquinas 5, Canindo 2): con dos bloques
+del mismo tamaño, pulsar el equivocado daría el mismo conteo y la prueba pasaría en verde sin
+distinguir cuál se abrió. Los dos controles, **una línea cada uno**, con el `diff` comprobado
+contra una copia buena (5 126 → 5 126 líneas):
+
+| | qué se rompió | qué pasó |
+|---|---|---|
+| NEG-1 | `sucAbierta` ignora el conjunto | 6 aserciones, y la **guardia de discriminación** nombra el mecanismo: «abrir 8 Esquinas y abrir Canindo dan el mismo número de personas» |
+| NEG-2 | se quita la guarda de «una sola persona» | **exactamente 1**: la de la trabajadora, que pasa de 3 tarjetas a **0** |
+
+**NEG-2 es el que vale.** Rompe una sola fila, y es la que protege a los 154: sin esa guarda, el
+plegado de arriba seguiría viéndose precioso mientras quien entrega abre la app y no ve nada.
+
+#### DOS CONTROLES AJENOS CADUCARON, Y SE SUSTITUYEN EN ESTE MISMO COMMIT
+
+Corolario (e) en vivo: `prueba-buscador-y-agrupacion` (7 aserciones rotas, reportando «el
+buscador no filtra» sobre un buscador **intacto**) y `prueba-tareas-unidas` (abortó por falta de
+discriminación). Los dos contaban `.checklist-card`, y desde hoy esas tarjetas nacen escondidas.
+
+**No se aflojaron: se les enseñó a abrir los bloques antes de contar**, pulsando solo lo que se
+anuncia cerrado (`aria-expanded="false"`), que es **el mismo atributo** que mira la prueba nueva.
+Si alguien invirtiera ese atributo, las tres caerían juntas en vez de que una tape a la otra.
+
+#### EL MARCADOR IBA A SER UN FALSO POSITIVO, y se vio midiendo
+
+`alternarSuc` —el método nuevo— daba **2 en producción** antes de desplegar nada. No es magia:
+es prefijo de `alternarSucursal`, que vive en Bloques y en Venta de Promos desde hace meses. Un
+`grep` de subcadena no sabe dónde acaba un identificador. Los buenos son de CSS, validados en
+las dos direcciones: `cl-grupo-flecha` 0 → 4 y `cl-grupo-abierto` 0 → 7. Y `cl-grupo-suc`, que
+era el `nuevo` de esta mañana, **baja a control**: ya vale 9.
+
+**Y el heredoc se rompió otra vez** con las comillas anidadas del guion inyectado —sexta vez en
+el repo—. Se reescribió con la herramienta que no interpreta el contenido, y el guion se arma
+**uniendo un arreglo de líneas** en vez de concatenar con `+` al final de cada una: así una coma
+olvidada es un error de sintaxis en Node, no un guion truncado que se lee como «la app no pintó».
+
+**Mi propia guardia también abortó dos veces, y las dos veces tenía razón:** un `templateOutlet`
+en minúscula que no casaba con `ngTemplateOutlet`, y un fixture que le daba a la jefa una sola
+sucursal en `/api/usuarios` —la app **resincroniza el perfil** y pisa lo sembrado en la sesión—,
+así que Canindo nunca llegaba. Ninguna de las dos escribió nada: dijeron «no pude medir».
+
+**Y un esperado que puse a ojo y estaba mal:** escribí `sucBotones: 1` para el escenario del
+buscador y son **0**, porque `mostrarEncabezadoSucursal` ya decía desde antes que con un solo
+grupo el encabezado es ruido. Corregido **derivándolo de la regla**, con el porqué escrito en el
+caso para que no se lea como ajustar la expectativa al artefacto.
+
+**294 pruebas** unitarias en verde (sin tocar ninguna), más `prueba-dom-evidencia`,
+`prueba-arbol-organigrama` y `prueba-vista-por-nivel`, que siguen pasando.
+
+**Lo que esto NO hace:** no mueve ningún número de tablero, no toca la tarjeta ni
+`panel-responsables`, no hay migración, y **nadie ha entrado con una cuenta real** — los seis
+escenarios son sesiones sintéticas en Chrome headless. Falta también un «abrir todo» para quien
+tenga diez sucursales: hoy son diez clics y David no lo pidió.
+
+
 ### 17/sep/2026 — «NO ESTÁ FUNCIONANDO EL BUSCADOR»: y el agrupador no existía
 
 Reporte de David, con captura de «Enviadas del equipo»: *«no esta funcionando el buscador y

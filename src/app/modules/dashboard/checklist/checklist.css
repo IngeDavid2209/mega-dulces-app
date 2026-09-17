@@ -3727,13 +3727,46 @@
    Los cuatro tokens están comprobados en styles.css antes de escribirlos —un
    token que no existe no revienta, IGUALA, y dos jerarquías se pintarían
    idénticas sin un solo error en consola (4/sep). */
+/* ══════════ LOS DOS ENCABEZADOS SON BOTONES (17/sep/2026) ══════════
+   Dejaron de ser <div> para poder plegarse. Los resets de <button> van juntos
+   en una sola regla: sin `font: inherit` el navegador les pone su tipografia
+   de sistema y el encabezado de sucursal se veria de otra fuente que el resto
+   de la pantalla.
+
+   EL TEXTO NO SE MUEVE NI UN PIXEL respecto a como estaba: el desplazamiento
+   izquierdo era `margin: 4px` + 0 de relleno, y ahora es `margin: 0` + 4px de
+   relleno. Se cambia de sitio para que el fondo del hover cubra la banda
+   completa, no para recorrer el rotulo — dos encabezados que no caen sobre la
+   misma vertical que las tarjetas son el defecto de los 94px del 1/sep. */
+.cl-grupo-suc,
+.cl-grupo-per {
+  appearance: none; -webkit-appearance: none;
+  background: none; border: 0; color: inherit; font: inherit;
+  text-align: left; cursor: pointer; width: 100%;
+  -webkit-tap-highlight-color: transparent;
+  border-radius: var(--radius-sm);
+}
+.cl-grupo-suc:hover, .cl-grupo-per:hover { background: var(--overlay-hover); }
+.cl-grupo-suc:focus-visible, .cl-grupo-per:focus-visible {
+  outline: 2px solid var(--action); outline-offset: 2px;
+}
+
+/* La flecha apunta a la derecha cerrada y abajo abierta. Gira con la clase del
+   estado y no con un `:has()` ni un segundo icono: un solo nodo que rota no
+   puede quedar desincronizado con el contenido que describe. */
+.cl-grupo-flecha { transition: transform .15s ease; }
+.cl-grupo-abierto > .cl-grupo-flecha { transform: rotate(90deg); }
+@media (prefers-reduced-motion: reduce) {
+  .cl-grupo-flecha { transition: none; }
+}
+
 .cl-grupo-suc {
   grid-column: 1 / -1;
   display: flex;
   align-items: center;
   gap: 8px;
-  margin: 18px 4px 8px;
-  padding-bottom: 8px;
+  margin: 18px 0 8px;
+  padding: 4px 4px 8px;
   border-bottom: 1px solid var(--neutral-200);
 }
 .cl-grupo-suc:first-child { margin-top: 2px; }
@@ -3749,8 +3782,12 @@
 .cl-grupo-per {
   grid-column: 1 / -1;
   display: flex; align-items: center; gap: 8px;
-  margin: 10px 4px 2px;
+  margin: 10px 0 2px;
+  padding: 4px;
 }
+/* La flecha de la persona va mas chica que la de la sucursal: es el nivel de
+   abajo, y con el mismo tamano los dos renglones se leerian como hermanos. */
+.cl-grupo-per svg { width: 12px; height: 12px; color: var(--neutral-500); flex: 0 0 auto; }
 .cl-grupo-per-nombre {
   font-size: 12px; font-weight: 700; color: var(--neutral-600);
   letter-spacing: .5px; text-transform: uppercase;

@@ -327,6 +327,106 @@ de que exista la plaza sería partir el problema en dos, no resolverlo.
 ## 9. Bitácora del plan
 
 
+### 19/sep/2026 — UNA SOLA DEFINICIÓN DE «VENCIDA», y el impacto medido es CERO
+
+Instrucción de David: *«nadie calcula su propio tiempo»*, y frenar la limpieza
+visual hasta unificar. Su argumento era fuerte: *«si la anaquelista está sudando
+porque su tarjeta dice Vencida pero la Encargada la ve A tiempo, el sistema es
+esquizofrénico»*.
+
+**Y ese argumento venía de un reporte mío que era falso. Esta entrada existe sobre
+todo por eso.**
+
+#### LO PRIMERO FUE COMPROBAR LA PREMISA, Y SE CAYÓ
+
+Se generó un día real de entregas con `planDeEntregas` —la misma función que corre
+en el servidor— y se aplicaron las dos reglas hora por hora:
+
+    45 entregas · 45 de 45 con `time` en el checklist
+    45 de 45 donde TODOS los puntos usan la MISMA hora que el checklist
+
+    hora    arbol(viejo)  por punto  DIFIEREN
+    07:00              0          0         0
+    09:00              0          0         0
+    14:00              4          4         0
+    20:00             25         25         0
+
+**Cero diferencias.** `armarChecklist` hace `time: horaLimite` y le pone a cada
+punto ese mismo valor, así que las dos reglas **ya coincidían en todo lo que emite
+el robot**. La contradicción que reporté salía de **mi fixture de exploración**, que
+ponía `horaLimite` en los puntos sin `time` en el checklist — una forma que el robot
+nunca produce.
+
+**La previsión de «la Encargada va a ver mucho más rojo» era falsa:** no ve ninguno
+de más.
+
+> **La lección, y es sobre mí:** el fixture que use para explorar tiene que tener la
+> forma que produce el sistema, o los «hallazgos» son artefactos. Un fixture
+> inventado no solo falla en no encontrar bugs: **fabrica bugs que no existen**, y
+> éste llegó a cambiar la prioridad de un plan antes de que nadie lo comprobara.
+
+#### DÓNDE SÍ DIVERGÍAN, que es lo que esto cierra
+
+En las tareas creadas **a mano**. `checklist.ts` arma el checklist con
+`time: tareasValidas[0].time` — **la hora del PRIMER punto**. Una Tarea Única con el
+punto 1 a las 18:00 y el punto 2 a las 09:00 salía «a tiempo» en el árbol y
+«vencida» en la tarjeta, a las 10:00, sobre el mismo dato. Hay un caso de prueba con
+esa forma exacta.
+
+**Exposición actual:** la bitácora midió *«Del manual 112 · Fuera del manual 0»* en
+toda la empresa. Así que esto cierra una divergencia **latente**, no una visible.
+
+#### Y NO ERA UN PARCHE DELIBERADO
+
+La hipótesis razonable era que el `23:59` se puso para que el organigrama no se
+llenara de rojo a media mañana. `git log -L` dice otra cosa: **nació así el 28/ago**
+con el commit que introdujo el árbol, sin comentario. No se quita una indulgencia de
+negocio; se quita una incoherencia. Importa: si hubiera sido deliberada, unificar
+habría revertido una decisión de operación sin que nadie lo pidiera.
+
+#### LO QUE SE HIZO
+
+`esChecklistVencido(checklist, estaCompleto, ahora)` en `urgencia-tarea.util.ts` es
+la única regla. `vista-organigrama.ts:esVencida` pasa a ser un delegado de dos
+líneas; la línea de resumen la hereda porque ya recibía la regla inyectada.
+
+**Las dos ramas de fecha no se pierden.** La regla vieja tenía `if (date < hoy)
+return true` y `if (date > hoy) return false`; la nueva las cubre calculando el
+límite sobre `c.date`. Hay dos casos que las fijan: **quitar una rama por «es
+equivalente» sin probarlo es como se pierden los bordes.**
+
+#### VERIFICADO EN LAS DOS DIRECCIONES
+
+Un cambio que no cambia nada en ningún sitio es indistinguible de uno que no se
+aplicó, así que hacen falta las dos mitades:
+
+- **No-op donde debe:** los **doce** arneses del módulo en verde, más el móvil.
+  **Cero fixtures cambian de estado.**
+- **Efecto donde debe:** el fixture divergente pasa de **«6 a tiempo» a «6
+  vencidas»**, y la columna del árbol muestra 6/2/3/1 donde iba en blanco.
+
+**354 pruebas** unitarias (345 → 354). Desplegado y verificado: marcador nuevo
+servido, **37 controles en pie**.
+
+#### Y LA COLUMNA DEJA DE LLAMARSE «Venc.»
+
+Una abreviatura ahorra cuatro píxeles y cuesta medio segundo de descifrado por
+lectura, todos los días: esa cuenta sale siempre mal. Y hasta hoy **mentía a
+medias**, porque la contaba con la regla permisiva del árbol y no con la que ve
+quien trabaja. Es además el marcador del despliegue: unificar es lógica pura y no
+introduce ninguna cadena propia (el mismo caso de la Fase 2.1).
+
+#### LO QUE ESTO NO HACE
+
+- **Nadie ha entrado con una cuenta real.**
+- **No cambia un solo número en producción hoy**, y eso está medido, no supuesto.
+- **`checklist.ts` sigue armando el checklist con la hora del primer punto.** Esto
+  hace que ya no importe para juzgar el retraso —todos leen por punto— pero el campo
+  `time` del checklist sigue siendo engañoso para cualquiera que lo lea en crudo.
+- Siguen los **22 controles** y los **529px** de cromo antes del árbol en teléfono.
+  Ésa es la Capa 2.
+
+
 ### 18/sep/2026 — CAPA 1: la línea que contesta «¿quién no ha entregado?»
 
 Diagnóstico acordado con David, y es la premisa de todo lo que sigue: **abrumar no

@@ -327,6 +327,172 @@ de que exista la plaza sería partir el problema en dos, no resolverlo.
 ## 9. Bitácora del plan
 
 
+### 19/sep/2026 (tarde) — REVISIÓN DE PERMISOS: el cable estaba abierto, y el menú gateaba solo
+
+Instrucción de David: revisar cómo se otorgan los privilegios, «hay un mal acomodo
+entre los encargados, jefes de zona, auxiliares», y reformularlo **respetando la
+jerarquía del organigrama**, con el correo del dueño como única excepción.
+
+Se midieron las **reglas** (código compilado con `tsc`, no parseado). **No los datos
+de hoy**: sin `DATABASE_URL` de producción no se sabe qué banderas trae cada ficha.
+
+#### LO QUE DESTAPÓ LA MEDICIÓN — y lo peor no era el acomodo
+
+**1 · No hay una definición de rango, hay CUATRO**, y las dos que leen el mismo
+organigrama se contradicen en **6 puestos**:
+
+    coordinador-cajas         coordinacion  esJefatura=false  alcance=sucursal
+    coordinador-piso-ventas   coordinacion  esJefatura=false  alcance=sucursal
+    jefe-mantenimiento        jefatura      esJefatura=false  alcance=unidad
+    caja-general              operativo     esJefatura=true   alcance=propio
+    servicios-al-personal     operativo     esJefatura=true   alcance=propio
+    reclutamiento-onboarding  operativo     esJefatura=true   alcance=propio
+
+Los tres de abajo **pasan por jefatura porque tienen un practicante colgando**.
+Medido en el menú real: ven `/home /pase-lista /plantilla`, contra `/tareas /agenda`
+de un anaquelista. `esJefatura` lee la arista equivocada — el rango está en `nivel`,
+no en `tieneSubordinados`.
+
+**2 · El mapa de privilegios cubre 28 de 89 puestos** y contradice al catálogo en 6.
+`auxiliar-encargado` (operativo, 0 subordinados) recibe **el mismo perfil que el
+Encargado** — es literalmente lo que David nombró. Y **11 puestos CON gente debajo no
+tienen perfil**, así que conservan lo que traiga su ficha: entre ellos
+`gerencia-admin-financiera` (6 directos), `jefatura-cedis`, `coordinador-operaciones-zona`
+(8). La asimetría que lo retrata: `supervisor-ventas-rd` tiene perfil y
+`supervisor-ventas-vecinal` no, mismo nivel y 3 personas debajo.
+
+**3 · Las 9 banderas de gestión son equivalentes.** Medido una por una sobre un
+anaquelista: **cualquiera** de ellas da `esSupervisor=true` → `puedeFiltrarVista` →
+deja de ver solo lo suyo y ve **las tareas de toda su sucursal**. Las etiquetas
+prometen cosas distintas y conceden la misma. Y la ficha es un trinquete
+(`personal.ts:669-679`): con rol admin se fuerzan las nueve a `true`, y al bajar el
+rol **no se apagan**.
+
+**4 · El servidor no autorizaba.** De **68 endpoints**, 47 verifican el token y **7
+comprueban algo más**. `api/_crud.js` —**14 tablas**— no tenía ningún gancho: cualquier
+sesión válida podía reescribir la plantilla de una sucursal o publicar una norma.
+
+**5 · El menú gateaba y la ruta no, en CINCO rutas.** La lección del 13/sep («el menú
+no es un permiso») se había aplicado a `/personal` y no se barrió. La peor:
+`/reportes`, **1 492 líneas sin una sola comprobación** — una anaquelista que en
+`/tareas` solo ve lo suyo, ahí veía la auditoría completa de su sucursal.
+
+**Escala: 400 condiciones de permiso en 63 archivos** del cliente.
+
+#### LO QUE SE HIZO HOY (pasos B1 y B2, dos commits, UN despliegue)
+
+**B1 — la escritura de la estructura se autoriza en el servidor.** Gancho `autorizar`
+**opcional** en el factory (los otros 10 endpoints se comportan idéntico), declarado en
+`plantillas`, `plazas`, `puestos-declarados` y `tareas-puesto`. La regla **no se
+reescribe: se importa** — `esAdminGlobal` y `esJefatura` viajan compiladas a
+`dist/manual`, las mismas que usa el navegador, y `compilar-manual.js` aborta el build
+si tsc deja de emitirlas.
+
+**B2 — cinco guards de ruta**, con la condición en `shared/audiencias.ts`, que importan
+**el menú y el guard**. No pueden desalinearse porque no hay dos cosas que alinear.
+`/descansos` tenía una tercera copia escrita a mano dentro del componente; ahora llama
+al predicado compartido.
+
+#### MI PREMISA ERA FALSA, Y ESO CAMBIÓ EL CANDADO
+
+Propuse «solo admin» para la plantilla dándolo por hecho. `plantilla.ts:249` dice otra
+cosa: **se abrió a cada jefatura para su sucursal el 13/sep**, por instrucción de David
+(«déjalo libre — como crea tu plantilla de tu sucursal»). Un candado de solo-admin
+habría roto exactamente lo que se había abierto. La guardia es el espejo de esa regla.
+
+**Y el PATCH no manda sucursal.** `plantilla.ts:434` manda `{ cantidad }` y nada más,
+así que la guardia la resuelve **de la fila**. Sin eso rechazaría a toda jefatura que
+corrigiera una cantidad y solo pasaría Dirección: un candado que solo funciona en el
+POST rompe el trabajo de todos los días.
+
+#### `/api/coberturas` QUEDA FUERA, A PROPÓSITO Y MEDIDO
+
+Lo escribe el pase de lista (una Encargada, que **no** es admin) **y** `login.ts:369`
+**con el token de plaza**, para registrar la suplencia de quien entró. O sea que las dos
+reglas obvias —«solo admin» y «la plaza no»— romperían un flujo vivo. Se cierra con el
+rango unificado y su arnés. **Hasta entonces sigue abierto, y está dicho en la cabecera
+de `_autorizar.js`.**
+
+#### SE FALLA ABIERTO, COPIADO DE `api/usuarios.js` Y POR SU MISMO MOTIVO
+
+Hay filas con el `rol` vacío (ids `admin`, `admin-local`) y sesiones sin ficha, así que
+«no lo reconozco» **no es** «es un trabajador». Cada paso por la excepción se anota en
+el log. La **única** excepción es el token de plaza, y es reconocimiento **positivo**
+(`rol: 'plaza'`), no ausencia de dato.
+
+**Y el token no lleva rango:** `_auth.js:59` devuelve `{uid, rol}` y el respaldo de
+Firebase devuelve el token de Google, **sin rol**. Una autorización escrita como
+`rol === 'admin'` a secas habría bloqueado a un administrador con sesión vieja, con un
+403 que parece un permiso mal puesto. Por eso se resuelve la ficha.
+
+#### LAS PRUEBAS, Y LOS CUATRO CONTROLES NEGATIVOS
+
+`prueba-autorizacion-crud.js` (nuevo): **16 afirmaciones**, sin credenciales ni
+producción (JWT_SECRET local + base simulada; **las reglas sí son las reales**). Aborta
+si falta `dist/manual`, porque sin él la autorización pasa todo y la tabla saldría verde
+sin medir.
+
+`prueba-guards-ruta.js` (nuevo): **48 mediciones en el DOM**, 6 rutas × 8 sesiones.
+Entrar = la URL se queda **Y** el componente se monta: solo la URL no basta, una ruta
+puede conservar su path y pintar en blanco.
+
+| | qué se rompió (una línea, `diff` comprobado) | qué pasó |
+|---|---|---|
+| NEG-1 | la guardia del factory no corre | 6 fallos nombrando cada fila; los 4 permitidos **no se mueven** |
+| NEG-2 | no resuelve la sucursal de la fila | **exactamente 1** fallo, y es el PATCH de la Encargada — el que protege el trabajo diario. Un control que solo mirara «¿deniega?» habría dado **verde** |
+| NEG-3 | `/reportes` vuelve a `authGuard` solo | 4 filas rotas reproduciendo el hueco literal; las otras 4 rutas intactas |
+| NEG-4 | `veDescansos` devuelve `true` | rompe **LAS DOS** pruebas con una línea: el menú (escalada) y el guard. Es la prueba de que una sola definición gobierna las dos |
+
+**Y LOS DOS ARNESES SE CORRIGIERON A SÍ MISMOS, con la misma falla.** Los dos abortaban
+por falta de discriminación **antes** de reportar los fallos, así que con el candado
+apagado decían **«no pude medir» (código 3) tapando las filas que nombraban el
+defecto**. «No medí» y «está roto» son conclusiones opuestas (§8.11 a). Ahora los fallos
+hablan primero y las guardias de integridad solo cuando todo lo demás pasó.
+
+#### DESPLEGADO Y VERIFICADO
+
+    marcador .. ruta-cerrada-para-tu-perfil  0 -> 1 servido · 38 controles en pie
+                66 archivos · 4.50 MB · 0 fallos de lectura
+    endpoints . los 5 de estructura montados y en 401 · tareas-puesto DELETE en 405
+    log ....... arranca, migraciones al dia, el emisor carga su regla (ventana de 12
+                lineas: una ausencia ahi no concluye por si sola)
+    espera .... 4 vueltas, anclada al rotulo `status:` y a la LINEA COMPLETA
+
+El marcador es la línea de consola del rebote, y **hacía falta igual**: cerrar rutas es
+lógica pura y sin ella quien sigue un enlace viejo aterriza en sus tareas sin ninguna
+pista, lo reporta como «la app me saca», y no hay error que buscar. Validado en las dos
+direcciones antes de subir. **354 pruebas** unitarias y `prueba-menu-audiencias` con
+**0 diferencias**: los 15 perfiles ven exactamente las mismas rutas que antes.
+
+#### UN CAMBIO DELIBERADO, Y ES EL ÚNICO
+
+`audiencias.ts` usa el `esAdmin` canónico (`esDueno || rol === 'admin'`) y no el
+`rol === 'admin'` que `nav.config.ts` tenía **sombreado**. Hoy no hay diferencia real
+—la sesión del dueño trae rol admin forzado en dos sitios independientes— pero estos
+predicados ya no pintan un menú: **cierran puertas**. Solo puede afectar a un correo, así
+que no ensancha el acceso de nadie más. Medido: entra a las cinco rutas **sin**
+`rol: 'admin'`.
+
+#### LO QUE ESTO NO HACE, dicho para que no se lea como resuelto
+
+- **NO arregla el acomodo que David reportó.** Eso es el paso C (un solo `rangoDe()`
+  derivado del `nivel`) y el D (el mapa de los 89 puestos, que **decide Dirección**).
+  Hoy `auxiliar-encargado` sigue con perfil de mando.
+- **Decisión tomada y sin implementar:** el Auxiliar de Encargado **cubre, no manda** —
+  su autoridad sale de la cobertura del día, no de una bandera permanente. La pieza
+  existe desde el 13/sep.
+- **`/api/coberturas` sigue abierto** por el cable, y los otros 10 endpoints del factory
+  también. Se cierran de a poco, cada uno con su medición.
+- **Ninguna autorización se probó contra producción con un token real**, a propósito
+  (§8.6): el mecanismo está probado localmente contra las reglas reales.
+- **Nadie ha entrado con una cuenta real.** Las 48 mediciones son sesiones sintéticas en
+  Chrome headless.
+- **Cero migraciones y ningún número de tablero se movió.**
+
+**Cifra del hallazgo 7 actualizada de paso:** son **36 de 68** endpoints con
+`Access-Control-Allow-Origin: *` (el §3 dice 33 de 60).
+
+
 ### 19/sep/2026 — UNA SOLA DEFINICIÓN DE «VENCIDA», y el impacto medido es CERO
 
 Instrucción de David: *«nadie calcula su propio tiempo»*, y frenar la limpieza

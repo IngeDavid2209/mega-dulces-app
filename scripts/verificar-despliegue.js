@@ -153,7 +153,18 @@ const MARCADORES = [
   // 0 en produccion. Lo que este marcador prueba es que el codigo llego; que
   // los guards GATEEN lo prueban las 48 mediciones en el DOM de
   // `prueba-guards-ruta.js` y sus dos controles negativos.
-  { txt: 'ruta-cerrada-para-tu-perfil', nuevo: true,
+  // 19/sep/2026 (tarde) · el rango deja de salir de «tiene alguien debajo».
+  // Otra vez logica pura sin cadena propia, asi que el marcador es la linea que
+  // `estructuraGuard` escribe al rebotar — y hacia falta igual: ESTE cambio es
+  // el que empieza a rebotar gente de /plantilla, y hasta hoy rebotaba mudo.
+  // Se distingue del mensaje de los otros cinco guards a proposito: alla falta
+  // una bandera, aqui falta RANGO, y eso es lo que hay que poder leer.
+  // Validado en las dos direcciones: 1 en dist/, 0 en produccion (66 archivos,
+  // 4.47 MB, 0 fallos de lectura — sin esa cifra el cero no vale).
+  { txt: 'sin-rango-de-mando', nuevo: true,
+    que: 'el rango sale del nivel del puesto, no de quien cuelgue de ti' },
+  // El del despliegue anterior baja a control: YA VALE en produccion.
+  { txt: 'ruta-cerrada-para-tu-perfil', control: true,
     que: 'los 5 guards de /reportes, /cierre-mensual, /manual-puestos, /descansos y /tareas-asignadas' },
   // El del despliegue anterior baja a control: YA VALE en produccion, y
   // dejarlo como `nuevo` daria verde sin comprobar nada de hoy.

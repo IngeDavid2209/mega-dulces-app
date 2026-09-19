@@ -147,5 +147,16 @@ if (ganan === 0 && pierden === 0) {
 console.log('✓ niveles ejercidos: %s', [...nivelesEjercidos].sort().join(', '));
 console.log('✓ la comparación DISCRIMINA: hay %d diferencia(s) entre las dos reglas.', ganan + pierden);
 console.log('');
-console.log('NADA DE ESTO ESTÁ APLICADO. `alcance.util.ts` no está enganchado a ningún guard,');
-console.log('menú ni consulta: es solo el cálculo, para decidir con la tabla enfrente.');
+// ⚠ ESTA FRASE DECÍA «NADA DE ESTO ESTÁ APLICADO. `alcance.util.ts` no está
+// enganchado a ningún guard, menú ni consulta», y llevaba SEIS DÍAS siendo
+// falsa: desde el 13/sep ese archivo gobierna el menú y cuatro guards. Un
+// script que imprime una media verdad en cada corrida la vuelve doctrina
+// (§8.11 f) — y ésta invitaba a tocar el archivo creyéndolo inerte.
+console.log('LA TABLA DE ARRIBA (Amplitud) SIGUE SIENDO SOLO CÁLCULO: `alcancePropuesto`');
+console.log('y `alcanceActual` no están enganchados a ningún guard, menú ni consulta.');
+console.log('');
+console.log('Lo que SÍ está vivo del mismo archivo, y no sale en esta tabla: `esJefatura`,');
+console.log('`hayTableroPara`, `verNivelEmpresa` y `veUsuarios` gobiernan el menú y cuatro');
+console.log('guards desde el 13/sep. `esJefatura` cambió el 19/sep —el rango sale del nivel');
+console.log('del puesto, no de quién cuelgue de ti— y su impacto lo mide');
+console.log('`scripts/impacto-rango-unificado.js`, no este script.');

@@ -1,27 +1,36 @@
 /**
- * 🎚️ ALCANCE POR RANGO DEL ORGANIGRAMA — paso 1: se calcula, NO se aplica
+ * 🎚️ ALCANCE Y RANGO DESDE EL ORGANIGRAMA
  *
  * ═══════════════════════════════════════════════════════════════════════════
- *  ESTE ARCHIVO TODAVÍA NO CAMBIA LO QUE VE NADIE
+ *  ⚠ LA CABECERA ANTERIOR ESTÁ DEROGADA — decía lo contrario de lo que pasa
  * ═══════════════════════════════════════════════════════════════════════════
- * Hoy el alcance sale de banderas: `rol`, `alcance`, `sucursales[]` y 34
- * `puedeXxx`. Eso funciona pero no dice nada de la estructura: un Gerente de
- * Zona ve su zona porque alguien le puso las sucursales a mano en su ficha, no
- * porque su puesto esté arriba de ellas. El día que abren una sucursal, hay que
- * acordarse de editar fichas.
+ * Este archivo nació el 2/sep diciendo, con estas palabras:
  *
- * La regla que se quiere es la del modelo: **el alcance se deriva del rango en
- * el organigrama**. Y el rango YA EXISTE — `nivel` en cada uno de los 89
- * puestos: direccion · gerencia · jefatura · coordinacion · supervision ·
- * operativo · practicante.
+ *     «ESTE ARCHIVO TODAVÍA NO CAMBIA LO QUE VE NADIE […] Nada de este archivo
+ *      está enganchado a un guard, a un menú ni a una consulta.»
  *
- * Pero cambiar quién ve qué para 186 personas de un golpe es exactamente cómo
- * se deja a una zona entera sin menú un lunes a las siete de la mañana. Así que
- * este paso solo CALCULA el alcance propuesto, en paralelo al de las banderas,
- * para poder comparar los dos y decidir con la tabla enfrente.
+ * Era verdad ese día y dejó de serlo el 13/sep, cuando `esJefatura`,
+ * `hayTableroPara` y `veUsuarios` pasaron a gobernar el menú, `home.guard`,
+ * `estructuraGuard` y `usuariosGuard`. **Nadie actualizó el texto**, así que
+ * durante seis días el archivo afirmaba ser inerte mientras cerraba pantallas.
+ * Se cita aquí en vez de borrarlo para que nadie lo relea como vigente, que es
+ * exactamente lo que hizo la Fase 2.1 con la regla de cumplimiento.
  *
- * `scripts/prueba-alcance-por-nivel.js` imprime esa comparación. Nada de este
- * archivo está enganchado a un guard, a un menú ni a una consulta.
+ * ─── QUÉ ESTÁ VIVO Y QUÉ SIGUE SIENDO CÁLCULO ─────────────────────────────
+ *   VIVO      `esJefatura` · `hayTableroPara` · `verNivelEmpresa` · `veUsuarios`
+ *             — los usan el menú, cuatro guards y el tablero.
+ *   CÁLCULO   `Amplitud` · `alcancePropuesto` · `alcanceActual` ·
+ *             `compararAlcance` — siguen sin engancharse a nada. Son la
+ *             comparación que imprime `scripts/prueba-alcance-por-nivel.js`,
+ *             para poder decidir el alcance por rango con la tabla enfrente en
+ *             vez de cambiarle la vista a 186 personas de un golpe.
+ *
+ * ─── LO QUE SIGUE SIENDO CIERTO, Y ES EL PORQUÉ DE TODO ESTO ──────────────
+ * El alcance sale de banderas: `rol`, `alcance`, `sucursales[]` y 19 `puedeXxx`.
+ * Funciona y no dice nada de la estructura: un Gerente de Zona ve su zona
+ * porque alguien le puso las sucursales a mano, no porque su puesto esté
+ * arriba de ellas. El rango YA EXISTE en el catálogo —`nivel`, en los 89
+ * puestos— y es de ahí de donde tiene que salir.
  */
 
 import { NivelPuesto, puestoPorId, tieneSubordinados } from './organigrama.catalogo';
@@ -162,26 +171,85 @@ export function compararAlcance(usuario: any): Diferencia {
 
 
 /**
- * ¿Es JEFATURA? Es decir: ¿tiene gente debajo en el organigrama?
+ * ¿Es JEFATURA? Manda quien tiene gente debajo **Y** cuyo nivel es de mando.
  *
- * ─── POR QUE ASI Y NO CON UNA LISTA DE NIVELES ────────────────────────────
- * "Jefatura" tiene un nivel con ese nombre en el catalogo, pero tomarlo
- * literal dejaria fuera a Direccion y a las Gerencias, que estan ARRIBA de
- * jefatura. Y una lista escrita a mano -direccion, gerencia, jefatura,
- * coordinacion...- hay que acordarse de actualizarla cada vez que el
- * organigrama cambie, que es justo lo que nadie hace.
+ * ─── POR QUE NO ES SOLO «TIENE GENTE DEBAJO» (corregido el 19/sep) ────────
+ * Aqui decia: «la definicion que no envejece es la operativa: manda quien tiene
+ * a alguien reportandole. Sale del mismo `reportaA` del que sale la piramide,
+ * asi que el dia que Capital Humano publique un organigrama nuevo, esto se
+ * mueve solo». El argumento es bueno y la mitad sigue en pie — pero medido,
+ * esa arista sola alcanzaba a tres puestos OPERATIVOS por tener un practicante
+ * colgando, y les daba `/pase-lista` y `/plantilla`. El detalle esta en el
+ * cuerpo de la funcion, con las cifras.
  *
- * La definicion que no envejece es la operativa: manda quien tiene a alguien
- * reportandole. Sale del mismo `reportaA` del que sale la piramide, asi que el
- * dia que Capital Humano publique un organigrama nuevo, esto se mueve solo.
+ * ─── POR QUE NO ES SOLO «SU NIVEL MANDA» ──────────────────────────────────
+ * La objecion original a la lista de niveles tambien sigue en pie en parte:
+ * tomar el nivel `jefatura` LITERAL dejaria fuera a Direccion y a las
+ * Gerencias, que estan arriba. Por eso `NIVELES_DE_MANDO` no es una lista
+ * suelta: es el mismo corte que ya hace `alcanceDeNivel()`, y hay una prueba
+ * que revienta si el catalogo gana un nivel y nadie la actualiza.
+ *
+ * Y sola tampoco sirve: ENSANCHA. Medido sobre los 89 puestos, daria mando a
+ * dos coordinadores con cero subordinados declarados.
  *
  * Los admins pasan siempre: el rol de sistema no depende del organigrama, y
  * dejar a un admin sin su tablero por una ficha sin puesto seria peor.
  */
+/**
+ * Los niveles que MANDAN.
+ *
+ * No es una lista escrita a mano fuera del catálogo: es el mismo corte que ya
+ * hace `alcanceDeNivel()` doce líneas más arriba —los que reciben un ámbito
+ * (empresa · unidad · zona · sucursal) contra los que reciben 'propio'—. Si
+ * algún día el organigrama gana un nivel, los dos sitios se actualizan juntos
+ * o la contradicción salta en las pruebas.
+ */
+export const NIVELES_DE_MANDO: NivelPuesto[] =
+  ['direccion', 'gerencia', 'jefatura', 'coordinacion', 'supervision'];
+
 export function esJefatura(usuario: any): boolean {
   if (esAdmin(usuario)) return true;
   const r = resolverPuesto(usuario);
-  if (tieneSubordinados(r.puestoId)) return true;
+
+  // ═══════════════════════════════════════════════════════════════════════
+  //  TENER UN PRACTICANTE DEBAJO NO ES MANDAR (19/sep/2026)
+  // ═══════════════════════════════════════════════════════════════════════
+  // Aquí decía solo `if (tieneSubordinados(r.puestoId)) return true;`, y el
+  // argumento escrito era bueno: la definición operativa —manda quien tiene a
+  // alguien reportándole— no envejece cuando el organigrama cambia, mientras
+  // que una lista de niveles hay que acordarse de actualizarla.
+  //
+  // Medido, esa arista resultó ser la equivocada. Tres puestos de nivel
+  // OPERATIVO pasaban por jefatura solo porque el catálogo les cuelga un
+  // practicante, y con eso se llevaban `/pase-lista` y `/plantilla`:
+  //
+  //     caja-general              operativo   1 directo (un practicante)
+  //     servicios-al-personal     operativo   1
+  //     reclutamiento-onboarding  operativo   1
+  //
+  // Un Analista de Caja General no decide cuántas plazas autoriza una
+  // sucursal. El rango está en `nivel`, que también vive en el catálogo: no se
+  // cambia una fuente automática por una lista a mano, se cambia una columna
+  // del catálogo por otra del MISMO catálogo.
+  //
+  // ─── Y SE PIDEN LAS DOS COSAS, NO SOLO EL NIVEL ────────────────────────
+  // La regla podría ser «su nivel manda» a secas. Medido, eso ENSANCHA:
+  // `coordinador-cajas` y `coordinador-piso-ventas` son `coordinacion` con
+  // CERO subordinados declarados, así que ganarían `/plantilla` — y dar la
+  // definición de cuántas plazas autoriza una tienda es la dirección
+  // peligrosa (11/sep). Exigir las dos deja este cambio en «solo quita»:
+  // medido sobre los 89 puestos, **2 pierden y 0 ganan**.
+  //
+  // Si Dirección decide que esos dos coordinadores sí mandan, la respuesta no
+  // es aflojar esto: es declarar sus subordinados en el organigrama, que es
+  // donde esa verdad pertenece (§8.5).
+  if (tieneSubordinados(r.puestoId)) {
+    const p = r.puestoId ? puestoPorId(r.puestoId) : null;
+    if (p && NIVELES_DE_MANDO.indexOf(p.nivel) !== -1) return true;
+    // Cae a la red de abajo a propósito: si además trae banderas de gestión
+    // sigue siendo supervisor, y eso es correcto por otra vía —es el caso de
+    // `servicios-al-personal`, que administra fichas de personal de verdad.
+  }
 
   // ── LA RED, y no es un parche: es lo que evita castigar un hueco de datos ──
   //

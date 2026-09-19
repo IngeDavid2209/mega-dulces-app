@@ -104,7 +104,22 @@ export const estructuraGuard: CanActivateFn = () => {
     const s = localStorage.getItem('md_sesion_actual');
     u = s ? JSON.parse(s) : null;
   } catch { u = null; }
-  return esJefatura(u) ? true : router.createUrlTree(['/tareas']);
+  if (esJefatura(u)) return true;
+
+  // ── ESTE GUARD EMPEZÓ A REBOTAR GENTE EL 19/sep, Y REBOTABA MUDO ────────
+  //
+  // Ese día `esJefatura` dejó de dar mando por tener un practicante debajo, y
+  // con eso `caja-general` y `reclutamiento-onboarding` perdieron `/plantilla`
+  // y `/pase-lista`. Quien tuviera cualquiera de las dos en un enlace o en el
+  // historial del navegador aterriza ahora en sus tareas sin ninguna pista —y
+  // lo va a reportar como «la app me saca», sin que haya error que buscar.
+  //
+  // Se distingue del rebote de los otros cinco guards (`rutas.guards.ts`)
+  // porque el motivo es distinto y eso es lo que hay que poder leer: allá
+  // falta una bandera, aquí falta RANGO. Con un solo mensaje para los dos,
+  // diagnosticarlo obliga a ir a mirar el código.
+  console.warn('[acceso] sin-rango-de-mando: /plantilla y /pase-lista piden jefatura -> /tareas');
+  return router.createUrlTree(['/tareas']);
 };
 
 /**

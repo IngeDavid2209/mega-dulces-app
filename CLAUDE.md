@@ -327,6 +327,107 @@ de que exista la plaza sería partir el problema en dos, no resolverlo.
 ## 9. Bitácora del plan
 
 
+### 18/sep/2026 — REVISIÓN DE USUARIO FINAL (2/3): el árbol, y una optimización que NO se hizo
+
+Instrucción de David: meterse a fondo en las secciones de Tareas y hacerlas **más
+óptimas**, en las dos lecturas —más simple de usar y más ligera—. Eligió las cuatro
+zonas del módulo.
+
+#### LO PRIMERO FUE MEDIR SI HABÍA ALGO QUE OPTIMIZAR. NO LO HABÍA.
+
+El inventario estático daba miedo: **447 KB** de chunk, **76 de 487 clases CSS sin
+usar**, **40 de 263 métodos sin una sola llamada** y —lo que parecía el hallazgo—
+**135 llamadas a método dentro de un `*ngFor`**, que corren por fila y por ciclo de
+detección. Es la familia exacta de la caída del 1/sep, así que iba directo a eso.
+
+**La medición lo mató.** Prueba de escala con tres tamaños, tiempo real (sin reloj
+virtual: comprime los temporizadores y cualquier milisegundo sería ficción):
+
+    tarjetas   nodos   ms/ciclo
+           5     266       9.85
+          30   1 041       9.59
+         112   3 583      10.30
+
+**22.4× más tarjetas cuestan 1.0× por ciclo.** El ~10 ms es el coste fijo del
+`setTimeout` del propio arnés, no trabajo por fila. Las 135 llamadas **no cuestan
+nada**: son un hallazgo estático, no un problema. Optimizarlas habría sido dos días
+de trabajo para mover cero.
+
+> **Y el primer instrumento mintió, de forma estable.** La versión inicial daba
+> **0.03 ms/ciclo y 0 mutaciones** con 3 583 nodos — que se lee como «la app vuela».
+> Era un bucle `for` apretado de 30 clics: zone.js dispara la detección en
+> `onMicrotaskEmpty`, o sea DESPUÉS de la tarea actual, así que los 30 eventos se
+> encolaban y la detección corría una vez al final, fuera de la ventana medida.
+> Lo destapó ponerle un **control que pulsa una pestaña que sí cambia el DOM** y
+> exigir mutaciones > 0: dio 14, y con los clics separados por un yield las cifras
+> pasaron a ser reales. Un «demasiado bueno» es tan sospechoso como un cero.
+
+**Lo que esto deja escrito, y vale para la próxima:** en este módulo, **el peso y la
+mantenibilidad son reales; la velocidad no**. Las 76 clases y los 40 métodos muertos
+siguen siendo deuda —de lectura y de descarga—, pero **no** de tiempo de respuesta, y
+venderlos como «la app irá más rápida» sería falso.
+
+#### EL ÁRBOL DE LA ENCARGADA: ARREGLADO Y DESPLEGADO
+
+El defecto aislado ayer, cerrado. La causa **no** era que el padre heredara mal el
+conteo —`entregasArbol` cuenta la rama y eso alimenta la columna RAMA—: era **el
+orden de la pregunta**. La salida de «servicio a» se evaluaba antes de bajar, así que
+el primer nodo del recorrido cumplía las dos condiciones en cuanto hubiera **una sola
+entrega en toda la empresa**, y el recorrido se detenía ahí con la empresa colgando.
+Un ancestro del propio puesto nunca es «servicio a»: es el camino a casa.
+
+**La prueba nueva no podía ser solo «la raíz es su puesto»**: eso lo pasaría un
+arreglo que borrara la salida de «servicio a» entera, y con ella una Encargada
+dejaría de ver a la gente de otras áreas que trabaja en su tienda.
+
+    escenario                     entregas  raíces  cruzadas  título            raíz
+    CON trabajo (6 entregas)             5       2         3  Mi equipo         Encargado(a)
+    SIN trabajo (0 entregas)             0       1         0  Mi equipo         Encargado(a)
+    solo lo suyo (sin lo ajeno)          4       1         0  Mi equipo         Encargado(a)
+    CONTRASTE: Dirección ve todo         6       1         0  Organigrama 2026  Dirección General
+
+**Control negativo, una línea:** caen 4 aserciones, una reproduce la captura literal,
+y destapa algo que no se venía a buscar —sin la condición, con trabajo **solo suyo**
+salían **6 pastillas «servicio a»**, o sea que la app marcaba su propia rama como de
+otro—. Y la fila de 0 entregas **sigue verde**: es exactamente por lo que esto vivió
+una semana desplegado.
+
+**El título dice de quién es el árbol.** Desde que arranca en el puesto de quien
+entra, «Organigrama 2026» nombra otra cosa. Además es el marcador del despliegue: el
+arreglo es lógica pura y no introduce ninguna cadena propia (el mismo caso de la
+Fase 2.1), así que sin esa línea el despliegue habría sido inverificable.
+
+#### TRES ERRORES MÍOS, Y LOS TRES SON DE PREMISA — no de código
+
+1. **Escribí en un comentario que el filtro «Solo con manual» se comía la entrega de
+   un vendedor.** Es falso: la poda conserva todo puesto con entregas del día. Lo que
+   faltaba era otra cosa (la entrega de la propia Encargada: «del equipo» es estricto
+   desde el 14/sep). Corregido en el archivo, porque **una explicación equivocada en
+   un comentario se cita después como si fuera dato**.
+2. **Puse `alcance: 'todas'` en la sesión de Dirección. ESE VALOR NO EXISTE** — la app
+   usa `'global'` y `'sucursales'` (`permisos.util.ts:78` y `:95`). Con el inventado,
+   el árbol contó **0 entregas**, y estuve a un paso de reportar «un administrador ve
+   la operación vacía». Con los dos valores reales cuenta las 6: **no hay defecto**.
+   Es el §8.5 mordiendo en un fixture: inventé un dato y casi produce una alarma.
+3. **Un aislamiento que midió tres veces el mismo archivo.** Para separar qué campo
+   causaba el cero corrí tres variantes… con `cp` de bash a `/tmp` y `python` de
+   Windows, que no ve esa ruta. Los tres reemplazos fallaron, las tres corridas
+   usaron el mismo fichero y dieron el mismo número. **Los *tracebacks* estaban en
+   pantalla y casi leo la tabla como resultado.** Rehecho con una ruta que las dos
+   herramientas ven y con un `assert` de no-op.
+
+#### LO QUE ESTO NO HACE
+
+- **Nadie ha entrado con una cuenta real.** Todo son sesiones sintéticas.
+- **La Encargada sigue sin poder contestar «¿quién no ha entregado hoy?» de un
+  golpe.** El árbol ya arranca donde debe, pero la pregunta que ella abre la app para
+  contestar aún necesita abrir ramas.
+- **Los tres asistentes de creación no se han tocado** (7 pasos para una tarea única,
+  y los 14 `alert()` nativos que quedan viven ahí).
+- **Las 76 clases y los 40 métodos muertos siguen ahí**, ahora con su justificación
+  correcta: son deuda de peso y de lectura, no de velocidad.
+
+
 ### 18/sep/2026 — REVISIÓN DE USUARIO FINAL (1/3): el envío de la anaquelista
 
 Instrucción de David: revisar el módulo de Tareas **actuando como usuario final

@@ -109,8 +109,18 @@ const MARCADORES = [
   // existe en Bloques y en Venta de Promos desde hace meses— y eso se vio
   // midiendo, no leyendo. Validados en LAS DOS DIRECCIONES antes de subir:
   // produccion 0 y 0 · dist/ 4 y 7.
-  { txt: 'cl-grupo-flecha', nuevo: true, que: 'la flecha que gira al abrir un bloque' },
-  { txt: 'cl-grupo-abierto', nuevo: true, que: 'el estado abierto del bloque plegable' },
+  // Los dos del plegado bajan a CONTROL: ya valen en produccion, asi que
+  // dejarlos como `nuevo` habria dado verde sin comprobar nada de hoy.
+  { txt: 'cl-grupo-flecha', control: true, que: 'la flecha que gira al abrir un bloque' },
+  { txt: 'cl-grupo-abierto', control: true, que: 'el estado abierto del bloque plegable' },
+  // ── 18/sep/2026 · el envio de la anaquelista ───────────────────────────
+  // Los tres son CSS y texto literal, no nombres de funcion: el minificador se
+  // come `motivoSinPrueba` pero respeta las clases y las cadenas. Validados en
+  // las dos direcciones antes de subir: 4/11/3 en dist, 0 en produccion.
+  { txt: 'sp-modal', nuevo: true, que: 'el modal que sustituye al confirm() del navegador' },
+  { txt: 'cl-reloj', nuevo: true, que: 'el aviso de hora, una vez por tarea' },
+  { txt: 'no van a contar como hechos', nuevo: true,
+    que: 'lo que se le dice a la persona ANTES de que acepte' },
   // Los dos del despliegue anterior bajan a control: YA VALEN en produccion, y
   // dejarlos arriba daria verde sin comprobar nada de este.
   { txt: 'no son sitios con cuadrilla', control: true,

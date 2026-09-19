@@ -33,6 +33,12 @@ import {
   guardarListaCache, leerListaCacheConEdad, textoAntiguedad
 } from '../../../shared/lista-cache.util';
 import { avisoDeFalla, AvisoDatos } from '../../../shared/aviso-datos.util';
+import {
+  limiteDeItem, urgenciaDeChecklist, textoUrgencia, Urgencia, ClaseUrgencia,
+} from '../../../shared/urgencia-tarea.util';
+import {
+  MOTIVOS_SIN_PRUEBA, MotivoSinPrueba, motivoCompleto, sellarMotivo,
+} from '../../../shared/motivo-sin-prueba.util';
 
 import { SidebarComponent } from '../../../shared/sidebar/sidebar';
 import { PanelResponsablesComponent } from './panel-responsables';
@@ -1693,6 +1699,10 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit() {
+    // ⏰ Cada 30 s: la mitad del minuto que se muestra, para que la cuenta
+    // regresiva no se salte ninguno. Se apaga en ngOnDestroy.
+    this.relojId = setInterval(() => { this.ahoraReloj = Date.now(); }, 30000);
+
     const sesion = localStorage.getItem('md_sesion_actual');
     if (sesion) this.currentUser = JSON.parse(sesion);
 
@@ -1734,6 +1744,12 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     if (this.intervalId) {
       clearInterval(this.intervalId);
       this.intervalId = null;
+    }
+    // ⏰ Y el reloj de las cuentas regresivas. Sin esto seguiría corriendo sobre
+    // un componente destruido, que es el memory leak de arriba con otra ropa.
+    if (this.relojId) {
+      clearInterval(this.relojId);
+      this.relojId = null;
     }
   }
 
@@ -2376,24 +2392,106 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   }
 
   /** Hora límite (epoch) de la tarea, o null si no se puede calcular. */
+  /**
+   * ⚠ EL CUERPO SE MUDÓ A `shared/urgencia-tarea.util.ts` (18/sep/2026).
+   *
+   * No cambió una coma de la regla: esto es un delegado. Se mudó porque la
+   * cuenta regresiva de la tarjeta («Vence en 30 min») necesita el MISMO
+   * límite con el que se juzga el retraso, y dejarlo privado aquí obligaba a
+   * escribir una segunda versión «parecida» en el util. Dos reglas libres de
+   * discrepar sobre el retraso de una persona, en silencio (§8.11 d).
+   *
+   * Los tres sitios que ya lo llamaban no se tocaron.
+   */
   private limiteDeTarea(item: any, checklistDate: string, checklistTime?: string): number | null {
-    if (!checklistDate) return null;
-    let hora = '23'; let minuto = '59';
-    // 🔥 Prioriza horaLimite (campo actual) sobre time (legacy). Aplica a ambos tipos.
-    // Esto evita que tareas con campos desincronizados se cierren con una hora vieja.
-    // Si la tarea no trae hora propia, manda la del CHECKLIST (igual que
-    // horaLimiteItem()): antes se saltaba ese escalón y la misma tarea se
-    // MOSTRABA con límite 08:00 y se JUZGABA con las 23:59.
-    const horaUsar = item?.horaLimite || item?.time || checklistTime;
-    if (horaUsar && typeof horaUsar === 'string') {
-      const partes = horaUsar.split(':');
-      if (partes.length >= 2) {
-        hora = partes[0];
-        minuto = partes[1];
-      }
-    }
-    const [year, month, day] = checklistDate.split('-');
-    return new Date(Number(year), Number(month) - 1, Number(day), Number(hora), Number(minuto), 59).getTime();
+    return limiteDeItem(item, checklistDate, checklistTime);
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  //  ⏰ EL RELOJ DE LA PANTALLA
+  // ══════════════════════════════════════════════════════════════════════════
+  /**
+   * El «ahora» con el que se pintan las cuentas regresivas.
+   *
+   * NO se usa `Date.now()` dentro de los getters de la plantilla, y el motivo
+   * no es rendimiento: en modo desarrollo Angular corre la detección de cambios
+   * DOS veces por tick, así que si el minuto cambiara entre las dos pasadas la
+   * cadena sería distinta y saltaría `ExpressionChangedAfterItHasBeenChecked`.
+   * Con un valor fijo por tick, las dos pasadas leen lo mismo.
+   *
+   * Se refresca cada 30 s —la mitad del minuto que se muestra, para que ningún
+   * minuto se salte— y el intervalo se apaga en `ngOnDestroy`.
+   */
+  ahoraReloj = Date.now();
+  private relojId: any = null;
+
+  /** La urgencia del checklist entero, que es lo que se pinta en la tarjeta. */
+  urgenciaDe(checklist: any): Urgencia {
+    return urgenciaDeChecklist(
+      checklist?.items || [], checklist?.date, checklist?.time,
+      (i: any) => this.esItemCompleto(i), this.ahoraReloj,
+    );
+  }
+
+  /**
+   * La clase para la pastilla. Devuelve CADENA y no el objeto de urgencia a
+   * propósito: la plantilla lo llama una vez por tarjeta en cada ciclo de
+   * detección, y un objeto nuevo cada vez es justo lo que tumbó el sidebar el
+   * 1/sep. Una cadena compara por valor y no hace nada.
+   */
+  claseUrgencia(checklist: any): ClaseUrgencia | '' {
+    const u = this.urgenciaDe(checklist);
+    return u.minutos == null || u.clase === 'a_tiempo' ? '' : u.clase;
+  }
+
+  /** La frase, con la hora formateada por el MISMO `formatearHora` de la pantalla. */
+  textoUrgenciaDe(checklist: any): string {
+    const u = this.urgenciaDe(checklist);
+    const hora = u.limite != null
+      ? this.formatearHora(new Date(u.limite).toTimeString().slice(0, 5))
+      : '';
+    return textoUrgencia(u, hora);
+  }
+
+  /**
+   * ¿Los puntos de este checklist tienen horas límite DISTINTAS?
+   *
+   * Decide si se pinta el chip de «se pasó la hora» punto por punto. Cuando
+   * todos comparten ventana —que es el caso del manual— el chip diría lo mismo
+   * en cada renglón, debajo de un aviso que ya lo dijo: es el párrafo repetido
+   * que este paso vino a quitar, en pequeño. Se vio MIRANDO la captura, no
+   * midiendo: las tres aserciones del arnés estaban en verde.
+   *
+   * Con horas distintas sí hace falta, porque el aviso de arriba solo puede
+   * nombrar el más próximo y no habría forma de saber cuál de los puntos es.
+   */
+  horasLimiteDistintas(checklist: any): boolean {
+    const horas = new Set(
+      (checklist?.items || []).map((i: any) => i?.horaLimite || i?.time || checklist?.time || ''),
+    );
+    return horas.size > 1;
+  }
+
+  /** Cuántos puntos siguen sin prueba. Es el número que va en el botón de enviar. */
+  puntosSinPrueba(checklist: any): any[] {
+    return (checklist?.items || []).filter((i: any) => !this.esItemCompleto(i));
+  }
+
+  /**
+   * Lo que dice el botón de enviar.
+   *
+   * Dice «fotos» solo cuando TODO lo que falta son fotos. Si entre lo que falta
+   * hay un punto que se cierra palomeando, «te faltan 3 fotos» mandaría a buscar
+   * una cámara para algo que no la lleva.
+   */
+  etiquetaEnvio(checklist: any): string {
+    const faltan = this.puntosSinPrueba(checklist);
+    if (!faltan.length) return 'Confirmar y Enviar';
+    const todasFoto = faltan.every((i: any) => this.pideEvidencia(i));
+    const que = todasFoto
+      ? (faltan.length === 1 ? 'foto' : 'fotos')
+      : (faltan.length === 1 ? 'punto' : 'puntos');
+    return 'Enviar — te ' + (faltan.length === 1 ? 'falta' : 'faltan') + ' ' + faltan.length + ' ' + que;
   }
 
   /** ¿Ya pasó su hora límite? Es para MOSTRARLA como vencida, no para el justificante. */
@@ -3737,39 +3835,136 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   enviarChecklist() {
     const actual = this.checklistSeleccionado(); if (!actual) return;
     // 🔒 Defensa: solo el dueño del checklist puede enviarlo
+    //
+    // Los tres avisos de aquí abajo eran `alert()` del navegador hasta el
+    // 18/sep/2026. Se cambiaron por el toast que la app ya tenía: el cuadro del
+    // sistema no se puede redactar ni medir, y en un teléfono aparece con el
+    // dominio encima, que es lo último que quieres en el momento en que alguien
+    // intenta cerrar su turno.
     if (!this.esElDueno()) {
-      alert(' ⚠️ Solo el responsable asignado puede enviar este checklist.');
+      this.mostrarToast('⚠️ Solo el responsable asignado puede enviar esta tarea.');
       return;
     }
     if (actual.enviado) {
-      alert(' ⚠️ Este checklist ya fue enviado.');
+      this.mostrarToast('⚠️ Esta tarea ya fue enviada.');
       return;
     }
     const fotosPendientes = actual.items.some((i: any) => i.photo === 'subiendo...' || i.photoAntes === 'subiendo...' || i.photoDespues === 'subiendo...');
-    if (fotosPendientes) { alert(' ⚠️ Espera, una foto se está subiendo.'); return; }
+    if (fotosPendientes) { this.mostrarToast('⚠️ Espera, una foto se está subiendo.'); return; }
 
-    // 🔍 Detallamos QUÉ falta para que el trabajador pueda regresar a arreglarlo.
-    // Antes el mensaje era genérico ("Faltan FOTOS obligatorias") y se les pasaba.
-    const incompletas = actual.items.filter((i: any) => !this.esItemCompleto(i));
+    // ══════════════════════════════════════════════════════════════════════
+    //  PUNTOS SIN PRUEBA → MOTIVO OBLIGATORIO (decisión de David, 18/sep/2026)
+    // ══════════════════════════════════════════════════════════════════════
+    // Aquí había un `confirm()` del navegador que listaba hasta 5 puntos en
+    // texto plano y ofrecía «¿Enviar así de todos modos?». Tres problemas, y
+    // el tercero es el que decidió el cambio:
+    //   1. Es el cuadro gris del sistema, en el momento de la verdad de 154
+    //      personas. No se puede redactar, ni estilar, ni medir.
+    //   2. Truncaba a 5. Un checklist de apertura tiene 8 puntos.
+    //   3. Se enviaba SIN saber por qué faltaba la prueba, así que el punto
+    //      quedaba en `no_ejecutado` para todos por igual —da lo mismo que no
+    //      hubiera qué fotografiar a que nadie lo hiciera—. La Fase 5 necesita
+    //      esa distinción y no se puede reconstruir después.
+    //
+    // Se descartó bloquear el envío: son 377 puntos con foto obligatoria,
+    // 62+ de ellos declaraciones donde NO HAY QUÉ FOTOGRAFIAR, así que un
+    // botón muerto dejaría gente sin poder cerrar su turno.
+    const incompletas = this.puntosSinPrueba(actual);
     if (incompletas.length > 0) {
-      const lista = incompletas.slice(0, 5).map((i: any, idx: number) => {
-        const motivo = this.motivoIncompleto(i);
-        return `  ${idx + 1}. ${this.limpiarEmojis(i.text || '(sin nombre)')}  →  ${motivo}`;
-      }).join('\n');
-      const extra = incompletas.length > 5 ? `\n  ...y ${incompletas.length - 5} más` : '';
-      const confirmar = confirm(
-        ` ⚠️ Tienes ${incompletas.length} ${incompletas.length === 1 ? 'tarea incompleta' : 'tareas incompletas'}:\n\n${lista}${extra}\n\n¿Enviar así de todos modos?`
-      );
-      if (!confirmar) return;
+      this.abrirModalSinPrueba(incompletas);
+      return;
     }
 
+    this.continuarEnvio(actual);
+  }
+
+  /**
+   * El tramo final, común a los dos caminos (con y sin puntos sin prueba).
+   *
+   * Existe como método propio porque el modal de motivos tiene que poder
+   * reanudar exactamente aquí. Inlinearlo en los dos sitios dejaría dos copias
+   * del paso del justificante libres de discrepar.
+   */
+  private continuarEnvio(actual: any) {
     // ⏰ Si hay retraso, en vez de enviar directo abrimos el modal de justificante.
     if (this.hayRetrasoEnChecklist(actual)) {
       this.abrirModalJustificante();
       return;
     }
-
     this.realizarEnvioFinal(actual, null);
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  //  📋 MODAL: ¿POR QUÉ NO HAY PRUEBA?
+  // ══════════════════════════════════════════════════════════════════════════
+  isModalSinPruebaOpen = false;
+  /** Un renglón por punto sin prueba: el texto que lee, y lo que contesta. */
+  sinPrueba: Array<{ item: any; texto: string; falta: string; codigo: string; nota: string }> = [];
+  readonly MOTIVOS = MOTIVOS_SIN_PRUEBA;
+
+  private abrirModalSinPrueba(incompletas: any[]) {
+    this.sinPrueba = incompletas.map((item: any) => ({
+      item,
+      texto: this.limpiarEmojis(item.text || '(sin nombre)'),
+      falta: this.motivoIncompleto(item),
+      // Se arranca VACÍO y no con el primer motivo preseleccionado: un motivo
+      // por omisión se envía solo, y entonces el dato que guardamos no sería la
+      // respuesta de nadie. Prefiero que el botón esté apagado a que mienta.
+      codigo: '',
+      nota: '',
+    }));
+    this.isModalSinPruebaOpen = true;
+  }
+
+  cerrarModalSinPruebaYVolver() {
+    this.isModalSinPruebaOpen = false;
+    this.sinPrueba = [];
+  }
+
+  /** ¿Este renglón ya está contestado? La usa la plantilla para marcarlo. */
+  renglonListo(r: { codigo: string; nota: string }): boolean {
+    return motivoCompleto(r);
+  }
+
+  /** Cuántos faltan por contestar. Va en el botón, para no dejarlo mudo. */
+  motivosPendientes(): number {
+    return this.sinPrueba.filter((r) => !this.renglonListo(r)).length;
+  }
+
+  puedeConfirmarSinPrueba(): boolean {
+    return this.sinPrueba.length > 0 && this.motivosPendientes() === 0;
+  }
+
+  /** ¿Este motivo exige que además escriba? Lo decide el catálogo, no la plantilla. */
+  motivoPideNota(codigo: string): boolean {
+    return !!this.MOTIVOS.find((m: MotivoSinPrueba) => m.codigo === codigo)?.pideNota;
+  }
+
+  confirmarSinPruebaYSeguir() {
+    const actual = this.checklistSeleccionado(); if (!actual) return;
+    // Se revalida aquí y no solo en el `[disabled]` del botón: esconder o
+    // apagar un control es cosmética, y esta es la puerta por la que el dato
+    // entra al checklist.
+    if (!this.puedeConfirmarSinPrueba()) {
+      this.mostrarToast('⚠️ Contesta el motivo de cada punto para poder enviar.');
+      return;
+    }
+
+    const ahora = Date.now();
+    const quien = this.currentUser?.nombre || '';
+    for (const r of this.sinPrueba) {
+      const sello = sellarMotivo({ codigo: r.codigo, nota: r.nota }, quien, ahora);
+      // ⚠ SE ESCRIBE EN EL ITEM, NUNCA EN `notaEmpleado`. Ese campo lo lee
+      // `tieneJustificacionChecklist()`, así que escribir ahí pasaría TODOS los
+      // puntos del checklist de `no_ejecutado` a `justificado` —incluidos los
+      // que nadie justificó— y con ellos a quién se le cuenta la falta (§4).
+      // Hay una prueba que fija esto en `motivo-sin-prueba.util.spec.ts`.
+      if (sello) r.item.motivoSinPrueba = sello;
+    }
+
+    this.isModalSinPruebaOpen = false;
+    this.sinPrueba = [];
+    this.continuarEnvio(actual);
   }
 
   // ============================================================================
@@ -3791,7 +3986,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   }
   confirmarJustificanteYEnviar() {
     if (!this.puedeConfirmarJustificante()) {
-      alert(' ⚠️ Elige una categoría y escribe un comentario de al menos 5 caracteres.');
+      this.mostrarToast('⚠️ Elige una categoría y escribe un comentario de al menos 5 caracteres.');
       return;
     }
     const actual = this.checklistSeleccionado(); if (!actual) return;

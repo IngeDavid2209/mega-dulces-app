@@ -4129,3 +4129,185 @@
   .cat-botones .wizard-btn { width: 100%; }
   .cat-personas { grid-template-columns: 1fr; max-height: 180px; }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   ⏰ EL RELOJ Y 📋 EL MODAL DE MOTIVOS — 18/sep/2026
+   ══════════════════════════════════════════════════════════════════════════
+   Los tres bloques de abajo salieron de mirar la pantalla de trabajo en un
+   teléfono de 390px: el aviso de vencida repetido punto por punto ocupaba más
+   alto que los propios puntos, y en la LISTA no había una sola marca de que la
+   hora ya se había pasado.
+
+   Todos los colores salen de tokens ya declarados en styles.css, comprobados
+   uno por uno antes de escribir esto: un token inventado no revienta —iguala—
+   y dos cosas distintas se acaban pintando igual sin un solo error en consola
+   (la lección del 4/sep).
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── La pastilla de la TARJETA ────────────────────────────────────────────
+   Va en la línea de meta, junto a la sucursal y la fecha. Solo aparece cuando
+   hay algo que decir: una pastilla permanente deja de leerse a los dos días. */
+.cl-pill-urgencia {
+  margin-left: 6px;
+  padding: 1px 8px;
+  border-radius: var(--r-pill);
+  font-size: 11px;
+  font-weight: var(--fw-bold);
+  white-space: nowrap;
+}
+.cl-pill-urgencia[data-urgencia="por_vencer"] {
+  background: var(--warn-soft-bg);
+  color: var(--warn-soft-fg);
+}
+.cl-pill-urgencia[data-urgencia="vencida"] {
+  background: var(--bad-soft-bg);
+  color: var(--bad-soft-fg);
+}
+
+/* ── El aviso ÚNICO del detalle ───────────────────────────────────────────
+   `align-items: flex-start` y no `center`: con dos renglones de texto en un
+   teléfono, centrado deja el icono flotando a media altura de la frase. */
+.cl-reloj {
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  margin-top: 14px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+.cl-reloj svg { flex-shrink: 0; margin-top: 1px; }
+.cl-reloj-texto { font-weight: var(--fw-bold); }
+/* El sub va en su propio renglón completo, no pegado a la frase: es la
+   consecuencia («te voy a preguntar por qué»), y leída al vuelo pegada a la
+   otra se convierte en una sola frase larga que nadie termina. */
+.cl-reloj-sub { flex-basis: 100%; opacity: 0.85; }
+.cl-reloj[data-urgencia="por_vencer"] {
+  background: var(--warn-soft-bg);
+  color: var(--warn-soft-fg);
+  border: 1px solid var(--warn-border);
+}
+.cl-reloj[data-urgencia="vencida"] {
+  background: var(--bad-soft-bg);
+  color: var(--bad-soft-fg);
+}
+
+/* ── El chip de «se pasó la hora» de cada punto ───────────────────────────
+   Es lo que quedó del párrafo que se repetía. Solo la hora, sin sermón: sirve
+   cuando los puntos tienen límites distintos, porque el aviso de arriba solo
+   puede nombrar el más próximo. */
+.item-chip-tarde {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 8px;
+  padding: 2px 9px;
+  border-radius: var(--r-pill);
+  background: var(--bad-soft-bg);
+  color: var(--bad-soft-fg);
+  font-size: 11.5px;
+  font-weight: var(--fw-bold);
+}
+
+/* ── El aviso bajo el botón de enviar ─────────────────────────────────── */
+.send-aviso {
+  margin-top: 10px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--neutral-600);
+  text-align: center;
+}
+
+/* ══════════════ MODAL: ¿POR QUÉ NO HAY PRUEBA? ══════════════════════════ */
+.sp-modal {
+  max-width: 560px;
+  padding: 24px;
+  /* La lista puede traer los 8 puntos de un checklist de apertura. Sin tope de
+     alto, en un teléfono el pie —con el botón de enviar— se va por debajo del
+     borde inferior y no hay forma de llegar a él. */
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+}
+.sp-cab { display: flex; gap: 12px; align-items: flex-start; }
+.sp-emoji { font-size: 30px; line-height: 1; flex-shrink: 0; }
+.sp-titulo { margin: 0 0 4px; font-size: 18px; font-weight: var(--fw-bold); }
+.sp-sub { margin: 0; font-size: 13.5px; line-height: 1.5; color: var(--neutral-600); }
+
+.sp-honesto {
+  margin: 14px 0 4px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--warn-soft-bg);
+  color: var(--warn-soft-fg);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+/* La lista es lo único que se desplaza; la cabecera y el pie se quedan. */
+.sp-lista { overflow-y: auto; margin: 6px -4px 0; padding: 0 4px; }
+
+.sp-fila {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+.sp-fila:last-child { border-bottom: 0; }
+.sp-fila-cab { display: flex; align-items: flex-start; gap: 10px; }
+.sp-num {
+  flex-shrink: 0;
+  width: 22px; height: 22px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 999px;
+  background: var(--neutral-100);
+  color: var(--neutral-500);
+  font-size: 12px; font-weight: var(--fw-bold);
+}
+.sp-fila-texto { flex: 1; min-width: 0; }
+.sp-punto { font-size: 14px; font-weight: 600; line-height: 1.35; }
+.sp-falta { font-size: 12px; color: var(--neutral-500); margin-top: 2px; }
+.sp-check { flex-shrink: 0; margin-top: 2px; }
+/* Contestado = se apaga. Así lo que queda encendido es lo que falta, y no hay
+   que ir contando renglones para saber cuánto queda. */
+.sp-fila-lista .sp-punto { opacity: 0.6; }
+.sp-fila-lista .sp-num { background: var(--ok-soft-bg); color: var(--ok-fg); }
+
+.sp-select, .sp-nota { margin-top: 8px; width: 100%; }
+
+.sp-pie {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+.sp-pie button { min-height: var(--tap-min); }
+
+/* En un teléfono los dos botones van de borde a borde y el de enviar arriba:
+   a media pantalla se leen como si estuvieran cortados, que es lo que David
+   señaló el 13/sep sobre los rieles. */
+@media screen and (max-width: 480px) {
+  .sp-modal { padding: 18px; max-height: 92vh; }
+  .sp-pie { flex-direction: column-reverse; }
+  .sp-pie button { width: 100%; }
+}
+
+/* ── EL BOTÓN APAGADO NO PUEDE SER EL MÁS LLAMATIVO DE LA PANTALLA ────────
+   Se vio mirando la captura, con el arnés en verde: «Faltan 3 por contestar»
+   salía en el naranja de acción, o sea con el aspecto exacto de «púlsame», y
+   no hace nada. Apagado se ve apagado; el texto sigue diciendo qué falta, que
+   es lo que evita el control gris y mudo. */
+.sp-pie .btn-primary:disabled {
+  background: var(--neutral-200);
+  border-color: var(--neutral-200);
+  color: var(--neutral-500);
+  cursor: not-allowed;
+}
+
+/* Aire arriba en el teléfono: pegado al borde, el título cae bajo la barra de
+   estado y la muesca de los iPhone. */
+@media screen and (max-width: 480px) {
+  .sp-modal { margin-top: 18px; }
+}

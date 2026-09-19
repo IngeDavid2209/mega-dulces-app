@@ -713,6 +713,11 @@
   display: flex; align-items: baseline; gap: 8px;
 }
 .org-head-id .org-titulo { margin: 0; font-size: 18px; white-space: nowrap; }
+/* El resumen es el tercer hijo de esa fila y se queda con lo que sobra. Sin
+   `min-width: 0` un hijo flex no baja de su ancho minimo de contenido y
+   empujaria la barra entera; medido a 390px, sin esto se partia en TRES
+   renglones (92px) y dejaba el arbol en y=842 de 844. */
+.org-head-id .org-resumen { flex: 1 1 auto; min-width: 0; }
 .org-head-id .org-sub {
   font-size: 13px; color: var(--text-muted);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
@@ -759,6 +764,10 @@
   .org-barra { padding: 8px 12px 0; }
   .org-barra-fila { flex-wrap: wrap; gap: 8px; }
   .org-barra .org-buscar { flex: 1 1 100%; max-width: none; order: 3; }
+  /* La identidad -titulo + resumen- se queda con el renglon entero. Compartido
+     con el buscador y los botones, al resumen le tocaban ~180px y la frase se
+     partia en tres. */
+  .org-barra .org-head-id { flex: 1 1 100%; flex-wrap: wrap; }
   .org-barra .org-acciones { flex-wrap: wrap; }
 }
 
@@ -1042,3 +1051,86 @@
      Se le da ancho, que es lo que lo vuelve a parecer un botón. */
   .org-rama-btn { padding: 3px 18px; margin-right: 0; }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   🎯 CAPA 1 — LA LINEA DE RESPUESTA (18/sep/2026)
+   ══════════════════════════════════════════════════════════════════════════
+   Medido antes de escribirla: 22 controles en la primera pantalla de una
+   Encargada contra 9 en la de una anaquelista, y ninguno decia cual era el
+   primero. Esta linea no quita ninguno: le da al ojo donde aterrizar.
+
+   Por eso el titular es lo UNICO con peso tipografico aqui arriba — si
+   compitiera con la barra de controles no resolveria nada.
+   ══════════════════════════════════════════════════════════════════════════ */
+/* ⚠ ES UN RENGLON, NO UNA SECCION, Y EL LIMITE LO PUSO UNA PRUEBA AJENA.
+   La primera version llevaba 14px de relleno y medía 52px. `prueba-arbol-
+   organigrama` —que vigila desde el 4/sep que al arbol le toque >=55% de la
+   pantalla, porque David pidio «hazlo mas grande»— cayo al 52% y NOMBRO al
+   culpable: `org-resumen=52`. O sea que la linea puesta para ayudar a mirar le
+   estaba quitando sitio a lo que hay que mirar.
+   Con 8px de relleno mide ~30px, y ademas se recupera el renglon de «N puestos
+   · M entregadas hoy», que esta linea supersede con algo accionable. */
+.org-resumen {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  /* Sin relleno ni borde: ya no es un bloque, es el renglon que estaba debajo
+     del titulo. El alto que ocupa es el que ocupaba el subtitulo al que
+     sustituye. */
+  margin-top: 2px;
+}
+.org-resumen-titular {
+  font-size: 16px;
+  font-weight: var(--fw-bold);
+  color: var(--text-main);
+}
+.org-resumen-cifras { display: flex; gap: 8px; flex-wrap: wrap; }
+.org-resumen-chip {
+  padding: 3px 11px;
+  border-radius: var(--r-pill);
+  font-size: 13px;
+  font-weight: var(--fw-bold);
+  white-space: nowrap;
+}
+.org-resumen-chip[data-tono="mal"] { background: var(--bad-soft-bg); color: var(--bad-soft-fg); }
+.org-resumen-chip[data-tono="ok"]  { background: var(--ok-soft-bg);  color: var(--ok-soft-fg); }
+
+/* Sin nada pendiente el bloque se apaga, pero NO se esconde: que no haya
+   trabajo atrasado es informacion, y quitarlo dejaria el hueco que hace dudar
+   de si la pantalla cargo. */
+.org-resumen[data-estado="tranquilo"] .org-resumen-titular { color: var(--neutral-600); }
+
+/* ⚠ EN TELEFONO VA EN UN SOLO RENGLON, Y ESO SE MIDIO, NO SE ESTIMO.
+   La primera version ponia el titular en su propio renglon (`flex-basis: 100%`)
+   porque se leia mejor. Medido a 390x844: el bloque ocupaba 75px y empujaba la
+   primera fila del arbol de y=792 a y=867 — FUERA de la pantalla. O sea que la
+   linea que existe para que el ojo aterrice estaba escondiendo el trabajo.
+   Resolver la carga cognitiva tapando la operacion no resuelve nada.
+
+   Con todo en un renglon cabe: «Faltan 5 entregas · 2 vencidas · 3 a tiempo»
+   son ~40 caracteres en 362px utiles. Si algun dia no cupiera, `flex-wrap`
+   deja que las cifras bajen solas antes que desbordar.
+
+   Y queda dicho el numero de fondo, que este paso NO arregla: 604px de los 844
+   se consumen ANTES del arbol (cabecera, titulo, 4 bandejas, 3 botones de
+   crear). Eso es Capa 2. */
+@media screen and (max-width: 480px) {
+  .org-resumen { gap: 4px 8px; }
+  .org-resumen-titular { font-size: 15px; }
+  .org-resumen-chip { font-size: 12px; padding: 2px 9px; }
+
+  /* ⚠ SE ESCONDE «N puestos · M entregadas hoy», Y ES UN INTERCAMBIO MEDIDO.
+     El resumen de arriba costaba 39px y empujaba la primera fila del arbol
+     fuera de la ventana en la sesion de Direccion (de y=770 a y=809 con 844 de
+     alto). Este renglon dice el numero MENOS accionable de la pantalla -cuantos
+     puestos hay- y el resumen lo supersede con lo que de verdad se pregunta a
+     las 8 de la manana. Cambiar un numero decorativo por uno accionable, al
+     mismo costo de alto, es el intercambio que esta Capa 1 vino a hacer.
+     ⚠ Y SE ESCONDE EN LAS DOS ANCHURAS, no solo en telefono como decia esta
+     nota al escribirla: en escritorio el arnes del arbol midio que el bloque
+     nuevo bajaba la lista del 56% al 52%, asi que ahi el alto TAMBIEN es
+     escaso. La regla se movio fuera de la media query. */
+}
+
+.org-sub-totales { display: none; }

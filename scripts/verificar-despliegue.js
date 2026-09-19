@@ -131,7 +131,11 @@ const MARCADORES = [
   // mismo chunk: si llega, llego el arreglo. Se dice asi de claro para que
   // nadie lea este marcador como una comprobacion del enraizado — eso lo
   // prueba `prueba-rama-visible-con-datos.js`, en local y con su control.
-  { txt: 'org-titulo-mio', nuevo: true, que: 'el titulo del arbol dice de quien es' },
+  { txt: 'org-titulo-mio', control: true, que: 'el titulo del arbol dice de quien es' },
+  // ── 18/sep/2026 · Capa 1: la linea que contesta la pregunta ─────────────
+  { txt: 'org-resumen', nuevo: true, que: 'la linea de resumen del equipo' },
+  { txt: 'No hay entregas pendientes', nuevo: true,
+    que: 'el vacio que NO dice «todo entregado», porque seria mentira' },
   // Los dos del despliegue anterior bajan a control: YA VALEN en produccion, y
   // dejarlos arriba daria verde sin comprobar nada de este.
   { txt: 'no son sitios con cuadrilla', control: true,

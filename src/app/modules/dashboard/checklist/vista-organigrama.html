@@ -24,6 +24,46 @@
              El rotulo sale de `amb.restringido`, el mismo dato que decide el
              enraizado, no de una condicion nueva que pueda desalinearse. -->
         <h3 class="org-titulo org-titulo-mio">{{ tituloArbol() }}</h3>
+
+        <!-- ═══════════════════════════════════════════════════════════════
+             🎯 CAPA 1 — LA RESPUESTA, EN EL SITIO DEL SUBTITULO
+             ═══════════════════════════════════════════════════════════════
+             Una Encargada abre esta pantalla con UNA pregunta —«¿quien no ha
+             entregado?»— y hasta hoy tenia que abrir ramas e ir sumando de
+             cabeza entre 22 controles. El problema no era la cantidad de
+             datos: era no saber donde mirar.
+
+             ⚠ VA AQUI DENTRO, Y NO COMO BLOQUE PROPIO ENCIMA DE LA BARRA.
+             Asi estaba, y costaba 52px: `prueba-arbol-organigrama` —que vigila
+             desde el 4/sep que a la lista le toque >=55% de la pantalla— cayo
+             del 58% al 52% y nombro al culpable. O sea que la linea puesta
+             para ayudar a mirar le quitaba sitio a lo que hay que mirar.
+             Puesta en el renglon del subtitulo, SUSTITUYE a «N puestos · M
+             entregadas hoy» en vez de sumarse: mismo alto, y cambia un numero
+             decorativo por uno accionable. Ese es el intercambio que esta
+             Capa 1 vino a hacer.
+
+             No agrega ninguna condicion de permiso: vive dentro del arbol y
+             hereda su gate. Cada `*ngIf` de rol nuevo es una forma mas de
+             dejar ciego a alguien sin enterarse.
+
+             El vacio NO dice «todo entregado»: con cero pendientes no se puede
+             distinguir de «hoy no se emitio nada», porque las entregadas viven
+             en otra lista que ni siquiera esta cargada aqui (§5.2). -->
+        <div class="org-resumen" [attr.data-estado]="resumenDia().vencidas ? 'urgente' : 'tranquilo'">
+          <span class="org-resumen-titular">{{ textoResumenDia() }}</span>
+          <span class="org-resumen-cifras" *ngIf="resumenDia().pendientes">
+            <!-- Los dos SUMAN el total de la izquierda. Tres numeros juntos se
+                 leen como partes de un todo, asi que si no cuadraran la linea
+                 mentiria sin dar un solo error. Hay una prueba que lo fija. -->
+            <span class="org-resumen-chip" data-tono="mal" *ngIf="resumenDia().vencidas">
+              {{ resumenDia().vencidas }} vencida{{ resumenDia().vencidas === 1 ? '' : 's' }}
+            </span>
+            <span class="org-resumen-chip" data-tono="ok" *ngIf="resumenDia().aTiempo">
+              {{ resumenDia().aTiempo }} a tiempo
+            </span>
+          </span>
+        </div>
         <div class="org-sub">
           <!-- CON FILTRO ACTIVO VA EL DENOMINADOR. Una lista filtrada sin su
                total es la forma más fácil de leer un vacío como un cero. -->
@@ -31,8 +71,14 @@
             <strong>{{ resumen().casan }}</strong> de {{ resumen().puestos }} puestos
           </ng-container>
           <ng-template #totales>
-            {{ resumen().puestos }} puestos · {{ resumen().entregas }} entregadas hoy<span
-              *ngIf="resumen().huerfanas > 0"> · {{ resumen().huerfanas }} sin puesto</span>
+            <!-- En telefono este renglon se esconde (ver el CSS): la linea de
+                 resumen de arriba dice algo estrictamente mas util sobre el
+                 mismo dato, y el alto es el recurso escaso. El de ARRIBA -«N de
+                 M puestos» cuando hay filtro- NO se esconde nunca: una lista
+                 filtrada sin su total es la forma mas facil de leer un vacio
+                 como un cero. -->
+            <span class="org-sub-totales">{{ resumen().puestos }} puestos · {{ resumen().entregas }} entregadas hoy</span><span
+              *ngIf="resumen().huerfanas > 0">{{ resumen().huerfanas }} sin puesto</span>
           </ng-template>
         </div>
 

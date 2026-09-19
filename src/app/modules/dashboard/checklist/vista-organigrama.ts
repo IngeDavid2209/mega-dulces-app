@@ -18,6 +18,9 @@ import {
   ManualPuesto, TareaManual, manualDePuesto, tareasAutomaticasDePuesto, tareasDePuesto
 } from '../../../shared/tareas-manual.catalogo';
 import { normalizarNombre } from '../../../shared/permisos.util';
+import {
+  ResumenPendientes, resumenPendientes, textoResumen
+} from '../../../shared/resumen-pendientes.util';
 
 /**
  * 🏛️ VISTA POR ORGANIGRAMA del apartado "Tareas del Manual".
@@ -1089,6 +1092,30 @@ export class VistaOrganigramaComponent {
    * Y CON FILTRO ACTIVO SIEMPRE VA EL DENOMINADOR: «3 de 89». Una lista filtrada
    * sin su total es la forma más fácil de leer un vacío como un cero.
    */
+  /**
+   * ═══════════════════════════════════════════════════════════════════════
+   *  🎯 CAPA 1 — LA LINEA QUE CONTESTA LA PREGUNTA DE LAS 8 DE LA MAÑANA
+   * ═══════════════════════════════════════════════════════════════════════
+   * Sale de `lista()`, que es LA MISMA señal de la que cuelga `arbol()`. No es
+   * una comodidad: derivarlo de otro sitio —o de una peticion propia— abriria
+   * la puerta a que la linea de arriba diga un numero y las filas de abajo
+   * otro, y en la misma pantalla. Aqui no puede pasar: es el mismo dato.
+   *
+   * Y por eso no hay llamada nueva al backend ni hace falta: al ser un
+   * `computed` sobre una señal, se recalcula solo cuando la lista cambia —
+   * incluido el momento en que alguien termina una tarea y el poll la trae.
+   *
+   * ⚠ SE LE PASA `esVencida`, LA REGLA DE ESTE ARBOL, no la de la tarjeta del
+   * trabajador. En el modulo conviven tres definiciones de «vencida» (ver la
+   * cabecera de `resumen-pendientes.util.ts`); mientras sea asi, lo unico
+   * inaceptable es que el resumen contradiga a las filas que tiene debajo.
+   */
+  resumenDia = computed<ResumenPendientes>(() =>
+    resumenPendientes(this.lista(), (c) => this.esVencida(c)));
+
+  /** La frase de la izquierda. El util la arma para no partir el texto en dos. */
+  textoResumenDia = computed<string>(() => textoResumen(this.resumenDia()));
+
   resumen = computed(() => {
     const planas: FilaArbol[] = [];
     const recorrer = (fs: FilaArbol[]) => { for (const f of fs) { planas.push(f); recorrer(f.hijos); } };

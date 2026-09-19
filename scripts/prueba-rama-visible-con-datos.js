@@ -80,9 +80,14 @@ const B = { items: ITEMS, status: 'pendiente', createdBy: 'Robot del Manual', _o
 /** Cinco de su propia rama + UNA de Ventas, que es la que prueba «servicio a». */
 const CON_TRABAJO = [
   { id: 'v1', date: HOY, name: 'Checklist de apertura', assigned: ENCARGADA, store: '8 Esquinas', ...B },
-  { id: 'c1', date: HOY, name: 'Acomodo de pasillo 2', assigned: ANAQUELISTA, store: '8 Esquinas', ...B },
+  // ⚠ `time: '00:01'` EN DOS DE ELLAS. Sin esto, el arbol las da todas a tiempo
+  // -su `esVencida` cae a las 23:59 cuando el checklist no trae hora- y la
+  // columna «vencidas» seria 0 en las cuatro filas: un cero que significa
+  // «nunca se ejercio», no «no hay». La hora se elige ya pasada a cualquier
+  // hora del dia salvo el primer minuto, de lo que avisa la guardia de abajo.
+  { id: 'c1', date: HOY, name: 'Acomodo de pasillo 2', assigned: ANAQUELISTA, store: '8 Esquinas', time: '00:01', ...B },
   { id: 'c2', date: HOY, name: 'Revision de caducidades', assigned: ANAQUELISTA, store: '8 Esquinas', ...B },
-  { id: 'y1', date: HOY, name: 'Corte de caja', assigned: CAJERA, store: '8 Esquinas', ...B },
+  { id: 'y1', date: HOY, name: 'Corte de caja', assigned: CAJERA, store: '8 Esquinas', time: '00:01', ...B },
   { id: 'y2', date: HOY, name: 'Area de cobro limpia', assigned: CAJERA, store: '8 Esquinas', ...B },
   { id: 'r1', date: HOY, name: 'Checado de pedido', assigned: AJENO, store: '8 Esquinas', ...B },
 ];
@@ -137,6 +142,7 @@ const ESCENARIOS = [
     checklists: CON_TRABAJO,
     // La fila del defecto. Antes del arreglo daba «Dirección General».
     raiz: RAIZ_ESPERADA, minRaices: 2, minCruzadas: 1,
+    resumen: { pendientes: 5, vencidas: 2, aTiempo: 3 },
   },
   {
     nombre: 'SIN trabajo (0 entregas)',
@@ -144,6 +150,9 @@ const ESCENARIOS = [
     // Es el estado que `prueba-vista-por-nivel` ya cubría, y el único donde el
     // enraizado funcionaba antes. Se conserva para que el arreglo no lo rompa.
     raiz: RAIZ_ESPERADA, minRaices: 1, minCruzadas: 0,
+    // El vacio NO dice «todo entregado»: no se puede distinguir de «hoy no se
+    // emitio nada», porque las entregadas ni siquiera estan en esta lista.
+    resumen: { pendientes: 0, vencidas: 0, aTiempo: 0 },
   },
   {
     nombre: 'solo lo suyo (sin lo ajeno)',
@@ -152,6 +161,7 @@ const ESCENARIOS = [
     // a». Sin esta fila, un arreglo que marcara todo como cruzado pasaría la
     // primera en verde.
     raiz: RAIZ_ESPERADA, minRaices: 1, maxCruzadas: 0,
+    resumen: { pendientes: 4, vencidas: 2, aTiempo: 2 },
   },
   {
     nombre: 'CONTRASTE: Direccion ve todo',
@@ -159,6 +169,13 @@ const ESCENARIOS = [
     checklists: CON_TRABAJO,
     // Su arbol NO se enraiza -ve la empresa- asi que la raiz vuelve a ser
     // Direccion General LEGITIMAMENTE, y el titulo no cambia.
+    // LA FILA QUE CONTESTA LA SEGUNDA PREGUNTA DE DAVID: Direccion NO ve un
+    // resumen roto ni en ceros. Ve SU alcance -las 6, incluida la de la
+    // Encargada, que para ella no es «suya»- porque el resumen cuenta lo que la
+    // pantalla ya esta autorizada a enseñar, sin suponer que quien mira es de
+    // piso. Por eso NO lleva un `*ngIf` de rol: no hace falta, y cada gate
+    // nuevo es una forma mas de dejar ciego a alguien sin enterarse.
+    resumen: { pendientes: 6, vencidas: 2, aTiempo: 4 },
     raiz: 'Dirección General', minRaices: 1, titulo: 'Organigrama 2026',
     // Direccion no es la Encargada, asi que aqui cuentan las 6.
     todasLasEntregas: true,
@@ -182,6 +199,19 @@ function guion(esc) {
     '  var d={',
     '    arbol: document.querySelectorAll("app-vista-organigrama").length,',
     '    titulo: (function(){ var t=document.querySelector(".org-titulo"); return t?texto(t):"(ninguno)"; })(),',
+    '    resumen: (function(){ var r=document.querySelector(".org-resumen"); return r?texto(r):"(no se pinto)"; })(),',
+    '    resumenChips: [].slice.call(document.querySelectorAll(".org-resumen-chip")).map(texto),',
+    // La pregunta de David: ¿el bloque nuevo empuja el arbol fuera de la
+    // primera pantalla? Se mide DONDE EMPIEZA la primera fila del arbol contra
+    // el alto de la ventana. Un bloque que resuelve la carga cognitiva
+    // escondiendo el trabajo no resuelve nada.
+    '    topPrimeraFila: (function(){ var f=document.querySelector(".org-puesto"); return f?Math.round(f.getBoundingClientRect().top):-1; })(),',
+    '    altoVentana: window.innerHeight,',
+    '    altoResumen: (function(){ var r=document.querySelector(".org-resumen"); return r?Math.round(r.getBoundingClientRect().height):0; })(),',
+    '    topResumen: (function(){ var r=document.querySelector(".org-resumen"); return r?Math.round(r.getBoundingClientRect().top):-1; })(),',
+    '    altoBarra: (function(){ var b=document.querySelector(".org-barra"); return b?Math.round(b.getBoundingClientRect().height):0; })(),',
+    '    topBarra: (function(){ var b=document.querySelector(".org-barra"); return b?Math.round(b.getBoundingClientRect().top):0; })(),',
+    '    anchoViewport: window.innerWidth,',
     '    raiz: nombres[0] || "(ninguna)",',
     '    puestos: nombres.length,',
     '    raices: raices.length,',
@@ -192,7 +222,11 @@ function guion(esc) {
     // TESTIGO: el componente publica cuántas entregas contó. Sin esto, un árbol
     // vacío por no haber llegado el dato se ve igual que uno vacío de verdad.
     '    subtitulo: (function(){',
-    '      var t=document.body.innerText||"";',
+    // ⚠ SE LEE DEL ELEMENTO, NO DEL TEXTO VISIBLE: en telefono ese renglon se
+    // esconde a proposito (el resumen lo supersede) y `innerText` no ve lo
+    // escondido, asi que el testigo se apagaba justo en el modo que vigila.
+    '      var e=document.querySelector(".org-sub-totales");',
+    '      var t=e ? e.textContent : (document.body.innerText||"");',
     '      var m=/(\\d+)\\s+puestos\\s+·\\s+(\\d+)\\s+entregadas/.exec(t);',
     '      return m ? {puestos:+m[1], entregas:+m[2]} : null;',
     '    })(),',
@@ -222,6 +256,16 @@ function medir(esc, puerto) {
       if (url.indexOf('/api/') === 0) {
         apis++; res.writeHead(200, { 'Content-Type': 'application/json' }); return res.end(cuerpo);
       }
+      if (url === '/movil') {
+        // 390px REALES. Chrome topa el ancho minimo de ventana en ~500px, asi
+        // que `--window-size=390` mediria el escritorio y daria verde sin tocar
+        // el caso (leccion del 7/sep). Un documento dentro de un marco evalua
+        // sus media queries contra el viewport DEL MARCO.
+        res.writeHead(200, { 'Content-Type': 'text/html', 'Cache-Control': 'no-store' });
+        return res.end('<!doctype html><html><head><meta charset="utf-8">' +
+          '<style>html,body{margin:0;padding:0}iframe{border:0;display:block;width:390px;height:844px}</style>' +
+          '</head><body><iframe src="/tareas"></iframe></body></html>');
+      }
       if (url === '/' || !path.extname(url)) {
         res.writeHead(200, { 'Content-Type': 'text/html', 'Cache-Control': 'no-store' });
         return res.end(html);
@@ -235,17 +279,23 @@ function medir(esc, puerto) {
     srv.listen(puerto, () => {
       const perfil = fs.mkdtempSync(path.join(os.tmpdir(), 'md-rama-'));
       const h = spawn(CHROME, ['--headless=new', '--disable-gpu', '--no-sandbox', '--no-first-run',
-        '--window-size=1440,1400', '--user-data-dir=' + perfil, '--virtual-time-budget=30000',
+        '--window-size=' + (process.env.MOVIL ? '420,900' : '1440,1400'), '--user-data-dir=' + perfil, '--virtual-time-budget=30000',
         '--disable-background-networking', '--disable-sync', '--disable-component-update',
         '--disable-features=PushMessaging,OptimizationHints',
-        '--dump-dom', 'http://localhost:' + puerto + '/tareas'],
+        '--dump-dom', 'http://localhost:' + puerto + (process.env.MOVIL ? '/movil' : '/tareas')],
         { stdio: ['ignore', 'pipe', 'ignore'] });
       let dom = '';
       h.stdout.on('data', (d) => { dom += d.toString('utf8'); });
       h.on('error', (e) => { srv.close(); resolve({ error: 'no pude lanzar Chrome: ' + e.message }); });
       h.on('close', () => {
         srv.close();
-        if (dom.length < 500) return resolve({ error: 'DOM de ' + dom.length + ' bytes' });
+        // En modo telefono el `--dump-dom` devuelve el ENVOLTORIO del iframe
+        // -unos 200 bytes- y no la app, asi que esta guardia no aplica ahi. La
+        // que sirve en los dos modos es la de abajo: sin `medida` no hubo
+        // medicion, y sin `apis` los ceros no valen.
+        if (!process.env.MOVIL && dom.length < 500) {
+          return resolve({ error: 'DOM de ' + dom.length + ' bytes' });
+        }
         if (!medida) return resolve({ error: 'el guion no reportó medición (dom=' + dom.length + 'B)' });
         resolve({ dato: medida, apis });
       });
@@ -257,11 +307,21 @@ function medir(esc, puerto) {
   if (!CHROME) abortar('no encontré Chrome.');
   if (!fs.existsSync(path.join(DIST, 'index.html'))) abortar('no hay dist/. Corre `npm run build` antes.');
 
+  // §8.11(a): la hora de la corrida es una ENTRADA. En el primer minuto del dia
+  // las dos entregas de las 00:01 todavia no han vencido y la tabla mediria otra
+  // cosa. Se aborta en vez de reportar un fallo falso.
+  const ahora = new Date();
+  if (ahora.getHours() === 0 && ahora.getMinutes() <= 1) {
+    abortar('son las ' + ahora.toTimeString().slice(0, 5) + ': las entregas de las 00:01 ' +
+            'todavia no vencen y los esperados de vencidas no aplican.');
+  }
+
   console.log('');
-  console.log('  🌳 EL ÁRBOL DE LA ENCARGADA — raíz esperada: «%s»', RAIZ_ESPERADA);
+  console.log('  🌳 EL ÁRBOL DE LA ENCARGADA — raíz «%s» · %s', RAIZ_ESPERADA,
+    process.env.MOVIL ? 'TELEFONO 390x844' : 'escritorio 1440');
   console.log('  ──────────────────────────────────────────────────────────────────────');
   console.log('  %s %s %s %s  %s  raíz', 'escenario'.padEnd(28),
-    'entregas'.padStart(9), 'raíces'.padStart(7), 'cruzadas'.padStart(9), 'titulo'.padEnd(16));
+    'entregas'.padStart(9), 'raíces'.padStart(7), 'cruzadas'.padStart(9), 'titulo'.padEnd(16) + ' resumen');
 
   let fallos = 0; const vistos = [];
 
@@ -274,6 +334,10 @@ function medir(esc, puerto) {
     if (!d.arbol) abortar(esc.nombre + ' → el árbol no se montó, así que no medí el enraizado.');
     // El testigo: sin él, «0 cruzadas» puede ser «no llegó el dato».
     if (!d.subtitulo) abortar(esc.nombre + ' → no encontré el subtítulo con el conteo de entregas.');
+    if (process.env.MOVIL && d.anchoViewport !== 390) {
+      abortar(esc.nombre + ' → el viewport mide ' + d.anchoViewport + 'px y no 390: ' +
+              'estaria midiendo el escritorio y dando verde sin tocar el caso del telefono.');
+    }
     // ⚠ EL ESPERADO NO ES «todo lo que servi», Y ESO SALE DE LA REGLA.
     // «Del equipo» es ESTRICTO desde el 14/sep: son las de los DEMAS, no todas.
     // Asi que la propia de la Encargada no entra en este arbol. Lo descubri
@@ -292,7 +356,99 @@ function medir(esc, puerto) {
 
     console.log('  %s %s %s %s  %s  %s', esc.nombre.padEnd(28),
       String(d.subtitulo.entregas).padStart(9), String(d.raices).padStart(7),
-      String(d.cruzadas).padStart(9), d.titulo.padEnd(16), d.raiz);
+      String(d.cruzadas).padStart(9), d.titulo.padEnd(16) + ' ' + d.resumen.slice(0, 44), d.raiz);
+
+    // ── EL RESUMEN (Capa 1) ──────────────────────────────────────────────
+    const esperado = esc.resumen;
+    const chips = d.resumenChips.join(' · ');
+    if (d.resumen === '(no se pinto)') {
+      console.log('      ✗ el bloque de resumen no se pinto');
+      fallos++;
+    } else {
+      const frase = esperado.pendientes === 0
+        ? 'No hay entregas pendientes'
+        : (esperado.pendientes === 1 ? 'Falta 1 entrega' : 'Faltan ' + esperado.pendientes + ' entregas');
+      if (d.resumen.indexOf(frase) < 0) {
+        console.log('      ✗ el titular debia decir «%s» y la linea dice «%s»', frase, d.resumen);
+        fallos++;
+      }
+      const esperaVenc = esperado.vencidas ? esperado.vencidas + ' vencida' : '';
+      const esperaTiempo = esperado.aTiempo ? esperado.aTiempo + ' a tiempo' : '';
+      if (esperaVenc && chips.indexOf(esperaVenc) < 0) {
+        console.log('      ✗ esperaba «%s» en los chips y hay «%s»', esperaVenc, chips || '(ninguno)');
+        fallos++;
+      }
+      if (esperaTiempo && chips.indexOf(esperaTiempo) < 0) {
+        console.log('      ✗ esperaba «%s» en los chips y hay «%s»', esperaTiempo, chips || '(ninguno)');
+        fallos++;
+      }
+      // LOS TRES CUADRAN. Es la asercion que impide que la linea mienta: tres
+      // numeros juntos se leen como partes de un todo.
+      if (esperado.vencidas + esperado.aTiempo !== esperado.pendientes) {
+        abortar(esc.nombre + ' → el ESPERADO de esta fila no cuadra (' +
+                esperado.vencidas + ' + ' + esperado.aTiempo + ' ≠ ' + esperado.pendientes +
+                '): la prueba estaria fijando una linea que miente.');
+      }
+    }
+
+    // ── ¿EL BLOQUE NUEVO EMPUJA EL ARBOL FUERA DE LA PANTALLA? ───────────
+    // La pregunta de David. Si la primera fila del arbol arranca por debajo
+    // del borde, habriamos creado un problema donde no lo habia: resolver la
+    // carga cognitiva escondiendo el trabajo no resuelve nada.
+    // ⚠ SE DISTINGUE «lo rompi yo» DE «ya estaba roto», que es la diferencia
+    // entre una guardia util y una que alguien afloja en tres semanas porque
+    // «siempre falla». La linea de resumen solo puede responder por SU alto.
+    const PLIEGUE = d.altoVentana - 60;
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  LA PREGUNTA DE VERDAD: ¿SE VE LA RESPUESTA SIN HACER SCROLL?
+    // ═══════════════════════════════════════════════════════════════════
+    // Es la unica asercion de posicion que esta Capa 1 puede prometer. Exigir
+    // que ADEMAS el arbol quepa seria exigir algo que no era cierto antes de
+    // este cambio -hay ~780px de cabecera, titulo, bandejas y botones antes de
+    // el- y la guardia acabaria aflojandose por fallar siempre. Lo que si
+    // depende de este bloque: que la linea que contesta la pregunta este
+    // DELANTE de los ojos al aterrizar. Si cae bajo el pliegue, no sirve de
+    // nada y es mejor saberlo aqui que en la tienda.
+    if (d.topResumen < 0) {
+      console.log('      ✗ el bloque de resumen no existe en el DOM');
+      fallos++;
+    } else if (d.topResumen > d.altoVentana - 80) {
+      console.log('      ✗ LA RESPUESTA NO SE VE: el resumen empieza en y=%s de %s. ' +
+                  'Una linea que contesta la pregunta pero hay que buscarla scrolleando ' +
+                  'no contesta nada.', d.topResumen, d.altoVentana);
+      fallos++;
+    }
+    const sinResumen = d.topPrimeraFila - d.altoResumen;
+    // Tope de humo, NO la guardia de verdad. Las que mandan son otras dos, y
+    // cada una vive donde puede medirse: en escritorio, que al arbol le quede
+    // >=55% de la pantalla (`prueba-arbol-organigrama`, que ya cazo este bloque
+    // una vez y lo nombro); en telefono, que la respuesta este sobre el pliegue
+    // (abajo). Esto solo caza que la linea se convierta en un bloque de tres
+    // renglones, que es como empezo y como medi 92px en 390px.
+    if (d.altoResumen > 56) {
+      console.log('      ✗ el resumen mide %spx: dejo de ser un renglon. Con dos ya son ~50px, ' +
+                  'asi que esto son tres o mas y esta tapando trabajo', d.altoResumen);
+      fallos++;
+    }
+    if (d.topPrimeraFila >= 0 && d.topPrimeraFila > PLIEGUE) {
+      if (sinResumen <= PLIEGUE && !process.env.MOVIL) {
+        console.log('      ✗ LO ROMPIO EL RESUMEN: la primera fila pasa de y=%s a y=%s con una ' +
+                    'ventana de %s. El bloque que existe para que el ojo aterrice esta ' +
+                    'escondiendo el trabajo.', sinResumen, d.topPrimeraFila, d.altoVentana);
+        fallos++;
+      } else if (process.env.MOVIL) {
+        console.log('      ⚠ en telefono el arbol arranca en y=%s de %s (sin el resumen, y=%s). ' +
+                    'Se consumen %spx antes de el: la respuesta se ve, el detalle pide scroll. ' +
+                    'Bajar ese cromo es Capa 2.', d.topPrimeraFila, d.altoVentana, sinResumen, d.topBarra);
+      } else {
+        console.log('      ⚠ PENDIENTE AJENO (no lo rompio este cambio): la primera fila del ' +
+                    'arbol empieza en y=%s de %s, y SIN el resumen ya empezaba en y=%s. ' +
+                    'Se consumen %spx antes del arbol -cabecera, titulo, 4 bandejas, 3 botones- ' +
+                    'y la barra mide otros %spx. Es lo que tiene que atacar la Capa 2.',
+          d.topPrimeraFila, d.altoVentana, sinResumen, d.topBarra, d.altoBarra);
+      }
+    }
 
     const tituloEsperado = esc.titulo || 'Mi equipo';
     if (d.titulo !== tituloEsperado) {
@@ -328,6 +484,12 @@ function medir(esc, puerto) {
     abortar('la pastilla «servicio a» sale en ' + conCruzada + ' de ' + vistos.length +
             ' escenarios: la muestra no distingue «hay trabajo ajeno» de «no lo hay», ' +
             'así que un arreglo que la borrara entera pasaría en verde.');
+  }
+  const conVencidas = vistos.filter((d) => d.resumenChips.some((c) => c.indexOf('vencida') >= 0)).length;
+  if (!conVencidas || conVencidas === vistos.length) {
+    abortar('el chip de vencidas sale en ' + conVencidas + ' de ' + vistos.length +
+            ' escenarios: la muestra no distingue «hay atrasos» de «no los hay», ' +
+            'asi que ese numero no esta probado.');
   }
   const titulos = new Set(vistos.map((d) => d.titulo));
   if (titulos.size < 2) {

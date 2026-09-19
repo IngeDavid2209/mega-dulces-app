@@ -27,6 +27,7 @@
 //  publicados se conservan).
 // ============================================================================
 const { crearCrud } = require('./_crud');
+const { guardia, puedeDeclararPuesto } = require('./_autorizar');
 
 module.exports = crearCrud({
   tabla: 'mdtask_puestos_declarados',
@@ -45,4 +46,19 @@ module.exports = crearCrud({
   boolCols: ['vigente'],
   numCols: ['creado_en'],
   orderBy: 'nombre asc',
+
+  // ── QUIEN ESCRIBE (19/sep) ────────────────────────────────────────────────
+  //
+  // Un puesto declarado NO lleva sucursal: es de la empresa. Por eso la guardia
+  // va sin `sucursalDe` y la regla es «jefatura», la misma audiencia de la
+  // pantalla de plantilla que es donde se captura.
+  //
+  // Lo que impide que esto se confunda con el organigrama siguen siendo los
+  // candados de la tabla (prefijo `tmp-`, `hasta` obligatorio), no esta
+  // guardia: un candado en el handler queda a merced del siguiente camino de
+  // escritura que alguien abra, y por eso los de la 057 viven en el SQL.
+  autorizar: guardia({
+    etiqueta: 'puestos-declarados',
+    permite: puedeDeclararPuesto,
+  }),
 });

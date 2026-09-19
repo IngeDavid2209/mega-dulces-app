@@ -17,6 +17,7 @@
 //  llama. Si algún día hiciera falta, es una decisión aparte y consciente.
 // ============================================================================
 const { crearCrud } = require('./_crud');
+const { guardia, puedeDefinirEstructura, sucursalDeLaFila } = require('./_autorizar');
 
 module.exports = crearCrud({
   tabla: 'mdtask_plantillas',
@@ -35,4 +36,21 @@ module.exports = crearCrud({
   // quedarse con seis renglones.
   filtros: { sucursal: 'sucursal' },
   orderBy: 'sucursal asc, puesto_id asc',
+
+  // ── QUIÉN ESCRIBE (19/sep) ────────────────────────────────────────────────
+  //
+  // Hasta hoy: cualquier sesión válida. Esta tabla dice cuántas plazas autoriza
+  // una sucursal, y de ella se derivan las plazas y con ellas a quién se le
+  // emite trabajo — así que escribirla sin permiso es repartir obligaciones.
+  //
+  // La regla es el espejo de `puedeEditar` en `plantilla.ts:249`, no una
+  // política nueva: Dirección en cualquier sucursal, cada jefatura en las
+  // suyas. Leer no se toca.
+  autorizar: guardia({
+    etiqueta: 'plantillas',
+    permite: puedeDefinirEstructura,
+    sucursalDe: ({ cuerpo, req }) => sucursalDeLaFila({
+      tabla: 'mdtask_plantillas', columna: 'sucursal', campo: 'sucursal', cuerpo, req,
+    }),
+  }),
 });

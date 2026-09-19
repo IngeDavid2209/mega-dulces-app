@@ -30,8 +30,27 @@ const fs = require('fs');
 const path = require('path');
 
 const RAIZ = path.resolve(__dirname, '..');
-const ENTRADA = path.join(RAIZ, 'src/app/shared/emision-manual.util.ts');
 const SALIDA = path.join(RAIZ, 'dist/manual');
+
+// ── LAS DOS ENTRADAS, Y POR QUÉ SON DOS ────────────────────────────────────
+//
+// La primera es la regla de emisión, que es para lo que nació este script.
+//
+// La segunda entró el 19/sep con la autorización del servidor: `api/_autorizar.js`
+// necesita `esJefatura` para decidir quién puede escribir la plantilla de una
+// sucursal, y esa función vive en `alcance.util.ts`. NO se reescribe en JS del
+// lado del servidor — dos versiones de «hasta dónde manda esta persona» serían
+// dos reglas libres de discrepar, y la que discrepara lo haría en silencio:
+// alguien a quien la pantalla deja capturar y el endpoint rechaza, o al revés.
+// Una definición, dos llamadores, que es lo mismo que ya se hizo con
+// `planDeEntregas` (14/sep).
+//
+// `alcance.util.ts` importa organigrama, puesto.util y permisos.util, que ya
+// se emitían: lo único que añade al bundle del servidor es su propio archivo.
+const ENTRADAS = [
+  path.join(RAIZ, 'src/app/shared/emision-manual.util.ts'),
+  path.join(RAIZ, 'src/app/shared/alcance.util.ts'),
+];
 
 // Lo que el emisor del servidor va a requerir. Si tsc dejara de emitir alguno
 // —porque alguien cambió un import—, el fallo tiene que verse aquí y no en
@@ -59,6 +78,12 @@ const ESPERADOS = [
   'sucursales-elegibles.util.js',
   'unidad-servida.util.js',
   'zonas.util.js',
+  // El que entró el 19/sep con la autorización del servidor. Si tsc dejara de
+  // emitirlo, `api/_autorizar.js` no podría cargar `esJefatura` y —por su
+  // propio diseño— fallaría ABIERTO: los endpoints de definición volverían a
+  // aceptar cualquier token sin que nadie lo notara. Por eso el build se
+  // detiene aquí en vez de dejar que eso pase en silencio.
+  'alcance.util.js',
 ];
 
 function abortar(motivo, detalle) {
@@ -70,16 +95,17 @@ function abortar(motivo, detalle) {
   process.exit(1);
 }
 
-if (!fs.existsSync(ENTRADA)) abortar('no existe ' + ENTRADA);
+for (const e of ENTRADAS) if (!fs.existsSync(e)) abortar('no existe ' + e);
 
 try {
   execSync(
     'npx tsc --outDir "' + SALIDA + '" --module commonjs --target ES2022 ' +
-    '--skipLibCheck --moduleResolution node --removeComments false "' + ENTRADA + '"',
+    '--skipLibCheck --moduleResolution node --removeComments false ' +
+    ENTRADAS.map(e => '"' + e + '"').join(' '),
     { cwd: RAIZ, stdio: 'pipe' }
   );
 } catch (e) {
-  abortar('tsc no compilo emision-manual.util.ts', (e.stdout || e.stderr || e.message || ''));
+  abortar('tsc no compilo las entradas', (e.stdout || e.stderr || e.message || ''));
 }
 
 const faltan = ESPERADOS.filter(f => !fs.existsSync(path.join(SALIDA, f)));

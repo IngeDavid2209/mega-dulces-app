@@ -23,7 +23,24 @@
 //    numCols:  ['creado_en', ...],               // columnas numéricas (bigint)
 //    orderBy:  'creado_en desc',                 // orden del listado
 //    filtros:  { uid: 'uid', semanaISO: 'semana_iso' }, // ?param -> columna (igualdad)
+//    autorizar: async ({user, metodo, cuerpo, req}) => null | {status, error},
 //  }
+//
+//  ─── `autorizar` ES OPCIONAL, Y ESO ES LA MITAD DEL DISEÑO ────────────────
+//  Hasta el 19/sep/2026 este factory AUTENTICABA y no AUTORIZABA: pasaba de
+//  `verificarToken` directo al SQL, así que cualquier sesión válida podía
+//  escribir en cualquiera de las 14 tablas que se generan aquí.
+//
+//  El gancho se añade como OPCIONAL a propósito: los endpoints que no lo
+//  declaren se comportan EXACTAMENTE igual que antes. Cerrar los catorce de un
+//  golpe habría sido cambiar quién puede escribir en tablas que se usan todos
+//  los días (rutinas, descansos, tareas de equipo, vehículos) sin haber medido
+//  quién escribe hoy en cada una — y un 403 en medio de un turno se lee como
+//  «la app se rompió». Se cierran de a poco, cada uno con su medición.
+//
+//  Solo gobierna las ESCRITURAS (POST/PATCH/DELETE). Leer no se toca: las
+//  pantallas ya recortan lo que enseñan, y gatear los GET aquí rompería lecturas
+//  legítimas sin cerrar nada que no estuviera abierto por otro lado.
 // ============================================================================
 const { query, dbConfigurada } = require('./db');
 const { verificarToken } = require('./_auth');
@@ -76,6 +93,31 @@ function crearCrud(cfg) {
     let user;
     try { user = await verificarToken(req); }
     catch (e) { return res.status(e.status || 401).json({ error: e.message }); }
+
+    // ── Autorización de escritura ──────────────────────────────────────────
+    //
+    // Va DESPUÉS de autenticar (hace falta saber quién es) y ANTES del try del
+    // SQL, para que un fallo de la guardia no se confunda con un error de base
+    // en el catch de abajo y acabe devolviendo un 500 que nadie sabe leer.
+    //
+    // Si la propia guardia revienta, se DENIEGA: una guardia que no pudo
+    // decidir no es una guardia que autoriza. Es el lado opuesto al de una
+    // identidad no reconocida (que sí pasa, ver `_autorizar.js`), y la
+    // diferencia es real: allá el dato falta, aquí el candado está roto.
+    if (cfg.autorizar && (req.method === 'POST' || req.method === 'PATCH' || req.method === 'DELETE')) {
+      let veredicto;
+      try {
+        veredicto = await cfg.autorizar({
+          user, metodo: req.method, cuerpo: req.body || {}, req,
+        });
+      } catch (e) {
+        console.error(`[${cfg.tabla}] la guardia de autorizacion fallo:`, e && e.message);
+        return res.status(500).json({ error: 'No se pudo comprobar tu permiso para esta operación.' });
+      }
+      if (veredicto) {
+        return res.status(veredicto.status || 403).json({ error: veredicto.error || 'Sin permiso.' });
+      }
+    }
 
     try {
       if (req.method === 'GET') {

@@ -37,6 +37,7 @@
 const { crearCrud } = require('./_crud');
 const { query, dbConfigurada } = require('./db');
 const { verificarToken } = require('./_auth');
+const { guardia, puedeEditarNorma } = require('./_autorizar');
 
 const crud = crearCrud({
   tabla: 'mdtask_tareas_puesto',
@@ -60,6 +61,20 @@ const crud = crearCrud({
   numCols: ['creado_en', 'dia_mes'],
   orderBy: 'puesto_id asc, nombre asc',
   filtros: { puestoId: 'puesto_id' },
+
+  // ── QUIEN ESCRIBE (19/sep) ────────────────────────────────────────────────
+  //
+  // Mas estrecho que la plantilla A PROPOSITO. La plantilla dice cuanta gente
+  // cabe en UNA tienda; esta tabla dice que tiene que hacer TODO un puesto de
+  // la empresa, y el emisor la lee cada medianoche. Una norma escrita por quien
+  // no debe le entrega obligaciones a gente real que no le tocan (§8.5).
+  //
+  // Espejo de `puedeEditarNorma` en `manual-puestos.ts:108`: Direccion global o
+  // el dueño. Leer no se toca — el manual esta para conocerse.
+  autorizar: guardia({
+    etiqueta: 'tareas-puesto',
+    permite: puedeEditarNorma,
+  }),
 });
 
 /** Lo único que un PATCH puede mover. Lista BLANCA: ver cabecera. */

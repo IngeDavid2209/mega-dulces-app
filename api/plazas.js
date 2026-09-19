@@ -16,6 +16,7 @@
 //  plaza borrada convierte su historia en filas huérfanas.
 // ============================================================================
 const { crearCrud } = require('./_crud');
+const { guardia, puedeDefinirEstructura, sucursalDeLaFila } = require('./_autorizar');
 
 module.exports = crearCrud({
   tabla: 'mdtask_plazas',
@@ -35,4 +36,22 @@ module.exports = crearCrud({
   // Encargada tendría que bajarse las plazas de toda la empresa.
   filtros: { lugar: 'lugar', puestoId: 'puesto_id' },
   orderBy: 'lugar asc, puesto_id asc, numero asc nulls last',
+
+  // ── QUIEN ESCRIBE (19/sep) ────────────────────────────────────────────────
+  //
+  // Misma regla que la plantilla, y tiene que ser la misma: las plazas SE
+  // DERIVAN de ella (`planDePlazas`). Si aqui se pidiera menos, la puerta de
+  // atras dejaria crear plazas que ninguna plantilla autorizo — justo lo que la
+  // cabecera de este archivo dice que no puede pasar.
+  //
+  // El lugar sale de `lugar`, no de `sucursal`: son la misma cosa con otro
+  // nombre en esta tabla, y pasarle el campo equivocado autorizaria contra una
+  // sucursal vacia (o sea, solo Direccion escribiria).
+  autorizar: guardia({
+    etiqueta: 'plazas',
+    permite: puedeDefinirEstructura,
+    sucursalDe: ({ cuerpo, req }) => sucursalDeLaFila({
+      tabla: 'mdtask_plazas', columna: 'lugar', campo: 'lugar', cuerpo, req,
+    }),
+  }),
 });

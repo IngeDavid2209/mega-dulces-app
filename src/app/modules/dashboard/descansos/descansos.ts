@@ -11,6 +11,7 @@ import Swal from 'sweetalert2';
 import { ApiService } from '../../../shared/api.service';
 import { SidebarComponent } from '../../../shared/sidebar/sidebar';
 import { esAdminGlobal, sucursalesPermitidas } from '../../../shared/permisos.util';
+import { veDescansos } from '../../../shared/audiencias';
 import {
   DIAS_SEMANA,
   obtenerSemanaISO,
@@ -67,10 +68,24 @@ export class DescansosComponent implements OnInit, OnDestroy {
   ngOnInit() {
     const sesion = localStorage.getItem('md_sesion_actual');
     if (sesion) { this.currentUser = JSON.parse(sesion); }
-    // Acceso: admin global o admin limitado / quien pueda administrar personal
-    const tienePermiso = this.currentUser?.rol === 'admin' || this.currentUser?.puedeAdministrarPersonal;
-    if (!tienePermiso) {
-      this.router.navigate(['/home']);
+    // ── LA TERCERA COPIA DE LA REGLA, retirada el 19/sep ──────────────────
+    //
+    // Aqui estaba escrita a mano `rol === 'admin' || puedeAdministrarPersonal`.
+    // Decia lo mismo que el menu pero con otras palabras, asi que eran DOS
+    // definiciones de la misma audiencia libres de discrepar — y una tercera
+    // faltaba: la ruta no pedia nada mas que `authGuard`.
+    //
+    // Ahora la ruta lleva `descansosGuard`, que usa `veDescansos` de
+    // `shared/audiencias.ts`, LA MISMA que consulta el menu. Se conserva esta
+    // comprobacion como red por si alguien monta el componente por otro camino
+    // —quitarla y el guard en el mismo paso dejaria sin nada que recuperar— y
+    // ahora llama al predicado compartido en vez de repetirlo.
+    //
+    // El destino cambia de `/home` a `/tareas`: `/home` tiene su propio guard
+    // que puede rebotar a quien no tenga tablero, y encadenar dos redirecciones
+    // deja a la persona dando vueltas sin saber por que.
+    if (!veDescansos(this.currentUser)) {
+      this.router.navigate(['/tareas']);
       return;
     }
     this.usuariosSvc.iniciar();

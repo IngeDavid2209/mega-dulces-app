@@ -143,7 +143,21 @@ const MARCADORES = [
   // llega, llego la regla. Que la regla HAGA lo que dice lo prueban las 9
   // aserciones nuevas y el contraste medido -el mismo fixture pasa de «6 a
   // tiempo» a «6 vencidas»-, no este marcador.
-  { txt: 'org-slot-tarde', nuevo: true, que: 'la columna «Tarde» en vez de «Venc.»' },
+  // 19/sep/2026 · los cinco guards de ruta que faltaban. Cerrar una ruta es
+  // LOGICA PURA y no introduce ninguna cadena propia (los nombres de los guards
+  // los come el minificador), asi que el marcador es la linea de consola que el
+  // guard escribe al rebotar — y esa linea hacia falta igual: sin ella, quien
+  // sigue un enlace viejo aterriza en sus tareas sin ninguna pista de por que.
+  //
+  // Validado en las DOS direcciones antes de subir: 1 en dist/ (chunk lazy),
+  // 0 en produccion. Lo que este marcador prueba es que el codigo llego; que
+  // los guards GATEEN lo prueban las 48 mediciones en el DOM de
+  // `prueba-guards-ruta.js` y sus dos controles negativos.
+  { txt: 'ruta-cerrada-para-tu-perfil', nuevo: true,
+    que: 'los 5 guards de /reportes, /cierre-mensual, /manual-puestos, /descansos y /tareas-asignadas' },
+  // El del despliegue anterior baja a control: YA VALE en produccion, y
+  // dejarlo como `nuevo` daria verde sin comprobar nada de hoy.
+  { txt: 'org-slot-tarde', control: true, que: 'la columna «Tarde» en vez de «Venc.»' },
   // Los dos del despliegue anterior bajan a control: YA VALEN en produccion, y
   // dejarlos arriba daria verde sin comprobar nada de este.
   { txt: 'no son sitios con cuadrilla', control: true,

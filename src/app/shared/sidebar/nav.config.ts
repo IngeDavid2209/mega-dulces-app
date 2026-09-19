@@ -33,6 +33,13 @@
 // definicion, para que menu y guard cambien juntos o no cambien.
 import { veControl } from '../../modules/dashboard/control/control.tabs';
 import { hayTableroPara, esJefatura, veUsuarios } from '../alcance.util';
+// Los cinco predicados de las rutas que hasta el 19/sep solo pedian authGuard.
+// Viven en `audiencias.ts` porque ahora tambien los usa el GUARD de cada una:
+// si se quedaran escritos aqui, el guard tendria que repetirlos y ese segundo
+// sitio es de donde salen las fugas (la leccion de `/personal`, 13/sep).
+import {
+  veAuditoria, veCierreMensual, veManualPuestos, veDescansos, veTareasAsignadas,
+} from '../audiencias';
 
 export type SeccionNav = 'mi-trabajo' | 'verifico' | 'control' | 'definiciones';
 
@@ -166,14 +173,14 @@ export const NAV: EntradaNav[] = [
   { seccion: 'control', etiqueta: 'Pase de lista', ruta: '/pase-lista',
     icono: 'gente', ve: esJefatura },
   { seccion: 'control', etiqueta: 'Auditoría', ruta: '/reportes',
-    icono: 'lupa', ve: (u) => esAdmin(u) || u?.puedeVerHistorial },
+    icono: 'lupa', ve: veAuditoria },
   { seccion: 'control', etiqueta: 'Cierre Mensual', ruta: '/cierre-mensual',
-    icono: 'pdf', ve: (u) => esAdmin(u) && (u?.alcance === 'global' || !u?.alcance) },
+    icono: 'pdf', ve: veCierreMensual },
 
   // ── 4 · DEFINICIONES ──────────────────────────────────────────────────
   // Al fondo porque se visita una vez al mes, no diario.
   { seccion: 'definiciones', etiqueta: 'Manual por Puesto', ruta: '/manual-puestos',
-    icono: 'libro', ve: (u) => esAdmin(u) || u?.puedeCrearRutinas },
+    icono: 'libro', ve: veManualPuestos },
   // La estructura de cada sucursal: cuantas plazas de cada puesto debe haber.
   // Va junto a Manual por Puesto y Usuarios porque es lo mismo que ellas: una
   // DEFINICION de como esta armada la empresa, no un corte de datos.
@@ -185,7 +192,7 @@ export const NAV: EntradaNav[] = [
   { seccion: 'definiciones', etiqueta: 'Usuarios', ruta: '/personal',
     icono: 'gente', ve: veUsuarios },
   { seccion: 'definiciones', etiqueta: 'Días de Descanso', ruta: '/descansos',
-    icono: 'calendario', ve: (u) => esAdmin(u) || u?.puedeAdministrarPersonal },
+    icono: 'calendario', ve: veDescansos },
 
   // ── LAS SEIS HUÉRFANAS ────────────────────────────────────────────────
   // Existen, tienen ruta y guard, y NUNCA han tenido entrada de menú. Se
@@ -203,7 +210,7 @@ export const NAV: EntradaNav[] = [
   { seccion: 'mi-trabajo', etiqueta: 'Flotilla', ruta: '/flotilla', icono: 'camion',
     ve: esAdmin, oculta: true, nota: 'huérfana · servicio · SIN DECIDIR si sigue en uso' },
   { seccion: 'verifico', etiqueta: 'Tareas asignadas', ruta: '/tareas-asignadas', icono: 'check',
-    ve: esAdmin, oculta: true, nota: 'huérfana · es la muestra del que asignó: pertenece a Lo que verifico' },
+    ve: veTareasAsignadas, oculta: true, nota: 'huérfana · es la muestra del que asignó: pertenece a Lo que verifico' },
 ];
 
 /** Las entradas visibles para este usuario, agrupadas por sección. */

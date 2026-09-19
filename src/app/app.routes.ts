@@ -3,6 +3,13 @@ import { Routes } from '@angular/router';
 import { homeGuard } from './services/home.guard';
 import { authGuard } from './services/auth.guard';
 import { tabControlGuard, primeraTabControlGuard, estructuraGuard, usuariosGuard } from './services/control.guards';
+// Los cinco que faltaban (19/sep). Hasta ese dia estas rutas solo pedian
+// `authGuard`: el menu las gateaba y la URL no. Su condicion es LA MISMA que
+// consulta el menu, importada de `shared/audiencias.ts`.
+import {
+  auditoriaGuard, cierreMensualGuard, manualPuestosGuard, descansosGuard,
+  tareasAsignadasGuard,
+} from './services/rutas.guards';
 import { soloTecGuard } from './services/tec.guard';
 import { promocionesGuard } from './services/promociones.guard';
 import { pagosGuard } from './services/pagos.guard';
@@ -67,12 +74,12 @@ export const routes: Routes = [
   // 📄 CIERRE MENSUAL DE OPERACIONES (PDF con fotos por sucursal)
   {
     path: 'cierre-mensual',
-    canActivate: [authGuard],
+    canActivate: [authGuard, cierreMensualGuard],
     loadComponent: () => import('./modules/dashboard/cierre-mensual/cierre-mensual').then(m => m.CierreMensualComponent)
   },
   { 
     path: 'reportes', 
-    canActivate: [authGuard],
+    canActivate: [authGuard, auditoriaGuard],
     loadComponent: () => import('./reportes/reportes').then(m => m.ReportesComponent) 
   },
   { 
@@ -89,7 +96,7 @@ export const routes: Routes = [
   // 📅 DÍAS DE DESCANSO SEMANALES
   {
     path: 'descansos',
-    canActivate: [authGuard],
+    canActivate: [authGuard, descansosGuard],
     loadComponent: () => import('./modules/dashboard/descansos/descansos').then(m => m.DescansosComponent)
   },
 
@@ -169,7 +176,7 @@ export const routes: Routes = [
   // del Manual Corporativo de Operación. Pantalla de solo consulta.
   {
     path: 'manual-puestos',
-    canActivate: [authGuard],
+    canActivate: [authGuard, manualPuestosGuard],
     loadComponent: () => import('./modules/dashboard/manual-puestos/manual-puestos').then(m => m.ManualPuestosComponent)
   },
 
@@ -186,7 +193,7 @@ export const routes: Routes = [
   // 📤 TAREAS QUE EL ADMIN HA ASIGNADO A OTROS
   {
     path: 'tareas-asignadas',
-    canActivate: [authGuard],
+    canActivate: [authGuard, tareasAsignadasGuard],
     loadComponent: () => import('./modules/dashboard/tareas-asignadas/tareas-asignadas').then(m => m.TareasAsignadasComponent)
   },
 

@@ -492,6 +492,28 @@ que no ensancha el acceso de nadie más. Medido: entra a las cinco rutas **sin**
 **Cifra del hallazgo 7 actualizada de paso:** son **36 de 68** endpoints con
 `Access-Control-Allow-Origin: *` (el §3 dice 33 de 60).
 
+#### EL AUDITOR QUEDA EN EL REPO — es el control del paso C
+
+`scripts/auditar-privilegios-por-puesto.js` (solo lee, sin credenciales). Compila los
+`.ts` reales y llama a `esJefatura`, `alcancePropuesto` y `menuDe` de verdad: no parsea
+el catálogo ni reimplementa ninguna regla. **Las cinco cuentas de hoy quedan fijadas ahí
+como línea base**, para que el paso C se pueda enseñar antes de aplicarlo y medir
+después:
+
+    1. con gente debajo y SIN perfil definido ......... 11
+    2. el perfil contradice al nivel ................. 5 (+1 declarada: la cuenta del dueño)
+    3. las dos reglas de rango discrepan ............. 6
+    4. operativos con menu de jefatura ............... 3
+    5. banderas que dan vista de supervisor .......... 9 de 9
+
+Lleva sus tres controles y **afirman el mecanismo, no la aparición**: el positivo siembra
+mando en un operativo concreto y exige que suba **esa** cubeta (no «algún número»); el
+negativo exige que un puesto bien clasificado NO se reporte —sin él, una regla que
+marcara todo pasaría el positivo—; y el de discriminación compara el menú de un
+operativo-con-jefatura contra el de un anaquelista (5 rutas contra 2). Si algún día la
+cubeta 4 sale en cero, lo dice en vez de callarse: **ese cero es el arreglo funcionando,
+y hay que poder distinguirlo de «no medí»**.
+
 
 ### 19/sep/2026 — UNA SOLA DEFINICIÓN DE «VENCIDA», y el impacto medido es CERO
 

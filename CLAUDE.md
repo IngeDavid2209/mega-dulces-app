@@ -327,6 +327,107 @@ de que exista la plaza sería partir el problema en dos, no resolverlo.
 ## 9. Bitácora del plan
 
 
+### 19/sep/2026 (noche) — PASO C: el rango sale del NIVEL, y la escalada se deja sin tocar
+
+Continuación de la revisión de permisos. Instrucción de David: *«dale a lo que
+falta»*.
+
+#### LA TABLA PRIMERO, QUE ERA LO PROMETIDO
+
+`scripts/impacto-rango-unificado.js` (nuevo, solo lee). Y su mitad importante es que
+**no evalúa fichas en blanco**: a cada puesto le da **las banderas que su perfil le
+otorga** según `privilegios-por-puesto.js`. Con una ficha vacía la tabla habría dicho
+que tres puestos pierden el tablero cuando dos lo pierden — o sea, habría **inventado un
+impacto**. Es la lección del fixture de esta misma mañana, aplicada antes de tropezar.
+
+    regla                                          ganan   pierden
+    «su nivel manda» a secas                          2        2
+    «tiene gente debajo Y su nivel manda»             0        2   <- la aplicada
+
+Las dos que ganarían son `coordinador-cajas` y `coordinador-piso-ventas`: `coordinacion`
+con **cero subordinados declarados**. Darles `/plantilla` es darles la definición de
+cuántas plazas autoriza una tienda, y **ensanchar es la única dirección de verdad
+peligrosa** (11/sep). **No se aplicó**, y la salida correcta no es aflojar la regla: es
+declararles sus subordinados en el organigrama, que es donde esa verdad pertenece (§8.5).
+
+#### LO QUE SE QUITÓ, Y POR QUÉ ERA LA ARISTA EQUIVOCADA
+
+`esJefatura` daba mando con `tieneSubordinados` a secas. Tres puestos de nivel
+**operativo** pasaban por jefatura porque el catálogo les cuelga un practicante:
+
+    caja-general              operativo   1 directo (un practicante)
+    servicios-al-personal     operativo   1
+    reclutamiento-onboarding  operativo   1
+
+Con eso se llevaban `/pase-lista` y `/plantilla`. Un Analista de Caja General no decide
+cuántas plazas autoriza una sucursal. **Y no se cambió una fuente automática por una
+lista a mano:** `NIVELES_DE_MANDO` es el MISMO corte que ya hace `alcanceDeNivel()`, con
+una prueba que revienta si el catálogo gana un nivel y nadie la actualiza.
+
+#### MI EXPECTATIVA ESTABA MAL Y EL CONTROL LA CAZÓ
+
+Escribí «los 3 operativos con gente debajo tienen que perder el mando». **Falló: pierden
+2.** Medí el porqué **antes** de tocar la expectativa —que es lo contrario de ajustarla
+al artefacto—: a `servicios-al-personal` su perfil de Capital Humano le da **cinco
+banderas**, así que conserva el mando por `esSupervisor`, por otra puerta y legítima,
+porque esa área sí administra fichas.
+
+El control corregido afirma el **mecanismo**, no el resultado: *ninguno de los tres puede
+seguir mandando POR TENER GENTE DEBAJO* — o lo pierde, o lo conserva por bandera. La
+versión anterior confundía las dos cosas.
+
+#### VERIFICADO
+
+    unitarias .. 371 (354 -> 371), 17 en `rango-jefatura.spec.ts`
+    la red ..... las 44 fichas SIN puesto, intactas en las DOS direcciones
+    menu ....... `prueba-menu-audiencias`: los 15 perfiles, las mismas rutas
+    DOM ........ `prueba-guards-ruta` 48/48 · `prueba-vista-por-nivel` 9 de 9
+    auditor .... la cubeta 4 pasa de 3 a 0
+
+**El auditor se escribió AYER, antes del arreglo**, y por eso ese `3 → 0` vale: es una
+medición independiente, no una aserción escrita para pasar. Y **dice en voz alta** que un
+cero ahí es el arreglo funcionando, para que no se confunda con «no medí».
+
+**Control negativo**, una línea con su `diff`: restaurada la regla vieja caen
+**exactamente 4** — los dos que pierden, el que demuestra que la vía de
+`servicios-al-personal` es la bandera y no el practicante, y la guardia de
+discriminación. **Lo que no debía moverse siguió verde.**
+
+#### DOS CABECERAS DEROGADAS, Y LLEVABAN SEIS DÍAS MINTIENDO
+
+`alcance.util.ts` decía **«ESTE ARCHIVO TODAVÍA NO CAMBIA LO QUE VE NADIE […] no está
+enganchado a ningún guard, menú ni consulta»**. Fue verdad el 2/sep y dejó de serlo el
+13/sep, cuando `esJefatura`, `hayTableroPara` y `veUsuarios` pasaron a gobernar el menú y
+cuatro guards. Nadie actualizó el texto. Y `prueba-alcance-por-nivel.js` **imprimía la
+misma frase en cada corrida**, que es cómo una media verdad se vuelve doctrina (§8.11 f)
+— ésta además invitaba a tocar el archivo creyéndolo inerte. Las dos se citan en vez de
+borrarse, y ahora distinguen qué sigue siendo cálculo (`Amplitud`) de qué está vivo.
+
+#### DESPLEGADO
+
+    marcador .. sin-rango-de-mando  0 -> 1 servido · 39 controles en pie
+                66 archivos · 4.51 MB
+    espera .... 4 vueltas, anclada al rotulo `status:` y a la LINEA COMPLETA
+
+Tercera vez que un cambio de lógica pura no trae cadena propia. El marcador honesto es la
+línea que `estructuraGuard` escribe al rebotar, y **hacía falta igual**: este cambio es
+justo el que empieza a rebotar gente de `/plantilla`, y hasta hoy rebotaba mudo. Se
+distingue a propósito del mensaje de los otros cinco guards: allá falta una bandera, aquí
+falta **rango**.
+
+#### LO QUE SIGUE SIN HACERSE
+
+- **El `auxiliar-encargado` sigue con perfil de mando.** Tu decisión —**cubre, no
+  manda**— está tomada y no aplicada: cambiarlo es editar `privilegios-por-puesto.js` y
+  **correr `ajustar-privilegios.js` contra producción**, que le quita seis banderas a
+  ~11 personas reales. Eso lo corres tú (§8.6), no yo.
+- **Los 11 puestos con gente debajo y sin perfil** siguen sin definir. Es el paso D y lo
+  decide Dirección (§8.5).
+- **Las 9 banderas siguen siendo equivalentes**: cualquiera da vista de toda la sucursal.
+- **`/api/coberturas` y los otros 10 endpoints del factory** siguen sin autorizar.
+- **Nadie ha entrado con una cuenta real.** Cero migraciones, ninguna ficha tocada.
+
+
 ### 19/sep/2026 (tarde) — REVISIÓN DE PERMISOS: el cable estaba abierto, y el menú gateaba solo
 
 Instrucción de David: revisar cómo se otorgan los privilegios, «hay un mal acomodo

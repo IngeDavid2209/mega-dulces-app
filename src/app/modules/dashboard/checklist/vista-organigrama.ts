@@ -21,6 +21,8 @@ import { normalizarNombre } from '../../../shared/permisos.util';
 import {
   ResumenPendientes, resumenPendientes, textoResumen
 } from '../../../shared/resumen-pendientes.util';
+import { esChecklistVencido } from '../../../shared/urgencia-tarea.util';
+import { tieneEvidencia } from '../../../shared/item-completado.util';
 
 /**
  * 🏛️ VISTA POR ORGANIGRAMA del apartado "Tareas del Manual".
@@ -1196,18 +1198,34 @@ export class VistaOrganigramaComponent {
   //  AUXILIARES
   // ==========================================================================
 
-  /** ¿Ya pasó su hora y sigue sin completarse? */
+  /**
+   * ¿Ya pasó su hora y sigue sin completarse?
+   *
+   * ⚠ DELEGA — 18/sep/2026. Aquí vivía la TERCERA definición de «vencida» del
+   * módulo, y era la más permisiva: miraba `String(c.time || '23:59')`, la hora
+   * del CHECKLIST, ignorando el `horaLimite` de cada punto. Convivía con la de
+   * la tarjeta (por punto) y con `urgenciaDeChecklist`, así que la misma entrega
+   * podía salir vencida en una pantalla y a tiempo en la otra.
+   *
+   * Instrucción de David: «nadie calcula su propio tiempo».
+   *
+   * ─── CUÁNTO MOVIÓ ESTO: NADA, Y ESTÁ MEDIDO ──────────────────────────────
+   * La suposición era que la Encargada vería «mucho más rojo». Se generó un día
+   * real con `planDeEntregas` y se aplicaron las dos reglas hora por hora:
+   * 45 entregas, 45 de 45 con la MISMA hora en el checklist y en cada punto,
+   * y **0 diferencias** a las 07, 09, 10, 12, 14, 18, 20 y 22. `armarChecklist`
+   * hace `time: horaLimite`, así que ya coincidían en todo lo del robot.
+   * Lo que esto cierra es la divergencia LATENTE de las tareas creadas a mano,
+   * donde el checklist toma la hora del PRIMER punto (`checklist.ts`) y un
+   * punto posterior más temprano quedaba invisible para este árbol.
+   *
+   * Las dos ramas de fecha —«de un día anterior», «programada»— no se pierden:
+   * el límite se calcula sobre `c.date`, así que salen solas. Hay dos casos en
+   * `urgencia-tarea.util.spec.ts` que las fijan, porque quitar una rama por
+   * «es equivalente» sin probarlo es como se pierden los bordes.
+   */
   private esVencida(c: any): boolean {
-    if (c.status === 'completo' || c.enviado === true) return false;
-    const total = c.items?.length || 0;
-    if (total > 0 && (c.calcCompletados || 0) >= total) return false;
-    const hoy = this.hoyYmd();
-    if ((c.date || '') < hoy) return true;             // de un día anterior
-    if ((c.date || '') > hoy) return false;            // programada
-    const hora = String(c.time || '23:59');
-    const ahora = new Date();
-    const hhmm = String(ahora.getHours()).padStart(2, '0') + ':' + String(ahora.getMinutes()).padStart(2, '0');
-    return hora < hhmm;
+    return esChecklistVencido(c, tieneEvidencia, Date.now());
   }
 
   private hoyYmd(): string {

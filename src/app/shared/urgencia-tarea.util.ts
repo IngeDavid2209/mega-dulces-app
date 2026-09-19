@@ -163,3 +163,57 @@ export function textoUrgencia(u: Urgencia, horaTexto?: string): string {
   }
   return '';
 }
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ *  ⏰ LA ÚNICA DEFINICIÓN DE «ESTA ENTREGA VA TARDE»
+ * ═══════════════════════════════════════════════════════════════════════════
+ * Instrucción de David (18/sep/2026): «primero unificamos las tres
+ * definiciones de vencida… nadie calcula su propio tiempo».
+ *
+ * Hasta hoy convivían tres:
+ *   · `vista-organigrama.ts:esVencida`  →  String(c.time || '23:59')
+ *   · `checklist.ts:isTareaVencida`     →  por `horaLimite` de cada punto
+ *   · `urgenciaDeChecklist` (arriba)    →  el punto pendiente más próximo
+ *
+ * ─── CUÁNTO CAMBIA ESTO EN PRODUCCIÓN: NADA, Y ESTÁ MEDIDO ────────────────
+ * La suposición al empezar era que la Encargada vería «mucho más rojo», porque
+ * las tareas de las 09:00 dejarían de perdonarse hasta las 23:59. Se generó un
+ * día real de entregas con `planDeEntregas` —la misma función que corre en el
+ * servidor— y se aplicaron las dos reglas hora por hora:
+ *
+ *     45 entregas · 45 de 45 con `time` en el checklist
+ *     45 de 45 donde TODOS los puntos usan la MISMA hora que el checklist
+ *     07:00→0/0  09:00→0/0  14:00→4/4  20:00→25/25   DIFIEREN: 0
+ *
+ * O sea que `armarChecklist` hace `time: horaLimite` y le pone a cada punto ese
+ * mismo valor, así que las dos reglas ya coincidían en todo lo que emite el
+ * robot. Esto NO arregla una contradicción visible: cierra una LATENTE.
+ *
+ * ─── DÓNDE SÍ PODÍAN DISCREPAR, que es lo que esto cierra ─────────────────
+ * En las tareas creadas a mano. `checklist.ts` arma el checklist con
+ * `time: tareasValidas[0].time` —LA HORA DEL PRIMER PUNTO—, así que una Tarea
+ * Única con el punto 1 a las 18:00 y el punto 2 a las 09:00 salía «a tiempo»
+ * en el árbol y «vencida» en la tarjeta, a las 10:00, sobre el mismo dato.
+ * Hay un caso de prueba con exactamente esa forma.
+ */
+export function esChecklistVencido(
+  checklist: any,
+  estaCompleto: (item: any) => boolean,
+  ahora: number,
+): boolean {
+  if (!checklist) return false;
+  // Entregado o cerrado ya no va tarde: se conservan las dos salidas que tenía
+  // el árbol, porque son de ESTADO y no de reloj.
+  if (checklist.status === 'completo' || checklist.enviado === true) return false;
+
+  // El resto lo decide el reloj, y con UNA sola regla: el punto pendiente más
+  // próximo. Las ramas de «de un día anterior» y «programada» que tenía el
+  // árbol no hacen falta — el límite se calcula sobre `checklist.date`, así que
+  // una fecha pasada ya sale vencida y una futura no. Hay dos casos que lo
+  // fijan, porque quitar una rama por «es equivalente» sin probarlo es como se
+  // pierden los bordes.
+  return urgenciaDeChecklist(
+    checklist.items || [], checklist.date, checklist.time, estaCompleto, ahora,
+  ).clase === 'vencida';
+}

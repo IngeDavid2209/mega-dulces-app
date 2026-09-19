@@ -133,9 +133,17 @@ const MARCADORES = [
   // prueba `prueba-rama-visible-con-datos.js`, en local y con su control.
   { txt: 'org-titulo-mio', control: true, que: 'el titulo del arbol dice de quien es' },
   // ── 18/sep/2026 · Capa 1: la linea que contesta la pregunta ─────────────
-  { txt: 'org-resumen', nuevo: true, que: 'la linea de resumen del equipo' },
-  { txt: 'No hay entregas pendientes', nuevo: true,
+  { txt: 'org-resumen', control: true, que: 'la linea de resumen del equipo' },
+  { txt: 'No hay entregas pendientes', control: true,
     que: 'el vacio que NO dice «todo entregado», porque seria mentira' },
+  // ── 19/sep/2026 · UNA sola definicion de «vencida» ─────────────────────
+  // ⚠ Unificar la regla es LOGICA PURA y no introduce ninguna cadena propia
+  // (`esChecklistVencido` lo minifica el bundler). Lo que se marca es el
+  // rotulo de la columna, que viaja en el mismo commit y el mismo chunk: si
+  // llega, llego la regla. Que la regla HAGA lo que dice lo prueban las 9
+  // aserciones nuevas y el contraste medido -el mismo fixture pasa de «6 a
+  // tiempo» a «6 vencidas»-, no este marcador.
+  { txt: 'org-slot-tarde', nuevo: true, que: 'la columna «Tarde» en vez de «Venc.»' },
   // Los dos del despliegue anterior bajan a control: YA VALEN en produccion, y
   // dejarlos arriba daria verde sin comprobar nada de este.
   { txt: 'no son sitios con cuadrilla', control: true,

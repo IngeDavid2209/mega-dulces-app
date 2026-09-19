@@ -178,3 +178,90 @@ describe('urgencia-tarea: la muestra discrimina', () => {
     expect(clases).toEqual(['a_tiempo', 'por_vencer', 'vencida']);
   });
 });
+
+/**
+ * ⏰ LA REGLA UNIFICADA — y los bordes que tenía la que se retira
+ *
+ * `vista-organigrama.ts:esVencida` tenía dos ramas propias («de un día
+ * anterior», «programada») que la regla nueva NO escribe: las cubre calculando
+ * el límite sobre `checklist.date`. Quitar una rama por «es equivalente» sin
+ * probarlo es exactamente como se pierden los bordes, así que aquí están.
+ */
+import { esChecklistVencido } from './urgencia-tarea.util';
+import { tieneEvidencia } from './item-completado.util';
+
+describe('esChecklistVencido: la regla unica', () => {
+  const HOY = '2026-09-18';
+  const AYER = '2026-09-17';
+  const MANANA = '2026-09-19';
+  const ahora = new Date(2026, 8, 18, 10, 0, 0).getTime();   // 18/sep 10:00
+  const punto = (hora: string) => ({ id: 'p', requiresPhoto: true, horaLimite: hora });
+
+  it('pendiente con la hora pasada: vencida', () => {
+    expect(esChecklistVencido({ date: HOY, items: [punto('09:00')] }, tieneEvidencia, ahora)).toBe(true);
+  });
+
+  it('pendiente con la hora por venir: no', () => {
+    expect(esChecklistVencido({ date: HOY, items: [punto('18:00')] }, tieneEvidencia, ahora)).toBe(false);
+  });
+
+  it('ENVIADA no va tarde, aunque la hora haya pasado', () => {
+    expect(esChecklistVencido({ date: HOY, enviado: true, items: [punto('09:00')] },
+      tieneEvidencia, ahora)).toBe(false);
+  });
+
+  it('con `status: completo` tampoco', () => {
+    expect(esChecklistVencido({ date: HOY, status: 'completo', items: [punto('09:00')] },
+      tieneEvidencia, ahora)).toBe(false);
+  });
+
+  it('con todos sus puntos hechos, tampoco: falta enviarla, no hacerla', () => {
+    const hecho = { ...punto('09:00'), photo: 'https://x/1.jpg' };
+    expect(esChecklistVencido({ date: HOY, items: [hecho] }, tieneEvidencia, ahora)).toBe(false);
+  });
+
+  it('BORDE 1 — de un día ANTERIOR: vencida aunque su hora sea de noche', () => {
+    // La regla vieja tenía un `if (c.date < hoy) return true`. Aquí sale de
+    // calcular el límite sobre la fecha del checklist, sin rama aparte.
+    expect(esChecklistVencido({ date: AYER, items: [punto('23:59')] }, tieneEvidencia, ahora)).toBe(true);
+  });
+
+  it('BORDE 2 — PROGRAMADA para mañana: no va tarde aunque su hora ya pasó hoy', () => {
+    expect(esChecklistVencido({ date: MANANA, items: [punto('09:00')] }, tieneEvidencia, ahora)).toBe(false);
+  });
+
+  it('sin fecha no se inventa un retraso', () => {
+    expect(esChecklistVencido({ items: [punto('09:00')] }, tieneEvidencia, ahora)).toBe(false);
+  });
+});
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ *  EL CASO QUE JUSTIFICA TODO ESTO: donde las dos reglas SÍ discrepaban
+ * ═══════════════════════════════════════════════════════════════════════════
+ * Medido: en las 45 entregas que genera el robot, las dos reglas daban lo
+ * MISMO a todas las horas, porque `armarChecklist` pone `time: horaLimite` y
+ * le da a cada punto ese mismo valor. La divergencia estaba en las tareas
+ * creadas A MANO: `checklist.ts` arma el checklist con
+ * `time: tareasValidas[0].time` — LA HORA DEL PRIMER PUNTO.
+ *
+ * Así que un punto posterior con hora más temprana quedaba invisible para el
+ * árbol. Este caso tiene exactamente esa forma.
+ */
+describe('esChecklistVencido: la divergencia que cierra', () => {
+  it('un punto POSTERIOR con hora más temprana cuenta, aunque el checklist diga otra', () => {
+    const ahora = new Date(2026, 8, 18, 10, 0, 0).getTime();
+    const tarea = {
+      date: '2026-09-18',
+      time: '18:00',                                   // la del PRIMER punto
+      items: [
+        { id: 'a', requiresPhoto: true, horaLimite: '18:00' },
+        { id: 'b', requiresPhoto: true, horaLimite: '09:00' },   // <- se pasó
+      ],
+    };
+    // La regla vieja del árbol miraba `time` y decía «a tiempo» a las 10:00.
+    expect(String(tarea.time) < '10:00').toBe(false);
+    // La unificada mira el punto pendiente más próximo.
+    expect(esChecklistVencido(tarea, tieneEvidencia, ahora)).toBe(true);
+  });
+});

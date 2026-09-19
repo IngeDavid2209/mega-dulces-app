@@ -117,10 +117,21 @@ const MARCADORES = [
   // Los tres son CSS y texto literal, no nombres de funcion: el minificador se
   // come `motivoSinPrueba` pero respeta las clases y las cadenas. Validados en
   // las dos direcciones antes de subir: 4/11/3 en dist, 0 en produccion.
-  { txt: 'sp-modal', nuevo: true, que: 'el modal que sustituye al confirm() del navegador' },
-  { txt: 'cl-reloj', nuevo: true, que: 'el aviso de hora, una vez por tarea' },
-  { txt: 'no van a contar como hechos', nuevo: true,
+  // Los tres del envio bajan a CONTROL: ya valen en produccion desde el
+  // despliegue de esta misma tarde.
+  { txt: 'sp-modal', control: true, que: 'el modal que sustituye al confirm() del navegador' },
+  { txt: 'cl-reloj', control: true, que: 'el aviso de hora, una vez por tarea' },
+  { txt: 'no van a contar como hechos', control: true,
     que: 'lo que se le dice a la persona ANTES de que acepte' },
+  // ── 18/sep/2026 · el arbol arranca en su puesto tambien con trabajo ─────
+  // ⚠ EL ARREGLO DEL ARBOL ES LOGICA PURA Y NO TIENE MARCADOR PROPIO: no
+  // introduce ninguna cadena, y el minificador se come los nombres de variable
+  // (`llevanALaRaiz` da 0 en el bundle). Es el mismo caso que la Fase 2.1. Lo
+  // que se marca es el titulo contextual, que viaja en el MISMO commit y en el
+  // mismo chunk: si llega, llego el arreglo. Se dice asi de claro para que
+  // nadie lea este marcador como una comprobacion del enraizado — eso lo
+  // prueba `prueba-rama-visible-con-datos.js`, en local y con su control.
+  { txt: 'org-titulo-mio', nuevo: true, que: 'el titulo del arbol dice de quien es' },
   // Los dos del despliegue anterior bajan a control: YA VALEN en produccion, y
   // dejarlos arriba daria verde sin comprobar nada de este.
   { txt: 'no son sitios con cuadrilla', control: true,

@@ -358,6 +358,18 @@ export class VistaOrganigramaComponent {
   /** Esconde los puestos que todavía no tienen manual (son 70 de 89). */
   soloConManual = signal(true);
 
+  /**
+   * Como se llama el arbol para quien lo esta mirando.
+   *
+   * Es una CADENA y no un objeto: la plantilla la lee en cada ciclo de
+   * deteccion y un objeto nuevo cada vez es la familia del sidebar del 1/sep.
+   */
+  tituloArbol(): string {
+    const amb = this.ambito();
+    if (!amb?.restringido) return 'Organigrama 2026';
+    return 'Mi equipo';
+  }
+
   /** Texto del buscador. Casa contra puesto, unidad, sucursal, persona y tarea. */
   busqueda = signal('');
 
@@ -543,9 +555,49 @@ export class VistaOrganigramaComponent {
       const raiz = amb.raizPuestoId;
       const suyo: FilaArbol[] = [];
       const ajenos: FilaArbol[] = [];
+
+      // ⚠ 18/sep/2026 — LA SALIDA DE «SERVICIO A» SE TRAGABA EL ÁRBOL ENTERO
+      //
+      // Medido con el control que lo nombra: misma sesión de Encargada, mismos
+      // usuarios, cambiando SOLO el número de entregas del día —
+      //
+      //     0 entregas  ->  raíz «Encargado(a) de Sucursal»                ✓
+      //     6 entregas  ->  raíz «Dirección General», «servicio a …»       ✗
+      //
+      // El motivo NO es que el padre herede mal el conteo: `entregasArbol`
+      // cuenta la rama y eso es correcto, es lo que alimenta la columna RAMA.
+      // Es el ORDEN DE LA PREGUNTA. La salida de «servicio a» se evaluaba
+      // antes de bajar, así que el PRIMER nodo del recorrido —Dirección
+      // General— cumplía las dos condiciones en cuanto había una sola entrega
+      // en toda la empresa: no es propio de una Encargada, y su rama contiene
+      // el trabajo de su propio equipo. Se marcaba como ajeno, el recorrido se
+      // detenía ahí, y la Encargada aterrizaba en la cadena de mando completa.
+      //
+      // Un ancestro del propio puesto NUNCA es «servicio a»: es el camino a
+      // casa. Se precalcula el conjunto de los que llevan a la raíz —de una
+      // pasada, no preguntando por cada nodo, que sería O(n²)— y se les deja
+      // bajar. Lo que de verdad es ajeno (Ventas en la tienda de una Encargada)
+      // no está en ese camino y sigue saliendo marcado, que era el propósito.
+      //
+      // Y por qué ninguna prueba lo vio: `prueba-vista-por-nivel.js` sirve
+      // `/api` VACÍO a propósito, y cero entregas es justo el único estado en
+      // el que el enraizado funcionaba. El control pasaba por un camino donde
+      // el caso no podía ocurrir (§8.11 c). Lo cubre ahora
+      // `prueba-rama-visible-con-datos.js`, que sirve entregas.
+      const llevanALaRaiz = new Set<string>();
+      const marcarCamino = (f: FilaArbol): boolean => {
+        let dentro = f.puesto.id === raiz;
+        for (const h of f.hijos) if (marcarCamino(h)) dentro = true;
+        if (dentro) llevanALaRaiz.add(f.puesto.id);
+        return dentro;
+      };
+      filas.forEach(marcarCamino);
+
       const recorrer = (f: FilaArbol) => {
         if (f.puesto.id === raiz) { suyo.push(f); return; }   // no se baja más: ya lo trae entero
-        if (!f.propio && f.entregasArbol > 0) { ajenos.push(f); return; }
+        if (!f.propio && f.entregasArbol > 0 && !llevanALaRaiz.has(f.puesto.id)) {
+          ajenos.push(f); return;
+        }
         f.hijos.forEach(recorrer);
       };
       filas.forEach(recorrer);

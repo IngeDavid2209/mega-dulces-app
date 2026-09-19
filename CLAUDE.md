@@ -225,6 +225,7 @@ extra por la fase que se indica):
 | Foto obligatoria en los 377 puntos, incluidas 62+ declaraciones donde no hay qué fotografiar (orden de Dirección, 3/sep) | Regla 1 de `evidencia-manual.ts` | 5 — verificación por muestra; la declaración se comprueba firmando, no fotografiando |
 | Migraciones 038, 039, 041, 042, 043 con nombres de personas | Hallazgo 8 | 9.4 · **no se editan** (ya aplicadas) |
 | **Un 5.º poll dentro del servidor web**: el emisor del manual (14/sep, noche) | Hallazgo 6 · Fase 9.1 | 9.1 — sale junto con los otros cuatro. Se contrajo a sabiendas: el reloj estaba **peor** que dentro del web, estaba dentro de un navegador, así que moverlo aquí es un peldaño hacia arriba, no hacia abajo. Amarra la app a **una réplica**, que ya era el caso (paso 0.4) |
+| **Taxonomía provisional de motivos** sin prueba (`motivo-sin-prueba.util.ts`, 18/sep) | §4 · las cinco causas | 5 — se contrajo a sabiendas para no perder el dato: hoy todo punto sin foto es `no_ejecutado` para todos por igual, y la diferencia entre «no había qué fotografiar» y «nadie lo hizo» **no se puede reconstruir después**. Se guarda el **código que eligió la persona**, no solo la causa deducida, para que Fase 5 reescriba el mapa sin volver a preguntarle a nadie. `no_aplica` queda **sin causa** a propósito: forzarlo a `no_ejecutado` le colgaría una falta a quien hizo lo correcto (§8.5) |
 
 **Fase 9.2 va al final a propósito:** partir `checklist.ts` antes de quitarle Firestore y antes
 de que exista la plaza sería partir el problema en dos, no resolverlo.
@@ -324,6 +325,161 @@ de que exista la plaza sería partir el problema en dos, no resolverlo.
     columna devuelve cero documentos, sin error.
 
 ## 9. Bitácora del plan
+
+
+### 18/sep/2026 — REVISIÓN DE USUARIO FINAL (1/3): el envío de la anaquelista
+
+Instrucción de David: revisar el módulo de Tareas **actuando como usuario final
+primerizo**, módulo por módulo, y llegar juntos a una interfaz más simple. Y después,
+con el hallazgo enfrente, su orden de ataque: anaquelistas primero (154 personas),
+luego Encargadas, y al final el defecto del organigrama.
+
+**NO SE LEYÓ EL CÓDIGO PARA OPINAR: SE MIRÓ LA PANTALLA.** Arnés de exploración con
+**capturas** —sesiones sembradas de anaquelista y Encargada, escritorio 1422px y
+teléfono **390px reales** vía iframe, porque Chrome topa el ancho de ventana en
+~500px y `--window-size=390` mediría el escritorio dando verde sin tocar el caso.
+
+#### LO QUE ESTABA BIEN, Y CONVIENE QUE ESTÉ ESCRITO
+
+Lo táctil **aguanta**: `--tap-min=44px` aplicado, y sobre **10 controles medidos en
+la lista y 8 en la pantalla de trabajo, CERO por debajo de 44px**. Sin desbordamiento
+horizontal (390 de 390). El trabajo del 13/sep sostiene. El problema no era el tamaño
+del dedo: era el **idioma y la jerarquía**.
+
+#### UN DEFECTO QUE ME INVENTÉ Y RETIRÉ EL MISMO DÍA — y la lección es del método
+
+Reporté que el botón de bandeja activo se pintaba en el equivocado. **Era falso.**
+`getComputedStyle` bajo `--virtual-time-budget` devolvía estilos rancios de forma
+**estable durante 4 segundos**, así que repetir la medición no lo destapó: la
+confirmó. Lo tumbó **ampliar la captura**, que es lo que el usuario ve de verdad.
+
+> **Regla que deja:** cuando el instrumento y la imagen se contradicen, **gana la
+> imagen**. Y una medición que se repite igual no es una medición verificada: un
+> instrumento roto es reproducible.
+
+#### LOS TRES DEFECTOS DE LA PANTALLA DE TRABAJO, Y SUS CIFRAS
+
+1. **El `confirm()` del navegador en el momento de la verdad de 154 personas.**
+   Truncaba la lista a 5 puntos —el checklist de apertura tiene 8—, no se puede
+   redactar ni medir, y en iOS sale con el dominio encima.
+   **Corrección de una cifra que venía en el plan:** no son «20 `confirm()`». Son
+   **3 `confirm()` y 18 `alert()`** en el módulo (4 y 22 en toda la app), y no son
+   la misma pieza —uno pide una decisión, el otro es un callejón sin salida—.
+   **Y no congelan los teléfonos.** Lo que se colgó fue MI arnés: headless con tiempo
+   virtual, donde nadie pulsa el botón del cuadro. Venderlo como «congela» lo
+   desmiente el primer teléfono real y se pierde el argumento bueno, que es que ese
+   cuadro no lo gobernamos nosotros.
+2. **La lista no decía NADA de la hora.** Medido: dos tareas de 07:00–09:00 a las
+   10:13 salían limpias. `esAtrasada` no servía para esto —solo se enciende para
+   Espacio TEC y para días **anteriores** (`checklist.ts:2146`)—, así que una tarea
+   de HOY cuya ventana ya pasó **nunca** la encendía.
+3. **El aviso de vencida, un párrafo entero repetido palabra por palabra en CADA
+   punto.** Con 3 ocupaba más alto que los puntos.
+
+#### LA DECISIÓN CARA LA TOMÓ DAVID, CON LAS TRES SALIDAS Y SU PRECIO
+
+El plan decía «si la foto es obligatoria, el botón simplemente no se habilitará». Se
+le puso el precio medido enfrente: son **377 puntos con foto obligatoria** y **62+
+declaraciones donde no hay qué fotografiar** (deuda ya registrada del 3/sep), así que
+un botón muerto deja a esa gente **sin poder cerrar su turno**, y «no me deja» se lee
+igual que «la app no sirve». Eligió la tercera: **se envía, con motivo obligatorio
+por punto**. Nadie se traba y la causa queda escrita.
+
+**⚠ EL MOTIVO NO CIERRA NADA, Y ESO ES LO ÚNICO QUE HAY QUE RECORDAR.** Se guarda en
+`item.motivoSinPrueba` y **jamás** en `checklist.notaEmpleado`: ese campo lo lee
+`tieneJustificacionChecklist()`, así que escribir ahí habría pasado **todos** los
+puntos del checklist de `no_ejecutado` a `justificado` —incluidos los que nadie
+justificó— y con ellos **a quién se le cuenta la falta** (§4). Guardar un dato en el
+campo de al lado se ve inofensivo y aquí mueve el reparto de responsabilidad. Hay dos
+pruebas que lo fijan. Es la Fase 2.1 defendida por la puerta de al lado.
+
+#### DOS DEFECTOS MÍOS, Y CADA UNO LO CAZÓ UNA COSA DISTINTA
+
+- **Lo cazó la PRUEBA:** la cuenta regresiva usaba la gracia de 59 segundos del
+  límite, así que inflaba **todos** los números en un minuto —«121» a las 08:00 para
+  una tarea de las 09:00— y al filo decía «Vence en 1 min» con la hora ya pasada. La
+  cuenta va contra el minuto; el perdón, contra el segundo. Cinco casos en rojo, y
+  **la equivocada era la regla, no la expectativa**.
+- **Lo cazó MIRAR, con el arnés en verde:** había reproducido el defecto en pequeño.
+  El chip «Se pasó la hora: 09:00» salía **3 veces, la misma hora**, bajo un aviso que
+  ya lo decía. Ahora solo se pinta cuando los puntos tienen horas **distintas**, que
+  es el único caso donde el aviso de arriba no alcanza. Y el botón apagado se pintaba
+  en el naranja de acción: tenía el aspecto exacto de «púlsame» sin hacer nada.
+  **Medir no sustituye mirar** (7/sep), otra vez.
+
+**Y al arreglar el chip, su columna se fue a cero en las seis filas** — un cero que
+significa «nunca se ejerció», no «no se pinta cuando no debe». Se agregó una tarea de
+fixture con **dos horas límite distintas** y una guardia que aborta si el chip sale en
+todas las filas o en ninguna.
+
+#### LAS CIFRAS
+
+**334 pruebas** unitarias (294 → 334) y `scripts/prueba-envio-anaquelista.js`, **6
+escenarios en el DOM**:
+
+    escenario                           reloj chips modal filas nativos enviada
+    abro mi tarea sin fotos                 1     0     0     0       0       0
+    pulso Enviar con 0 de 3                 1     0     1     3       0       0
+    contesto los 3 motivos                  1     0     1     3       0       0
+    horas DISTINTAS: sale el chip           1     2     0     0       0       0
+    CONTRASTE: tarea con sus fotos          0     0     0     0       0       0
+    CONTRASTE: enviar la que sí las tiene   0     0     0     0       0       1
+
+**El cero de «nativos» no vale solo**: el guion llama a `confirm()` a propósito al
+final y **aborta** si el contador no sube. «0 diálogos» y «no intercepté» se ven
+idénticos (§8.11 a). **Control negativo**, una línea (5302 → 5301, `diff` comprobado):
+devolviendo el `confirm()` viejo caen 5 aserciones **nombrando el mecanismo**
+—«salieron 1 cuadro(s) DEL NAVEGADOR»—, el escenario siguiente dice **«no pude
+medir»** en vez de fingir un fallo, y las filas 1, 4 y 5 no se mueven.
+
+#### DESPLEGADO Y VERIFICADO
+
+    marcadores  sp-modal · cl-reloj · «no van a contar como hechos»
+                dist 4/11/1  ->  produccion 0/0/0 ANTES, los tres servidos DESPUES
+    controles   31 en pie · 66 archivos · 4.50 MB · 0 fallos de lectura
+    espera      8 vueltas, anclada al rotulo `status:` y a la LINEA COMPLETA
+
+Los dos marcadores del plegado bajan a control: ya valían 1, y dejarlos como `nuevo`
+habría dado verde sin comprobar nada de hoy.
+
+#### LO QUE ESTO NO HACE, dicho para que no se lea como resuelto
+
+- **NADIE HA ENTRADO CON UNA CUENTA REAL.** Los 6 escenarios son sesiones sintéticas
+  en Chrome headless: prueban **qué hay delante** de quien entrega, no que se **vea**
+  bien en un iPhone. Y Chrome no es Safari (13/sep).
+- **No mueve ningún número de tablero.** Cero migraciones. `motivoSinPrueba` es un
+  campo que hoy no lee nadie más.
+- **SIGUEN DOS MODALES SEGUIDOS** cuando faltan fotos **y** hay retraso: primero el
+  motivo por punto, luego el justificante del checklist. Son dos preguntas distintas
+  y no se fusionaron. Va en el paso 2.
+- **Quedan 14 `alert()`** en el módulo, todos en los flujos de **creación**
+  (asistentes de tarea única, bloques, equipo), que son de la Encargada.
+- **«Panel Enterprise» no era un componente compartido:** estaba copiada a mano en
+  **11 plantillas**. Se quitó (commit aparte); **queda a propósito** la del PDF de
+  auditoría de `reportes.ts:920`, que lee gerencia y no quien trabaja en piso.
+
+#### LO QUE FALTA DE LA REVISIÓN, con el defecto ya aislado
+
+**El árbol de la Encargada se desenraiza en cuanto hay trabajo**, y está medido con el
+control que lo nombra —misma sesión, mismos usuarios, cambiando **solo** el número de
+entregas—:
+
+    0 entregas  ->  raiz: «Encargado(a) de Sucursal»                        ✓
+    6 entregas  ->  raiz: «Dirección General»  servicio a DIRECCIÓN GENERAL  ✗
+
+**La causa NO es que el padre herede mal el conteo** —`entregasArbol` cuenta la rama y
+eso es correcto: alimenta la columna RAMA que la Encargada lee—. Es **el orden de la
+pregunta**: `vista-organigrama.ts:546` evalúa la salida de «servicio a» **antes de
+bajar**, así que atrapa a un nodo que es **ancestro del propio puesto** y el recorrido
+se detiene ahí con la empresa entera colgando. El arreglo es impedir que un ancestro
+tuyo se declare «servicio a»; separar conteos locales de globales cambiaría **los
+números que hoy se muestran**, que ya no es navegación sino dato.
+
+**Y por qué ninguna prueba lo vio:** `prueba-vista-por-nivel.js` sirve `/api` **vacío
+a propósito** —su propia cabecera lo dice— y cero entregas es justo el único estado en
+que el enraizado funciona. Corolario (c) literal: el control pasa por un camino donde
+el caso no puede ocurrir.
+
 
 
 ### 17/sep/2026 — LA LISTA SE PLIEGA: cada bloque es un botón que se desglosa

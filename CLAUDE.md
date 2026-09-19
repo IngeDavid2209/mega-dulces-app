@@ -327,6 +327,109 @@ de que exista la plaza sería partir el problema en dos, no resolverlo.
 ## 9. Bitácora del plan
 
 
+### 18/sep/2026 — CAPA 1: la línea que contesta «¿quién no ha entregado?»
+
+Diagnóstico acordado con David, y es la premisa de todo lo que sigue: **abrumar no
+es cantidad, es no saber dónde mirar.** Medido: **22 controles** en la primera
+pantalla de una Encargada contra **9** en la de una anaquelista, y ninguno dice cuál
+es el primero. Con una línea que conteste arriba, el resto deja de agobiar **sin
+haber quitado nada**, porque el ojo ya tiene dónde aterrizar.
+
+Ahora la barra del árbol dice: **«Mi equipo · Faltan 6 entregas · 2 vencidas · 4 a
+tiempo»**.
+
+#### NO DICE «12 DE 15 ENTREGADAS», QUE ERA LA FORMA PEDIDA — y está medido
+
+Sirviendo 5 entregas del equipo con 2 marcadas `enviado`, el árbol contó **3**. La
+lista que alimenta esta pantalla **no trae las ya entregadas**: el historial se carga
+aparte y bajo demanda. Un «N de M» diría **«0 de 3»** al aterrizar, todos los días,
+hasta que ella tocara otra pestaña.
+
+Es exactamente la trampa que este repo ya documentó y rechazó para los badges de la
+barra: *«un cero que significa "no lo he leído" y se ve idéntico a "no hay". Mejor
+sin número que con uno que miente.»* Así que se cuenta solo lo que sí está en
+memoria: lo pendiente — que además **es** su pregunta.
+
+**Los tres números cuadran** (`vencidas + aTiempo === pendientes`) y hay un caso que
+lo fija sobre una muestra con solapamiento posible. Tres números juntos se leen como
+partes de un todo: si no sumaran, la línea mentiría sin dar un solo error.
+
+**Y el vacío no dice «todo entregado»**: con cero pendientes no se puede distinguir
+de «hoy no se emitió nada», porque las entregadas ni siquiera están en esta lista.
+Afirmarlo taparía justo el día en que el robot no corrió (§5.2).
+
+#### SIN `*ngIf` DE ROL, Y ES DELIBERADO
+
+La propuesta llevaba un `esOperacionPiso` para que Dirección no viera «un resumen
+roto o en ceros». **No hace falta:** el bloque vive DENTRO del árbol y hereda su
+gate, y cuenta lo que la pantalla ya está autorizada a enseñar, sin suponer que quien
+mira es de piso. Medido: Dirección ve «Faltan 6 · 2 vencidas · 4 a tiempo» — su
+alcance, ni roto ni en ceros.
+
+Cada gate de rol nuevo es una forma más de dejar ciego a alguien sin enterarse. Éste
+no compraba nada.
+
+#### DOS ARNESES AJENOS ME CORRIGIERON, Y LOS DOS TENÍAN RAZÓN
+
+**1. `prueba-arbol-organigrama` cazó que la línea le quitaba sitio al árbol.** Vigila
+desde el 4/sep que a la lista le toque ≥55% de la pantalla —porque David pidió «hazlo
+más grande»— y cayó al **52%**, **nombrando al culpable**: `org-resumen=52`. O sea
+que el bloque puesto para ayudar a mirar le estaba quitando sitio a lo que hay que
+mirar.
+
+> **Y aquí está la lección, que es sobre cómo trabajé, no sobre el código.** Me puse a
+> limar píxeles: 52 → 40 → 30, escondiendo cosas para hacer hueco, midiendo otra vez.
+> Iba por la tercera vuelta cuando quedó claro que el arreglo no era **encogerla**
+> sino **moverla**. Puesta en el renglón del subtítulo, SUSTITUYE a «N puestos · M
+> entregadas hoy» en vez de sumarse: mismo alto, y cambia un número decorativo por uno
+> accionable. Resultado: **58%**, la línea base exacta, y **cabe una fila más que
+> antes del cambio**. Cuando uno lleva tres iteraciones optimizando contra un umbral,
+> casi siempre el problema es la forma, no el tamaño.
+
+**2. En teléfono se partía en tres renglones** (92px) y dejaba el árbol en y=842 de
+844 — la línea que existe para que el ojo aterrice estaba escondiendo el trabajo. Era
+un hijo flex sin `min-width: 0`. Con el renglón completo cuesta **20px** y la
+respuesta queda sobre el pliegue.
+
+**Y mi propia aserción estaba mal planteada:** exigía que el árbol cupiera sobre el
+pliegue en un teléfono, y eso **no era cierto antes de este cambio** (780px de cromo
+antes de él). Una guardia que falla por algo ajeno se afloja en tres semanas. Ahora
+distingue **«lo rompí yo»** de **«ya estaba roto»** comparando contra la línea base
+sin el bloque, y lo que afirma es lo único que esta capa puede prometer: **que la
+respuesta se vea sin scroll**.
+
+#### ⚠ EL HALLAZGO QUE ESTO DESTAPÓ: TRES DEFINICIONES DE «VENCIDA»
+
+Al decidir qué regla usar apareció que en el módulo conviven **tres**:
+
+    vista-organigrama.ts:1207   String(c.time || '23:59')      <- pinta el arbol
+    checklist.ts:isTareaVencida  por horaLimite de cada PUNTO
+    urgencia-tarea.util          el punto pendiente mas proximo  <- la tarjeta
+
+Al resumen se le **inyecta** la del árbol, a propósito: lo único inaceptable es que
+la línea contradiga a las filas que tiene **debajo**. Pero **contradice a la tarjeta
+del trabajador, y eso se VE**: sobre el mismo fixture, su tarjeta dice «Se pasó la
+hora (era a las 09:00 AM)» y este resumen dice «a tiempo».
+
+**No lo introduce este cambio — lo hace visible.** Unificarlas es un paso propio
+porque cambia qué se marca en rojo para todo el mundo, y eso no viaja de contrabando
+en una línea de resumen.
+
+#### LO QUE ESTO NO HACE
+
+- **Nadie ha entrado con una cuenta real.**
+- **No quita ni un solo control.** Siguen los 22; lo que cambia es que ahora hay
+  dónde aterrizar. Bajar `RAMA`, `PROPIO`, `VENC.` y las seis decisiones que la
+  pantalla exige por omisión es **Capa 2**.
+- **En teléfono el árbol sigue pidiendo scroll**: se consumen **529px** antes de él
+  (cabecera, título, 4 bandejas, 3 botones de crear). Es el número que Capa 2 tiene
+  que atacar, y queda impreso por el arnés en cada corrida.
+- **No mueve ningún número de tablero.** Cero migraciones, cero escrituras.
+
+**345 pruebas** unitarias (334 → 345) y los **nueve** arneses del módulo en verde, en
+escritorio y a 390px reales.
+
+
 ### 18/sep/2026 — REVISIÓN DE USUARIO FINAL (2/3): el árbol, y una optimización que NO se hizo
 
 Instrucción de David: meterse a fondo en las secciones de Tareas y hacerlas **más

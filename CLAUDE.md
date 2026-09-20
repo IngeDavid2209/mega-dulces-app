@@ -327,6 +327,109 @@ de que exista la plaza sería partir el problema en dos, no resolverlo.
 ## 9. Bitácora del plan
 
 
+### 20/sep/2026 — SE CIERRA `/api/coberturas`, y con eso sale un desfase de fecha de SEIS HORAS
+
+Instrucción de David: *«haz la actualización de todo y súbelo a producción»*. Lo
+pendiente y desplegable era el único endpoint que el cierre del 19/sep dejó abierto —y
+estaba dicho en la cabecera de `_autorizar.js`, no escondido.
+
+#### POR QUÉ ESTABA ABIERTO, Y QUÉ LO CERRÓ
+
+Lo escriben **dos flujos legítimos**, así que las dos reglas obvias romperían algo vivo:
+
+    1. el PASE DE LISTA .... una Encargada, que NO es admin
+    2. el LOGIN POR PLAZA .. `login.ts:361`, CON EL TOKEN DE PLAZA, cuando la
+                             persona declara quién es al entrar
+
+Ahora cada uno tiene su camino. El de la plaza está acotado a **«hoy, en MI plaza, como
+suplente»**, y cada condición tapa un abuso concreto: no puede declarar por **otra**
+plaza, no puede nombrarse **titular** —que desplazaría al de verdad—, no puede firmar el
+**pasado**, y no puede **cerrar** coberturas ajenas.
+
+Importa porque **quien cubre una plaza decide a quién se le atribuye la evidencia de ese
+día** (§4). Dejarlo abierto era dejar que cualquier token reescribiera esa atribución.
+
+#### ⚠ MEDIR ANTES DE ESCRIBIR DESTAPÓ UN DEFECTO QUE HABRÍA ROTO LA GUARDIA
+
+`login-plaza.js` calculaba «hoy» con `getTimezoneOffset()` y el comentario de al lado
+decía **«hora de México»**. No lo es: el contenedor corre en UTC, ese offset vale **0** y
+devuelve la fecha **UTC**. Medido sobre instantes fijos:
+
+    09:00 MX  ->  correcto          18:30 MX  ->  devolvia MAÑANA
+    17:59 MX  ->  correcto          20:00 MX  ->  devolvia MAÑANA
+                                    23:59 MX  ->  devolvia MAÑANA
+
+**Seis horas al día, justo el turno de cierre.** La plaza buscaba la cobertura de mañana,
+no la encontraba, y le preguntaba «¿quién eres?» a todo el mundo **aunque la Encargada
+hubiera pasado lista** — y la suplencia que registrara quedaba fechada mañana, así que la
+Encargada la veía el día equivocado. Es el defecto que el emisor del manual ya había
+cazado el 14/sep («el servidor habría emitido el día equivocado»), vivo en otro archivo.
+
+**Y la guardia lo habría convertido en un 403.** Si hubiera comprobado la fecha correcta
+contra un cliente que manda la equivocada, habría rechazado cada tarde la escritura
+legítima — o sea, un candado nuevo que rompe el flujo que vino a proteger. La definición
+vive ahora en `api/_fecha.js`, **una sola**, porque la miran el cliente que escribe y la
+guardia que comprueba.
+
+#### EL CONTROL DE LA FECHA ABORTÓ EN SU PRIMERA CORRIDA, Y TENÍA RAZÓN
+
+Comparaba la fórmula vieja **llamándola**, y `getTimezoneOffset()` depende de la zona
+**del proceso**: en esta laptop (hora de México) da el resultado correcto, así que las
+dos coincidían siempre y el control **no ejercía nada**. La guardia de discriminación lo
+dijo en vez de dar verde.
+
+Corregido **emulando lo que hace en el contenedor** —offset 0, o sea la fecha UTC—, que
+es el comportamiento en producción y no el de la máquina que corre la prueba. Diverge en
+2 de 5 instantes. Es §8.11(b) otra vez: la guardia va sobre la entrada que de verdad se
+usa, no sobre un proxy de ella.
+
+#### EL AUXILIAR DE ENCARGADO, TU DECISIÓN, APLICADA AL MAPA
+
+`auxiliar-encargado` pasa de `mando_sucursal` —el mismo perfil que la Encargada— a
+`operativo`. **Cubre, no manda:** cuando la Encargada no está, su autoridad sale de la
+**cobertura** de esa plaza ese día, con fecha, motivo y autor.
+
+**Cambiar esa línea no toca ninguna ficha.** Aplicarlo es correr
+`scripts/ajustar-privilegios.js` contra producción, **y eso lo corres tú** (§8.6): le
+quita seis banderas a los ~11 Auxiliares que contó el censo del 15/sep — dejan de ver el
+Dashboard, Control, el pase de lista y la plantilla, y pasan a ver solo sus tareas. En
+seco primero (`node scripts/ajustar-privilegios.js`), y con el plan enfrente `--aplicar`,
+que respalda antes de escribir. El auditor lo mide: **la cubeta 2 baja de 5 a 4**.
+
+#### LAS CIFRAS
+
+    arnes ....... 31 afirmaciones (16 -> 31), 10 escenarios nuevos de coberturas
+    unitarias ... 371 · emisor 16 · reloj 20 · menu sin una sola diferencia
+    NEG-5 ....... la plaza deja de estar acotada -> 3 abusos se abren, y el
+                  flujo legitimo sigue verde
+    NEG-6 ....... no baja cobertura -> plaza -> EXACTAMENTE 1: el PATCH de la
+                  Encargada, el que protege el trabajo de todos los dias
+
+**Desplegado:** `● Online` en 4 esperas (apareció `Initializing` otra vez, y la guardia
+lo aguantó porque afirma el estado **terminal** y no enumera los transitorios). Los 5
+endpoints montados en 401. El log arranca limpio y **el emisor carga su regla**, que es
+lo que prueba que `dist/manual` —con el `alcance.util.js` del que cuelga `_autorizar.js`—
+viajó en la imagen. El bundle **no cambió y ese es el control**: cero archivos de `src/`,
+y los 40 marcadores siguen en su sitio (66 archivos, 4.51 MB).
+
+#### LO QUE ESTO NO PRUEBA, dicho con precisión
+
+- **La guardia no se probó contra producción con un token real**, y no debe probarse
+  así: sería escribir en producción (§8.6). Lo que está probado es el mecanismo, contra
+  las reglas REALES cargadas de `dist/manual`, en 31 afirmaciones locales.
+- **El arreglo de la fecha tampoco se ha visto en vivo.** Su primera prueba de verdad es
+  esta tarde, después de las 18:00: si alguien entra por plaza y la app **no** le pregunta
+  quién es, sirvió.
+- **Siguen 9 endpoints del factory sin autorizar** (`catalogo-rutinas`,
+  `asignaciones-rutinas`, `moldes-checklists`, `descansos-semanales`, `tareas-equipo`,
+  `rutinas-personales`, `vehiculos`, `usuarios-tokens`, `config`). No se cierran a bulto:
+  cada uno necesita saber quién escribe hoy.
+- **Las 9 banderas de gestión siguen siendo equivalentes** — cualquiera da vista de toda
+  la sucursal. Es el defecto grande que queda del modelo.
+- **Los 11 puestos con gente debajo y sin perfil** siguen sin definir (paso D, Dirección).
+- **Nadie ha entrado con una cuenta real.** Cero migraciones, ninguna ficha tocada.
+
+
 ### 19/sep/2026 (noche) — PASO C: el rango sale del NIVEL, y la escalada se deja sin tocar
 
 Continuación de la revisión de permisos. Instrucción de David: *«dale a lo que

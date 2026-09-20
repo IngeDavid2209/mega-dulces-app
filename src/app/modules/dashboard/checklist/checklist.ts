@@ -7,6 +7,7 @@ import { Firestore, doc, setDoc, deleteDoc } from '@angular/fire/firestore';
 import * as localforage from 'localforage';
 import Swal from 'sweetalert2';
 import { esAdminGlobal, esAdminLimitado, sucursalesPermitidas, alcanceCubre, esSupervisor, mismoEmpleadoNombre, existeEmpleadoEnUsuarios, normalizarNombre, puedeSerAsignado } from '../../../shared/permisos.util';
+import { pasaFiltroTransversal } from '../../../shared/area-transversal.util';
 import { nivelDeCargo } from '../../../shared/nivel-jerarquico.util';
 import { TareaEquipo, FaseEquipo, ItemEquipo, SubtareaEquipo } from '../../../shared/tareas-equipo.types';
 import { esItemHecho, tieneEvidencia } from '../../../shared/item-completado.util';
@@ -1910,6 +1911,9 @@ export class ChecklistComponent implements OnInit, OnDestroy {
         if (esGlobal) { /* ve todas */ }
         else if (esLimitado || supervisor) { if (!alcanceCubre(permitidas, c.store)) return; }
         else { if (!mismoEmpleadoNombre(c.assigned, miNombre)) return; }
+        // El mismo recorte que en pendientes: el historial tiene que contar lo
+        // mismo que la lista, o los dos numeros se contradicen en pantalla.
+        if (!pasaFiltroTransversal(sesion, c, permitidas)) return;
         lista.push(c);
       });
       // Más recientes primero (por fecha y, dentro del día, por creación).
@@ -2221,6 +2225,25 @@ export class ChecklistComponent implements OnInit, OnDestroy {
         resultado = listasFinales.filter((c: any) => mismoEmpleadoNombre(c.assigned, miNombre));
       }
 
+      // ✂️ AREAS TRANSVERSALES (20/sep) — MANTENIMIENTO y SISTEMAS.
+      //
+      // Va DESPUES de las ramas y no dentro de cada una, para que ninguna se
+      // quede sin el recorte por descuido cuando alguien añada la sexta.
+      //
+      // `pasaFiltroTransversal` se auto-acota: devuelve true para todo lo que
+      // no sea de esas dos areas y para todo el que no sea operacion de zona,
+      // asi que aqui no hace falta repetir ninguna condicion de rol.
+      //
+      // Por que hacia falta: la ficha de una Encargada lleva MANTENIMIENTO y
+      // SISTEMAS en `sucursales[]` —estan ahi para que pueda levantar un
+      // ticket, no porque trabaje ahi— y `alcanceCubre` casa el `store`
+      // contra esa lista, asi que le ensenaba las ordenes de las otras siete
+      // tiendas. Ahora solo ve las que su sucursal origino, las que ella
+      // levanto y las que le asignaron.
+      const antesTransversal = resultado.length;
+      resultado = resultado.filter((c: any) => pasaFiltroTransversal(sesion, c, permitidas));
+      const recortadasPorArea = antesTransversal - resultado.length;
+
       // Ajuste de atrasadas (solo TEC): sin diarias y, por tarea recurrente, solo
       // la más reciente. Para el resto no hay atrasadas, así que se deja igual.
       if (esTec) resultado = this.depurarAtrasadas(resultado);
@@ -2240,6 +2263,13 @@ export class ChecklistComponent implements OnInit, OnDestroy {
         usuario: sesion?.usuario, nombre: sesion?.nombre, rol: sesion?.rol,
         alcance: sesion?.alcance, sucursales: sesion?.sucursales,
         rama, descartadosEliminados, descartadosEnviados, descartadosFecha,
+        // ✂️ Cuantas se quitaron por ser de MANTENIMIENTO o SISTEMAS sin que
+        // esta sucursal las originara (20/sep). Va aqui porque el recorte es
+        // MUDO en pantalla: una Encargada que hoy veia doce ordenes y manana ve
+        // dos no tiene forma de saber por que, y lo va a reportar como que se
+        // perdieron. Con esta cifra la respuesta se da en un vistazo, sin
+        // ponerle un cartel en medio del turno por algo que es correcto.
+        recortadasPorArea,
         crudoTrasFiltro: listasFinales.length, resultadoFinal: resultado.length,
         fechaHoyLocal,
         // Lista única de empleados con tareas hoy (en cualquier estado)

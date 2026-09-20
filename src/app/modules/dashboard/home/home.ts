@@ -9,6 +9,7 @@ import { RouterModule, Router } from '@angular/router';
 
 import { SidebarComponent } from '../../../shared/sidebar/sidebar';
 import { esAdminGlobal, sucursalesPermitidas, esSupervisor, mismoEmpleadoNombre } from '../../../shared/permisos.util';
+import { pasaFiltroTransversal } from '../../../shared/area-transversal.util';
 import { hayTableroPara, verNivelEmpresa as puedeVerEmpresa } from '../../../shared/alcance.util';
 import { nivelDeUsuario } from '../../../shared/nivel-jerarquico.util';
 import { esItemHecho, tieneEvidencia } from '../../../shared/item-completado.util';
@@ -925,6 +926,13 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
         // admin limitado O supervisor → filtra por sucursales
         arr = arr.filter(c => permitidas.includes(c.store));
       }
+
+      // ✂️ AREAS TRANSVERSALES (20/sep). El MISMO recorte que la lista de
+      // tareas, y por eso va aqui tambien: si el tablero contara las ordenes de
+      // mantenimiento de las otras siete tiendas y la lista no las ensenara,
+      // los dos numeros se contradirian en la misma pantalla — que es peor que
+      // cualquiera de los dos por separado.
+      arr = arr.filter(c => pasaFiltroTransversal(sesion, c, permitidas));
 
       // DEBUG temporal: ver en consola por qué un admin/supervisor ve 0.
       console.log('[DBG dashboard]', {

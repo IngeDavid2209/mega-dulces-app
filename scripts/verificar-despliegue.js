@@ -161,7 +161,16 @@ const MARCADORES = [
   // una bandera, aqui falta RANGO, y eso es lo que hay que poder leer.
   // Validado en las dos direcciones: 1 en dist/, 0 en produccion (66 archivos,
   // 4.47 MB, 0 fallos de lectura — sin esa cifra el cero no vale).
-  { txt: 'sin-rango-de-mando', nuevo: true,
+  // 20/sep/2026 · MANTENIMIENTO y SISTEMAS dejan de verse desde otra sucursal.
+  // Otra vez logica pura; el marcador es el contador que el recorte deja en el
+  // diagnostico inline, y hacia falta igual: el recorte es MUDO en pantalla, y
+  // una Encargada que pasa de doce ordenes a dos lo va a reportar como que se
+  // perdieron. Validado en las dos direcciones: 1 en dist/, 0 en produccion
+  // (66 archivos, 4.47 MB, 0 fallos de lectura).
+  { txt: 'recortadasPorArea', nuevo: true,
+    que: 'el recorte de MANTENIMIENTO y SISTEMAS para los puestos de sucursal y zona' },
+  // El del despliegue anterior baja a control: YA VALE en produccion.
+  { txt: 'sin-rango-de-mando', control: true,
     que: 'el rango sale del nivel del puesto, no de quien cuelgue de ti' },
   // El del despliegue anterior baja a control: YA VALE en produccion.
   { txt: 'ruta-cerrada-para-tu-perfil', control: true,

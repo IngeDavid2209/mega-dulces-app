@@ -834,15 +834,22 @@
           <div class="checklist-grid" *ngIf="!cargandoEnviadas && enviadasFiltradas.length === 0">
             <div class="empty-state">
               <div class="empty-state-icon"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg></div>
+              <!-- ⏱️ DECÍA «en los últimos 30 días» Y DESDE HOY ESO ES FALSO.
+                   La bandeja pasó a mostrar solo el día en curso (20/sep), así
+                   que ese texto le diría a una Encargada que no se ha entregado
+                   nada en un MES cuando puede haber decenas. Un vacío que
+                   explica mal es peor que uno que no explica: manda a buscar un
+                   problema que no existe. -->
               <ng-container *ngIf="totalEnviadasSinBuscar === 0">
-                <h3>Sin tareas enviadas</h3>
-                <p>No hay tareas enviadas en los últimos 30 días.</p>
+                <h3>Sin entregas hoy</h3>
+                <p>Esta bandeja muestra solo el día en curso. Lo de días anteriores
+                   se consulta en Auditoría.</p>
               </ng-container>
               <ng-container *ngIf="totalEnviadasSinBuscar > 0">
                 <h3>No se encontraron resultados</h3>
-                <p>Ninguna de las {{ totalEnviadasSinBuscar }} tarea(s) enviadas de los últimos
-                   30 días coincide con «{{ terminoBusquedaChecklist }}». Prueba con otro
-                   nombre, empleado o sucursal.</p>
+                <p>Ninguna de las {{ totalEnviadasSinBuscar }} entrega(s) de hoy coincide
+                   con «{{ terminoBusquedaChecklist }}». Prueba con otro nombre, empleado
+                   o sucursal — esta bandeja muestra solo el día en curso.</p>
               </ng-container>
             </div>
           </div>

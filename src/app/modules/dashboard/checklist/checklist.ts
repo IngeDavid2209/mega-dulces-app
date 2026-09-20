@@ -1887,11 +1887,33 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   async cargarEnviadas() {
     this.cargandoEnviadas = true;
     try {
+      // ⏱️ SOLO LAS DE HOY (20/sep/2026)
+      //
+      // Reporte de David: «en enviadas del equipo aparecen las viejas y tienen
+      // que ser solo las del día». Aquí se pedían **30 días** y después no se
+      // recortaba la fecha, así que el historial traía un mes entero mientras
+      // «Pendientes» pedía `desde = hoy`. Las dos bandejas vivían en escalas
+      // distintas y eso es lo que se veía en pantalla.
+      //
+      // ─── POR QUÉ SE FILTRA POR `date` Y NO POR CUÁNDO SE ENVIÓ ────────────
+      // Porque no existe. La tabla tiene `enviado` (booleano) y
+      // `timestamp_creacion`, pero NINGUNA columna con la hora del envío
+      // (`009_checklists.sql`). O sea que «se envió hoy» no se puede saber: lo
+      // único que hay es el día al que pertenece la tarea, que además es el
+      // mismo criterio que usa «Pendientes». Queda anotado como dato que falta.
+      //
+      // CONSECUENCIA, dicha para que no sorprenda: un checklist de AYER que se
+      // entregue esta mañana no sale en esta bandeja. Es la misma regla que ya
+      // tenía «Pendientes» —que tampoco trae días pasados, salvo TEC— así que
+      // esto alinea las dos en vez de abrir un caso nuevo.
       const offset = new Date().getTimezoneOffset() * 60000;
-      const hace30 = new Date(Date.now() - offset - 30 * 86400000).toISOString().split('T')[0];
-      // Solo rango por fecha (campo único → sin índice compuesto). El resto se
-      // filtra en el cliente para no requerir desplegar índices de Firestore.
-      const respEnv = await this.api.get('/api/checklists?desde=' + encodeURIComponent(hace30));
+      const hoyLocal = new Date(Date.now() - offset).toISOString().split('T')[0];
+      // Se acota por LOS DOS LADOS. Con solo `desde`, un checklist fechado
+      // mañana y marcado enviado seguiría saliendo —y los hay: el 31/ago se
+      // midieron 15 con fecha 01/sep creados el día anterior—.
+      const respEnv = await this.api.get(
+        '/api/checklists?desde=' + encodeURIComponent(hoyLocal) +
+        '&hasta=' + encodeURIComponent(hoyLocal));
       const filas: any[] = respEnv?.checklists || [];
       const sesion = (() => { try { return JSON.parse(localStorage.getItem('md_sesion_actual') || 'null'); } catch { return null; } })() || this.currentUser;
       const esGlobal = esAdminGlobal(sesion);
@@ -1907,6 +1929,9 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       filas.forEach((c: any) => {
         if (c.enviado !== true) return;            // solo enviadas
         if (c.eliminado === true || c.archivado === true) return;
+        // El rango ya lo acota el servidor; esto lo vuelve EXACTO y sobrevive a
+        // que alguien cambie la consulta sin acordarse de la intencion.
+        if (c.date !== hoyLocal) return;
         // Alcance
         if (esGlobal) { /* ve todas */ }
         else if (esLimitado || supervisor) { if (!alcanceCubre(permitidas, c.store)) return; }

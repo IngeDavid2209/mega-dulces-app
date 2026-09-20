@@ -167,7 +167,17 @@ const MARCADORES = [
   // una Encargada que pasa de doce ordenes a dos lo va a reportar como que se
   // perdieron. Validado en las dos direcciones: 1 en dist/, 0 en produccion
   // (66 archivos, 4.47 MB, 0 fallos de lectura).
-  { txt: 'recortadasPorArea', nuevo: true,
+  // 20/sep/2026 (tarde) · «Enviadas» pasa a mostrar SOLO EL DIA. Pedia treinta
+  // dias y no recortaba la fecha, mientras «Pendientes» pedia desde hoy: las
+  // dos bandejas en escalas distintas, que es lo que David vio.
+  // El marcador es el texto del vacio, y hacia falta igual: decia «no hay
+  // tareas enviadas en los ultimos 30 dias», que desde hoy es FALSO y mandaria
+  // a buscar un problema que no existe. Validado en las dos direcciones:
+  // 1 archivo en dist/, 0 en produccion (67 archivos, 0 fallos de lectura).
+  { txt: 'Sin entregas hoy', nuevo: true,
+    que: 'el historial de enviadas acotado al dia en curso' },
+  // El del despliegue anterior baja a control: YA VALE en produccion.
+  { txt: 'recortadasPorArea', control: true,
     que: 'el recorte de MANTENIMIENTO y SISTEMAS para los puestos de sucursal y zona' },
   // El del despliegue anterior baja a control: YA VALE en produccion.
   { txt: 'sin-rango-de-mando', control: true,

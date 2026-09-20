@@ -43,6 +43,10 @@ function hoyLocal() {
   return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().split('T')[0];
 }
 const HOY = hoyLocal();
+const AYER = (() => {
+  const d = new Date(Date.now() - 86400000);
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().split('T')[0];
+})();
 
 const ENCARGADA = 'Elena Encargada Transversal';
 const TECNICO   = 'Mario Mantenimiento Transversal';
@@ -88,6 +92,16 @@ const FILAS = [
   // se habría llevado por delante algo que no venía a tocar.
   { id: 'n1', name: 'Tarea normal de mi tienda', store: '8 Esquinas', assigned: OTRA,
     createdBy: OTRA, ...BASE },
+  // ⏱️ SOLO LAS DEL DÍA (20/sep). Reporte de David: «en enviadas del equipo
+  // aparecen las viejas y tienen que ser solo las del día». `cargarEnviadas`
+  // pedía TREINTA DÍAS y no recortaba la fecha, mientras «Pendientes» pedía
+  // desde hoy: las dos bandejas en escalas distintas.
+  //
+  // Esta fila es de AYER y de su propia tienda, así que solo puede quedar
+  // fuera por la fecha — si el recorte de áreas se la llevara, el fixture no
+  // distinguiría cuál de los dos filtros actuó.
+  { id: 'v1', name: 'VIEJA de mi tienda', store: '8 Esquinas', assigned: OTRA,
+    createdBy: OTRA, ...BASE, date: AYER },
 ];
 
 const USUARIOS = [
@@ -166,8 +180,17 @@ function medir(esc, puerto) {
     const srv = http.createServer((req, res) => {
       const url = req.url.split('?')[0];
       if (url.indexOf('/api/') === 0) {
+        // ⚠ SE HONRAN `desde` y `hasta`, como el endpoint real. Devolviendo
+        // SIEMPRE las seis filas, el arnés probaría solo el filtro de cliente y
+        // daría verde aunque la consulta siguiera pidiendo treinta días — que
+        // es justo la mitad del defecto. Con esto se mide lo que de verdad
+        // llega al navegador.
+        const q = new URL(req.url, 'http://x').searchParams;
+        const desde = q.get('desde'), hasta = q.get('hasta');
+        const filas = FILAS.filter(f =>
+          (!desde || String(f.date) >= desde) && (!hasta || String(f.date) <= hasta));
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        return res.end(CUERPO);
+        return res.end(JSON.stringify({ checklists: filas, usuarios: USUARIOS, areas: [] }));
       }
       if (url === '/' || !path.extname(url)) {
         res.writeHead(200, { 'Content-Type': 'text/html', 'Cache-Control': 'no-store' });

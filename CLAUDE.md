@@ -327,6 +327,80 @@ de que exista la plaza sería partir el problema en dos, no resolverlo.
 ## 9. Bitácora del plan
 
 
+### 20/sep/2026 (noche) — «ENVIADAS» PEDÍA TREINTA DÍAS Y NO RECORTABA NINGUNO
+
+Reporte de David: *«en enviadas del equipo aparecen las viejas y tienen que ser solo las
+del día»*.
+
+#### LA CAUSA ES UNA ASIMETRÍA ENTRE LAS DOS BANDEJAS
+
+    Pendientes .. `/api/checklists?desde=hoy`            -> hoy en adelante
+    Enviadas .... `/api/checklists?desde=hace30`  Y NADA -> un mes entero
+
+`cargarEnviadas()` pedía 30 días y **después no filtraba la fecha**. Las dos bandejas
+vivían en escalas distintas, y eso es literalmente lo que se veía en pantalla.
+
+#### POR QUÉ SE FILTRA POR `date` Y NO POR CUÁNDO SE ENVIÓ
+
+**Porque no existe.** La tabla tiene `enviado` (booleano) y `timestamp_creacion`, pero
+**ninguna columna con la hora del envío** (`009_checklists.sql`). O sea que «se envió
+hoy» no se puede saber; lo único que hay es el día al que pertenece la tarea, que además
+es el mismo criterio que ya usa «Pendientes». Dato que falta, anotado y no adivinado.
+
+**Consecuencia, dicha para que no sorprenda:** un checklist de AYER entregado esta mañana
+**no sale** en esta bandeja. Es la misma regla que «Pendientes» ya tenía —tampoco trae
+días pasados, salvo TEC— así que esto **alinea** las dos en vez de abrir un caso nuevo.
+
+Se acota **por los dos lados**. Con solo `desde`, un checklist fechado mañana y marcado
+enviado seguiría saliendo — y los hay: el 31/ago se midieron 15 con fecha 01/sep creados
+el día anterior.
+
+#### LA PROTECCIÓN ES DOBLE A PROPÓSITO, Y CADA MITAD SE VERIFICÓ SOLA
+
+Un control negativo que no cambia nada no prueba nada, así que en vez de uno se corrieron
+dos, y la pareja es lo que demuestra que la redundancia es real y no un descuido:
+
+| | qué se rompió | qué pasó |
+|---|---|---|
+| NEG-A | la consulta vuelve a 30 días, la guarda de cliente intacta | **0 coladas** — la guarda sola basta |
+| NEG-B | ninguna de las dos | **1 colada: «VIEJA de mi tienda»** — el defecto literal |
+
+#### DOS COSAS QUE CAZÓ EL ARNÉS, Y LAS DOS ERAN MÍAS
+
+1. **No había reconstruido.** La primera corrida dio la vieja colada con el código ya
+   escrito. *«Después de editar, reconstruir»* (1/sep), otra vez.
+2. **El servidor de la prueba devolvía siempre las siete filas**, ignorando `desde` y
+   `hasta`. Así se habría probado **solo el filtro de cliente** y habría dado verde
+   aunque la consulta siguiera pidiendo treinta días — o sea, la mitad del defecto
+   intacta y la tabla en verde. Ahora los honra, como el endpoint real.
+
+El fixture nuevo es de **ayer y de su propia tienda**: así solo puede quedar fuera por la
+fecha. Si fuera de otra sucursal o de un área, el recorte transversal se la llevaría y el
+caso no distinguiría cuál de los dos filtros actuó.
+
+#### DESPLEGADO
+
+    marcador .. «Sin entregas hoy»  0 -> 1 servido · 41 controles en pie
+                67 archivos · 4.51 MB
+    pruebas ... 394 unitarias · los arneses de bandeja en verde
+    espera .... 5 vueltas
+
+El marcador es **el texto del vacío, y hacía falta igual**: decía «no hay tareas enviadas
+en los últimos 30 días», que desde hoy es **falso** — le diría a una Encargada que no se
+ha entregado nada en un mes cuando puede haber decenas. Un vacío que explica mal es peor
+que uno que no explica: manda a buscar un problema que no existe. Ahora dice que la
+bandeja muestra el día en curso y dónde está lo demás.
+
+#### LO QUE ESTO NO HACE
+
+- **«Mis tareas enviadas» también queda en el día**, porque las dos bandejas salen de la
+  misma carga. Es coherente, pero no se pidió explícitamente: si el historial propio debe
+  conservar el mes, es un interruptor aparte.
+- **No existe «entregado hoy»** mientras no haya columna de fecha de envío. Es lo que
+  impide distinguir «se entregó tarde» de «no se entregó».
+- **Nadie ha entrado con una cuenta real.** Cero migraciones.
+
+
 ### 20/sep/2026 (tarde) — EL EJE TRANSVERSAL, POR FIN EN LOS NÚMEROS: MANTENIMIENTO y SISTEMAS
 
 Instrucción de David: *«encargadas, jefes de zona, auxiliares de encargadas y todo lo que

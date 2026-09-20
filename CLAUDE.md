@@ -327,6 +327,106 @@ de que exista la plaza sería partir el problema en dos, no resolverlo.
 ## 9. Bitácora del plan
 
 
+### 20/sep/2026 (tarde) — EL EJE TRANSVERSAL, POR FIN EN LOS NÚMEROS: MANTENIMIENTO y SISTEMAS
+
+Instrucción de David: *«encargadas, jefes de zona, auxiliares de encargadas y todo lo que
+tenga que ver con esos puestos en el organigrama no pueden ver las tareas que tienen
+asignadas el departamento de Sistemas y Mantenimiento, a menos de que su sucursal las
+haya asignado; solo así pueden ver las que asignaron»*.
+
+**Es el hallazgo del 4/sep cobrado.** Aquel día se hizo el eje transversal *en una
+pantalla* y quedó escrito que los tableros seguían sumando por `store`. Esto es la otra
+mitad.
+
+#### POR QUÉ LAS VEÍAN TODAS, Y ESTABA MEDIDO DESDE HACE UNA SEMANA
+
+El filtro de visibilidad tiene **un solo eje** —`alcanceCubre(permitidas, c.store)`— y
+`store` hace **dos trabajos**: dónde ocurre el trabajo y de qué departamento es. El
+detonante estaba en la bitácora del 15/sep sin que nadie lo conectara: la ficha de una
+Encargada lleva `8 Esquinas`, `MANTENIMIENTO` y `SISTEMAS`, y **esas dos están ahí para
+que pueda levantar un ticket, no porque trabaje ahí**. Como `sucursalesPermitidas` las
+devuelve igual que su tienda, el filtro le enseñaba las órdenes de las otras siete.
+
+#### EL CAMPO YA EXISTÍA Y NO LO LEÍA NADIE
+
+`checklist.ts:4889` guarda `mantenimiento.sucursalOrigen` desde hace meses y hasta hoy
+**solo se pintaba en el detalle**. Es la «unidad servida» del §5, capturada y sin usar:
+no hubo que inventar el dato, hubo que enchufarlo.
+
+#### CUATRO PUERTAS, UNA POR FRASE DE LA INSTRUCCIÓN
+
+    pertenece al area      -> es su trabajo
+    esta asignada a ella   -> es su trabajo, aunque el area sea otra
+    la creo ella           -> «las que asignaron»
+    el origen es su suc.   -> «a menos de que su sucursal las haya asignado»
+
+La segunda no es adorno: sin ella, el día que a alguien de sucursal le toque apoyar en
+una orden, **la tarea le desaparecería de la lista** y nadie sabría por qué.
+
+#### SE IDENTIFICA EN POSITIVO, Y ESA ES LA DECISIÓN DE SEGURIDAD
+
+El error caro aquí **no es «una Encargada ve de más»: es esconderle su trabajo a quien
+tiene que hacerlo.** Un técnico que deja de ver sus órdenes no las hace, y eso no se
+reporta como bug — se reporta como que la app no sirve.
+
+Así que el recorte se aplica **solo a quien se identifica positivamente** como operación
+de sucursal o zona. Y esas unidades **se derivan** recorriendo `reportaA` desde
+`gerencia-zona` —40 puestos, 5 unidades— en vez de escribirse a mano, que es lo que
+envejece. Quien no resuelva puesto conserva lo de hoy: son **44 fichas activas**
+(15/sep), y entre ellas puede haber técnicos.
+
+#### SISTEMAS NO TIENE ORIGEN, Y SE DICE EN VEZ DE RELLENARLO
+
+El formulario solo pide `sucursalOrigen` cuando el `store` es MANTENIMIENTO. De una
+tarea de Sistemas **no se puede saber de qué tienda salió**, así que ahí solo queda «la
+creé yo» — que es literalmente lo que pidió David. Queda anotado como dato que falta
+(§8.5), no adivinado.
+
+#### SE ENGANCHA EN LOS TRES FILTROS, NO EN UNO
+
+Pendientes, enviadas **y el tablero**. Si el tablero contara las órdenes que la lista no
+enseña, los dos números se contradirían en la misma pantalla — que es peor que
+cualquiera de los dos por separado.
+
+#### VERIFICADO, Y NO CONTANDO TARJETAS
+
+**394 pruebas** unitarias (371 → 394) más `scripts/prueba-area-transversal.js` en el DOM,
+que comprueba **cuáles** sobreviven y no cuántas: «hay menos tarjetas» lo pasa un filtro
+que borre al azar.
+
+    ENCARGADA  4 de 4 esperadas · 0 coladas
+    TECNICO    3 de 3 esperadas · 0 coladas   (ve la de Canindo: es su trabajo)
+
+**Control negativo**, una línea con su `diff`: apagado el recorte la Encargada pasa a 6
+tarjetas y vuelven **exactamente las dos del defecto** — «MANT ajena» y «SIS ajena».
+
+**Y mi fixture del contraste estaba mal en la primera corrida:** asigné las tres órdenes
+al propio técnico, y «del equipo» es estricto desde el 14/sep, así que su bandeja salía
+**vacía (0 de 3) con el filtro funcionando perfecto**. Un fixture con una forma que el
+sistema no produce vuelve a fabricar un hallazgo falso — la misma lección del 19/sep, dos
+días seguidos.
+
+#### DESPLEGADO
+
+    marcador .. recortadasPorArea  0 -> 1 servido · 40 controles en pie
+                67 archivos · 4.51 MB
+    espera .... 4 vueltas (`Initializing` otra vez, y la guardia lo aguanto)
+
+Lógica pura otra vez, así que el marcador es el contador que el recorte deja en el
+diagnóstico inline — **y hacía falta igual**: el recorte es **mudo**, y una Encargada que
+pasa de doce órdenes a dos lo va a reportar como que se perdieron. Con esa cifra la
+respuesta se da en un vistazo, sin ponerle un cartel en medio del turno por algo correcto.
+
+#### LO QUE ESTO NO HACE
+
+- **Nadie gana visibilidad.** Esto solo quita, que es la dirección segura.
+- **No toca tickets ni tareas de equipo**, que son otras entidades. La instrucción habla
+  de las tareas con `store` de esos dos departamentos.
+- **Las otras áreas corporativas no se recortan** —RH, FINANZAS, COMPRAS, CONTABILIDAD,
+  MKT—: David nombró dos. Extenderlo es un renglón en `AREAS_TRANSVERSALES`.
+- **Nadie ha entrado con una cuenta real.** Cero migraciones.
+
+
 ### 20/sep/2026 — SE CIERRA `/api/coberturas`, y con eso sale un desfase de fecha de SEIS HORAS
 
 Instrucción de David: *«haz la actualización de todo y súbelo a producción»*. Lo

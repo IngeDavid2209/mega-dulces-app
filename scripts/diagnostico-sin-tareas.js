@@ -76,6 +76,18 @@ const POR_OMISION = [
  * deberia ser: ahi «tiene OTRO puesto» si es un hallazgo.
  */
 const PUESTO_ESPERADO = (process.argv.find(a => a.startsWith('--puesto=')) || '').split('=')[1] || '';
+
+// ── `--todos`: el CENSO, en vez del detalle de tres personas ──────────────
+// Instruccion de David (20/sep/2026): «no quiero que revises el perfil de ella,
+// quiero que revises el perfil de todos todos todos y dame los nombres y si
+// tiene puesto damelo tambien, de quienes no tengan tareas asignadas».
+//
+// Es el MISMO diagnostico, con otra salida: la clasificacion de cubetas es una
+// sola funcion y la llaman los dos modos. Un segundo script que clasificara
+// «por que no tiene tareas» con su propio criterio acabaria discrepando de
+// este, y la discrepancia no daria ningun error: dos listas distintas del mismo
+// dia, y nadie sabria cual creer.
+const TODOS = process.argv.includes('--todos');
 const PREFIJO_MANUAL = 'man_';
 const DIAS_VENTANA = 7;
 
@@ -198,6 +210,196 @@ function ymd(d) {
       'Eso no es «no hay»: es «no lei». Un dia normal trae cientos.');
   }
 
+  // ══════════════════════════════════════════════════════════════════════
+  //  LA CLASIFICACION, EN UN SOLO SITIO
+  // ══════════════════════════════════════════════════════════════════════
+  // La usan los DOS modos: el detalle por persona y el censo de `--todos`.
+  // Estaba escrita dentro del bucle; se extrajo sin cambiarle una condicion ni
+  // el orden de los `else if`, que es lo que decide que cubeta gana cuando dos
+  // aplican (p.ej. sin puesto Y sin sucursal -> manda «sin puesto», porque es
+  // lo que hay que capturar primero).
+  function clasificar(f, u) {
+    const r = resolverPuesto(u);
+    const lugares = sucursalesDe(u);
+    const mandaVista = esSupervisor(u) || u.rol === 'admin';
+
+    const suyasHoy = deHoy.filter(c => mismoEmpleadoNombre(c.assigned, f.nombre));
+    const vivas = suyasHoy.filter(c => c.eliminado !== true);
+    const borradas = suyasHoy.filter(c => c.eliminado === true);
+
+    if (f.activo === false) {
+      return { clave: 'B0', r, lugares, vivas, borradas, mandaVista, plan: null,
+               texto: 'B0 · FICHA INACTIVA: el emisor la salta.' };
+    }
+
+    const plan = planDeEntregas({
+      usuarios: [u], fecha, idsExistentes: [], descansosSemana: [], horarios: [],
+    });
+    const motivos = plan.omitidos.map(o => o.motivo).join('; ');
+    const base = { r, lugares, vivas, borradas, mandaVista, plan, motivos };
+
+    if (!r.puestoId) {
+      return Object.assign({ clave: 'A', texto:
+        'A · SIN PUESTO RESOLUBLE — su ficha no tiene `puestoId` y su cargo no casa con ningun alias.'
+        + '\nSE ARREGLA EN LA PANTALLA DE PERSONAL, capturando su puesto. No es codigo.' }, base);
+    }
+    if (PUESTO_ESPERADO && r.puestoId !== PUESTO_ESPERADO) {
+      return Object.assign({ clave: 'A2', texto:
+        'A2 · PUESTO DISTINTO (' + r.puestoId + '): recibe el manual de OTRO puesto, '
+        + 'no el de "' + PUESTO_ESPERADO + '".' }, base);
+    }
+    if (tareasAutomaticasDePuesto(r.puestoId).length === 0) {
+      // 70 de los 89 puestos no tienen manual escrito. No es un fallo de la app
+      // y no lo arregla nadie desde aqui: es Fase 7, y lo decide Direccion
+      // escribiendo la norma de ese puesto.
+      return Object.assign({ clave: 'A3', texto:
+        'A3 · SU PUESTO NO TIENE MANUAL (' + r.puestoId + ') — no recibe tareas '
+        + 'automaticas porque no existe el documento. No se arregla en su ficha.' }, base);
+    }
+    if (!lugares.length) {
+      return Object.assign({ clave: 'B', texto:
+        'B · SIN SUCURSAL ASIGNADA — se arregla capturando su sucursal en Personal.' }, base);
+    }
+    if (vivas.length > 0) {
+      return Object.assign({ clave: 'E', texto:
+        'E · EMITIDA Y VIVA (' + vivas.length + ') — el cero NO es de emision, es de la PANTALLA.'
+        + (mandaVista
+            ? '\n              Y manda vista de gestion: aterriza en «Pendientes del equipo», que EXCLUYE las suyas.'
+              + '\n              Sus tareas estan en «Mis tareas pendientes».'
+            : '') }, base);
+    }
+    if (borradas.length > 0) {
+      return Object.assign({ clave: 'D', texto:
+        'D · EMITIDA Y BORRADA (' + borradas.length + ') — el emisor NO la repone hoy: su id ya esta tomado.' }, base);
+    }
+    if (plan.entregas.length === 0) {
+      return Object.assign({ clave: 'C', texto:
+        'C · LA REGLA NO LE EMITE HOY — motivo: ' + (motivos || '(sin motivo registrado)') }, base);
+    }
+    return Object.assign({ clave: 'C2', texto:
+      'C2 · LA REGLA SI LE EMITIRIA (' + plan.entregas.length + ') Y EN LA BASE NO HAY NADA.'
+      + '\nO el emisor no corrio, o corrio contra otra base. Mira el log de Railway.' }, base);
+  }
+
+
+  // ══════════════════════════════════════════════════════════════════════
+  //  EL CENSO — «todos todos todos» (David, 20/sep/2026)
+  // ══════════════════════════════════════════════════════════════════════
+  // Contesta: de TODA la plantilla, quien no tiene tareas hoy, con su nombre y
+  // su puesto si lo tiene.
+  //
+  // ⚠ SE PARTE EN DOS LISTAS, Y ESA ES LA MITAD UTIL DEL REPORTE.
+  // «No tiene tareas» y «tiene tareas y no las ve» son problemas DISTINTOS con
+  // arreglos distintos, y en la pantalla se ven igual: un cero. Juntarlos en
+  // una sola lista mandaria a capturar puestos a gente que ya los tiene.
+  //
+  //   SIN TAREAS       0 checklists vivos hoy. Se arregla en su ficha, en el
+  //                    catalogo, o no se arregla (su puesto no tiene manual).
+  //   LAS TIENE Y NO   cubeta E: existen y estan vivas. El cero es de la
+  //   LAS VE           PANTALLA — tipicamente porque manda vista de gestion y
+  //                    aterriza en «Pendientes del equipo», que EXCLUYE las
+  //                    suyas. Es el caso que David describio de la Encargada.
+  async function censo() {
+    const filas = [];
+    for (const f of fichas) {
+      const u = aplanar(f);
+      const d = clasificar(f, u);
+      filas.push({
+        nombre: f.nombre || '(sin nombre)',
+        puesto: d.r && d.r.puestoId ? d.r.puestoId : '',
+        origen: d.r ? d.r.origen : '',
+        lugares: (d.lugares || []).join(', '),
+        clave: d.clave,
+        vivas: d.vivas.length,
+        mandaVista: !!d.mandaVista,
+        activo: f.activo !== false,
+      });
+    }
+
+    const conTareas = filas.filter(r => r.vivas > 0);
+    // ⚠ NO es «todos los que tienen tareas»: es quien puede ver un CERO
+    // teniendolas. El mecanismo es concreto —manda vista de gestion, asi que
+    // aterriza en «Pendientes del equipo», que EXCLUYE las suyas—. Sin este
+    // filtro la lista salia con todo el que trabaja bajo un titulo que para
+    // ellos es falso, y ahogaba el caso que importa.
+    const noLasVe = filas.filter(r => r.clave === 'E' && r.mandaVista);
+    const sinTareas = filas.filter(r => r.vivas === 0);
+
+    // §8.11(a): los ceros van con su denominador, o no son un resultado.
+    console.log('');
+    console.log('======================================================================');
+    console.log('CENSO DE %d FICHAS (%d activas)', filas.length,
+      filas.filter(r => r.activo).length);
+    console.log('  con tareas vivas hoy ....... %d (de ellas, %d mandan vista de gestion)',
+      conTareas.length, noLasVe.length);
+    console.log('  SIN tareas hoy ............. %d', sinTareas.length);
+    console.log('======================================================================');
+
+    const porClave = {};
+    for (const r of sinTareas) porClave[r.clave] = (porClave[r.clave] || 0) + 1;
+    console.log('');
+    console.log('POR QUE NO TIENEN (el detalle de cada cubeta, abajo):');
+    for (const k of Object.keys(porClave).sort()) {
+      console.log('  %s  %d persona(s)', String(k).padEnd(4), porClave[k]);
+    }
+
+    const ORDEN = ['A', 'A3', 'B', 'B0', 'C', 'C2', 'D'];
+    const TITULO = {
+      A:  'SIN PUESTO EN SU FICHA  -> se captura en Personal. No es codigo.',
+      A3: 'SU PUESTO NO TIENE MANUAL -> es Fase 7: lo escribe Direccion, no se arregla en su ficha.',
+      B:  'SIN SUCURSAL EN SU FICHA -> se captura en Personal.',
+      B0: 'FICHA INACTIVA -> el emisor la salta a proposito.',
+      C:  'LA REGLA NO LE EMITE HOY (descanso, cierre, turno o frecuencia).',
+      C2: 'LA REGLA SI LE EMITIRIA Y EN LA BASE NO HAY NADA -> mira el log del emisor.',
+      D:  'EMITIDA Y BORRADA -> el emisor no la repone hoy: su id ya esta tomado.',
+    };
+    for (const k of ORDEN) {
+      const grupo = sinTareas.filter(r => r.clave === k);
+      if (!grupo.length) continue;
+      console.log('');
+      console.log('── %s · %d persona(s) ──────────────────────────────', k, grupo.length);
+      console.log('   %s  %s  %s', 'NOMBRE'.padEnd(34), 'PUESTO'.padEnd(26), 'SUCURSAL(ES)');
+      grupo.sort((a, b) => a.nombre.localeCompare(b.nombre));
+      for (const r of grupo) {
+        console.log('   %s  %s  %s', r.nombre.slice(0, 34).padEnd(34),
+          (r.puesto || '(SIN PUESTO)').padEnd(26), r.lugares || '(sin sucursal)');
+      }
+      console.log('   -> %s', TITULO[k] || '');
+    }
+
+    if (noLasVe.length) {
+      console.log('');
+      console.log('══════════════════════════════════════════════════════════════════');
+      console.log('Y ESTOS SI TIENEN TAREAS, PERO PUEDEN NO VERLAS: %d persona(s)', noLasVe.length);
+      console.log('Estan EMITIDAS Y VIVAS. El cero que se ve en pantalla no es de');
+      console.log('emision: quien manda vista de gestion aterriza en «Pendientes del');
+      console.log('equipo», que EXCLUYE las suyas. Las suyas estan en «Mis tareas');
+      console.log('pendientes». Es el caso de la Encargada que describio David.');
+      console.log('   %s  %s  %s', 'NOMBRE'.padEnd(34), 'PUESTO'.padEnd(26), 'VIVAS');
+      noLasVe.sort((a, b) => a.nombre.localeCompare(b.nombre));
+      for (const r of noLasVe) {
+        console.log('   %s  %s  %d', r.nombre.slice(0, 34).padEnd(34),
+          (r.puesto || '(SIN PUESTO)').padEnd(26), r.vivas);
+      }
+    }
+
+    // GUARDIA DE DISCRIMINACION (§8.11 c): si TODAS las fichas cayeran en la
+    // misma cubeta, el reporte no estaria distinguiendo nada y el detalle de
+    // arriba seria una lista larga sin informacion.
+    const clavesVistas = new Set(filas.map(r => r.clave));
+    console.log('');
+    if (clavesVistas.size < 2) {
+      abortar(1, 'las %d fichas cayeron TODAS en la cubeta «%s».'.replace('%d', filas.length)
+        .replace('%s', [...clavesVistas][0]),
+        'Eso no clasifica nada: o la regla no corrio, o el diagnostico esta midiendo otra cosa.');
+    }
+    console.log('[sin-tareas] cubetas distintas encontradas: %d (%s)',
+      clavesVistas.size, [...clavesVistas].sort().join(' '));
+    console.log('');
+  }
+
+  if (TODOS) { await censo(); return; }
+
   // ── FICHA POR FICHA ───────────────────────────────────────────────────────
   console.log('');
   console.log('======================================================================');
@@ -235,68 +437,23 @@ function ymd(d) {
       console.log('   supervisor(a): %s  -> abre la app en «%s»', mandaVista,
         mandaVista ? 'Pendientes del EQUIPO (excluye las suyas)' : 'Mis tareas');
 
-      if (f.activo === false) {
-        console.log('   CUBETA B0 · FICHA INACTIVA: el emisor la salta.');
-        cubetas.push([buscado, 'B0 inactiva']);
-        continue;
+      // ── LA CUBETA, con la MISMA funcion que usa el censo ─────────────
+      // Aqui vivia una copia de la clasificacion. Dos copias de «por que no
+      // tiene tareas» son dos criterios libres de discrepar, y la
+      // discrepancia no daria ningun error: dos listas distintas del mismo
+      // dia y nadie sabria cual creer.
+      const d = clasificar(f, u);
+      if (d.plan) {
+        console.log('   la regla le daria HOY: %d entrega(s)%s',
+          d.plan.entregas.length, d.motivos ? '  · motivo: ' + d.motivos : '');
       }
-
-      // Que le tocaria hoy, segun la regla REAL, ella sola.
-      const plan = planDeEntregas({
-        usuarios: [u], fecha, idsExistentes: [], descansosSemana: [], horarios: [],
-      });
-      const motivos = plan.omitidos.map(o => o.motivo).join('; ');
-      console.log('   la regla le daria HOY: %d entrega(s)%s',
-        plan.entregas.length, motivos ? '  · motivo: ' + motivos : '');
-
-      // Que EXISTE realmente en la base a su nombre hoy.
-      const suyasHoy = deHoy.filter(c => mismoEmpleadoNombre(c.assigned, f.nombre));
-      const vivas = suyasHoy.filter(c => c.eliminado !== true);
-      const borradas = suyasHoy.filter(c => c.eliminado === true);
       const suyasSemana = delManual.filter(c => mismoEmpleadoNombre(c.assigned, f.nombre));
       console.log('   en la BASE hoy: %d del manual a su nombre (%d vivas, %d eliminadas) · en %d dias: %d',
-        suyasHoy.length, vivas.length, borradas.length, DIAS_VENTANA, suyasSemana.length);
-      for (const c of vivas) console.log('      viva: %s · %s', c.store, c.id);
-
-      // ── LA CUBETA ───────────────────────────────────────────────────────────
-      let cubeta;
-      let clave;
-      if (!r.puestoId) {
-        clave = 'A';
-        cubeta = 'A · SIN PUESTO RESOLUBLE — su ficha no tiene `puestoId` y su cargo no casa con ningun alias.'
-               + '\n              SE ARREGLA EN LA PANTALLA DE PERSONAL, capturando su puesto. No es codigo.';
-      } else if (PUESTO_ESPERADO && r.puestoId !== PUESTO_ESPERADO) {
-        clave = 'A2';
-        cubeta = 'A2 · PUESTO DISTINTO (' + r.puestoId + '): recibe el manual de OTRO puesto, '
-               + 'no el de "' + PUESTO_ESPERADO + '".';
-      } else if (tareasAutomaticasDePuesto(r.puestoId).length === 0) {
-        // 70 de los 89 puestos no tienen manual escrito. No es un fallo de la
-        // app y no lo arregla nadie desde aqui: es Fase 7, y lo decide
-        // Direccion escribiendo la norma de ese puesto.
-        clave = 'A3';
-        cubeta = 'A3 · SU PUESTO NO TIENE MANUAL (' + r.puestoId + ') — no recibe tareas '
-               + 'automaticas porque no existe el documento. No se arregla en su ficha.';
-      } else if (!lugares.length) {
-        clave = 'B';
-        cubeta = 'B · SIN SUCURSAL ASIGNADA — se arregla capturando su sucursal en Personal.';
-      } else if (vivas.length > 0) {
-        clave = 'E';
-        cubeta = 'E · EMITIDA Y VIVA (' + vivas.length + ') — el cero NO es de emision, es de la PANTALLA.'
-               + (mandaVista ? '\n              Y manda vista de gestion: aterriza en «Pendientes del equipo», que EXCLUYE las suyas.'
-                             + '\n              Sus tareas estan en «Mis tareas pendientes».' : '');
-      } else if (borradas.length > 0) {
-        clave = 'D';
-        cubeta = 'D · EMITIDA Y BORRADA (' + borradas.length + ') — el emisor NO la repone hoy: su id ya esta tomado.';
-      } else if (plan.entregas.length === 0) {
-        clave = 'C';
-        cubeta = 'C · LA REGLA NO LE EMITE HOY — motivo: ' + (motivos || '(sin motivo registrado)');
-      } else {
-        clave = 'C2';
-        cubeta = 'C2 · LA REGLA SI LE EMITIRIA (' + plan.entregas.length + ') Y EN LA BASE NO HAY NADA.'
-               + '\n              O el emisor no corrio, o corrio contra otra base. Mira el log de Railway.';
-      }
-      console.log('   CUBETA %s', cubeta);
-      cubetas.push([buscado, clave]);
+        d.vivas.length + d.borradas.length, d.vivas.length, d.borradas.length,
+        DIAS_VENTANA, suyasSemana.length);
+      for (const c of d.vivas) console.log('      viva: %s · %s', c.store, c.id);
+      console.log('   CUBETA %s', d.texto);
+      cubetas.push([buscado, d.clave]);
     }
   }
 

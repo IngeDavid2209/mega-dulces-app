@@ -95,7 +95,27 @@ const POR_PUESTO = {
   'gerencia-zona':                     'gerencia_zona',
 
   'encargado-sucursal':                'mando_sucursal',
-  'auxiliar-encargado':                'mando_sucursal',
+
+  // ⚠ EL AUXILIAR DE ENCARGADO PASA A `operativo` (decision de David, 19/sep).
+  //
+  // Estaba en `mando_sucursal`, o sea con EL MISMO perfil que la Encargada, y
+  // el organigrama dice que es `operativo` con CERO subordinados. Enfrentado a
+  // las tres salidas, David eligio: **cubre, no manda**. Cuando la Encargada no
+  // esta, su autoridad sale de la COBERTURA de esa plaza ese dia —la pieza
+  // existe desde el 13/sep— y no de una bandera permanente. Asi queda con
+  // fecha, motivo y autor, que es lo que el modelo pide (§4).
+  //
+  // ─── LO QUE ESTO CUESTA, dicho antes de que alguien lo corra ────────────
+  // Aplicarlo le quita SEIS banderas de gestion a los ~11 Auxiliares de
+  // Encargado que el censo del emisor conto el 15/sep. Dejan de ver el
+  // Dashboard, Control, el pase de lista y la plantilla, y dejan de ver las
+  // tareas de toda su sucursal: pasan a ver las suyas.
+  //
+  // Cambiar esta linea NO toca ninguna ficha. Lo aplica `ajustar-privilegios.js`
+  // contra produccion, y eso lo corre David (§8.6). En seco primero:
+  //     node scripts/ajustar-privilegios.js
+  // y solo despues, con el plan a la vista, `--aplicar` (que respalda antes).
+  'auxiliar-encargado':                'operativo',
 
   'jefatura-sistemas':                 'jefatura_area',
   'jefe-mantenimiento':                'jefatura_area',

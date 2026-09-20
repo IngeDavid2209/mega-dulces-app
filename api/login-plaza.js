@@ -35,12 +35,24 @@ const bcrypt = require('bcryptjs');
 const { query, dbConfigurada } = require('./db');
 const { firmarToken } = require('./_auth');
 
-/** Hoy en 'YYYY-MM-DD', hora de México. La cobertura se busca por este día. */
-function hoyISO() {
-  const d = new Date();
-  const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
-  return local.toISOString().split('T')[0];
-}
+/**
+ * Hoy en 'YYYY-MM-DD', hora de México DE VERDAD.
+ *
+ * ⚠ Aquí había un cálculo con `getTimezoneOffset()` que decía «hora de
+ * México» y NO lo era: el contenedor corre en UTC, así que ese offset vale 0
+ * y devolvía la fecha UTC. Medido sobre instantes fijos, de 18:00 a medianoche
+ * de México devolvía MAÑANA — seis horas al día, justo el turno de cierre:
+ * la plaza buscaba la cobertura del día siguiente, no la encontraba, y le
+ * preguntaba «¿quién eres?» a todo el mundo aunque la Encargada hubiera pasado
+ * lista. Y la suplencia que se registrara quedaba fechada mañana.
+ *
+ * La definición vive ahora en `_fecha.js` porque `_autorizar.js` también la
+ * necesita: comprueba que una cuenta de plaza solo registre la cobertura de
+ * HOY. Si cada uno calculara la suya, la guardia rechazaría escrituras
+ * legitimas cada tarde y se leería como «el login por plaza no funciona».
+ */
+const { hoyEnMexico } = require('./_fecha');
+const hoyISO = hoyEnMexico;
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');

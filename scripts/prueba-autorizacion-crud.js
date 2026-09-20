@@ -68,7 +68,18 @@ const FICHAS = {
                    datos: { puestoId: 'anaquelista', sucursales: ['Canindo'] } },
 };
 
-const estado = { plantillas: [], tareasPuesto: [], escrituras: 0 };
+const estado = { plantillas: [], tareasPuesto: [], coberturas: [], escrituras: 0 };
+
+// Dos plazas en sucursales DISTINTAS a proposito: con las dos en Canindo, el
+// caso de «otra sucursal» pasaria por el camino equivocado y daria verde sin
+// ejercer el recorte (§8.11 c).
+const PLAZAS = { 'pz-can': 'Canindo', 'pz-ph': 'Padre Hidalgo' };
+
+// La fecha se toma del MISMO helper que usa la guardia. Escribirla a mano aqui
+// («2026-09-20») convertiria la prueba en una bomba de tiempo: pasaria hoy y
+// fallaria manana sin que nada hubiera cambiado.
+const { hoyEnMexico } = require(path.join(RAIZ, 'api/_fecha.js'));
+const HOY = hoyEnMexico();
 
 function queryFalsa(sql, params) {
   const s = String(sql).replace(/\s+/g, ' ').trim();
@@ -108,6 +119,31 @@ function queryFalsa(sql, params) {
     const f = estado.plantillas.find(x => x.id === String(params[0]));
     return { rows: [f || { id: String(params[0]), datos: {} }], rowCount: 1 };
   }
+  if (/^select lugar from mdtask_plazas where id =/i.test(s)) {
+    const l = PLAZAS[String(params[0])];
+    return { rows: l ? [{ lugar: l }] : [], rowCount: l ? 1 : 0 };
+  }
+  if (/^select plaza_id from mdtask_coberturas where id =/i.test(s)) {
+    const c = estado.coberturas.find(x => x.id === String(params[0]));
+    return { rows: c ? [{ plaza_id: c.plaza_id }] : [], rowCount: c ? 1 : 0 };
+  }
+  if (/^select \* from mdtask_coberturas where id =/i.test(s)) {
+    const c = estado.coberturas.find(x => x.id === String(params[0]));
+    return { rows: c ? [c] : [], rowCount: c ? 1 : 0 };
+  }
+  if (/^insert into mdtask_coberturas/i.test(s)) {
+    estado.escrituras++;
+    const fila = { id: String(params[0]), plaza_id: params[1], uid: params[2],
+                   tipo: params[3], desde: params[4], hasta: params[5], datos: {} };
+    const i = estado.coberturas.findIndex(x => x.id === fila.id);
+    if (i >= 0) estado.coberturas[i] = fila; else estado.coberturas.push(fila);
+    return { rows: [fila], rowCount: 1 };
+  }
+  if (/^update mdtask_coberturas set/i.test(s)) {
+    estado.escrituras++;
+    const c = estado.coberturas.find(x => x.id === String(params[0]));
+    return { rows: [c || { id: String(params[0]), datos: {} }], rowCount: 1 };
+  }
   if (/^insert into mdtask_tareas_puesto/i.test(s)) {
     estado.escrituras++;
     const fila = { id: String(params[0]), datos: {} };
@@ -132,6 +168,7 @@ sembrarModulo(path.join(RAIZ, 'api/db.js'), {
 const { firmarToken } = require(path.join(RAIZ, 'api/_auth.js'));
 const plantillas = require(path.join(RAIZ, 'api/plantillas.js'));
 const tareasPuesto = require(path.join(RAIZ, 'api/tareas-puesto.js'));
+const coberturas = require(path.join(RAIZ, 'api/coberturas.js'));
 
 // ── Un req/res de mentira, lo mínimo que tocan los handlers ────────────────
 function llamar(handler, { token, metodo, cuerpo, query }) {
@@ -157,6 +194,7 @@ const TOKENS = {
   encargada: firmarToken({ uid: 'u-encargada', rol: 'trabajador' }),
   anaquel:   firmarToken({ uid: 'u-anaquel', rol: 'trabajador' }),
   plaza:     firmarToken({ uid: 'plaza:pz-1', rol: 'plaza' }),
+  plazaCan:  firmarToken({ uid: 'plaza:pz-can', rol: 'plaza' }),
   // Sesión vieja de Firebase: el token NO trae rol. `identidadDe` tiene que
   // reconocerla por la ficha, o un administrador con sesión vieja quedaría
   // pasando por la puerta de la excepción en cada escritura.
@@ -255,6 +293,61 @@ console.warn = (...a) => avisos.push(a.map(String).join(' '));
   await caso('Anaquelista LEE el manual capturado',
     { handler: tareasPuesto, token: TOKENS.anaquel, metodo: 'GET', query: {} }, 200);
 
+  console.log('\n=== COBERTURAS (quien cubre una plaza: DOS caminos legitimos) ===\n');
+
+  // Camino 1 · el pase de lista. La Encargada de Canindo; la plaza pz-can está
+  // en Canindo y pz-ph en Padre Hidalgo (ver la base simulada).
+  await caso('Encargada pasa lista en SU sucursal',
+    { handler: coberturas, token: TOKENS.encargada, metodo: 'POST',
+      cuerpo: { id: 'cb-1', plazaId: 'pz-can', uid: 'u-anaquel', tipo: 'titular',
+                desde: HOY, hasta: null } }, 200);
+
+  // El PATCH del pase de lista manda {id, hasta} y NADA MAS: la sucursal hay
+  // que bajarla cobertura -> plaza -> lugar. Sin eso esto seria un 403 y el
+  // pase de lista se rompe en su primer paso.
+  await caso('Encargada cierra una cobertura (PATCH sin plaza ni sucursal)',
+    { handler: coberturas, token: TOKENS.encargada, metodo: 'PATCH',
+      cuerpo: { id: 'cb-1', hasta: HOY } }, 200);
+
+  await caso('Encargada pasa lista en OTRA sucursal',
+    { handler: coberturas, token: TOKENS.encargada, metodo: 'POST',
+      cuerpo: { id: 'cb-2', plazaId: 'pz-ph', uid: 'u-anaquel', tipo: 'titular',
+                desde: HOY, hasta: null } }, 403);
+
+  await caso('Anaquelista pasa lista',
+    { handler: coberturas, token: TOKENS.anaquel, metodo: 'POST',
+      cuerpo: { id: 'cb-3', plazaId: 'pz-can', uid: 'u-anaquel', tipo: 'titular',
+                desde: HOY, hasta: null } }, 403);
+
+  // Camino 2 · la persona que se identifica al entrar, con el token de SU plaza.
+  await caso('PLAZA registra que HOY la cubre alguien mas (el flujo del login)',
+    { handler: coberturas, token: TOKENS.plazaCan, metodo: 'POST',
+      cuerpo: { id: 'cb-4', plazaId: 'pz-can', uid: 'u-anaquel', tipo: 'suplencia',
+                desde: HOY, hasta: HOY } }, 200);
+
+  // …y los cuatro abusos que cada condicion tapa.
+  await caso('PLAZA declara cobertura de OTRA plaza',
+    { handler: coberturas, token: TOKENS.plazaCan, metodo: 'POST',
+      cuerpo: { id: 'cb-5', plazaId: 'pz-ph', uid: 'u-anaquel', tipo: 'suplencia',
+                desde: HOY, hasta: HOY } }, 403);
+
+  await caso('PLAZA se declara TITULAR (desplazaria al de verdad)',
+    { handler: coberturas, token: TOKENS.plazaCan, metodo: 'POST',
+      cuerpo: { id: 'cb-6', plazaId: 'pz-can', uid: 'u-anaquel', tipo: 'titular',
+                desde: HOY, hasta: null } }, 403);
+
+  await caso('PLAZA firma un dia PASADO',
+    { handler: coberturas, token: TOKENS.plazaCan, metodo: 'POST',
+      cuerpo: { id: 'cb-7', plazaId: 'pz-can', uid: 'u-anaquel', tipo: 'suplencia',
+                desde: '2026-01-01', hasta: '2026-01-01' } }, 403);
+
+  await caso('PLAZA intenta CERRAR una cobertura ajena (PATCH)',
+    { handler: coberturas, token: TOKENS.plazaCan, metodo: 'PATCH',
+      cuerpo: { id: 'cb-1', hasta: HOY } }, 403);
+
+  await caso('Cualquiera LEE las coberturas (la lectura no se gatea)',
+    { handler: coberturas, token: TOKENS.anaquel, metodo: 'GET', query: {} }, 200);
+
   console.log('\n=== LA TABLA ===\n');
   console.log('   ' + 'escenario'.padEnd(58) + 'metodo  http  esperado');
   console.log('   ' + '─'.repeat(84));
@@ -280,6 +373,54 @@ console.warn = (...a) => avisos.push(a.map(String).join(' '));
     console.log('[autorizacion] (las guardias de integridad no se evaluan: primero arregla esto)');
     process.exit(2);
   }
+
+  // ── LA FECHA, de la que cuelga la guardia de la plaza ────────────────────
+  //
+  // Se compara la fórmula NUEVA contra la vieja sobre instantes FIJOS, no
+  // sobre la hora que dé la casualidad: ahora mismo coinciden (coinciden 18 h
+  // al día) y una comprobación «hoy son iguales» daría verde sin ejercer nada.
+  //
+  // La vieja vivía en `login-plaza.js` y decía «hora de México» sin serlo: en
+  // un contenedor UTC, de 18:00 a medianoche devolvía MAÑANA. Con ella, la
+  // guardia rechazaría cada tarde la suplencia que el propio login escribe.
+  console.log('\n=== LA FECHA (de ella cuelga la guardia de la plaza) ===\n');
+  const fmtMx = (d) => new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Mexico_City', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(d);
+  // ⚠ LA FORMULA VIEJA SE EMULA, NO SE LLAMA. La original era
+  //   `new Date(d - d.getTimezoneOffset()*60000).toISOString().split('T')[0]`,
+  // y `getTimezoneOffset()` depende de la zona DEL PROCESO: en esta laptop
+  // (hora de México) da el resultado correcto, así que llamarla aquí haría que
+  // las dos fórmulas coincidieran siempre y este control diera verde sin
+  // ejercer nada — lo cazó la guardia de abajo en la primera corrida.
+  //
+  // En el contenedor, que corre en UTC, ese offset vale 0 y la fórmula se
+  // reduce exactamente a «la fecha UTC». Eso es lo que se compara: el
+  // comportamiento EN PRODUCCIÓN, no el de la máquina que corre la prueba.
+  const vieja = (d) => d.toISOString().split('T')[0];
+  const INSTANTES = [
+    { iso: '2026-09-20T15:00:00Z', mx: '09:00', esperado: '2026-09-20' },
+    { iso: '2026-09-20T23:59:00Z', mx: '17:59', esperado: '2026-09-20' },
+    { iso: '2026-09-21T00:30:00Z', mx: '18:30', esperado: '2026-09-20' },
+    { iso: '2026-09-21T05:59:00Z', mx: '23:59', esperado: '2026-09-20' },
+    { iso: '2026-09-21T06:30:00Z', mx: '00:30', esperado: '2026-09-21' },
+  ];
+  let divergen = 0;
+  for (const i of INSTANTES) {
+    const d = new Date(i.iso);
+    const nueva = fmtMx(d);
+    const v = vieja(d);
+    if (v !== nueva) divergen++;
+    afirmar('  ' + i.mx + ' MX -> ' + i.esperado, nueva, i.esperado);
+  }
+  // Y la guardia del propio control: si la fórmula vieja no divergiera en
+  // NINGÚN instante, esta comprobación no estaría midiendo el arreglo.
+  if (divergen === 0) {
+    abortar('la formula vieja y la nueva coinciden en los 5 instantes. Este ' +
+            'control no esta ejerciendo el arreglo de la fecha.');
+  }
+  console.log('   ✓ la formula vieja diverge en ' + divergen + ' de ' + INSTANTES.length +
+              ' instantes (las horas de 18:00 a medianoche): el arreglo se ejerce');
 
   const permitidos = filas.filter(f => f.esperado === 200).length;
   const negados = filas.filter(f => f.esperado === 403).length;

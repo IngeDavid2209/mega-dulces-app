@@ -17,6 +17,7 @@
 //  distintas y distinguibles.
 // ============================================================================
 const { crearCrud } = require('./_crud');
+const { guardiaCoberturas } = require('./_autorizar');
 
 module.exports = crearCrud({
   tabla: 'mdtask_coberturas',
@@ -34,4 +35,21 @@ module.exports = crearCrud({
   // Las más recientes primero: es el orden en que se leen cuando se busca
   // «quién cubre esto ahora».
   orderBy: 'desde desc, id asc',
+
+  // ── QUIEN ESCRIBE (20/sep) ────────────────────────────────────────────────
+  //
+  // Es la unica tabla con DOS caminos legitimos, y por eso quedo fuera del
+  // cierre del 19/sep hasta poder medirlos:
+  //
+  //   1. el PASE DE LISTA — una Encargada, que NO es admin. La regla es la de
+  //      `pase-lista.ts:132`, con la sucursal resuelta bajando plaza -> lugar.
+  //   2. el LOGIN POR PLAZA — `login.ts:361` escribe una suplencia CON EL TOKEN
+  //      DE PLAZA cuando la persona declara quien es al entrar. Se permite solo
+  //      «hoy, en MI plaza, como suplente»: cada condicion tapa un abuso
+  //      concreto, y el detalle esta en `guardiaCoberturas`.
+  //
+  // Quien cubre una plaza decide a quien se le atribuye la evidencia de ese dia
+  // (§4: la identidad sale de la cobertura, no del nombre escrito). Dejarlo
+  // abierto era dejar que cualquier token reescribiera esa atribucion.
+  autorizar: guardiaCoberturas(),
 });

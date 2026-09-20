@@ -33,16 +33,25 @@
 //  dejar que lo hiciera sería exactamente la auto-atestación que el modelo
 //  prohíbe (§4: la identidad sale de la cobertura, no de quien escribe).
 //
-//  ─── QUÉ NO CUBRE ESTE ARCHIVO, dicho para que no se lea como cerrado ─────
-//  `/api/coberturas` queda FUERA a propósito. Lo escribe el pase de lista (una
-//  Encargada, que no es admin) y también `login.ts:369` CON EL TOKEN DE PLAZA,
-//  para registrar la suplencia de quien entró. O sea que las dos reglas obvias
-//  —«solo admin» y «la plaza no»— romperían un flujo vivo. Se cierra cuando el
-//  rango esté unificado, con un arnés que pruebe que la Encargada sigue
-//  escribiendo. Mientras tanto sigue abierto, y está dicho.
+//  ─── `/api/coberturas` YA ESTÁ CERRADO (20/sep) ───────────────────────────
+//  El 19/sep quedó fuera a propósito y así estaba escrito aquí: lo escriben DOS
+//  flujos legítimos —el pase de lista (una Encargada, que no es admin) y
+//  `login.ts:361` CON EL TOKEN DE PLAZA, para registrar la suplencia de quien
+//  entró— así que las dos reglas obvias («solo admin» y «la plaza no») habrían
+//  roto algo vivo. Medidos los dos, ahora tiene su propia guardia con los dos
+//  caminos: ver `guardiaCoberturas` abajo.
+//
+//  ─── QUÉ SIGUE SIN CUBRIR, dicho para que no se lea como cerrado ──────────
+//  Los otros 9 endpoints del factory (`catalogo-rutinas`, `asignaciones-rutinas`,
+//  `moldes-checklists`, `descansos-semanales`, `tareas-equipo`,
+//  `rutinas-personales`, `vehiculos`, `usuarios-tokens`, `config`) siguen
+//  aceptando cualquier token válido. No se cierran a bulto: cada uno necesita
+//  saber quién escribe hoy, y un 403 en medio de un turno se lee como «la app
+//  se rompió».
 // ============================================================================
 const path = require('path');
 const { query } = require('./db');
+const { hoyEnMexico } = require('./_fecha');
 
 // ── Las reglas compartidas, cargadas una vez ───────────────────────────────
 //
@@ -213,6 +222,115 @@ async function sucursalDeLaFila({ tabla, columna, campo, cuerpo, req }) {
 }
 
 /**
+ * ¿Puede ASIGNAR quién cubre una plaza? (`mdtask_coberturas`)
+ *
+ * Espejo de `puedeAsignar` en `pase-lista.ts:132`: Dirección en cualquier
+ * sucursal, y cada jefatura en las suyas. Es operación de cada día, no una
+ * definición de la empresa, y por eso NO es admin-only: quien pasa lista es la
+ * Encargada.
+ */
+function puedeAsignarCobertura(perfil, sucursal) {
+  const R = cargarReglas();
+  if (!R) return true;
+  if (R.esAdminGlobal(perfil)) return true;
+  if (!R.esJefatura(perfil)) return false;
+  if (!sucursal) return false;
+  return R.alcanceCubre(R.sucursalesPermitidas(perfil), String(sucursal).trim());
+}
+
+/**
+ * De qué sucursal es una cobertura. Son DOS saltos: la cobertura apunta a una
+ * plaza y la plaza tiene el lugar.
+ *
+ * El PATCH del pase de lista manda `{ id, hasta }` —cierra la cobertura
+ * anterior— así que ni el lugar ni la plaza vienen en el cuerpo y hay que
+ * bajar por la cadena. Sin esto, cerrar una cobertura sería un 403 para toda
+ * jefatura y el pase de lista dejaría de funcionar en su primer paso.
+ */
+async function sucursalDeLaCobertura({ cuerpo, req }) {
+  let plazaId = cuerpo && cuerpo.plazaId ? String(cuerpo.plazaId).trim() : '';
+  if (!plazaId) {
+    const id = String((cuerpo && cuerpo.id) || (req && req.query && req.query.id) || '').trim();
+    if (!id) return null;
+    const c = await query('select plaza_id from mdtask_coberturas where id = $1', [id]);
+    if (!c.rows[0] || c.rows[0].plaza_id == null) return null;
+    plazaId = String(c.rows[0].plaza_id);
+  }
+  const p = await query('select lugar from mdtask_plazas where id = $1', [plazaId]);
+  return p.rows[0] && p.rows[0].lugar != null ? String(p.rows[0].lugar).trim() : null;
+}
+
+/**
+ * La guardia de `/api/coberturas`. Es la única con DOS caminos legítimos, y
+ * por eso quedó fuera del primer cierre (19/sep) hasta poder medirlos.
+ *
+ * ─── CAMINO 1 · LA PERSONA QUE SE IDENTIFICA AL ENTRAR ────────────────────
+ * `login.ts:361` (`confirmarSoyOtro`) escribe una suplencia CON EL TOKEN DE
+ * PLAZA: alguien entró con el código de su plaza, el pase de lista decía que
+ * la cubre otra persona, y declara quién es. Prohibir los tokens de plaza aquí
+ * —que es lo que se hace en los endpoints de definición— rompería ese flujo.
+ *
+ * Así que se permite, pero SOLO lo que ese flujo manda, y cada condición tapa
+ * un abuso concreto:
+ *   · es un POST (no puede reescribir ni cerrar coberturas ajenas);
+ *   · `plazaId` es LA PLAZA DE SU PROPIO TOKEN (no puede declarar quién cubre
+ *     otra plaza de la sucursal);
+ *   · `tipo` es 'suplencia' (no puede nombrarse TITULAR y desplazar al de
+ *     verdad, que es el cambio que el pase de lista hace permanente);
+ *   · `desde` y `hasta` son HOY (no puede firmar el pasado ni adelantar el mes).
+ *
+ * Lo que queda permitido es exactamente «hoy, en mi plaza, como suplente», que
+ * es una declaración que la Encargada ve y corrige. Lo dice el propio motivo
+ * que escribe el cliente: «Se identificó al entrar (sin pase de lista previo)».
+ *
+ * ─── CAMINO 2 · EL PASE DE LISTA ──────────────────────────────────────────
+ * Una persona con ficha: la regla de `pase-lista.ts`, con la sucursal resuelta
+ * bajando plaza → lugar.
+ */
+function guardiaCoberturas() {
+  return async ({ user, metodo, cuerpo, req }) => {
+    const id = await identidadDe(user);
+
+    if (id.esPlaza) {
+      const plazaDelToken = String(user.uid || '').slice('plaza:'.length);
+      const c = cuerpo || {};
+      const hoy = hoyEnMexico();
+      const ok =
+        metodo === 'POST' &&
+        String(c.plazaId || '') === plazaDelToken &&
+        String(c.tipo || '') === 'suplencia' &&
+        String(c.desde || '') === hoy &&
+        String(c.hasta || '') === hoy;
+      if (ok) return null;
+      console.warn('[coberturas] ' + metodo + ' de PLAZA bloqueado: uid=' + (user && user.uid) +
+        ' plazaId="' + (c.plazaId || '') + '" tipo="' + (c.tipo || '') +
+        '" desde="' + (c.desde || '') + '" hasta="' + (c.hasta || '') + '" (hoy=' + hoy + ')');
+      return {
+        status: 403,
+        error: 'Una cuenta de plaza solo puede registrar que HOY la cubre alguien más, ' +
+               'y solo en su propia plaza. Lo demás lo captura el pase de lista.',
+      };
+    }
+
+    if (!id.perfil) {
+      console.warn('[coberturas] ' + metodo + ' permitido por EXCEPCION: uid=' +
+        (user && user.uid) + ' motivo="' + id.motivo + '"');
+      return null;
+    }
+
+    const suc = await sucursalDeLaCobertura({ cuerpo: cuerpo || {}, req });
+    if (puedeAsignarCobertura(id.perfil, suc)) return null;
+
+    console.warn('[coberturas] ' + metodo + ' bloqueado: uid=' + (user && user.uid) +
+      ' nombre="' + (id.perfil.nombre || '') + '" sucursal="' + (suc || '') + '"');
+    return {
+      status: 403,
+      error: 'No puedes pasar lista' + (suc ? ' en ' + suc : ' en esa sucursal') + '.',
+    };
+  };
+}
+
+/**
  * El gancho que consume `_crud.js`.
  *
  * Devuelve `null` si pasa, o `{ status, error }` si no. `etiqueta` es solo para
@@ -258,6 +376,9 @@ module.exports = {
   identidadDe,
   esTokenDePlaza,
   sucursalDeLaFila,
+  sucursalDeLaCobertura,
+  puedeAsignarCobertura,
+  guardiaCoberturas,
   puedeDefinirEstructura,
   puedeDeclararPuesto,
   puedeEditarNorma,

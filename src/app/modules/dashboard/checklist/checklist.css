@@ -4311,3 +4311,142 @@
 @media screen and (max-width: 480px) {
   .sp-modal { margin-top: 18px; }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   EVIDENCIA ESCRITA — 21/sep/2026
+
+   Los puntos cuya prueba es lo escrito: el listado de pendientes del turno
+   anterior y el cuadro de la ausencia. Vive al lado del bloque de fotos y se
+   ve como un hermano suyo a proposito: para quien trabaja es lo mismo -la
+   prueba de ese punto- y cuenta igual en el porcentaje.
+
+   TODOS LOS TOKENS SE VERIFICARON CONTRA `styles.css` ANTES DE USARLOS. Un
+   token inventado no revienta: iguala dos cosas distintas sin un solo error
+   en consola (4/sep). `--ink`, `--surface-1` y `--bad-600` NO existen.
+   ══════════════════════════════════════════════════════════════════════════ */
+.cl-escrito {
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px solid var(--border);
+}
+
+.cl-escrito-rotulo {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .02em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+
+/* ── El listado ─────────────────────────────────────────────────────────── */
+.cl-escrito-reng {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.cl-escrito-bullet {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--neutral-100);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* `min-width: 0` NO ES ADORNO: un input dentro de un flex trae ancho minimo
+   por contenido, y sin esto el renglon empuja la tarjeta fuera del telefono.
+   Es el defecto del 14/sep y el del 7/sep, los dos por la misma puerta. */
+.cl-escrito-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: var(--tap-min);
+  padding: 8px 12px;
+  font-family: inherit;
+  font-size: 14px;
+  border: 1.5px solid var(--neutral-300);
+  border-radius: 8px;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.cl-escrito-input:focus { border-color: var(--action); }
+.cl-escrito-input:disabled { background: var(--neutral-50); color: var(--text-disabled); }
+
+.cl-escrito-quitar {
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  min-height: 30px;
+  border: none;
+  border-radius: 50%;
+  background: var(--bad-soft-bg);
+  color: var(--bad-fg);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cl-escrito-agregar {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: var(--tap-min);
+  padding: 8px 14px;
+  margin-top: 2px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--action);
+  background: transparent;
+  border: 1.5px dashed var(--action);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+/* ── El cuadro de texto ─────────────────────────────────────────────────── */
+.cl-escrito-area {
+  width: 100%;
+  padding: 10px 12px;
+  font-family: inherit;
+  font-size: 14px;
+  border: 1.5px solid var(--neutral-300);
+  border-radius: 8px;
+  outline: none;
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+.cl-escrito-area:focus { border-color: var(--action); }
+.cl-escrito-area:disabled { background: var(--neutral-50); color: var(--text-disabled); }
+
+.cl-escrito-pista {
+  display: block;
+  margin-top: 6px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+/* El vacio se NOMBRA, y en el color de aviso: un campo en blanco se lee como
+   «no aplica» y aqui significa «este punto todavia no esta hecho». */
+.cl-escrito-vacio {
+  margin: 8px 0 0;
+  padding: 7px 10px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--warn-soft-fg);
+  background: var(--warn-soft-bg);
+  border-radius: 8px;
+}

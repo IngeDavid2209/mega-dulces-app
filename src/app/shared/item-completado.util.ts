@@ -2,8 +2,9 @@
  * Criterio unificado para considerar un item como "hecho" en toda la app.
  *
  * Reglas:
- *   1) Si el item tiene su evidencia real (foto, antes/después, varias fotos)
- *      o quedó palomeado cuando no pedía evidencia → HECHO.
+ *   1) Si el item tiene su evidencia real (foto, antes/después, varias fotos,
+ *      o lo ESCRITO cuando la norma dice que la prueba es lo escrito) o quedó
+ *      palomeado cuando no pedía evidencia → HECHO.
  *   2) Si no la tiene, el punto NO está hecho. Si el checklist trae
  *      justificación del colaborador, el punto queda `justificado`; si no,
  *      `no_ejecutado`. Los dos son estados PROPIOS y ninguno cuenta como
@@ -66,6 +67,32 @@ export function tieneEvidencia(item: any): boolean {
   }
   if (item.requiresPhoto) {
     return !!item.photo && item.photo !== 'subiendo...';
+  }
+  // ── EVIDENCIA ESCRITA (21/sep/2026) ──────────────────────────────────────
+  // Instruccion de David: «cuando en comentarios te manden una justificacion
+  // debes tomarlos como las tareas en parte del porcentaje». Aplicada a los
+  // puntos cuya prueba ES lo escrito, declarados uno por uno en
+  // `evidencia-manual.ts`: una ausencia cubierta no tiene objeto que
+  // fotografiar, asi que ahi el texto no TAPA la falta de evidencia — es la
+  // evidencia. Por eso cuenta como `hecho` y suma al porcentaje.
+  //
+  // ⚠ ESTO NO REABRE LO QUE LA FASE 2.1 CERRO, y la diferencia es el campo del
+  // que cuelga. `notaEmpleado` es la nota del CHECKLIST: una sola frase que
+  // hablaria por los 5 puntos, incluidos los que nadie justifico, y eso es lo
+  // que se derogo arriba. Esto cuelga de `evidenciaEscrita`, que va PUNTO POR
+  // PUNTO y solo en los que la norma declara — el mismo motivo por el que el
+  // motivo sin prueba se guarda en el item y jamas en `notaEmpleado`.
+  //
+  // Y ESTAS DOS RAMAS NO PUEDEN MOVER UN NUMERO DEL PASADO: `evidenciaEscrita`
+  // no existe en ningun documento emitido antes de hoy, asi que para todo el
+  // historico esta condicion es falsa y se sigue cayendo al `checked` de abajo,
+  // exactamente como ayer.
+  if (item.evidenciaEscrita === 'listado') {
+    return Array.isArray(item.listado)
+        && item.listado.some((r: any) => String(r ?? '').trim().length > 0);
+  }
+  if (item.evidenciaEscrita === 'comentario') {
+    return String(item.comentario ?? '').trim().length > 0;
   }
   return item.checked === true;
 }
@@ -164,6 +191,11 @@ export function completadoEn(item: any, fechaYmd: string): number | null {
   } else if (item.requiresPhoto) {
     push(item.photoTimestamp);
     push(horaDelDiaAEpoch(fechaYmd, item.photoTime));
+  } else if (item.evidenciaEscrita) {
+    // Lo escrito tambien se situa en el tiempo. Sin este sello el punto saldria
+    // hecho y sin hora, y `productividad.util.ts` lo contaria como «no se sabe
+    // cuando» — o sea, un punto cumplido que no puede decir si fue a tiempo.
+    push(item.escritoEn);
   } else {
     push(item.checkedEn);
   }

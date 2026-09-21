@@ -106,7 +106,13 @@ describe('plantilla contra censo: el caso de Padre Hidalgo', () => {
   });
 
   it('marca los puestos que NO van a recibir tareas por no tener manual', () => {
-    expect(fila(filas, 'auxiliar-encargado').sinManual).toBe(true);
+    // ⚠ CAMBIADO A MANO EL 21/sep/2026, y el motivo importa: `auxiliar-encargado`
+    // DEJO de estar sin manual. Por instruccion de David se le dieron las mismas
+    // tareas que al Encargado, compartiendo el documento en vez de escribir uno
+    // segundo. Estas dos aserciones estaban en rojo al aplicar el cambio: son el
+    // control positivo de que el puesto empezo a recibir, y se corrigen aqui en
+    // el mismo commit que lo provoca en vez de aflojarlas.
+    expect(fila(filas, 'auxiliar-encargado').sinManual).toBe(false);
     expect(fila(filas, 'surtidor-ventas').sinManual).toBe(true);
     expect(fila(filas, 'anaquelista').sinManual).toBe(false);
     expect(fila(filas, 'encargado-sucursal').sinManual).toBe(false);
@@ -129,7 +135,13 @@ describe('plantilla contra censo: el caso de Padre Hidalgo', () => {
     // (§8.11): `cajero-sucursal` SÍ tiene manual —está entre los 19—, así que
     // los únicos sin manual aquí son `auxiliar-encargado` y `surtidor-ventas`.
     // El 2 es lo correcto y mi 3 era el error.
-    expect(r.sinManual).toBe(2);
+    //
+    // 21/sep/2026: BAJA A 1. `auxiliar-encargado` ya tiene manual (comparte el
+    // del Encargado), así que el único sin manual de esta muestra es
+    // `surtidor-ventas`. Derivado del catálogo otra vez, no ajustado al
+    // resultado: el manual del Encargado declara `puestoIds: ['encargado-
+    // sucursal', 'auxiliar-encargado']`.
+    expect(r.sinManual).toBe(1);
   });
 
   it('GUARDIA: la muestra discrimina los cuatro estados', () => {

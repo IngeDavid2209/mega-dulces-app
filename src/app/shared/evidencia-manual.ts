@@ -62,6 +62,28 @@ export interface EvidenciaPunto {
   folio?: boolean;
   /** Pide explicacion escrita. */
   comentario?: boolean;
+  /**
+   * LA EVIDENCIA DE ESTE PUNTO ES LO ESCRITO, NO UNA FOTO.
+   *
+   * Es la unica excepcion a la orden de Direccion del 3/sep («todos los puntos
+   * piden foto»), y se declara punto por punto aqui, nunca a bulto. Hay hechos
+   * que una camara no prueba: una ausencia cubierta no tiene objeto que
+   * fotografiar, y los pendientes que dejo el turno anterior son una lista.
+   * Exigirles foto obliga a inventarla — que es literalmente la regla 1 de este
+   * archivo, y lo que la orden de Direccion acepto como riesgo.
+   *
+   *   'comentario' .. un cuadro de texto. Sin texto, el punto NO esta hecho.
+   *   'listado' ..... renglones que se agregan y se quitan. Sin al menos uno,
+   *                   el punto NO esta hecho.
+   *
+   * ⚠ NO ES `comentario: true`. Esa bandera la traen 28 puntos que ADEMAS piden
+   * foto, y que llevan meses emitidos asi. Colgar de ella la evidencia escrita
+   * les quitaria la camara a los 28 y —peor— reabriria su historico: un punto
+   * de agosto cerrado con su foto pasaria a exigir un texto que nadie escribio
+   * ese dia. Por eso esto es un campo APARTE y NUEVO: no existe en un solo
+   * documento ya emitido, asi que no puede mover un numero del pasado.
+   */
+  escrito?: 'comentario' | 'listado';
 }
 
 export const EVIDENCIA_MANUAL: Record<string, EvidenciaPunto[]> = {
@@ -198,6 +220,18 @@ export const EVIDENCIA_MANUAL: Record<string, EvidenciaPunto[]> = {
     { i: 0, texto: 'Alarma/candados retirados y acceso seguro', foto: true },
     { i: 4, texto: 'Piso frenteado y sin obstáculos', foto: true },
     { i: 5, texto: 'Bodega despejada y segura', foto: true },
+  ],
+  // Los dos puntos cuya prueba es lo ESCRITO. Los indices son de la lista
+  // reescrita el 21/sep: si el catalogo se reordena, hay que mover estos `i` o
+  // la evidencia no se aplica (y el punto volveria a pedir fotos en silencio).
+  'encargado-sucursal.operacion': [
+    { i: 0, texto: 'Pendientes del turno anterior', escrito: 'listado' },
+    {
+      i: 4,
+      texto: 'Ausencias cubiertas sin dejar Caja, Recepción, Piso ni Bodega desatendidos',
+      escrito: 'comentario',
+      comentario: true,
+    },
   ],
   'encargado-sucursal.cierre': [
     { i: 0, texto: 'Pasillos sin mercancía pendiente de acomodo', foto: true },

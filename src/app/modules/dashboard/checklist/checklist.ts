@@ -3524,6 +3524,81 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     return !!(item.requiresPhoto || item.requiresAntesDespues || item.requiresVariasFotos);
   }
 
+  // ══════════════════════════════════════════════════════════════════════════
+  //  EVIDENCIA ESCRITA — 21/sep/2026
+  //
+  //  Hay puntos cuya prueba es lo que se escribe, no una foto: una ausencia
+  //  cubierta no tiene objeto que fotografiar y los pendientes del turno
+  //  anterior son una lista. Lo declara la norma punto por punto
+  //  (`evidencia-manual.ts`), y `tieneEvidencia` lo cuenta como hecho — o sea
+  //  que suma al porcentaje igual que una foto.
+  //
+  //  SE MANTIENE APARTE DE `pideEvidencia` A PROPOSITO. Ese predicado lo leen
+  //  cuatro sitios y en uno de ellos significa literalmente «faltan N FOTOS»
+  //  (`etiquetaEnvio`); metiendolo ahi, a quien le falte el cuadro de texto le
+  //  diria que le falta una foto que ese punto ni siquiera acepta.
+  // ══════════════════════════════════════════════════════════════════════════
+
+  /** ¿La prueba de este punto es lo escrito? */
+  pideEvidenciaEscrita(item: any): boolean {
+    return item?.evidenciaEscrita === 'comentario' || item?.evidenciaEscrita === 'listado';
+  }
+
+  /** ¿Este punto no pide NINGUNA prueba y se cierra palomeando? */
+  soloSePaloma(item: any): boolean {
+    return !this.pideEvidencia(item) && !this.pideEvidenciaEscrita(item);
+  }
+
+  /** Renglones del listado, siempre un arreglo (el item viejo trae null). */
+  renglonesDe(item: any): string[] {
+    if (!Array.isArray(item?.listado)) item.listado = [];
+    return item.listado;
+  }
+
+  /**
+   * El sello de CUANDO se escribio.
+   *
+   * Se pone al primer trazo y NO se mueve despues: si se reescribiera en cada
+   * tecla, el punto quedaria fechado a la hora en que la persona dejo de
+   * corregir y no a la que lo resolvio. Se limpia si el campo se vacia, porque
+   * entonces el punto vuelve a estar sin hacer y una hora sin hecho es un dato
+   * inventado.
+   */
+  private sellarEscrito(item: any) {
+    if (tieneEvidencia(item)) { if (!item.escritoEn) item.escritoEn = Date.now(); }
+    else item.escritoEn = null;
+  }
+
+  /** Cambio en el cuadro de texto de un punto. */
+  onComentarioItem(item: any) {
+    if (!this.puedoEditarItem(item)) return;
+    this.sellarEscrito(item);
+    this.actualizarEstado();
+  }
+
+  agregarRenglon(item: any) {
+    if (!this.puedoEditarItem(item)) return;
+    this.renglonesDe(item).push('');
+    // Sin `actualizarEstado()`: un renglon VACIO no es evidencia, asi que el
+    // punto no cambia de estado hasta que alguien escriba en el.
+  }
+
+  onRenglonItem(item: any) {
+    if (!this.puedoEditarItem(item)) return;
+    this.sellarEscrito(item);
+    this.actualizarEstado();
+  }
+
+  quitarRenglon(item: any, i: number) {
+    if (!this.puedoEditarItem(item)) return;
+    this.renglonesDe(item).splice(i, 1);
+    this.sellarEscrito(item);
+    this.actualizarEstado();
+  }
+
+  /** `trackBy` del listado: por indice, porque el texto se edita mientras se escribe. */
+  trackRenglon(i: number): number { return i; }
+
   /**
    * Toque sobre el indicador de la tarea.
    *
@@ -3535,6 +3610,10 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   onClickCheck(item: any) {
     if (!this.puedoEditarItem(item)) return;
     if (this.pideEvidencia(item)) return; // las de foto se completan subiendo evidencia
+    // Las de evidencia ESCRITA tampoco: se cierran escribiendo. Sin esta linea
+    // el circulo dejaria palomear un punto vacio, y aunque `tieneEvidencia` no
+    // lo contaria, la palomita en pantalla diria lo contrario que el porcentaje.
+    if (this.pideEvidenciaEscrita(item)) return;
     item.checked = !item.checked;
     this.sellarCheck(item);
     this.actualizarEstado();
@@ -3784,6 +3863,8 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     if (item.requiresPhoto && (!item.photo || item.photo === 'subiendo...')) {
       return 'falta la foto';
     }
+    if (item.evidenciaEscrita === 'listado') return 'falta escribir los pendientes';
+    if (item.evidenciaEscrita === 'comentario') return 'falta llenar el cuadro de texto';
     if (!this.pideEvidencia(item) && !item.checked) return 'falta marcar como hecha';
     return 'incompleta';
   }

@@ -279,10 +279,32 @@ export const MANUALES_POR_PUESTO: ManualPuesto[] = [
   //  ENCARGADO(A) DE SUCURSAL
   // ══════════════════════════════════════════════════════════════════════════
   {
-    puestoIds: ['encargado-sucursal'],
+    // ── EL AUXILIAR DE ENCARGADO RECIBE ESTE MISMO MANUAL ────────────────────
+    // Instruccion de David (21/sep/2026): «ya que no existe el turno de Aux de
+    // encargada(o) crealo y agregale las mismas tareas que tienen el puesto de
+    // encargada de sucursal».
+    //
+    // NO SE ESCRIBE UN MANUAL NUEVO: se comparte este. Un segundo documento con
+    // los mismos puntos serian dos normas libres de discrepar, y la que se
+    // quedara atras juzgaria a una de las dos poblaciones con una regla vieja.
+    // Es el mismo patron que ya usa el Checador (`checador` + `checador-cedis`).
+    //
+    // LO QUE ESTO MUEVE, dicho para que no sorprenda: el censo del emisor conto
+    // `auxiliar-encargado` como el puesto con MAS gente sin manual (11 fichas,
+    // 15/sep). Desde el despliegue pasan de CERO tareas a las tres de aqui, asi
+    // que su denominador nace manana, no estaba antes.
+    //
+    // Y su sello dice «Encargada de Sucursal PH», que es el documento real del
+    // que salen los puntos. Escribirles uno propio es Fase 7 y lo redacta
+    // Capital Humano, no el codigo.
+    puestoIds: ['encargado-sucursal', 'auxiliar-encargado'],
     documento: 'Manual Corporativo de Operación — Encargada de Sucursal PH',
     codigo: '',
-    version: '1.0 · Agosto 2026',
+    // 1.1 — 21/sep/2026. La norma SE VERSIONA, NO SE EDITA (§5.4): cada emision
+    // guarda la version con la que se juzgo, asi que cambiar los puntos sin
+    // mover este campo dejaria dos contenidos distintos bajo el mismo numero y
+    // una hoja de auditoria de la semana pasada seria imposible de reconstruir.
+    version: '1.1 · Septiembre 2026',
     archivo: '20. Manual_Corporativo_Encargada_Sucursal_PH_MDDLA_2026.pdf',
     formatosNoAutomatizados: [
       'C. Registro de incidencias de Encargada',
@@ -306,7 +328,10 @@ export const MANUALES_POR_PUESTO: ManualPuesto[] = [
           { texto: 'Área de cajas libre y ordenada' },
           { texto: 'Piso frenteado y sin obstáculos' },
           { texto: 'Bodega despejada y segura' },
-          { texto: 'Pendientes del turno anterior revisados' },
+          // «Pendientes del turno anterior revisados» VIVIA AQUI y se mudo a
+          // `encargado-sucursal.operacion`, donde es un LISTADO (21/sep/2026).
+          // Se quita de la apertura para que no se pida dos veces el mismo
+          // hecho: un punto duplicado infla el denominador de quien lo cumple.
           { texto: 'Tareas del día asignadas en Mega Dulces Task' },
         ],
       },
@@ -332,13 +357,41 @@ export const MANUALES_POR_PUESTO: ManualPuesto[] = [
         momento: 'operacion', frecuencia: 'Diaria', horaLimite: H_CIERRE,
         codigoFormato: '2.3',
         nota: 'Prioridades diarias del puesto, en el orden que fija el manual. Lo que no se pueda afirmar se explica en las observaciones.',
+        // ── REESCRITA EL 21/sep/2026, POR INSTRUCCION DE DAVID ──────────────
+        // De 7 puntos a 5. Queda constancia de QUE HABIA, porque un punto que
+        // desaparece sin rastro se lee despues como un dato perdido:
+        //
+        //   SE QUITAN   «Seguridad, acceso y continuidad del sistema y de las cajas»
+        //               «Descarga, acomodo y surtido coordinados para no desabastecer…»
+        //               «Caducidades, tareas programadas, limpieza y cierre documental»
+        //   SE ACORTAN  «Atención al cliente y disponibilidad de mercancía en piso»
+        //                 -> «Disponibilidad de mercancía en piso»
+        //               «Objetivo de venta y atención de la alta afluencia»
+        //                 -> «Objetivo de venta del día»
+        //               «Incidencias de efectivo, precios, transferencias o mercancía
+        //                atendidas» -> «Revisión de retiros durante el turno»
+        //   LLEGA       «Pendientes del turno anterior», que venia de la APERTURA
+        //
+        // OJO CON LOS INDICES: `evidencia-manual.ts` amarra por tareaId +
+        // POSICION + texto. Al reordenarse todos, su entrada para esta tarea se
+        // escribio contra ESTA lista, no contra la anterior. Si alguien mueve un
+        // renglon de aqui tiene que mover el `i` de alla, o la evidencia
+        // sencillamente no se aplica (es a proposito: preferible perder una
+        // marca que ponerla sobre un punto que ahora habla de otra cosa).
+        //
+        // «Objetivo de venta del día» DEPENDE DEL TURNO y eso todavia no se
+        // puede expresar: la tarea es UNA diaria y el turno no existe como dato
+        // (§4, Fase 3). Queda anotado y no inventado — hoy le sale igual a la
+        // Encargada y al Auxiliar, todos los dias.
         items: [
-          { texto: 'Seguridad, acceso y continuidad del sistema y de las cajas' },
-          { texto: 'Atención al cliente y disponibilidad de mercancía en piso' },
-          { texto: 'Objetivo de venta y atención de la alta afluencia' },
-          { texto: 'Incidencias de efectivo, precios, transferencias o mercancía atendidas' },
-          { texto: 'Descarga, acomodo y surtido coordinados para no desabastecer la tienda' },
-          { texto: 'Caducidades, tareas programadas, limpieza y cierre documental' },
+          // Listado, no foto: son los pendientes que dejo el turno anterior y se
+          // enumeran uno por uno. Lo enciende `evidencia-manual.ts`.
+          { texto: 'Pendientes del turno anterior' },
+          { texto: 'Disponibilidad de mercancía en piso' },
+          { texto: 'Objetivo de venta del día' },
+          { texto: 'Revisión de retiros durante el turno' },
+          // Cuadro de texto, no foto: una ausencia no se fotografia. Se pide por
+          // que, de quien, quien sustituyo, puesto y lugar.
           { texto: 'Ausencias cubiertas sin dejar Caja, Recepción, Piso ni Bodega desatendidos' },
         ],
       },

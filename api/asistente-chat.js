@@ -565,12 +565,27 @@ function itemPideEvidencia(it) {
   return !!(it && (it.requiresPhoto || it.requiresAntesDespues || it.requiresVariasFotos));
 }
 function subida(v) { return !!v && v !== 'subiendo...'; }
+// EVIDENCIA ESCRITA (21/sep/2026). Espejo de las dos ramas que se agregaron a
+// `tieneEvidencia`. SIN ESTO EL BOT Y EL TABLERO VOLVERIAN A DISCREPAR: el
+// mismo punto, el mismo dia y la misma persona se contarian distinto segun
+// quien pregunte, que es exactamente la divergencia que la Fase 2.1 cerro.
+function escritoHecho(it) {
+  if (it.evidenciaEscrita === 'listado') {
+    return Array.isArray(it.listado) && it.listado.some((r) => String(r == null ? '' : r).trim().length > 0);
+  }
+  if (it.evidenciaEscrita === 'comentario') {
+    return String(it.comentario == null ? '' : it.comentario).trim().length > 0;
+  }
+  return null; // este punto no es de evidencia escrita
+}
 // Espejo de tieneEvidencia() del front.
 function itemHecho(it) {
   if (!it) return false;
   if (it.requiresAntesDespues) return subida(it.photoAntes) && subida(it.photoDespues);
   if (it.requiresVariasFotos) return Array.isArray(it.photos) && it.photos.length > 0;
   if (it.requiresPhoto) return subida(it.photo);
+  const esc = escritoHecho(it);
+  if (esc !== null) return esc;
   return it.checked === true;
 }
 // Espejo de motivoIncompleto() del front: que le falta a este item.
@@ -583,6 +598,15 @@ function itemFalta(it) {
   }
   if (it.requiresVariasFotos && !(Array.isArray(it.photos) && it.photos.length)) return 'falta subir fotos';
   if (it.requiresPhoto && !subida(it.photo)) return 'falta la foto';
+  // ⚠ ESTE PUNTO NO SE PUEDE CERRAR DESDE WHATSAPP, y se dice con todas sus
+  // letras. El bot recibe fotos, no formularios; si dijera «incompleta» a secas
+  // la persona se quedaria mandando imagenes a un punto que no las acepta.
+  if (it.evidenciaEscrita === 'listado') {
+    return 'falta anotar los pendientes (desde la app, no por aqui)';
+  }
+  if (it.evidenciaEscrita === 'comentario') {
+    return 'falta llenar el cuadro de texto (desde la app, no por aqui)';
+  }
   if (!itemPideEvidencia(it) && !it.checked) return 'falta marcarla como hecha';
   return 'incompleta';
 }
@@ -2170,6 +2194,26 @@ async function ejecutarHerramienta(db, ctx, nombre, input) {
         }
         cola.push({ checklistId: ck.id, itemId: it.id, texto: String(it.text || ''), modo, fase: modo === 'antesDespues' ? 'antes' : null, n: etiqueta.n });
         continue;
+      }
+      // ⚠ EVIDENCIA ESCRITA: NO SE CIERRA DESDE AQUI, Y ES LA PUERTA TRASERA
+      // QUE HAY QUE TAPAR (21/sep/2026).
+      //
+      // El reparto de arriba dice «lo que no pide FOTO se cierra ya», y un punto
+      // de evidencia escrita no pide foto. Sin esta guarda, un "ya hice la 5"
+      // por WhatsApp le pondria `checked = true` a la ausencia SIN UNA SOLA
+      // LETRA ESCRITA. Y no se veria como un fallo: el bot contestaria
+      // "cerrada", mientras `tieneEvidencia` la sigue contando como no hecha en
+      // el tablero — el mismo punto contado distinto segun quien pregunte, que
+      // es justo lo que la Fase 2.1 vino a cerrar.
+      //
+      // La palomita no es la prueba aqui: la prueba es el texto, y el texto se
+      // escribe en la app. Se dice con todas sus letras en vez de fallar mudo.
+      if (it.evidenciaEscrita) {
+        return {
+          ok: false,
+          mensaje: `"${it.text}" se cierra escribiendo, no con una foto ni con un "ya la hice". ` +
+                   `Abre la tarea en la app y llena el ${it.evidenciaEscrita === 'listado' ? 'listado de pendientes' : 'cuadro de texto'}.`,
+        };
       }
       it.checked = true; it.checkedEn = Date.now(); it.checkedPor = 'whatsapp';
       ck.items = items;

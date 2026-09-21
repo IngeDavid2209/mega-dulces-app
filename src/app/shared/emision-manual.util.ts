@@ -609,6 +609,14 @@ export function armarChecklist(args: {
     // catalogo, porque no sale del documento sino de una decision de la app.
     const ev = evidenciaDe(tarea.id, i, it.texto);
 
+    // LA UNICA EXCEPCION A «TODOS PIDEN FOTO»: los puntos cuya prueba es lo
+    // escrito (una ausencia cubierta, los pendientes del turno anterior). Se
+    // declara punto por punto en `evidencia-manual.ts`, nunca a bulto, y
+    // APAGA la camara de ese punto — si convivieran, se estaria pidiendo dos
+    // pruebas para un solo hecho y el punto quedaria sin poder cerrarse hasta
+    // dar las dos.
+    const escrito = ev?.escrito || null;
+
     return {
       id: `${tarea.id}_${i}`,
       // El bloque de la jornada va como prefijo para no perder el dato que
@@ -657,7 +665,7 @@ export function armarChecklist(args: {
       //    punto ya subidas -el final del turno- son 926 nodos y 69 miniaturas,
       //    y por eso las miniaturas llevan `loading="lazy"`.
       requiresPhoto: false,
-      requiresVariasFotos: true,
+      requiresVariasFotos: !escrito,
       // Antes/despues no lo pide ningun punto de estos manuales.
       requiresAntesDespues: false,
       // Sigue en false y ya no cambia nada: `permiteFotos` era la foto OPCIONAL,
@@ -676,6 +684,19 @@ export function armarChecklist(args: {
       requiereMonto: !!ev?.monto,
       requiereFolio: !!ev?.folio,
       requiereComentario: !!ev?.comentario,
+      // ── EVIDENCIA ESCRITA ────────────────────────────────────────────────
+      // `null` en TODOS los puntos menos los declarados, y ausente en todo lo
+      // emitido antes del 21/sep/2026. De eso depende que este cambio no mueva
+      // un solo numero del pasado: `tieneEvidencia` solo mira estas dos ramas
+      // cuando el campo viene, asi que un checklist de agosto se sigue leyendo
+      // exactamente igual que ayer.
+      evidenciaEscrita: escrito,
+      /** Texto del cuadro. Vacio = el punto NO esta hecho. */
+      comentario: escrito === 'comentario' ? '' : null,
+      /** Renglones del listado. Vacio = el punto NO esta hecho. */
+      listado: escrito === 'listado' ? [] : null,
+      /** Cuando se escribio, para poder situarlo en el tiempo como una foto. */
+      escritoEn: null,
     };
   });
 

@@ -174,7 +174,21 @@ const MARCADORES = [
   // tareas enviadas en los ultimos 30 dias», que desde hoy es FALSO y mandaria
   // a buscar un problema que no existe. Validado en las dos direcciones:
   // 1 archivo en dist/, 0 en produccion (67 archivos, 0 fallos de lectura).
-  { txt: 'Sin entregas hoy', nuevo: true,
+  // 21/sep/2026 · «Operacion de sucursal del turno» reescrita (7 puntos -> 5), el
+  // Auxiliar de Encargado recibe el manual del Encargado, y DOS PUNTOS DEJAN DE
+  // PEDIR FOTO: su prueba es lo escrito, y lo escrito cuenta en el porcentaje.
+  //
+  // El marcador es la clase del bloque nuevo, y se eligio SIN VOCALES
+  // ACENTUADAS a proposito: el bundle las escapa y un ancla con acento no pega
+  // -seria un no-op, y un no-op da verde (14/sep)-. Validado en las dos
+  // direcciones ANTES de subir: 1 archivo en dist/, 0 en el repo en HEAD.
+  { txt: 'cl-escrito', nuevo: true,
+    que: 'el cuadro de texto y el listado de los puntos sin foto' },
+  { txt: 'evidenciaEscrita', nuevo: true,
+    que: 'la regla que hace que lo escrito cuente en el porcentaje' },
+  // El del despliegue anterior baja a control: YA VALE en produccion, y
+  // dejarlo arriba habria dado verde sin comprobar nada de hoy.
+  { txt: 'Sin entregas hoy', control: true,
     que: 'el historial de enviadas acotado al dia en curso' },
   // El del despliegue anterior baja a control: YA VALE en produccion.
   { txt: 'recortadasPorArea', control: true,

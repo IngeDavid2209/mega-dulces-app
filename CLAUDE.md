@@ -222,7 +222,7 @@ extra por la fase que se indica):
 | Mapa nuevo por texto en `zonas.util.ts → POR_SUCURSAL` | Hallazgo 1 | 3.1 (semilla de unidades) |
 | ~~`productividad.util.ts` hereda el defecto de `esItemHecho`~~ **SALDADA 13/sep** | Invariante §5.3 | 2.1 — usa `estadoItem` y cuenta `justificados` |
 | ~~`productividad.util.ts` sin pruebas (calcula cumplimiento, puntualidad, turno, ritmo)~~ **SALDADA 13/sep** | §8.8 | 2.2 — 28 casos, con control negativo corrido |
-| Foto obligatoria en los 377 puntos, incluidas 62+ declaraciones donde no hay qué fotografiar (orden de Dirección, 3/sep) | Regla 1 de `evidencia-manual.ts` | 5 — verificación por muestra; la declaración se comprueba firmando, no fotografiando |
+| Foto obligatoria en los 377 puntos, incluidas 62+ declaraciones donde no hay qué fotografiar (orden de Dirección, 3/sep) | Regla 1 de `evidencia-manual.ts` | 5 — verificación por muestra; la declaración se comprueba firmando, no fotografiando. **Abonados 2 el 21/sep**: los puntos de ausencia y de pendientes del turno piden lo ESCRITO, declarado uno por uno (`escrito` en `evidencia-manual.ts`), nunca a bulto |
 | Migraciones 038, 039, 041, 042, 043 con nombres de personas | Hallazgo 8 | 9.4 · **no se editan** (ya aplicadas) |
 | **Un 5.º poll dentro del servidor web**: el emisor del manual (14/sep, noche) | Hallazgo 6 · Fase 9.1 | 9.1 — sale junto con los otros cuatro. Se contrajo a sabiendas: el reloj estaba **peor** que dentro del web, estaba dentro de un navegador, así que moverlo aquí es un peldaño hacia arriba, no hacia abajo. Amarra la app a **una réplica**, que ya era el caso (paso 0.4) |
 | **Taxonomía provisional de motivos** sin prueba (`motivo-sin-prueba.util.ts`, 18/sep) | §4 · las cinco causas | 5 — se contrajo a sabiendas para no perder el dato: hoy todo punto sin foto es `no_ejecutado` para todos por igual, y la diferencia entre «no había qué fotografiar» y «nadie lo hizo» **no se puede reconstruir después**. Se guarda el **código que eligió la persona**, no solo la causa deducida, para que Fase 5 reescriba el mapa sin volver a preguntarle a nadie. `no_aplica` queda **sin causa** a propósito: forzarlo a `no_ejecutado` le colgaría una falta a quien hizo lo correcto (§8.5) |
@@ -325,6 +325,158 @@ de que exista la plaza sería partir el problema en dos, no resolverlo.
     columna devuelve cero documentos, sin error.
 
 ## 9. Bitácora del plan
+
+
+### 21/sep/2026 — LA OPERACIÓN DEL TURNO SE REESCRIBE, y dos puntos dejan de pedir foto
+
+Instrucción de David sobre «Operación de sucursal del turno»: tres puntos se quitan, tres
+cambian de texto, y al de ausencias *«en lugar de foto, un cuadro de texto en el cual diga,
+por qué la ausencia, de quién, quién lo sustituyó, puesto y lugar»*. Más, en el mismo turno,
+que «Pendientes del turno anterior revisados» salga de la **apertura** y viva en operación
+**«como un apartado de listado»**. Y la frase que gobernó el diseño: *«cuando en comentarios
+te manden una justificación debes tomarlos como las tareas en parte del porcentaje»*.
+
+#### LA TAREA, DE 7 PUNTOS A 5
+
+    1  Pendientes del turno anterior          LISTADO   <- venia de la APERTURA
+    2  Disponibilidad de mercancia en piso    fotos
+    3  Objetivo de venta del dia              fotos
+    4  Revision de retiros durante el turno   fotos
+    5  Ausencias cubiertas sin dejar Caja,    CUADRO DE TEXTO
+       Recepcion, Piso ni Bodega desatendidos
+
+Se retiran «Seguridad, acceso y continuidad», «Descarga, acomodo y surtido» y «Caducidades,
+tareas programadas, limpieza y cierre documental». **A la Encargada le baja el denominador de
+esa tarea de 7 a 5**, así que su porcentaje cambia de base: no es que se hayan perdido tareas.
+Y el punto mudado **se quita de la apertura**: estar en las dos sería cobrar dos veces el mismo
+hecho, que es inflar el denominador de quien lo cumple.
+
+#### LA DECISIÓN QUE MÁS PESÓ NO ES NINGUNA DE ESAS: ES DE DÓNDE CUELGA LA REGLA
+
+`tieneEvidencia` se aplica **al leer**, así que una rama mal puesta no rompe nada visible:
+reescribe en silencio el cumplimiento de meses pasados. Lo primero que iba a hacer era colgar
+la evidencia escrita de `requiereComentario`, que ya existía. **Está mal, y se vio midiendo:**
+esa bandera la traen **28 puntos que ADEMÁS piden foto** y que llevan meses emitidos así. Un
+punto de agosto cerrado con su foto habría pasado a exigir un texto que nadie escribió ese día.
+
+Por eso cuelga de `evidenciaEscrita`, un campo **nuevo, que no existe en un solo documento
+emitido antes de hoy**. Para todo el histórico la condición es falsa y se sigue leyendo
+exactamente igual que ayer. **No es una afirmación: NEG-4 hace justo ese error en una línea y
+rompe exactamente 1 prueba** — la que lo fija. Sin ese control, «el histórico no se mueve»
+habría sido confianza falsa (§8.11 c).
+
+#### Y NO REABRE LA FASE 2.1, aunque suene igual
+
+La instrucción de David —que una justificación cuente— es literalmente lo que la Fase 2.1
+derogó, y la diferencia está en **el campo**:
+
+    notaEmpleado ...... es del CHECKLIST: UNA frase que hablaria por los 5 puntos,
+                        incluidos los que nadie justifico  -> eso sigue derogado
+    evidenciaEscrita .. va PUNTO POR PUNTO y solo donde la NORMA lo declara,
+                        porque ahi el texto no TAPA la falta de prueba: ES la prueba
+
+Una ausencia cubierta no tiene objeto que fotografiar. Es la **regla 1 de
+`evidencia-manual.ts`** —la que Dirección aceptó como riesgo el 3/sep— cobrada en 2 de los 377
+puntos. Hay una guardia que cuenta cuántos se declararon: **son 2**, y si alguien declara a
+bulto lo dice antes de que 377 dejen de pedir foto sin que nadie lo haya decidido.
+
+#### EL BOT TENÍA UNA PUERTA TRASERA, Y NO SE VENÍA A BUSCAR
+
+`api/asistente-chat.js:2183` reparte: *«lo que no pide foto se cierra ya»*. Un punto de
+evidencia escrita **no pide foto**, así que un «ya hice la 5» por WhatsApp le habría puesto
+`checked = true` a la ausencia **sin una sola letra escrita** — y el bot habría contestado
+«cerrada» mientras el tablero la sigue contando como no hecha. **El mismo punto contado
+distinto según quién pregunte, que es exactamente la divergencia que la Fase 2.1 cerró**,
+reintroducida por la puerta de al lado.
+
+Se tapa **diciéndolo**: «se cierra escribiendo, no con una foto ni con un "ya la hice"». Un
+rechazo mudo dejaría a la persona mandando imágenes a un punto que no las acepta. Y el espejo
+de `itemHecho` se movió con la regla, que es lo que impide que los dos vuelvan a discrepar.
+
+#### EL AUXILIAR DE ENCARGADO PASA DE CERO TAREAS A TRES
+
+Instrucción de David: *«ya que no existe el turno de Aux de encargada(o) créalo y agrégale las
+mismas tareas que tienen el puesto de encargada de sucursal»*. **Comparte el manual, no una
+copia**: dos documentos con los mismos puntos serían dos normas libres de discrepar, y la que
+se quedara atrás juzgaría a una de las dos poblaciones con una regla vieja. Es el patrón que ya
+usa el Checador.
+
+**Medido en producción después de desplegar, que es la verificación que vale:** el censo del
+emisor dejó de nombrarlo. Era **el primero de la lista de puestos sin manual, con 11 personas**
+(15/sep); hoy aparece **0 veces**, y la vuelta creó **30 tareas = 10 auxiliares × 3**. Su
+denominador nace hoy; no existía antes.
+
+#### LO QUE NO SE PUDO HACER, Y NO SE INVENTÓ
+
+«Objetivo de venta del día» **depende del turno**, y David lo dijo. **No se puede expresar
+todavía**: la tarea es UNA diaria y el turno no existe como dato (Fase 3). Queda anotado en el
+catálogo y no rellenado por parecido (§8.5) — hoy le sale igual a la Encargada y al Auxiliar,
+todos los días.
+
+#### VERIFICADO
+
+    unitarias ... 415 (394 -> 415, 21 nuevas en `evidencia-escrita.spec.ts`)
+    DOM ......... `prueba-evidencia-escrita.js`: 5 escenarios, 11 aserciones
+    vecinos ..... dom-evidencia · envio-anaquelista · tareas-unidas · arbol-organigrama, en verde
+
+**El checklist del arnés sale de la regla COMPILADA** (`dist/manual`), llamando a
+`armarChecklist`, no de un fixture tecleado ahí. Un fixture con una forma que el sistema no
+produce no solo deja de encontrar defectos: **fabrica defectos que no existen**, y eso ya
+cambió la prioridad de un plan una vez (19/sep).
+
+| escenario | escritos | área | lista | rengl | archivo | paloma | done |
+|---|---|---|---|---|---|---|---|
+| abro la tarea | 2 | 1 | 1 | 0 | 3 | 0 | **0** |
+| escribo el cuadro | 2 | 1 | 1 | 0 | 3 | 0 | **1** |
+| agrego un pendiente y lo escribo | 2 | 1 | 1 | 1 | 3 | 0 | **1** |
+| lleno los dos | 2 | 1 | 1 | 1 | 3 | 0 | **2** |
+| CONTRASTE: la apertura | 0 | 0 | 0 | 0 | **7** | 0 | 0 |
+
+**La columna `paloma` es 0 en las cinco filas, y ese cero no valía solo.** Lo hace valer el
+control negativo: devuelto el `!pideEvidencia` viejo, sube a **2** y rompe **exactamente 1**
+aserción, la que impide que el punto tenga una segunda forma de cerrarse sin prueba. Los cuatro
+controles, una línea cada uno con su `diff` comprobado:
+
+| | qué se rompió | qué pasó |
+|---|---|---|
+| NEG-1 | lo escrito deja de contar | 2 rotas: `Expected 'no_ejecutado' to be 'hecho'` |
+| NEG-2 | la cámara vuelve a los dos puntos | 4 rotas, incluido el sello de tiempo |
+| NEG-3 | el Aux se queda sin manual | 4 rotas: `Expected 0 to be 3` |
+| NEG-4 | la regla cuelga de `requiereComentario` | **exactamente 1**: la del histórico |
+| NEG-DOM | vuelve `!pideEvidencia` | 1, y `paloma` **0 → 2** |
+
+**Las 2 pruebas de `plantilla.util.spec.ts` que fijaban «el Aux no tiene manual» estaban en rojo
+al aplicar el cambio.** Son su control positivo, escritas antes y por otro motivo, y se
+corrigen a mano en este mismo commit en vez de aflojarlas.
+
+#### DESPLEGADO
+
+    marcadores .. cl-escrito 0 -> 29 · evidenciaEscrita 0 -> 10 · 42 controles en pie
+                  67 archivos · 4.51 MB · 0 fallos de lectura
+    espera ...... 12 vueltas, anclada al rotulo `status:` y a la LINEA COMPLETA
+    log ......... arranca limpio, migraciones al dia, el emisor carga su regla
+                  (ventana de 14 lineas: una ausencia ahi no concluye sola)
+
+El marcador se eligió **sin vocales acentuadas a propósito**: el bundle las escapa y un ancla
+con acento no pega — sería un no-op, y un no-op da verde (14/sep). Validado en las dos
+direcciones antes de subir: presente en `dist/`, **0 en producción**.
+
+#### LO QUE ESTO NO HACE, dicho para que no se lea como resuelto
+
+- **HOY CONVIVEN LAS DOS VERSIONES, y es correcto.** Los checklists de las Encargadas se
+  emitieron a las 00:00 con los 7 puntos viejos y **no se reescriben** (`on conflict do
+  nothing`, y la llave de idempotencia no cambió): lo ya entregado no se toca (§5.5). Los 5
+  puntos nuevos empiezan mañana a las 00:00. Los Auxiliares sí los tienen ya, porque sus
+  tareas nacieron esta mañana.
+- **El bot no puede capturar lo escrito**, solo lo dice. Cerrar esos dos puntos desde WhatsApp
+  necesitaría un flujo de texto que hoy no existe; se rechaza con una frase que manda a la app.
+- **El modal de «motivo sin prueba» sigue hablando de fotos** cuando el punto que falta es de
+  texto. No rompe nada —el motivo se guarda igual— pero su redacción es de la otra familia.
+- **Nadie ha entrado con una cuenta real.** Los 5 escenarios son sesiones sintéticas en Chrome
+  headless: prueban qué hay delante de quien llena el checklist, no que se **vea** bien en un
+  iPhone. Y Chrome no es Safari (13/sep).
+- **Cero migraciones.** El manual sigue siendo código (hallazgo 5): cada corrección de norma
+  sigue costando un despliegue. Eso es Fase 7.1b.
 
 
 ### 20/sep/2026 (noche) — «ENVIADAS» PEDÍA TREINTA DÍAS Y NO RECORTABA NINGUNO

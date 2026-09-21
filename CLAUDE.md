@@ -327,6 +327,137 @@ de que exista la plaza sería partir el problema en dos, no resolverlo.
 ## 9. Bitácora del plan
 
 
+### 21/sep/2026 (tarde) — DOS NORMAS NUEVAS: el Auxiliar deja de pedir prestada la de su jefa
+
+Instrucciones de David, en el mismo turno: los ocho puntos que le propuse para el Auxiliar de
+Encargado *«solo agrégalas a los puestos de aux de encargada»*, y para el Surtidor *«cámbiala a
+solo surtir listas de pasillos, foto por cada lista y pasillo […] cambia en donde diga tickets y
+así, por listas, ya que el surtidor lo que surte son las listas de pasillos»*.
+
+#### EL AUXILIAR: CONSERVA APERTURA Y CIERRE, Y SU OPERACIÓN ES SUYA
+
+Por la mañana pasó a compartir el manual de la Encargada, y esa operación lleva **puntos de
+mando**: «Ausencias cubiertas…» decide **quién** cubre, y el Auxiliar **es** quien cubre (decisión
+de David, 19/sep: *cubre, no manda*). Elegido con las tres variantes y su precio enfrente:
+
+    Apertura ......... 7 pts  compartida con la Encargada
+    Cierre ........... 8 pts  compartida
+    Operacion PROPIA . 8 pts  <- NUEVA, y ya no recibe la de ella (5)
+    ------------------------  20 -> 23 puntos/dia
+
+**Y si solo se «agregaba», quedaba un duplicado.** Ella ya tiene «Pendientes del turno anterior»
+como listado y el punto 1 del Auxiliar es el mismo hecho: dos listados por el mismo trabajo, que
+es justo lo que se quitó esta mañana al sacar ese punto de la apertura.
+
+#### EL MECANISMO ES `soloPuestos` POR TAREA, Y LA ALTERNATIVA ROMPÍA EL SELLO EN SILENCIO
+
+Lo natural era darle un segundo manual. **Está mal, y se ve leyendo una línea:** `manualDePuesto()`
+devuelve **el primero que encuentra**, así que sus checklists se habrían sellado con el documento
+equivocado —§5.4 dice que cada emisión guarda la versión con la que se juzgó— sin un solo error
+visible. Con un campo por **tarea** sigue habiendo un manual por puesto y el sello no se mueve.
+
+**El filtro vive en UNA función** (`tareasDelManualPara`), porque la pantalla de «Del manual»
+recorre `puestoIds × tareas` a mano: con el filtro copiado allá, ofrecería asignar una tarea que
+el robot no entrega, y quien la asignara se quedaría creyendo que hizo algo.
+
+#### SUS 8 PUNTOS NO SE SELLAN CON EL DOCUMENTO DE ELLA, Y EL TEXTO ES FEO A PROPÓSITO
+
+No salen de ese manual: se derivaron del Cajero, el Anaquelista y de «cubre, no manda». Sellarlos
+con «Encargada de Sucursal PH» afirmaría que están en un papel donde no están. Llevan
+`selloPropio`: **«Operación del Auxiliar de Encargado — derivado, pendiente de manual propio»,
+versión 0.1**. Se lee como lo que es hasta que Capital Humano escriba el suyo. NEG-C lo quita y la
+prueba nombra el documento exacto que saldría.
+
+#### EL SURTIDOR: EL VOCABULARIO LO CORRIGIÓ DAVID, Y TRES PUNTOS SE CAYERON SOLOS
+
+Mi propuesta venía del **Checador de CEDIS** y hablaba de pedidos, tickets, carretas y tarimas.
+En un pasillo eso no significa nada: «carro o carreta separada por pedido», «etiquetado con su
+destino visible» y «lo que Checado me devolvió» se fueron. Hay una prueba que lo fija **por
+ausencia de esas cinco palabras**, no por la presencia de las buenas.
+
+**Y el cambio de vocabulario movió el PUESTO.** «Listas de pasillo» es lenguaje de piso, no de la
+cadena de reparto — y el dato lo confirma: de las 13 filas de surtidor en la nómina, **12 se
+llaman «Surtidor» a secas y solo una «Surtidor De Pasillo»**, que es justo la de sucursal. Se
+midió antes de escribir:
+
+    surtidor-zona ...... 4 (base) · 10 (nomina)  centros Tlmkt y Rutas — otra cadena
+    surtidor-ventas .... 2 · 2                   la unidad `ventas` ENTERA no tiene manual
+    surtidor-sucursal .. 1 · 1                   <- este, y es el unico «De Pasillo»
+    surtidor-cedis ..... 0 · 0                   nadie lo ocupa
+
+**A los otros tres no se les da**, y por motivos distintos: los de zona están en otra cadena, para
+los de ventas no hay de dónde derivar —11 puestos sin un solo manual— y el de CEDIS no tiene
+gente. Decisión de David con las cifras enfrente.
+
+**Se escribe para UNA persona, y se hace igual porque la norma es de la PLAZA, no de quien la
+ocupa** (§4): el día que entren tres surtidores ya está escrita, y el día que esa persona se vaya
+no se va con ella.
+
+**Límite honesto del punto 1**, escrito en el código para que no decepcione: la app pide N fotos
+con su hora de captura, pero **no puede exigir que sean una por pasillo** —no sabe cuántos hay ni
+cuántas listas recibió esa persona—. Lo verifica la Encargada mirándolas. El día que exista el
+**ámbito** como dato, se vuelve exigible solo: es Fase 3, y este punto es su caso de uso.
+
+#### LO QUE EL ARNÉS TENÍA QUE MEDIR Y NO EXISTÍA ANTES
+
+La operación del Auxiliar lleva **dos listados y dos cuadros en el MISMO checklist**. Si
+compartieran estado —un `ngModel` mal atado, un `trackBy` que colapse índices— escribir una vez
+cerraría dos puntos: **cumplimiento regalado sin que nadie escribiera**. Dos filas nuevas:
+
+    escenario                                            escritos area lista rengl archivo paloma done vacio
+    AUXILIAR: abro su operacion (2 listados + 2 cuadros)        4    2     2     0       4      0    0     4
+    AUXILIAR: lleno UNO — el otro NO debe cerrarse              4    2     2     1       4      0    1     3
+
+**MI PRIMER CONTROL NEGATIVO DE ESO FUE UN NO-OP Y DIO VERDE.** Hice que `renglonesDe` devolviera
+un arreglo compartido… y `armarChecklist` ya inicializa `listado: []`, así que esa línea **no
+corre nunca**. La tabla salió idéntica y estuve a un paso de leerla como «la independencia está
+probada». Rehecho para cruzar de verdad —agregar un renglón lo empuja a todos los listados— rompe
+**exactamente 1** aserción y la nombra: *«pulsé un botón de agregar y aparecieron 2 renglones»*.
+Es la regla del 31/ago cobrada otra vez: **un control negativo que no cambia nada prueba tanto
+como un cero sin denominador**, y encima suena convincente.
+
+#### UN ARNÉS AJENO CAZÓ QUE SU PROPIA SELECCIÓN SE HABÍA VUELTO AMBIGUA
+
+`prueba-catalogo-manual` salió en rojo diciendo que el `_puestoId` era `auxiliar-encargado` y
+debía ser `encargado-sucursal`. **No era un defecto del producto.** Desde esta mañana un manual
+sirve a dos puestos, así que la pantalla lista la **misma tarea en dos grupos**, y su `porTexto`
+tomaba el primero —por orden alfabético, el Auxiliar—. El arnés estaba **pulsando un grupo
+distinto del que afirmaba medir**.
+
+**No se aflojó: se hizo más preciso.** Ahora selecciona dentro del grupo del puesto que dice
+medir, y cuenta en cuántos aparece la tarea, para que el día que sean tres no vuelva a leerse como
+un fallo del producto.
+
+#### DESPLEGADO, Y EL LOG LO VERIFICA SOLO
+
+    marcadores .. auxiliar-encargado.operacion 0 -> 2 · surtidor-sucursal.operacion 0 -> 2
+                  44 controles en pie · 67 archivos · 4.52 MB · 0 fallos de lectura
+    espera ...... 7 vueltas, anclada al rotulo `status:` y a la LINEA COMPLETA
+    pruebas ..... 427 unitarias (415 -> 427) · 4 controles negativos · arnes DOM 7/16
+
+**La verificación independiente es el censo del emisor**, que no se escribió para esto:
+
+    «Surtidor de Sucursal» DESAPARECIO de la lista de sin manual
+    «Surtidor de Zona» (4) y «Surtidor de Ventas» (2) SIGUEN ahi  <- no se les dio
+    sin tareas hoy ... 72 -> 71   (exactamente una persona)
+    creadas .......... 11 = 10 auxiliares x 1 tarea nueva + 1 surtidor x 1
+
+Ese **11 cuadra exactamente**, y es lo que hace que el despliegue no dependa solo de los
+marcadores del bundle.
+
+#### LO QUE ESTO NO HACE
+
+- **HOY los auxiliares tienen las DOS operaciones.** La de la Encargada se les emitió esta mañana,
+  antes del cambio, y **no se borra** (§5.5). Mañana a las 00:00 solo sale la suya.
+- **La pantalla «Del manual» lista la apertura y el cierre bajo DOS puestos.** Ya pasaba con el
+  Checador; ahora también con el Auxiliar. No es un defecto de hoy y no se tocó: la elección
+  determina el sello, así que tiene sentido — pero se ve como una tarea repetida.
+- **Nadie ha entrado con una cuenta real.** Los 7 escenarios son sesiones sintéticas en Chrome
+  headless.
+- **Cero migraciones.** El manual sigue siendo código (hallazgo 5): cada corrección de norma
+  cuesta un despliegue, y eso es 7.1b.
+
+
 ### 21/sep/2026 — LA OPERACIÓN DEL TURNO SE REESCRIBE, y dos puntos dejan de pedir foto
 
 Instrucción de David sobre «Operación de sucursal del turno»: tres puntos se quitan, tres

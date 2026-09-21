@@ -72,18 +72,23 @@ function abortar(motivo) {
 // ══════════════════════════════════════════════════════════════════════════
 //  EL CHECKLIST, ARMADO POR LA REGLA COMPILADA
 // ══════════════════════════════════════════════════════════════════════════
+const TAREA_DE = {
+  operacion: ['encargado-sucursal', 'encargado-sucursal.operacion'],
+  apertura: ['encargado-sucursal', 'encargado-sucursal.apertura'],
+  aux: ['auxiliar-encargado', 'auxiliar-encargado.operacion'],
+};
+
 function checklistReal(cual) {
   const { armarChecklist } = require(path.join(DIST_MANUAL, 'emision-manual.util.js'));
   const { tareasAutomaticasDePuesto } = require(path.join(DIST_MANUAL, 'tareas-manual.catalogo.js'));
-  const tareas = tareasAutomaticasDePuesto('encargado-sucursal');
-  const id = cual === 'apertura' ? 'encargado-sucursal.apertura' : 'encargado-sucursal.operacion';
-  const tarea = tareas.find((t) => t.id === id);
-  if (!tarea) throw new Error('no existe ' + id + ' en el catálogo compilado');
+  const [puesto, id] = TAREA_DE[cual];
+  const tarea = tareasAutomaticasDePuesto(puesto).find((t) => t.id === id);
+  if (!tarea) throw new Error('no existe ' + id + ' para ' + puesto + ' en el catálogo compilado');
 
   const hoy = new Date();
   const fecha = new Date(hoy.getTime() - hoy.getTimezoneOffset() * 60000).toISOString().split('T')[0];
   const ck = armarChecklist({
-    checklistId: 'medicion-escrita', tarea, puestoId: 'encargado-sucursal',
+    checklistId: 'medicion-escrita', tarea, puestoId: puesto,
     sucursal: 'Canindo', destinatario: 'Ana Encargada', destinatarioUid: 'w',
     fechaYmd: fecha,
   }, []);
@@ -95,11 +100,18 @@ function checklistReal(cual) {
 }
 
 const ESCENARIOS = [
-  { clave: 'abro',     tarea: 'operacion', que: 'abro la tarea de Operación del turno' },
-  { clave: 'texto',    tarea: 'operacion', que: 'escribo el cuadro de la ausencia' },
-  { clave: 'lista',    tarea: 'operacion', que: 'agrego un pendiente y lo escribo' },
-  { clave: 'ambos',    tarea: 'operacion', que: 'lleno los dos' },
-  { clave: 'apertura', tarea: 'apertura',  que: 'CONTRASTE: la apertura, que sí pide fotos' },
+  { clave: 'abro',     tarea: 'operacion', accion: null,    que: 'abro la tarea de Operación del turno' },
+  { clave: 'texto',    tarea: 'operacion', accion: 'texto', que: 'escribo el cuadro de la ausencia' },
+  { clave: 'lista',    tarea: 'operacion', accion: 'lista', que: 'agrego un pendiente y lo escribo' },
+  { clave: 'ambos',    tarea: 'operacion', accion: 'ambos', que: 'lleno los dos' },
+  // EL AUXILIAR: su tarea lleva DOS listados y DOS cuadros en el mismo
+  // checklist, y eso es riesgo nuevo. Si los campos compartieran estado -un
+  // `ngModel` mal atado, un trackBy que colapse indices- escribir en uno
+  // llenaria el otro, y el punto se cerraria SOLO: cumplimiento regalado sin
+  // que nadie escribiera. Estas dos filas existen para eso.
+  { clave: 'aux',      tarea: 'aux', accion: null,    que: 'AUXILIAR: abro su operación (2 listados + 2 cuadros)' },
+  { clave: 'aux-uno',  tarea: 'aux', accion: 'lista', que: 'AUXILIAR: lleno UNO — el otro NO debe cerrarse' },
+  { clave: 'apertura', tarea: 'apertura', accion: null, que: 'CONTRASTE: la apertura, que sí pide fotos' },
 ];
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -143,7 +155,7 @@ function hijo(dist, puerto, clave) {
     '   },14000);',
     ' },12000);',
     ' function actuar(){',
-    '   var quiere=' + JSON.stringify(clave) + '; res.escrituraOk=true;',
+    '   var quiere=' + JSON.stringify(esc.accion) + '; res.escrituraOk=true;',
     '   if(quiere==="texto"||quiere==="ambos"){',
     '     var a=document.querySelector(".cl-escrito-area");',
     '     if(!a){res.error="no hay cuadro de texto que llenar";return fin();}',
@@ -294,13 +306,13 @@ if (process.argv[2] === '--hijo') {
     for (const e of ESCENARIOS) filas.push(await medir(dist, puerto++, e.clave));
 
     console.log('');
-    console.log('escenario                                   escritos area lista rengl archivo paloma done vacio');
-    console.log('─────────────────────────────────────────── ──────── ──── ───── ───── ─────── ────── ──── ─────');
+    console.log('escenario                                            escritos area lista rengl archivo paloma done vacio');
+    console.log('──────────────────────────────────────────────────── ──────── ──── ───── ───── ─────── ────── ──── ─────');
     for (const e of ESCENARIOS) {
       const r = filas.find((f) => f.esc === e.clave) || {};
-      if (r.error) { console.log(e.que.padEnd(43) + ' ⚠ ' + r.error); continue; }
+      if (r.error) { console.log(e.que.padEnd(52) + ' ⚠ ' + r.error); continue; }
       console.log(
-        e.que.padEnd(43) + ' ' +
+        e.que.padEnd(52) + ' ' +
         String(r.escritos).padStart(8) + ' ' + String(r.areas).padStart(4) + ' ' +
         String(r.agregar).padStart(5) + ' ' + String(r.renglones).padStart(5) + ' ' +
         String(r.inputArchivo).padStart(7) + ' ' + String(r.palomear).padStart(6) + ' ' +
@@ -350,7 +362,26 @@ if (process.argv[2] === '--hijo') {
     afirmar(f('ambos').itemDone === 2,
       'llenando los dos esperaba 2 marcados y medí ' + f('ambos').itemDone);
 
-    // 3 · CONTRASTE: la apertura no cambió. Sin esta fila, un cambio que
+    // 3 · EL AUXILIAR: cuatro campos escritos en el MISMO checklist, y son
+    //     INDEPENDIENTES. Es el riesgo que trae su tarea y no existía antes.
+    afirmar(f('aux').escritos === 4 && f('aux').areas === 2 && f('aux').agregar === 2,
+      'la operación del Auxiliar no pinta sus 4 campos escritos: ' + f('aux').escritos +
+      ' bloques, ' + f('aux').areas + ' cuadros, ' + f('aux').agregar + ' listados');
+    afirmar(f('aux').inputArchivo === 4,
+      'los otros 4 puntos del Auxiliar dejaron de pedir foto: ' + f('aux').inputArchivo + ' inputs');
+    afirmar(f('aux').itemDone === 0 && f('aux').avisoVacio === 4,
+      'la operación del Auxiliar nace con algo marcado: ' + f('aux').itemDone +
+      ' hechos y ' + f('aux').avisoVacio + ' avisos de vacío');
+    // ⚠ LAS DOS QUE IMPORTAN. Si los campos compartieran estado, pulsar UN
+    // botón de agregar pintaría DOS renglones y cerraría DOS puntos: la persona
+    // escribiría una vez y se le darían dos por cumplidos.
+    afirmar(f('aux-uno').renglones === 1,
+      'LOS DOS LISTADOS ESTÁN CRUZADOS: pulsé un botón de agregar y aparecieron ' +
+      f('aux-uno').renglones + ' renglones');
+    afirmar(f('aux-uno').itemDone === 1,
+      'ESCRIBIR EN UN CAMPO CERRÓ OTRO PUNTO: esperaba 1 hecho y medí ' + f('aux-uno').itemDone);
+
+    // 4 · CONTRASTE: la apertura no cambió. Sin esta fila, un cambio que
     //     apagara la cámara en TODA la app pasaría las de arriba en verde.
     afirmar(f('apertura').escritos === 0,
       'la apertura pinta bloques de evidencia escrita y no debería: ' + f('apertura').escritos);
@@ -369,7 +400,7 @@ if (process.argv[2] === '--hijo') {
       for (const x of fallos) console.error('  ✗ ' + x);
       process.exit(2);
     }
-    console.log('[escrita] ' + ESCENARIOS.length + ' escenarios · 11 aserciones · todo en verde.');
+    console.log('[escrita] ' + ESCENARIOS.length + ' escenarios · 16 aserciones · todo en verde.');
     console.log('[escrita] `itemDone` discrimina con ' + dones.size + ' valores distintos.');
   })();
 }

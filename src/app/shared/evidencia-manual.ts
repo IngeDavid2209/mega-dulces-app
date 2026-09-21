@@ -221,6 +221,36 @@ export const EVIDENCIA_MANUAL: Record<string, EvidenciaPunto[]> = {
     { i: 4, texto: 'Piso frenteado y sin obstáculos', foto: true },
     { i: 5, texto: 'Bodega despejada y segura', foto: true },
   ],
+  // ── EL AUXILIAR DE ENCARGADO (21/sep/2026) ────────────────────────────────
+  // Su operacion abre y cierra el RELEVO (0 y 7, los dos listados) y deja
+  // escrito lo que cubrio y lo que escalo (1 y 6). Ninguno de los cuatro tiene
+  // objeto que fotografiar: son continuidad y decisiones, no estados fisicos.
+  'auxiliar-encargado.operacion': [
+    { i: 0, texto: 'Recibí el turno y anoté lo que quedó pendiente del anterior', escrito: 'listado' },
+    {
+      i: 1,
+      texto: 'Cubrí el puesto que quedó sin gente y anoté cuál y por cuánto tiempo',
+      escrito: 'comentario', comentario: true,
+    },
+    {
+      i: 6,
+      texto: 'Escalé a la Encargada lo que no me toca decidir: mermas, descuentos, bajas y diferencias',
+      escrito: 'comentario', comentario: true,
+    },
+    { i: 7, texto: 'Dejé por escrito lo que la Encargada tiene que retomar al volver', escrito: 'listado' },
+  ],
+  // ── EL SURTIDOR DE SUCURSAL (21/sep/2026) ─────────────────────────────────
+  // El 4 es lo que NO habia: se enumera para que se pueda integrar a faltantes,
+  // que es lo que el Bodeguero ya declara. El 8 es lo que quedo sin surtir y
+  // por que — la causa, que es lo que una foto no dice.
+  'surtidor-sucursal.operacion': [
+    { i: 4, texto: 'Marqué en la lista lo que no había, sin sustituirlo por otro código', escrito: 'listado' },
+    {
+      i: 8,
+      texto: 'Devolví las listas atendidas y anoté lo que quedó sin surtir y por qué',
+      escrito: 'comentario', comentario: true,
+    },
+  ],
   // Los dos puntos cuya prueba es lo ESCRITO. Los indices son de la lista
   // reescrita el 21/sep: si el catalogo se reordena, hay que mover estos `i` o
   // la evidencia no se aplica (y el punto volveria a pedir fotos en silencio).

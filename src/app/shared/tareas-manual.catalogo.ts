@@ -113,6 +113,26 @@ export interface TareaManual {
    * puesto para consulta, pero el robot NO la entrega periódicamente.
    */
   soloPorEvento?: boolean;
+  /**
+   * ESTA TAREA SOLO LE TOCA A ALGUNOS DE LOS PUESTOS DEL MANUAL.
+   *
+   * Ausente = le toca a todos los `puestoIds` del documento, que es el caso
+   * normal y el de todas las tareas anteriores al 21/sep/2026.
+   *
+   * ─── POR QUE ESTO Y NO UN SEGUNDO MANUAL ─────────────────────────────────
+   * El Auxiliar de Encargado comparte el manual de la Encargada -misma norma,
+   * no una copia- pero la operacion del turno de ella incluye puntos de MANDO
+   * («Ausencias cubiertas…»): el Auxiliar es quien cubre, no quien decide quien
+   * cubre (decision de David, 19/sep). Asi que necesita su propia operacion sin
+   * duplicar apertura ni cierre.
+   *
+   * Darle un segundo manual habria roto el sello de auditoria EN SILENCIO:
+   * `manualDePuesto()` devuelve EL PRIMERO que encuentra, asi que sus
+   * checklists se habrian sellado con el documento equivocado -y §5.4 dice que
+   * cada emision guarda la version con la que se juzgo-. Con un campo por
+   * TAREA sigue habiendo un solo manual por puesto y el sello no se mueve.
+   */
+  soloPuestos?: string[];
   /** Aclaración que se muestra al trabajador junto a la tarea. */
   nota?: string;
   items: ItemManual[];
@@ -356,6 +376,11 @@ export const MANUALES_POR_PUESTO: ManualPuesto[] = [
         nombre: 'Operación de sucursal del turno',
         momento: 'operacion', frecuencia: 'Diaria', horaLimite: H_CIERRE,
         codigoFormato: '2.3',
+        // SOLO LA ENCARGADA (21/sep/2026). El Auxiliar comparte este manual
+        // pero tiene su propia operacion, abajo: aqui hay puntos de MANDO
+        // -«Ausencias cubiertas…» decide quien cubre- y el Auxiliar es quien
+        // cubre. Apertura y cierre siguen siendo de los dos.
+        soloPuestos: ['encargado-sucursal'],
         nota: 'Prioridades diarias del puesto, en el orden que fija el manual. Lo que no se pueda afirmar se explica en las observaciones.',
         // ── REESCRITA EL 21/sep/2026, POR INSTRUCCION DE DAVID ──────────────
         // De 7 puntos a 5. Queda constancia de QUE HABIA, porque un punto que
@@ -393,6 +418,55 @@ export const MANUALES_POR_PUESTO: ManualPuesto[] = [
           // Cuadro de texto, no foto: una ausencia no se fotografia. Se pide por
           // que, de quien, quien sustituyo, puesto y lugar.
           { texto: 'Ausencias cubiertas sin dejar Caja, Recepción, Piso ni Bodega desatendidos' },
+        ],
+      },
+      {
+        // ══════════════════════════════════════════════════════════════════
+        //  LA OPERACION DEL AUXILIAR DE ENCARGADO — 21/sep/2026
+        // ══════════════════════════════════════════════════════════════════
+        // El principio del que salen los ocho puntos, y es una decision de
+        // David (19/sep): EL AUXILIAR CUBRE, NO MANDA. Su autoridad sale de la
+        // cobertura del dia, no de una bandera permanente. En el organigrama es
+        // nivel OPERATIVO con cero gente debajo, asi que sus puntos son de
+        // ejecucion y relevo, nunca de supervision.
+        //
+        // ESTAN EN PRIMERA PERSONA DEL PASADO, y no es cosmetica. El manual de
+        // la Encargada esta escrito en ESTADOS («Disponibilidad de mercancia en
+        // piso») porque ella responde por el resultado; los manuales operativos
+        // -Cajera, Anaquelista, Bodeguero- van en primera persona porque quien
+        // los llena responde por SU acto. Es el estilo que se puede exigir sin
+        // ambiguedad a este nivel.
+        //
+        // EL 1 Y EL 8 SON UN PAR: abren y cierran el relevo. Hoy la continuidad
+        // entre turnos no la registra nadie, y es justo donde se pierde el
+        // trabajo. El 7 es el que PROTEGE A LA PERSONA: deja escrito que no era
+        // su decision, para que no se le cuente como falta.
+        id: 'auxiliar-encargado.operacion',
+        nombre: 'Operación del Auxiliar de Encargado',
+        momento: 'operacion', frecuencia: 'Diaria', horaLimite: H_CIERRE,
+        codigoFormato: '',
+        soloPuestos: ['auxiliar-encargado'],
+        // ⚠ SELLO PROPIO, Y EL TEXTO ES FEO A PROPOSITO.
+        // Estos ocho puntos NO SALEN del manual de la Encargada: se derivaron
+        // del Cajero, el Anaquelista y de la decision de «cubre, no manda».
+        // Sellarlos con «Encargada de Sucursal PH» afirmaria que estan en un
+        // documento donde no estan, y §5.4 dice que cada emision guarda la
+        // version CON LA QUE SE JUZGO. Se lee como lo que es -norma derivada,
+        // sin manual firmado- hasta que Capital Humano escriba el suyo.
+        selloPropio: {
+          documento: 'Operación del Auxiliar de Encargado — derivado, pendiente de manual propio',
+          version: '0.1 · Septiembre 2026',
+        },
+        nota: NOTA_OPERACION,
+        items: [
+          { texto: 'Recibí el turno y anoté lo que quedó pendiente del anterior' },
+          { texto: 'Cubrí el puesto que quedó sin gente y anoté cuál y por cuánto tiempo' },
+          { texto: 'Recorrí piso y bodega al menos una vez y levanté los faltantes con código' },
+          { texto: 'Apoyé en Caja cobrando siempre con mi usuario propio' },
+          { texto: 'Entregué a la Encargada los retiros que recibí, sin dejarlos expuestos' },
+          { texto: 'Revisé los cambios de precio del día antes de que llegaran a Caja' },
+          { texto: 'Escalé a la Encargada lo que no me toca decidir: mermas, descuentos, bajas y diferencias' },
+          { texto: 'Dejé por escrito lo que la Encargada tiene que retomar al volver' },
         ],
       },
     ],
@@ -453,6 +527,69 @@ export const MANUALES_POR_PUESTO: ManualPuesto[] = [
           { texto: 'Reporté producto próximo a caducar y lo mantuve visible para su rotación' },
           { texto: 'Acomodé de inmediato las cajas que estaban fuera de su ubicación' },
           { texto: 'Dejé pasillos y rutas de tránsito despejados' },
+        ],
+      },
+    ],
+  },
+
+  // ══════════════════════════════════════════════════════════════════════════
+  //  SURTIDOR DE SUCURSAL — 21/sep/2026
+  //
+  //  NORMA DERIVADA, NO TRANSCRITA. No hay PDF: estos puntos se derivaron del
+  //  Bodeguero y del Anaquelista, y el vocabulario lo corrigio David —«lo que
+  //  el surtidor surte son las LISTAS DE PASILLOS», no pedidos ni tickets—.
+  //
+  //  POR QUE NO COMPARTE EL MANUAL DEL BODEGUERO, que era lo primero que
+  //  propuse: el Bodeguero NO pide foto por lista, y sus otras dos tareas son
+  //  los checklists de inicio y cierre de BODEGA, que no son trabajo del
+  //  Surtidor. Compartir le habria entregado dos checklists ajenos.
+  //
+  //  ES PARA UNA SOLA PERSONA HOY (Padre Hidalgo, y es la unica a la que la
+  //  nomina llama «Surtidor De Pasillo»). Se escribe igual porque LA NORMA ES
+  //  DE LA PLAZA, NO DE QUIEN LA OCUPA (§4): el dia que entren tres surtidores
+  //  ya esta escrita, y el dia que esa persona se vaya no se va con ella.
+  //
+  //  ⚠ NO SE LE DA A `surtidor-zona` NI A `surtidor-ventas`, y esta medido:
+  //  los 4 de zona estan en centros `Tlmkt` y `Rutas` -otra cadena, la de
+  //  reparto, donde no hay pasillos- y la unidad `ventas` entera no tiene un
+  //  solo manual del que derivar. Decision de David con las cifras enfrente.
+  // ══════════════════════════════════════════════════════════════════════════
+  {
+    puestoIds: ['surtidor-sucursal'],
+    documento: 'Operación del Surtidor de Sucursal — derivado, pendiente de manual propio',
+    codigo: '',
+    version: '0.1 · Septiembre 2026',
+    // Sin PDF de origen: no existe todavia. Se deja vacio en vez de apuntar al
+    // del Bodeguero, que diria que estos puntos salen de un documento donde no
+    // estan.
+    archivo: '',
+    tareas: [
+      {
+        id: 'surtidor-sucursal.operacion',
+        nombre: 'Operación de surtido del turno',
+        momento: 'operacion', frecuencia: 'Diaria', horaLimite: H_CIERRE,
+        codigoFormato: '',
+        nota: NOTA_OPERACION,
+        items: [
+          // Varias fotos: una de cada lista y del pasillo surtido. LIMITE
+          // HONESTO, escrito para que no se lea como candado: la app pide N
+          // fotos con su hora de captura, pero NO PUEDE exigir que sean una por
+          // pasillo -no sabe cuantos pasillos tiene la tienda ni cuantas listas
+          // recibio esa persona-. Eso lo verifica la Encargada mirandolas. El
+          // dia que exista el AMBITO como dato (pasillo 1, pasillo 2, con su
+          // etiqueta fisica) se vuelve exigible solo: es Fase 3, y este punto
+          // es el caso de uso que la justifica.
+          { texto: 'Surtí las listas de pasillo que recibí' },
+          { texto: 'Confirmé código, descripción y presentación contra el físico antes de subirlo al pasillo' },
+          { texto: 'Conté la cantidad contra la lista, no la estimé por caja' },
+          { texto: 'Revisé los restos antes de abrir una caja nueva del mismo producto' },
+          // Listado: lo que no habia se enumera, uno por renglon.
+          { texto: 'Marqué en la lista lo que no había, sin sustituirlo por otro código' },
+          { texto: 'Reporté el producto dañado o próximo a caducar en vez de subirlo al pasillo' },
+          { texto: 'Dejé el pasillo transitable y sin cajas ni restos al terminar' },
+          { texto: 'Atendí primero los pasillos de alta rotación y las listas marcadas como urgentes' },
+          // Cuadro de texto: lo que quedo sin surtir y por que.
+          { texto: 'Devolví las listas atendidas y anoté lo que quedó sin surtir y por qué' },
         ],
       },
     ],
@@ -1373,18 +1510,33 @@ export function manualDePuesto(puestoId: string | undefined | null): ManualPuest
 }
 
 /**
+ * Las tareas de ESTE manual que le tocan a ESTE puesto.
+ *
+ * Vive aqui y no dentro de cada consumidor porque la pantalla de «Del manual»
+ * recorre `m.puestoIds × m.tareas` a mano: con el filtro copiado alla, bastaria
+ * que una copia se quedara atras para que esa pantalla ofreciera asignar una
+ * tarea que el robot no le entrega a esa persona, y quien la asignara se
+ * quedaria creyendo que hizo algo. Una definicion, todos los consumidores.
+ */
+export function tareasDelManualPara(manual: ManualPuesto, puestoId: string): TareaManual[] {
+  return manual.tareas.filter(t => !t.soloPuestos || t.soloPuestos.includes(puestoId));
+}
+
+/**
  * Las tareas que la app entrega automáticamente a un puesto. Excluye las que
  * dependen de un evento impredecible (`soloPorEvento`).
  */
 export function tareasAutomaticasDePuesto(puestoId: string | undefined | null): TareaManual[] {
   const manual = manualDePuesto(puestoId);
-  if (!manual) return [];
-  return manual.tareas.filter(t => !t.soloPorEvento);
+  if (!manual || !puestoId) return [];
+  return tareasDelManualPara(manual, puestoId).filter(t => !t.soloPorEvento);
 }
 
 /** Todas las tareas del manual de un puesto, incluidas las de solo-evento. */
 export function tareasDePuesto(puestoId: string | undefined | null): TareaManual[] {
-  return manualDePuesto(puestoId)?.tareas || [];
+  const manual = manualDePuesto(puestoId);
+  if (!manual || !puestoId) return [];
+  return tareasDelManualPara(manual, puestoId);
 }
 
 /** ¿Este puesto ya tiene manual publicado? */

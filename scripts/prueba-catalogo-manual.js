@@ -111,6 +111,9 @@ if (!TAREAS_ORIGEN.length) {
 }
 const TAREA = TAREAS_ORIGEN[0];
 const MANUAL = cat.manualDePuesto(PUESTO_ORIGEN);
+// El rotulo que la pantalla pinta en la cabecera del grupo. Sale del catalogo
+// del organigrama, no escrito a mano: si el puesto se renombra, esto lo sigue.
+const PUESTO_ORIGEN_NOMBRE = org.nombrePuesto(PUESTO_ORIGEN);
 const PUESTO_PERSONA = 'anaquelista';
 if (cat.tareasAutomaticasDePuesto(PUESTO_PERSONA).some((t) => t.id === TAREA.id)) {
   abortar('la tarea elegida TAMBIÉN la recibe «' + PUESTO_PERSONA + '» por su puesto, así que ' +
@@ -205,7 +208,8 @@ function medir(idSembrado, puerto) {
       JSON.stringify(JSON.stringify(SESION)) + ');}catch(e){}' +
       'try{localStorage.setItem("md_token","token-de-medicion");}catch(e){}</script>' +
       '<script>window.addEventListener("load",function(){' +
-      'function porTexto(sel, txt){return [].slice.call(document.querySelectorAll(sel))' +
+      'function porTexto(sel, txt){return porTextoEn(document, sel, txt);}' +
+      'function porTextoEn(raiz, sel, txt){return [].slice.call(raiz.querySelectorAll(sel))' +
       '  .filter(function(e){return (e.textContent||"").indexOf(txt)>=0;})[0];}' +
       'var R={pasos:[]};' +
       'setTimeout(function(){' +
@@ -228,7 +232,22 @@ function medir(idSembrado, puerto) {
       '          campo.dispatchEvent(new Event("input",{bubbles:true}));}' +
       '        setTimeout(function(){' +
       '          R.tareas=document.querySelectorAll(".cat-tarea").length;' +
-      '          var t=porTexto(".cat-tarea",' + JSON.stringify(TAREA.nombre) + ');' +
+      // ⚠ SE ELIGE LA TAREA DENTRO DEL GRUPO DEL PUESTO QUE SE DICE MEDIR.
+      // Desde el 21/sep un mismo manual puede servir a varios puestos -el del
+      // Encargado tambien lo lleva el Auxiliar, como el del Checador-, asi que
+      // la MISMA tarea sale en dos grupos y `porTexto` tomaba el primero, que
+      // por orden alfabetico es «Auxiliar de Encargado». El sello salia con ESE
+      // puesto y la asercion de `_puestoId` fallaba nombrando un defecto que no
+      // existe: el arnes estaba pulsando un grupo distinto del que afirmaba.
+      // Se cuenta ademas en cuantos grupos aparece, para que el dia que sean
+      // tres no se vuelva a leer como un fallo del producto.
+      '          var grupos=[].slice.call(document.querySelectorAll(".cat-grupo"));' +
+      '          var mio=grupos.filter(function(g){var c=g.querySelector(".cat-grupo-cab strong");' +
+      '            return c && c.textContent.trim()===' + JSON.stringify(PUESTO_ORIGEN_NOMBRE) + ';});' +
+      '          R.gruposConLaTarea=grupos.filter(function(g){' +
+      '            return porTextoEn(g,".cat-tarea",' + JSON.stringify(TAREA.nombre) + ');}).length;' +
+      '          if(!mio.length){R.error="no aparecio el grupo del puesto de origen";return fin();}' +
+      '          var t=porTextoEn(mio[0],".cat-tarea",' + JSON.stringify(TAREA.nombre) + ');' +
       '          if(!t){R.error="la tarea no aparecio en el catalogo";return fin();}' +
       '          t.click();' +
       '          setTimeout(function(){' +

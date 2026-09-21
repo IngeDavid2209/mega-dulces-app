@@ -24,6 +24,7 @@ import { AmbitoVisible, ambitoVisible, entregaVisible } from '../../../shared/ra
 import { nombrePuesto } from '../../../shared/organigrama.catalogo';
 import {
   tareasAutomaticasDePuesto, MANUALES_POR_PUESTO, tareaManualPorId, TareaManual,
+  tareasDelManualPara,
 } from '../../../shared/tareas-manual.catalogo';
 import { NotificacionesService } from '../../../services/notificaciones';
 import { ApiService } from '../../../shared/api.service';
@@ -571,7 +572,12 @@ export class ChecklistComponent implements OnInit, OnDestroy {
         // Solo las que el robot entrega por calendario: una `soloPorEvento` se
         // dispara por un hecho (un siniestro, un cambio de custodia), y darla a
         // mano por fecha sería inventar el evento.
-        const tareas = m.tareas.filter(t => !t.soloPorEvento).filter(t => {
+        // `tareasDelManualPara` y no `m.tareas`: desde el 21/sep una tarea puede
+        // ser de SOLO ALGUNOS puestos del manual (la operacion de la Encargada
+        // no le toca al Auxiliar). Sin este filtro, esta pantalla ofreceria
+        // asignar a mano una tarea que el robot no le entrega a esa persona, y
+        // quien la asignara se quedaria creyendo que hizo algo.
+        const tareas = tareasDelManualPara(m, pid).filter(t => !t.soloPorEvento).filter(t => {
           if (!term) return true;
           return normalizarNombre([nombrePuesto(pid), m.documento, t.nombre].join(' ')).includes(term);
         });

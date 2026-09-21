@@ -182,9 +182,21 @@ const MARCADORES = [
   // ACENTUADAS a proposito: el bundle las escapa y un ancla con acento no pega
   // -seria un no-op, y un no-op da verde (14/sep)-. Validado en las dos
   // direcciones ANTES de subir: 1 archivo en dist/, 0 en el repo en HEAD.
-  { txt: 'cl-escrito', nuevo: true,
+  // 21/sep/2026 (tarde) · La operacion PROPIA del Auxiliar de Encargado (8 puntos,
+  // «cubre, no manda») y el manual nuevo del Surtidor de Sucursal (9 puntos, que
+  // surte LISTAS DE PASILLO). Los dos ids son cadenas literales del catalogo, que
+  // el minificador respeta, y ninguno lleva vocal acentuada -el bundle las escapa
+  // y un ancla con acento no pega-. Validados en las dos direcciones ANTES de
+  // subir: 2 archivos en dist/, 0 en el repo en HEAD.
+  { txt: 'auxiliar-encargado.operacion', nuevo: true,
+    que: 'la operacion propia del Auxiliar de Encargado' },
+  { txt: 'surtidor-sucursal.operacion', nuevo: true,
+    que: 'el manual del Surtidor de Sucursal' },
+  // Los dos del despliegue de esta mañana bajan a control: YA VALEN en
+  // produccion, y dejarlos arriba daria verde sin comprobar nada de este.
+  { txt: 'cl-escrito', control: true,
     que: 'el cuadro de texto y el listado de los puntos sin foto' },
-  { txt: 'evidenciaEscrita', nuevo: true,
+  { txt: 'evidenciaEscrita', control: true,
     que: 'la regla que hace que lo escrito cuente en el porcentaje' },
   // El del despliegue anterior baja a control: YA VALE en produccion, y
   // dejarlo arriba habria dado verde sin comprobar nada de hoy.

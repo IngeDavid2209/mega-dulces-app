@@ -557,6 +557,125 @@ horas, hay una tarea que se quedó atrás o un camino que sigue sobreescribiendo
   como todas. Eso es 7.1b.
 
 
+### 22/sep/2026 (tarde, 2) — EL MANUAL DE KILEO LLEGA A `empaque`, y una ficha desapareció
+
+Instrucción de David, horas después de declarar la Kileadora: *«busca los que tengan el puesto
+de empaque y es quienes les vas a agregar esas tareas»*. Y en el mismo turno: *«para los de aux
+de promociones espera»*.
+
+#### LA MEDICIÓN QUE CAMBIÓ EL PASO ANTES DE ESCRIBIRLO
+
+    el puesto `empaque` EXISTE en el organigrama ... si (unidad operaciones-zona)
+    tareas que tenia .............................. 0
+    fichas activas con ese puestoId ............... 1 de 148
+    y esa persona ABRIO LA APP HOY ................ con 0 tareas
+
+Es **la misma persona** que salió esta mañana en el cruce de «quién entra y no completa nada»:
+entraba, no tenía nada que hacer, y no porque no trabajara — porque **su puesto no tenía
+manual**. Nadie más lo lleva escrito a mano en `cargo` (0 coincidencias), así que hoy es
+exactamente una.
+
+#### UN MANUAL, DOS PUESTOS — Y NO UNA COPIA
+
+La MISMA tarea `kileadora.operacion` pasa a servir a los dos
+(`puestoIds: ['kileadora','empaque']`), que es el patrón del Checador y del Auxiliar de
+Encargado. **Dos documentos con los mismos puntos serían dos normas libres de discrepar**, y la
+que se quedara atrás juzgaría a una de las dos poblaciones con una regla vieja.
+
+Por eso las pruebas **no comprueban «empaque tiene 9 puntos»** —eso lo pasarían dos copias—
+sino que sea **la misma referencia** (`expect(emp[0]).toBe(kile[0])`), el mismo documento y la
+misma versión.
+
+**Y así hereda `H_LIMITE` sin tocarlo.** Con hora propia, el día que se enciendan los turnos la
+tarea **desaparecería de la emisión en silencio** —lo midió NEG-5 de la sesión de la ventana,
+`Expected 2 to be 3`— y con una sola persona en ese puesto nadie lo notaría hasta que ella
+preguntara por qué no le sale nada.
+
+#### EL `documento` SE RENOMBRA Y EL `id` NO
+
+«Operación de kileo y empaque». El id `kileadora.operacion` es **publicado y no se renombra
+nunca** (§2); el nombre del documento, en cambio, **lo lee la persona en su checklist**, y
+decía «Kileadora» sobre un puesto que se llama Empaque.
+
+Cambiarlo **es gratis hoy y no lo sería mañana**: no hay un solo checklist emitido con ese
+sello —el puesto nació esa misma tarde— y el sello es con lo que se juzga un día pasado (§5.4).
+La ventana para renombrar un documento dura exactamente hasta la primera emisión.
+
+#### LA GUARDIA VA SOBRE LOS 90 PUESTOS, NO SOBRE CUATRO ESCRITOS A MANO
+
+**451 unitarias** (447 → 451, 4 casos nuevos). El que más protege recorre el organigrama entero
+y exige que reciban esta tarea **exactamente dos puestos**: la dirección peligrosa de
+`puestoIds` es **ensanchar**, y una lista escrita a mano solo caza lo que a uno se le ocurrió
+poner en ella. Si mañana alguien agrega un tercero, la prueba lo dice con su nombre.
+
+**Control negativo**, una línea con su `diff` comprobado (677: quitar `'empaque'`): caen **los
+cuatro** casos nombrándose —«hereda la hora», «mismo documento» (`Expected null to be truthy`),
+«EXACTAMENTE DOS» (`Expected $.length = 1 to equal 2`)— y **lo demás sigue verde**. Archivo
+restaurado idéntico antes de reconstruir.
+
+#### ⚠ HALLAZGO AJENO, MEDIDO AL VERIFICAR OTRA COSA: 343 CHECKLISTS SIN DUEÑO
+
+Salió de comprobar una rareza —el total de fichas bajó de **159 a 158** mientras las inactivas
+seguían en **10**, o sea que **desapareció una FILA**, no que se desactivara una ficha—. Al
+buscar el rastro que deja un borrado físico apareció esto:
+
+    checklists cuyo dueño YA NO EXISTE como fila ... 343, de 3 personas
+       Erika Macias Perez ......... 280 · 14/jul -> 25/ago
+       Jhonatan Bravo cazares .....  40 · 14/jul -> 25/ago
+       Adriana Perez Zambrano .....  23 · 01/ago -> 25/ago
+    control: checklists con dueño amarrado ......... 12 638
+
+**A tres personas se les borró la ficha físicamente y su trabajo quedó sin a quién
+atribuirlo.** No es de hoy —las fechas se detienen el 25/ago— y es exactamente lo que el §5.5
+prohíbe, por el motivo que ahora se ve: esas 343 entregas existen, están en la base, y no le
+cuentan a ninguna persona ni a ninguna sucursal.
+
+**Lo del 159 → 158 quedó sin identificar**, y eso es un límite de la medición y no un dato: no
+se guardó el listado del «antes», así que no se sabe quién. Cabe también que se borrara una
+inactiva y se desactivara una activa a la vez, que da los mismos números.
+
+Y una segunda mitad: de las **10 fichas inactivas, 5 no tienen ninguna marca de cuándo ni de
+quién**. Hoy «¿quién dio de baja a esta persona?» no tiene respuesta en la base para la mitad de
+los casos. *(La otra sesión midió 0 de 10 con un criterio más estrecho; con `_historialPermisos`
+aceptado como rastro son 5. El criterio cambia el número, no la conclusión.)*
+
+**No se tocó nada de esto**: no era el paso, borrar o reasignar fichas es escribir en
+producción, y las tres pueden ser bajas legítimas mal ejecutadas. Queda medido y visible.
+
+#### LO QUE ESTO NO HACE
+
+- **Una sola persona lo recibe.** Mañana a las 00:00, y su primera prueba es que el censo del
+  emisor deje de nombrar «el puesto "Empaque" aún no tiene manual» con 1 persona.
+- **No arregla que `empaque` esté en la unidad equivocada.** El puesto cuelga de
+  `operaciones-zona` y reporta al Coordinador de Zona, pero ella trabaja en **Padre Hidalgo**,
+  que es sucursal: su cumplimiento se va a contar en zona y no en la tienda donde está. Es dato
+  de organización y lo decide Dirección (§8.5).
+- **El Auxiliar de Promociones queda EN PAUSA por instrucción expresa.** Sus nueve puntos están
+  redactados —derivados del módulo real: promo con vigencia y sucursales, encargo con piezas y
+  nombre del cliente, confirmación en caja— y **no se escribió una línea de código**. El
+  hallazgo que lo frenó: no es un puesto, son **tres funciones sobre puestos existentes** (2
+  anaquelistas y 1 cajera, una por rol), y el emisor **no sabe repartir por bandera**.
+- **Cero migraciones.** Ninguna ficha tocada.
+
+#### DESPLEGADO Y VERIFICADO
+
+    marcador .... «kileo y empaque» 0 -> 1 · 52 controles en pie
+                  67 archivos · 4.52 MB · 0 fallos de lectura
+    espera ...... 9 vueltas, anclada al rotulo `status:` y a la LINEA COMPLETA
+    log ......... arranca limpio, migraciones al dia, el emisor carga su regla
+                  (`NO SE PUDO CARGAR LA REGLA` = 0 · ventana de 15 lineas, citada)
+    pruebas ..... 451 unitarias · control negativo de una linea · arneses vecinos en verde
+
+El marcador es el `documento` renombrado —la cadena que cambia y la que la persona LEE en su
+checklist—, validado en las dos direcciones ANTES de subir: **0 en HEAD, 1 en `dist/`, 0 en
+producción**. Y los dos de la ventana (`inicio:"06:00"` y `"23:00"`) **bajan a control**: ya
+valían, y dejarlos arriba habría dado verde sin comprobar nada de este despliegue.
+
+**La prueba de verdad es mañana a las 00:00**: el censo del emisor tiene que dejar de nombrar
+«el puesto "Empaque" aún no tiene manual» con 1 persona, y esa persona tiene que amanecer con
+un checklist de 9 puntos. Hasta entonces, lo único probado es que la norma viajó.
+
+
 ### 22/sep/2026 (tarde) — LA KILEADORA: el puesto no existía, y la operación sí
 
 Instrucción de David: *«necesito que generes un plan de tareas para las kileadoras»*.

@@ -24,6 +24,63 @@ const path = require('path');
 const express = require('express');
 
 const app = express();
+// ============================================================================
+//  COMPRESION DE RESPUESTAS  (22/sep/2026)
+//
+//  POR QUE EXISTE ESTO, con las cifras que lo motivaron:
+//  el egress de MDTask medido en Railway era de 33.7 MB/min sostenido
+//  (12 172 MB en 6 h sobre 361 puntos de un minuto, ~48 GB/dia). De ese total,
+//  el 85% era UNA SOLA respuesta: `GET /api/checklists` devolviendo 28.6 MB,
+//  una vez por minuto. No era la tabla entera (eso pesa 43 MB): era una ventana
+//  de ~30-45 dias.
+//
+//  Y pesa tanto por cuatro cosas apiladas, ninguna de ellas un bug:
+//    1. el endpoint manda la operacion de TODA la empresa — el filtro por rol y
+//       sucursal es EN CLIENTE, y esta dicho en `api/checklists.js:17`;
+//    2. cada checklist viaja con su documento completo: `items[]` es el 79%;
+//    3. dentro de los items, el NOMBRE del campo pesa 1.48x el dato
+//       (9.7 MB de nombres contra 6.5 MB de valores en 30 dias);
+//    4. el texto de la norma viaja repetido: 554 textos distintos en 42 372
+//       puntos, o sea cada uno 76 veces.
+//
+//  Los puntos 3 y 4 son exactamente lo que un compresor come, y por eso el
+//  ratio es absurdo. Medido sobre el payload REAL (23.24 MB, 6 361 filas):
+//
+//      gzip nivel 6 ...  1.06 MB    22x     140 ms de CPU
+//      brotli q4 ......  0.18 MB   130x      92 ms   <- el que usa por omision
+//      brotli q5 ......  0.14 MB   163x     110 ms
+//      brotli q11 .....  0.12 MB   198x    6331 ms   <- LA TRAMPA
+//
+//  ⚠ POR ESO SE FIJA LA CALIDAD Y NO SE DEJA LA DE ZLIB. El `brotliCompressSync`
+//  de Node usa q11 por omision, y ahi cada respuesta costaria 6.3 SEGUNDOS de
+//  CPU: seria cambiar un problema de ancho de banda por uno de latencia, en un
+//  servidor de UNA sola replica (paso 0.4) donde ese bloqueo lo pagan todos.
+//  q5 comprime 7x mas que gzip costando MENOS CPU que gzip nivel 6.
+//
+//  EFECTO SECUNDARIO QUE NO ES SECUNDARIO: una respuesta de 29 MB es demasiado
+//  grande para el cache HTTP de Chrome, asi que el navegador nunca la guarda,
+//  nunca manda `If-None-Match` y nunca recibe un 304 — se la rebaja entera cada
+//  vez. Se midio en el log: los polls CHICOS del mismo cliente si devuelven 304
+//  con 0 bytes; este devolvia 200 con 29 277 KB, siempre. Comprimida a ~200 KB
+//  vuelve a ser cacheable, asi que un poll sin cambios deberia costar 0 bytes.
+//
+//  LO QUE ESTO **NO** ARREGLA: el endpoint sigue mandandole toda la operacion a
+//  cualquiera con token. Esto baja el recibo, no la exposicion. El recorte por
+//  plaza es Fase 3/9 y no viaja de contrabando aqui.
+//
+//  El `filter` por omision del paquete ya salta lo que no comprime (imagenes,
+//  fuentes, zips) via `compressible`, y el `threshold` evita gastar CPU en
+//  respuestas diminutas. No se reimplementa ninguna de las dos.
+// ============================================================================
+const compression = require('compression');
+const zlib = require('zlib');
+app.use(compression({
+  // Solo vale la pena a partir de ~1 KB; por debajo, la cabecera cuesta mas.
+  threshold: 1024,
+  // Ver arriba: q11 son 6.3 s por respuesta. q5 es el punto dulce medido.
+  brotli: { params: { [zlib.constants.BROTLI_PARAM_QUALITY]: 5 } },
+}));
+
 
 // Parseo de JSON en el body (Vercel lo hacia solo; aqui hay que activarlo).
 // `verify` guarda el cuerpo CRUDO en req.rawBody: lo necesita el webhook de

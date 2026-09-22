@@ -465,6 +465,29 @@ y su `git add` posterior solo arrastró lo suyo.
 despliegue conjunto, lleva marcadores de los dos, y partirlo habría sido más frágil que útil. Va
 entero en el commit de quien despliega y verifica.
 
+**Y una trampa de instrumento que salió de ahí, reusable y que cuesta poco caer en ella.** Al
+revisar un directorio sin rastrear que dejó la otra sesión, comprobé si estaba ignorado con
+`git check-ignore -v .tmp-diag/` y me devolvió **código 0** señalando la línea 70 del
+`.gitignore`. Conclusión: «está ignorado». **Falsa.** La línea 70 está **vacía**, el patrón que
+imprime entre `70:` y el tabulador es la **cadena vacía**, y la causa es **la barra final**:
+
+    git check-ignore -v zzz-inventado/   ->  codigo 0 · «.gitignore:70:	 zzz-inventado/»
+    git check-ignore -v zzz-inventado    ->  codigo 1 · sin salida
+
+O sea que **con barra final devuelve "ignorado" para cualquier ruta inventada**. Y la barra es
+justo como `git status` imprime los directorios, así que la ruta llega copiada de ahí. Lo que
+hace peligroso a este falso positivo es su dirección: dice «ya está cubierto» sobre un archivo
+que **sí** aparecería en un `git add -A` — es el caso del `respaldo-duplicados-*.json` del
+15/sep con el verificador tranquilizando en vez de avisando. Lo cazó la otra sesión midiendo el
+contenido de la línea (`sed -n '70p'`) en vez de creerle al código de salida, y se aisló con el
+par de arriba, que es el control que le faltaba a mi comprobación: **una ruta que se sabe no
+ignorada tiene que salir como no ignorada**.
+
+Decisión tomada con ella, y va en contra del reflejo: **no se agrega el patrón al `.gitignore`**.
+Ignorar un directorio de trabajo tapa el aviso el día que ese directorio sí lleve algo sensible;
+lo correcto es que los temporales no se escriban dentro del repo. Los suyos se movieron fuera y
+el árbol quedó en 0.
+
 #### DESPLEGADO Y VERIFICADO — en un solo `railway up` con el manual de la Kileadora
 
     marcadores .. inicio:"06:00" 0 -> 1 · "23:00" 0 -> 1 · kileadora.operacion 0 -> 1

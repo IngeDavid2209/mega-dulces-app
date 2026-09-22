@@ -326,6 +326,172 @@ de que exista la plaza sería partir el problema en dos, no resolverlo.
 
 ## 9. Bitácora del plan
 
+### 22/sep/2026 — «NO LOS DEJA SUBIR SUS TAREAS»: el guardado esperaba a Firestore
+
+Reporte de David: *«hay algunos usuarios que no los deja subir sus tareas»*. Preguntado qué
+es exactamente lo que no pueden —la regla del 1/sep: **el texto literal de la pantalla antes
+de investigar**— contestó dos cosas, y las dos resultaron ser defectos distintos: **no pueden
+subir la foto** y **tocan el punto y no pasa nada**. Quiénes: **anaquelistas y cajeros de
+piso**.
+
+#### LO PRIMERO FUE DESCARTAR, CON DATOS DE PRODUCCIÓN Y NO CON LECTURA DE CÓDIGO
+
+Seis hipótesis razonables, seis mediciones. Ninguna sobrevivió:
+
+    identidad rota (no reconoce al dueño) .. 189 checklists de hoy, 0 bloqueados
+    sucursal desalineada (no aparece) ...... 1 084 checklists, 0 desalineados
+    el servidor rechaza .................... 5 000 peticiones, 0 errores HTTP
+    Cloudinary sin cuota ................... sube 1 pixel al preset real: HTTP 200
+    fotos atascadas ........................ 354 en septiembre, 1 en estado raro
+    evidencia pisada por guardados en carrera  113 tocados, 0 incoherentes
+
+**La conexión a la base salió de `railway run -s Postgres`**, que inyecta la credencial en
+tiempo de ejecución sin imprimirla (§8.7). Queda anotado porque es la forma de leer producción
+sin que ninguna `DATABASE_URL` pase por una captura de pantalla, que ya ocurrió dos veces.
+
+**Y de paso destapó una trampa del esquema:** por la URL pública el `search_path` es
+`"$user", public`, y ahí `mdtask_checklists` **devuelve 0 sin error**. La app no la ve porque
+su `DATABASE_URL` lleva `options=-c search_path=eajd`. Es el §12 un nivel más arriba —el
+nombre equivocado no falla, miente— y el mismo cero falso que costó la tarde del 14/sep. Todo
+diagnóstico nuevo tiene que fijar el schema.
+
+#### LA CAUSA, Y LLEVABA MESES AHÍ
+
+`guardarEnLaNube` —el ÚNICO camino por el que se conserva una foto, un renglón o un palomeo—
+hacía esto, en este orden:
+
+    try { await setDoc(...Firestore...); } catch { console.error }
+    await this.api.guardarChecklist(...);      // Postgres
+
+**`setDoc` NO RECHAZA CUANDO NO HAY RED: el SDK encola la escritura y deja la promesa
+pendiente para siempre.** El `catch` nunca se dispara porque no hay error, hay un silencio. Así
+que ese `await` no fallaba: se quedaba ahí, y **la línea de abajo no se ejecutaba nunca**. La
+app LEE de Postgres, así que la foto se veía en pantalla (estado en memoria), el punto se
+marcaba hecho, y al siguiente poll de 20 s todo volvía atrás. Desde fuera: «subí la foto y se
+borró», o «no me deja subir mis tareas».
+
+**Es el defecto que `entregarDelCatalogo` documentó el 14/sep**, palabra por palabra («await
+setDoc no vuelve sin red»), y que allí se arregló poniendo la API primero. Aquel arreglo se
+quedó dentro de esa función. Éste es el camino por el que pasa el trabajo diario de 154
+personas. **Un arreglo que no sube a la función compartida es un arreglo que hay que volver a
+descubrir.**
+
+#### EL ARNÉS QUE FALTABA, Y POR QUÉ NINGÚN OTRO LO HABÍA VISTO
+
+Los 377 puntos del manual llevan `requiresVariasFotos`, así que su evidencia entra por la
+**galería** (`onMultiplePhotoSelected` → `onFileSelected(tempItem)`). Ese camino **no lo
+ejercía ningún arnés**: `prueba-envio-anaquelista` siembra checklists con las fotos ya puestas,
+y `prueba-dom-evidencia` cuenta nodos. Ninguno sube una foto.
+
+`scripts/prueba-subir-foto.js` (nuevo) la sube de verdad: mete un PNG en el input real,
+intercepta Cloudinary en `window.fetch` para poder medir el camino de éxito **y** el de fallo
+sin depender de la red, y cuenta lo que sale por el cable.
+
+    escenario                        cloud minis done  intento guardo ctrl
+    Cloudinary responde bien           1     1    1      0->2   0->2   si
+    Cloudinary RECHAZA                 2   1->0  1->0    0->2   0->2   si
+    toco el punto                      0     0    0        0      0    si
+
+`intento` = POST que la app **lanza**; `guardo` = POST que **llega**. Separarlos es lo que
+distingue «no lo intentó» de «lo intentó y no llegó», que con un solo número se ven idénticos.
+
+**EL CERO NO VALÍA SOLO, y por eso lleva control positivo:** al final de cada escenario el
+guion lanza un POST a mano. Si ése tampoco llegara, el cero de la app no probaría nada —sería
+el arnés el que no sabe ver un POST— y la tabla saldría acusando a un mecanismo intacto. Llegó
+en las seis corridas. El «antes» del cuadro es el código que estaba en producción, así que
+**es el control negativo, no una simulación de él**.
+
+#### Y LA MEDICIÓN DESTAPÓ DOS DEFECTOS MÁS, EN EL MISMO CAMINO
+
+**2 · LA FOTO QUE NO SUBIÓ CONTABA COMO EVIDENCIA.** Cuando Cloudinary rechazaba, la entrada
+entraba igual en la galería con la marca `offline_syncing`, y `tieneEvidencia` solo miraba
+`photos.length > 0`: **el punto quedaba HECHO con una prueba que solo existía en ese
+teléfono**, que nadie más puede abrir y que desaparece si la cola se llena (tope de 40). Es el
+invariante §5.3 roto por la puerta de al lado.
+
+Ahora la foto **se ve y se nombra** —«Sin subir · esperando señal. El punto no cuenta hasta que
+suba»— porque esconderla haría creer que se perdió, y contarla haría creer que está.
+
+**Medido ANTES de tocar la regla**, que es lo que la vuelve barata: sobre las **5 394 filas
+vivas y sus 40 308 puntos**, hay **372 fotos en galerías y UNA sin subir**. Mueve **1 punto en
+toda la empresa** — la misma ventana que la migración 045 midió para la Fase 2.
+
+**El criterio es lista NEGRA y no lista blanca, a propósito.** Exigir que la url empiece por
+`http` mide **igual hoy** (371 de 372), pero los dos fallan hacia lados opuestos el día que
+aparezca una url con una forma no prevista: la lista blanca **le quita el punto a quien sí
+subió su foto**, la negra se lo deja. Quitarle cumplimiento a alguien que trabajó es el error
+caro. Y la pantalla no reimplementa el criterio: `fotoPendiente` es `!fotoSubida`, la misma
+función negada, porque dos reglas sobre el mismo dato son dos reglas libres de discrepar.
+
+**3 · Y ESA FOTO SE PERDÍA PARA SIEMPRE.** La cola sin señal guardaba `indexItem` del **item
+TEMPORAL** que usa la galería —que no está en `checklist.items`, así que `findIndex` devolvía
+**-1**— y el robot de `app.ts` hacía `itemsArray[-1]`: `undefined`, no escribía nada, **no
+lanzaba**, y *por no lanzar* la foto no volvía a `fotosRestantes` y se borraba de la cola unas
+líneas más abajo. Sin un solo error. Ahora la cola lleva el item real y su destino
+(`aGaleria`, porque escribir en `photo` en un punto de galería es escribir en un campo que la
+plantilla **ni siquiera pinta**), y si el punto no se encuentra **la foto se queda en la cola**
+en vez de desaparecer.
+
+#### EL SEGUNDO SÍNTOMA ERA LITERAL: NO HABÍA NADA QUE TOCAR
+
+Desde que Dirección puso foto en los 377 puntos (3/sep), `soloSePaloma` es falso en todos, así
+que el botón «Marcar como hecha» **no se pinta para nadie**. Medido en el DOM con una
+anaquelista: **9 puntos · 0 botones «marcar como hecha» · 9 de foto**, y tocar la fila no
+producía ningún efecto ni ningún mensaje. «No me deja» y «no entendí qué me pide» se ven
+idénticos desde fuera, y se reportan igual.
+
+**No se le devuelve la palomita** —eso reabriría lo que cerró la Fase 2.1—: se le devuelve la
+frase. Ahora tocar el punto dice «se cierra con una FOTO» o «se cierra ESCRIBIENDO», según lo
+que pida la norma, y no marca nada.
+
+#### LO QUE ESTO NO ARREGLA, Y ES LO QUE MÁS PESA
+
+**Sólo 15 de 149 personas abrieron la app en las últimas 24 h.** De las 17 con latido en 48 h,
+14 tenían tareas hoy y **11 no completaron ni un punto**. Y la serie de entregas de toda la
+empresa lleva desde el 8/sep entre **1 y 11 por día sobre ~200 emitidas**.
+
+Este arreglo destapa el trabajo de quien sí entra; **no cambia el silencio**, que sigue siendo
+el hallazgo más grande del proyecto y no se arregla con código. La interpretación de esa cifra
+sigue **pendiente** (§8.11 f): con 100% de los puntos pidiendo foto desde el 3/sep, no se
+puede separar todavía «no usan la app» de «no pudieron guardar lo que hicieron» — y **este
+despliegue es justo lo que hace medible esa diferencia a partir de mañana**.
+
+#### LO QUE ESTO NO HACE
+
+- **Nadie ha entrado con una cuenta real.** Los 3 escenarios son sesiones sintéticas en Chrome
+  headless, y Chrome no es Safari (13/sep).
+- **No prueba que en producción Firestore estuviera inalcanzable.** Prueba que el modo de fallo
+  es real, que no deja rastro, y que con el orden nuevo el trabajo se guarda igual cuando
+  ocurre. Es exactamente lo que se pudo afirmar el 14/sep, y por el mismo motivo.
+- **La carrera de guardados sigue latente**: `actualizarEstado()` dispara `guardarEnLaNube` sin
+  `await` y dos guardados del mismo checklist pueden llegar fuera de orden. Medido hoy: **0
+  casos** (113 checklists tocados, todos coherentes), así que no se tocó.
+- **Cero migraciones.** Ninguna ficha, ningún número de tablero movido a mano.
+
+#### DESPLEGADO Y VERIFICADO
+
+    marcadores .. copiar la tarea a la nube de respaldo 0 -> 1 · cl-foto-pendiente 0 -> 5
+                  se cierra con una FOTO 0 -> 1 · 46 controles en pie
+                  67 archivos · 4.52 MB · 0 fallos de lectura
+    espera ...... 11 vueltas, anclada al rotulo `status:` y a la LINEA COMPLETA
+                  (vio `Building` y `Deploying` y solo paro en `● Online` a secas)
+    log ......... arranca limpio, migraciones al dia, el emisor carga su regla
+                  (`NO SE PUDO CARGAR LA REGLA` = 0 · ventana de 12 lineas)
+    pruebas ..... 433 unitarias (427 -> 433) · arnes nuevo 3 escenarios con control
+                  positivo · cinco vecinos en verde (envio-anaquelista, evidencia-escrita,
+                  dom-evidencia, tareas-unidas, arbol-organigrama)
+
+Los tres marcadores se validaron **en las dos direcciones ANTES de subir**: 1, 5 y 1 en
+`dist/`, **0 en lo servido**. Y ninguno lleva vocal acentuada, porque el bundle las escapa y un
+ancla con acento no pega — sería un no-op, y un no-op da verde (14/sep). Los dos de ayer
+—`auxiliar-encargado.operacion` y `surtidor-sucursal.operacion`— **bajan a control**: ya valían
+en producción, y dejarlos arriba habría dado verde sin comprobar nada de hoy.
+
+**La primera prueba de verdad es mañana por la mañana:** si los puntos con evidencia del día
+suben por encima de los 1–11 diarios de las últimas dos semanas, el arreglo sirvió. Y si no
+suben, el silencio no era esto — que también es una respuesta, y por primera vez se puede
+distinguir.
+
 
 ### 21/sep/2026 (tarde) — DOS NORMAS NUEVAS: el Auxiliar deja de pedir prestada la de su jefa
 

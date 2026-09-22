@@ -448,11 +448,9 @@ cambios): los checklists de hoy conservan sus horas viejas y los 06:00-23:00 emp
 las 00:00**, cuando el emisor haga su vuelta de medianoche. Ninguna ficha tocada, ningún número
 de tablero movido a mano.
 
-**La verificación que vale es la de mañana**, y es la misma consulta con la que empezó el paso:
-tiene que devolver **una sola fila por momento**, con `06:00 → 23:00`, sobre ~1 400 puntos. Si
-devuelve dos horas, alguna tarea se quedó atrás. (Con `set search_path to eajd` primero: por la
-URL pública el `search_path` es `"$user", public` y `mdtask_checklists` devuelve **0 sin
-error**.)
+**La verificación que vale es la de mañana**, y queda abajo con su script y su línea base. El
+script fija el schema por su cuenta: por la URL pública el `search_path` es `"$user", public` y
+ahí `mdtask_checklists` devuelve **0 sin error**.
 
 #### DOS SESIONES EN EL MISMO ÁRBOL, Y ESTA VEZ SALIÓ BIEN
 
@@ -466,6 +464,63 @@ y su `git add` posterior solo arrastró lo suyo.
 **Y `verificar-despliegue.js` se quedó fuera de mi commit a propósito:** es el instrumento del
 despliegue conjunto, lleva marcadores de los dos, y partirlo habría sido más frágil que útil. Va
 entero en el commit de quien despliega y verifica.
+
+#### DESPLEGADO Y VERIFICADO — en un solo `railway up` con el manual de la Kileadora
+
+    marcadores .. inicio:"06:00" 0 -> 1 · "23:00" 0 -> 1 · kileadora.operacion 0 -> 1
+                  49 controles en pie · 4.52 MB · 0 fallos de lectura
+                  (ngsw.json 8 084 bytes · index.html 31 747 bytes)
+    espera ...... 12 vueltas, anclada al rotulo `status:` y a la LINEA COMPLETA
+    log ......... arranca limpio, migraciones al dia, y el emisor CARGA SU REGLA
+                  `NO SE PUDO CARGAR LA REGLA` = 0 · ventana de 12 lineas
+
+**Los tres marcadores se midieron dos veces, por las dos sesiones y por separado**, con el
+mismo control (`cl-foto-pendiente` = 5 en producción, que es lo que prueba que el recorrido
+alcanza los chunks lazy). Van **dos** para esta ventana y no uno porque son sus dos mitades: si
+solo viajara el fin, el punto vencería bien y la tarjeta seguiría diciendo «Sin horario», que es
+medio arreglo con cara de entero.
+
+**Y el marcador no podía probar la mitad que importa.** `dist/manual` **no está en el
+`ngsw.json`** —no es un archivo del bundle, es la regla compilada que lee el servidor— así que
+los tres habrían salido verdes igual con el emisor incapaz de cargarla. Por eso se buscaron **las
+dos cadenas** en el log, no solo la buena.
+
+**Dato para la próxima:** durante todo el build, `railway status` dijo `● Online` con el
+**deployment ID del despliegue de la mañana**. Quien mire el estado en vez de contar marcadores
+concluye que llegó mientras todavía se sirve la instancia vieja. Es la quinta vez que ese campo
+miente a medias en este repo.
+
+#### LA LÍNEA BASE, MEDIDA EL MISMO DÍA, Y LA PRUEBA ES MAÑANA
+
+Los puntos del manual **emitidos hoy** —que no se reescriben (§5.5)— son **8 combinaciones sobre
+1 493 puntos**, y **ninguna** dentro de la ventana:
+
+    momento     inicio   limite   puntos
+    apertura    (sin)    09:00        26
+    apertura    (sin)    09:30        32
+    apertura    (sin)    10:00        34
+    apertura    (sin)    11:00        77
+    apertura    (sin)    12:00        52
+    cierre      (sin)    23:59       382
+    operacion   (sin)    18:00       379
+    operacion   (sin)    23:59       511
+                                   1 493   ·   dentro de la ventana: 0
+
+`scripts/diagnostico-ventana-entrega.js` (nuevo, **solo lee**) es lo que devuelve esa tabla, y
+**la ventana no está tecleada ahí**: se importa de `dist/manual`, la misma regla compilada que
+usa el emisor. Un literal `'23:00'` escrito en el script sería una tercera versión de la verdad
+libre de discrepar de las otras dos, y diría que todo está bien el día que alguien mueva la
+ventana y olvide ese archivo (§8.11 d). Sin `dist/manual` **aborta**: prefiere no medir a medir
+contra un valor inventado.
+
+Sus controles, corridos en las dos direcciones: **sin credencial sale con código 3** («no pude
+medir», nunca un cero), y **sobre los datos de hoy sale con código 2** nombrando las 8
+combinaciones — o sea que el detector discrimina, y el `0 dentro` de arriba no es una señal
+muerta. *(Y el `codigo=0` de mi primera comprobación era mío: `$?` después de un pipe devuelve
+el de `tail`, no el del script. Medido otra vez sin pipe: 2.)*
+
+**Mañana tiene que devolver una sola fila por momento, con `06:00 → 23:00`.** Si devuelve dos
+horas, hay una tarea que se quedó atrás o un camino que sigue sobreescribiendo la del catálogo.
 
 #### LO QUE ESTO NO HACE, dicho para que no se lea como resuelto
 

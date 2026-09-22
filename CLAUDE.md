@@ -326,6 +326,159 @@ de que exista la plaza sería partir el problema en dos, no resolverlo.
 
 ## 9. Bitácora del plan
 
+### 22/sep/2026 (tarde) — UNA SOLA VENTANA: 06:00 → 23:00, y la apertura pierde su excepción
+
+Instrucción de David: *«vamos a cambiar los horarios de las tareas, quiero que inicien de 6:00
+am a 10:30 PM absolutamente todas»*. Se le puso enfrente la tabla de lo que había —medida en
+producción antes de tocar una línea— y contestó con la corrección que cambió el número:
+*«no las quiero así, las quiero de 6:00 am a 11:00 pm»*.
+
+#### LO PRIMERO FUE MEDIR QUÉ HORAS HAY DE VERDAD, Y NO ERAN LAS DEL CATÁLOGO
+
+    momento          hora limite   puntos
+    apertura         11:00           446   <- sale del horario REAL de RH
+    apertura         12:00           354   <- del catalogo (sucursal sin horario)
+    apertura         09:30/10:00/09:00  487   <- horario REAL de RH
+    operacion        23:59          3404
+    operacion        18:00          2819
+    cierre           23:59          2356
+    supervision      19:00            48
+    administrativo   19:00            35
+    TOTAL                           9 949 puntos en 7 dias
+
+**NUEVE horas distintas**, y la fila que decidió el alcance del paso es la de apertura:
+**1 087 de sus 1 477 puntos NO vencían a la hora del catálogo**. `armarChecklist` la
+sobreescribía con la hora real a la que abre cada tienda (`limiteAperturaDe`, horario de RH +
+margen). O sea que «cambiar el catálogo» habría dejado fuera a la mayoría de las aperturas, y
+el resultado habría sido una tabla con menos horas en vez de una. Leer el catálogo no bastaba:
+la hora que rige salía de otro archivo.
+
+Con la cifra enfrente, David eligió apagar esa excepción. **Precio dicho antes de aplicarlo:**
+una apertura sin entregar dejaba de estar «a tiempo» a las 09:00-11:00 según la tienda y ahora
+aguanta hasta las 23:00 como todo lo demás. Se pierde esa presión temprana; se gana que nadie
+tenga dos relojes distintos el mismo día. `limiteAperturaDe` **no se borra** —se le quita la
+llamada, con el texto viejo citado— para que devolver la excepción sea una línea y no una
+reconstrucción de memoria (la lección de `limpiarHuerfanas`).
+
+#### LA HORA DE INICIO NO EXISTÍA EN UNA SOLA ENTREGA
+
+`armarChecklist` ponía `horaInicio: null` en los 377 puntos, así que la tarjeta decía
+**«Sin horario»** en todos. «Que inicien a las 6:00» no fue cambiar un valor: fue **estrenar un
+campo** que la plantilla ya sabía pintar y que nadie llenaba. No bloquea nada —nadie impide
+trabajar antes de las 06:00—: es lo que se anuncia.
+
+#### ⚠ LA GUARDA QUE NADIE PIDIÓ, Y SIN ELLA ESTO ERA UNA BOMBA DE RELOJERÍA
+
+`rutinaPermitidaEnTurno` (`turnos.util.ts:212`) deja pasar de balde a las tareas que valen
+**exactamente `'23:59'`**. Ese escape es el que hasta hoy salvaba a las **2 356 entregas de
+cierre** de la semana. Con 23:00 deja de aplicar, y 23:00 cae fuera de los dos turnos
+configurados (06:00-14:30 y 09:00-17:30): el día que alguien encendiera el interruptor de
+turnos, **NADIE recibiría una sola tarea** — sin error, sin log, y exactamente igual que un día
+sin trabajo pendiente (§5.2).
+
+**Medido en producción antes de escribir la guarda:** `habilitado` es **false** sobre **149
+fichas activas**, así que hoy esa rama no rechaza a nadie y la guarda no cambia una sola
+emisión. Está puesta para que eso siga siendo verdad mañana. La regla: una tarea cuya ventana
+cubre el día entero no le deja nada que decidir al turno; se sigue filtrando lo que trae hora
+propia.
+
+**Y el control negativo lo demostró en vivo, sin buscarlo.** Al dejar UNA sola tarea a las
+18:00, la prueba de turnos cayó con `Expected 2 to be 3`: esa tarea **desaparece de la
+emisión**. No es una teoría sobre lo que pasaría al encender los turnos — es el daño, medido,
+en la única tarea que se quedó fuera de la ventana.
+
+#### LO QUE ESTO ALCANZA, Y POR QUÉ CUBRE EL «ABSOLUTAMENTE TODAS»
+
+**0 tareas capturadas** en `mdtask_tareas_puesto` (la tabla nació vacía el 15/sep y sigue
+así), así que las 50 del catálogo son el **100% de lo que el robot emite**. Y por decisión de
+David, los formularios de creación a mano —tarea única, rutinas, actividades de equipo y el
+primer bloque— **nacen** con la misma ventana. Es un valor por omisión editable, no un candado:
+quien crea la tarea sigue decidiendo.
+
+Las cinco constantes por momento se funden en una `VENTANA_MANUAL` y las 50 tareas pasan a
+`H_LIMITE`. **Cinco nombres que prometen horas distintas y devuelven la misma son una trampa
+para el siguiente que lea** (la lección de `pl-hoja` del 13/sep), así que se reemplazaron los 50
+usos en vez de dejar los alias apuntando al mismo valor. El `momento` **no** desaparece: sigue
+diciendo de qué parte de la jornada es la tarea y el emisor lo sella en `_momento`. Lo único que
+se unifica es la hora con la que se juzga el retraso.
+
+#### LAS PRUEBAS, Y LOS CINCO CONTROLES NEGATIVOS
+
+**447 unitarias** (433 → 447; **7 de las 14 nuevas son de esta ventana**, las otras 7 son del
+manual de la Kileadora, que salió en el mismo despliegue). Cada control, **una línea** con su
+`diff` comprobado:
+
+| | qué se rompió | qué pasó |
+|---|---|---|
+| NEG-1 | la apertura vuelve a salir del horario de RH | **exactamente 1**: el caso que protege los 1 087 puntos |
+| NEG-2 | el punto vuelve a nacer con `horaInicio: null` | **exactamente 1** |
+| NEG-3 | se quita la guarda de la ventana en el filtro de turno | 2, las dos de turnos |
+| NEG-4 | la ventana vuelve a cerrar a las 23:59 | 4, nombrando cada una |
+| NEG-5 | UNA sola tarea se queda con las 18:00 | 3, y las dos del catálogo la nombran |
+
+**NEG-4 y NEG-5 son la pareja que hace válidas a las dos aserciones del catálogo, y separarlos
+no fue un lujo.** NEG-4 mueve la ventana entera y **la aserción de uniformidad sigue verde** —con
+razón: si todas cambian juntas, siguen siendo iguales—. O sea que el caso de «todas vencen a la
+misma hora» **no se ejercía con NEG-4**, y sin NEG-5 se habría dado por corrido sin haber
+discriminado nunca. Es el corolario (c) por la puerta de al lado: no basta que el control falle,
+tiene que fallar **el caso que uno cree estar probando**.
+
+**Y el aviso que valió más que los controles:** la otra sesión preguntó si mis 7 casos
+**corrían**, o si los había dado por corridos porque el total subió de 433 a 447. La aritmética
+cuadraba y no probaba nada —447 incluía sus 7—. Los cinco controles cubren los 7 casos uno por
+uno, y de paso corrigen una frase mía que atribuía las 14 pruebas nuevas a este paso.
+
+#### MI FIXTURE DIO CERO ENTREGAS, Y SE LEÍA COMO «LA GUARDA NO FUNCIONA»
+
+Primera corrida del bloque de turnos: **0 entregas**, o sea el síntoma exacto del defecto que la
+guarda viene a prevenir. No era la guarda: puse las sucursales dentro de `datos` —que es como
+viven en la columna jsonb— y `sucursalesDe` las lee **planas**, así que la cajera salía «sin
+sucursal». **Un fixture con una forma que el sistema no produce no solo deja de encontrar
+defectos: FABRICA uno**, y éste tenía la forma del hallazgo que yo esperaba encontrar, que es lo
+que lo hacía creíble. Tercera vez en cuatro días (19/sep, 20/sep, hoy).
+
+La aserción quedó **comparando turnos encendidos contra apagados** en vez de exigir «> 0»: con
+los turnos apagados el fixture siempre entrega, así que un «> 0» a secas no distingue la guarda
+funcionando de la guarda ausente.
+
+#### CERO MIGRACIONES, Y HOY NO SE MUEVE NADA EN PANTALLA
+
+Lo ya emitido **no se reescribe** (`on conflict do nothing` y la llave de idempotencia sin
+cambios): los checklists de hoy conservan sus horas viejas y los 06:00-23:00 empiezan **mañana a
+las 00:00**, cuando el emisor haga su vuelta de medianoche. Ninguna ficha tocada, ningún número
+de tablero movido a mano.
+
+**La verificación que vale es la de mañana**, y es la misma consulta con la que empezó el paso:
+tiene que devolver **una sola fila por momento**, con `06:00 → 23:00`, sobre ~1 400 puntos. Si
+devuelve dos horas, alguna tarea se quedó atrás. (Con `set search_path to eajd` primero: por la
+URL pública el `search_path` es `"$user", public` y `mdtask_checklists` devuelve **0 sin
+error**.)
+
+#### DOS SESIONES EN EL MISMO ÁRBOL, Y ESTA VEZ SALIÓ BIEN
+
+El manual de la Kileadora se escribía **en el mismo archivo** (`tareas-manual.catalogo.ts`) y al
+mismo tiempo. Lo que lo resolvió no fue la regla de «rutas explícitas» —las dos sesiones tocaban
+el mismo fichero, así que no separa nada— sino **construir el blob desde HEAD + solo mis
+cambios** (`git hash-object` + `update-index`) y revisar el **diff del contenido**:
+`git diff --cached | grep -ci kileadora` → **0**. El árbol de trabajo conservó su bloque intacto
+y su `git add` posterior solo arrastró lo suyo.
+
+**Y `verificar-despliegue.js` se quedó fuera de mi commit a propósito:** es el instrumento del
+despliegue conjunto, lleva marcadores de los dos, y partirlo habría sido más frágil que útil. Va
+entero en el commit de quien despliega y verifica.
+
+#### LO QUE ESTO NO HACE, dicho para que no se lea como resuelto
+
+- **Nadie ha entrado con una cuenta real.** Las 447 son pruebas unitarias; nadie ha visto la
+  tarjeta decir «06:00 → 23:00» en un teléfono. Y Chrome no es Safari (13/sep).
+- **No cambia un solo número hoy**, y eso está medido, no supuesto: lo de hoy ya se emitió.
+- **La apertura pierde su aviso temprano.** Es la decisión de David con el precio enfrente, no
+  un efecto colateral — pero si alguien reporta que «ya no se pone en rojo por la mañana», ésta
+  es la causa y no un defecto.
+- **El manual sigue siendo código** (hallazgo 5): esta corrección de norma costó un despliegue,
+  como todas. Eso es 7.1b.
+
+
 ### 22/sep/2026 — «NO LOS DEJA SUBIR SUS TAREAS»: el guardado esperaba a Firestore
 
 Reporte de David: *«hay algunos usuarios que no los deja subir sus tareas»*. Preguntado qué

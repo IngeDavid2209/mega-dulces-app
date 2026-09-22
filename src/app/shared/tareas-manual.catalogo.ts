@@ -153,12 +153,42 @@ export interface ManualPuesto {
   formatosNoAutomatizados?: string[];
 }
 
-// Horas de entrega por momento (ver nota en `horaLimite`).
-const H_APERTURA = '12:00';
-const H_OPERACION = '18:00';
-const H_SUPERVISION = '19:00';
-const H_ADMIN = '19:00';
-const H_CIERRE = '23:59';
+// ══════════════════════════════════════════════════════════════════════════
+//  LA VENTANA DE ENTREGA: 06:00 → 23:00, LA MISMA PARA TODAS
+// ══════════════════════════════════════════════════════════════════════════
+// Instrucción de David (22/sep/2026): «vamos a cambiar los horarios de las
+// tareas, quiero que inicien de 6:00 am a 11:00 pm absolutamente todas». Se
+// le puso enfrente la tabla de lo que había —NUEVE horas distintas repartidas
+// en 9 949 puntos emitidos en una semana— y contestó «no las quiero así».
+//
+// DEROGA el reparto por momento, que era esto:
+//
+//     const H_APERTURA    = '12:00';
+//     const H_OPERACION   = '18:00';
+//     const H_SUPERVISION = '19:00';
+//     const H_ADMIN       = '19:00';
+//     const H_CIERRE      = '23:59';
+//
+// Se cita en vez de borrarse, como el resto de reglas derogadas de este repo,
+// para que nadie lo relea como vigente y para que devolver la diferenciación
+// sea cambiar cinco valores y no reconstruirla de memoria.
+//
+// ─── LO QUE NO DESAPARECE ─────────────────────────────────────────────────
+// El `momento` de cada tarea sigue intacto: dice de qué parte de la jornada
+// es (apertura, cierre, operación…) y el emisor lo sella en `_momento`, que
+// es de donde salen los conteos por momento. Lo único que se unifica es la
+// hora con la que se juzga el RETRASO, que es otra cosa: hasta hoy una
+// apertura se ponía en rojo a media mañana y una de cierre a las 23:59.
+//
+// ─── POR QUÉ 23:00 Y NO 23:59 IMPORTA MÁS DE LO QUE PARECE ────────────────
+// `rutinaPermitidaEnTurno` (turnos.util.ts:212) deja pasar cualquier tarea
+// cuya hora sea EXACTAMENTE '23:59' — ese escape es el que hoy salva a las
+// 2 356 entregas de cierre de la semana. Con 23:00 el escape ya no aplica, y
+// por eso el emisor lleva su propia guarda: ver `emision-manual.util.ts`.
+export const VENTANA_MANUAL = { inicio: '06:00', fin: '23:00' } as const;
+
+/** Hora en que vence CUALQUIER tarea del manual. Ver el bloque de arriba. */
+const H_LIMITE = VENTANA_MANUAL.fin;
 
 /**
  * Nota que llevan las tareas de "operación del turno".
@@ -195,7 +225,7 @@ export const MANUALES_POR_PUESTO: ManualPuesto[] = [
       {
         id: 'cajero-sucursal.apertura',
         nombre: 'Checklist de apertura de caja',
-        momento: 'apertura', frecuencia: 'Diaria', horaLimite: H_APERTURA,
+        momento: 'apertura', frecuencia: 'Diaria', horaLimite: H_LIMITE,
         codigoFormato: 'Anexo A',
         items: [
           { texto: 'Área limpia y ordenada' },
@@ -209,7 +239,7 @@ export const MANUALES_POR_PUESTO: ManualPuesto[] = [
       {
         id: 'cajero-sucursal.cierre',
         nombre: 'Checklist de cierre de caja',
-        momento: 'cierre', frecuencia: 'Diaria', horaLimite: H_CIERRE,
+        momento: 'cierre', frecuencia: 'Diaria', horaLimite: H_LIMITE,
         codigoFormato: 'Anexo B',
         items: [
           { texto: 'Último cliente atendido y cortina cerrada' },
@@ -225,7 +255,7 @@ export const MANUALES_POR_PUESTO: ManualPuesto[] = [
       {
         id: 'cajero-sucursal.operacion',
         nombre: 'Operación de caja del turno',
-        momento: 'operacion', frecuencia: 'Diaria', horaLimite: H_CIERRE,
+        momento: 'operacion', frecuencia: 'Diaria', horaLimite: H_LIMITE,
         codigoFormato: '3.2 – 3.11',
         nota: NOTA_OPERACION,
         items: [
@@ -260,7 +290,7 @@ export const MANUALES_POR_PUESTO: ManualPuesto[] = [
       {
         id: 'anaquelista.pasillo',
         nombre: 'Checklist diario de pasillo',
-        momento: 'operacion', frecuencia: 'Diaria', horaLimite: H_OPERACION,
+        momento: 'operacion', frecuencia: 'Diaria', horaLimite: H_LIMITE,
         codigoFormato: 'Anexo A',
         items: [
           { texto: 'Lista de surtido entregada/atendida' },
@@ -277,7 +307,7 @@ export const MANUALES_POR_PUESTO: ManualPuesto[] = [
       {
         id: 'anaquelista.operacion',
         nombre: 'Operación de pasillo del turno',
-        momento: 'operacion', frecuencia: 'Diaria', horaLimite: H_CIERRE,
+        momento: 'operacion', frecuencia: 'Diaria', horaLimite: H_LIMITE,
         codigoFormato: '3.1 – 3.12',
         nota: NOTA_OPERACION,
         items: [
@@ -339,7 +369,7 @@ export const MANUALES_POR_PUESTO: ManualPuesto[] = [
       {
         id: 'encargado-sucursal.apertura',
         nombre: 'Checklist de apertura de sucursal',
-        momento: 'apertura', frecuencia: 'Diaria', horaLimite: H_APERTURA,
+        momento: 'apertura', frecuencia: 'Diaria', horaLimite: H_LIMITE,
         codigoFormato: 'Anexo A',
         items: [
           { texto: 'Alarma/candados retirados y acceso seguro' },
@@ -358,7 +388,7 @@ export const MANUALES_POR_PUESTO: ManualPuesto[] = [
       {
         id: 'encargado-sucursal.cierre',
         nombre: 'Checklist de cierre de sucursal',
-        momento: 'cierre', frecuencia: 'Diaria', horaLimite: H_CIERRE,
+        momento: 'cierre', frecuencia: 'Diaria', horaLimite: H_LIMITE,
         codigoFormato: 'Anexo B',
         items: [
           { texto: 'Pasillos sin mercancía pendiente de acomodo' },
@@ -374,7 +404,7 @@ export const MANUALES_POR_PUESTO: ManualPuesto[] = [
       {
         id: 'encargado-sucursal.operacion',
         nombre: 'Operación de sucursal del turno',
-        momento: 'operacion', frecuencia: 'Diaria', horaLimite: H_CIERRE,
+        momento: 'operacion', frecuencia: 'Diaria', horaLimite: H_LIMITE,
         codigoFormato: '2.3',
         // SOLO LA ENCARGADA (21/sep/2026). El Auxiliar comparte este manual
         // pero tiene su propia operacion, abajo: aqui hay puntos de MANDO
@@ -443,7 +473,7 @@ export const MANUALES_POR_PUESTO: ManualPuesto[] = [
         // su decision, para que no se le cuente como falta.
         id: 'auxiliar-encargado.operacion',
         nombre: 'Operación del Auxiliar de Encargado',
-        momento: 'operacion', frecuencia: 'Diaria', horaLimite: H_CIERRE,
+        momento: 'operacion', frecuencia: 'Diaria', horaLimite: H_LIMITE,
         codigoFormato: '',
         soloPuestos: ['auxiliar-encargado'],
         // ⚠ SELLO PROPIO, Y EL TEXTO ES FEO A PROPOSITO.
@@ -486,7 +516,7 @@ export const MANUALES_POR_PUESTO: ManualPuesto[] = [
       {
         id: 'bodeguero-sucursal.inicio',
         nombre: 'Checklist diario de inicio y surtido',
-        momento: 'apertura', frecuencia: 'Diaria', horaLimite: H_APERTURA,
+        momento: 'apertura', frecuencia: 'Diaria', horaLimite: H_LIMITE,
         codigoFormato: '16.1',
         items: [
           { texto: 'Listas de Anaquelistas/Promotoras recibidas' },
@@ -500,7 +530,7 @@ export const MANUALES_POR_PUESTO: ManualPuesto[] = [
       {
         id: 'bodeguero-sucursal.cierre',
         nombre: 'Checklist de cierre de Bodega',
-        momento: 'cierre', frecuencia: 'Diaria', horaLimite: H_CIERRE,
+        momento: 'cierre', frecuencia: 'Diaria', horaLimite: H_LIMITE,
         codigoFormato: '16.2',
         items: [
           { texto: 'Carretas despejadas o correctamente ubicadas' },
@@ -514,7 +544,7 @@ export const MANUALES_POR_PUESTO: ManualPuesto[] = [
       {
         id: 'bodeguero-sucursal.operacion',
         nombre: 'Operación de Bodega del turno',
-        momento: 'operacion', frecuencia: 'Diaria', horaLimite: H_CIERRE,
+        momento: 'operacion', frecuencia: 'Diaria', horaLimite: H_LIMITE,
         codigoFormato: '4.1 – 10.1',
         nota: NOTA_OPERACION,
         items: [
@@ -567,7 +597,7 @@ export const MANUALES_POR_PUESTO: ManualPuesto[] = [
       {
         id: 'surtidor-sucursal.operacion',
         nombre: 'Operación de surtido del turno',
-        momento: 'operacion', frecuencia: 'Diaria', horaLimite: H_CIERRE,
+        momento: 'operacion', frecuencia: 'Diaria', horaLimite: H_LIMITE,
         codigoFormato: '',
         nota: NOTA_OPERACION,
         items: [
@@ -622,7 +652,7 @@ export const MANUALES_POR_PUESTO: ManualPuesto[] = [
       {
         id: 'almacenista-sucursal.diario',
         nombre: 'Checklist diario de almacén',
-        momento: 'operacion', frecuencia: 'Diaria', horaLimite: H_OPERACION,
+        momento: 'operacion', frecuencia: 'Diaria', horaLimite: H_LIMITE,
         codigoFormato: 'Anexo 1',
         items: [
           { texto: 'Pasillos libres' },
@@ -640,7 +670,7 @@ export const MANUALES_POR_PUESTO: ManualPuesto[] = [
       {
         id: 'almacenista-sucursal.seguridad',
         nombre: 'Checklist de seguridad de almacén',
-        momento: 'operacion', frecuencia: 'Semanal', diaSemana: 'Lunes', horaLimite: H_OPERACION,
+        momento: 'operacion', frecuencia: 'Semanal', diaSemana: 'Lunes', horaLimite: H_LIMITE,
         codigoFormato: 'Anexo 6',
         nota: 'El anexo pide estado y acción requerida por elemento. Lo que no cumpla se reporta con su acción y responsable en las observaciones.',
         items: [
@@ -656,7 +686,7 @@ export const MANUALES_POR_PUESTO: ManualPuesto[] = [
       {
         id: 'almacenista-sucursal.operacion',
         nombre: 'Operación de almacén del turno',
-        momento: 'operacion', frecuencia: 'Diaria', horaLimite: H_CIERRE,
+        momento: 'operacion', frecuencia: 'Diaria', horaLimite: H_LIMITE,
         codigoFormato: '3.2 – 3.8',
         nota: NOTA_OPERACION,
         items: [
@@ -697,7 +727,7 @@ export const MANUALES_POR_PUESTO: ManualPuesto[] = [
       {
         id: 'recepcion-mercancia-sucursal.recepcion',
         nombre: 'Checklist de recepción de mercancía',
-        momento: 'operacion', frecuencia: 'Diaria', horaLimite: H_OPERACION,
+        momento: 'operacion', frecuencia: 'Diaria', horaLimite: H_LIMITE,
         codigoFormato: 'RM-PH-02', porEvento: true,
         nota: 'El manual lo llena en CADA recepción. Aquí se entrega una vez al día como registro consolidado de la jornada.',
         items: [
@@ -719,7 +749,7 @@ export const MANUALES_POR_PUESTO: ManualPuesto[] = [
       {
         id: 'recepcion-mercancia-sucursal.seguridad',
         nombre: 'Checklist de seguridad y orden del área',
-        momento: 'operacion', frecuencia: 'Diaria', horaLimite: H_OPERACION,
+        momento: 'operacion', frecuencia: 'Diaria', horaLimite: H_LIMITE,
         codigoFormato: 'RM-PH-11',
         items: [
           { texto: 'Área despejada' },
@@ -735,7 +765,7 @@ export const MANUALES_POR_PUESTO: ManualPuesto[] = [
       {
         id: 'recepcion-mercancia-sucursal.cierre',
         nombre: 'Cierre diario de recepción',
-        momento: 'cierre', frecuencia: 'Diaria', horaLimite: H_CIERRE,
+        momento: 'cierre', frecuencia: 'Diaria', horaLimite: H_LIMITE,
         codigoFormato: 'RM-PH-12',
         items: [
           { texto: 'Recepciones cerradas' },
@@ -750,7 +780,7 @@ export const MANUALES_POR_PUESTO: ManualPuesto[] = [
       {
         id: 'recepcion-mercancia-sucursal.carpeta-prevencion',
         nombre: 'Control semanal de carpeta para Prevención',
-        momento: 'administrativo', frecuencia: 'Semanal', diaSemana: 'Viernes', horaLimite: H_ADMIN,
+        momento: 'administrativo', frecuencia: 'Semanal', diaSemana: 'Viernes', horaLimite: H_LIMITE,
         codigoFormato: 'RM-PH-06',
         items: [
           { texto: 'Folios y compras de la semana integrados' },
@@ -783,7 +813,7 @@ export const MANUALES_POR_PUESTO: ManualPuesto[] = [
       {
         id: 'checador.checado-pedido',
         nombre: 'Checklist de checado de pedido',
-        momento: 'operacion', frecuencia: 'Diaria', horaLimite: H_OPERACION,
+        momento: 'operacion', frecuencia: 'Diaria', horaLimite: H_LIMITE,
         codigoFormato: 'CEDIS-CH-01', porEvento: true,
         nota: 'El manual lo aplica por CADA pedido. Aquí se entrega una vez al día como registro consolidado; un "No" en código, cantidad, destino, mercancía sin etiqueta o diferencia sin resolver impide liberar la carga.',
         items: [
@@ -806,7 +836,7 @@ export const MANUALES_POR_PUESTO: ManualPuesto[] = [
       {
         id: 'checador.liberacion-carga',
         nombre: 'Liberación de pedido para carga',
-        momento: 'operacion', frecuencia: 'Diaria', horaLimite: H_OPERACION,
+        momento: 'operacion', frecuencia: 'Diaria', horaLimite: H_LIMITE,
         codigoFormato: 'CEDIS-CH-06', porEvento: true,
         nota: 'Con este formato el Checador confirma que terminó su revisión y transfiere el pedido a carga. No se libera con una diferencia crítica pendiente: la excepción la autoriza y documenta la Jefatura de CEDIS.',
         items: [
@@ -821,7 +851,7 @@ export const MANUALES_POR_PUESTO: ManualPuesto[] = [
       {
         id: 'checador.seguridad-area',
         nombre: 'Checklist de seguridad, orden y limpieza del área',
-        momento: 'cierre', frecuencia: 'Diaria', horaLimite: H_CIERRE,
+        momento: 'cierre', frecuencia: 'Diaria', horaLimite: H_LIMITE,
         codigoFormato: 'CEDIS-CH-07',
         nota: 'El anexo se revisa al inicio y al cierre del turno.',
         items: [
@@ -862,7 +892,7 @@ export const MANUALES_POR_PUESTO: ManualPuesto[] = [
       {
         id: 'auxiliar-cedis.jornada',
         nombre: 'Checklist de inicio y cierre de jornada',
-        momento: 'cierre', frecuencia: 'Diaria', horaLimite: H_CIERRE,
+        momento: 'cierre', frecuencia: 'Diaria', horaLimite: H_LIMITE,
         codigoFormato: 'CEDIS-AUX-01',
         items: [
           { texto: 'Personal disponible y ausencias registradas' },
@@ -877,7 +907,7 @@ export const MANUALES_POR_PUESTO: ManualPuesto[] = [
       {
         id: 'auxiliar-cedis.montacargas',
         nombre: 'Checklist de seguridad de montacargas y maniobras',
-        momento: 'operacion', frecuencia: 'Diaria', horaLimite: H_OPERACION,
+        momento: 'operacion', frecuencia: 'Diaria', horaLimite: H_LIMITE,
         codigoFormato: 'CEDIS-AUX-08',
         items: [
           { texto: 'Operador autorizado' },
@@ -892,7 +922,7 @@ export const MANUALES_POR_PUESTO: ManualPuesto[] = [
       {
         id: 'auxiliar-cedis.operacion',
         nombre: 'Operación de CEDIS del turno',
-        momento: 'operacion', frecuencia: 'Diaria', horaLimite: H_CIERRE,
+        momento: 'operacion', frecuencia: 'Diaria', horaLimite: H_LIMITE,
         codigoFormato: '3.1 – 3.9',
         nota: NOTA_OPERACION,
         items: [
@@ -926,7 +956,7 @@ export const MANUALES_POR_PUESTO: ManualPuesto[] = [
       {
         id: 'recepcion-producto-cedis.recepcion',
         nombre: 'Checklist de recepción de mercancía',
-        momento: 'operacion', frecuencia: 'Diaria', horaLimite: H_OPERACION,
+        momento: 'operacion', frecuencia: 'Diaria', horaLimite: H_LIMITE,
         codigoFormato: 'Anexo A', porEvento: true,
         nota: 'El manual lo llena en cada recepción. Aquí se entrega una vez al día como registro consolidado de la jornada.',
         items: [
@@ -946,7 +976,7 @@ export const MANUALES_POR_PUESTO: ManualPuesto[] = [
       {
         id: 'recepcion-producto-cedis.operacion',
         nombre: 'Operación de recepción del turno',
-        momento: 'operacion', frecuencia: 'Diaria', horaLimite: H_CIERRE,
+        momento: 'operacion', frecuencia: 'Diaria', horaLimite: H_LIMITE,
         codigoFormato: '3.1 – 3.11',
         nota: NOTA_OPERACION,
         items: [
@@ -978,7 +1008,7 @@ export const MANUALES_POR_PUESTO: ManualPuesto[] = [
       {
         id: 'entradas-salidas-cedis.entrada-proveedor',
         nombre: 'Checklist de entrada de proveedor',
-        momento: 'operacion', frecuencia: 'Diaria', horaLimite: H_OPERACION,
+        momento: 'operacion', frecuencia: 'Diaria', horaLimite: H_LIMITE,
         codigoFormato: 'Anexo A', porEvento: true,
         nota: 'El manual lo llena por cada entrada de proveedor. Aquí se entrega una vez al día como registro consolidado.',
         items: [
@@ -999,7 +1029,7 @@ export const MANUALES_POR_PUESTO: ManualPuesto[] = [
       {
         id: 'entradas-salidas-cedis.salida-sucursal',
         nombre: 'Checklist de salida a sucursal',
-        momento: 'operacion', frecuencia: 'Diaria', horaLimite: H_OPERACION,
+        momento: 'operacion', frecuencia: 'Diaria', horaLimite: H_LIMITE,
         codigoFormato: 'Anexo C', porEvento: true,
         nota: 'El manual lo llena por cada salida. Aquí se entrega una vez al día como registro consolidado.',
         items: [
@@ -1018,7 +1048,7 @@ export const MANUALES_POR_PUESTO: ManualPuesto[] = [
       {
         id: 'entradas-salidas-cedis.operacion',
         nombre: 'Operación administrativa del turno',
-        momento: 'operacion', frecuencia: 'Diaria', horaLimite: H_CIERRE,
+        momento: 'operacion', frecuencia: 'Diaria', horaLimite: H_LIMITE,
         codigoFormato: '3.1 – 3.8',
         nota: NOTA_OPERACION,
         items: [
@@ -1053,7 +1083,7 @@ export const MANUALES_POR_PUESTO: ManualPuesto[] = [
       {
         id: 'coordinador-operaciones-zona.diario',
         nombre: 'Checklist diario del Supervisor',
-        momento: 'cierre', frecuencia: 'Diaria', horaLimite: H_CIERRE,
+        momento: 'cierre', frecuencia: 'Diaria', horaLimite: H_LIMITE,
         codigoFormato: 'Anexo A',
         items: [
           { texto: 'Revisé pedidos de sucursal y TLMK.', bloque: 'Inicio' },
@@ -1091,7 +1121,7 @@ export const MANUALES_POR_PUESTO: ManualPuesto[] = [
       {
         id: 'facturacion.diario',
         nombre: 'Checklist diario del puesto',
-        momento: 'cierre', frecuencia: 'Diaria', horaLimite: H_CIERRE,
+        momento: 'cierre', frecuencia: 'Diaria', horaLimite: H_LIMITE,
         codigoFormato: 'Anexo 1',
         items: [
           { texto: 'Generar reporte de facturas del día anterior', bloque: 'Inicio' },
@@ -1110,7 +1140,7 @@ export const MANUALES_POR_PUESTO: ManualPuesto[] = [
       {
         id: 'facturacion.liberacion-ruta',
         nombre: 'Checklist de liberación documental de ruta',
-        momento: 'operacion', frecuencia: 'Diaria', horaLimite: H_OPERACION,
+        momento: 'operacion', frecuencia: 'Diaria', horaLimite: H_LIMITE,
         codigoFormato: 'Anexo 4', porEvento: true,
         nota: 'El manual lo llena por cada ruta o guía. Aquí se entrega una vez al día como registro consolidado.',
         items: [
@@ -1137,7 +1167,7 @@ export const MANUALES_POR_PUESTO: ManualPuesto[] = [
       {
         id: 'coordinacion-compras.diario',
         nombre: 'Checklist diario de la Jefatura de Compras',
-        momento: 'cierre', frecuencia: 'Diaria', horaLimite: H_CIERRE,
+        momento: 'cierre', frecuencia: 'Diaria', horaLimite: H_LIMITE,
         codigoFormato: 'Anexo A',
         items: [
           { texto: 'Faltantes y riesgos críticos revisados.' },
@@ -1155,7 +1185,7 @@ export const MANUALES_POR_PUESTO: ManualPuesto[] = [
       {
         id: 'coordinacion-compras.minuta-semanal',
         nombre: 'Minuta de revisión semanal de Compras',
-        momento: 'administrativo', frecuencia: 'Semanal', diaSemana: 'Viernes', horaLimite: H_ADMIN,
+        momento: 'administrativo', frecuencia: 'Semanal', diaSemana: 'Viernes', horaLimite: H_LIMITE,
         codigoFormato: 'Anexo D',
         nota: 'Cada tema se cierra con hallazgo o decisión, responsable, fecha compromiso y estatus.',
         items: [
@@ -1172,7 +1202,7 @@ export const MANUALES_POR_PUESTO: ManualPuesto[] = [
       {
         id: 'coordinacion-compras.evaluacion-proveedor',
         nombre: 'Evaluación mensual de proveedor',
-        momento: 'administrativo', frecuencia: 'Mensual', diaMes: 28, horaLimite: H_ADMIN,
+        momento: 'administrativo', frecuencia: 'Mensual', diaMes: 28, horaLimite: H_LIMITE,
         codigoFormato: 'Anexo C',
         nota: 'Ponderación del anexo: entregas completas 25%, entregas a tiempo 25%, calidad y caducidad 15%, exactitud de factura 15%, cumplimiento comercial 10%, atención de incidencias 10%.',
         items: [
@@ -1207,7 +1237,7 @@ export const MANUALES_POR_PUESTO: ManualPuesto[] = [
       {
         id: 'aux-administrativo-logistica.cierre',
         nombre: 'Checklist de cierre diario',
-        momento: 'cierre', frecuencia: 'Diaria', horaLimite: H_CIERRE,
+        momento: 'cierre', frecuencia: 'Diaria', horaLimite: H_LIMITE,
         codigoFormato: 'Anexo E',
         items: [
           { texto: 'Registré las hojas de viaje recibidas y señalé faltantes.' },
@@ -1252,7 +1282,7 @@ export const MANUALES_POR_PUESTO: ManualPuesto[] = [
       {
         id: 'aux-logistica-flotilla.seguimiento-semanal',
         nombre: 'Seguimiento operativo semanal de flotilla',
-        momento: 'administrativo', frecuencia: 'Semanal', diaSemana: 'Lunes', horaLimite: H_ADMIN,
+        momento: 'administrativo', frecuencia: 'Semanal', diaSemana: 'Lunes', horaLimite: H_LIMITE,
         codigoFormato: '5.4',
         nota: 'El ciclo de evaluación del manual fija este seguimiento como semanal, junto con la Jefatura de Logística.',
         items: [
@@ -1266,7 +1296,7 @@ export const MANUALES_POR_PUESTO: ManualPuesto[] = [
       {
         id: 'aux-logistica-flotilla.combustible-semanal',
         nombre: 'Control semanal de combustible',
-        momento: 'administrativo', frecuencia: 'Semanal', diaSemana: 'Viernes', horaLimite: H_ADMIN,
+        momento: 'administrativo', frecuencia: 'Semanal', diaSemana: 'Viernes', horaLimite: H_LIMITE,
         codigoFormato: 'A-13',
         items: [
           { texto: 'Facturas de la semana concentradas' },
@@ -1278,7 +1308,7 @@ export const MANUALES_POR_PUESTO: ManualPuesto[] = [
       {
         id: 'aux-logistica-flotilla.expediente-vehicular',
         nombre: 'Checklist de expediente vehicular',
-        momento: 'administrativo', frecuencia: 'Mensual', diaMes: 25, horaLimite: H_ADMIN,
+        momento: 'administrativo', frecuencia: 'Mensual', diaMes: 25, horaLimite: H_LIMITE,
         codigoFormato: 'A-02',
         nota: 'El manual lo aplica al alta de cada unidad. Aquí se entrega mensual como revisión de integridad del expediente: cada documento debe estar, estar vigente y ser localizable.',
         items: [
@@ -1300,7 +1330,7 @@ export const MANUALES_POR_PUESTO: ManualPuesto[] = [
       {
         id: 'aux-logistica-flotilla.entrega-unidad',
         nombre: 'Checklist de entrega y recepción de unidad',
-        momento: 'operacion', frecuencia: 'Diaria', horaLimite: H_OPERACION,
+        momento: 'operacion', frecuencia: 'Diaria', horaLimite: H_LIMITE,
         codigoFormato: 'A-14', soloPorEvento: true,
         nota: 'Se llena únicamente cuando cambia la custodia de una unidad. La app no la entrega sola porque no puede saber cuándo ocurre: queda aquí como el formato oficial a seguir.',
         items: [
@@ -1340,7 +1370,7 @@ export const MANUALES_POR_PUESTO: ManualPuesto[] = [
       {
         id: 'coordinacion-auditoria-prevencion.cargas-rutas',
         nombre: 'Control diario de cargas y operación de rutas',
-        momento: 'operacion', frecuencia: 'Diaria', horaLimite: H_OPERACION,
+        momento: 'operacion', frecuencia: 'Diaria', horaLimite: H_LIMITE,
         codigoFormato: '3.2',
         nota: 'Señales de alerta del manual: carga mayor a la habitual, devolución elevada, venta baja con carga alta, movimiento sin soporte y diferencia recurrente.',
         items: [
@@ -1355,7 +1385,7 @@ export const MANUALES_POR_PUESTO: ManualPuesto[] = [
       {
         id: 'coordinacion-auditoria-prevencion.planeacion',
         nombre: 'Planeación y programación de actividades',
-        momento: 'apertura', frecuencia: 'Diaria', horaLimite: H_APERTURA,
+        momento: 'apertura', frecuencia: 'Diaria', horaLimite: H_LIMITE,
         codigoFormato: '3.1',
         nota: 'Resultado esperado del manual: iniciar cada jornada con prioridades claras y actividades calendarizadas, sin descuidar los procesos quincenales o mensuales.',
         items: [
@@ -1391,7 +1421,7 @@ export const MANUALES_POR_PUESTO: ManualPuesto[] = [
       {
         id: 'auxiliar-auditoria-prevencion.conciliacion',
         nombre: 'Conciliación de traspasos y compras',
-        momento: 'operacion', frecuencia: 'Diaria', horaLimite: H_OPERACION,
+        momento: 'operacion', frecuencia: 'Diaria', horaLimite: H_LIMITE,
         codigoFormato: 'AP-03',
         nota: 'La tabla de implementación del manual marca este formato como diario/semanal; la app lo entrega diario y la Coordinación interviene en las excepciones.',
         items: [
@@ -1405,7 +1435,7 @@ export const MANUALES_POR_PUESTO: ManualPuesto[] = [
       {
         id: 'auxiliar-auditoria-prevencion.jornada',
         nombre: 'Inicio de jornada y control diario de rutas',
-        momento: 'apertura', frecuencia: 'Diaria', horaLimite: H_OPERACION,
+        momento: 'apertura', frecuencia: 'Diaria', horaLimite: H_LIMITE,
         codigoFormato: '3.2 – 3.3',
         nota: NOTA_OPERACION,
         items: [
@@ -1420,7 +1450,7 @@ export const MANUALES_POR_PUESTO: ManualPuesto[] = [
       {
         id: 'auxiliar-auditoria-prevencion.carpetas',
         nombre: 'Revisión de carpetas de sucursal',
-        momento: 'administrativo', frecuencia: 'Semanal', diaSemana: 'Viernes', horaLimite: H_ADMIN,
+        momento: 'administrativo', frecuencia: 'Semanal', diaSemana: 'Viernes', horaLimite: H_LIMITE,
         codigoFormato: 'AP-01',
         nota: 'Objetivo del formato: que la documentación semanal de cada sucursal permita reconstruir entradas, salidas, pólizas, devoluciones, ajustes y cancelaciones.',
         items: [
@@ -1436,7 +1466,7 @@ export const MANUALES_POR_PUESTO: ManualPuesto[] = [
       {
         id: 'auxiliar-auditoria-prevencion.compras-pendientes',
         nombre: 'Control semanal de compras pendientes',
-        momento: 'administrativo', frecuencia: 'Semanal', diaSemana: 'Viernes', horaLimite: H_ADMIN,
+        momento: 'administrativo', frecuencia: 'Semanal', diaSemana: 'Viernes', horaLimite: H_LIMITE,
         codigoFormato: 'AP-02',
         items: [
           { texto: 'Traspasos sin compra o entrada en destino identificados' },
@@ -1469,7 +1499,7 @@ export const MANUALES_POR_PUESTO: ManualPuesto[] = [
       {
         id: 'gerencia-zona.supervision-sucursal',
         nombre: 'Checklist de supervisión de sucursal',
-        momento: 'supervision', frecuencia: 'Semanal', diaSemana: 'Miércoles', horaLimite: H_SUPERVISION,
+        momento: 'supervision', frecuencia: 'Semanal', diaSemana: 'Miércoles', horaLimite: H_LIMITE,
         codigoFormato: '3.2.8',
         nota: 'Criterios esenciales de conformidad por área. El manual pide que la frecuencia de visita se defina por riesgo, desempeño, rotación y resultados; la app la entrega semanal como piso mínimo. Un control no se da por cumplido solo porque exista el formato: la información debe reflejar lo ocurrido.',
         items: [
@@ -1484,7 +1514,7 @@ export const MANUALES_POR_PUESTO: ManualPuesto[] = [
       {
         id: 'gerencia-zona.reporte-diario',
         nombre: 'Reporte diario de zona',
-        momento: 'cierre', frecuencia: 'Diaria', horaLimite: H_CIERRE,
+        momento: 'cierre', frecuencia: 'Diaria', horaLimite: H_LIMITE,
         codigoFormato: '3.1.12',
         nota: 'Registro de rendición de cuentas del puesto, por el canal definido por Dirección.',
         items: [

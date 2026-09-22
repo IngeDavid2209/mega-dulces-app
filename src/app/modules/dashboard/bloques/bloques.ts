@@ -8,6 +8,7 @@ import { SidebarComponent } from '../../../shared/sidebar/sidebar';
 import { ApiService } from '../../../shared/api.service';
 import { UsuariosService } from '../../../shared/usuarios.service';
 import { BuscadorPersonaComponent } from '../../../shared/buscador-persona/buscador-persona';
+import { VENTANA_MANUAL } from '../../../shared/tareas-manual.catalogo';
 
 /**
  * MODULO BLOQUES DE TRABAJO — creación de tareas por tramos de horario.
@@ -140,7 +141,11 @@ export class BloquesComponent implements OnInit, OnDestroy {
 
   bloqueVacio() {
     return {
-      id: '', nombre: '', horaInicio: '07:00', horaFin: '11:00',
+      // Arranca con la ventana del dia (06:00-23:00), no con la franja
+      // 07:00-11:00 de antes. Es un valor por omision, no un candado: quien
+      // crea el bloque lo cambia, y el segundo bloque sigue encadenandose al
+      // fin del anterior como siempre.
+      id: '', nombre: '', horaInicio: VENTANA_MANUAL.inicio, horaFin: VENTANA_MANUAL.fin,
       activo: true,
       // Dias en que opera el bloque. 'diario' con nada excluido = los siete,
       // que es como se comportaban los bloques antes de esta opcion.

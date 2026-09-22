@@ -37,10 +37,11 @@ import { esDiaDescansoEnFecha } from './descansos.util';
 import { tieneCuadrilla } from './sucursales-elegibles.util';
 import { puestoIdDe } from './puesto.util';
 import { nombrePuesto } from './organigrama.catalogo';
-import { HorarioSucursal, limiteAperturaDe, trabajaEsteDia } from './horarios-sucursal.util';
+import { HorarioSucursal, trabajaEsteDia } from './horarios-sucursal.util';
 import { evidenciaDe } from './evidencia-manual';
 import {
   TareaManual, FrecuenciaManual, manualDePuesto, tareasAutomaticasDePuesto,
+  VENTANA_MANUAL,
 } from './tareas-manual.catalogo';
 import { TareaDePuesto, tareasAutomaticasCombinadas } from './tareas-puesto.util';
 
@@ -224,7 +225,29 @@ export function planDeEntregas(e: EntradaPlanEntregas): PlanDeEntregas {
         }
 
         // Fuera de turno a la hora en que vence la tarea.
-        if (e.configTurnos?.habilitado && uid &&
+        //
+        // ⚠ LA GUARDA DE LA VENTANA, Y SIN ELLA ESTE CAMBIO ES UNA BOMBA DE
+        // RELOJERIA. `rutinaPermitidaEnTurno` pregunta si la hora LIMITE cae
+        // dentro del turno, y deja pasar de balde a las que valen EXACTAMENTE
+        // '23:59' (turnos.util.ts:212). Ese escape es el que hasta hoy salvaba
+        // a las tareas de cierre: eran 2 356 entregas en una semana.
+        //
+        // Al unificar la ventana en 23:00 el escape deja de aplicar, y 23:00
+        // esta fuera de los dos turnos configurados (06:00-14:30 y
+        // 09:00-17:30). O sea que el dia que alguien encienda el interruptor
+        // de turnos, NADIE recibiria una sola tarea — sin error, sin log, y
+        // exactamente igual que un dia sin trabajo pendiente (§5.2).
+        //
+        // Medido en produccion el 22/sep antes de tocar nada: `habilitado` es
+        // FALSE sobre 149 fichas activas, asi que esta rama no rechaza a nadie
+        // hoy y la guarda no cambia una sola emision. Esta puesta para que eso
+        // siga siendo verdad el dia que se encienda.
+        //
+        // La regla: una tarea cuya ventana es la del manual CUBRE cualquier
+        // turno, asi que el turno no tiene nada que decidir sobre ella. Se
+        // sigue filtrando lo que trae hora propia (las capturadas, `tp-`).
+        const ventanaCompleta = tarea.horaLimite === VENTANA_MANUAL.fin;
+        if (e.configTurnos?.habilitado && uid && !ventanaCompleta &&
             !rutinaPermitidaEnTurno(e.configTurnos, uid, diaISO, tarea.horaLimite)) {
           ultimoMotivo = 'la hora de esas tareas cae fuera de su turno';
           continue;
@@ -596,13 +619,30 @@ export function armarChecklist(args: {
   const { checklistId, tarea, puestoId, sucursal, destinatario, destinatarioUid, fechaYmd } = args;
   const manual = manualDePuesto(puestoId);
 
-  // La apertura vence en funcion de la hora a la que ESTA sucursal abre de
-  // verdad, no de una hora igual para todos. Solo la apertura: mover el
-  // cierre a la hora de salida volveria vencidas de golpe las tareas de todo
-  // el que termina a esa hora, que es justo el dano que esto viene a evitar.
-  // Sin horario capturado se queda la del catalogo, sin inventar nada.
-  const real = tarea.momento === 'apertura' ? limiteAperturaDe(sucursal, horarios) : null;
-  const horaLimite = real ? real.hora : tarea.horaLimite;
+  // ─── LA HORA ES LA MISMA PARA TODAS, TAMBIEN EN LA APERTURA ─────────────
+  // Instruccion de David (22/sep/2026), tomada con la cifra enfrente: de los
+  // 1 477 puntos de apertura de una semana, 1 087 NO vencian a la hora del
+  // catalogo sino a la hora real a la que abre cada tienda. Esa era la unica
+  // excepcion viva a «una sola ventana», y se apaga a proposito.
+  //
+  // DEROGADO, citado para que no se relea como vigente:
+  //   «La apertura vence en funcion de la hora a la que ESTA sucursal abre de
+  //    verdad, no de una hora igual para todos. Solo la apertura: mover el
+  //    cierre a la hora de salida volveria vencidas de golpe las tareas de
+  //    todo el que termina a esa hora [...] Sin horario capturado se queda la
+  //    del catalogo, sin inventar nada.»
+  //     const real = tarea.momento === 'apertura' ? limiteAperturaDe(sucursal, horarios) : null;
+  //     const horaLimite = real ? real.hora : tarea.horaLimite;
+  //
+  // PRECIO, dicho para que no sorprenda: una apertura sin entregar dejaba de
+  // estar «a tiempo» a las 09:00-11:00 segun la tienda; ahora aguanta hasta
+  // las 23:00 como todo lo demas. Se pierde esa presion temprana; se gana que
+  // nadie tenga dos relojes distintos para el mismo dia.
+  //
+  // `limiteAperturaDe` NO se borra: sigue en horarios-sucursal.util.ts con sus
+  // pruebas. Quitarle la llamada y el codigo en el mismo paso dejaria sin nada
+  // que recuperar el dia que se decida devolver la excepcion.
+  const horaLimite = tarea.horaLimite;
 
   const items = tarea.items.map((it, i) => {
     // Que evidencia pide ESTE punto. Viene de evidencia-manual.ts, aparte del
@@ -629,7 +669,11 @@ export function armarChecklist(args: {
       photoAntesTime: null,
       photoAntesTimestamp: null,
       photos: [],
-      horaInicio: null,
+      // La ventana ARRANCA a las 06:00. Hasta hoy esto era `null` y la tarjeta
+      // decia «Sin horario» en los 377 puntos: la hora de inicio no existia
+      // como dato en una sola entrega del manual. No bloquea nada —nadie
+      // impide trabajar antes de las 06:00— es lo que se ANUNCIA.
+      horaInicio: VENTANA_MANUAL.inicio,
       horaLimite,
       // ── EVIDENCIA ────────────────────────────────────────────────────────
       // TODOS LOS PUNTOS PIDEN FOTO, Y MAS DE UNA.

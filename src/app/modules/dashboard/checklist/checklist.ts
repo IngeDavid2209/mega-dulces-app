@@ -24,7 +24,7 @@ import { AmbitoVisible, ambitoVisible, entregaVisible } from '../../../shared/ra
 import { nombrePuesto } from '../../../shared/organigrama.catalogo';
 import {
   tareasAutomaticasDePuesto, MANUALES_POR_PUESTO, tareaManualPorId, TareaManual,
-  tareasDelManualPara,
+  tareasDelManualPara, VENTANA_MANUAL,
 } from '../../../shared/tareas-manual.catalogo';
 import { NotificacionesService } from '../../../services/notificaciones';
 import { ApiService } from '../../../shared/api.service';
@@ -132,7 +132,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   formItems: any[] = [{
     text: '', requiresPhoto: false, requiresAntesDespues: false, requiresVariasFotos: false,
     permiteGaleria: false, permiteDocumentos: false, tiempoEstimado: 60,
-    fechaInicio: '', horaInicio: '', fechaLimite: '', horaLimite: '',
+    fechaInicio: '', horaInicio: VENTANA_MANUAL.inicio, fechaLimite: '', horaLimite: VENTANA_MANUAL.fin,
     date: '', time: ''
   }];
   isModalRutinasOpen = false;
@@ -150,7 +150,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     text: '', requiresPhoto: false, requiresAntesDespues: false, requiresVariasFotos: false,
     permiteGaleria: false, permiteDocumentos: false, tiempoEstimado: 60,
     frecuencia: 'Diaria', fechaInicio: '', fechaFin: null,
-    horaInicio: '', horaLimite: '',
+    horaInicio: VENTANA_MANUAL.inicio, horaLimite: VENTANA_MANUAL.fin,
     diaSemana: 'Lunes', diaMes: 1
   }];
 
@@ -4326,7 +4326,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     this.formItems = [{
       text: '', requiresPhoto: false, requiresAntesDespues: false, requiresVariasFotos: false,
       permiteGaleria: false, permiteDocumentos: false, tiempoEstimado: 60,
-      fechaInicio: '', horaInicio: '', fechaLimite: '', horaLimite: '',
+      fechaInicio: '', horaInicio: VENTANA_MANUAL.inicio, fechaLimite: '', horaLimite: VENTANA_MANUAL.fin,
       date: '', time: ''
     }];
     this.fasesTemporales = [];
@@ -4916,7 +4916,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     this.formItems.push({
       text: '', requiresPhoto: false, requiresAntesDespues: false, requiresVariasFotos: false,
       permiteGaleria: false, permiteDocumentos: false, tiempoEstimado: 60,
-      fechaInicio: '', horaInicio: '', fechaLimite: '', horaLimite: '',
+      fechaInicio: '', horaInicio: VENTANA_MANUAL.inicio, fechaLimite: '', horaLimite: VENTANA_MANUAL.fin,
       date: '', time: ''
     });
   }
@@ -5324,7 +5324,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       text: '', requiresPhoto: false, requiresAntesDespues: false, requiresVariasFotos: false,
       permiteGaleria: false, permiteDocumentos: false, tiempoEstimado: 60,
       frecuencia: 'Diaria', fechaInicio: hoyStr, fechaFin: null,
-      horaInicio: '', horaLimite: '',
+      horaInicio: VENTANA_MANUAL.inicio, horaLimite: VENTANA_MANUAL.fin,
       diaSemana: 'Lunes', diaMes: 1
     }];
     // 🧙 Reset wizard de rutinas
@@ -5395,7 +5395,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       text: '', requiresPhoto: false, requiresAntesDespues: false, requiresVariasFotos: false,
       permiteGaleria: false, permiteDocumentos: false, tiempoEstimado: 60,
       frecuencia: 'Diaria', fechaFin: null,
-      horaInicio: '', horaLimite: '',
+      horaInicio: VENTANA_MANUAL.inicio, horaLimite: VENTANA_MANUAL.fin,
       diaSemana: 'Lunes', diaMes: 1
     });
   }
@@ -5558,7 +5558,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     if (integrante.fases && integrante.fases.length > 0) {
       this.formItemsActividad = JSON.parse(JSON.stringify(integrante.fases));
     } else {
-      this.formItemsActividad = [{ text: '', requiresPhoto: false, requiresAntesDespues: false, requiresVariasFotos: false, permiteGaleria: false, permiteDocumentos: false, fechaInicio: '', horaInicio: '', fechaLimite: '', horaLimite: '' }];
+      this.formItemsActividad = [{ text: '', requiresPhoto: false, requiresAntesDespues: false, requiresVariasFotos: false, permiteGaleria: false, permiteDocumentos: false, fechaInicio: '', horaInicio: VENTANA_MANUAL.inicio, fechaLimite: '', horaLimite: VENTANA_MANUAL.fin }];
     }
     if (integrante.listaFases && integrante.listaFases.length > 0) {
       this.fasesTemporalesIntegrante = JSON.parse(JSON.stringify(integrante.listaFases));
@@ -5583,7 +5583,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
   }
 
   agregarActividadIntegrante() {
-    this.formItemsActividad.push({ text: '', requiresPhoto: false, requiresAntesDespues: false, requiresVariasFotos: false, permiteGaleria: false, permiteDocumentos: false, fechaInicio: '', horaInicio: '', fechaLimite: '', horaLimite: '' });
+    this.formItemsActividad.push({ text: '', requiresPhoto: false, requiresAntesDespues: false, requiresVariasFotos: false, permiteGaleria: false, permiteDocumentos: false, fechaInicio: '', horaInicio: VENTANA_MANUAL.inicio, fechaLimite: '', horaLimite: VENTANA_MANUAL.fin });
   }
 
   eliminarActividadIntegrante(index: number) {

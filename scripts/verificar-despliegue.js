@@ -199,11 +199,50 @@ const MARCADORES = [
   // las escapa y un ancla con acento no pega, o sea un no-op, y un no-op da
   // verde (14/sep). Validados en las dos direcciones ANTES de subir:
   // 1, 1 y 2 archivos en dist/ · 0 en el repo en HEAD.
-  { txt: 'copiar la tarea a la nube de respaldo', nuevo: true,
+  // 22/sep/2026 (tarde) · LA KILEADORA. El puesto no existia como dato -0 en el
+  // organigrama, 0 en la nomina, 0 de 149 fichas- aunque la operacion se nombraba
+  // a diario («kileado» estaba en el vocabulario del dictado por voz). Se declara
+  // el puesto y se le escribe su manual derivado, 1 tarea de 9 puntos.
+  //
+  // El marcador es el id literal de la tarea, que el minificador respeta, y no
+  // lleva vocal acentuada -el bundle las escapa y un ancla con acento no pega:
+  // seria un no-op, y un no-op da verde (14/sep)-. Validado en las dos
+  // direcciones ANTES de subir.
+  //
+  // ⚠ ESTE MARCADOR PRUEBA QUE LA NORMA VIAJO, NO QUE SE ENTREGUE A NADIE:
+  // ninguna ficha tiene todavia `puestoId: 'kileadora'`, asi que el emisor no
+  // le reparte a nadie hasta que Capital Humano se lo asigne. Son dos cosas
+  // distintas y conviene no leer una por la otra.
+  { txt: 'kileadora.operacion', nuevo: true,
+    que: 'el manual derivado de la Kileadora (la norma viaja; la entrega espera a que se asigne el puesto)' },
+
+  // 22/sep/2026 (tarde) · LA VENTANA DE ENTREGA 06:00 -> 23:00, IGUAL PARA
+  // TODAS. Instruccion de David con la tabla de lo que habia enfrente -NUEVE
+  // horas distintas sobre 9 949 puntos de una semana-: «no las quiero asi, las
+  // quiero de 6:00 am a 11:00 pm».
+  //
+  // Otra vez un cambio de LOGICA PURA sin cadena propia: lo unico nuevo que
+  // llega al bundle es el objeto `VENTANA_MANUAL`, porque el minificador se
+  // come el NOMBRE (`VENTANA_MANUAL` -> 0 en dist) pero respeta sus literales.
+  // Validado en las dos direcciones ANTES de subir, recorriendo los 68
+  // archivos del ngsw.json y no solo el index (leccion del 3/sep):
+  //     inicio:"06:00"   dist 1  ·  produccion 0
+  //     "23:00"          dist 1  ·  produccion 0
+  //     cl-foto-pendiente (control)          produccion 5  <- el recorrido llega
+  //
+  // Van LOS DOS y no uno: son las dos mitades de la ventana, y el dia que solo
+  // viajara una -la hora de fin sin la de inicio- el punto venceria bien y
+  // seguiria diciendo «Sin horario», que es medio arreglo con cara de entero.
+  { txt: 'inicio:"06:00"', nuevo: true,
+    que: 'la ventana ARRANCA a las 06:00 (hasta hoy el punto nacia con horaInicio null)' },
+  { txt: '"23:00"', nuevo: true,
+    que: 'la ventana CIERRA a las 23:00, la misma hora para las 50 tareas del catalogo' },
+
+  { txt: 'copiar la tarea a la nube de respaldo', control: true,
     que: 'el tope de Firestore: el guardado ya no se cuelga antes de escribir en Postgres' },
-  { txt: 'cl-foto-pendiente', nuevo: true,
+  { txt: 'cl-foto-pendiente', control: true,
     que: 'la foto que no subio se ve y dice que no cuenta' },
-  { txt: 'se cierra con una FOTO', nuevo: true,
+  { txt: 'se cierra con una FOTO', control: true,
     que: 'tocar el punto ya dice que le falta, en vez de no hacer nada' },
   // Los dos de ayer bajan a control: YA VALEN en produccion, y dejarlos arriba
   // daria verde sin comprobar nada de hoy.

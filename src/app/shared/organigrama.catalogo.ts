@@ -134,6 +134,19 @@ export const PUESTOS_ORGANIGRAMA: PuestoOrganigrama[] = [
     aliasCargos: ['Vendedoras de Piso'] },
   { id: 'surtidor-sucursal', nombre: 'Surtidor de Sucursal', unidad: 'sucursal', nivel: 'operativo', reportaA: 'encargado-sucursal' },
   { id: 'multifuncional', nombre: 'Multifuncional', unidad: 'sucursal', nivel: 'operativo', reportaA: 'encargado-sucursal' },
+  // KILEADORA — declarada el 22/sep/2026 por instrucción de David.
+  //
+  // El puesto NO EXISTÍA como dato y la operación sí: lo único que había en
+  // todo el repo era la palabra `kileado`, en el vocabulario del dictado por
+  // voz (`api/transcribir.js`). Medido antes de declararlo: 0 apariciones en
+  // el organigrama, 0 en la nómina de agosto y 0 de las 149 fichas activas.
+  //
+  // Los alias existen porque la ficha se captura a mano: `resolverPuesto` cruza
+  // por `cargo` de texto libre cuando no hay `puestoId`, y sin ellos una ficha
+  // que diga «Kileadora» no emparejaría con nada y esa persona se quedaría sin
+  // tareas EN SILENCIO, que es el hallazgo 1 de este proyecto.
+  { id: 'kileadora', nombre: 'Kileadora de Sucursal', unidad: 'sucursal', nivel: 'operativo', reportaA: 'encargado-sucursal',
+    aliasCargos: ['Kileadora', 'Kileador', 'Kileadoras', 'Kileadores'] },
   { id: 'recepcion-mercancia-sucursal', nombre: 'Recepción de Mercancía de Sucursal', unidad: 'sucursal', nivel: 'operativo', reportaA: 'encargado-sucursal' },
   { id: 'vigilancia', nombre: 'Vigilancia', unidad: 'sucursal', nivel: 'operativo', reportaA: 'encargado-sucursal' },
   { id: 'intendencia', nombre: 'Intendencia', unidad: 'sucursal', nivel: 'operativo', reportaA: 'encargado-sucursal' },

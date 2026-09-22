@@ -626,6 +626,68 @@ export const MANUALES_POR_PUESTO: ManualPuesto[] = [
   },
 
   // ══════════════════════════════════════════════════════════════════════════
+  //  KILEADORA DE SUCURSAL — 22/sep/2026
+  //
+  //  NORMA DERIVADA, NO TRANSCRITA. No hay PDF: estos nueve puntos se
+  //  derivaron de la operacion de granel y del estilo del Anaquelista y el
+  //  Surtidor, y David los aprobo con la lista enfrente.
+  //
+  //  EL PUESTO SE DECLARO EL MISMO DIA, y hay que decir por que: la operacion
+  //  existia -«kileado» estaba en el vocabulario del dictado por voz desde
+  //  hace meses- pero el PUESTO no estaba en ningun sitio. Medido antes de
+  //  escribir: 0 en el organigrama, 0 en la nomina, 0 de 149 fichas activas.
+  //
+  //  ⚠ HOY NO SE LE ENTREGA A NADIE, Y NO ES UN DEFECTO. El emisor reparte por
+  //  `puestoId`, y ninguna ficha lo tiene todavia. Se escribe igual porque LA
+  //  NORMA ES DE LA PLAZA, NO DE QUIEN LA OCUPA (§4): el dia que Capital
+  //  Humano le ponga el puesto a esas personas, sus tareas salen a las 00:00
+  //  sin tocar una linea de codigo. Mientras tanto el censo del emisor NO va a
+  //  nombrar a «Kileadora» entre los puestos sin manual, porque ese censo
+  //  cuenta gente, y aqui todavia no hay.
+  //
+  //  SELLO PROPIO Y FEO A PROPOSITO: estos puntos no salen de ningun manual
+  //  publicado, asi que sellarlos con el de otro puesto afirmaria que estan en
+  //  un papel donde no estan (§5.4). Se lee como lo que es -derivado, v0.1-
+  //  hasta que Capital Humano escriba el suyo.
+  // ══════════════════════════════════════════════════════════════════════════
+  {
+    puestoIds: ['kileadora'],
+    documento: 'Operación de la Kileadora — derivado, pendiente de manual propio',
+    codigo: '',
+    version: '0.1 · Septiembre 2026',
+    // Sin PDF de origen: no existe todavia. Vacio en vez de apuntar al del
+    // Anaquelista, que diria que estos puntos salen de un documento ajeno.
+    archivo: '',
+    tareas: [
+      {
+        id: 'kileadora.operacion',
+        nombre: 'Operación de kileo del turno',
+        momento: 'operacion', frecuencia: 'Diaria', horaLimite: H_LIMITE,
+        codigoFormato: '',
+        nota: NOTA_OPERACION,
+        items: [
+          // El instrumento primero: todo lo que sigue depende de que la bascula
+          // este bien. Un kilo mal pesado no se detecta despues mirando bolsas.
+          { texto: 'Revisé que la báscula estuviera en cero y con su verificación vigente antes de pesar' },
+          { texto: 'Usé cofia, guantes y utensilio limpio para manipular el producto a granel' },
+          { texto: 'Revisé la caducidad del granel antes de abrir y solo empaqué producto dentro de fecha' },
+          { texto: 'Etiqueté cada bolsa con su peso, precio y fecha de empaque, legibles' },
+          // El mismo punto que ya traen el Anaquelista y el Cajero: la
+          // diferencia de precio se avisa ANTES de Caja, y no la decide quien
+          // la encuentra.
+          { texto: 'Comparé el precio de la etiqueta contra la lista vigente del día y avisé de cualquier diferencia antes de que llegara a Caja' },
+          { texto: 'Mantuve los recipientes tapados y rotulados, sin mezclar producto de dos lotes' },
+          { texto: 'Repuse el exhibidor de bolsas kileadas y retiré las que ya no estaban en condiciones de venta' },
+          // Registrar la merma, NO decidirla: el criterio de merma y descuento
+          // es de la Encargada, igual que en el manual del Anaquelista.
+          { texto: 'Registré la merma y los restos del día en vez de reintegrarlos al granel' },
+          { texto: 'Dejé el área, la báscula y los utensilios limpios y sin producto expuesto al terminar' },
+        ],
+      },
+    ],
+  },
+
+  // ══════════════════════════════════════════════════════════════════════════
   //  ALMACENISTA DE SUCURSAL
   //  Base: el manual INTEGRADO (estándar corporativo para toda sucursal).
   //  El manual del Almacenista de 8 Esquinas (MDDLA-OP-ALM-8E-001) añade

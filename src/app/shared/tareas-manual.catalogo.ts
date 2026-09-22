@@ -651,8 +651,31 @@ export const MANUALES_POR_PUESTO: ManualPuesto[] = [
   //  hasta que Capital Humano escriba el suyo.
   // ══════════════════════════════════════════════════════════════════════════
   {
-    puestoIds: ['kileadora'],
-    documento: 'Operación de la Kileadora — derivado, pendiente de manual propio',
+    // ── DOS PUESTOS, UN SOLO MANUAL — 22/sep/2026 (tarde) ───────────────────
+    //
+    // Instruccion de David despues de declarar la Kileadora: «busca los que
+    // tengan el puesto de empaque y es quienes les vas a agregar esas tareas».
+    // Medido: `empaque` EXISTE en el organigrama, tiene CERO tareas y lo lleva
+    // UNA persona —Padre Hidalgo, que ademas abrio la app ese mismo dia y no
+    // recibio nada, porque su puesto no tenia manual—.
+    //
+    // ⚠ NO SE LE ESCRIBE UN MANUAL PROPIO, Y ESE ES EL PUNTO. Dos documentos
+    // con los mismos puntos son dos normas libres de discrepar, y la que se
+    // quedara atras juzgaria a una de las dos poblaciones con una regla vieja.
+    // Es el patron que ya usan el Checador (`checador` + `checador-cedis`) y el
+    // Auxiliar de Encargado. Asi hereda tambien `H_LIMITE` sin tocarlo: con
+    // hora propia, el dia que se enciendan los turnos la tarea desapareceria de
+    // la emision EN SILENCIO, y con una sola persona en ese puesto nadie lo
+    // notaria hasta que ella preguntara por que no le sale nada.
+    //
+    // EL `documento` SE RENOMBRA Y EL `id` NO. El id `kileadora.operacion` es
+    // publicado y no se renombra nunca (§2); el nombre del documento, en cambio,
+    // lo LEE la persona en su checklist, y decia «Kileadora» sobre un puesto que
+    // se llama Empaque. Cambiarlo es gratis hoy —no hay un solo checklist
+    // emitido con ese sello, el puesto nacio esta misma tarde— y despues no lo
+    // seria: el sello es con lo que se juzga un dia pasado (§5.4).
+    puestoIds: ['kileadora', 'empaque'],
+    documento: 'Operación de kileo y empaque — derivado, pendiente de manual propio',
     codigo: '',
     version: '0.1 · Septiembre 2026',
     // Sin PDF de origen: no existe todavia. Vacio en vez de apuntar al del

@@ -213,7 +213,19 @@ const MARCADORES = [
   // ninguna ficha tiene todavia `puestoId: 'kileadora'`, asi que el emisor no
   // le reparte a nadie hasta que Capital Humano se lo asigne. Son dos cosas
   // distintas y conviene no leer una por la otra.
-  { txt: 'kileadora.operacion', nuevo: true,
+  // 22/sep/2026 (tarde, 2) · EL MANUAL LLEGA AL PUESTO `empaque`, que existia
+  // con CERO tareas y una sola persona —la que abrio la app ese dia y no
+  // recibio nada—. No se le escribe un manual propio: la MISMA tarea sirve a
+  // los dos puestos, que es el patron del Checador.
+  //
+  // El marcador es el `documento` renombrado, que es la cadena que cambia y la
+  // que la persona LEE en su checklist. Sin acentos en el trozo anclado.
+  // Validado en las dos direcciones ANTES de subir.
+  { txt: 'kileo y empaque', nuevo: true,
+    que: 'el manual sirve a los dos puestos y el documento lo dice' },
+  // El de hace un rato baja a CONTROL: ya vale en produccion, y dejarlo como
+  // `nuevo` daria verde sin comprobar nada de este despliegue.
+  { txt: 'kileadora.operacion', control: true,
     que: 'el manual derivado de la Kileadora (la norma viaja; la entrega espera a que se asigne el puesto)' },
 
   // 22/sep/2026 (tarde) · LA VENTANA DE ENTREGA 06:00 -> 23:00, IGUAL PARA
@@ -233,9 +245,9 @@ const MARCADORES = [
   // Van LOS DOS y no uno: son las dos mitades de la ventana, y el dia que solo
   // viajara una -la hora de fin sin la de inicio- el punto venceria bien y
   // seguiria diciendo «Sin horario», que es medio arreglo con cara de entero.
-  { txt: 'inicio:"06:00"', nuevo: true,
+  { txt: 'inicio:"06:00"', control: true,
     que: 'la ventana ARRANCA a las 06:00 (hasta hoy el punto nacia con horaInicio null)' },
-  { txt: '"23:00"', nuevo: true,
+  { txt: '"23:00"', control: true,
     que: 'la ventana CIERRA a las 23:00, la misma hora para las 50 tareas del catalogo' },
 
   { txt: 'copiar la tarea a la nube de respaldo', control: true,

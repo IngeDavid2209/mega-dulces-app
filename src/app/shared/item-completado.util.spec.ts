@@ -35,7 +35,7 @@
  * que rompe una prueba es una deuda que se ve; una que no rompe nada es una que
  * se olvida.
  */
-import { tieneEvidencia, tieneJustificacionChecklist, esItemHecho, estadoItem } from './item-completado.util';
+import { tieneEvidencia, tieneJustificacionChecklist, esItemHecho, estadoItem, fotoSubida } from './item-completado.util';
 
 describe('evidencia de un punto', () => {
 
@@ -165,6 +165,55 @@ describe('evidencia de un punto', () => {
     const libre = { text: 'Pasar por el banco', checked: true };
     expect(tieneEvidencia(libre)).toBe(true);
     expect(tieneEvidencia({ ...libre, checked: false })).toBe(false);
+  });
+
+  // ═══ LA FOTO QUE NO SUBIÓ — 22/sep/2026 ══════════════════════════════════
+  //
+  // Reporte de David: «no los deja subir sus tareas». Medido en el DOM: cuando
+  // Cloudinary rechazaba, la foto entraba igual en la galería con la marca
+  // `offline_syncing` y el punto QUEDABA HECHO. O sea, se podía cerrar el turno
+  // con una prueba que solo existía en ese teléfono y que nadie más podía abrir.
+  it('una foto que NO subió no cierra el punto', () => {
+    const sinSubir = puntoDelManual({ photos: [{ url: 'offline_syncing', time: '08:14' }] });
+    expect(tieneEvidencia(sinSubir)).toBe(false);
+    expect(estadoItem(sinSubir)).toBe('no_ejecutado');
+  });
+
+  it('una foto a medio subir tampoco', () => {
+    expect(tieneEvidencia(puntoDelManual({ photos: [{ url: 'subiendo...' }] }))).toBe(false);
+  });
+
+  it('la marca `pendiente` manda aunque la url parezca buena', () => {
+    // La pone la pantalla al encolar. Sin esta rama, bastaría con que la url
+    // dejara de ser exactamente `offline_syncing` para reabrir el hueco.
+    expect(tieneEvidencia(puntoDelManual({
+      photos: [{ url: 'https://res.cloudinary.com/x.jpg', pendiente: true }],
+    }))).toBe(false);
+  });
+
+  it('UNA subida entre varias pendientes SÍ cierra el punto', () => {
+    // El punto pide prueba, no todas las pruebas: si subió una, hay evidencia.
+    expect(tieneEvidencia(puntoDelManual({
+      photos: [{ url: 'offline_syncing' }, { url: 'https://res.cloudinary.com/ok.jpg' }],
+    }))).toBe(true);
+  });
+
+  it('NO le quita el punto a nadie que sí subió su foto', () => {
+    // El error caro de esta regla sería al revés: dejar sin cumplimiento a
+    // quien trabajó. Por eso el criterio nombra lo que no es prueba en vez de
+    // exigir una forma concreta de url (ver `fotoSubida`).
+    for (const url of ['https://res.cloudinary.com/a.jpg', 'http://x/y.png', 'u', '/local/a.jpg']) {
+      expect(tieneEvidencia(puntoDelManual({ photos: [{ url }] }))).toBe(true);
+    }
+  });
+
+  it('fotoSubida DISCRIMINA: separa las dos familias', () => {
+    // Sin esto, un `fotoSubida` que devolviera siempre true pasaría los casos
+    // de arriba que afirman evidencia, y siempre false, los que la niegan.
+    expect(fotoSubida({ url: 'https://res.cloudinary.com/a.jpg' })).toBe(true);
+    expect(fotoSubida({ url: 'offline_syncing' })).toBe(false);
+    expect(fotoSubida(null)).toBe(false);
+    expect(fotoSubida({ url: '   ' })).toBe(false);
   });
 
   // ═══ GUARDIA DE LA PROPIA PRUEBA ═════════════════════════════════════════

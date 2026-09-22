@@ -10,7 +10,7 @@ import { esAdminGlobal, esAdminLimitado, sucursalesPermitidas, alcanceCubre, esS
 import { pasaFiltroTransversal } from '../../../shared/area-transversal.util';
 import { nivelDeCargo } from '../../../shared/nivel-jerarquico.util';
 import { TareaEquipo, FaseEquipo, ItemEquipo, SubtareaEquipo } from '../../../shared/tareas-equipo.types';
-import { esItemHecho, tieneEvidencia } from '../../../shared/item-completado.util';
+import { esItemHecho, tieneEvidencia, fotoSubida } from '../../../shared/item-completado.util';
 import { esEntregaDeManual } from '../../../shared/origen-manual.util';
 import { filtrarPorBusqueda } from '../../../shared/filtro-busqueda.util';
 import {
@@ -34,6 +34,7 @@ import { resolverAsignadoTarea, mapaNombreAUid } from '../../../shared/reasignac
 import {
   guardarListaCache, leerListaCacheConEdad, textoAntiguedad
 } from '../../../shared/lista-cache.util';
+import { conTope } from '../../../shared/con-tope.util';
 import { avisoDeFalla, AvisoDatos } from '../../../shared/aviso-datos.util';
 import {
   limiteDeItem, urgenciaDeChecklist, textoUrgencia, Urgencia, ClaseUrgencia,
@@ -1820,15 +1821,46 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       // Se le pasa un item temporal porque esa funcion escribe en `item.photo`
       // y aqui el destino es el arreglo `photos`.
       const tempItem: any = {};
-      await this.onFileSelected({ target: { files: [file], value: '' } }, tempItem, 'photo');
+      // ⚠ EL 4.º ARGUMENTO NO ES OPCIONAL EN LA PRACTICA, aunque lo sea en la firma.
+      // Sin el, la cola de fotos sin señal guardaba el indice del ITEM TEMPORAL
+      // -que no esta en `checklist.items`, asi que `findIndex` devolvia **-1**- y
+      // el robot de `app.ts` hacia `itemsArray[-1]`, que es `undefined`: no
+      // escribia nada, NO LANZABA, y por no lanzar la foto se borraba de la cola.
+      // La foto se perdia para siempre y nadie se enteraba.
+      await this.onFileSelected({ target: { files: [file], value: '' } }, tempItem, 'photo',
+        { item, aGaleria: true });
       if (tempItem.photo && tempItem.photo !== 'subiendo...') {
-        item.photos.push({ url: tempItem.photo, time: tempItem.photoTime || '' });
+        // La que NO subio entra igual, MARCADA. Se ve -para que nadie crea que su
+        // foto se perdio- pero `tieneEvidencia` no la cuenta: una foto que solo
+        // esta en este telefono no es prueba para nadie mas (§5.3). Cuando el
+        // robot la suba, la entrada se reemplaza por su URL y el punto se cierra.
+        const pendiente = tempItem.photo === 'offline_syncing';
+        item.photos.push({
+          url: tempItem.photo,
+          time: tempItem.photoTime || '',
+          ...(pendiente ? { pendiente: true } : {}),
+        });
       }
     }
     // Limpiar el input REAL: sin esto, volver a elegir el mismo archivo no
     // dispara `change` y parece que la app lo ignoro.
     try { if (inputReal) inputReal.value = ''; } catch { /* noop */ }
     this.actualizarEstado();
+  }
+
+  /**
+   * ¿Esta foto está solo en este teléfono, esperando señal?
+   *
+   * Es el espejo en pantalla de lo que decide `tieneEvidencia`: si el punto no
+   * cuenta como hecho por culpa de esta foto, la foto tiene que DECIRLO. Dos
+   * criterios y no uno porque las de antes del 22/sep no traen `pendiente`.
+   */
+  fotoPendiente(foto: any): boolean {
+    // LA MISMA FUNCIÓN que decide el cumplimiento, negada. Si aquí se escribiera
+    // el criterio a mano, una foto podría verse «puesta» y no contar (o al
+    // revés) sin que nada fallara: dos reglas libres de discrepar sobre el
+    // mismo dato es como nació la mitad de los defectos de este repo.
+    return !fotoSubida(foto);
   }
 
   /** Quita una foto del array item.photos[] por índice. */
@@ -2711,11 +2743,56 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     });
   }
 
+  /**
+   * Guarda el checklist. ES EL ÚNICO CAMINO por el que se conserva una foto, un
+   * renglón escrito o un palomeo: lo llaman `actualizarEstado()` y el envío.
+   *
+   * ⚠ EL ORDEN NO ES ESTILO: DECIDE SI EL TRABAJO SE GUARDA O SE PIERDE.
+   *
+   * Hasta el 22/sep/2026 esto era, en este orden:
+   *
+   *     try { await setDoc(...Firestore...); } catch { console.error }
+   *     await this.api.guardarChecklist(...);      // Postgres
+   *
+   * Y `setDoc` NO RECHAZA CUANDO NO HAY RED: el SDK encola la escritura y
+   * **deja la promesa pendiente para siempre**. El `catch` nunca se dispara
+   * porque no hay error: hay un silencio. Así que ese `await` no fallaba, se
+   * quedaba ahí — y la línea de abajo, la que escribe en Postgres, NO SE
+   * EJECUTABA NUNCA. La app LEE de Postgres, así que la foto se veía en la
+   * pantalla (estado en memoria), el punto se marcaba hecho, y al siguiente
+   * poll de 20 s todo volvía atrás. Para quien trabaja: «subí la foto y se
+   * borró», «no me deja subir mis tareas».
+   *
+   * MEDIDO, no supuesto: con Firestore inalcanzable, el arnés de subida de foto
+   * contó 1 subida a Cloudinary, 1 miniatura en pantalla, el punto en «hecho»
+   * y **0 POST a `/api/checklists`** — con su control positivo confirmando que
+   * el arnés sí sabe ver un POST. Con este orden pasa a 1.
+   *
+   * Es el MISMO defecto que `entregarDelCatalogo` documentó el 14/sep («await
+   * setDoc no vuelve sin red») y que allí se arregló poniendo la API primero.
+   * Aquel arreglo se quedó en esa función; éste es el camino por el que pasa el
+   * trabajo diario de 154 personas.
+   *
+   * Ahora: Postgres primero —es la fuente de lectura, la que decide si esto
+   * sirvió— y Firestore después, best-effort y CON TOPE, para que una escritura
+   * encolada no vuelva a secuestrar el guardado siguiente.
+   */
   async guardarEnLaNube(checklist: any) {
-    try { await setDoc(doc(this.firestore, 'checklists', checklist.id.toString()), checklist, { merge: true }); }
-    catch (error) { console.error("Error: ", error); }
-    // Dual-write FERROCARRIL: mismo id en Postgres (upsert completo). Best-effort.
-    await this.api.guardarChecklist({ ...checklist, id: checklist.id.toString() });
+    const id = checklist.id.toString();
+
+    // 1) POSTGRES. Es de donde lee la app: si esto no ocurre, el trabajo no
+    //    existe para nadie más. `guardarChecklist` ya reintenta 3 veces y no
+    //    lanza (registra en consola), así que el try es de cinturón.
+    try { await this.api.guardarChecklist({ ...checklist, id }); }
+    catch (error) { console.error('[guardarEnLaNube] Postgres:', error); }
+
+    // 2) Firestore, copia en retirada (Fase 1). Con tope: sin él, una promesa
+    //    pendiente deja este `await` colgado y el siguiente guardado detrás.
+    try {
+      await conTope(
+        setDoc(doc(this.firestore, 'checklists', id), checklist, { merge: true }),
+        8000, 'copiar la tarea a la nube de respaldo');
+    } catch (error) { console.error('[guardarEnLaNube] Firestore (no crítico):', error); }
   }
 
   // ==========================================================================
@@ -3613,6 +3690,43 @@ export class ChecklistComponent implements OnInit, OnDestroy {
    * - Tareas SIN evidencia: se marcan/desmarcan con el toque (única forma de
    *   indicar que se hicieron).
    */
+  /**
+   * TOQUE SOBRE LA FILA DEL PUNTO. No marca nada: solo DICE qué falta.
+   *
+   * Nace de un reporte de David (22/sep/2026): «tocan el punto y no pasa nada».
+   * Y era literal. Desde que Dirección puso foto en los 377 puntos del manual
+   * (3/sep), `soloSePaloma` es falso en todos, así que el botón «Marcar como
+   * hecha» NO SE PINTA para nadie. Medido en el DOM con una anaquelista real:
+   *
+   *     9 puntos en pantalla · 0 botones «marcar como hecha» · 9 de foto
+   *     toque la fila -> nada cambia, aviso «(ninguno)»
+   *
+   * O sea que la persona tocaba el punto esperando cerrarlo, no ocurría nada y
+   * no había forma de saber por qué. «No me deja» y «no entendí qué me pide»
+   * se ven idénticos desde fuera, y los dos se reportan igual.
+   *
+   * NO se le devuelve la palomita: eso reabriría lo que la Fase 2.1 cerró
+   * (cumplimiento sin prueba). Lo que se le devuelve es la frase que falta.
+   */
+  tocarPunto(item: any, ev?: any) {
+    // Si el toque vino de un control de verdad —el botón de la foto, un campo,
+    // la equis de quitar— manda ese control y aquí no se opina. Sin esto, cada
+    // clic en «Agregar foto» soltaría además un aviso encima.
+    const origen = ev?.target as HTMLElement | undefined;
+    if (origen?.closest?.('label, button, input, textarea, a, .swal2-container')) return;
+    if (!this.puedoEditarChecklistActivo()) return;
+    if (tieneEvidencia(item)) return;               // ya está hecho: nada que decir
+    if (this.pideEvidencia(item)) {
+      this.mostrarToast('📷 Este punto se cierra con una FOTO: usa el botón «Agregar primera foto».');
+      return;
+    }
+    if (this.pideEvidenciaEscrita(item)) {
+      this.mostrarToast('✍️ Este punto se cierra ESCRIBIENDO en el cuadro de abajo, no con una foto.');
+      return;
+    }
+    // Los que sí se palomean ya tienen su botón; no se duplica la acción aquí.
+  }
+
   onClickCheck(item: any) {
     if (!this.puedoEditarItem(item)) return;
     if (this.pideEvidencia(item)) return; // las de foto se completan subiendo evidencia
@@ -3625,7 +3739,14 @@ export class ChecklistComponent implements OnInit, OnDestroy {
     this.actualizarEstado();
   }
 
-  async onFileSelected(event: any, item: any, tipoFoto: string = 'photo') {
+  /**
+   * `colaDestino` dice DONDE va esta foto si hay que dejarla esperando señal.
+   * Solo lo manda la galería (`onMultiplePhotoSelected`), que trabaja con un
+   * item temporal: sin él, la cola apuntaría a ese temporal y la foto se
+   * perdería. Ver el comentario de esa función.
+   */
+  async onFileSelected(event: any, item: any, tipoFoto: string = 'photo',
+                       colaDestino?: { item: any; aGaleria: boolean }) {
     const fileOriginal = event.target.files[0];
     if (!fileOriginal) return;
     const checklistActual = this.checklistSeleccionado();
@@ -3669,7 +3790,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
 
     // Sin conexión → guardamos offline desde el inicio.
     if (!navigator.onLine) {
-      await this.guardarFotoOffline(item, tipoFoto, file, checklistActual);
+      await this.guardarFotoOffline(item, tipoFoto, file, checklistActual, colaDestino);
       event.target.value = '';
       this.mostrarToast(' Guardado sin conexión. Se subirá cuando regrese la señal.');
       return;
@@ -3692,7 +3813,7 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       // guardamos offline para que se reintente automáticamente. Antes se
       // perdía la foto y el trabajador veía solo un alert genérico.
       console.error('[Cloudinary error]', resultado.error);
-      await this.guardarFotoOffline(item, tipoFoto, file, checklistActual);
+      await this.guardarFotoOffline(item, tipoFoto, file, checklistActual, colaDestino);
       Swal.fire({
         icon: 'warning',
         title: 'No se pudo subir la foto',
@@ -3750,7 +3871,8 @@ export class ChecklistComponent implements OnInit, OnDestroy {
    * inline en `onFileSelected` y solo se usaba cuando `!navigator.onLine`;
    * ahora también se usa como fallback cuando Cloudinary falla online.
    */
-  private async guardarFotoOffline(item: any, tipoFoto: string, file: File | Blob, checklistActual: any): Promise<void> {
+  private async guardarFotoOffline(item: any, tipoFoto: string, file: File | Blob, checklistActual: any,
+                                   colaDestino?: { item: any; aGaleria: boolean }): Promise<void> {
     item[tipoFoto] = 'offline_syncing';
     item.pendienteDeSync = true;
     const ahora = new Date();
@@ -3761,11 +3883,28 @@ export class ChecklistComponent implements OnInit, OnDestroy {
       reader.readAsDataURL(file);
       reader.onload = async () => {
         const base64String = reader.result as string;
-        const indexItem = checklistActual.items.findIndex((i: any) => i === item);
+        // El item que hay que ubicar en el checklist es el REAL, no el temporal
+        // con el que trabaja la galería. Ver `onMultiplePhotoSelected`.
+        const itemDeLaCola = colaDestino?.item || item;
+        const indexItem = checklistActual.items.findIndex((i: any) => i === itemDeLaCola);
+        // 🛡️ Una foto encolada sin destino NO se sube nunca y se borra sola en la
+        // primera pasada del robot: encolarla es perderla en silencio, que es peor
+        // que decirlo. Si esto salta, es un defecto de programación, no del
+        // usuario, así que el aviso nombra qué hacer con la foto.
+        if (indexItem < 0) {
+          console.error('[fotos-offline] no ubiqué el punto dentro del checklist: la foto NO se encola.');
+          this.mostrarToast('⚠️ No se pudo guardar esa foto. Vuelve a tomarla, por favor.');
+          return resolve();
+        }
         const fotoEstancada = {
           idTarea: checklistActual.id,
           indexItem,
           tipoFoto,
+          // `aGaleria` dice que el destino es `items[i].photos[]` y no el campo
+          // `photo`. Sin esto, el robot escribía en `photo`, que en un punto de
+          // galería la plantilla NI SIQUIERA PINTA: la foto llegaba a la nube y
+          // seguía sin verse, que desde fuera es igual que haberla perdido.
+          aGaleria: !!colaDestino?.aGaleria,
           base64: base64String
         };
         const colaActual: any[] = (await localforage.getItem('md_fotos_offline')) || [];

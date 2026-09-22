@@ -672,18 +672,39 @@ export class AppComponent implements OnInit {
 
           if (checklistData) {
             const itemsArray = checklistData['items'] || [];
+            const destino = itemsArray[item.indexItem];
 
-            // Modificamos el ítem específico dentro del arreglo
-            if (itemsArray[item.indexItem]) {
-              itemsArray[item.indexItem][item.tipoFoto] = urlDescarga;
-              itemsArray[item.indexItem].pendienteDeSync = false;
-
-              // Subimos el arreglo completo ya modificado
-              await updateDoc(docRef, { items: itemsArray });
-              // FERROCARRIL Etapa 3: dual-write del arreglo items a Postgres
-              await this.api.patchChecklist(String(item.idTarea), { items: itemsArray });
-              console.log(`📸 Foto sincronizada con éxito: Tarea ${item.idTarea}`);
+            // ⚠ SI EL PUNTO NO SE ENCUENTRA, LA FOTO SE QUEDA EN LA COLA.
+            // Antes este `if` no tenía `else`: cuando `indexItem` no ubicaba un
+            // punto —y con la galería valía **-1** siempre, así que `undefined`—
+            // no se escribía nada, no se lanzaba, y por no lanzar la foto NO
+            // volvía a `fotosRestantes`: se borraba de la cola unas líneas más
+            // abajo. La foto se perdía para siempre, sin un solo error.
+            if (!destino) {
+              console.error(`[fotos-offline] la tarea ${item.idTarea} no tiene el punto ${item.indexItem}: la foto se queda en la cola.`);
+              fotosRestantes.push(item);
+              continue;
             }
+
+            if (item.aGaleria) {
+              // Punto de GALERÍA: el destino es `photos[]`. Se reemplaza la
+              // entrada pendiente que puso la pantalla (misma posición) en vez
+              // de añadir una segunda, o la persona vería la foto duplicada.
+              const fotos = Array.isArray(destino.photos) ? destino.photos : [];
+              const i = fotos.findIndex((f: any) => f && (f.pendiente || f.url === 'offline_syncing'));
+              const entrada = { url: urlDescarga, time: (i >= 0 ? fotos[i]?.time : '') || '' };
+              if (i >= 0) fotos[i] = entrada; else fotos.push(entrada);
+              destino.photos = fotos;
+            } else {
+              destino[item.tipoFoto] = urlDescarga;
+            }
+            destino.pendienteDeSync = false;
+
+            // Subimos el arreglo completo ya modificado
+            await updateDoc(docRef, { items: itemsArray });
+            // FERROCARRIL Etapa 3: dual-write del arreglo items a Postgres
+            await this.api.patchChecklist(String(item.idTarea), { items: itemsArray });
+            console.log(`📸 Foto sincronizada con éxito: Tarea ${item.idTarea}`);
           }
 
         } catch (error) {

@@ -55,6 +55,36 @@
  * estado, que es lo que la Fase 5 necesita para tipificar la causa.
  */
 
+/**
+ * ¿Esta foto está de verdad en la nube, o solo en el teléfono de quien la tomó?
+ *
+ * Una foto que no subió se guarda en la galería con la marca `offline_syncing`
+ * mientras espera señal. Cuenta como intención, NO como prueba: nadie más puede
+ * verla, y si el teléfono se borra o la cola se llena (tope de 40), desaparece.
+ * Tratarla como evidencia es afirmar que existe un respaldo que no existe
+ * (§5.3: «Hecho exige evidencia válida»).
+ *
+ * MEDIDO ANTES DE APLICARLO, sobre las 5 394 filas vivas y sus 40 308 puntos:
+ * hay 372 fotos en galerías y **UNA** sin subir, así que este criterio mueve
+ * **1 punto en toda la empresa**. Es la misma ventana barata que midió la
+ * migración 045 para la Fase 2.
+ *
+ * ─── POR QUÉ LISTA NEGRA Y NO LISTA BLANCA ────────────────────────────────
+ * Lo natural era exigir que la url empezara por `http`. Mide igual HOY —en las
+ * 372 fotos de la base, 371 son de Cloudinary y la otra es `offline_syncing`—
+ * pero los dos criterios fallan hacia lados opuestos el día que aparezca una
+ * url con una forma que no previmos: la lista blanca le QUITA el punto a quien
+ * sí subió su foto, y la lista negra se lo deja. Quitarle cumplimiento a
+ * alguien que trabajó es el error caro, así que se nombra lo que NO es prueba
+ * en vez de adivinar lo que sí.
+ */
+export function fotoSubida(f: any): boolean {
+  if (f && f.pendiente === true) return false;
+  const u = String((f && f.url) || f || '').trim();
+  if (!u) return false;
+  return u !== 'offline_syncing' && u !== 'subiendo...';
+}
+
 /** ¿El item por sí solo tiene evidencia válida? */
 export function tieneEvidencia(item: any): boolean {
   if (!item) return false;
@@ -63,7 +93,11 @@ export function tieneEvidencia(item: any): boolean {
            !!item.photoDespues && item.photoDespues !== 'subiendo...';
   }
   if (item.requiresVariasFotos) {
-    return Array.isArray(item.photos) && item.photos.length > 0;
+    // `.some(fotoSubida)` y no `.length > 0`: ver `fotoSubida`. Antes bastaba
+    // que hubiera UNA ENTRADA en el arreglo, así que una foto que se quedó en
+    // el teléfono cerraba el punto y el checklist se entregaba sin una prueba
+    // que nadie más podía abrir.
+    return Array.isArray(item.photos) && item.photos.some(fotoSubida);
   }
   if (item.requiresPhoto) {
     return !!item.photo && item.photo !== 'subiendo...';

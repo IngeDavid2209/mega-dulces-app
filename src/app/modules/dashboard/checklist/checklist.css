@@ -4450,3 +4450,17 @@
   background: var(--warn-soft-bg);
   border-radius: 8px;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   FOTO QUE NO SUBIO — 22/sep/2026
+   Se ve, y dice que no cuenta. Antes entraba en la galeria con la url
+   `offline_syncing`: la <img> salia rota, sin una palabra, y la persona se iba
+   creyendo que su evidencia estaba puesta.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.cl-foto-pendiente {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 2px; height: 110px; padding: 6px 8px; text-align: center;
+  background: var(--warn-soft-bg); color: var(--warn-soft-fg);
+}
+.cl-foto-pendiente span { font-size: 12px; font-weight: 700; }
+.cl-foto-pendiente small { font-size: 9px; line-height: 1.2; opacity: .85; }

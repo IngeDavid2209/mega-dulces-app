@@ -188,9 +188,28 @@ const MARCADORES = [
   // el minificador respeta, y ninguno lleva vocal acentuada -el bundle las escapa
   // y un ancla con acento no pega-. Validados en las dos direcciones ANTES de
   // subir: 2 archivos en dist/, 0 en el repo en HEAD.
-  { txt: 'auxiliar-encargado.operacion', nuevo: true,
+  // 22/sep/2026 · «no los deja subir sus tareas». El guardado esperaba a
+  // Firestore -cuyo `setDoc` NO rechaza sin red: deja la promesa pendiente- y
+  // por eso NUNCA llegaba a escribir en Postgres, que es de donde lee la app.
+  // Medido en el DOM: 0 POST antes, 2 despues.
+  //
+  // LOS TRES SON CADENAS QUE EL MINIFICADOR RESPETA (una clase de CSS, un
+  // literal de texto y un nombre de propiedad de objeto, que se conserva porque
+  // viaja serializado a IndexedDB). Ninguno lleva vocal acentuada: el bundle
+  // las escapa y un ancla con acento no pega, o sea un no-op, y un no-op da
+  // verde (14/sep). Validados en las dos direcciones ANTES de subir:
+  // 1, 1 y 2 archivos en dist/ · 0 en el repo en HEAD.
+  { txt: 'copiar la tarea a la nube de respaldo', nuevo: true,
+    que: 'el tope de Firestore: el guardado ya no se cuelga antes de escribir en Postgres' },
+  { txt: 'cl-foto-pendiente', nuevo: true,
+    que: 'la foto que no subio se ve y dice que no cuenta' },
+  { txt: 'se cierra con una FOTO', nuevo: true,
+    que: 'tocar el punto ya dice que le falta, en vez de no hacer nada' },
+  // Los dos de ayer bajan a control: YA VALEN en produccion, y dejarlos arriba
+  // daria verde sin comprobar nada de hoy.
+  { txt: 'auxiliar-encargado.operacion', control: true,
     que: 'la operacion propia del Auxiliar de Encargado' },
-  { txt: 'surtidor-sucursal.operacion', nuevo: true,
+  { txt: 'surtidor-sucursal.operacion', control: true,
     que: 'el manual del Surtidor de Sucursal' },
   // Los dos del despliegue de esta mañana bajan a control: YA VALEN en
   // produccion, y dejarlos arriba daria verde sin comprobar nada de este.

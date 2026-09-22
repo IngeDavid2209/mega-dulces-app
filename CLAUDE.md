@@ -326,6 +326,140 @@ de que exista la plaza sería partir el problema en dos, no resolverlo.
 
 ## 9. Bitácora del plan
 
+### 22/sep/2026 (noche) — NUEVE PUNTOS SE RETIRAN, y el ancla del marcador era un no-op
+
+Instrucción de David: una lista de ocho puntos, literal, sin más contexto. *«hay algunas tareas
+que vamos a eliminar»*.
+
+#### LO PRIMERO FUE UBICARLOS, Y LOS OCHO CASABAN UNA SOLA VEZ CADA UNO
+
+    anaquelista.pasillo              9 -> 8     almacenista-sucursal.diario     10 -> 9
+    anaquelista.operacion            9 -> 8     almacenista-sucursal.seguridad   7 -> 5
+    encargado-sucursal.cierre        8 -> 7     almacenista-sucursal.operacion   9 -> 6
+
+Cuatro tareas de tres manuales. Y **el cierre lo comparten dos puestos** desde el 21/sep, así que
+ese punto se le quita a la Encargada **y** al Auxiliar a la vez — que es la propiedad que se buscó
+al compartir el manual, cobrada por primera vez en las dos poblaciones.
+
+#### LO QUE CAMBIÓ EL PASO: HABÍA SEIS GEMELOS, Y NO SE PODÍA ADIVINAR
+
+La misma idea estaba escrita, con otras palabras, en tareas de **otros** puestos: «Verifiqué restos
+antes de abrir una caja nueva» (Bodeguero), «Surtí contra lista física o solicitud autorizada»
+(Bodeguero), «Revisé la zona de restos…» (Anaquelista), y tres más. Si el motivo era *este control
+no aplica*, sobraban también; si era *esta tarea quedó larga*, no.
+
+Puesto enfrente, **David añadió exactamente uno**: «Escaleras en condición segura», del checklist
+**diario** del Almacenista. Y ése es el que había que ver: quitar «Escaleras y antiderrapante» del
+**semanal** dejando el gemelo en el diario habría dejado a la **misma persona** reportando
+escaleras **todos los días** en vez de una vez por semana — lo contrario de lo que se pidió.
+
+Los otros cinco se quedan, **y ésa es la aserción que sostiene el paso**. Un conteo no la caza:
+«esta tarea tiene 6 puntos» lo pasa igual un archivo al que se le quitaron los tres equivocados.
+La dirección peligrosa de un retiro es **borrar de más** (§8.5).
+
+#### LAS VERSIONES SUBEN, Y DOS PRUEBAS AJENAS LO DEMOSTRARON
+
+Anaquelista 1.1→1.2, Encargada 1.1→1.2, Almacenista 1.0→1.1 (§5.4). Al aplicarlo, **dos pruebas de
+`evidencia-escrita.spec.ts` se pusieron en rojo**: fijaban el `1.1` y se escribieron el 21/sep por
+otro motivo. Son su **control positivo** —prueban que el número se movió de verdad— y se corrigen a
+mano aquí en vez de aflojarlas a un `toBeTruthy()`, que habría dejado pasar justo el caso que
+vinieron a impedir: contenido nuevo bajo el sello viejo.
+
+#### ⚠ MI MARCADOR DE DESPLIEGUE ERA UN NO-OP, Y LA MEDICIÓN DEL «ANTES» LO HABRÍA CONFIRMADO
+
+Lo más instructivo del día. El marcador natural era la versión nueva, y la primera medición contra
+producción dio **0** — exactamente lo que yo esperaba ver. Parecía un antes válido.
+
+**No lo era.** El bundle emite el punto medio **escapado**, y mi cadena llegó con el carácter real
+porque el shell se comió el backslash:
+
+    buscando «1.2 · Septiembre 2026»    dist/ 0   <- EN EL PROPIO dist, donde SÍ está
+    buscando «1.2 \xB7 Septiembre 2026» dist/ 2   <- la forma que emite el minificador
+
+O sea que el ancla no podía casar nunca. Lo destapó comprobarla **contra `dist/`**, donde la cadena
+existe con seguridad — el control que convierte un cero en dato. Es la lección del 14/sep («un
+ancla con acento es un no-op, y un no-op da verde») por una puerta nueva: aquí no fue un acento
+sino **el escapado del shell al construir la cadena**. Se rehizo con `String.fromCharCode(92)`,
+que no depende de cuántas capas de comillas atraviese.
+
+**Y en una aserción de AUSENCIA el riesgo se multiplica**, que es la parte que conviene no perder:
+un marcador de presencia roto da 0 y uno va a investigar; **un marcador de ausencia roto da 0 y uno
+se felicita.** El ancla mala habría «probado» que los puntos se fueron sin haber mirado.
+
+#### EL VERIFICADOR NO SABÍA EXPRESAR UNA AUSENCIA
+
+Es el primer paso que **retira**, y los 55 marcadores de `verificar-despliegue.js` eran todos de
+presencia. Con solo el de versión se habría probado que el bundle viajó y **nunca que los puntos se
+fueron**. Se agregó el tipo `ausente`, que exige 0 en las dos mitades y distingue las dos lecturas:
+`dist > 0` es «el retiro no se aplicó al código, desplegar otra vez no lo arregla»; `prod > 0` es
+«todavía no llegó».
+
+**Su control es un GEMELO que sí tiene que aparecer** —«Carretas despejadas o correctamente
+ubicadas», del mismo tipo de dato y también sin acentos—. Sin él, los dos ceros dirían «no sé dónde
+buscar» y se leerían como «se fueron». Los dos textos elegidos son **ASCII puro** a propósito: de
+los nueve retirados, siete llevan acento y el bundle los escapa.
+
+**Y `md-refresco-btn` estaba declarado como `nuevo` habiendo sido desplegado ya.** Su commit
+(`5e59698`) es **anterior** al de kileo (`a776caa`), que valía 1 en producción antes de empezar: como
+`nuevo` habría dado verde sin comprobar nada. Baja a control en este mismo commit.
+
+#### LAS PRUEBAS
+
+**466 unitarias** (6 nuevas en `tareas-retiradas.spec.ts`). Los dos controles:
+
+| | qué se hizo | qué pasó |
+|---|---|---|
+| POSITIVO | romper una aserción mía | falla **exactamente 1**, y el fallo **nombra la prueba** y su mensaje. Archivo restaurado **idéntico** (`diff` vacío) |
+| NEGATIVO | devolver «Evidencia enviada» al catálogo, **una línea** | caen **exactamente 2**, nombrando el texto que volvió y la tarea que cambió de tamaño. Las otras 464 en verde |
+
+**El positivo hacía falta porque la aritmética no cuadraba.** El total pasó de 451 a 466 y mi
+archivo aporta 6: los otros 9 son de commits de otras sesiones. Sumar no es medir — la lección de
+esta misma mañana—, así que se comprobó rompiendo una aserción en vez de creerle al total.
+
+**Y mi primer control negativo pegó en TRES sitios.** El `sed` estaba anclado a un comentario que
+se repite, así que devolvió el punto a tres tareas. Habría «detectado» igual, y por eso no vale:
+un control que cambia de más también miente (7/sep). Rehecho con un ancla única, `diff` de una
+línea comprobado.
+
+#### DESPLEGADO Y VERIFICADO
+
+    marcador .... 1.2 \xB7 Septiembre 2026   0 -> 2
+    AUSENCIAS ... Evidencia enviada                  1 -> 0
+                  No hice ajustes de inventario...   1 -> 0
+    control ..... Carretas despejadas (GEMELO) 2 · 55 controles en pie
+                  66 archivos · 4.52 MB · 0 fallos de lectura
+    espera ...... 14 vueltas, anclada al rotulo `status:` y a la LINEA COMPLETA
+    log ......... arranca limpio, migraciones al dia, el emisor CARGA SU REGLA
+                  (`NO SE PUDO CARGAR LA REGLA` = 0, con su linea buena presente)
+
+**El verificador se corrió ANTES de subir y falló los tres**, nombrando cada uno con su
+diagnóstico. Sin esa corrida, un verde posterior no probaría que discrimina.
+
+#### LO QUE ESTO NO HACE, dicho para que no se lea como resuelto
+
+- **Los denominadores bajan MAÑANA, y los porcentajes van a subir por eso.** Anaquelista −2
+  puntos/día · Encargada y Auxiliar −1 · Almacenista −4 y −2 los lunes. **No es que la gente haya
+  cumplido más**: cambió la base. Quien compare contra un reporte de esta semana no va a cuadrar.
+- **Hoy no se mueve nada.** Lo emitido no se reescribe (§5.5): los checklists de hoy conservan sus
+  puntos y los nuevos empiezan mañana a las 00:00.
+- **EL ANEXO 6 QUEDA CUBIERTO A MEDIAS.** `almacenista-sucursal.seguridad` **es** ese anexo
+  publicado, y el PDF sigue pidiendo siete elementos mientras la app cobra cinco. La divergencia es
+  entre el papel y el sistema, no dentro del sistema. Queda fijada en una prueba para que se
+  encuentre el día que Capital Humano lo reedite — eso es Fase 7, y **esta corrección de norma
+  costó un despliegue, como todas** (hallazgo 5).
+- **Los cinco gemelos restantes siguen**, por decisión de David. Si mañana resulta que también
+  sobran, es un renglón.
+- **Nadie ha entrado con una cuenta real.** Lo verificado es el catálogo compilado y el bundle
+  servido.
+- **Cero migraciones.** Ninguna ficha tocada, ningún número de tablero movido a mano.
+
+#### Y UN ARCHIVO MÍO ACABÓ EN `C:\Program Files\Git`
+
+`$TMPDIR` estaba **vacío** en Git Bash, así que `"$TMPDIR/ver-retiros.js"` se resolvió a `/ver-...`
+y MSYS lo tradujo a la raíz de la instalación de Git. Cuarta vez que ese mordisco aparece en el
+repo (31/ago, 3/sep, 13/sep). Se borró y se comprobó que ya no está. **La variable de un temporal
+se verifica antes de escribir en ella**, o el archivo aparece donde nadie lo va a buscar.
+
 ### 22/sep/2026 (noche) — 33.7 MB/min DE EGRESS SALÍAN DE UNA SOLA RESPUESTA
 
 Reporte de David: *«revisa en railway que es lo que tenemos consumiendo network egress de 32 mb

@@ -165,6 +165,41 @@
         </div>
       </div>
 
+      <!-- ═══════════ BUSCAR ACTUALIZACIÓN (22/sep/2026) ═══════════
+           Instrucción de David: «un botón de refresh para que estén refrescando
+           la página aunque la tengan descargada», «en un apartado en donde no
+           estorbe».
+
+           VA AQUÍ, pegado al sello de versión, y no flotando sobre la pantalla:
+           es donde alguien va a mirar «qué versión tengo», y el menú hay que
+           abrirlo a propósito — así nadie lo pulsa por accidente a media
+           captura, que es lo que costaría el trabajo que tenga a medias.
+
+           No sustituye a la barra de «Hay una versión nueva» de `app.html`:
+           aquélla AVISA cuando la app encuentra algo sola; ésta deja PEDIRLO. -->
+      <div class="md-refresco">
+        <button type="button" class="md-refresco-btn"
+                [disabled]="estadoRefresco === 'buscando' || estadoRefresco === 'aplicando'"
+                (click)="buscarActualizacion()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+               [class.girando]="estadoRefresco === 'buscando' || estadoRefresco === 'aplicando'">
+            <polyline points="23 4 23 10 17 10"></polyline>
+            <polyline points="1 20 1 14 7 14"></polyline>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+          </svg>
+          Buscar actualización
+        </button>
+
+        <!-- El resultado se DICE. Un botón que no contesta nada se vuelve a
+             pulsar, y quien lo pulsa acaba creyendo que no funciona. -->
+        <div class="md-refresco-msj" *ngIf="mensajeRefresco"
+             [class.ok]="estadoRefresco === 'aldia'"
+             [class.mal]="estadoRefresco === 'sinred' || estadoRefresco === 'error'"
+             role="status">
+          {{ mensajeRefresco }}
+        </div>
+      </div>
+
       <div class="build-sello" title="Versión instalada en este dispositivo">
         🏷️ Versión {{ buildSello }}
       </div>

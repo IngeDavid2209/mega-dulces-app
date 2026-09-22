@@ -221,7 +221,21 @@ const MARCADORES = [
   // El marcador es el `documento` renombrado, que es la cadena que cambia y la
   // que la persona LEE en su checklist. Sin acentos en el trozo anclado.
   // Validado en las dos direcciones ANTES de subir.
-  { txt: 'kileo y empaque', nuevo: true,
+  // 22/sep/2026 (tarde, 3) · BOTON DE BUSCAR ACTUALIZACION en el pie del menu.
+  // Instruccion de David: «un boton de refresh para que esten refrescando la
+  // pagina aunque la tengan descargada», «en un apartado en donde no estorbe».
+  // Con la app instalada no hay barra del navegador donde pulsar recargar, y lo
+  // que habia era automatico: se buscaba sola, pero la persona no podia pedirlo.
+  //
+  // Es una clase de CSS y no el nombre del metodo, porque el minificador se come
+  // `buscarActualizacion` y respeta las clases. Sin vocal acentuada: el bundle
+  // las escapa y un ancla con acento no pega — seria un no-op, y un no-op da
+  // verde (14/sep). Validado en las dos direcciones ANTES de subir: 0 en HEAD,
+  // 1 archivo en dist/.
+  { txt: 'md-refresco-btn', nuevo: true,
+    que: 'el boton de buscar actualizacion, en el pie del menu' },
+  // El de hace un rato baja a CONTROL: ya vale en produccion.
+  { txt: 'kileo y empaque', control: true,
     que: 'el manual sirve a los dos puestos y el documento lo dice' },
   // El de hace un rato baja a CONTROL: ya vale en produccion, y dejarlo como
   // `nuevo` daria verde sin comprobar nada de este despliegue.

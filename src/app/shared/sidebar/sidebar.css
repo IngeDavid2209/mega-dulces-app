@@ -61,3 +61,45 @@
   .nav-seccion { font-size: 12px; letter-spacing: .5px; }
   .build-sello { font-size: 12px; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   BUSCAR ACTUALIZACION — 22/sep/2026
+   Va en el pie del menu, pegado al sello de version. Discreto a proposito: no
+   compite con las entradas de navegacion ni con «Cerrar Sesion», que es el
+   boton de al lado y el que NO queremos que se pulse por error.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.md-refresco { margin-top: 12px; }
+
+.md-refresco-btn {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  width: 100%;
+  /* El minimo tactil de la app (13/sep). En escritorio `--tap-min` vale 0px,
+     asi que ahi manda el padding y el boton no se estira. */
+  min-height: var(--tap-min);
+  padding: 9px 12px;
+  font-family: inherit; font-size: 12px; font-weight: 700;
+  color: var(--neutral-500);
+  background: transparent;
+  border: 1.5px solid var(--neutral-300);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.md-refresco-btn:hover:not(:disabled) { background: var(--overlay-hover); }
+.md-refresco-btn:disabled { opacity: .65; cursor: default; }
+.md-refresco-btn svg { width: 14px; height: 14px; flex: 0 0 auto; }
+
+/* Gira mientras busca: sin esto, «Buscando…» con el boton apagado se ve igual
+   que un boton roto. Se respeta a quien pidio menos movimiento. */
+.md-refresco-btn svg.girando { animation: md-giro 1s linear infinite; }
+@keyframes md-giro { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .md-refresco-btn svg.girando { animation: none; }
+}
+
+.md-refresco-msj {
+  margin-top: 6px;
+  font-size: 11px; line-height: 1.35; text-align: center;
+  color: var(--neutral-500);
+}
+.md-refresco-msj.ok  { color: var(--ok-soft-fg); }
+.md-refresco-msj.mal { color: var(--bad-soft-fg); }

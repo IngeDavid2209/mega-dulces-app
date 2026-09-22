@@ -4,6 +4,8 @@ import { RouterModule, Router } from '@angular/router';
 import { APP_BUILD_SELLO } from '../version';
 import { esAdminDeCanindo } from '../permisos.util';
 import { cerrarSesionSegura } from '../sesion.util';
+import { SwUpdate } from '@angular/service-worker';
+import { decidirRefresco } from '../refresco.util';
 import { menuDe, totalVisible } from './nav.config';
 
 /**
@@ -34,6 +36,81 @@ export class SidebarComponent implements OnInit, OnDestroy {
   readonly buildSello = APP_BUILD_SELLO;
 
   private router = inject(Router);
+  private swUpdate = inject(SwUpdate);
+
+  // ══════════════════════════════════════════════════════════════════════════
+  //  BUSCAR ACTUALIZACIÓN A MANO — 22/sep/2026
+  //
+  //  Instrucción de David: «crea un botón de refresh para que estén refrescando
+  //  la página aunque la tengan descargada», y «que se vea en un apartado en
+  //  donde no estorbe».
+  //
+  //  POR QUÉ HACE FALTA SI YA SE BUSCA SOLA. `app.ts` consulta cada 2 minutos,
+  //  al volver del segundo plano, al enfocar y al recuperar señal, y cuando
+  //  encuentra algo saca la barra de «Actualizar / Ahora no». Todo eso es
+  //  automático: lo que no existía era que la PERSONA pudiera pedirlo. Con la
+  //  app instalada y nunca cerrada, quien sospecha que tiene una versión vieja
+  //  no tenía ningún gesto que hacer — y en una PWA no hay barra del navegador
+  //  donde pulsar recargar.
+  //
+  //  VA EN EL PIE DEL MENÚ, junto al sello de versión, por las dos mitades de
+  //  lo que pidió: es el sitio donde alguien va a buscar «qué versión tengo», y
+  //  el menú HAY QUE ABRIRLO A PROPÓSITO, así que nadie lo pulsa por accidente
+  //  a media captura.
+  // ══════════════════════════════════════════════════════════════════════════
+
+  /** Qué está haciendo el botón. Lo lee la plantilla; no se guarda en ningún lado. */
+  estadoRefresco: 'listo' | 'buscando' | 'aplicando' | 'aldia' | 'sinred' | 'error' = 'listo';
+  /** Lo que se le dice a la persona debajo del botón. Vacío = no se pinta nada. */
+  mensajeRefresco = '';
+  private relojMensaje: any = null;
+
+  /**
+   * ⚠ NO RECARGA SI YA ESTÁ AL DÍA, Y ESA ES LA DECISIÓN DEL BOTÓN.
+   *
+   * Una recarga se lleva lo que la persona tenga a medias —un motivo de retraso
+   * a medio escribir, una foto elegida y sin subir, el desplazamiento en una
+   * lista larga—. Es el mismo argumento por el que el 13/sep se dejó de aplicar
+   * la actualización sola. Si no hay versión nueva que traer, ese costo no
+   * compra nada: se dice qué versión tiene y no se toca la pantalla.
+   *
+   * Así el botón solo interrumpe cuando de verdad hay algo que actualizar.
+   */
+  async buscarActualizacion() {
+    if (this.estadoRefresco === 'buscando' || this.estadoRefresco === 'aplicando') return;
+    this.ponerMensaje('buscando', 'Buscando actualización…', 0);
+
+    // La decisión vive en `refresco.util.ts` y no aquí: lo que decide es SI SE
+    // RECARGA, y eso se lleva lo que la persona tenga a medias. Ahí se puede
+    // probar con las seis ramas; dentro de este componente sólo se podría con
+    // un service worker de verdad, y en headless `isEnabled` es false, así que
+    // un arnés recorrería siempre la misma y daría verde sin ejercer ninguna.
+    const plan = await decidirRefresco({
+      enLinea: navigator.onLine,
+      swActivo: this.swUpdate.isEnabled,
+      version: this.buildSello,
+      buscar: () => this.swUpdate.checkForUpdate(),
+      activar: () => this.swUpdate.activateUpdate().then(() => undefined),
+    });
+
+    this.ponerMensaje(plan.estado, plan.mensaje, plan.recargar ? 0 : 6000);
+    // El respiro es para que alcance a leerse «Actualizando…» antes de que la
+    // pantalla se vaya; sin él, la recarga se come su propio aviso.
+    if (plan.recargar) setTimeout(() => document.location.reload(), 300);
+  }
+
+  /** `ms` = 0 deja el mensaje fijo (lo que sigue lo sustituye). */
+  private ponerMensaje(estado: typeof this.estadoRefresco, texto: string, ms = 6000) {
+    this.estadoRefresco = estado;
+    this.mensajeRefresco = texto;
+    if (this.relojMensaje) { clearTimeout(this.relojMensaje); this.relojMensaje = null; }
+    if (ms > 0) {
+      this.relojMensaje = setTimeout(() => {
+        this.estadoRefresco = 'listo';
+        this.mensajeRefresco = '';
+      }, ms);
+    }
+  }
 
   /**
    * El menú de quien entró, agrupado por sección. Se calcula, no se escribe.
@@ -87,7 +164,14 @@ export class SidebarComponent implements OnInit, OnDestroy {
   // persona que descansa, porque nadie asigna nada — el puesto decide y el
   // robot ya omite a quien descansa o está fuera de turno.
   ngOnInit() { /* sin listeners propios */ }
-  ngOnDestroy() { /* sin listeners propios */ }
+  ngOnDestroy() {
+    // El único temporizador propio: el que borra el mensaje del botón de
+    // actualizar. Se limpia porque este componente se monta y se destruye en
+    // cada pantalla, y un `setTimeout` huérfano escribiendo en un componente
+    // muerto es el mismo descuido que dejó 20 `setInterval` corriendo en
+    // Checklist (ver el «FIX MEMORY LEAK» de `iniciarRobotNotificador`).
+    if (this.relojMensaje) { clearTimeout(this.relojMensaje); this.relojMensaje = null; }
+  }
 
   /**
    * ¿Se le muestra "Promociones" (activación, formato MKTN001)?

@@ -326,6 +326,141 @@ de que exista la plaza sería partir el problema en dos, no resolverlo.
 
 ## 9. Bitácora del plan
 
+### 22/sep/2026 (noche) — 33.7 MB/min DE EGRESS SALÍAN DE UNA SOLA RESPUESTA
+
+Reporte de David: *«revisa en railway que es lo que tenemos consumiendo network egress de 32 mb
+cada minuto»*, y después *«cambialo y hazlo mas optimo, reduce lo mayor posible esos numeros»*.
+
+#### LO PRIMERO FUE SEPARAR CUÁL SERVICIO, PORQUE SON QUINCE
+
+El proyecto `mega-dulces-compras` tiene **13 servicios + Redis + Postgres**. «Lo que tenemos
+consumiendo» no es una cosa. Medido con `railway metrics --all --network`: **MDTask es el único**,
+los otros catorce en cero.
+
+**Y el resumen del CLI miente a medias, como el `status`.** Imprime `33 MB` a secas y eso es el
+**promedio por punto**, no el total. El total real sale de la serie cruda:
+
+    NETWORK_TX  361 puntos  12 172 MB en 6 h  =  33.7 MB/min   (~48 GB/dia, ~1.4 TB/mes)
+    NETWORK_RX  361 puntos      94 MB en 6 h  =   0.26 MB/min
+
+Leer ese «33 MB» como total subestima el problema **360 veces**. La asimetría **1:129** ya decía
+que son respuestas, no subidas.
+
+#### LOS LOGS HTTP TRAEN `txBytes` POR PETICIÓN, Y ESO CERRÓ EL CASO
+
+    20:29:57   29 277 KB   GET /api/checklists   rx=1737   1046ms
+    20:30:57   29 277 KB   GET /api/checklists   rx=1737   1062ms
+    20:31:57   29 277 KB   GET /api/checklists   rx=1737   1108ms
+
+**28.6 MB, en el segundo :57 de cada minuto, byte por byte igual, desde una sola IP.** Eso solo
+son **28.6 de los 33.7 MB/min: el 85%**.
+
+**El log BORRA el query string** (0 de 24 paths traen `?`), así que `/api/checklists` ahí puede ser
+con filtro o sin él. Lo que las separa es el peso, medido contra la base (17 754 filas):
+
+    SIN filtro (toda la tabla)     17 754 filas   43.0 MB   <- descartado
+    ?desde=hace 45 dias (TEC)       9 156 filas   30.7 MB
+    ?desde=hace 30 dias             6 361 filas   26.9 MB   <- el observado cae aqui
+    ?desde=hoy                        192 filas    1.1 MB   <- las de 1.0 MB observadas
+    ?entregaConRetraso=true           279 filas    0.5 MB   <- descartado
+
+**El `entregaConRetraso` lo MEDÍ en vez de acusarlo.** Esta misma bitácora lo tenía señalado como
+«sin cota de fecha» y era el sospechoso natural: son **0.5 MB**. Una acusación por comentario
+heredado habría mandado a arreglar lo que no era.
+
+#### POR QUÉ UNA RESPUESTA PESA 29 MB — cuatro cosas apiladas, ninguna un bug
+
+    1. el endpoint manda la operacion de TODA la empresa  (el filtro por rol y sucursal
+       es EN CLIENTE, y esta escrito en `api/checklists.js:17`)
+    2. cada fila viaja con su documento completo: `items[]` es el 79% del peso
+    3. dentro de los items, el NOMBRE del campo pesa 1.48x el dato:
+          859 977 pares campo:valor -> nombres 9.7 MB  contra  valores 6.5 MB
+    4. la norma viaja repetida: 554 textos DISTINTOS en 42 372 puntos = cada uno 76 veces
+
+De propina viajan **1 440 filas con `eliminado=true` (2.5 MB)** que el navegador baja para
+tirarlas. Y por sucursal: Padre Hidalgo 5.1 MB, Canindo 4.0, 8 Esquinas 3.5, SISTEMAS 3.1…
+todas, a cualquiera con token.
+
+**Los puntos 3 y 4 son exactamente lo que come un compresor**, y por eso el ratio es absurdo.
+
+#### EL BENCHMARK DECIDIÓ EL AJUSTE, Y EL DEFAULT DE NODE ERA LA TRAMPA
+
+Medido sobre el payload REAL (23.24 MB, 6 361 filas), ratio **contra CPU**:
+
+    gzip nivel 1 ....  1.56 MB    15x      79 ms
+    gzip nivel 6 ....  1.06 MB    22x     140 ms
+    brotli q4 .......  0.18 MB   130x      92 ms   <- default del paquete
+    brotli q5 .......  0.14 MB   163x     110 ms   <- el elegido
+    brotli q11 ......  0.12 MB   198x    6331 ms   <- default de zlib
+
+**Mirar solo el ratio habría llevado a q11**, y ahí cada respuesta cuesta **6.3 segundos de CPU**:
+cambiar un problema de ancho de banda por uno de latencia, en un servidor de **una sola réplica**
+(paso 0.4), donde ese bloqueo lo pagan todos. q5 comprime **7x más que gzip costando MENOS CPU**
+que gzip nivel 6.
+
+#### EL CONTROL QUE CASI NO PONGO: QUE LA CONFIGURACIÓN RIJA
+
+Probado contra el servidor real antes de subir, en las tres direcciones — y la tercera es el
+control negativo:
+
+    Accept-Encoding: br         247 175 bytes   Content-Encoding: br
+    Accept-Encoding: gzip       271 474 bytes   Content-Encoding: gzip
+    Accept-Encoding: identity   947 754 bytes   (ninguno)   <- no comprime a ciegas
+
+Y **247 175 es exactamente brotli q5; q4 daría 265 006**. Si el paquete hubiera ignorado la
+opción, el número habría sido el otro y «está comprimiendo» habría dado verde igual. Un ratio
+bueno no prueba que rija TU ajuste: lo prueba el byte exacto.
+
+#### EL RESULTADO, MEDIDO EN PRODUCCIÓN
+
+    la peticion:  29 277 KB  ->  288 KB      = 102x menos
+    el servicio:  33.59      ->  0.54 MB/min =  62x menos   (~48 GB/dia -> ~0.8)
+    latencia:     ~1100ms    ->  ~1020ms     (sin regresion)
+
+**El «antes» corregido de 33.59 lleva su propio control**: la serie de `--since 1h` viene a **30
+segundos**, no a minuto, así que hay **2 puntos por minuto** y el promedio por punto NO es MB/min.
+Corregido da 33.59, que coincide con los 33.7 medidos por separado en la ventana de 6 h a
+resolución de minuto. Sin esa corrección, el «después» se habría reportado a la mitad. *(El ratio
+de 62x no depende de la resolución; la cifra absoluta sí.)*
+
+#### TRES FALLOS MÍOS, Y LOS TRES SON LA MISMA FAMILIA
+
+1. **`railway status` NO acepta `-s`.** Mi bucle de espera lo pasaba, el comando fallaba, la
+   salida venía vacía, y la comparación contra `● Online` **nunca podía ser cierta**: habría
+   girado hasta el timeout y yo habría reportado «el despliegue se atascó» con el despliegue
+   sano. La guardia nueva **aborta diciendo «no pude leer»** si no encuentra el rótulo — que es
+   lo que distingue eso de «sigue construyendo». Sexta vez que la espera de Railway falla, y la
+   primera por el **argumento**, no por el valor.
+2. **El filtro `--path /api/checklists` de `railway logs` devuelve 0** mientras la misma consulta
+   sin filtro encuentra 6. Lo cacé porque el script decía «SIN LINEAS -> no pude medir» y corrí el
+   control sin filtro. Con un `0` a secas habría concluido que el cliente dejó de pedir — o sea,
+   que el arreglo hizo algo que no hizo.
+3. **Una ventana de 40 s sin ninguna `/api/checklists`** dio «0.76 MB/min» y eso se lee como el
+   arreglo funcionando. No probaba nada: el poll cae en el segundo :57 y esa ventana no lo
+   contenía. Hubo que esperar a cazar una.
+
+#### LO QUE ESTO NO HACE, dicho para que no se lea como resuelto
+
+- **NO arregla la exposición, solo el recibo.** El endpoint le sigue mandando la operación de toda
+  la empresa a cualquiera con token (`api/checklists.js:17`). Eso es Fase 3/9 y **no viajó de
+  contrabando aquí**.
+- **NO se recortaron filas del payload**, aunque era lo tentador. Quitar las `eliminado=true`
+  parecía gratis (2.5 MB por respuesta) y **rompe la idempotencia del emisor**: la bitácora del
+  14/sep dice que la comprobación lee esa respuesta *incluyendo* los eliminados, así que sin ellas
+  el robot volvería a emitir lo borrado. Un «optimizar» ahí habría creado checklists duplicados.
+- **Tampoco se topó el rango de fechas.** Un tope duro puede dejar una pantalla en blanco, y «no
+  veo nada» se lee igual que «no tengo trabajo» (§5.2).
+- **No pinché la línea exacta que dispara la petición.** Ningún poll del código tiene período de
+  60 s; varios piden checklists cada 20 s. Lo que reconcilia es que **Chrome estrangula los
+  `setInterval` de una pestaña en segundo plano a uno por minuto** — pero eso es **inferencia, no
+  medición**. Tiene una implicación incómoda: con la pestaña al frente serían 3/min.
+- **No sé si es siempre un solo cliente.** El log HTTP retiene minutos: la ventana 3h–2h devuelve
+  **0 líneas incluso sin filtro**, así que ese cero es «no pude leer». En todo lo legible fue la
+  misma IP.
+- **El pico del despliegue son 76 MB en un minuto** (21:00), y es normal: cada `railway up` cambia
+  los hashes y las PWA abiertas rebajan los chunks. Ahora también van comprimidos.
+- **Cero migraciones, cero archivos de `src/`.** Ninguna regla de negocio tocada.
+
 ### 22/sep/2026 (tarde, 3) — UN BOTÓN PARA BUSCAR ACTUALIZACIÓN, y por qué NO recarga siempre
 
 Instrucción de David: *«crea un botón de refresh para que estén refrescando la página aunque la

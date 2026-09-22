@@ -326,6 +326,101 @@ de que exista la plaza sería partir el problema en dos, no resolverlo.
 
 ## 9. Bitácora del plan
 
+### 22/sep/2026 (tarde, 3) — UN BOTÓN PARA BUSCAR ACTUALIZACIÓN, y por qué NO recarga siempre
+
+Instrucción de David: *«crea un botón de refresh para que estén refrescando la página aunque la
+tengan descargada»*, y enseguida *«que se vea en un apartado en donde no estorbe»*.
+
+#### LO PRIMERO FUE MEDIR QUÉ HABÍA, Y HABÍA MÁS DE LO QUE PARECÍA
+
+`app.ts` ya busca versión nueva **cada 2 minutos**, al volver del segundo plano, al enfocar la
+ventana y al recuperar señal; y cuando encuentra algo saca la barra de «Actualizar / Ahora no»
+(13/sep). En el login se aplica sola.
+
+**Todo eso es automático, y ahí estaba el hueco: la PERSONA no podía pedirlo.** Con la app
+instalada y nunca cerrada no hay barra del navegador donde pulsar recargar, así que quien
+sospechaba tener una versión vieja no tenía **ningún gesto que hacer**. No hacía falta otro
+mecanismo de detección: hacía falta una puerta.
+
+#### DÓNDE, QUE ES LA MITAD DE LO QUE PIDIÓ
+
+En el **pie del menú**, pegado al sello de «🏷️ Versión X». Las dos mitades de su frase: es el
+sitio donde alguien va a mirar qué versión tiene, y **el menú hay que abrirlo a propósito**, así
+que nadie lo pulsa por accidente a media captura — que es exactamente lo que costaría el trabajo
+que tenga sin guardar.
+
+Medido en el DOM, con dos sesiones y no una: **1 botón, dentro del pie, visible, 36px de alto**,
+tanto para una anaquelista como para un admin. Y el renglón del mensaje **no se pinta hasta que
+se pulsa**: un aviso que sale de entrada dice algo que nadie preguntó.
+
+#### ⚠ NO RECARGA SI YA ESTÁ AL DÍA, Y ESA ES LA DECISIÓN DEL PASO
+
+    hay version nueva ...... la activa y RECARGA
+    ya esta al dia ......... lo dice con su version, NO recarga
+    sin red ................ lo dice, NO recarga NI CONSULTA
+    sin service worker ..... recarga (el refresh de toda la vida)
+    el SW no contesta ...... tope, lo dice NOMBRANDO EL PASO, NO recarga
+
+Una recarga se lleva lo que la persona tenga a medias —un motivo de retraso a medio escribir,
+una foto elegida y sin subir, el desplazamiento en una lista larga—. Es **el mismo costo por el
+que el 13/sep se dejó de aplicar la actualización sola**. Si no hay versión nueva que traer, ese
+costo no compra nada. Así el botón solo interrumpe cuando de verdad hay algo que actualizar.
+
+#### EL TOPE, QUE ES LA LECCIÓN DEL 1/sep COBRADA EN OTRO SITIO
+
+`checkForUpdate()` **NO RECHAZA** si el service worker no contesta: deja la promesa pendiente.
+Sin tope, el botón diría «Buscando…» para siempre — literalmente el «VERIFICANDO...» del login,
+que costó cinco horas de diagnóstico porque **no había error que buscar: había un silencio**.
+Va con `conTope`, que es la herramienta que aquel día dejó escrita, y el mensaje **nombra el
+paso** («se agotó el tiempo al buscar la actualización») en vez de mandar a revisar la red
+entera.
+
+#### LA DECISIÓN VIVE FUERA DEL COMPONENTE, Y NO ES PUREZA
+
+`refresco.util.ts`, con la lógica inyectada. El motivo es que **se pueda probar**: en Chrome
+headless `SwUpdate.isEnabled` es **false**, así que un arnés DOM recorrería SIEMPRE la rama de
+«sin service worker» y daría verde **sin ejercer ninguna de las otras cinco**. Es el corolario
+(c) por adelantado: un control que solo puede pasar por un camino no discrimina.
+
+**460 unitarias** (451 → 460, 9 casos). Entre ellos, dos que no son obvios: que **sin red ni
+siquiera se consulte** (no basta con no recargar), y que **si ACTIVAR falla se recargue igual**
+—la versión ya está en caché, y no recargar dejaría a la persona con el aviso puesto y sin la
+versión nueva, que es el peor de los dos resultados—.
+
+**Control negativo**, una línea con su `diff` comprobado (75: «al día» pasa a `recargar: true`):
+rompe la prueba que protege el trabajo a medias **nombrando el defecto** —*«recargó sin tener
+nada nuevo que traer»*— y lo demás sigue verde. Archivo restaurado idéntico antes de
+reconstruir.
+
+Y el reloj del mensaje se limpia en `ngOnDestroy`: este componente se monta y se destruye en
+cada pantalla, y un `setTimeout` huérfano escribiendo en un componente muerto es el mismo
+descuido que dejó 20 `setInterval` corriendo en Checklist.
+
+#### DESPLEGADO Y VERIFICADO
+
+    marcador .... md-refresco-btn 0 -> 1 · 53 controles en pie
+                  66 archivos · 4.52 MB · 0 fallos de lectura
+    espera ...... 11 vueltas, anclada al rotulo `status:` y a la LINEA COMPLETA
+    log ......... arranca limpio, migraciones al dia, el emisor carga su regla
+                  (`NO SE PUDO CARGAR LA REGLA` = 0 · ventana de 12 lineas, citada)
+
+El marcador es una clase de CSS y no el nombre del método: el minificador se come
+`buscarActualizacion` y respeta las clases. Sin vocal acentuada, porque el bundle las escapa y
+un ancla con acento sería un no-op — y un no-op da verde (14/sep). Validado en las dos
+direcciones antes de subir: **0 en HEAD, 7 en `dist/`, 0 en producción**.
+
+#### LO QUE ESTO NO HACE
+
+- **No sustituye la barra de «Hay una versión nueva».** Aquélla AVISA cuando la app encuentra
+  algo sola; ésta deja PEDIRLO. Son dos cosas distintas y las dos siguen vivas.
+- **Nadie lo ha pulsado desde un teléfono real.** Lo medido es que se pinta, dónde se pinta y
+  qué decide; que se vea bien en un iPhone sigue necesitando ojos, y Chrome no es Safari
+  (13/sep).
+- **No refresca los DATOS**, solo la versión de la app. Las tareas ya se recargan solas cada
+  20 s; si alguien esperaba que este botón le trajera tareas nuevas, lo que le trae es la app
+  nueva, y el mensaje se lo dice.
+- **Cero migraciones.**
+
 ### 22/sep/2026 (tarde) — UNA SOLA VENTANA: 06:00 → 23:00, y la apertura pierde su excepción
 
 Instrucción de David: *«vamos a cambiar los horarios de las tareas, quiero que inicien de 6:00

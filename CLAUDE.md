@@ -479,6 +479,132 @@ entero en el commit de quien despliega y verifica.
   como todas. Eso es 7.1b.
 
 
+### 22/sep/2026 (tarde) — LA KILEADORA: el puesto no existía, y la operación sí
+
+Instrucción de David: *«necesito que generes un plan de tareas para las kileadoras»*.
+
+#### LO PRIMERO QUE HUBO QUE DECIRLE ES QUE EL PUESTO NO EXISTÍA COMO DATO
+
+Medido antes de escribir una sola tarea:
+
+    en el organigrama (89 puestos) ....... 0
+    en la nomina de agosto ............... 0
+    fichas activas que lo mencionen ...... 0 de 149  (y `cargo` vacio en las 149)
+
+Lo único que había en todo el repo era la palabra `kileado`, en el **vocabulario del dictado
+por voz** (`api/transcribir.js:40`). O sea: la operación se nombra todos los días, entra por
+micrófono, y **el puesto nunca se declaró**. Es el hallazgo 1 en su forma más silenciosa — no
+es que la identidad se cruce mal, es que una plaza entera no tiene dónde existir.
+
+**No se rellenó por parecido** (§8.5). Se le puso enfrente la lista de los 14 puestos de
+sucursal —seis de ellos sin manual: `coordinador-cajas`, `coordinador-piso-ventas`,
+`vendedora-piso`, `multifuncional`, `vigilancia`, `intendencia`— y **David eligió declarar uno
+nuevo**. Queda anotado quién decidió.
+
+#### EL PUESTO, Y POR QUÉ LOS ALIAS NO SON ADORNO
+
+`kileadora`, unidad `sucursal`, nivel `operativo`, `reportaA: encargado-sucursal` — igual que
+el Anaquelista y el Surtidor. El organigrama pasa de **89 a 90**.
+
+Los `aliasCargos` existen porque la ficha se captura **a mano**: `resolverPuesto` cruza por
+`cargo` de texto libre cuando no hay `puestoId`, así que sin ellos una ficha que diga
+«Kileadora» no emparejaría con nada y esa persona se quedaría **sin tareas y sin aviso**. Hay
+un caso de prueba con cuatro grafías (`Kileadora`, `kileadora`, `KILEADORAS`, `Kileador`).
+
+#### EL MANUAL: UNA TAREA DIARIA DE NUEVE PUNTOS, DERIVADA Y SELLADA COMO TAL
+
+No hay PDF. Los nueve puntos se derivaron de la operación de granel y del estilo del
+Anaquelista y el Surtidor, y **David los aprobó con la lista enfrente**. Llevan `selloPropio`
+—«Operación de la Kileadora — derivado, pendiente de manual propio», **v0.1**— y el código de
+formato **vacío**, porque ese código es el anexo de un manual publicado y este puesto no tiene
+anexo: heredarlo le haría citar un formato que no le corresponde.
+
+**El riesgo propio de una norma derivada no es el contenido: es el SELLO.** `manualDePuesto`
+devuelve **el primero que encuentra**, así que un `puestoIds` mal puesto haría que sus
+checklists afirmaran venir del manual del Anaquelista —donde estos puntos no están— y el
+§5.4 se perdería **sin un solo error visible**. Por eso la prueba del sello no se conforma con
+«tiene documento»: compara contra el del Anaquelista y nombra el que saldría mal.
+
+**Y entró en la ventana, no con un reloj propio.** La tarea usa `horaLimite: H_LIMITE`, la
+constante que la sesión de al lado acababa de unificar en el mismo archivo. Con una hora
+literal habría compilado igual y habría quedado **una sola plaza con un horario distinto al de
+todas las demás**, que es exactamente lo que ese otro cambio venía a cerrar.
+
+#### ⚠ HOY NO SE LE ENTREGA A NADIE, Y NO ES UN DEFECTO
+
+El emisor reparte por `puestoId` y **ninguna ficha lo tiene todavía**. Se escribe igual porque
+la norma es de la PLAZA, no de quien la ocupa (§4): el día que Capital Humano se lo asigne,
+sus tareas salen a las 00:00 sin tocar una línea de código.
+
+Conviene no leer el marcador por lo que no es: **prueba que la norma viajó, no que se entregue
+a alguien**. Y el censo del emisor tampoco la va a nombrar entre los puestos sin manual,
+porque ese censo cuenta **gente**, y aquí todavía no hay.
+
+#### UN TOTAL QUE SUBE NO PRUEBA QUE TUS PRUEBAS CORRAN
+
+**447 unitarias** (433 → 447). De las 14 nuevas, **7 son de esta entrada y 7 de la ventana**
+—las dos sesiones corrieron la suite con el trabajo de la otra dentro, y las dos leyeron el
+mismo 447—. La aritmética cuadraba (433 + 7 + 7), y **eso es aritmética, no medición**: un
+spec que no se ejecutara daría el mismo número si alguien más aportó los casos que faltaban.
+
+Se comprobó con un control positivo: rota una aserción a propósito, el fallo **nombra la
+prueba** —`Kileadora de Sucursal tiene UNA tarea diaria de NUEVE puntos FAILED · Expected 9 to
+be 999`— y el archivo se restauró **idéntico** (`diff` vacío) antes de reconstruir. Sin eso,
+«447 en verde» era compatible con que este spec no hubiera corrido nunca.
+
+#### LO QUE ESTO NO HACE
+
+- **No le da tareas a nadie hoy.** Depende de que alguien capture el puesto en las fichas, y
+  eso lo hace David: no se escribe en producción desde aquí (§8.6).
+- **Los nueve puntos no salen de un manual autorizado.** Son un derivado con versión 0.1, y el
+  sello lo dice en cada checklist que se emita. El documento de verdad lo escribe Capital
+  Humano, y eso es Fase 7.
+- **Nadie ha visto la pantalla con una cuenta real.** Lo verificado es el catálogo compilado y
+  el bundle servido.
+- **Cero migraciones.** Ninguna ficha tocada, ningún número de tablero movido.
+
+#### DESPLEGADO Y VERIFICADO — el mismo `railway up` que la ventana
+
+    marcadores .. kileadora.operacion 0 -> 1 · 49 controles en pie
+                  67 archivos · 4.52 MB · 0 fallos de lectura
+    espera ...... 12 vueltas, anclada al rotulo `status:` y a la LINEA COMPLETA
+    log ......... arranca limpio, migraciones al dia, y el emisor CARGA SU REGLA
+                  (`NO SE PUDO CARGAR LA REGLA` = 0 · ventana de 12 lineas, citada
+                  porque sale truncada y una ausencia ahi puede ser truncamiento)
+
+**El marcador se validó en las dos direcciones ANTES de subir**: `git grep kileadora HEAD` →
+**0**, dist/ → 1, producción → 0. Como la cadena no existía en el repo, encontrarla servida
+solo puede significar que este código está arriba. Es el id literal de la tarea —el minificador
+respeta los literales aunque se coma los nombres de función— y **no lleva vocal acentuada**,
+porque el bundle las escapa y un ancla con acento sería un no-op, y un no-op da verde (14/sep).
+
+**Y `railway status` volvió a mentir a medias, como estaba previsto:** durante todo el build
+dijo `● Online` mientras servía la instancia vieja, con el `deployment ID` del despliegue de la
+mañana. Lo que cerró el paso no fue el estado, fueron los marcadores contados: el estado dice
+«probablemente», la cifra dice «sí».
+
+**LA MITAD QUE EL MARCADOR NO PUEDE PROBAR**, y por eso se miró aparte: el bundle puede viajar
+entero con el emisor mudo. `dist/manual` es otro artefacto y no aparece en el `ngsw.json`, así
+que los tres marcadores habrían salido en verde igual con la regla sin cargar. La línea
+`[emisor-manual] arranca … siguiente cambio de día en 618 min` es lo que lo descarta.
+
+**LÍNEA BASE PARA MAÑANA, medida antes de que cambie nada** (los 1 493 puntos del manual
+emitidos hoy, que **no se reescriben**, §5.5):
+
+    momento     inicio   limite   puntos          8 combinaciones distintas
+    apertura    (sin)    09:00        26          y ninguna dentro de la ventana
+    apertura    (sin)    09:30        32
+    apertura    (sin)    10:00        34
+    apertura    (sin)    11:00        77
+    apertura    (sin)    12:00        52
+    cierre      (sin)    23:59       382
+    operacion   (sin)    18:00       379
+    operacion   (sin)    23:59       511
+
+Mañana, con el emisor corriendo sobre el catálogo nuevo, tiene que quedar **una sola fila por
+momento, con `06:00 → 23:00`**. Si sale cualquier otra, el cambio no rigió.
+
+
 ### 22/sep/2026 — «NO LOS DEJA SUBIR SUS TAREAS»: el guardado esperaba a Firestore
 
 Reporte de David: *«hay algunos usuarios que no los deja subir sus tareas»*. Preguntado qué

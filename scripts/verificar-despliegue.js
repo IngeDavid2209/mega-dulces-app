@@ -232,7 +232,11 @@ const MARCADORES = [
   // las escapa y un ancla con acento no pega — seria un no-op, y un no-op da
   // verde (14/sep). Validado en las dos direcciones ANTES de subir: 0 en HEAD,
   // 1 archivo en dist/.
-  { txt: 'md-refresco-btn', nuevo: true,
+  // BAJA A CONTROL el 22/sep: su commit (5e59698) es ANTERIOR al de kileo
+  // (a776caa), que ya vale 1 en produccion — o sea que este marcador YA ESTABA
+  // SERVIDO y, declarado como `nuevo`, habria dado verde sin comprobar nada de
+  // este despliegue. Es la trampa que este archivo lleva un mes nombrando.
+  { txt: 'md-refresco-btn', control: true,
     que: 'el boton de buscar actualizacion, en el pie del menu' },
   // El de hace un rato baja a CONTROL: ya vale en produccion.
   { txt: 'kileo y empaque', control: true,
@@ -263,6 +267,45 @@ const MARCADORES = [
     que: 'la ventana ARRANCA a las 06:00 (hasta hoy el punto nacia con horaInicio null)' },
   { txt: '"23:00"', control: true,
     que: 'la ventana CIERRA a las 23:00, la misma hora para las 50 tareas del catalogo' },
+
+  // ══════════════════════════════════════════════════════════════════════════
+  //  22/sep/2026 (noche) · NUEVE PUNTOS RETIRADOS DEL MANUAL
+  // ══════════════════════════════════════════════════════════════════════════
+  // David nombro ocho puntos, uno por uno y con su texto literal, y al ver los
+  // seis GEMELOS que quedaban añadio uno mas: «Escaleras en condicion segura»,
+  // del checklist diario del Almacenista.
+  //
+  // ⚠ ES EL PRIMER PASO QUE RETIRA, Y ESTE ARCHIVO NO SABIA EXPRESARLO. Todos
+  // los marcadores de arriba son de PRESENCIA: «esta cadena tiene que aparecer».
+  // Aqui la mitad que importa es la contraria — que nueve textos DEJEN de estar
+  // servidos— y con solo el marcador de version se probaria que el bundle viajo,
+  // nunca que los puntos se fueron. De ahi el tipo `ausente`.
+  //
+  // El marcador de presencia es la VERSION, porque §5.4 obliga a subirla al
+  // cambiar la norma y es lo unico nuevo que el bundle gana. Lleva el punto
+  // medio ESCAPADO (`\xB7`), que es como el minificador lo emite: buscar el
+  // caracter real da 0 EN EL PROPIO dist/ — comprobado, y es justo el no-op que
+  // da verde (14/sep). Validado en las dos direcciones ANTES de subir,
+  // recorriendo los 66 archivos de codigo del ngsw y no solo el index:
+  //     1.2 \xB7 Septiembre 2026   dist 2  ·  produccion 0
+  //     Evidencia enviada          dist 0  ·  produccion 1   <- tiene que irse
+  //     No hice ajustes...         dist 0  ·  produccion 1   <- tiene que irse
+  { txt: '1.2 \\xB7 Septiembre 2026', nuevo: true, minimo: 2,
+    que: 'la version subio al retirar puntos: la norma se versiona, no se edita (§5.4)' },
+  // LOS DOS QUE TIENEN QUE DESAPARECER. Se eligieron SIN VOCAL ACENTUADA a
+  // proposito: de los nueve retirados, los otros siete llevan acento y el bundle
+  // los escapa, asi que un ancla con tilde no pegaria nunca — y en una asercion
+  // de AUSENCIA un ancla rota no falla: da el 0 que uno queria ver.
+  { txt: 'Evidencia enviada', ausente: true,
+    que: 'el punto que pedia una foto de que mandaste fotos' },
+  { txt: 'No hice ajustes de inventario por cuenta propia', ausente: true,
+    que: 'uno de los tres que se fueron de la operacion del Almacenista' },
+  // EL CONTROL DE LAS DOS AUSENCIAS, y sin el no valen nada: es un GEMELO que
+  // NO se retiro, del mismo tipo de dato (el texto de un punto del manual) y
+  // tambien sin acentos. Si este apareciera en 0, los dos ceros de arriba
+  // dirian «no se donde buscar», no «se fueron».
+  { txt: 'Carretas despejadas o correctamente ubicadas', control: true,
+    que: 'GEMELO que se queda (Bodeguero): prueba que el recorrido SI ve los puntos del manual' },
 
   { txt: 'copiar la tarea a la nube de respaldo', control: true,
     que: 'el tope de Firestore: el guardado ya no se cuelga antes de escribir en Postgres' },
@@ -488,6 +531,7 @@ function contarEn(textos, aguja) {
   const fallas = [];
   const nuevos = filas.filter((f) => f.nuevo);
   const controles = filas.filter((f) => f.control);
+  const ausentes = filas.filter((f) => f.ausente);
   if (!nuevos.length) abortar('no hay ningún marcador NUEVO declarado: nada probaría que llegó.');
   if (!controles.length) abortar('no hay ningún CONTROL declarado: un cero sería indistinguible ' +
     'de haber buscado donde el código no está.');
@@ -523,13 +567,36 @@ function contarEn(textos, aguja) {
     }
   }
 
+  // ── las AUSENCIAS ────────────────────────────────────────────────────────
+  //
+  // Un paso que RETIRA no se prueba con presencia. Aqui se exige el 0 en las
+  // dos mitades, y son dos preguntas distintas:
+  //
+  //   dist  > 0  ->  el retiro no se aplico al codigo. No es «no llego»: es que
+  //                  el cambio no existe, y desplegar otra vez no lo arreglaria.
+  //   prod  > 0  ->  se aplico y todavia no esta servido.
+  //
+  // La guardia que sostiene los ceros es el CONTROL de arriba: un gemelo del
+  // mismo tipo de dato que SI tiene que aparecer. Sin el, un ancla mal escrita
+  // -o un acento escapado- daria exactamente el 0 que uno esperaba ver, que en
+  // una asercion de ausencia es la forma mas comoda de mentirse.
+  for (const f of ausentes) {
+    if (f.enDist > 0) {
+      fallas.push('"' + f.txt + '" (' + f.que + ') sigue en el dist/ LOCAL (' + f.enDist +
+        '): el retiro no se aplicó al código. Volver a desplegar no lo va a arreglar.');
+    } else if (f.enProd > 0) {
+      fallas.push('"' + f.txt + '" (' + f.que + ') ya no está en el dist/ pero sigue servido (' +
+        f.enProd + '): el despliegue todavía no llegó.');
+    }
+  }
+
   console.log('');
   if (fallas.length) {
     console.error('✗ %d marcador(es) sin llegar:', fallas.length);
     for (const x of fallas) console.error('   · ' + x);
     process.exit(2);
   }
-  console.log('✓ los %d marcadores nuevos están servidos, y los %d controles siguen en pie.',
-    nuevos.length, controles.length);
+  console.log('✓ los %d marcadores nuevos están servidos, %d ausencias confirmadas, y los %d ' +
+    'controles siguen en pie.', nuevos.length, ausentes.length, controles.length);
   console.log('  (%d archivos, %s MB recorridos)', rutas.length, (bytes / 1048576).toFixed(2));
 })();

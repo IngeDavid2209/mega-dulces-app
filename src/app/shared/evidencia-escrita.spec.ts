@@ -80,7 +80,12 @@ describe('La norma: «Operación de sucursal del turno» reescrita', () => {
   });
 
   it('la versión del manual subió: la norma se versiona, no se edita (§5.4)', () => {
-    expect(ck._manualVersion).toBe('1.1 · Septiembre 2026');
+    // ⚠ CAMBIADA A MANO EL 22/sep. Decia 1.1 y se puso en ROJO al retirar
+    // «Efectivo/documentación resguardados» del cierre: es su CONTROL POSITIVO
+    // —escrita el 21/sep por otro motivo, y por eso vale— porque demuestra que
+    // el numero se movio de verdad. Aflojarla a un `toBeTruthy()` habria dejado
+    // pasar el caso que vino a impedir: contenido nuevo bajo el sello viejo.
+    expect(ck._manualVersion).toBe('1.2 · Septiembre 2026');
   });
 });
 
@@ -316,7 +321,7 @@ describe('La operación propia del Auxiliar de Encargado', () => {
     // Y el CONTRASTE: su apertura, que sí es de ella, se sella con el de ella.
     const ap = operacionDe('auxiliar-encargado', 'encargado-sucursal.apertura');
     expect(ap._manualDocumento).toBe('Manual Corporativo de Operación — Encargada de Sucursal PH');
-    expect(ap._manualVersion).toBe('1.1 · Septiembre 2026');
+    expect(ap._manualVersion).toBe('1.2 · Septiembre 2026');   // 1.1 hasta el 22/sep
   });
 });
 

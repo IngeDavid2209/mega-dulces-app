@@ -280,7 +280,11 @@ export const MANUALES_POR_PUESTO: ManualPuesto[] = [
     puestoIds: ['anaquelista'],
     documento: 'Manual Corporativo de Operación — Anaquelista de Sucursal',
     codigo: 'MDDLA-SUC-ANA-001',
-    version: '1.1 · Agosto 2026',
+    // 1.2 — 22/sep/2026. LA NORMA SE VERSIONA, NO SE EDITA (§5.4). Se retiraron
+    // dos puntos (uno de cada tarea), asi que dejar el 1.1 pondria dos
+    // contenidos distintos bajo el mismo numero y la hoja de auditoria de un
+    // dia pasado no se podria reconstruir desde su sello.
+    version: '1.2 · Septiembre 2026',
     archivo: '11. Manual_Corporativo_Anaquelista_Sucursal_MDDLA_2026_v1.1.pdf',
     formatosNoAutomatizados: [
       'B. Registro sugerido de caducidades',
@@ -300,7 +304,15 @@ export const MANUALES_POR_PUESTO: ManualPuesto[] = [
           { texto: 'Producto frenteado y estable' },
           { texto: 'Pasillo sin cajas/restos' },
           { texto: 'Área limpia' },
-          { texto: 'Evidencia enviada' },
+          // RETIRADO el 22/sep/2026 por instruccion de David:
+          //     { texto: 'Evidencia enviada' },
+          // Se cita en vez de borrarse para que devolverlo sea UNA LINEA y no
+          // una reconstruccion de memoria (la leccion de `limpiarHuerfanas`).
+          //
+          // Y era REDUNDANTE desde el 3/sep: con foto obligatoria en los 377
+          // puntos, este pedia una foto de que mandaste fotos. Un punto que se
+          // cierra probando lo que los otros ocho ya probaron infla el
+          // denominador sin medir nada.
           { texto: 'Revisión final de Encargada/Auxiliar' },
         ],
       },
@@ -318,7 +330,13 @@ export const MANUALES_POR_PUESTO: ManualPuesto[] = [
           { texto: 'Reporté a Encargada el producto próximo a caducar, sin decidir merma ni descuento' },
           { texto: 'Revisé los cambios de precio del día y avisé de cualquier diferencia antes de que llegara a Caja' },
           { texto: 'Retiré la señalización de promociones ya vencidas' },
-          { texto: 'No sustituí un código por otro para cerrar una diferencia' },
+          // RETIRADO el 22/sep/2026 por instruccion de David:
+          //     { texto: 'No sustituí un código por otro para cerrar una diferencia' },
+          //
+          // ⚠ SE QUEDA SU GEMELO en otro puesto, y es a proposito: el Surtidor
+          // conserva «Marqué en la lista lo que no había, sin sustituirlo por
+          // otro código». David retiro los nueve puntos que nombro, uno por uno;
+          // extenderlo al Surtidor seria decidir por el (§8.5).
           { texto: 'Dejé el acomodo estable y las etiquetas legibles' },
         ],
       },
@@ -354,7 +372,9 @@ export const MANUALES_POR_PUESTO: ManualPuesto[] = [
     // guarda la version con la que se juzgo, asi que cambiar los puntos sin
     // mover este campo dejaria dos contenidos distintos bajo el mismo numero y
     // una hoja de auditoria de la semana pasada seria imposible de reconstruir.
-    version: '1.1 · Septiembre 2026',
+    // 1.2 — 22/sep/2026: se retiro «Efectivo/documentación resguardados» del
+    // cierre, por el mismo motivo que quedo escrito arriba.
+    version: '1.2 · Septiembre 2026',
     archivo: '20. Manual_Corporativo_Encargada_Sucursal_PH_MDDLA_2026.pdf',
     formatosNoAutomatizados: [
       'C. Registro de incidencias de Encargada',
@@ -396,7 +416,13 @@ export const MANUALES_POR_PUESTO: ManualPuesto[] = [
           { texto: 'Diferencias de Caja reportadas' },
           { texto: 'Factura global generada' },
           { texto: 'Reportes de venta actualizados' },
-          { texto: 'Efectivo/documentación resguardados' },
+          // RETIRADO el 22/sep/2026 por instruccion de David:
+          //     { texto: 'Efectivo/documentación resguardados' },
+          //
+          // ⚠ ESTA TAREA LA COMPARTEN DOS PUESTOS: el punto se le quita a la
+          // Encargada Y al Auxiliar de Encargado a la vez. Es la propiedad que
+          // se busco al compartir el manual (21/sep) —una sola norma, no dos
+          // libres de discrepar— y aqui se cobra en las dos poblaciones.
           { texto: 'Bodega y áreas críticas revisadas' },
           { texto: 'Alarma/candados colocados' },
         ],
@@ -722,7 +748,12 @@ export const MANUALES_POR_PUESTO: ManualPuesto[] = [
     puestoIds: ['almacenista-sucursal'],
     documento: 'Manual Corporativo de Operación — Almacenista de Sucursal (Integrado)',
     codigo: 'MDDLA-OP-ALM-SUC-001',
-    version: '1.0 · 2026',
+    // 1.1 — 22/sep/2026. LA NORMA SE VERSIONA, NO SE EDITA (§5.4). Se retiraron
+    // cuatro puntos repartidos en las TRES tareas, incluido uno del Anexo 6, asi
+    // que este es el manual que mas se movio hoy: sin subir el numero, un
+    // checklist de la semana pasada citaria una version cuyo contenido ya no
+    // existe.
+    version: '1.1 · Septiembre 2026',
     archivo: '19. Manual_Corporativo_Almacenista INTEGRADO_de_Sucursal_MDDLA_2026.pdf',
     formatosNoAutomatizados: [
       'Anexo 2. Control de caducidades y rotación',
@@ -745,7 +776,12 @@ export const MANUALES_POR_PUESTO: ManualPuesto[] = [
           { texto: 'Restos revisados' },
           { texto: 'Excesos identificados' },
           { texto: 'Producto fecha corta identificado' },
-          { texto: 'Escaleras en condición segura' },
+          // RETIRADO el 22/sep/2026. David eligio quitarlo JUNTO con el de la
+          // tarea semanal, enfrentado a la alternativa:
+          //     { texto: 'Escaleras en condición segura' },
+          // Quitar «Escaleras y antiderrapante» del checklist SEMANAL y dejar
+          // este en el DIARIO habria dejado a la MISMA persona reportando
+          // escaleras todos los dias, que es lo contrario de lo que se pidio.
           { texto: 'Estibas estables' },
           { texto: 'Producto de limpieza separado de alimentos' },
           { texto: 'Chocolate/producto sensible en zona adecuada' },
@@ -759,8 +795,16 @@ export const MANUALES_POR_PUESTO: ManualPuesto[] = [
         codigoFormato: 'Anexo 6',
         nota: 'El anexo pide estado y acción requerida por elemento. Lo que no cumpla se reporta con su acción y responsable en las observaciones.',
         items: [
-          { texto: 'Escaleras y antiderrapante en condición segura' },
-          { texto: 'Carretas en condición de uso' },
+          // RETIRADOS el 22/sep/2026 por instruccion de David:
+          //     { texto: 'Escaleras y antiderrapante en condición segura' },
+          //     { texto: 'Carretas en condición de uso' },
+          //
+          // ⚠ EL ANEXO 6 QUEDA CUBIERTO A MEDIAS, y hay que saberlo: esta tarea
+          // ES ese anexo (`codigoFormato: 'Anexo 6'`), y el PDF publicado sigue
+          // pidiendo los siete elementos. Desde hoy la app cobra cinco. La
+          // divergencia es entre el papel y el sistema, no dentro del sistema, y
+          // se cierra cuando Capital Humano reedite el anexo (Fase 7, hallazgo 5:
+          // hoy cada correccion de norma cuesta un despliegue).
           { texto: 'Estibas estables y dentro de límite' },
           { texto: 'Pasillos despejados' },
           { texto: 'Sin goteras ni humedad' },
@@ -780,10 +824,18 @@ export const MANUALES_POR_PUESTO: ManualPuesto[] = [
           { texto: 'Detuve el acomodo y reporté cuando una etiqueta no coincidía con el producto' },
           { texto: 'Separé y reporté daño, humedad o producto no conforme antes de mezclarlo' },
           { texto: 'Comparé caducidades contra la existencia previa al acomodar' },
-          { texto: 'Revisé restos antes de surtir una caja nueva del mismo producto' },
-          { texto: 'Surtí solo contra lista, ticket o instrucción autorizada' },
+          // RETIRADOS el 22/sep/2026 por instruccion de David:
+          //     { texto: 'Revisé restos antes de surtir una caja nueva del mismo producto' },
+          //     { texto: 'Surtí solo contra lista, ticket o instrucción autorizada' },
+          //     { texto: 'No hice ajustes de inventario por cuenta propia' },
+          //
+          // ⚠ SE QUEDAN SUS GEMELOS en el Bodeguero y el Surtidor —«Surtí contra
+          // lista física o solicitud autorizada», «Verifiqué restos antes de
+          // abrir una caja nueva», «Revisé los restos antes de abrir una caja
+          // nueva del mismo producto»—. David retiro los nueve puntos que nombro
+          // uno por uno; barrer por parecido habria cambiado el denominador de
+          // dos puestos que nadie menciono (§8.5).
           { texto: 'No entregué mercancía a otras sucursales o áreas sin respaldo ni autorización' },
-          { texto: 'No hice ajustes de inventario por cuenta propia' },
         ],
       },
     ],

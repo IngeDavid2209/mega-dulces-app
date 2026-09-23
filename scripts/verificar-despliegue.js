@@ -325,6 +325,15 @@ const MARCADORES = [
     que: 'el cuadro de texto y el listado de los puntos sin foto' },
   { txt: 'evidenciaEscrita', control: true,
     que: 'la regla que hace que lo escrito cuente en el porcentaje' },
+  // 20/sep/2026 · EL CALLEJON SIN SALIDA, EXPLICADO. Reporte de David: «a
+  // christian.moreno no lo deja adjuntar fotos, el boton no hace nada».
+  // Medido: el boton NO EXISTE — todos los controles del punto cuelgan de
+  // `puedoEditarItem()` y su `*ngIf` no los pinta. Aqui el marcador SI es
+  // natural (una clase CSS de algo que se pinta): no hubo que buscarlo, que es
+  // lo contrario de los cuatro despliegues anteriores.
+  // Validado en las dos direcciones: 1 archivo en dist/, 0 en produccion.
+  { txt: 'cl-no-editable', nuevo: true,
+    que: 'la app dice POR QUE no deja subir evidencia, en vez de esconder el boton' },
   // El del despliegue anterior baja a control: YA VALE en produccion, y
   // dejarlo arriba habria dado verde sin comprobar nada de hoy.
   { txt: 'Sin entregas hoy', control: true,

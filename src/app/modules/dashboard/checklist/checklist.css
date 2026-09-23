@@ -4464,3 +4464,23 @@
 }
 .cl-foto-pendiente span { font-size: 12px; font-weight: 700; }
 .cl-foto-pendiente small { font-size: 9px; line-height: 1.2; opacity: .85; }
+
+/* ⚠ EL CALLEJON SIN SALIDA, EXPLICADO (20/sep/2026)
+   Cuando la app no deja subir evidencia, el boton no se pinta. Hasta hoy eso
+   era mudo y se reportaba como «el boton no hace nada». Este aviso lo nombra.
+   Tono de AVISO y no de error: casi siempre la causa es correcta —la tarea es
+   de otra persona, o ya se envio— y pintarlo en rojo mandaria a buscar un
+   defecto que no existe. */
+.cl-no-editable {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-2);
+  margin: 0 0 var(--sp-3);
+  padding: var(--sp-3);
+  border-radius: var(--radius);
+  background: var(--warn-soft-bg);
+  color: var(--warn-soft-fg);
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+}
+.cl-no-editable svg { flex-shrink: 0; margin-top: 2px; }

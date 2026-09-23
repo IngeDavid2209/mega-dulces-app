@@ -192,6 +192,12 @@ function hijo(dist, puerto, cond) {
     '       res.conMultiple=document.querySelectorAll("input[type=file][multiple]").length;' +
     '       res.miniaturas=document.querySelectorAll(".item-photo-section img").length;' +
     '       res.lazy=document.querySelectorAll(".item-photo-section img[loading=lazy]").length;' +
+    // ⚠ EL AVISO DE «no puedes editar» TIENE QUE SER 0 AQUI (20/sep). La
+    // sesion de este arnes ES la dueña del checklist, asi que si el aviso
+    // saliera, le estaria diciendo a TODO EL MUNDO que no puede subir su
+    // evidencia. Es la direccion peligrosa del cambio, y la unica que este
+    // arnes ya estaba en posicion de vigilar sin montar nada nuevo.
+    '       res.noEditable=document.querySelectorAll(".cl-no-editable").length;' +
     '       res.htmlKb=Math.round(document.body.innerHTML.length/1024);' +
     '       fin();},1200);' +
     '   },14000);' +
@@ -345,6 +351,17 @@ if (process.argv[2] === '--hijo') {
     // LA ASERCIÓN DE SEGURIDAD: un punto de documento con la cámara forzada es
     // un punto imposible de cerrar. Son 45 en el manual.
     exigir(por('docs').conCaptura === 0, 'NINGÚN punto de documento debe forzar la cámara, la fuerzan ' + por('docs').conCaptura + ' (no podrían adjuntar su PDF)');
+
+    // ⚠ EL AVISO DE «no puedes editar», EN LAS CUATRO CONDICIONES (20/sep).
+    // La sesion de este arnes ES la dueña, asi que debe salir 0. Si saliera,
+    // le estaria diciendo a todo el mundo que no puede subir su evidencia — la
+    // direccion peligrosa del cambio, y la unica que se puede romper sin que
+    // ninguna prueba unitaria lo note, porque el defecto estaria en el `*ngIf`.
+    for (const c of ['hoy', 'todos', 'cargado', 'docs']) {
+      exigir(por(c).noEditable === 0,
+        'la dueña del checklist NO debe ver el aviso de «no puedes editar» en «' + c +
+        '», y lo ve ' + por(c).noEditable + ' vez(ces)');
+    }
     exigir(por('docs').sinCaptura === 23, 'los 23 puntos de documento deben dejar el selector libre, lo dejan ' + por('docs').sinCaptura);
     exigir(por('cargado').lazy === por('cargado').miniaturas,
       'las ' + por('cargado').miniaturas + ' miniaturas deben ir en carga diferida, van ' + por('cargado').lazy);

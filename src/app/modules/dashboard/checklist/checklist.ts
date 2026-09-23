@@ -8,6 +8,7 @@ import * as localforage from 'localforage';
 import Swal from 'sweetalert2';
 import { esAdminGlobal, esAdminLimitado, sucursalesPermitidas, alcanceCubre, esSupervisor, mismoEmpleadoNombre, existeEmpleadoEnUsuarios, normalizarNombre, puedeSerAsignado } from '../../../shared/permisos.util';
 import { pasaFiltroTransversal } from '../../../shared/area-transversal.util';
+import { motivoNoEditable, MotivoNoEditable } from '../../../shared/motivo-no-editable.util';
 import { nivelDeCargo } from '../../../shared/nivel-jerarquico.util';
 import { TareaEquipo, FaseEquipo, ItemEquipo, SubtareaEquipo } from '../../../shared/tareas-equipo.types';
 import { esItemHecho, tieneEvidencia, fotoSubida } from '../../../shared/item-completado.util';
@@ -1791,6 +1792,17 @@ export class ChecklistComponent implements OnInit, OnDestroy {
    */
   puedoEditarItem(_item: any): boolean {
     return this.puedoEditarChecklistActivo();
+  }
+
+  /**
+   * Por que NO puede editar, para poder decirlo. `null` cuando si puede.
+   *
+   * Es de CHECKLIST, no de punto: el motivo es el mismo para los 23, asi que
+   * se pinta una sola vez arriba de la lista. La regla vive en
+   * `motivo-no-editable.util.ts` para poder probarla sin montar la pantalla.
+   */
+  get motivoNoEditarActual(): MotivoNoEditable | null {
+    return motivoNoEditable(this.currentUser, this.checklistSeleccionado());
   }
 
   /** Agrega una foto al array item.photos[] (para tareas con `requiresVariasFotos`). */

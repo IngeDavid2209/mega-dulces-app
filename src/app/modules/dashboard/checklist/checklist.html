@@ -1012,6 +1012,30 @@
         </div>
 
         <div class="checklist-detail-items">
+
+          <!-- ⚠ EL CALLEJON SIN SALIDA, EXPLICADO (20/sep/2026)
+               Reporte de David: «a christian.moreno no lo deja adjuntar fotos,
+               el boton no hace nada». Medido: el boton NO EXISTE — todos los
+               controles del punto cuelgan de `puedoEditarItem()`, y su `*ngIf`
+               simplemente no los pinta. Con ellos se van tambien el comentario
+               y los renglones: en esa tarea no funciona NADA, no solo la foto.
+               Un control que desaparece sin decir por que se reporta como «la
+               app no sirve», y manda a buscar un defecto donde no lo hay.
+               VA UNA SOLA VEZ, no dentro del *ngFor: repetir el mismo aviso en
+               los 23 puntos es el defecto que ya se corrigio el 18/sep con el
+               chip de la hora. Y NO CONCEDE NADA: la regla de quien sube
+               evidencia no cambia — aflojarla seria dejar que alguien firme el
+               trabajo de otro (§4). -->
+          <div class="cl-no-editable" *ngIf="motivoNoEditarActual as motivo">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2" aria-hidden="true">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="8" x2="12" y2="12"></line>
+              <line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+            <span>{{ motivo.texto }}</span>
+          </div>
+
           <!-- El toque sobre la fila no marca nada: DICE qué falta. Ver
                `tocarPunto`: desde que los 377 puntos piden foto, tocar el punto
                no producía ningún efecto ni ningún mensaje. -->

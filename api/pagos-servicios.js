@@ -23,6 +23,8 @@ const { estadoVisible, diasFaltantes, hoyMexico } = require('./_pagos-periodos')
 
 const FORMAS_PAGO = ['efectivo', 'tarjeta', 'transferencia'];
 const ESTADOS_GUARDADOS = ['pendiente', 'pagado', 'cancelado'];
+// Tope de filas de una consulta. Se pide una mas para poder DECIR que se corto.
+const TOPE_FILAS = 2000;
 
 function fila(r) {
   return {
@@ -110,9 +112,14 @@ module.exports = async (req, res) => {
       if (q.hasta) { args.push(String(q.hasta)); cond.push(`p.fecha_limite <= $${args.length}`); }
 
       const sql = `${SELECT_PAGOS} ${cond.length ? 'and ' + cond.join(' and ') : ''}
-                   order by p.fecha_limite desc nulls last, p.sucursal asc limit 2000`;
+                   order by p.fecha_limite desc nulls last, p.sucursal asc limit ${TOPE_FILAS + 1}`;
       const r = await query(sql, args);
-      let pagos = r.rows.map(fila).map(p => conEstado(p, hoy));
+      // Un tope que corta en silencio deja el tablero contando de menos sin que
+      // nadie lo note: se pide UNA fila de mas para saber si hubo corte y se
+      // dice en la respuesta. Un numero incompleto que se presenta como completo
+      // es peor que uno que avisa que le falta cola.
+      const truncado = r.rows.length > TOPE_FILAS;
+      let pagos = r.rows.slice(0, TOPE_FILAS).map(fila).map(p => conEstado(p, hoy));
 
       // El filtro por estado se aplica aqui porque 'vencido'/'por_vencer' son
       // calculados, no columnas.
@@ -129,7 +136,7 @@ module.exports = async (req, res) => {
           if (!porSucursal.has(clave)) {
             porSucursal.set(clave, {
               sucursal: clave, total: 0, pagados: 0, vencidos: 0, porVencer: 0,
-              pendientes: 0, montoPagado: 0, montoVencido: 0,
+              pendientes: 0, cancelados: 0, montoPagado: 0, montoVencido: 0,
             });
           }
           const acc = porSucursal.get(clave);
@@ -137,14 +144,24 @@ module.exports = async (req, res) => {
           if (p.estadoVisible === 'pagado') { acc.pagados++; acc.montoPagado += Number(p.monto || 0); }
           else if (p.estadoVisible === 'vencido') { acc.vencidos++; acc.montoVencido += Number(p.montoEstimado || 0); }
           else if (p.estadoVisible === 'por_vencer') acc.porVencer++;
-          else if (p.estadoVisible === 'pendiente') acc.pendientes++;
+          else if (p.estadoVisible === 'cancelado') acc.cancelados++;
+          // Los cancelados tienen su propia cubeta desde hoy: antes entraban en
+          // `total` y en ninguna de las cuatro, asi que la suma de las partes no
+          // daba el total y nadie podia cuadrar el renglon.
+          else acc.pendientes++;
         }
         const resumen = Array.from(porSucursal.values())
           .sort((a, b) => b.vencidos - a.vencidos || a.sucursal.localeCompare(b.sucursal));
-        return res.json({ resumen, pagos, hoy });
+        // Comprobantes que llegaron por WhatsApp y nadie dijo a que pago iban.
+        // Viajan con el tablero para que el archivo tenga dueño humano en vez de
+        // quedarse en un buzon que nadie mira.
+        let huerfanos = [];
+        try { huerfanos = await require('./pagos-notificar').comprobantesHuerfanos(); }
+        catch (e) { console.error('[pagos-servicios] huerfanos:', e && e.message); }
+        return res.json({ resumen, pagos, hoy, truncado, huerfanos });
       }
 
-      return res.json({ pagos, hoy });
+      return res.json({ pagos, hoy, truncado });
     }
 
     if (req.method === 'POST') {
@@ -195,12 +212,16 @@ module.exports = async (req, res) => {
         }
       }
 
-      // Marcar como pagado exige comprobante: es justo el descuido que este
-      // modulo viene a resolver. Si se permitiera "pagado" a secas, en tres
-      // meses el tablero estaria lleno de verdes sin un solo recibo detras.
+      // La liga del comprobante se valida: es lo unico que prueba que un pago se
+      // hizo, y de aqui sale un `window.open` en el tablero. Sin este filtro
+      // entraba cualquier cadena —incluido un `javascript:`— y un pago podia
+      // quedar "con comprobante" apuntando a nada.
       const comprobanteUrl = b.comprobanteUrl !== undefined
         ? (String(b.comprobanteUrl || '').trim() || null)
         : actual.comprobante_url;
+      if (b.comprobanteUrl !== undefined && comprobanteUrl && !/^https?:\/\//i.test(comprobanteUrl)) {
+        return res.status(400).json({ error: 'La liga del comprobante debe empezar con http:// o https://' });
+      }
       if (estado === 'pagado' && !comprobanteUrl) {
         return res.status(400).json({ error: 'Para marcar un pago como pagado hace falta el comprobante.' });
       }
@@ -209,14 +230,40 @@ module.exports = async (req, res) => {
         ? (String(b.comprobanteTipo || '').trim() || null)
         : actual.comprobante_tipo;
 
-      // `pagado_en` se pone la primera vez que pasa a pagado y se respeta si ya
-      // lo traia (para no mover la fecha real cada vez que alguien edita algo).
+      // `pagado_en` se pone la primera vez que pasa a pagado y NO SE BORRA al
+      // reabrir. Antes, reabrir un pago lo ponia en null: si alguien lo reabria
+      // por error y volvia a cerrarlo, la fecha REAL del pago se sustituia por la
+      // de hoy y no quedaba forma de saber cuando se habia pagado. Perder la
+      // fecha de un pago es peor que arrastrar una que se pueda corregir, y lo
+      // que quedo pendiente queda en el historial de abajo con su autor.
       let pagadoEn = actual.pagado_en == null ? null : Number(actual.pagado_en);
       if (estado === 'pagado' && !pagadoEn) pagadoEn = ahora;
-      if (estado !== 'pagado') pagadoEn = null;
 
       const extras = { ...(actual.datos || {}) };
       if (b.notas !== undefined) extras.notas = String(b.notas || '').trim() || null;
+
+      // HISTORIAL: este es el unico modulo que mueve dinero y hasta hoy el POST
+      // sobreescribia monto, estado y comprobante en el sitio, sin dejar rastro
+      // de quien ni de que habia antes (§5.5: corregir es un evento nuevo que
+      // apunta al anterior). Se anota solo lo que de verdad cambio, y se topa a
+      // los ultimos 50 para que `datos` no crezca sin freno.
+      const antes = {
+        estado: actual.estado,
+        monto: actual.monto == null ? null : Number(actual.monto),
+        formaPago: actual.forma_pago || null,
+        comprobanteUrl: actual.comprobante_url || null,
+      };
+      const despues = { estado, monto, formaPago, comprobanteUrl };
+      const campos = Object.keys(despues).filter(k => String(antes[k] ?? '') !== String(despues[k] ?? ''));
+      if (campos.length) {
+        const previo = Array.isArray(extras.historial) ? extras.historial : [];
+        previo.push({
+          en: ahora, quien, canal: 'app', campos,
+          de: Object.fromEntries(campos.map(k => [k, antes[k]])),
+          a: Object.fromEntries(campos.map(k => [k, despues[k]])),
+        });
+        extras.historial = previo.slice(-50);
+      }
 
       await query(
         `update mdtask_pagos_servicios set

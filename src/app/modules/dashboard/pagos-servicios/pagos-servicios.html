@@ -52,6 +52,43 @@
       <!-- ═══════════════ TABLERO ═══════════════ -->
       @if (!cargando() && vista() === 'tablero') {
 
+        <!-- Fallo del refresco automático: se dice sin tapar la pantalla. Un
+             modal cada 30 s encima del trabajo es peor que el propio fallo. -->
+        @if (errorCarga()) {
+          <div class="pg-alerta">
+            <strong>{{ errorCarga() }}</strong>
+            <button class="pg-link" (click)="cargarTodo()">Reintentar ahora</button>
+          </div>
+        }
+
+        <!-- Comprobantes que llegaron por WhatsApp sin decir de cuál eran -->
+        @if (huerfanos().length) {
+          <div class="pg-alerta rojo">
+            <div>
+              <strong>{{ huerfanos().length }} comprobante{{ huerfanos().length === 1 ? '' : 's' }} sin asignar.</strong>
+              <div class="pg-alerta-detalle">
+                Llegaron por WhatsApp y nadie dijo a qué recibo iban. Ábrelos, y pega la liga
+                en «Registrar pago» del recibo que les toque.
+              </div>
+              <div class="pg-alerta-detalle">
+                @for (h of huerfanos().slice(0, 6); track h.url) {
+                  <button class="pg-chip" (click)="verHuerfano(h)">
+                    {{ h.nombre || h.telefono }} · {{ fechaHora(h.en) }}
+                  </button>
+                }
+                @if (huerfanos().length > 6) { <span class="pg-chip">y {{ huerfanos().length - 6 }} más</span> }
+              </div>
+            </div>
+          </div>
+        }
+
+        <!-- El tablero está contando de menos y hay que decirlo -->
+        @if (truncado()) {
+          <div class="pg-alerta">
+            <strong>Hay más recibos de los que caben en una consulta.</strong>
+            Las cifras de abajo dejan fuera los más antiguos. Filtra por sucursal o por fecha para verlos.
+          </div>
+        }
         <!-- Aviso: servicios a los que el bot no le puede avisar a nadie -->
         @if (serviciosMudos().length) {
           <div class="pg-alerta">
@@ -181,6 +218,7 @@
             <option value="por_vencer">Por vencer</option>
             <option value="pendiente">Pendientes</option>
             <option value="pagado">Pagados</option>
+            <option value="cancelado">Cancelados</option>
           </select>
 
           <label>Servicio:</label>
@@ -241,7 +279,7 @@
                     }
                   </td>
                   <td class="pg-td-acciones">
-                    @if (p.estadoVisible === 'pagado') {
+                    @if (p.estadoVisible === 'pagado' || p.estadoVisible === 'cancelado') {
                       <button class="pg-btn-mini" (click)="reabrirPago(p)">Reabrir</button>
                     } @else {
                       <button class="pg-btn-mini wa" (click)="avisar(p)" [disabled]="avisando === p.id"

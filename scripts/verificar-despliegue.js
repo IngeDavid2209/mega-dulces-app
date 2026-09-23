@@ -290,7 +290,10 @@ const MARCADORES = [
   //     1.2 \xB7 Septiembre 2026   dist 2  ·  produccion 0
   //     Evidencia enviada          dist 0  ·  produccion 1   <- tiene que irse
   //     No hice ajustes...         dist 0  ·  produccion 1   <- tiene que irse
-  { txt: '1.2 \\xB7 Septiembre 2026', nuevo: true, minimo: 2,
+  // 23/sep: BAJA A CONTROL. Medido en produccion antes de tocarlo: vale 2, o sea
+  // que el despliegue del 22 llego. Dejarlo como `nuevo` habria dado verde hoy
+  // sin comprobar una sola linea de este despliegue.
+  { txt: '1.2 \\xB7 Septiembre 2026', control: true, minimo: 2,
     que: 'la version subio al retirar puntos: la norma se versiona, no se edita (§5.4)' },
   // LOS DOS QUE TIENEN QUE DESAPARECER. Se eligieron SIN VOCAL ACENTUADA a
   // proposito: de los nueve retirados, los otros siete llevan acento y el bundle
@@ -332,7 +335,8 @@ const MARCADORES = [
   // natural (una clase CSS de algo que se pinta): no hubo que buscarlo, que es
   // lo contrario de los cuatro despliegues anteriores.
   // Validado en las dos direcciones: 1 archivo en dist/, 0 en produccion.
-  { txt: 'cl-no-editable', nuevo: true,
+  // 23/sep: BAJA A CONTROL, medido en 4 en produccion.
+  { txt: 'cl-no-editable', control: true,
     que: 'la app dice POR QUE no deja subir evidencia, en vez de esconder el boton' },
   // El del despliegue anterior baja a control: YA VALE en produccion, y
   // dejarlo arriba habria dado verde sin comprobar nada de hoy.
@@ -425,6 +429,28 @@ const MARCADORES = [
   { txt: 'avatar texto',       control: true, que: 'la rejilla movil de la tarjeta' },
   { txt: 'org-destino',        control: true, que: 'el eje transversal' },
   { txt: 'md_rescate_arranque', control: true, que: 'el rescate del index' },
+
+  // ── 23/sep: revision del modulo de PAGOS DE SERVICIOS ────────────────────
+  //
+  // Tres cadenas ASCII PURAS a proposito: el bundle escapa las vocales
+  // acentuadas, y un ancla con acento es un no-op — y un no-op da verde
+  // (22/sep). Validadas en las DOS direcciones antes de subir: 0 en HEAD, 1 en
+  // `dist/`, 0 en produccion.
+  //
+  // Viven en DOS chunks distintos: el primero en el bundle principal (la capa
+  // comun que usan las 34 pantallas) y los otros dos en el chunk lazy de pagos.
+  // Si los dos ultimos dieran 0 y el primero 1, seria que el recorrido no
+  // alcanzo ese chunk, no que el despliegue no llego.
+  { txt: 'no se pudo obtener el token de sesion', nuevo: true,
+    que: 'el fallo de Firebase ya no se le enseña crudo a la gente' },
+  { txt: 'Llegaron por WhatsApp', nuevo: true,
+    que: 'el buzon de comprobantes que llegaron sin decir de cual eran' },
+  { txt: 'Reintentar ahora', nuevo: true,
+    que: 'el refresco que falla sin abrir un modal cada 30 s' },
+
+  // Y los tres del despliegue anterior bajan a CONTROL: ya valian en
+  // produccion, y dejarlos como `nuevo` habria dado verde sin comprobar nada de
+  // hoy. Es el mismo orden que este archivo lleva respetando desde el 14/sep.
 ];
 
 function abortar(motivo) {

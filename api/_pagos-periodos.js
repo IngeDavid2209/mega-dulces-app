@@ -156,8 +156,16 @@ function estadoVisible(pago, servicio, hoy) {
   const dias = diasFaltantes(pago.fechaLimite || pago.fecha_limite, hoy);
   if (dias == null) return 'pendiente';
   if (dias < 0) return 'vencido';
-  const aviso = Number((servicio && (servicio.diasAviso || servicio.dias_aviso)) || 3);
-  return dias <= aviso ? 'por_vencer' : 'pendiente';
+  // OJO con el cero: `diasAviso: 0` significa «avisar SOLO el dia del
+  // vencimiento», y es un valor que el formulario acepta a proposito. Con la
+  // cadena de `||` que habia aqui, ese 0 es falsy y se convertia en 3, asi que
+  // el tablero pintaba «Por vencer» tres dias antes mientras el recordatorio
+  // —que si respeta el 0 (`pagoConServicio` usa `== null ? 3 :`)— se callaba.
+  // La misma regla leida de dos maneras segun quien pregunte.
+  const crudo = servicio == null ? null
+    : (servicio.diasAviso != null ? servicio.diasAviso : servicio.dias_aviso);
+  const aviso = crudo == null || crudo === '' ? 3 : Number(crudo);
+  return dias <= (Number.isFinite(aviso) ? aviso : 3) ? 'por_vencer' : 'pendiente';
 }
 
 /** Fecha 'YYYY-MM-DD' -> "15 de julio de 2026" (para los mensajes del bot). */

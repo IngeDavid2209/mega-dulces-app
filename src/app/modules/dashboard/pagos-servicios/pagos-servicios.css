@@ -75,6 +75,14 @@
   display: inline-block; background: rgba(255, 255, 255, .7); border: 1px solid currentColor;
   border-radius: 999px; padding: 2px 9px; margin: 3px 5px 0 0; font-size: 11.5px; font-weight: 600;
 }
+/* El chip tambien se usa como BOTON (los comprobantes sin asignar del buzon):
+   hereda color y forma, y solo se le da el minimo tactil y el cursor. Sin el
+   `min-height` quedaria en 20px, muy por debajo de los 44px que pide el dedo. */
+button.pg-chip {
+  cursor: pointer; font-family: inherit; color: inherit;
+  min-height: var(--tap-min); padding-inline: 12px;
+}
+button.pg-chip:hover { background: #fff; }
 
 /* ---------- CIFRAS ---------- */
 .pg-kpis {

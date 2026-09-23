@@ -299,7 +299,7 @@ async function recordatoriosDelDia() {
     if (!tel) {
       // Sin telefono no hay a quien escribirle. Se anota una sola vez al dia
       // para que quede en el log sin llenarlo cada vuelta del poll.
-      await marcarAviso(pago.id, { ultimoDia: hoy, ultimoMotivo: 'sin_telefono' }).catch(() => {});
+      await marcarAviso(pago.id, { ultimoDia: hoy, ultimoEn: Date.now(), ultimoMotivo: 'sin_telefono' }).catch(() => {});
       console.warn(`[pagos] ${nombreServicio(pago)} (${pago.periodoTexto}) no tiene responsable con teléfono.`);
       continue;
     }
@@ -363,6 +363,9 @@ async function avisarAhora(pagoId) {
   if (!dbConfigurada()) return { ok: false, motivo: 'sin_base' };
   const pago = await leerPago(pagoId);
   if (!pago) return { ok: false, motivo: 'no_existe' };
+  // 'cancelado' y 'pagado' se contestaban igual, y a un cancelado el tablero le
+  // decia "ya esta registrado como pagado", que es sencillamente falso.
+  if (pago.estado === 'cancelado') return { ok: false, motivo: 'cancelado' };
   if (pago.estado !== 'pendiente') return { ok: false, motivo: 'ya_pagado' };
 
   const tel = pago.responsableTelefono;
@@ -442,8 +445,17 @@ async function resumenSupervisores() {
   // plantilla y sin ventana abierta, o sin telefono). Se reportan aparte: si no,
   // el silencio se confunde con "ya les avise y no han pagado", que es muy
   // distinto de "no tengo forma de avisarles".
-  const noAvisados = activos.filter(p =>
-    String(p.avisos.ultimoMotivo || '').startsWith('fallo:') || p.avisos.ultimoMotivo === 'sin_telefono');
+  // Solo cuentan los intentos RECIENTES. Sin la cota, un `fallo:` de hace tres
+  // semanas se quedaba pegado para siempre (tras el tope de insistencia el motivo
+  // ya no se vuelve a escribir) y el mismo servicio salia en este resumen todos
+  // los dias hasta que alguien lo pagara. Un aviso que siempre dice lo mismo es
+  // un aviso que se deja de leer.
+  const HACE_48H = Date.now() - 48 * 3600 * 1000;
+  const noAvisados = activos.filter(p => {
+    const fallo = String(p.avisos.ultimoMotivo || '').startsWith('fallo:')
+      || p.avisos.ultimoMotivo === 'sin_telefono';
+    return fallo && Number(p.avisos.ultimoEn || 0) >= HACE_48H;
+  });
 
   if (!vencidos.length && !noAvisados.length) return;
 
@@ -479,33 +491,119 @@ async function resumenSupervisores() {
 //  3) CAPTURA POR WHATSAPP
 // ---------------------------------------------------------------------------
 
-/** Estado del hilo de captura de una persona (null si no hay o ya caduco). */
+/**
+ * Estado del hilo de captura de una persona (null si no hay o ya caduco).
+ *
+ * ATENCION AL CADUCADO: cuando el hilo va en el paso 'elegir' porque llego una
+ * foto y no supimos de que pago era, la URL del archivo YA SUBIDO A CLOUDINARY
+ * vive UNICAMENTE en esta fila. Borrarla a las 3 horas era tirar un comprobante
+ * que la persona ya mando — exactamente lo que la cabecera de este modulo dice
+ * que es lo peor que podria hacer. Ahora el hilo deja de secuestrar mensajes
+ * (que es para lo que existe la caducidad) pero el archivo se CONSERVA en
+ * `datos.huerfanos`, y el tablero lo enseña para que alguien lo asigne a mano.
+ */
 async function esperaGet(telefono) {
   try {
     const r = await query('select * from mdtask_pagos_espera where telefono = $1', [ultimos10(telefono)]);
     const e = r.rows[0];
     if (!e) return null;
+    // Un hilo sin paso es solo el buzon de huerfanos: no hay conversacion viva.
+    if (!e.paso) return null;
     if (Date.now() - Number(e.actualizado_en || 0) > ESPERA_VIGENCIA_MS) {
-      await esperaSet(telefono, null).catch(() => {});
+      const datos = e.datos || {};
+      if (e.paso === 'elegir' && datos.url) {
+        await archivarHuerfano(telefono, datos).catch(() => {});
+        console.warn(`[pagos] ${ultimos10(telefono)} mando un comprobante y nunca dijo de cual era; queda en el buzon: ${datos.url}`);
+      } else {
+        await esperaSet(telefono, null).catch(() => {});
+      }
       return null;
     }
     return { pagoId: e.pago_id, paso: e.paso, datos: e.datos || {} };
   } catch (e) { return null; }
 }
 
+/** Mueve el archivo sin destino al buzon de la fila y apaga la conversacion. */
+async function archivarHuerfano(telefono, datos) {
+  const tel = ultimos10(telefono);
+  const entrada = [{
+    url: String(datos.url), tipo: String(datos.tipo || 'imagen'),
+    en: Date.now(), opciones: Array.isArray(datos.opciones) ? datos.opciones : [],
+  }];
+  await query(
+    `update mdtask_pagos_espera
+        set pago_id = null, paso = null, actualizado_en = $3,
+            datos = jsonb_build_object(
+              'huerfanos', coalesce(datos->'huerfanos','[]'::jsonb) || $2::jsonb)
+      where telefono = $1`,
+    [tel, JSON.stringify(entrada), Date.now()]
+  );
+}
+
+/**
+ * Comprobantes que llegaron por WhatsApp y nadie dijo a que pago iban.
+ * Los lee el tablero: el archivo existe, no se perdio, y solo le falta dueño.
+ */
+async function comprobantesHuerfanos() {
+  if (!dbConfigurada()) return [];
+  try {
+    const r = await query(
+      `select e.telefono, e.datos,
+              (select s.responsable_nombre from mdtask_servicios s
+                where s.eliminado = false
+                  and right(regexp_replace(coalesce(s.responsable_telefono,''), '[^0-9]', '', 'g'), 10) = e.telefono
+                limit 1) as nombre
+         from mdtask_pagos_espera e
+        where jsonb_array_length(coalesce(e.datos->'huerfanos','[]'::jsonb)) > 0`);
+    const salida = [];
+    for (const f of r.rows) {
+      for (const h of (f.datos || {}).huerfanos || []) {
+        salida.push({ telefono: f.telefono, nombre: f.nombre || null, url: h.url, tipo: h.tipo, en: h.en });
+      }
+    }
+    return salida.sort((a, b) => Number(b.en || 0) - Number(a.en || 0));
+  } catch (e) {
+    console.error('[pagos] no se pudo leer el buzon de huerfanos:', e && e.message);
+    return [];
+  }
+}
+
+/**
+ * Guarda el paso del hilo.
+ *
+ * El buzon de huerfanos (`datos.huerfanos`) se ARRASTRA en cada escritura y
+ * sobrevive al cierre del hilo: si no, el siguiente pago que reporte esa persona
+ * borraria el comprobante que quedo sin dueño, que es el mismo agujero por otra
+ * puerta.
+ */
 async function esperaSet(telefono, estado) {
   const tel = ultimos10(telefono);
+  let huerfanos = [];
+  try {
+    const r = await query(`select coalesce(datos->'huerfanos','[]'::jsonb) as h
+                             from mdtask_pagos_espera where telefono = $1`, [tel]);
+    if (r.rows[0]) huerfanos = r.rows[0].h || [];
+  } catch (e) { /* sin fila previa */ }
+
   if (!estado) {
-    await query('delete from mdtask_pagos_espera where telefono = $1', [tel]);
+    if (huerfanos.length) {
+      await query(
+        `update mdtask_pagos_espera set pago_id = null, paso = null, actualizado_en = $2
+          where telefono = $1`, [tel, Date.now()]);
+    } else {
+      await query('delete from mdtask_pagos_espera where telefono = $1', [tel]);
+    }
     return;
   }
+  const datos = { ...(estado.datos || {}) };
+  if (huerfanos.length) datos.huerfanos = huerfanos;
   await query(
     `insert into mdtask_pagos_espera (telefono, pago_id, paso, datos, actualizado_en)
      values ($1,$2,$3,$4::jsonb,$5)
      on conflict (telefono) do update set
        pago_id = excluded.pago_id, paso = excluded.paso,
        datos = excluded.datos, actualizado_en = excluded.actualizado_en`,
-    [tel, estado.pagoId || null, estado.paso || null, JSON.stringify(estado.datos || {}), Date.now()]
+    [tel, estado.pagoId || null, estado.paso || null, JSON.stringify(datos), Date.now()]
   );
 }
 
@@ -544,7 +642,13 @@ async function pagosAbiertosDe(telefono, { todos = false } = {}) {
     // PREGUNTA que debe: contestarle "no tienes pagos pendientes" porque el
     // recibo vence en tres semanas seria mentirle. Para REPORTAR un comprobante
     // se sigue usando la lista corta, que es la que evita ambiguedades.
-    .filter(p => todos || p.dias == null || p.dias <= Math.max(p.diasAviso, 7))
+    // La ventana era de 7 dias y el comentario de arriba decia lo contrario de lo
+    // que hacia el codigo: a los 8 dias de anticipacion el comprobante SE RECHAZABA
+    // (lista vacia) y la foto se iba por el camino de evidencias de tarea.
+    // 21 dias cubre a quien paga con dos o tres semanas de adelanto sin abrir la
+    // puerta a un recibo que vence en dos meses, que es lo que haria que una foto
+    // de tarea se capturara como comprobante.
+    .filter(p => todos || p.dias == null || p.dias <= Math.max(p.diasAviso, 21))
     .sort((a, b) => (a.dias ?? 999) - (b.dias ?? 999));
 }
 
@@ -612,12 +716,20 @@ async function resumenPagosDe(telefono) {
  * evidencia de tarea. Sin esto habria que subirlo dos veces (una a cada carpeta)
  * y quedaria basura suelta en Cloudinary cada vez que la adivinanza falla.
  */
-async function hayPagoEsperando(telefono) {
+async function hayPagoEsperando(telefono, { explicito = false } = {}) {
   if (!dbConfigurada()) return false;
   const tel = ultimos10(telefono);
   const espera = await esperaGet(tel);
   if (espera && (espera.paso === 'comprobante' || espera.paso === 'elegir')) return true;
-  const abiertos = await pagosAbiertosDe(tel);
+  // Si estamos preguntando el monto, una imagen mas es del MISMO pago (el recibo
+  // y el voucher): tiene que entrar por aqui para que `recibirComprobante` la
+  // anexe en vez de dejarla caer al camino de evidencias de tarea.
+  if (espera && espera.paso === 'monto' && espera.pagoId) return true;
+  // `explicito` = la persona escribio "comprobante"/"recibo" en el pie de foto.
+  // Cuando lo DICE se le cree y se miran todos sus recibos abiertos; cuando el
+  // sistema lo esta adivinando, se queda con la ventana corta. Es la diferencia
+  // entre creerle a alguien y suponer por su cuenta.
+  const abiertos = await pagosAbiertosDe(tel, { todos: !!explicito });
   return abiertos.length > 0;
 }
 
@@ -641,6 +753,25 @@ async function guardarComprobante(pagoId, url, tipo, quien) {
   );
 }
 
+
+/**
+ * Una imagen MAS sobre un pago que ya tiene su comprobante.
+ *
+ * No pisa el comprobante bueno: se anexa en `datos.comprobantesExtra`. El caso
+ * normal es el recibo y el voucher del banco, o la foto por delante y por
+ * detras, y tirar la segunda seria perder prueba que la persona ya mando.
+ */
+async function anexarComprobante(pagoId, url, tipo) {
+  await query(
+    `update mdtask_pagos_servicios
+        set datos = coalesce(datos,'{}'::jsonb) || jsonb_build_object(
+              'comprobantesExtra',
+              coalesce(datos->'comprobantesExtra','[]'::jsonb) || $2::jsonb),
+            actualizado_en = $3
+      where id = $1`,
+    [String(pagoId), JSON.stringify([{ url: String(url), tipo: String(tipo || 'imagen'), en: Date.now() }]), Date.now()]
+  );
+}
 /** Cierra el pago: monto, forma de pago y estado 'pagado'. */
 async function cerrarPago(pagoId, { monto, formaPago, quien }) {
   await query(
@@ -674,11 +805,87 @@ function listaNumerada(pagos) {
     .join('\n');
 }
 
+// ── Lectura del monto: por que NO vale "el primer numero del mensaje" ────────
+//
+// La version anterior hacia `t.replace(/\s/g,'')` y se quedaba con el primer
+// numero que encontrara. Medido, eso registraba cifras que nadie pago:
+//
+//   «referencia 0450123 pague 1250 efectivo»          -> $450,123.00
+//   «pague con la tarjeta terminacion 4021, fueron 850» -> $4,021.00
+//   «el 12/09 pague 1250 en efectivo»                 -> $12.00
+//
+// Y lo hacia EN SILENCIO: el pago se cerraba con ese monto y el tablero lo daba
+// por bueno. Ahora cada numero del mensaje se mira con lo que tiene alrededor:
+// se descartan los que no pueden ser un importe (fechas, folios, terminaciones
+// de tarjeta, conteos) y se PREFIERE el que trae senal de importe ($ delante, o
+// "pague/fueron/total/monto" justo antes). Si despues de eso quedan dos
+// candidatos y ninguno gana, se devuelve `ambiguo` y el bot PREGUNTA en vez de
+// elegir por su cuenta: equivocarse callado es peor que preguntar una vez mas.
+
+/** Tras estas palabras, un numero es una REFERENCIA, no un importe. */
+const ANTES_NO_IMPORTE = /(?:referencia|ref|folio|terminaci[oó]n|contrato|medidor|cuenta|clave|servicio|n[uú]mero|num|no|el|los|d[ií]a|tarjeta)\s*\.?\s*:?\s*(?:de\s+|con\s+)?$/i;
+/** Tras estas, un numero SI es el importe. */
+const ANTES_IMPORTE = /(?:\$|pagu[eé]|pagamos|pag[oó]|fueron|fue|son|total|monto|cost[oó]|sali[oó]|vinieron|lleg[oó]|llegaron)\s*(?:de\s+|:\s*)?\$?\s*$/i;
+/** Un numero seguido de esto es un CONTEO ("fueron 2 recibos"), no un importe. */
+const DESPUES_CONTEO = /^\s*(?:recibos?|pagos?|facturas?|meses|mes|veces|partes|servicios?)\b/i;
+
+/**
+ * Los numeros del mensaje que de verdad pueden ser un importe.
+ * Devuelve { candidatos, preferidos } con el valor ya normalizado.
+ */
+function candidatosDeMonto(t) {
+  const candidatos = [], preferidos = [];
+  const re = /\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?|\d+(?:\.\d{1,2})?/g;
+  let m;
+  while ((m = re.exec(t)) !== null) {
+    const crudo = m[0];
+    const i = m.index, fin = i + crudo.length;
+    const antes = t.slice(Math.max(0, i - 28), i);
+    const despues = t.slice(fin, fin + 18);
+
+    // Fecha: el numero toca una barra o un guion con otro numero al lado.
+    if (/[\/\-]\s*$/.test(antes) || /^\s*[\/\-]\s*\d/.test(despues)) continue;
+    // Hora: «a las 9:30».
+    if (/:\s*$/.test(antes) && !/\$/.test(antes)) continue;
+    // Conteo: «fueron 2 recibos».
+    if (DESPUES_CONTEO.test(despues)) continue;
+    // Referencia con cero a la izquierda: los importes no se escriben «0450123».
+    if (/^0\d/.test(crudo) && !crudo.includes('.')) continue;
+    // Tras una palabra de referencia, folio o dia.
+    if (ANTES_NO_IMPORTE.test(antes)) continue;
+
+    const valor = Number(crudo.replace(/,/g, ''));
+    if (!Number.isFinite(valor) || valor <= 0) continue;
+
+    const preferido = ANTES_IMPORTE.test(antes);
+    // Siete cifras o mas sin senal de importe es una referencia, no un recibo.
+    const digitos = crudo.replace(/[^0-9]/g, '').length;
+    if (!preferido && digitos >= 7) continue;
+
+    candidatos.push({ valor, i, fin, preferido });
+    if (preferido) preferidos.push(valor);
+  }
+  return { candidatos, preferidos };
+}
+
+/**
+ * ¿Los numeros vienen unidos por una disyuncion? («pague 1250 o 1300»)
+ * Ese "o" es la persona diciendo que no esta segura, y hay que preguntarle: sin
+ * esto ganaba el que llevara "pague" delante y el otro se perdia en silencio.
+ */
+function hayDisyuncion(t, candidatos) {
+  for (let k = 1; k < candidatos.length; k++) {
+    const entre = t.slice(candidatos[k - 1].fin, candidatos[k].i);
+    if (/^\s*(?:o|u|ó)\s*\$?\s*$/i.test(entre)) return true;
+  }
+  return false;
+}
+
 /**
  * Interpreta "cuanto pagaste y con que".
  * Acepta cosas como "1250 efectivo", "$1,250.50 con tarjeta", "pague 980 en
  * transferencia", "tarjeta" (sin monto) o "no se".
- * Devuelve { monto, formaPago, sinDato }.
+ * Devuelve { monto, formaPago, sinDato, ambiguo }.
  */
 function leerMontoYForma(texto) {
   const t = String(texto || '').toLowerCase();
@@ -691,22 +898,38 @@ function leerMontoYForma(texto) {
   else if (/(?:^|[^\p{L}])(?:transferencia|transfer|spei|dep[oó]sito)(?![\p{L}])/u.test(t)) formaPago = 'transferencia';
   else if (/(?:^|[^\p{L}])(?:efectivo|cash|contado)(?![\p{L}])/u.test(t)) formaPago = 'efectivo';
 
-  // El monto: el primer numero con pinta de importe. Se quitan las comas de
-  // millares antes de convertir ("1,250.50" -> 1250.50).
-  let monto = null;
-  const m = /(\d[\d,]*(?:\.\d{1,2})?)/.exec(t.replace(/\s/g, ''));
-  if (m) {
-    const n = Number(m[1].replace(/,/g, ''));
-    if (Number.isFinite(n) && n > 0) monto = n;
-  }
+  const { candidatos, preferidos } = candidatosDeMonto(t);
+  let monto = null, ambiguo = false;
+  if (hayDisyuncion(t, candidatos)) ambiguo = true;
+  else if (preferidos.length === 1) monto = preferidos[0];
+  else if (preferidos.length > 1) ambiguo = true;
+  else if (candidatos.length === 1) monto = candidatos[0].valor;
+  else if (candidatos.length > 1) ambiguo = true;
 
   // "no sé" es la respuesta mas comun de todas, y con `\bno s[eé]\b` NO casaba
   // (la frontera despues de la "é" no existe): el bot se quedaba pidiendole el
   // monto una y otra vez a quien acababa de decirle que no lo sabia.
   const sinDato = /(?:^|[^\p{L}])(?:no\s+s[eé]|no\s+recuerdo|despu[eé]s|luego)(?![\p{L}])/u.test(t);
-  return { monto, formaPago, sinDato };
+  // Si dijo "no se", no hay nada ambiguo que preguntar.
+  if (sinDato && monto == null) ambiguo = false;
+  return { monto, formaPago, sinDato, ambiguo };
 }
 
+/**
+ * ¿La cifra que dijo la persona esta muy lejos de lo que suele venir?
+ *
+ * Solo opina cuando el catalogo trae `monto_estimado`: sin punto de comparacion
+ * no hay nada que decir, y un rango inventado seria peor que callarse. Los
+ * factores son anchos a proposito (un recibo de luz de verano puede triplicar al
+ * de invierno); esto no busca el error de $50, busca el $450,123.00 de un folio
+ * leido como importe.
+ */
+function esMontoRaro(pago, monto) {
+  const est = Number(pago && pago.montoEstimado);
+  const m = Number(monto);
+  if (!Number.isFinite(est) || est <= 0 || !Number.isFinite(m) || m <= 0) return false;
+  return m > est * 8 || m < est / 8;
+}
 /** Mensaje de confirmacion final de un pago cerrado. */
 function textoConfirmacion(pago, monto, formaPago) {
   const partes = [`✅ Listo, registré el pago de *${nombreServicio(pago)}* (${pago.periodoTexto}).`];
@@ -727,7 +950,7 @@ function textoConfirmacion(pago, monto, formaPago) {
  * se guarda en el hilo y se pregunta; tirar un comprobante que la persona ya
  * mando es lo peor que podria hacer este modulo.
  */
-async function recibirComprobante(telefono, url, tipo, identidad) {
+async function recibirComprobante(telefono, url, tipo, identidad, { explicito = false } = {}) {
   if (!dbConfigurada()) return null;
   const tel = ultimos10(telefono);
   const quien = (identidad && (identidad.uid || identidad.nombre)) || tel;
@@ -746,7 +969,26 @@ async function recibirComprobante(telefono, url, tipo, identidad) {
     }
   }
 
-  const abiertos = await pagosAbiertosDe(tel);
+  // ATENCION: ya recibimos su comprobante y le estamos preguntando el monto.
+  //
+  // Una SEGUNDA imagen aqui casi siempre es el MISMO pago: el recibo y el
+  // voucher del banco, o la foto por delante y por detras. Antes este caso caia
+  // de largo a `pagosAbiertosDe` y, si a esa persona le quedaba exactamente un
+  // pago abierto, lo marcaba PAGADO con una imagen que no era suya — un
+  // servicio cerrado con la prueba de otro, y en el tablero se ve verde.
+  //
+  // Se anexa al pago en curso y se deja la puerta abierta por si de verdad era
+  // de otro: la persona escribe "otro" y se le vuelve a preguntar.
+  if (espera && espera.paso === 'monto' && espera.pagoId) {
+    const pago = await leerPago(espera.pagoId);
+    if (pago) {
+      await anexarComprobante(pago.id, url, tipo);
+      return `Guardé también esta imagen en *${nombreServicio(pago)}* (${pago.periodoTexto}) 📎\n`
+        + 'Si era de *otro* pago, escríbeme _otro_ y te digo cuáles tienes abiertos.\n\n'
+        + '¿Cuánto pagaste y de qué forma? Ejemplo: *1250 efectivo*';
+    }
+  }
+  const abiertos = await pagosAbiertosDe(tel, { todos: !!explicito });
   if (!abiertos.length) return null;   // que siga el flujo normal (tareas)
 
   if (abiertos.length === 1) {
@@ -788,8 +1030,20 @@ const RE_CONSULTA_FRASE = /(?:^|[^\p{L}])(?:tengo|tenemos|hay|falta|faltan|debo|
 // Lo que NO es una consulta aunque traiga la palabra: reportar que ya se pago.
 // Sin esto, "¿ya pagué la luz?" no, pero "ya pagué el recibo" si caeria en la
 // consulta y el bot contestaria una lista en vez de pedir el comprobante.
+// Y lo que NO es de ESTE modulo aunque traiga la palabra "pago": aqui solo se
+// habla de RECIBOS DE SERVICIOS (luz, agua, internet, renta). Medido, la frase
+// natural se llevaba mensajes que son del asistente:
+//
+//   «cuanto le pago a Juan de la semana?»  -> contestaba la lista de recibos
+//   «me falta el pago de mi bono»          -> idem
+//
+// Solo le pasa a quien ES responsable de algun servicio (a los demas ya se les
+// devolvia null), asi que era silencioso y dificil de reportar: la persona
+// preguntaba una cosa y le contestaban otra.
+const RE_NO_ES_SERVICIO = /(?:^|[^\p{L}])(?:n[oó]mina|nomina|bono|sueldo|salario|aguinaldo|finiquito|comisi[oó]n|comisiones|proveedor(?:es)?|quincena|semana|raya|anticipo|pr[eé]stamo|vale)(?![\p{L}])|(?:le|les)\s+pago|pago\s+a\s+\p{Lu}/u;
 function esConsultaDePagos(t) {
   if (RE_YA_PAGUE.test(t)) return false;
+  if (RE_NO_ES_SERVICIO.test(String(t || ''))) return false;
   return RE_CONSULTA.test(t) || RE_CONSULTA_FRASE.test(t);
 }
 // Mismo cuidado con los acentos: la version anterior (`...|pagu[eé]|...\b`) NO
@@ -843,6 +1097,24 @@ async function resolverPorWhatsapp(telefono, texto) {
       await esperaSet(tel, null);
       return 'Ese pago ya está registrado. Si necesitas corregir algo, avísale a quien lleva el control 🙂';
     }
+    // ATENCION: el paso 'elegir' nace por DOS caminos y solo uno trae el archivo:
+    //
+    //   a) llego una foto y hay varios pagos abiertos -> `datos.url` existe;
+    //   b) la persona escribio "ya pague" con varios abiertos -> NO existe, y su
+    //      propio mensaje le dijo <<respondeme con el numero y LUEGO mandame el
+    //      comprobante>>.
+    //
+    // Sin esta bifurcacion, el caso (b) llamaba a `guardarComprobante` con
+    // `undefined`: el pago quedaba PAGADO con la cadena literal "undefined" en
+    // `comprobante_url`, sin que nadie hubiera mandado una sola foto, y el bot
+    // contestaba <<Ya quedo registrado como pagado>>. Es el mismo candado que el
+    // endpoint de la app SI exige ("para marcar pagado hace falta el
+    // comprobante", pagos-servicios.js), saltado por la puerta de al lado.
+    if (!espera.datos.url) {
+      await esperaSet(tel, { pagoId: pago.id, paso: 'comprobante', datos: {} });
+      return `Anotado: *${nombreServicio(pago)}* (${pago.periodoTexto}) 👍\n\n`
+        + 'Ahora sí, mándame la *foto o el PDF* del comprobante 📄';
+    }
     await guardarComprobante(pago.id, espera.datos.url, espera.datos.tipo, tel);
     await esperaSet(tel, { pagoId: pago.id, paso: 'monto', datos: {} });
     return `Perfecto, lo guardé en *${nombreServicio(pago)}* (${pago.periodoTexto}) 📄\n`
@@ -855,7 +1127,39 @@ async function resolverPorWhatsapp(telefono, texto) {
     const pago = await leerPago(espera.pagoId);
     if (!pago) { await esperaSet(tel, null); return null; }
 
-    const { monto, formaPago, sinDato } = leerMontoYForma(t);
+    const { monto, formaPago, sinDato, ambiguo } = leerMontoYForma(t);
+
+    // "otro": la imagen que acabo de anexar no era de este pago. Se le vuelve a
+    // preguntar en vez de dejarla pegada donde no va.
+    if (/^\s*(?:otro|es de otro|no,? es de otro|otro pago)\b/i.test(t)) {
+      const otros = await pagosAbiertosDe(tel, { todos: true });
+      if (otros.length) {
+        await esperaSet(tel, { pagoId: null, paso: 'elegir', datos: { opciones: otros.slice(0, 5).map(p => p.id) } });
+        return `De acuerdo. ¿De cuál era?\n\n${listaNumerada(otros)}\n\nRespóndeme con el *número*.`;
+      }
+    }
+
+    // Confirmacion de un monto que la persona ya dijo y que NO cuadra con lo que
+    // suele venir. No se rechaza —hay recibos que llegan altisimos de verdad—:
+    // se le repite la cifra para que la vea escrita antes de que quede guardada.
+    if (espera.datos.porConfirmar != null) {
+      if (/(?:^|[^\p{L}])(?:s[ií]|correcto|exacto|as[ií] es|confirmo|sip|va)(?![\p{L}])/iu.test(t)) {
+        const f = formaPago || espera.datos.formaPago || null;
+        await cerrarPago(pago.id, { monto: Number(espera.datos.porConfirmar), formaPago: f, quien: tel });
+        await esperaSet(tel, null);
+        return textoConfirmacion(pago, Number(espera.datos.porConfirmar), f);
+      }
+      if (monto == null && !sinDato) {
+        return `Para estar seguros: ¿el monto fue ${pesos(espera.datos.porConfirmar)}? Contéstame *sí*, o mándame la cifra correcta.`;
+      }
+    }
+
+    // No se entendio CUAL de los numeros era el importe. Preguntar cuesta un
+    // mensaje; adivinar cuesta un monto falso en el tablero que nadie revisa.
+    if (ambiguo && !sinDato) {
+      return 'Vi más de una cifra en tu mensaje y no quiero anotar la que no es 🤔.\n'
+        + 'Mándame solo el monto, así: *1250* (o *1250 efectivo*).';
+    }
 
     // No quiere o no puede dar el dato: se cierra igual. El comprobante, que es
     // lo importante, ya esta guardado; obligarla a contestar solo lograria que
@@ -879,6 +1183,19 @@ async function resolverPorWhatsapp(telefono, texto) {
 
     // Llega la forma de pago y el monto venia del mensaje anterior.
     const montoFinal = monto != null ? monto : (espera.datos.monto ?? null);
+
+    // Ultimo filtro antes de guardar: una cifra muy lejos de lo que suele venir
+    // se le REPITE a la persona antes de darla por buena. No se rechaza (hay
+    // recibos que de verdad llegan altisimos) y solo aplica cuando el catalogo
+    // trae un estimado con el que comparar: sin estimado no hay nada que decir,
+    // y callarse es mejor que inventar un rango.
+    if (montoFinal != null && esMontoRaro(pago, montoFinal) && espera.datos.porConfirmar == null) {
+      await esperaSet(tel, { pagoId: pago.id, paso: 'monto', datos: { porConfirmar: montoFinal, formaPago } });
+      return `Anoté ${pesos(montoFinal)}, pero *${nombreServicio(pago)}* suele venir en `
+        + `${pesos(pago.montoEstimado)} 🤔.\n¿Confirmas que fueron ${pesos(montoFinal)}? `
+        + 'Contéstame *sí*, o mándame la cifra correcta.';
+    }
+
     await cerrarPago(pago.id, { monto: montoFinal, formaPago, quien: tel });
     await esperaSet(tel, null);
     return textoConfirmacion(pago, montoFinal, formaPago);
@@ -964,7 +1281,7 @@ module.exports = {
   recibirComprobante, resolverPorWhatsapp, pagosAbiertosDe, hayPagoEsperando,
   // Consulta "¿tengo algo que pagar?": la usan el comando de texto y la
   // herramienta `consultar_mis_pagos` del asistente, para que contesten igual.
-  resumenPagosDe, esResponsableDeAlgo, esConsultaDePagos,
+  resumenPagosDe, esResponsableDeAlgo, esConsultaDePagos, comprobantesHuerfanos,
   // Exportadas para pruebas y para reusar el formato en otros modulos.
   nombreServicio, leerMontoYForma, esperaGet, esperaSet,
 };

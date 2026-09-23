@@ -214,7 +214,10 @@ async function procesarMensaje(msg) {
       return;
     }
     let resPago = null;
-    try { resPago = await recibirComprobante(objetivo, subida.url, 'documento', identidad); }
+    // Un PDF nunca es evidencia de tarea, asi que aqui la intencion es explicita y
+    // se miran TODOS sus recibos abiertos: si alguien paga con tres semanas de
+    // anticipacion, su PDF no puede quedarse sin destino por la ventana corta.
+    try { resPago = await recibirComprobante(objetivo, subida.url, 'documento', identidad, { explicito: true }); }
     catch (e) { console.error('[wa-webhook] comprobante PDF:', e && e.message); }
     await enviarMensaje(msg.from, resPago
       || 'Recibí tu PDF 📄 pero ahora mismo no tienes ningún pago de servicios pendiente a tu nombre. '
@@ -260,7 +263,7 @@ async function procesarMensaje(msg) {
     const pieDePago = /(?:^|[^\p{L}])(?:comprobante|recibo|pago|pagu[eé]|ticket|factura)(?![\p{L}])/iu.test(String(msg.texto || ''));
     let esDePagos = false;
     if (!filaTareas || pieDePago) {
-      try { esDePagos = await hayPagoEsperando(objetivo); }
+      try { esDePagos = await hayPagoEsperando(objetivo, { explicito: pieDePago }); }
       catch (e) { console.error('[wa-webhook] no se pudo revisar pagos:', e && e.message); }
     }
     if (esDePagos) {
@@ -270,7 +273,7 @@ async function procesarMensaje(msg) {
         return;
       }
       let resPago = null;
-      try { resPago = await recibirComprobante(objetivo, subidaPago.url, 'imagen', identidad); }
+      try { resPago = await recibirComprobante(objetivo, subidaPago.url, 'imagen', identidad, { explicito: pieDePago }); }
       catch (e) { console.error('[wa-webhook] comprobante foto:', e && e.message); }
       if (resPago) { await enviarMensaje(msg.from, resPago); return; }
       // Cambió algo entre la revisión y el guardado (le acaban de registrar el

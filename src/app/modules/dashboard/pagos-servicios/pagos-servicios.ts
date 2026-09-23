@@ -60,6 +60,12 @@ export class PagosServiciosComponent implements OnInit, OnDestroy {
   servicios = signal<any[]>([]);
   pagos = signal<any[]>([]);
   resumen = signal<any[]>([]);
+  /** Comprobantes que llegaron por WhatsApp y nadie dijo a qué pago iban. */
+  huerfanos = signal<any[]>([]);
+  /** La consulta llegó al tope de filas: el tablero está contando de menos. */
+  truncado = signal<boolean>(false);
+  /** Motivo del último fallo de carga, para decirlo sin abrir un modal. */
+  errorCarga = signal<string>('');
   cargando = signal<boolean>(true);
   private timer: any = null;
 
@@ -236,7 +242,7 @@ export class PagosServiciosComponent implements OnInit, OnDestroy {
     await this.cargarTodo();
     // Refresco ligero: los comprobantes entran por WhatsApp, así que el tablero
     // tiene que moverse solo mientras alguien lo tiene abierto.
-    this.timer = setInterval(() => this.cargarPagos(), 30000);
+    this.timer = setInterval(() => this.cargarPagos(true), 30000);
   }
 
   ngOnDestroy() {
@@ -260,14 +266,27 @@ export class PagosServiciosComponent implements OnInit, OnDestroy {
     }
   }
 
-  async cargarPagos() {
+  /**
+   * @param silencioso lo usa el refresco automático: un fallo de red NO puede
+   *   abrir un modal encima de lo que la persona esté haciendo. Antes el poll
+   *   compartía este método con la carga inicial, así que con la red tropezando
+   *   el mismo aviso se plantaba en pantalla CADA 30 SEGUNDOS. Ahora el poll
+   *   deja el motivo en una línea discreta y se reintenta solo.
+   */
+  async cargarPagos(silencioso = false) {
     try {
       const r = await this.api.get('/api/pagos-servicios?resumen=1');
       this.pagos.set(r.pagos || []);
       this.resumen.set(r.resumen || []);
+      this.huerfanos.set(r.huerfanos || []);
+      this.truncado.set(r.truncado === true);
+      this.errorCarga.set('');
     } catch (e: any) {
       console.error('[pagos] pagos:', e);
-      this.avisoError(e, 'No pude cargar los pagos.');
+      this.errorCarga.set(e?.sinRed
+        ? 'Sin conexión: los datos pueden estar atrasados. Se reintenta solo.'
+        : (e?.message || 'No pude cargar los pagos.'));
+      if (!silencioso) this.avisoError(e, 'No pude cargar los pagos.');
     }
   }
 
@@ -453,11 +472,18 @@ export class PagosServiciosComponent implements OnInit, OnDestroy {
     }
   }
 
-  /** Reabre un pago marcado por error (queda pendiente y el bot vuelve a avisar). */
+  /**
+   * Reabre un pago marcado por error (queda pendiente y el bot vuelve a avisar).
+   * Sirve también para los CANCELADOS: hasta hoy el botón solo se pintaba para
+   * los pagados, así que un recibo cancelado al dar de baja el servicio no tenía
+   * ningún camino de vuelta desde la pantalla.
+   */
   async reabrirPago(p: any) {
     const r = await Swal.fire({
       icon: 'question', title: '¿Marcar como pendiente?',
-      text: 'El pago volverá a aparecer como no pagado y el bot retomará los recordatorios.',
+      text: p?.estadoVisible === 'cancelado'
+        ? 'El recibo volverá a la lista como pendiente y el bot retomará los recordatorios.'
+        : 'El pago volverá a aparecer como no pagado y el bot retomará los recordatorios.',
       showCancelButton: true, confirmButtonText: 'Sí, reabrir', cancelButtonText: 'Cancelar',
     });
     if (!r.isConfirmed) return;
@@ -525,7 +551,7 @@ export class PagosServiciosComponent implements OnInit, OnDestroy {
       sin_telefono: 'Este servicio no tiene un responsable con teléfono.',
       ya_pagado: 'Ese pago ya está registrado como pagado.',
       no_existe: 'No encontré ese pago.',
-      avisos_apagados: 'Los avisos automáticos están apagados en el servidor.',
+      cancelado: 'Ese recibo está cancelado. Reábrelo si hay que volver a cobrarlo.',
       sin_base: 'No hay conexión con la base de datos.',
       fallo_envio: 'WhatsApp rechazó el mensaje.',
       cuenta_bloqueada: 'La cuenta de WhatsApp del negocio no puede iniciar conversaciones (falta el método de pago en Meta).',
@@ -564,8 +590,25 @@ export class PagosServiciosComponent implements OnInit, OnDestroy {
   }
 
   verComprobante(p: any) {
-    if (!p.comprobanteUrl) return;
-    window.open(p.comprobanteUrl, '_blank', 'noopener');
+    // Solo http(s): `comprobanteUrl` es texto libre que alguien pegó a mano, y
+    // esto termina en un `window.open`. El servidor ya lo valida al guardar;
+    // esta es la segunda mitad, para las filas que se guardaron antes.
+    const u = String(p?.comprobanteUrl || '');
+    if (!/^https?:\/\//i.test(u)) return;
+    window.open(u, '_blank', 'noopener');
+  }
+
+  /** Abre el comprobante huérfano para poder pegarlo en el pago que le toca. */
+  verHuerfano(h: any) {
+    const u = String(h?.url || '');
+    if (!/^https?:\/\//i.test(u)) return;
+    window.open(u, '_blank', 'noopener');
+  }
+
+  fechaHora(ms: any): string {
+    const n = Number(ms);
+    if (!Number.isFinite(n) || n <= 0) return '';
+    return new Date(n).toLocaleString('es-MX', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
   }
 
   // --- Presentacion ----------------------------------------------------------

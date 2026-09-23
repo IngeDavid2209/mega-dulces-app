@@ -67,7 +67,42 @@ export class ApiService {
     method: string, url: string, body?: any,
     reintentosRed = 2, forzarToken = false, puedeReintentarAuth = true
   ): Promise<any> {
-    const token = await this.token(forzarToken);
+    // ── EL TOKEN VA DENTRO DEL TRY, Y NO ES UN DETALLE DE ESTILO ─────────────
+    //
+    // `token()` sale por Firebase Auth, que vive en `identitytoolkit.googleapis.com`
+    // y `securetoken.googleapis.com` — OTRO dominio, no el nuestro. Una red que
+    // deja pasar `railway.app` y tropieza con `googleapis.com` hace que este
+    // `await` lance un FirebaseError, y antes eso pasaba de largo:
+    //
+    //   - los dos reintentos con backoff de abajo viven dentro del `try` del
+    //     `fetch`, asi que un parpadeo al renovar el token NO se reintentaba;
+    //   - el error no es un `ErrorApi`, asi que no traia `sinRed` y las pantallas
+    //     lo pintaban en la rama de «error del servidor», enseñandole al usuario
+    //     el texto crudo «Firebase: Error (auth/network-request-failed)».
+    //
+    // Reintentar aqui es seguro incluso en una escritura: la peticion todavia no
+    // ha salido, asi que no hay nada que se pueda duplicar.
+    let token: string;
+    try {
+      token = await this.token(forzarToken);
+    } catch (e: any) {
+      // `Sin sesion activa` ya viene bien clasificado desde `token()`.
+      if (e instanceof ErrorApi) throw e;
+      const pista = String(e?.code || '') + ' ' + String(e?.message || '');
+      const esRed = /network-request-failed|network error|failed to fetch|timeout|too-many-requests/i.test(pista);
+      if (esRed && reintentosRed > 0) {
+        await new Promise(r => setTimeout(r, 700 * (3 - reintentosRed)));
+        return this.req(method, url, body, reintentosRed - 1, forzarToken, puedeReintentarAuth);
+      }
+      // El motivo tecnico se conserva en la consola; a la persona se le dice lo
+      // unico accionable. «Revisa tu conexion» es cierto y suficiente: el fallo
+      // es de red aunque el dominio que no responda no sea el nuestro.
+      console.error('[api] no se pudo obtener el token de sesion:', pista.trim());
+      throw new ErrorApi(
+        esRed ? 'Sin conexión al validar tu sesión' : 'No se pudo validar tu sesión',
+        esRed, 401);
+    }
+
     let res: Response;
     try {
       res = await fetch(url, {

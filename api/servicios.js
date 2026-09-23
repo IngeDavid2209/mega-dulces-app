@@ -16,6 +16,9 @@
 const { query, dbConfigurada } = require('./db');
 const { verificarToken } = require('./_auth');
 const { exigirAccesoPagos } = require('./_pagos-acceso');
+const {
+  hoyMexico, periodoDeFecha, fechaLimiteDe, textoPeriodo, leTocaPeriodo,
+} = require('./_pagos-periodos');
 
 const TIPOS = ['luz', 'agua', 'internet', 'gas', 'telefono', 'renta', 'otro'];
 const PERIODICIDADES = ['mensual', 'bimestral'];
@@ -133,6 +136,69 @@ function validar(b, existente) {
   };
 }
 
+
+/**
+ * Pone al dia los pagos PENDIENTES de un servicio que acaba de cambiar.
+ *
+ * Dos cosas distintas:
+ *   1) se recalcula la fecha limite y el texto del periodo con los datos nuevos
+ *      (y se copia la sucursal y el tipo, que el tablero lee de la fila del pago);
+ *   2) si la periodicidad cambio, los periodos que YA NO TOCAN se cancelan — un
+ *      mensual que pasa a bimestral dejaba filas pendientes de meses que ya no
+ *      existen, y el bot las reclamaba para siempre.
+ *
+ * Nunca toca un pago pagado ni uno de un periodo anterior al actual: eso es
+ * historial, y reescribirlo cambiaria con que regla se juzgo un mes cerrado.
+ */
+async function resincronizarPagos(servicioId, s, { reabrir = false } = {}) {
+  const desde = periodoDeFecha(hoyMexico());
+
+  // El servicio vuelve a estar vivo: se devuelven los recibos que se cancelaron
+  // AL DARLO DE BAJA (y solo esos: un cancelado a mano se queda como esta).
+  let reabiertos = 0;
+  if (reabrir) {
+    const rr = await query(
+      `update mdtask_pagos_servicios
+          set estado = 'pendiente', actualizado_en = $3,
+              datos = coalesce(datos,'{}'::jsonb) - 'canceladoPor'
+        where servicio_id = $1 and eliminado = false and estado = 'cancelado'
+          and datos->>'canceladoPor' = 'baja_de_servicio' and periodo >= $2
+        returning id`, [servicioId, desde, Date.now()]);
+    reabiertos = rr.rows.length;
+  }
+  const r = await query(
+    `select id, periodo from mdtask_pagos_servicios
+      where servicio_id = $1 and eliminado = false and estado = 'pendiente' and periodo >= $2`,
+    [servicioId, desde]
+  );
+  const ref = { periodicidad: s.periodicidad, mesAncla: s.mesAncla, diaLimite: s.diaLimite };
+  let actualizados = 0, cancelados = 0;
+  for (const fila of r.rows) {
+    if (!leTocaPeriodo(ref, fila.periodo)) {
+      await query(
+        `update mdtask_pagos_servicios
+            set estado = 'cancelado', actualizado_en = $2,
+                datos = coalesce(datos,'{}'::jsonb) || '{"canceladoPor":"cambio_de_periodicidad"}'::jsonb
+          where id = $1`, [fila.id, Date.now()]);
+      cancelados++;
+      continue;
+    }
+    await query(
+      `update mdtask_pagos_servicios
+          set fecha_limite = $2, periodo_texto = $3, sucursal = $4, tipo = $5, actualizado_en = $6
+        where id = $1`,
+      [fila.id, fechaLimiteDe(fila.periodo, s.diaLimite), textoPeriodo(fila.periodo, s.periodicidad),
+        s.sucursal || s.departamento || null, s.tipo, Date.now()]
+    );
+    actualizados++;
+  }
+  if (actualizados || cancelados) {
+    console.log(`[servicios] ${servicioId}: ${actualizados} recibo(s) pendiente(s) puesto(s) al día, ${cancelados} cancelado(s) por cambio de periodicidad.`);
+  }
+  if (reabiertos) console.log(`[servicios] ${servicioId}: ${reabiertos} recibo(s) reabierto(s) al reactivar el servicio.`);
+  return { actualizados, cancelados, reabiertos };
+}
+
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
@@ -221,8 +287,28 @@ module.exports = async (req, res) => {
         ]
       );
 
+
+      // ── RE-SINCRONIZAR LOS RECIBOS QUE AUN NO SE PAGAN ─────────────────────
+      //
+      // El generador escribe `fecha_limite`, `sucursal`, `tipo` y `periodo_texto`
+      // UNA sola vez, en el insert, y despues hace `on conflict do nothing`. O
+      // sea que corregir el dia limite de 15 a 5 no tocaba los dos periodos ya
+      // creados: el recordatorio seguia saliendo el dia viejo hasta dentro de dos
+      // meses, y la persona que hizo la correccion no tenia forma de saberlo.
+      //
+      // Solo se tocan los PENDIENTES del periodo en curso en adelante. Lo ya
+      // pagado es historial con su comprobante y no se reescribe (§5.5).
+      let resync = { actualizados: 0, cancelados: 0, reabiertos: 0 };
+      // Volvio a la vida: estaba borrado o inactivo y ahora esta activo.
+      const revivio = !!existente && s.activo
+        && (existente.eliminado === true || existente.activo === false);
+      if (existente) {
+        try { resync = await resincronizarPagos(id, s, { reabrir: revivio }); }
+        catch (e) { console.error('[servicios] no se pudieron resincronizar los pagos:', e && e.message); }
+      }
+
       const r = await query('select * from mdtask_servicios where id = $1', [id]);
-      return res.json({ ok: true, servicio: fila(r.rows[0]) });
+      return res.json({ ok: true, servicio: fila(r.rows[0]), resync });
     }
 
     if (req.method === 'DELETE') {
@@ -235,8 +321,15 @@ module.exports = async (req, res) => {
       // Los pagos YA REGISTRADOS se conservan (son el historial con sus
       // comprobantes); solo se dan de baja los que seguian pendientes, para que
       // el bot deje de recordar un servicio que ya no se paga.
+      // Se marca POR QUE se cancelaron: sin esa marca, volver a dar de alta el
+      // servicio dejaba el recibo del periodo en curso cancelado para siempre
+      // —el generador no lo recrea (indice unico servicio+periodo) y la pantalla
+      // solo ofrecia "Reabrir" a los pagados—. Con la marca, la reactivacion los
+      // devuelve sola (ver `resincronizarPagos`).
       await query(
-        `update mdtask_pagos_servicios set estado = 'cancelado', actualizado_en = $2
+        `update mdtask_pagos_servicios
+            set estado = 'cancelado', actualizado_en = $2,
+                datos = coalesce(datos,'{}'::jsonb) || '{"canceladoPor":"baja_de_servicio"}'::jsonb
           where servicio_id = $1 and estado = 'pendiente'`, [id, Date.now()]);
       return res.json({ ok: true });
     }

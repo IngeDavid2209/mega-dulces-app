@@ -429,6 +429,185 @@ commiteados y sin desplegar**. Salieron con este `railway up` (0 → 2). Es el h
 - **Nadie ha entrado con una cuenta real.** Cero migraciones.
 
 
+### 23/sep/2026 — PAGOS DE SERVICIOS: la revisión completa, y el «Firebase» que no era de pagos
+
+Instrucción de David: *«revisa huecos, errores que tenga el módulo de pagos»*, y con los
+hallazgos enfrente: *«hazlo todo»*. Entre medias, una captura suya —**«No pude cargar los
+pagos. Firebase: Error (auth/network-request-failed)»**— y la pregunta que cambió el orden del
+trabajo: *«por qué menciona firebase??»*.
+
+#### ESE MENSAJE NO ERA DE PAGOS, Y POR ESO ERA EL PRIMERO
+
+`req()` pedía el token **fuera del try**, y ese token sale por Firebase Auth, que vive en
+`identitytoolkit.googleapis.com` — **otro dominio**. Tres cosas se apilaban:
+
+    1. el FirebaseError no es `ErrorApi`, asi que NO trae `sinRed` -> la pantalla lo pintaba
+       en la rama de «error del servidor» y enseñaba el texto crudo
+    2. los dos reintentos con backoff viven DENTRO del try del fetch -> un parpadeo al
+       renovar el token no se reintentaba ni una vez
+    3. el poll de 30 s de Pagos comparte metodo con la carga inicial -> ese modal salia
+       CADA 30 SEGUNDOS encima de lo que la persona estuviera haciendo
+
+Medido: **22 archivos siguen importando `@angular/fire` y 34 pantallas pasan por ese token**.
+O sea que no es de pagos: le puede pasar a cualquiera, y pagos solo lo enseñaba peor. Es el
+hallazgo 2 del §3 cobrando por la puerta de la red, y el modo de fallo del 1/sep («no hay error
+que buscar, hay un silencio») con otra ropa.
+
+**Reintentar ahí es seguro incluso en una escritura**, y eso es lo que permite arreglarlo en la
+capa común sin tocar 34 pantallas: la petición todavía no ha salido, así que no hay nada que se
+pueda duplicar.
+
+#### LOS CUATRO ROJOS DEL MÓDULO, en orden de lo que costaban
+
+**1 · «Ya pagué» con varios recibos abiertos cerraba el pago SIN COMPROBANTE.** El paso
+`elegir` nace por dos caminos y **solo uno trae el archivo**: si llegó una foto, `datos.url`
+existe; si la persona escribió «ya pagué», no — y su propio mensaje le había dicho *«respóndeme
+con el número y LUEGO mándame el comprobante»*. La rama que consume ese paso daba por hecho lo
+primero:
+
+    guardarComprobante(pago.id, espera.datos.url /* undefined */, ...)
+      -> comprobante_url = String(undefined) = "undefined"     (comprobado)
+      -> estado = 'pagado'   y el bot: «Ya quedo registrado como pagado»
+
+**Es el mismo candado que el endpoint de la app SÍ exige** —«para marcar pagado hace falta el
+comprobante»— saltado por la puerta de al lado, sin que nadie hubiera mandado una sola foto.
+
+**2 · La segunda foto marcaba pagado OTRO servicio.** Tras recibir el comprobante el hilo queda
+en `monto`, y `recibirComprobante` solo cortocircuitaba en `comprobante`. Así que el recibo y el
+voucher del banco —el caso normal— cerraban un **segundo** servicio con prueba que no era suya,
+y en el tablero se ve verde. Ahora se anexa al pago en curso (`datos.comprobantesExtra`, sin
+pisar el bueno) y la persona puede decir «otro» si de verdad lo era.
+
+**3 · El comprobante se perdía a las 3 horas.** En paso `elegir` la URL del archivo **ya subido
+a Cloudinary** vivía únicamente en la fila del hilo, y `esperaGet` borraba la fila al caducar.
+Es literalmente lo que la cabecera del módulo dice que es lo peor que podría hacer. Ahora el
+hilo deja de secuestrar mensajes —que es para lo que existe la caducidad— pero el archivo
+sobrevive en `datos.huerfanos`, el buzón **se arrastra en cada escritura** y el tablero lo
+enseña para que tenga dueño humano.
+
+**4 · El monto era «el primer número del mensaje».** Medido, con sus controles:
+
+    referencia 0450123 pague 1250 efectivo             -> $450,123.00
+    pague con la tarjeta terminacion 4021, fueron 850  ->   $4,021.00
+    el 12/09 pague 1250 en efectivo                    ->      $12.00
+    fueron 2 recibos, 1250 en efectivo                 ->       $2.00
+    1250 efectivo / $1,250.50 con tarjeta              -> CONTROL: correctos
+
+Y lo hacía **en silencio**: el pago se cerraba con esa cifra y el tablero la daba por buena.
+Ahora cada número se mira con lo que tiene alrededor (fechas, folios, terminaciones de tarjeta,
+conteos) y se prefiere el que trae señal de importe. **Si quedan dos candidatos, se PREGUNTA**
+— equivocarse callado es peor que preguntar una vez más. Hay además una confirmación cuando la
+cifra se aleja 8× del estimado del catálogo: no se rechaza (hay recibos que de verdad llegan
+altísimos), se le repite escrita antes de guardarla.
+
+#### UNA ASERCIÓN MÍA ESTABA MIDIENDO EL CASO EQUIVOCADO
+
+Escribí que «pagué 1250 o 1300, **no recuerdo bien**» debía salir `ambiguo`. Falló, y **la
+equivocada era yo**: ahí gana el «no recuerdo», y volver a preguntarle a quien acaba de decir
+que no lo sabe es exactamente la trampa que este módulo ya tenía con el `\b` de «no sé». Medí el
+porqué antes de tocar la expectativa, y la partí en dos casos —«pagué 1250 o 1300» **sí** es
+ambiguo; con «no recuerdo» **no**— en vez de aflojarla, que habría dejado pasar el caso que
+venía a cubrir.
+
+#### LOS MEDIOS
+
+- **`diasAviso: 0` se leía como 3 en el tablero.** Cadena de `||` con un falsy
+  (`_pagos-periodos.js`). El recordatorio **sí** respetaba el 0 (`== null ? 3 :`), así que la
+  misma regla se leía distinto según quién preguntara.
+- **Editar un servicio no tocaba sus recibos pendientes.** `fecha_limite`, `sucursal`, `tipo` y
+  `periodo_texto` se escriben **solo en el insert** y después es `on conflict do nothing`
+  (verificado por grep: cero UPDATE). Corregir el día límite de 15 a 5 no movía nada hasta
+  dentro de dos meses, y quien lo corrigió no tenía forma de saberlo. Ahora se resincronizan
+  **solo los pendientes del periodo en curso en adelante**: lo pagado es historial con su
+  comprobante y no se reescribe (§5.5).
+- **Dar de baja y reactivar dejaba el recibo muerto.** El DELETE cancela los pendientes, el
+  generador no los recrea (índice único) y la pantalla solo ofrecía «Reabrir» a los **pagados**.
+  Ahora la baja deja constancia de por qué canceló y la reactivación los devuelve sola.
+- **Reabrir un pago borraba `pagado_en`.** Si se reabría por error y se volvía a cerrar, la
+  fecha real del pago se sustituía por la de hoy, sin rastro.
+- **Cero auditoría en el único módulo que mueve dinero.** El POST sobreescribía monto, estado y
+  comprobante en el sitio. Ahora cada cambio deja un evento con autor y valores previos (§5.5).
+- **Un comprobante con más de 7 días de anticipación se rechazaba** y se iba a evidencias de
+  tarea — al revés de lo que decía el comentario de tres líneas más arriba. La ventana sube a
+  21 días, y **cuando la persona lo DICE** (pie de foto «comprobante», o un PDF, que nunca es
+  evidencia de tarea) se miran todos sus recibos abiertos. Creerle a alguien y suponer por
+  cuenta propia no son lo mismo.
+
+#### LOS MENORES
+
+`comprobanteUrl` sin validar como http(s) terminando en un `window.open` · el resumen por
+sucursal no cuadraba (los cancelados entraban en `total` y en ninguna cubeta) · el tope de 2000
+filas cortaba en silencio y ahora lo dice · el detector de consultas le robaba mensajes al
+asistente · `avisos_apagados` era entrada muerta y faltaba `cancelado`.
+
+El detector, medido con sus dos controles **antes y después**:
+
+    antes   6/6 positivos · 4/6 negativos   («cuanto le pago a Juan de la semana?» y
+                                             «me falta el pago de mi bono» los contestaba pagos)
+    despues 6/6 positivos · 6/6 negativos
+
+El positivo en verde es lo que prueba que la lista negra **no barrió de más**.
+
+#### EL ARNÉS QUE NO EXISTÍA, Y SUS CUATRO CONTROLES NEGATIVOS
+
+`scripts/prueba-pagos.js` (nuevo): **45 afirmaciones**, sin credenciales, con `api/db.js`
+sembrado en la caché de require (el patrón de `prueba-autorizacion-crud.js`). El fixture tiene
+**DOS recibos abiertos del mismo teléfono a propósito**: con uno solo, «la segunda foto se va a
+otro servicio» no puede ocurrir y la tabla saldría verde sin haber ejercido el defecto.
+
+Cada control, **una línea** con su `diff` comprobado y el archivo restaurado idéntico:
+
+| | qué se rompió | qué pasó |
+|---|---|---|
+| NEG-1 | la bifurcación del paso `elegir` | **5**, y las 3 de D1 |
+| NEG-2 | la rama de la segunda foto | **4**, y nombra el defecto: *«el recibo de agua quedó en "pagado"»* |
+| NEG-3 | el hilo caducado vuelve a borrarse | **2**: *«el buzón trae 0 entrada(s)»* |
+| NEG-4 | el parser vuelve al primer número | **10**, nombrando cada cifra falsa |
+
+Y una guardia que **aborta con código 3** si la base simulada no devuelve los 2 recibos, o si
+cero escrituras llegaron a ella: «no pude medir» y «está roto» son conclusiones opuestas.
+
+#### DESPLEGADO Y VERIFICADO — las dos mitades, que no son la misma
+
+    marcadores .. no se pudo obtener el token de sesion  0 -> 1   (bundle principal)
+                  Llegaron por WhatsApp                  0 -> 1   (chunk lazy de pagos)
+                  Reintentar ahora                       0 -> 1
+                  57 controles en pie · 66 archivos · 4.53 MB · 0 fallos de lectura
+    espera ...... 29 vueltas, anclada al rotulo `status:` y a la LINEA COMPLETA
+                  (vio Building 8 min y Deploying, y solo paro en `● Online` a secas)
+    backend ..... /api/pagos-servicios y /api/servicios en 401 (montados, pidiendo token)
+                  arranca limpio, migraciones al dia, el poll de pagos iniciado
+                  `NO SE PUDO CARGAR LA REGLA` = 0, con su linea buena presente
+
+**El verificador se corrió ANTES de subir y falló los tres**, nombrando cada uno. Sin esa
+corrida, un verde posterior no probaría que discrimina. Las tres cadenas son **ASCII puras** a
+propósito: el bundle escapa las vocales acentuadas y un ancla con acento es un no-op — y un
+no-op da verde (22/sep). Y **los dos marcadores heredados bajan a control** tras medirlos en
+producción (2 y 4): dejarlos como `nuevo` habría dado verde sin comprobar una línea de hoy.
+
+**Los marcadores prueban que el bundle viajó, NO que el backend esté arriba**, y el grueso de
+este cambio es de servidor. Por eso van aparte los 401 y el log: sin ellos, tres verdes del
+bundle serían compatibles con un `api/` sin desplegar.
+
+#### LO QUE ESTO NO HACE, dicho para que no se lea como resuelto
+
+- **NO recorta por sucursal.** Cualquiera con `grupoPagos` sigue viendo y editando los pagos y
+  los montos de **toda la empresa**. Es el eje que el 20/sep se cerró para Mantenimiento y
+  Sistemas, aquí sin cerrar — y es una decisión de política, no un defecto: la toma David.
+- **CORS sigue en `*`** en los dos endpoints (hallazgo 7, de todo el repo). No viajó de
+  contrabando: cambiarlo toca a todos los clientes.
+- **El cambio de la capa común NO está cubierto por la suite.** Medido: **cero specs de Angular
+  tocan `ApiService`**. Las 479 unitarias siguen en verde y **ninguna de ellas es mía**; mi
+  cobertura son las 45 afirmaciones del arnés, que no llegan a ese archivo. Lo de la capa común
+  está razonado y compilado, no probado.
+- **Nadie ha entrado con una cuenta real.** Lo medido es el mecanismo y el bundle servido; que
+  el aviso se vea bien en un teléfono sigue necesitando ojos, y Chrome no es Safari.
+- **No sé si el error de Firebase que vio David era la red de esa sucursal o la renovación del
+  token a la hora.** `getIdToken(false)` solo toca la red cuando el token está por expirar, así
+  que son los dos escenarios posibles; con este cambio, la próxima vez el mensaje lo dirá en
+  vez de enseñar jerga. Esa es la diferencia que hace medible el caso, no una cura.
+- **Cero migraciones.** Ninguna fila tocada a mano, ningún número de tablero movido.
+
 ### 22/sep/2026 (noche) — NUEVE PUNTOS SE RETIRAN, y el ancla del marcador era un no-op
 
 Instrucción de David: una lista de ocho puntos, literal, sin más contexto. *«hay algunas tareas

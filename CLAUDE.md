@@ -326,6 +326,109 @@ de que exista la plaza sería partir el problema en dos, no resolverlo.
 
 ## 9. Bitácora del plan
 
+
+### 20/sep/2026 (noche) — «EL BOTÓN NO HACE NADA»: el botón no existe, y no lo decía
+
+Reporte de David: *«a christian.moreno no lo deja adjuntar fotos»*, y precisando: **el
+botón no hace nada**.
+
+#### LA PRIMERA HIPÓTESIS ERA BUENA Y ESTABA MAL
+
+Hay una excepción **con nombre propio** en los controles de foto —
+`esUbaldoMantenimiento`, literalmente `nombre.includes('ubaldo')`— que quita `capture` y
+deja abrir la galería. Su motivo está escrito en la plantilla: *«Mantenimiento sube fotos
+que le mandan por WhatsApp de otra sucursal: no puede fotografiar algo que no tiene
+enfrente»*. Encaja perfecto con «un solo usuario».
+
+**Preguntar la descartó en una frase.** Abrir el selector de archivos es **nativo del
+navegador**: si `capture` fuera la causa, se abriría la cámara. Que no se abra *nada*
+significa que el control no está. Y David confirmó que Christian es de sucursal, no de
+Mantenimiento.
+
+#### LO QUE ES, MEDIDO
+
+El botón **no existe**. Todos los controles del punto —foto, comentario y renglones—
+cuelgan de `puedoEditarItem()`:
+
+    puedoEditarItem -> puedoEditarChecklistActivo -> !checklist.enviado && esElDueno()
+    esElDueno()     -> mismo uid  O  mismoEmpleadoNombre(mi nombre, checklist.assigned)
+
+Si ninguna casa, el `*ngIf` no pinta nada. **En esa tarea no le funciona NADA**; la foto
+es solo lo primero que se nota.
+
+#### DOS LECTURAS CON ARREGLOS OPUESTOS, Y DESDE FUERA SE VEN IGUAL
+
+    a) abre la tarea de OTRA persona  -> es correcto, no hay nada que arreglar
+    b) es suya y el nombre no casa    -> es su FICHA, no el codigo (hallazgo 1)
+
+Por eso el arreglo **no es aflojar la regla**: es **nombrar el callejón**.
+`motivo-no-editable.util.ts` distingue tres causas —`enviada`, `de_otro`,
+`nombre_no_casa`— y la tercera es la que vale: usa `pareceLaMismaPersona`, más tolerante
+que `mismoEmpleadoNombre` (acepta un nombre de UNA palabra), **solo para decirlo, nunca
+para conceder**. Si se usara para conceder, «María» abriría las tareas de cualquier
+María. El mensaje nombra **los dos** nombres, que es lo que permite corregir la ficha sin
+adivinar.
+
+**No abre ningún permiso.** Aflojar sería dejar que alguien firme el trabajo de otro:
+`verificado_falso` (§4) fabricado por el software.
+
+#### DÓNDE SE VIGILA LA DIRECCIÓN PELIGROSA
+
+El aviso va **una sola vez**, fuera del `*ngFor` — repetirlo en los 23 puntos es el
+defecto del chip de la hora (18/sep). Y las cuatro aserciones nuevas viven en
+`prueba-dom-evidencia`, cuya sesión **es la dueña**: ahí el aviso debe salir **0**. Si
+saliera, le estaría diciendo a *todo el mundo* que no puede subir su evidencia, y
+**ninguna prueba unitaria lo notaría**, porque el defecto estaría en el `*ngIf`.
+
+**Control negativo**, una línea con su `diff`: quitada la comprobación de propiedad caen
+las cuatro, nombrando cada condición y diciendo **«lo ve 1 vez(ces)»** — que confirma de
+paso que no se repite.
+
+#### ⚠ DOS CIFRAS DE PRUEBAS QUE ESCRIBÍ MAL EN ESTA BITÁCORA
+
+Las entradas del 19 y 20/sep decían «371 pruebas (354 → 371)» y «394 (371 → 394)». **Los
+totales son falsos.** Medido en `HEAD`, karma corre **466**, y el conteo estático de
+`it(` da exactamente lo mismo — las dos cuentas coinciden, así que el número bueno es
+ése.
+
+El error fue de método: leí el total con `tail -1` sobre la salida **en vivo** de karma,
+que escribe una línea de progreso por cada caso (`Executed N of M`). Lo que capturé fue
+un progreso, no el `TOTAL`. **Los deltas sí eran correctos** (+17 y +23), así que las
+entradas quedan corregidas a «casos nuevos» en vez de a un total inventado.
+
+Es §8.11(a) en su forma más tonta: **cité una cifra sin comprobar de dónde salía.**
+Regla que deja: el total se lee del renglón `TOTAL:`, filtrando explícitamente, nunca del
+final de un flujo.
+
+#### DESPLEGADO
+
+    marcador .. cl-no-editable  0 -> 4 servido · 55 controles en pie
+                66 archivos · 4.53 MB
+    unitarias . 479 (466 -> 479, 13 casos nuevos), leido del renglon TOTAL
+    espera .... 14 vueltas (build largo)
+
+Aquí el marcador **sí fue natural** —una clase CSS de algo que se pinta—, al contrario de
+los cuatro despliegues anteriores, donde hubo que buscarlo porque eran lógica pura.
+
+**Y dos tokens de CSS no existían** (`--radius-md`, `--warn-soft`). No habrían reventado:
+se habrían resuelto a nada y el aviso se habría visto *casi* bien, que es el modo de
+fallo del 4/sep. Los seis quedaron validados contra `styles.css` antes de subir.
+
+#### ESTE DESPLIEGUE LLEVÓ TRABAJO DE OTRA SESIÓN
+
+Medido antes de subir: el marcador `1.2 · Septiembre 2026` estaba en **0 en producción**
+con sus commits ya en `main`. O sea, **nueve puntos retirados del manual estaban
+commiteados y sin desplegar**. Salieron con este `railway up` (0 → 2). Es el hallazgo del
+14/sep otra vez: hay trabajo commiteado que se da por vivo y no lo está.
+
+#### LO QUE ESTO NO HACE
+
+- **No arregla a christian.moreno.** Dice cuál de las dos lecturas es la suya. Si sale
+  «nombre_no_casa», el arreglo es su ficha en Usuarios y lo hace David.
+- **No cambia quién puede subir evidencia**, ni un caso.
+- **Nadie ha entrado con una cuenta real.** Cero migraciones.
+
+
 ### 22/sep/2026 (noche) — NUEVE PUNTOS SE RETIRAN, y el ancla del marcador era un no-op
 
 Instrucción de David: una lista de ocho puntos, literal, sin más contexto. *«hay algunas tareas
@@ -1671,7 +1774,8 @@ caso no distinguiría cuál de los dos filtros actuó.
 
     marcador .. «Sin entregas hoy»  0 -> 1 servido · 41 controles en pie
                 67 archivos · 4.51 MB
-    pruebas ... 394 unitarias · los arneses de bandeja en verde
+    pruebas ... +0 casos nuevos · los arneses de bandeja en verde
+                (el total que decia aqui estaba MAL: ver la nota del 20/sep noche)
     espera .... 5 vueltas
 
 El marcador es **el texto del vacío, y hacía falta igual**: decía «no hay tareas enviadas
@@ -1753,7 +1857,7 @@ cualquiera de los dos por separado.
 
 #### VERIFICADO, Y NO CONTANDO TARJETAS
 
-**394 pruebas** unitarias (371 → 394) más `scripts/prueba-area-transversal.js` en el DOM,
+**23 casos nuevos** (`area-transversal.spec.ts`) más `scripts/prueba-area-transversal.js` en el DOM,
 que comprueba **cuáles** sobreviven y no cuántas: «hay menos tarjetas» lo pasa un filtro
 que borre al azar.
 
@@ -1944,7 +2048,8 @@ versión anterior confundía las dos cosas.
 
 #### VERIFICADO
 
-    unitarias .. 371 (354 -> 371), 17 en `rango-jefatura.spec.ts`
+    unitarias .. 17 casos nuevos en `rango-jefatura.spec.ts`  (el total que decia
+                 aqui estaba MAL: ver la nota del 20/sep noche)
     la red ..... las 44 fichas SIN puesto, intactas en las DOS direcciones
     menu ....... `prueba-menu-audiencias`: los 15 perfiles, las mismas rutas
     DOM ........ `prueba-guards-ruta` 48/48 · `prueba-vista-por-nivel` 9 de 9
